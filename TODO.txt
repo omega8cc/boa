@@ -1,0 +1,15 @@
+### TODO
+ 
+* Port to Aegir standard provision/web_server module.
+* Add ssl config compatible with Aegir.
+
+ 
+### In progress
+ 
+* Port to Aegir standard provision/web_server module.
+
+
+### Known issues
+ 
+* Requires patch for provision in Aegir 0.4 alpha3.
+

@@ -1,0 +1,43 @@
+### README
+
+Nginx configuration (see nginx.conf)
+to run Aegir Hosting System for Drupal
+without the need to restart/reload
+your fast, small and powerful webserver.
+
+In this example (nginx.conf) Nginx is listening
+on port 88 since port 80 is used by Pound/Nginx
+load balancer or Varnish/Ncache fast proxy.
+
+
+### REQUIREMENTS
+
+* Latest 0.8.x nginx build - see nginx-install.txt
+
+* php-fpm 5.2.11 - see php-fpm-install.txt
+
+
+### AEGIR ADD-ONS
+
+* provision.patch is required to run Aegir on nginx
+  (for Aegir 0.4 alpha3)
+
+* Please remember to use '/bin/true' for Apache
+  restart command during Aegir installation.
+
+
+### HELP
+
+* see http://groups.drupal.org/nginx
+
+
+### MAINTAINERS
+
+* Grace - http://omega8.cc
+
+
+### CREDITS
+
+* Brian Mercer - http://drupal.org/user/103565
+  Initial work: http://drupal.org/node/244072#comment-1747170
+  

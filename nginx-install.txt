@@ -1,0 +1,46 @@
+#
+# start with an easy Debian command
+# to create initial dirs and init script
+#
+apt-get install nginx
+
+
+#
+# it's time to build your custom nginx version
+#
+cd /var/opt
+wget http://sysoev.ru/nginx/nginx-0.8.32.tar.gz &&
+tar -xzf nginx-0.8.32.tar.gz &&
+cd nginx-0.8.32 &&
+./configure --prefix=/usr \
+--sbin-path=/usr/sbin/nginx \
+--conf-path=/etc/nginx/nginx.conf \
+--error-log-path=/var/log/nginx/error.log \
+--http-log-path=/var/log/nginx/access.log \
+--pid-path=/var/run/nginx.pid \
+--lock-path=/var/lock/nginx.lock \
+--user=www \
+--group=www \
+--with-http_realip_module \
+--with-rtsig_module \
+--with-http_gzip_static_module \
+--with-debug \
+--with-http_stub_status_module \
+--with-http_ssl_module \
+--without-mail_pop3_module \
+--without-mail_imap_module \
+--without-mail_smtp_module \
+--http-client-body-temp-path=/var/cache/nginx/client_body_temp \
+--http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+--http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp &&
+make &&
+make install
+cd ./../
+
+
+#
+# force nginx restart if there is an old version running
+#
+/etc/init.d/nginx stop
+killall -9 nginx
+/etc/init.d/nginx start

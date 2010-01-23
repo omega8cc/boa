@@ -1,0 +1,21 @@
+### Mon, 2010-01-11 01:46
+
+1. Added custom fix required only when using purl, spaces & og
+   for modules: ajax_comments, watcher and fasttoggle.
+   
+2. Simplified rewrite rules for location @drupal
+   resolves also some problems with imagecache.
+   
+3. Changed order of try_files for Boost
+   to match newer version of dirs structure first.
+
+
+### Tue, 2009-12-01 16:19
+
+Added/Fixed:
+
+1. Latest Boost compatibility for /cache/normal & /cache/perm.
+2. Json cache for Boost added.
+3. Fix for xml/feed Boost cache files with .html extension.
+4. Fix for xml/feed Boost cache correct mime type.
+
