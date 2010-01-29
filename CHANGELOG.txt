@@ -1,3 +1,11 @@
+### Fri, 2010-01-29 06:37
+
+Added/Fixed:
+
+1. FCKeditor/CKEditor fix for .xml files.
+2. Security: deny direct access to backup_migrate directory.
+
+
 ### Mon, 2010-01-11 01:46
 
 1. Added custom fix required only when using purl, spaces & og
