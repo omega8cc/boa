@@ -1,3 +1,11 @@
+### Wed, 2010-02-03 06:37
+
+Added/Fixed:
+
+1. mkdir for required cache dirs added in nginx-install.txt
+   http://github.com/omega8cc/nginx-for-drupal/issues#issue/1
+
+
 ### Fri, 2010-01-29 06:37
 
 Added/Fixed:
