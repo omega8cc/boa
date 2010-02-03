@@ -3,6 +3,9 @@
 # to create initial dirs and init script
 #
 apt-get install nginx
+mkdir -p /var/cache/nginx/client_body_temp
+mkdir -p /var/cache/nginx/proxy_temp
+mkdir -p /var/cache/nginx/fastcgi_temp
 
 
 #
