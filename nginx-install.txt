@@ -12,9 +12,9 @@ mkdir -p /var/cache/nginx/fastcgi_temp
 # it's time to build your custom nginx version
 #
 cd /var/opt
-wget http://sysoev.ru/nginx/nginx-0.8.32.tar.gz &&
-tar -xzf nginx-0.8.32.tar.gz &&
-cd nginx-0.8.32 &&
+wget http://sysoev.ru/nginx/nginx-0.8.33.tar.gz &&
+tar -xzf nginx-0.8.33.tar.gz &&
+cd nginx-0.8.33 &&
 ./configure --prefix=/usr \
 --sbin-path=/usr/sbin/nginx \
 --conf-path=/etc/nginx/nginx.conf \
