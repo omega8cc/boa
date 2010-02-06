@@ -1,3 +1,16 @@
+### Sat, 2010-02-06 23:55
+
+Added/Fixed:
+
+1. Missing --with-libevent=shared added in php-fpm-install.txt
+   http://github.com/omega8cc/nginx-for-drupal/issues/#issue/2
+
+2. Debian specific stuff added in php-fpm-install.txt to allow
+   easy install on vanilla vps.
+   
+3. Xcache replaced with APC and Memcache install added.
+
+
 ### Wed, 2010-02-03 06:37
 
 Added/Fixed:

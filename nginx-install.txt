@@ -2,7 +2,8 @@
 # start with an easy Debian command
 # to create initial dirs and init script
 #
-apt-get install nginx
+sudo aptitude update
+sudo aptitude install nginx
 mkdir -p /var/cache/nginx/client_body_temp
 mkdir -p /var/cache/nginx/proxy_temp
 mkdir -p /var/cache/nginx/fastcgi_temp
@@ -38,7 +39,7 @@ cd nginx-0.8.33 &&
 --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp &&
 make &&
 make install
-cd ./../
+cd /var/opt
 
 
 #

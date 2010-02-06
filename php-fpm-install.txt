@@ -1,4 +1,18 @@
 #
+# we need some useful stuff if not installed before
+#
+# to get newer mysql add to your /etc/apt/sources.list 2 lines:
+#
+# deb http://dotdeb.mirror.cambrium.nl/ stable all
+# deb-src http://dotdeb.mirror.cambrium.nl/ stable all
+#
+sudo aptitude update
+sudo aptitude safe-upgrade
+sudo aptitude install build-essential
+sudo aptitude install mc rsync libtool autoconf dnsutils libmcrypt-dev mcrypt sysvconfig libxml2-dev libc-client-dev libpng-dev libjpeg-dev xml2 libpcre3 libpcre3-dev memcached zlibc libmemcache-dev libcurl4-gnutls-dev libcurl4-openssl-dev ncurses-dev ntpdate graphicsmagick-imagemagick-compat munin bzr munin-plugins-extra curl dstat ifstat sysstat htop devscripts git-core xml-core bc php5-xsl libxslt-dev php5-cli mysql-client-5.1 mysql-server-5.1 libmysqlclient16 libmysqlclient-dev cvs libevent-dev
+
+
+#
 # we need libevent-1.4.12
 #
 cd /var/opt
@@ -9,6 +23,22 @@ cd libevent-1.4.12-stable &&
 make &&
 make install
 cd /var/opt
+
+
+#
+# newer memcached is better
+#
+cd /var/opt
+wget http://memcached.googlecode.com/files/memcached-1.4.4.tar.gz
+tar -xzf memcached-1.4.4.tar.gz &&
+cd memcached-1.4.4 &&
+./configure --prefix=/usr/local &&
+make &&
+make install
+cd /var/opt
+mv -f /usr/bin/memcached /usr/bin/memcached-old
+ln -s /usr/local/bin/memcached /usr/bin/memcached
+/etc/init.d/memcached restart
 
 
 #
@@ -35,6 +65,7 @@ patch -p1 < ../fpm.patch
 #
 ./buildconf --force
 mkdir fpm-build && cd fpm-build
+cp -f /etc/init.d/php-fpm /etc/init.d/php-fpm.bak
 
 #
 # step 3
@@ -62,9 +93,11 @@ mkdir fpm-build && cd fpm-build
 --enable-bcmath \
 --with-kerberos \
 --with-xsl \
+--with-libevent=shared \
 --with-mcrypt &&
 make &&
 make install
+cp -f /etc/init.d/php-fpm.bak /etc/init.d/php-fpm
 cd /var/opt
 
 
@@ -79,23 +112,56 @@ cd suhosin-0.9.29 &&
 ./configure --with-php-config=/usr/local/bin/php-config &&
 make &&
 make install
-cat suhosin.ini >> /etc/php.ini
 cd /var/opt
 
 
 #
-# add xcache - see http://xcache.lighttpd.net/wiki/InstallFromSource
+# add memcache
 #
 cd /var/opt
-wget http://xcache.lighttpd.net/pub/Releases/1.3.0/xcache-1.3.0.tar.gz
-tar -xzf xcache-1.3.0.tar.gz &&
-cd xcache-1.3.0 &&
+wget http://pecl.php.net/get/memcache-2.2.5.tgz
+tar -xzf memcache-2.2.5.tgz &&
+cd memcache-2.2.5 &&
 /usr/local/bin/phpize &&
-./configure --enable-xcache --with-php-config=/usr/local/bin/php-config &&
+./configure --with-php-config=/usr/local/bin/php-config &&
 make &&
 make install
-cat xcache.ini >> /etc/php.ini
 cd /var/opt
+
+
+#
+# add apc
+#
+cd /var/opt
+wget http://pecl.php.net/get/APC-3.1.3p1.tgz
+tar -xzf APC-3.1.3p1.tgz &&
+cd APC-3.1.3p1 &&
+/usr/local/bin/phpize &&
+./configure --with-php-config=/usr/local/bin/php-config &&
+make &&
+make install
+cd ./../
+cd /var/opt
+
+
+#
+# add this to your php.ini
+#
+#-- php.ini --#
+; Enable APC
+extension="apc.so"
+apc.shm_size = 128
+apc.stat = 0
+
+; Enable Memcache
+extension="memcache.so"
+memcache.hash_strategy="consistent"
+
+; Enable Suhosin
+extension="suhosin.so"
+suhosin.request.max_vars = 8000
+suhosin.post.max_vars = 8000
+#-- php.ini --#
 
 
 #
