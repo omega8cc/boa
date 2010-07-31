@@ -1,3 +1,13 @@
+### Fri, 2010-07-30 19:00
+
+Added/Removed:
+
+1. New all-in-one installer for Debian 5.0 Lenny
+   Aegir 0.4-alpha9 compatible.
+
+2. Removed deprecated scripts & how-to.
+
+
 ### Sat, 2010-02-06 23:55
 
 Added/Fixed:

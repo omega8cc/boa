@@ -1,15 +1,16 @@
 ### TODO
  
-* Port to Aegir standard provision/web_server module.
-* Add ssl config compatible with Aegir.
-
+* Do the same for Cherokee web server :)
  
 ### In progress
  
-* Port to Aegir standard provision/web_server module.
-
+* Clone this for Cherokee web server.
 
 ### Known issues
  
-* Requires patch for provision in Aegir 0.4 alpha3.
+* None.
 
+### DONE
+
+* Port to Aegir standard provision/web_server module.
+* Add ssl config compatible with Aegir.

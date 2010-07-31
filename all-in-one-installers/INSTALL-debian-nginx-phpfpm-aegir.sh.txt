@@ -1,0 +1,540 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Aegir with Nginx on Debian Install Script
+###  (GNU/GPL) omega8cc
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### EDITME                                 ###
+###----------------------------------------###
+###
+### Enter your valid e-mail address below.
+###
+ADMEMAIL="support@omega8.cc"
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+
+###---### Avoid too many questions
+#
+export DEBIAN_FRONTEND=noninteractive
+#
+###---### Functions
+#
+# Noticeable messages
+msg() {
+  echo "==> $*"
+}
+# Simple prompt
+prompt_yes_no() {
+  while true ; do
+    printf "$* [Y/n] "
+    read answer
+    if [ -z "$answer" ] ; then
+      return 0
+    fi
+    case $answer in
+      [Yy]|[Yy][Ee][Ss])
+        return 0
+        ;;
+      [Nn]|[Nn][Oo])
+        return 1
+        ;;
+      *)
+        echo "Please answer yes or no"
+        ;;
+    esac
+ done 
+}
+#
+# Stop on error
+set -e
+#
+# Create tmp stuff
+mkdir -p /var/tmp/files
+srcdir=/var/tmp/files
+log=/var/tmp/aegir-install.log
+cd $srcdir
+#
+# Download spinner
+rm -f spinner*
+wget -U iCab http://omega8.cc/dev/spinner
+chmod +x spinner
+#
+# Success msg
+success () {
+	msg "$1 Succeeded."
+}
+#
+# Error msg
+fatal () {
+	echo
+	msg "Fatal Error Occurred: $1"
+	msg "Cannot continue installation."
+	exit
+}
+#
+# Perform an action, log it, and run the spinner throughout
+runner () {
+	cmd="$1"
+	echo "...in progress, please wait..."
+	touch busy
+	$srcdir/spinner busy &
+	if $cmd >> $log; then
+		rm busy
+		sleep 1
+		success "$cmd:"
+		return 0
+	else
+		rm busy
+		sleep 1
+		echo "$cmd failed.  Error (if any): $?"
+		echo
+		echo "Displaying the last 15 lines of $log to help troubleshoot this problem:"
+		tail -15 $log
+		return 1
+	fi
+}
+#
+# Small spinner
+mrun () {
+	cmd="$1"
+	touch busy
+	$srcdir/spinner busy &
+	if $cmd >> $log; then
+		rm busy
+		sleep 1
+		return 0
+	fi
+}
+
+
+###--------------------###
+msg "Aegir with Nginx on Debian Lenny minimal install automated install script."
+if [ `whoami` = "root" ] ; then
+  msg "STATUS: This script is ran as a root user."
+else
+  msg "ERROR: This script should be ran as a root user, su - root first."
+  exit 1
+fi
+
+
+###--------------------###
+msg "`date` INFO: We need to install dnsutils first"
+mrun "sleep 5"
+cd /var/tmp
+rm -f apt.conf.noninteractive*
+wget -U iCab http://omega8.cc/dev/apt.conf.noninteractive
+install="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
+if ! runner "$install dnsutils"; then
+  fatal "Installation failed: $?"
+fi
+	
+
+###--------------------###
+THISHOSTA=`hostname -f`
+THISHOSTB=`echo -n $THISHOSTA | tr -d "\n"`
+RESOLVDIP=`host $THISHOSTB | cut -d: -f2 | awk '{ print $4}'`
+SERVERIPA=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+
+if [ "$RESOLVDIP" = "$SERVERIPA" ] ; then
+   true
+else
+msg "EXIT on error due to invalid DNS setup."
+cat <<EOF
+   
+  * Your server has to have already working FQDN hostname matching your IP address.
+    This means you _have to_ configure the dns for your server IP/hostname _before_
+    trying to use this install script. Reverse dns is _not_ required.
+   
+  * Your hostname appears to be $THISHOSTB - are you sure it's a valid FQDN hostname?
+  
+  * Are you sure your FQDN hostname matches your IP address: $SERVERIPA?
+    
+EOF
+msg "EXIT on error due to invalid DNS setup."
+exit 1
+fi
+
+echo " "
+msg "START -> checkpoint: "
+cat <<EOF
+
+  * Your e-mail address appears to be $ADMEMAIL - is that correct?
+  * Your hostname appears to be $THISHOSTB - are you sure it's a valid FQDN hostname?
+  * Your Aegir control panel will be available at http://$THISHOSTB.
+  * Your IP address appears to be $SERVERIPA - are you sure it's a valid IP?
+  * If you have closed outgoing SMTP port, uncomment two lines in section:
+    'Do we need a SMTP relay' before running this script.
+    
+EOF
+echo " "
+if prompt_yes_no "Do you want to proceed with the install?" ; then
+  true
+else
+  echo "installation aborted by user"
+  exit 1
+fi
+
+
+###--------------------###
+msg "`date` INFO: Simple security check to avoid overwriting existing Aegir install"
+mrun "sleep 5"
+if [ -d "/var/aegir" ] ; then
+  msg "`date` INFO: Aegir is already installed - exit now"
+  exit 1
+fi
+
+
+###--------------------###
+msg "`date` INFO: Clean up temp files"
+mrun "sleep 5"
+rm -f -r /var/opt/*
+mkdir -p /var/log/php
+chmod 777 /var/log/php*
+mkdir -p /var/tmp
+chmod 777 /var/tmp
+
+
+###--------------------###
+msg "`date` INFO: Update apt sources"
+mrun "sleep 5"
+echo "deb http://ftp.us.debian.org/debian/ lenny main contrib non-free" > /etc/apt/sources.list
+echo "deb-src http://ftp.us.debian.org/debian/ lenny main contrib non-free" >> /etc/apt/sources.list
+echo "deb http://security.debian.org/ lenny/updates main contrib non-free" >> /etc/apt/sources.list
+echo "deb-src http://security.debian.org/ lenny/updates main contrib non-free" >> /etc/apt/sources.list
+echo "deb http://ftp.us.debian.org/debian experimental main" >> /etc/apt/sources.list
+echo "deb-src http://ftp.us.debian.org/debian/ experimental main" >> /etc/apt/sources.list
+
+
+###--------------------###
+msg "`date` INFO: Add apt sources for MariaDB"
+mrun "sleep 5"
+wget -O- http://ourdelta.org/deb/ourdelta.gpg | apt-key add -
+wget http://ourdelta.org/deb/sources/lenny-mariadb-ourdelta.list -O /etc/apt/sources.list.d/ourdelta.list
+
+
+###--------------------###
+msg "`date` INFO: Run apt update"
+mrun "sleep 5"
+runner "aptitude update"
+runner "aptitude clean"
+runner "aptitude full-upgrade"
+runner "aptitude -y install locales"
+runner "locale-gen en_US en_US.UTF-8"
+
+
+###--------------------###
+msg "`date` INFO: Installing required libraries and tools"
+mrun "sleep 5"
+debdeps1="cron ssh build-essential"
+debdeps2="postfix postfix-pcre"
+debdeps3="apticron autoconf automake automake1.4 autotools-dev bc bison curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano nginx ncurses-dev pwgen python-dev python-mysqldb rsync shtool ssl-cert subversion sudo sysstat sysvconfig t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+install_with_apt () {
+	if ! runner "$install $debdeps1"; then
+		fatal "Installation failed: $?"
+	fi
+	if ! runner "$install $debdeps2"; then
+		fatal "Installation failed: $?"
+	fi
+	if ! runner "$install $debdeps3"; then
+		fatal "Installation failed: $?"
+	fi
+	return 0
+}
+install_with_apt
+
+
+###--------------------###
+msg "`date` INFO: SMTP check"
+echo " "
+if prompt_yes_no "Do we need a SMTP relay?" ; then
+  echo "Uncomment 2 lines in the 'SMTP check' section"
+  echo "and enter there your SMTP relayhost name."
+  echo "Then run this script again."
+  exit 1
+else
+  true
+fi
+###
+### required if you have closed outgoing smtp port and you have to use smtp relay
+### in this example it is for Voxel servers
+###
+#perl -p -i -e "s/(relayhost \=)/relayhost \= smtp\.cust\.voxel\.net/g" /etc/postfix/main.cf
+#postfix reload
+###
+###
+
+
+###--------------------###
+msg "`date` INFO: Installing a few more tools"
+mrun "sleep 5"
+cd /var
+wget -U iCab http://omega8.cc/dev/auto-healing-monitoring.tar.gz
+tar -xzf auto-healing-monitoring.tar.gz
+rm -f auto-healing-monitoring.tar.gz
+cp -af /var/xdrago/etc /opt/
+cp -f /opt/etc/init.d/* /etc/init.d/
+cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
+perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$SERVERIPA\</g" /opt/etc/php-fpm.conf
+echo $ADMEMAIL > /tmp/.email.txt
+perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
+APTEMAILA=`cat /tmp/.email.txt`
+APTEMAIL=`echo -n $APTEMAILA | tr -d "\n"`
+perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf
+rm -f /tmp/.email.txt
+runner "sh /usr/sbin/apticron"
+
+
+###--------------------###
+msg "`date` INFO: Installing libevent (some warnings during install are normal)"
+mrun "sleep 5"
+rm -f -r /var/opt/libevent*; wget http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz -O /var/opt/libevent-1.4.14b-stable.tar.gz
+cd /var/opt; tar -xzf /var/opt/libevent-1.4.14b-stable.tar.gz; cd /var/opt/libevent-1.4.14b-stable
+runner "sh ./configure --prefix=/usr"
+runner "make --quiet"
+runner "make --quiet install"
+rm -f -r /var/opt/libevent*; wget http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz -O /var/opt/libevent-1.4.14b-stable.tar.gz
+cd /var/opt; tar -xzf /var/opt/libevent-1.4.14b-stable.tar.gz; cd /var/opt/libevent-1.4.14b-stable
+runner "sh ./configure"
+runner "make --quiet"
+runner "make --quiet install"
+runner "ldconfig"
+
+
+###--------------------###
+msg "`date` INFO: Installing PHP-FPM (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt
+rm -f -r /var/opt/php*
+cp -f /etc/init.d/php-fpm /etc/init.d/php-fpm.bak
+wget http://www.php.net/distributions/php-5.2.13.tar.gz
+wget http://download.suhosin.org/suhosin-patch-5.2.13-0.9.7.patch.gz
+wget http://launchpad.net/php-fpm/master/0.6/+download/php-fpm-0.6~5.2.patch
+tar -xzf php-5.2.13.tar.gz; gunzip suhosin-patch-5.2.13-0.9.7.patch.gz
+cat suhosin-patch-5.2.13-0.9.7.patch | patch -d php-5.2.13 -p1
+cat php-fpm-0.6~5.2.patch | patch -d php-5.2.13 -p1
+mrun "sleep 5"
+cd /var/opt/php-5.2.13
+runner "sh ./buildconf --force"
+mrun "sleep 5"
+runner "sh ./configure --quiet --with-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-libevent=shared --with-mcrypt"
+runner "make all install"
+cp -f /etc/init.d/php-fpm.bak /etc/init.d/php-fpm
+
+
+###--------------------###
+msg "`date` INFO: Installing memcache for php (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt; wget http://pecl.php.net/get/memcache-3.0.3.tgz; tar -xzf memcache-3.0.3.tgz; cd /var/opt/memcache-3.0.3
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Installing suhosin for php (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt; wget http://download.suhosin.org/suhosin-0.9.31.tgz; tar -xzf suhosin-0.9.31.tgz; cd /var/opt/suhosin-0.9.31
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Installing uploadprogress for php (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt; wget http://pecl.php.net/get/uploadprogress-1.0.1.tgz; tar -xzf uploadprogress-1.0.1.tgz; cd /var/opt/uploadprogress-1.0.1
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Installing apc for php (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt; wget http://pecl.php.net/get/APC-3.1.3p1.tgz; tar -xzf APC-3.1.3p1.tgz; cd /var/opt/APC-3.1.3p1
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+mkdir -p /usr/local/ioncube
+_X86_64_TEST=`uname -a 2>&1 >/dev/null | cat`
+if [ -z `echo $_X86_64_TEST | grep -q "x86_64"` ] ; then
+  SYSTEMARCH="x86_64"
+  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
+  mrun "sleep 5"
+  cd /var/opt; wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz; tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+else
+  SYSTEMARCH="x86"
+  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
+  mrun "sleep 5"
+  cd /var/opt; wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz; tar -xzf ioncube_loaders_lin_x86.tar.gz
+fi
+cp -af /var/opt/ioncube/* /usr/local/ioncube/
+
+
+###--------------------###
+msg "`date` INFO: Installing bzr (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt; wget http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz; tar -xzf bzr-2.2b4.tar.gz; cd /var/opt/bzr-2.2b4
+runner "python setup.py --quiet install build_ext --allow-python-fallback"
+
+
+###--------------------###
+msg "`date` INFO: Installing Nginx (some warnings during install are normal)"
+mrun "sleep 5"
+cd /var/opt; rm -f -r nginx*
+git clone git://github.com/masterzen/nginx-upload-progress-module.git
+cd /var/opt; wget http://sysoev.ru/nginx/nginx-0.8.46.tar.gz; tar -xzf nginx-0.8.46.tar.gz; cd /var/opt/nginx-0.8.46
+runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Update rc.d"
+mrun "sleep 5"
+runner "update-rc.d php-fpm defaults"
+runner "invoke-rc.d php-fpm start"
+runner "update-rc.d nginx defaults"
+runner "invoke-rc.d nginx start"
+cd /etc/mysql
+mv -f my.cnf my.cnf.bak.copy
+wget -U iCab http://omega8.cc/dev/my.cnf.txt
+mv my.cnf.txt my.cnf
+runner "invoke-rc.d mysql restart"
+
+
+###--------------------###
+msg "`date` INFO: Clean up temp files"
+mrun "sleep 5"
+rm -f -r /var/opt/*
+
+
+###--------------------###
+msg "`date` INFO: Generate random password for MariaDB"
+mrun "sleep 5"
+touch /root/.my.pass.txt
+chmod 0600 /root/.my.pass.txt
+pwgen -c -y -s > /root/.my.pass.txt
+PXSWD=`cat /root/.my.pass.txt`
+PASWD=`echo -n $PXSWD | tr -d "\n"`
+for Files in `find /var/xdrago -type f`
+do
+  perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
+done
+msg "`date` INFO: OS and services installation completed"
+mrun "sleep 5"
+
+
+###--------------------###
+msg "`date` INFO: Installing Aegir"
+mrun "sleep 5"
+runner "adduser --system --group --home /var/aegir aegir"
+runner "adduser aegir www-data"
+echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+cd /var/aegir
+wget http://omega8.cc/dev/aegir-vanilla-install.sh.txt
+echo " "
+msg "IMPORTANT: "
+cat <<EOF
+
+ * You don't have the root password for MariaDB set yet.
+
+ * You need to hit Enter _without_ entering any database password when prompted by Aegir installer.
+
+EOF
+echo " "
+msg "...waiting now 30 sec before running Aegir installer..."
+echo " "
+mrun "sleep 30"
+runner "su -s /bin/bash aegir -c \"bash aegir-vanilla-install.sh.txt $THISHOSTB --http_service_type='nginx' --db_service_type='mysql' --client_email='$ADMEMAIL'\""
+mrun "sleep 5"
+
+
+###--------------------###
+msg "`date` INFO: Fix for access to global.inc for www-data user issue"
+mrun "sleep 5"
+chmod 755 /var/aegir/config/includes
+chmod 755 /var/aegir/config
+runner "invoke-rc.d cron restart"
+mrun "sleep 5"
+
+
+###--------------------###
+msg "`date` INFO: Fix for advanced Aegir config"
+mrun "sleep 5"
+cd /var/aegir/config/includes
+mv nginx_simple_include.conf nginx_simple_include.conf.orig
+ln -s nginx_advanced_include.conf nginx_simple_include.conf
+cd /var/aegir
+if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
+  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+fi
+perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
+runner "invoke-rc.d nginx restart"
+mrun "sleep 5"
+msg "`date` INFO: AEGIR installation completed"
+mrun "sleep 5"
+
+
+###--------------------###
+msg "`date` INFO: MariaDB final setup"
+mrun "sleep 5"
+echo " "
+msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
+echo " "
+echo --------vvvvvvvv--------
+echo ------- $PASWD -------
+echo --------^^^^^^^^--------
+echo " "
+msg "Please remember, you don't have the root password for MariaDB set yet."
+cat <<EOF
+ * You need to hit Enter _without_ entering the password on the first question you will see.
+ * On the second question say Y and then enter your root password '$PASWD' twice.
+ * Then say Y on all remaining questions.
+EOF
+echo " "
+msg "...waiting now 60 sec before running interactive mysql_secure_installation..."
+echo " "
+echo " "
+mrun "sleep 60"
+mysql_secure_installation
+mrun "sleep 5"
+echo "[client]" >> /root/.my.cnf
+echo "user=root" >> /root/.my.cnf
+echo "password=$PASWD" >> /root/.my.cnf
+chmod 0600 /root/.my.cnf
+msg "`date` INFO: MariaDB setup completed"
+msg "`date` INFO: You can now log in as root by typing only 'mysql' on the command line"
+msg "`date` INFO: ALL DONE!"
+exit 0
+
+
+###----------------------------------------###
+###
+###  Aegir with Nginx on Debian Install Script
+###  (GNU/GPL) omega8cc
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+#EOF
