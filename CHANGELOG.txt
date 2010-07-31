@@ -1,3 +1,15 @@
+### Sat, 2010-07-31 18:00
+
+Added/Fixed:
+
+1. Simplified installer by removing unnecessary duplicate
+   prompts in the original embedded install script.
+
+2. Check for SMTP outgoing port 25 now fully automated.
+
+3. Even more fun added :)
+
+
 ### Fri, 2010-07-30 19:00
 
 Added/Removed:

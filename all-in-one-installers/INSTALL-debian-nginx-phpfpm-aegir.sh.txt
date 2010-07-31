@@ -174,7 +174,7 @@ cat <<EOF
   * Your Aegir control panel will be available at http://$THISHOSTB.
   * Your IP address appears to be $SERVERIPA - are you sure it's a valid IP?
   * If your outgoing SMTP requires using relayhost, uncomment two lines in section:
-    'Do we need a SMTP relay' before running this script.
+    'SMTP check' before running this script.
     
 EOF
 echo " "
@@ -256,11 +256,24 @@ install_with_apt
 
 ###--------------------###
 msg "`date` INFO: SMTP check"
-echo " "
-if prompt_yes_no "Do we need a SMTP relay?" ; then
-  echo "Uncomment 2 lines in the 'SMTP check' section"
-  echo "and enter there your SMTP relayhost name."
-  echo "Then run this script again."
+mrun "sleep 8"
+if ! netcat -w 8 -z smtp.host8.biz 25 ; then
+  WE_NEED_RELAY="YES"
+cat <<EOF
+
+  Your outgoing SMTP port 25 doesn't work
+  as expected, so your server can't send out
+  any e-mails directly.
+  
+  It appears you need a SMTP relayhost added
+  in your Postfix /etc/postfix/main.cf config.
+  
+  Uncomment 2 lines in the 'SMTP check' section
+  and enter there your SMTP relayhost name.
+  
+  Then run this script again.
+    
+EOF
   exit 1
 else
   true
@@ -269,7 +282,7 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ### in this example it is for Voxel servers
 ###
-#perl -p -i -e "s/(relayhost \=)/relayhost \= smtp\.cust\.voxel\.net/g" /etc/postfix/main.cf
+#perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
 #postfix reload
 ###
 ###
@@ -411,10 +424,11 @@ runner "make --quiet install"
 ###--------------------###
 msg "`date` INFO: Update rc.d"
 mrun "sleep 8"
+cp -a /opt/etc/php.ini /usr/local/lib/
+killall nginx php-fpm
 runner "update-rc.d php-fpm defaults"
-runner "invoke-rc.d php-fpm start"
 runner "update-rc.d nginx defaults"
-killall nginx
+runner "invoke-rc.d php-fpm start"
 runner "invoke-rc.d nginx start"
 cd /etc/mysql
 mv -f my.cnf my.cnf.bak.copy
@@ -454,21 +468,11 @@ echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
 cd /var/aegir
 wget -U iCab http://omega8.cc/dev/aegir-vanilla-install.sh.txt
-echo " "
-msg "IMPORTANT: "
-cat <<EOF
-
- * You don't have the root password for MariaDB set yet.
-
- * You need to hit Enter _without_ entering any database password when prompted by Aegir installer.
-
-EOF
-echo " "
-msg "...waiting now 30 sec before running Aegir installer..."
-echo " "
-mrun "sleep 30"
-su -s /bin/bash aegir -c "bash aegir-vanilla-install.sh.txt $THISHOSTB --http_service_type='nginx' --db_service_type='mysql' --client_email='$ADMEMAIL'"
+msg "`date` INFO: Now running Aegir installer for backend and frontend"
 mrun "sleep 8"
+su -s /bin/bash aegir -c "bash aegir-vanilla-install.sh.txt $THISHOSTB --http_service_type='nginx' --db_service_type='mysql' --client_email='$ADMEMAIL' >/var/aegir/install.log 2>&1"
+mrun "sleep 8"
+msg "`date` INFO: Aegir installation almost completed"
 
 
 ###--------------------###
@@ -514,9 +518,11 @@ echo --------^^^^^^^^--------
 echo " "
 msg "Please remember, you don't have the root password for MariaDB set yet."
 cat <<EOF
- * You need to hit Enter _without_ entering the password on the first question you will see.
+
+ * You have to hit Enter _without_ entering the password on the first question you will see.
  * On the second question say Y and then enter your root password '$PASWD' twice.
  * Then say Y on all remaining questions.
+
 EOF
 echo " "
 msg "...waiting now 60 sec before running interactive mysql_secure_installation..."
@@ -532,6 +538,14 @@ chmod 0600 /root/.my.cnf
 msg "`date` INFO: MariaDB setup completed"
 msg "`date` INFO: You can now log in as root by typing only 'mysql' on the command line"
 msg "`date` INFO: ALL DONE!"
+echo " "
+_AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
+msg "ACCESS -> $_AEGIR_LOGIN_URL"
+echo " "
+msg "`date` CARD: Now charging your credit card for this automated install service..."
+mrun "sleep 8"
+msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
+msg "`date` BYE!"
 exit 0
 
 
