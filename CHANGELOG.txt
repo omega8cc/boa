@@ -1,3 +1,17 @@
+### Sat, 2010-07-31 23:00
+
+Added/Fixed:
+
+1. Added version for Ubuntu Lucid.
+
+2. If there is no FQDN hostname, we are trying to set it
+   using reverse IP hostname, if exist.
+
+3. Now we are tring both `uname -n` and `hostname -f`
+   to make sure if the FQDN hostname is already set,
+   but not available with `uname -n` test.
+   
+
 ### Sat, 2010-07-31 18:00
 
 Added/Fixed:

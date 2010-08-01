@@ -1,0 +1,641 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Aegir with Nginx on Ubuntu or Debian
+###  (GNU/GPL) omega8cc
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### EDITME                                 ###
+###----------------------------------------###
+###
+### Enter your valid e-mail address below.
+###
+_MY_EMAIL="support@omega8.cc"
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+
+###---### Avoid too many questions
+#
+export DEBIAN_FRONTEND=noninteractive
+#
+###---### Functions
+#
+# Noticeable messages
+msg() {
+  echo "==> $*"
+}
+# Simple prompt
+prompt_yes_no() {
+  while true ; do
+    printf "$* [Y/n] "
+    read answer
+    if [ -z "$answer" ] ; then
+      return 0
+    fi
+    case $answer in
+      [Yy]|[Yy][Ee][Ss])
+        return 0
+        ;;
+      [Nn]|[Nn][Oo])
+        return 1
+        ;;
+      *)
+        echo "Please answer yes or no"
+        ;;
+    esac
+ done 
+}
+#
+# Stop on error
+# set -e ### temp disabled for debugging
+#
+# Create tmp stuff
+SRCDIR=/var/tmp/files
+mkdir -p $SRCDIR
+LOG=/var/tmp/aegir-install.log
+cd $SRCDIR
+#
+# Download spinner
+rm -f spinner*
+wget -U iCab http://omega8.cc/dev/spinner
+chmod +x spinner
+#
+# Success msg
+success () {
+	msg "$1 Succeeded."
+}
+#
+# Error msg
+fatal () {
+	echo
+	msg "Fatal Error Occurred: $1"
+	msg "Cannot continue installation."
+	exit 1
+}
+#
+# Not supported OS
+not_supported_os () {
+    msg "EXIT: Invalid install script or OS used."
+    msg "EXIT: It is not any supported Ubuntu or Debian version. Sorry."
+    msg "EXIT: You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty)."
+    msg "Ciao... :)"
+	exit 1
+}
+#
+# Perform an action, log it, and run the spinner throughout
+runner () {
+	CMD="$1"
+	echo "...in progress, please wait..."
+	touch busy
+	$SRCDIR/spinner busy &
+	if $CMD >> $LOG; then
+		rm busy
+		sleep 1
+		success "$CMD:"
+		return 0
+	else
+		rm busy
+		sleep 1
+		echo "$CMD failed.  Error (if any): $?"
+		echo
+		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
+		tail -15 $LOG
+		return 1
+	fi
+}
+#
+# Small spinner
+mrun () {
+	CMD="$1"
+	touch busy
+	$SRCDIR/spinner busy &
+	if $CMD >> $LOG; then
+		rm busy
+		sleep 1
+		return 0
+	fi
+}
+
+
+###--------------------###
+msg "`date` INFO: We need to install lsb-release and dnsutils first"
+mrun "sleep 8"
+cd /var/tmp
+rm -f apt.conf.noninteractive*
+wget -U iCab http://omega8.cc/dev/apt.conf.noninteractive
+INSTALL="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
+if ! runner "$INSTALL lsb-release dnsutils"; then
+  fatal "Installation failed: $?"
+fi
+
+
+###--------------------###
+msg "STATUS: Checking your Debian or Ubuntu version..."
+mrun "sleep 8"
+_THIS_OS=`lsb_release -si`
+_THIS_RV=`lsb_release -sc`
+if [ $_THIS_OS = "Ubuntu" ] ; then
+  if [ $_THIS_RV = "lucid" ] ; then
+    _REL_VERSION="lucid"
+  elif [ $_THIS_RV = "karmic" ] ; then
+    _REL_VERSION="karmic"
+  elif [ $_THIS_RV = "jaunty" ] ; then
+    _REL_VERSION="jaunty"
+  elif [ $_THIS_RV = "hardy" ] ; then
+    _REL_VERSION="hardy"
+  else
+    not_supported_os
+  fi
+elif [ $_THIS_OS = "Debian" ] ; then
+  if [ $_THIS_RV = "lenny" ] ; then
+    _REL_VERSION="lenny"
+  else
+    not_supported_os
+  fi
+else
+  not_supported_os
+fi
+msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
+mrun "sleep 8"
+if [ `whoami` = "root" ] ; then
+  msg "STATUS: This script is ran as a root user."
+else
+  msg "ERROR: This script should be ran as a root user, su - root first."
+  exit 1
+fi
+	
+
+###--------------------###
+_THISHTIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+_FQDNPROB=`hostname -f 2> /dev/null`
+_FQDNTEST="FALSE"
+_THISHOST=`uname -n`
+if [ ! -z "$_FQDNPROB" ] ; then
+   _THISHOST=`hostname -f`
+   _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+      _FQDNTEST="TRUE"
+      true
+   else
+      _FQDNTEST="FALSE"
+   fi
+else
+   _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
+   _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
+   _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
+   if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
+      hostname -v -b $_REVHOSTN
+      _THISHOST="$_REVHOSTN"
+      _FQDNTEST="TRUE"
+      true
+   else
+      _FQDNTEST="FALSE"
+   fi
+fi
+if [ "$_FQDNTEST" = "FALSE" ] ; then
+msg "EXIT on error due to invalid DNS setup."
+cat <<EOF
+   
+  * Your server has to have already working FQDN hostname matching your IP address.
+    This means you _have to_ configure the dns for your server IP/hostname _before_
+    trying to use this install script. Reverse dns is _not_ required.
+   
+  * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
+  
+  * Are you sure your FQDN hostname matches your IP address: $_THISHTIP?
+    
+EOF
+msg "EXIT on error due to invalid DNS setup."
+exit 1
+else
+msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
+msg "Please check twice if that is correct result of my test."
+fi
+mrun "sleep 8"
+echo " "
+msg "START -> checkpoint: "
+cat <<EOF
+
+  * Your e-mail address appears to be $_MY_EMAIL - is that correct?
+  * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
+  * Your Aegir control panel will be available at http://$_THISHOST.
+  * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
+  * If your outgoing SMTP requires using relayhost, uncomment two lines in section:
+    'SMTP check' before running this script.
+    
+EOF
+echo " "
+if prompt_yes_no "Do you want to proceed with the install?" ; then
+  true
+else
+  echo "Installation aborted by you."
+  exit 1
+fi
+
+
+###--------------------###
+msg "`date` INFO: Simple security check to avoid overwriting existing Aegir install"
+mrun "sleep 8"
+if [ -d "/var/aegir" ] ; then
+  msg "`date` INFO: Aegir is already installed - exit now"
+  exit 1
+fi
+
+
+###--------------------###
+msg "`date` INFO: Clean up temp files in /var/opt/"
+mrun "sleep 8"
+rm -f -r /var/opt/*
+mkdir -p /var/log/php
+chmod 777 /var/log/php*
+mkdir -p /var/tmp
+chmod 777 /var/tmp
+
+
+###--------------------###
+msg "`date` INFO: Update apt sources"
+mrun "sleep 8"
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
+  echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "" >> /etc/apt/sources.list
+  echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
+  echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "" >> /etc/apt/sources.list
+  echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
+  echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "" >> /etc/apt/sources.list
+  echo "## BACKPORTS REPOSITORY" >> /etc/apt/sources.list
+  echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "" >> /etc/apt/sources.list
+  echo "## PROPOSED REPOSITORY" >> /etc/apt/sources.list
+  echo "deb http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
+  echo "deb-src http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  echo "deb http://ftp.us.debian.org/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+  echo "deb-src http://ftp.us.debian.org/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+  echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+  echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+  echo "deb http://ftp.us.debian.org/debian experimental main" >> /etc/apt/sources.list
+  echo "deb-src http://ftp.us.debian.org/debian/ experimental main" >> /etc/apt/sources.list
+fi
+
+
+###--------------------###
+msg "`date` INFO: Add apt sources for MariaDB"
+mrun "sleep 8"
+wget -O- http://ourdelta.org/deb/ourdelta.gpg | apt-key add -
+wget http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list -O /etc/apt/sources.list.d/ourdelta.list
+
+
+###--------------------###
+msg "`date` INFO: Run apt update"
+mrun "sleep 8"
+runner "aptitude update"
+runner "aptitude clean"
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  runner "apt-get upgrade -y"
+  runner "apt-get dist-upgrade"
+  runner "apt-get autoclean"
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  runner "aptitude full-upgrade"
+fi
+runner "aptitude -y install locales"
+runner "locale-gen en_US en_US.UTF-8"
+
+
+###--------------------###
+msg "`date` INFO: Installing required libraries and tools"
+mrun "sleep 8"
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip whois xml-core xml2 zip zlib1g-dev zlibc"
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+fi
+install_with_apt () {
+	if ! runner "$INSTALL $DEBDEPS"; then
+		fatal "Installation failed: $?"
+	fi
+	return 0
+}
+install_with_apt
+
+
+###--------------------###
+msg "`date` INFO: SMTP check"
+mrun "sleep 8"
+if ! netcat -w 8 -z smtp.host8.biz 25 ; then
+  WE_NEED_RELAY="YES"
+cat <<EOF
+
+  Your outgoing SMTP port 25 doesn't work
+  as expected, so your server can't send out
+  any e-mails directly.
+  
+  It appears you need a SMTP relayhost added
+  in your Postfix /etc/postfix/main.cf config.
+  
+  Uncomment 2 lines in the 'SMTP check' section
+  and enter there your SMTP relayhost name.
+  
+  Then run this script again.
+    
+EOF
+  exit 1
+else
+  true
+fi
+###
+### required if you have closed outgoing smtp port and you have to use smtp relay
+### in this example it is for Voxel servers
+###
+#perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
+#postfix reload
+###
+###
+
+
+###--------------------###
+msg "`date` INFO: Installing a few more tools"
+mrun "sleep 8"
+cd /var
+wget -U iCab http://omega8.cc/dev/auto-healing-monitoring.tar.gz
+tar -xzf auto-healing-monitoring.tar.gz
+rm -f auto-healing-monitoring.tar.gz
+cp -af /var/xdrago/etc /opt/
+cp -f /opt/etc/init.d/* /etc/init.d/
+cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
+perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
+echo $_MY_EMAIL > /tmp/.email.txt
+perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
+APTEMAILA=`cat /tmp/.email.txt`
+APTEMAIL=`echo -n $APTEMAILA | tr -d "\n"`
+perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf
+rm -f /tmp/.email.txt
+runner "sh /usr/sbin/apticron"
+
+
+###--------------------###
+msg "`date` INFO: Installing libevent (some warnings during build/install are normal)"
+mrun "sleep 8"
+rm -f -r /var/opt/libevent*; wget http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz -O /var/opt/libevent-1.4.14b-stable.tar.gz
+cd /var/opt; tar -xzf /var/opt/libevent-1.4.14b-stable.tar.gz; cd /var/opt/libevent-1.4.14b-stable
+runner "sh ./configure --prefix=/usr"
+runner "make --quiet"
+runner "make --quiet install"
+rm -f -r /var/opt/libevent*; wget http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz -O /var/opt/libevent-1.4.14b-stable.tar.gz
+cd /var/opt; tar -xzf /var/opt/libevent-1.4.14b-stable.tar.gz; cd /var/opt/libevent-1.4.14b-stable
+runner "sh ./configure"
+runner "make --quiet"
+runner "make --quiet install"
+runner "ldconfig"
+
+
+###--------------------###
+msg "`date` INFO: Installing PHP-FPM (some warnings during build/install are normal)"
+msg "`date` NOTE: This step can take longer than 10 minutes (depending on your server speed)"
+mrun "sleep 15"
+cd /var/opt
+rm -f -r /var/opt/php*
+cp -f /etc/init.d/php-fpm /etc/init.d/php-fpm.bak
+wget http://www.php.net/distributions/php-5.2.13.tar.gz
+wget http://download.suhosin.org/suhosin-patch-5.2.13-0.9.7.patch.gz
+wget http://launchpad.net/php-fpm/master/0.6/+download/php-fpm-0.6~5.2.patch
+tar -xzf php-5.2.13.tar.gz; gunzip suhosin-patch-5.2.13-0.9.7.patch.gz
+cat suhosin-patch-5.2.13-0.9.7.patch | patch -d php-5.2.13 -p1
+cat php-fpm-0.6~5.2.patch | patch -d php-5.2.13 -p1
+mrun "sleep 8"
+cd /var/opt/php-5.2.13
+runner "sh ./buildconf --force"
+mrun "sleep 8"
+runner "sh ./configure --quiet --with-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-libevent=shared --with-mcrypt"
+runner "make all install"
+cp -f /etc/init.d/php-fpm.bak /etc/init.d/php-fpm
+
+
+###--------------------###
+msg "`date` INFO: Installing memcache for php (some warnings during build/install are normal)"
+mrun "sleep 8"
+cd /var/opt; wget http://pecl.php.net/get/memcache-3.0.3.tgz; tar -xzf memcache-3.0.3.tgz; cd /var/opt/memcache-3.0.3
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Installing suhosin for php (some warnings during build/install are normal)"
+mrun "sleep 8"
+cd /var/opt; wget http://download.suhosin.org/suhosin-0.9.31.tgz; tar -xzf suhosin-0.9.31.tgz; cd /var/opt/suhosin-0.9.31
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Installing uploadprogress for php (some warnings during build/install are normal)"
+mrun "sleep 8"
+cd /var/opt; wget http://pecl.php.net/get/uploadprogress-1.0.1.tgz; tar -xzf uploadprogress-1.0.1.tgz; cd /var/opt/uploadprogress-1.0.1
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Installing apc for php (some warnings during build/install are normal)"
+mrun "sleep 8"
+cd /var/opt; wget http://pecl.php.net/get/APC-3.1.3p1.tgz; tar -xzf APC-3.1.3p1.tgz; cd /var/opt/APC-3.1.3p1
+runner "/usr/local/bin/phpize"
+runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+mkdir -p /usr/local/ioncube
+_X86_64_TEST=`uname -a 2>&1 >/dev/null | cat`
+if [ ! -z `echo $_X86_64_TEST | grep -q "x86_64"` ] ; then
+  SYSTEMARCH="x86_64"
+  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
+  mrun "sleep 8"
+  cd /var/opt; wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz; tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+else
+  SYSTEMARCH="x86"
+  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
+  mrun "sleep 8"
+  cd /var/opt; wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz; tar -xzf ioncube_loaders_lin_x86.tar.gz
+fi
+cp -af /var/opt/ioncube/* /usr/local/ioncube/
+
+
+###--------------------###
+msg "`date` INFO: Installing bzr (some warnings during build/install are normal)"
+mrun "sleep 8"
+cd /var/opt; wget http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz; tar -xzf bzr-2.2b4.tar.gz; cd /var/opt/bzr-2.2b4
+runner "python setup.py --quiet install build_ext --allow-python-fallback"
+
+
+###--------------------###
+msg "`date` INFO: Installing Nginx (some warnings during build/install are normal)"
+mrun "sleep 8"
+cd /var/opt; rm -f -r nginx*
+git clone git://github.com/masterzen/nginx-upload-progress-module.git
+cd /var/opt; wget http://sysoev.ru/nginx/nginx-0.8.46.tar.gz; tar -xzf nginx-0.8.46.tar.gz; cd /var/opt/nginx-0.8.46
+runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/"
+runner "make --quiet"
+runner "make --quiet install"
+
+
+###--------------------###
+msg "`date` INFO: Update rc.d"
+mrun "sleep 8"
+cp -a /opt/etc/php.ini /usr/local/lib/
+killall nginx php-fpm
+runner "update-rc.d php-fpm defaults"
+runner "update-rc.d nginx defaults"
+runner "invoke-rc.d php-fpm start"
+runner "invoke-rc.d nginx start"
+cd /etc/mysql
+mv -f my.cnf my.cnf.bak.copy
+wget -U iCab http://omega8.cc/dev/my.cnf.txt
+mv my.cnf.txt my.cnf
+runner "invoke-rc.d mysql restart"
+
+
+###--------------------###
+msg "`date` INFO: Clean up temp files"
+mrun "sleep 8"
+rm -f -r /var/opt/*
+
+
+###--------------------###
+msg "`date` INFO: Generate random password for MariaDB"
+mrun "sleep 8"
+touch /root/.my.pass.txt
+chmod 0600 /root/.my.pass.txt
+pwgen -c -y -s > /root/.my.pass.txt
+PXSWD=`cat /root/.my.pass.txt`
+PASWD=`echo -n $PXSWD | tr -d "\n"`
+for Files in `find /var/xdrago -type f`
+do
+  perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
+done
+msg "`date` INFO: OS and services installation completed"
+mrun "sleep 8"
+
+
+###--------------------###
+msg "`date` INFO: Installing Aegir"
+mrun "sleep 8"
+runner "adduser --system --group --home /var/aegir aegir"
+runner "adduser aegir www-data"
+echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+cd /var/aegir
+wget -U iCab http://omega8.cc/dev/aegir-vanilla-install.sh.txt
+msg "`date` INFO: Now running Aegir installer for backend and frontend"
+mrun "sleep 8"
+su -s /bin/bash aegir -c "bash aegir-vanilla-install.sh.txt $_THISHOST --http_service_type='nginx' --db_service_type='mysql' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
+mrun "sleep 8"
+msg "`date` INFO: Aegir installation almost completed"
+
+
+###--------------------###
+msg "`date` INFO: Fix for access to global.inc for www-data user issue"
+mrun "sleep 8"
+chmod 755 /var/aegir/config/includes
+chmod 755 /var/aegir/config
+runner "invoke-rc.d cron restart"
+mrun "sleep 8"
+
+
+###--------------------###
+msg "`date` INFO: Fix for advanced Aegir config"
+mrun "sleep 8"
+cd /var/aegir/config/includes
+wget -U iCab http://omega8.cc/dev/tiny-global.inc.txt
+rm -f global.inc
+mv tiny-global.inc.txt global.inc
+mv nginx_simple_include.conf nginx_simple_include.conf.orig
+ln -s nginx_advanced_include.conf nginx_simple_include.conf
+cd /var/aegir
+if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
+  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+fi
+perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
+killall nginx
+runner "invoke-rc.d nginx start"
+mrun "sleep 8"
+msg "`date` INFO: AEGIR installation completed"
+mrun "sleep 8"
+
+
+###--------------------###
+msg "`date` INFO: MariaDB final setup"
+mrun "sleep 8"
+echo " "
+msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
+echo " "
+echo --------vvvvvvvv--------
+echo ------- $PASWD -------
+echo --------^^^^^^^^--------
+echo " "
+msg "Please remember, you don't have the root password for MariaDB set yet."
+cat <<EOF
+
+ * You have to hit Enter _without_ entering the password on the first question you will see.
+ * On the second question say Y and then enter your root password '$PASWD' twice.
+ * Then say Y on all remaining questions.
+
+EOF
+echo " "
+msg "...waiting now 60 sec before running interactive mysql_secure_installation..."
+echo " "
+echo " "
+mrun "sleep 60"
+mysql_secure_installation
+mrun "sleep 8"
+echo "[client]" >> /root/.my.cnf
+echo "user=root" >> /root/.my.cnf
+echo "password=$PASWD" >> /root/.my.cnf
+chmod 0600 /root/.my.cnf
+msg "`date` INFO: MariaDB setup completed"
+msg "`date` INFO: You can now log in as root by typing only 'mysql' on the command line"
+msg "`date` INFO: ALL DONE!"
+echo " "
+_AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
+msg "ACCESS -> $_AEGIR_LOGIN_URL"
+echo " "
+msg "`date` CARD: Now charging your credit card for this automated install service..."
+mrun "sleep 8"
+msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
+msg "`date` BYE!"
+exit 0
+
+
+###----------------------------------------###
+###
+###  Aegir with Nginx on Ubuntu or Debian
+###  (GNU/GPL) omega8cc
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+#EOF

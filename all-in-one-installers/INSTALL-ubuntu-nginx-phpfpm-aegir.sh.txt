@@ -3,7 +3,7 @@
 
 ###----------------------------------------###
 ###
-###  Aegir with Nginx on Debian Install Script
+###  Aegir with Nginx on Ubuntu Install Script
 ###  (GNU/GPL) omega8cc
 ###  Code: http://github.com/omega8cc
 ###
@@ -16,7 +16,7 @@
 ###
 ### Enter your valid e-mail address below.
 ###
-ADMEMAIL="support@omega8.cc"
+_MY_EMAIL="support@omega8.cc"
 
 
 ###----------------------------------------###
@@ -57,13 +57,13 @@ prompt_yes_no() {
 }
 #
 # Stop on error
-set -e
+# set -e
 #
 # Create tmp stuff
-mkdir -p /var/tmp/files
-srcdir=/var/tmp/files
-log=/var/tmp/aegir-install.log
-cd $srcdir
+SRCDIR=/var/tmp/files
+mkdir -p $SRCDIR
+LOG=/var/tmp/aegir-install.log
+cd $SRCDIR
 #
 # Download spinner
 rm -f spinner*
@@ -80,37 +80,37 @@ fatal () {
 	echo
 	msg "Fatal Error Occurred: $1"
 	msg "Cannot continue installation."
-	exit
+	exit 1
 }
 #
 # Perform an action, log it, and run the spinner throughout
 runner () {
-	cmd="$1"
+	CMD="$1"
 	echo "...in progress, please wait..."
 	touch busy
-	$srcdir/spinner busy &
-	if $cmd >> $log; then
+	$SRCDIR/spinner busy &
+	if $CMD >> $LOG; then
 		rm busy
 		sleep 1
-		success "$cmd:"
+		success "$CMD:"
 		return 0
 	else
 		rm busy
 		sleep 1
-		echo "$cmd failed.  Error (if any): $?"
+		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $log to help troubleshoot this problem:"
-		tail -15 $log
+		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
+		tail -15 $LOG
 		return 1
 	fi
 }
 #
 # Small spinner
 mrun () {
-	cmd="$1"
+	CMD="$1"
 	touch busy
-	$srcdir/spinner busy &
-	if $cmd >> $log; then
+	$SRCDIR/spinner busy &
+	if $CMD >> $LOG; then
 		rm busy
 		sleep 1
 		return 0
@@ -119,7 +119,29 @@ mrun () {
 
 
 ###--------------------###
-msg "Aegir with Nginx on Debian Lenny minimal install automated install script."
+msg "STATUS: Checking your Ubuntu version..."
+mrun "sleep 8"
+_UBUNTU_REL=`lsb_release -a`
+echo $_UBUNTU_REL
+mrun "sleep 8"
+_UBUNTU_REL_LINE=`echo -n $_UBUNTU_REL | tr -d "\n"`
+if [ ! -z `echo $_UBUNTU_REL_LINE | grep -q "Ubuntu"` ] ; then
+  msg "EXIT on error due to invalid OS/script used. It is *not* Ubuntu."
+  msg "BYE!"
+  exit 1
+else
+  true
+fi
+if [ -z `echo $_UBUNTU_REL_LINE | grep -q "lucid"` ] ; then
+  _UBUNTU_REL_VERSION="lucid"
+elif [ -z `echo $_UBUNTU_REL_LINE | grep -q "karmic"` ] ; then
+  _UBUNTU_REL_VERSION="karmic"
+elif [ -z `echo $_UBUNTU_REL_LINE | grep -q "jaunty"` ] ; then
+  _UBUNTU_REL_VERSION="jaunty"
+elif [ -z `echo $_UBUNTU_REL_LINE | grep -q "hardy"` ] ; then
+  _UBUNTU_REL_VERSION="hardy"
+fi
+msg "Aegir with Nginx on Ubuntu $_UBUNTU_REL_VERSION minimal install automated install script."
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
 else
@@ -134,21 +156,40 @@ mrun "sleep 8"
 cd /var/tmp
 rm -f apt.conf.noninteractive*
 wget -U iCab http://omega8.cc/dev/apt.conf.noninteractive
-install="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
-if ! runner "$install dnsutils"; then
+INSTALL="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
+if ! runner "$INSTALL dnsutils"; then
   fatal "Installation failed: $?"
 fi
 	
 
 ###--------------------###
-THISHOSTA=`hostname -f`
-THISHOSTB=`echo -n $THISHOSTA | tr -d "\n"`
-RESOLVDIP=`host $THISHOSTB | cut -d: -f2 | awk '{ print $4}'`
-SERVERIPA=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-
-if [ "$RESOLVDIP" = "$SERVERIPA" ] ; then
-   true
+_THISHTIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+_FQDNPROB=`hostname -f 2> /dev/null`
+_FQDNTEST="FALSE"
+_THISHOST=`uname -n`
+if [ ! -z "$_FQDNPROB" ] ; then
+   _THISHOST=`hostname -f`
+   _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+      _FQDNTEST="TRUE"
+      true
+   else
+      _FQDNTEST="FALSE"
+   fi
 else
+   _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
+   _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
+   _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
+   if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
+      hostname -v -b $_REVHOSTN
+      _THISHOST="$_REVHOSTN"
+      _FQDNTEST="TRUE"
+      true
+   else
+      _FQDNTEST="FALSE"
+   fi
+fi
+if [ "$_FQDNTEST" = "FALSE" ] ; then
 msg "EXIT on error due to invalid DNS setup."
 cat <<EOF
    
@@ -156,23 +197,26 @@ cat <<EOF
     This means you _have to_ configure the dns for your server IP/hostname _before_
     trying to use this install script. Reverse dns is _not_ required.
    
-  * Your hostname appears to be $THISHOSTB - are you sure it's a valid FQDN hostname?
+  * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
   
-  * Are you sure your FQDN hostname matches your IP address: $SERVERIPA?
+  * Are you sure your FQDN hostname matches your IP address: $_THISHTIP?
     
 EOF
 msg "EXIT on error due to invalid DNS setup."
 exit 1
+else
+msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
+msg "Please check twice if that is correct result of my test."
 fi
-
+mrun "sleep 8"
 echo " "
 msg "START -> checkpoint: "
 cat <<EOF
 
-  * Your e-mail address appears to be $ADMEMAIL - is that correct?
-  * Your hostname appears to be $THISHOSTB - are you sure it's a valid FQDN hostname?
-  * Your Aegir control panel will be available at http://$THISHOSTB.
-  * Your IP address appears to be $SERVERIPA - are you sure it's a valid IP?
+  * Your e-mail address appears to be $_MY_EMAIL - is that correct?
+  * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
+  * Your Aegir control panel will be available at http://$_THISHOST.
+  * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
   * If your outgoing SMTP requires using relayhost, uncomment two lines in section:
     'SMTP check' before running this script.
     
@@ -181,7 +225,7 @@ echo " "
 if prompt_yes_no "Do you want to proceed with the install?" ; then
   true
 else
-  echo "installation aborted by user"
+  echo "Installation aborted by you."
   exit 1
 fi
 
@@ -196,7 +240,7 @@ fi
 
 
 ###--------------------###
-msg "`date` INFO: Clean up temp files"
+msg "`date` INFO: Clean up temp files in /var/opt/"
 mrun "sleep 8"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
@@ -208,45 +252,52 @@ chmod 777 /var/tmp
 ###--------------------###
 msg "`date` INFO: Update apt sources"
 mrun "sleep 8"
-echo "deb http://ftp.us.debian.org/debian/ lenny main contrib non-free" > /etc/apt/sources.list
-echo "deb-src http://ftp.us.debian.org/debian/ lenny main contrib non-free" >> /etc/apt/sources.list
-echo "deb http://security.debian.org/ lenny/updates main contrib non-free" >> /etc/apt/sources.list
-echo "deb-src http://security.debian.org/ lenny/updates main contrib non-free" >> /etc/apt/sources.list
-echo "deb http://ftp.us.debian.org/debian experimental main" >> /etc/apt/sources.list
-echo "deb-src http://ftp.us.debian.org/debian/ experimental main" >> /etc/apt/sources.list
+echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
+echo "deb http://us.archive.ubuntu.com/ubuntu/ $_UBUNTU_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_UBUNTU_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+echo "" >> /etc/apt/sources.list
+echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
+echo "deb http://us.archive.ubuntu.com/ubuntu/ $_UBUNTU_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_UBUNTU_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+echo "" >> /etc/apt/sources.list
+echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
+echo "deb http://security.ubuntu.com/ubuntu $_UBUNTU_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb-src http://security.ubuntu.com/ubuntu $_UBUNTU_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+echo "" >> /etc/apt/sources.list
+echo "## BACKPORTS REPOSITORY" >> /etc/apt/sources.list
+echo "deb http://us.archive.ubuntu.com/ubuntu/ $_UBUNTU_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_UBUNTU_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+echo "" >> /etc/apt/sources.list
+echo "## PROPOSED REPOSITORY" >> /etc/apt/sources.list
+echo "deb http://archive.ubuntu.com/ubuntu $_UBUNTU_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
+echo "deb-src http://archive.ubuntu.com/ubuntu $_UBUNTU_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
 
 
 ###--------------------###
 msg "`date` INFO: Add apt sources for MariaDB"
 mrun "sleep 8"
 wget -O- http://ourdelta.org/deb/ourdelta.gpg | apt-key add -
-wget http://ourdelta.org/deb/sources/lenny-mariadb-ourdelta.list -O /etc/apt/sources.list.d/ourdelta.list
+wget http://ourdelta.org/deb/sources/$_UBUNTU_REL_VERSION-mariadb-ourdelta.list -O /etc/apt/sources.list.d/ourdelta.list
 
 
 ###--------------------###
 msg "`date` INFO: Run apt update"
 mrun "sleep 8"
-runner "aptitude update"
-runner "aptitude clean"
-runner "aptitude full-upgrade"
-runner "aptitude -y install locales"
+runner "apt-get update"
+runner "apt-get clean"
+runner "apt-get upgrade -y"
+runner "apt-get dist-upgrade"
+runner "apt-get autoclean"
+runner "apt-get -y install locales"
 runner "locale-gen en_US en_US.UTF-8"
 
 
 ###--------------------###
 msg "`date` INFO: Installing required libraries and tools"
 mrun "sleep 8"
-debdeps1="cron ssh build-essential"
-debdeps2="postfix postfix-pcre"
-debdeps3="apticron autoconf automake automake1.4 autotools-dev bc bison curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano nginx ncurses-dev pwgen python-dev python-mysqldb re2c rsync shtool ssl-cert subversion sudo sysstat sysvconfig t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip whois xml-core xml2 zip zlib1g-dev zlibc"
 install_with_apt () {
-	if ! runner "$install $debdeps1"; then
-		fatal "Installation failed: $?"
-	fi
-	if ! runner "$install $debdeps2"; then
-		fatal "Installation failed: $?"
-	fi
-	if ! runner "$install $debdeps3"; then
+	if ! runner "$INSTALL $DEBDEPS"; then
 		fatal "Installation failed: $?"
 	fi
 	return 0
@@ -298,8 +349,8 @@ rm -f auto-healing-monitoring.tar.gz
 cp -af /var/xdrago/etc /opt/
 cp -f /opt/etc/init.d/* /etc/init.d/
 cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
-perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$SERVERIPA\</g" /opt/etc/php-fpm.conf
-echo $ADMEMAIL > /tmp/.email.txt
+perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
+echo $_MY_EMAIL > /tmp/.email.txt
 perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
 APTEMAILA=`cat /tmp/.email.txt`
 APTEMAIL=`echo -n $APTEMAILA | tr -d "\n"`
@@ -389,7 +440,7 @@ runner "make --quiet install"
 ###--------------------###
 mkdir -p /usr/local/ioncube
 _X86_64_TEST=`uname -a 2>&1 >/dev/null | cat`
-if [ -z `echo $_X86_64_TEST | grep -q "x86_64"` ] ; then
+if [ ! -z `echo $_X86_64_TEST | grep -q "x86_64"` ] ; then
   SYSTEMARCH="x86_64"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
   mrun "sleep 8"
@@ -470,7 +521,7 @@ cd /var/aegir
 wget -U iCab http://omega8.cc/dev/aegir-vanilla-install.sh.txt
 msg "`date` INFO: Now running Aegir installer for backend and frontend"
 mrun "sleep 8"
-su -s /bin/bash aegir -c "bash aegir-vanilla-install.sh.txt $THISHOSTB --http_service_type='nginx' --db_service_type='mysql' --client_email='$ADMEMAIL' >/var/aegir/install.log 2>&1"
+su -s /bin/bash aegir -c "bash aegir-vanilla-install.sh.txt $_THISHOST --http_service_type='nginx' --db_service_type='mysql' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
 mrun "sleep 8"
 msg "`date` INFO: Aegir installation almost completed"
 
@@ -551,7 +602,7 @@ exit 0
 
 ###----------------------------------------###
 ###
-###  Aegir with Nginx on Debian Install Script
+###  Aegir with Nginx on Ubuntu Install Script
 ###  (GNU/GPL) omega8cc
 ###  Code: http://github.com/omega8cc
 ###
