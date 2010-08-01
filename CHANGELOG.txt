@@ -1,8 +1,8 @@
-### Sat, 2010-07-31 23:00
+### Mon, 2010-08-02 01:08
 
 Added/Fixed:
 
-1. Added version for Ubuntu Lucid.
+1. Added automatic, full support for Ubuntu Lucid.
 
 2. If there is no FQDN hostname, we are trying to set it
    using reverse IP hostname, if exist.
@@ -10,7 +10,10 @@ Added/Fixed:
 3. Now we are tring both `uname -n` and `hostname -f`
    to make sure if the FQDN hostname is already set,
    but not available with `uname -n` test.
-   
+
+4. Added support for ionCube Loader with automatic
+   discovery of required version 32/64 bit.
+
 
 ### Sat, 2010-07-31 18:00
 
