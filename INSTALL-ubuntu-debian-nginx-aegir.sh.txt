@@ -89,7 +89,7 @@ not_supported_os () {
     msg "EXIT: It is not any supported Ubuntu or Debian version. Sorry."
     msg "EXIT: You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty)."
     msg "Ciao... :)"
-	exit 1
+    exit 1
 }
 #
 # Perform an action, log it, and run the spinner throughout
