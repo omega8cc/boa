@@ -1,12 +1,14 @@
 ### README
 
-All-in-one scripts (see INSTALL-debian-nginx-phpfpm-aegir.sh.txt)
+All-in-one script (see INSTALL-ubuntu-debian-nginx-aegir.sh.txt)
 to install ready to use Aegir Hosting System for Drupal.
 
 
 ### REQUIREMENTS
 
-* Debian 5.0 Lenny minimal (base) OS fresh install (Ubuntu version soon).
+* Ubuntu Lucid 10.04 minimal OS fresh install, or
+* Ubuntu Karmic 9.10 minimal OS fresh install, or
+* Debian 5.0 Lenny minimal OS fresh install.
 
 
 ### PROVIDES
@@ -14,7 +16,7 @@ to install ready to use Aegir Hosting System for Drupal.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest MariaDB database server.
 * Nginx 0.8.46 web server with upload progress and Boost support.
-* PHP-FPM 5.2.13 with APC, memcache, uploadprogress and suhosin.
+* PHP-FPM 5.2.13 with APC, memcache, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated daily backups for all databases in /data/disk/arch/sql.
 

@@ -8,7 +8,7 @@
 
 ### Known issues
  
-* None.
+* None yet.
 
 ### DONE
 
