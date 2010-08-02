@@ -2,7 +2,7 @@
 
 Added/Fixed:
 
-1. Added automatic, full support for Ubuntu Lucid.
+1. Added automatic, full support for Ubuntu Lucid and Karmic.
 
 2. If there is no FQDN hostname, we are trying to set it
    using reverse IP hostname, if exist.
