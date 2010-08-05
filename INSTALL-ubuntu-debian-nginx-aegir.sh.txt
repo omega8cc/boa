@@ -20,6 +20,72 @@ _MY_EMAIL="support@omega8.cc"
 
 
 ###----------------------------------------###
+### AEGIR VERSION                          ###
+###----------------------------------------###
+###
+### By default the latest 0.4-alpha9 will be
+### installed, but if you are brave and want
+### to test current HEAD, you can change it
+### below to:
+###
+### _AEGIR_VERSION="HEAD"
+###
+_AEGIR_VERSION="0.4-alpha9"
+
+
+###----------------------------------------###
+### DNS MANUAL CONFIG - AVOID USING IT     ###
+###----------------------------------------###
+###
+### Starting with release 0.4-alpha9 Aegir
+### requires proper DNS configuration
+### of your server. Your hostname has to be
+### FQDN and has to match your server IP.
+###
+### This script is trying to discover your
+### DNS details and allow or deny the install,
+### if something doesn't look correct.
+###
+### This script will also use your FQDN
+### hostname as a web address of your Aegir
+### frontend (control panel).
+###
+### You can try to change the automatic
+### defaults by setting up your IP address,
+### your FQDN hostname and your Aegir frontend
+### web address below.
+###
+### It can be useful when you are using local
+### environment with custom settings in your
+### /etc/hosts, when you have more than one
+### public IPs on eth0 and you wish to use
+### non-default (first) IP address, or when
+### you want to use non-hostname (sub)domain
+### to access your Aegir frontend.
+###
+### Please change all 3 values if you wish
+### to customize this automatic setup.
+###
+### Example:
+###
+### _MY_OWNIP="192.168.0.108"
+### _MY_HOSTN="server.mydomain.com"
+### _MY_FRONT="aegir.mydomain.com"
+###
+### NOTE:
+###
+### If you will use your custom DNS settings,
+### they will be still validated, therefore
+### make sure your _MY_HOSTN and _MY_FRONT
+### both matches your _MY_OWNIP or the script
+### will fail to install Aegir.
+###
+_MY_OWNIP=""
+_MY_HOSTN=""
+_MY_FRONT=""
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -97,7 +163,7 @@ runner () {
 	CMD="$1"
 	echo "...in progress, please wait..."
 	touch busy
-	$SRCDIR/spinner busy &
+	bash $SRCDIR/spinner busy &
 	if $CMD >> $LOG; then
 		rm busy
 		sleep 1
@@ -118,7 +184,7 @@ runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	$SRCDIR/spinner busy &
+	bash $SRCDIR/spinner busy &
 	if $CMD >> $LOG; then
 		rm busy
 		sleep 1
@@ -165,7 +231,7 @@ elif [ $_THIS_OS = "Debian" ] ; then
 else
   not_supported_os
 fi
-msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
+msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
 mrun "sleep 8"
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
@@ -176,6 +242,28 @@ fi
 	
 
 ###--------------------###
+if [ ! -z "$_MY_OWNIP" ] ; then
+   _THISHTIP="$_MY_OWNIP"
+   _THISHOST="$_MY_HOSTN"
+   _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+      _FQDNTEST="TRUE"
+      _THEFRDIP=`host $_MY_FRONT | cut -d: -f2 | awk '{ print $4}'`
+      if [ "$_THEFRDIP" = "$_THISHTIP" ] ; then
+         _TESTHOST=`hostname -f`
+         _TESTRDIP=`host $_TESTHOST | cut -d: -f2 | awk '{ print $4}'`
+         if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
+            _FQDNTEST="TRUE"
+         else
+            _FQDNTEST="FALSE"
+         fi
+      else
+         _FQDNTEST="FALSE"
+      fi
+   else
+      _FQDNTEST="FALSE"
+   fi
+else
 _THISHTIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
 _FQDNPROB=`hostname -f 2> /dev/null`
 _FQDNTEST="FALSE"
@@ -213,8 +301,35 @@ else
       _FQDNTEST="FALSE"
    fi
 fi
+fi
+if [ ! -z "$_MY_FRONT" ] ; then
+  _THIS_FRONT="$_MY_FRONT"
+else
+  _THIS_FRONT="$_THISHOST"
+fi
 if [ "$_FQDNTEST" = "FALSE" ] ; then
+echo " "
 msg "EXIT on error due to invalid DNS setup."
+if [ ! -z "$_MY_OWNIP" ] ; then
+cat <<EOF
+   
+  * Your custom _MY_OWNIP is set to "$_MY_OWNIP"
+  * Your custom _MY_HOSTN is set to "$_MY_HOSTN"
+  * Your custom _MY_FRONT is set to "$_MY_FRONT"
+  
+  * Your _MY_HOSTN and/or _MY_FRONT doesn't match your _MY_OWNIP,
+    or your hostname is not set properly yet.
+    
+  * Please add/check correct line in your /etc/hosts file on the server:
+    
+  $ echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT" >> /etc/hosts
+
+  * Please make sure that below command returns your FQDN hostname "$_MY_HOSTN":
+    
+  $ hostname -f
+    
+EOF
+fi
 cat <<EOF
    
   * Your server has to have already working FQDN hostname matching your IP address.
@@ -227,6 +342,7 @@ cat <<EOF
     
 EOF
 msg "EXIT on error due to invalid DNS setup."
+echo " "
 exit 1
 else
 msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
@@ -239,7 +355,7 @@ cat <<EOF
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
   * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
-  * Your Aegir control panel will be available at http://$_THISHOST.
+  * Your Aegir control panel will be available at http://$_THIS_FRONT.
   * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
   * If your outgoing SMTP requires using relayhost, uncomment two lines in section:
     'SMTP check' before running this script.
@@ -323,8 +439,27 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-get dist-upgrade"
   runner "apt-get autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade"
+  runner "aptitude full-upgrade -y"
 fi
+
+
+###--------------------###
+msg "`date` INFO: Run apt update again"
+mrun "sleep 8"
+runner "aptitude update"
+runner "aptitude clean"
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  runner "apt-get upgrade -y"
+  runner "apt-get dist-upgrade"
+  runner "apt-get autoclean"
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  runner "aptitude full-upgrade -y"
+fi
+
+
+###--------------------###
+msg "`date` INFO: Install and set locales"
+mrun "sleep 8"
 runner "aptitude -y install locales"
 runner "locale-gen en_US en_US.UTF-8"
 
@@ -333,11 +468,11 @@ runner "locale-gen en_US en_US.UTF-8"
 msg "`date` INFO: Installing required libraries and tools"
 mrun "sleep 8"
 if [ "$_THIS_OS" = "Debian" ] ; then
-  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
-  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip whois xml-core xml2 zip zlib1g-dev zlibc"
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
 else
-  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 fi
 install_with_apt () {
 	if ! runner "$INSTALL $DEBDEPS"; then
@@ -376,8 +511,8 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ### in this example it is for Voxel servers
 ###
-#perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
-#postfix reload
+# perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
+# postfix reload
 ###
 ###
 
@@ -482,8 +617,8 @@ runner "make --quiet install"
 
 ###--------------------###
 mkdir -p /usr/local/ioncube
-_X86_64_TEST=`uname -a 2>&1 >/dev/null | cat`
-if [ ! -z `echo $_X86_64_TEST | grep -q "x86_64"` ] ; then
+_X86_64_TEST=`uname -m`
+if [ "$_X86_64_TEST" = "x86_64" ] ; then
   SYSTEMARCH="x86_64"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
   mrun "sleep 8"
@@ -509,7 +644,7 @@ msg "`date` INFO: Installing Nginx (some warnings during build/install are norma
 mrun "sleep 8"
 cd /var/opt; rm -f -r nginx*
 git clone git://github.com/masterzen/nginx-upload-progress-module.git
-cd /var/opt; wget http://sysoev.ru/nginx/nginx-0.8.46.tar.gz; tar -xzf nginx-0.8.46.tar.gz; cd /var/opt/nginx-0.8.46
+cd /var/opt; wget http://sysoev.ru/nginx/nginx-0.8.48.tar.gz; tar -xzf nginx-0.8.48.tar.gz; cd /var/opt/nginx-0.8.48
 runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/"
 runner "make --quiet"
 runner "make --quiet install"
@@ -561,12 +696,27 @@ runner "adduser aegir www-data"
 echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
 cd /var/aegir
-wget -U iCab http://omega8.cc/dev/aegir-vanilla-install.sh.txt
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+  _AEGIR_SCRIPT="aegir-vanilla-install"
+else
+  _AEGIR_SCRIPT="aegir-alpha9-install"
+fi
+wget -U iCab http://omega8.cc/dev/$_AEGIR_SCRIPT.sh.txt
 msg "`date` INFO: Now running Aegir installer for backend and frontend"
 mrun "sleep 8"
-su -s /bin/bash aegir -c "bash aegir-vanilla-install.sh.txt $_THISHOST --http_service_type='nginx' --db_service_type='mysql' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
+su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
 mrun "sleep 8"
-msg "`date` INFO: Aegir installation almost completed"
+
+
+###--------------------###
+msg "`date` INFO: Simple check if Aegir install went as expected"
+mrun "sleep 8"
+if [ -f "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+  msg "`date` INFO: Aegir installation almost completed"
+else
+  msg "`date` FATAL ERROR: Something went wrong, Aegir is not installed - exit now"
+  exit 1
+fi
 
 
 ###--------------------###
@@ -579,8 +729,9 @@ mrun "sleep 8"
 
 
 ###--------------------###
-msg "`date` INFO: Fix for advanced Aegir config"
+msg "`date` INFO: Fix for advanced Nginx config and Drush path"
 mrun "sleep 8"
+ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
 wget -U iCab http://omega8.cc/dev/tiny-global.inc.txt
 rm -f global.inc
@@ -629,13 +780,17 @@ echo "[client]" >> /root/.my.cnf
 echo "user=root" >> /root/.my.cnf
 echo "password=$PASWD" >> /root/.my.cnf
 chmod 0600 /root/.my.cnf
+
+
+###--------------------###
 msg "`date` INFO: MariaDB setup completed"
 msg "`date` INFO: You can now log in as root by typing only 'mysql' on the command line"
-msg "`date` INFO: ALL DONE!"
+mrun "sleep 8"
 echo " "
 _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
 msg "ACCESS -> $_AEGIR_LOGIN_URL"
 echo " "
+mrun "sleep 8"
 msg "`date` CARD: Now charging your credit card for this automated install service..."
 mrun "sleep 8"
 msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"

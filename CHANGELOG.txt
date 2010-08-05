@@ -1,3 +1,28 @@
+### Thu, 2010-08-05 22:00
+
+Added/Fixed: (upgrade of existing installs not required)
+
+1. Fixed critical problem with Drush broken due to
+   change of URL to the required php library:
+   http://drupal.org/node/875196
+   
+2. Aegir version is now configurable. By defult latest
+   0.4-alpha9 will be installed, but it is also possible
+   to install latest HEAD from git.aegirproject.org.
+   
+3. Aegir front-end (sub)domain is now configurable and
+   can be different than machine FQDN hostname.
+  
+4. Machine FQDN hostname and IP is now configurable.
+
+5. Nginx version updated to 0.8.48.
+
+6. Fixed progress spinner on Ubuntu.
+
+7. Fixed problem with automatic ionCube loader
+   discovery of required version 32/64 bit.
+
+
 ### Mon, 2010-08-02 01:08
 
 Added/Fixed:
