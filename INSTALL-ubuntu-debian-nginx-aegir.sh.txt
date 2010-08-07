@@ -23,14 +23,17 @@ _MY_EMAIL="support@omega8.cc"
 ### AEGIR VERSION                          ###
 ###----------------------------------------###
 ###
-### By default the latest 0.4-alpha9 will be
+### By default the latest release will be
 ### installed, but if you are brave and want
 ### to test current HEAD, you can change it
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
+### _AEGIR_VERSION="0.4-alpha9" <- avoid it
+###                                critical
+###                                bug found
 ###
-_AEGIR_VERSION="0.4-alpha9"
+_AEGIR_VERSION="HEAD"
 
 
 ###----------------------------------------###
@@ -80,6 +83,12 @@ _AEGIR_VERSION="0.4-alpha9"
 ### both matches your _MY_OWNIP or the script
 ### will fail to install Aegir.
 ###
+### You can't use "localhost" as your
+### _MY_HOSTN and/or _MY_FRONT, because
+### there is already default Nginx host
+### with this name in every vanilla install
+### and we don't want to override it.
+###
 _MY_OWNIP=""
 _MY_HOSTN=""
 _MY_FRONT=""
@@ -89,6 +98,7 @@ _MY_FRONT=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
+_INSTALLER_VERSION="A9.F"
 
 ###---### Avoid too many questions
 #
@@ -97,11 +107,11 @@ export DEBIAN_FRONTEND=noninteractive
 ###---### Functions
 #
 # Noticeable messages
-msg() {
+msg () {
   echo "==> $*"
 }
 # Simple prompt
-prompt_yes_no() {
+prompt_yes_no () {
   while true ; do
     printf "$* [Y/n] "
     read answer
@@ -124,17 +134,6 @@ prompt_yes_no() {
 #
 # Stop on error
 # set -e ### temp disabled for debugging
-#
-# Create tmp stuff
-SRCDIR=/var/tmp/files
-mkdir -p $SRCDIR
-LOG=/var/tmp/aegir-install.log
-cd $SRCDIR
-#
-# Download spinner
-rm -f spinner*
-wget -U iCab http://omega8.cc/dev/spinner
-chmod +x spinner
 #
 # Success msg
 success () {
@@ -194,11 +193,30 @@ mrun () {
 
 
 ###--------------------###
-msg "`date` INFO: We need to install lsb-release and dnsutils first"
-mrun "sleep 8"
+msg "`date` INFO: We need to download some helpers"
+sleep 8
+#
+# Download apt helper
 cd /var/tmp
 rm -f apt.conf.noninteractive*
 wget -U iCab http://omega8.cc/dev/apt.conf.noninteractive
+#
+# Create tmp stuff
+SRCDIR=/var/tmp/files
+mkdir -p $SRCDIR
+LOG=/var/tmp/aegir-install.log
+cd $SRCDIR
+#
+# Download spinner
+rm -f spinner*
+wget -U iCab http://omega8.cc/dev/spinner
+chmod +x spinner
+#
+
+
+###--------------------###
+msg "`date` INFO: We need to install lsb-release / dnsutils first"
+mrun "sleep 8"
 INSTALL="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
 if ! runner "$INSTALL lsb-release dnsutils"; then
   fatal "Installation failed: $?"
@@ -254,6 +272,7 @@ if [ ! -z "$_MY_OWNIP" ] ; then
          _TESTRDIP=`host $_TESTHOST | cut -d: -f2 | awk '{ print $4}'`
          if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
             _FQDNTEST="TRUE"
+            hostname -v $_TESTHOST
          else
             _FQDNTEST="FALSE"
          fi
@@ -273,17 +292,16 @@ if [ ! -z "$_FQDNPROB" ] ; then
    _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
    if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
       _FQDNTEST="TRUE"
-      true
+      hostname -v $_THISHOST
    else
       _FQDNTEST="FALSE"
       _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
       _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
       _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
       if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
-         hostname -v -b $_REVHOSTN
+         hostname -v $_REVHOSTN
          _THISHOST="$_REVHOSTN"
          _FQDNTEST="TRUE"
-         true
       else
          _FQDNTEST="FALSE"
       fi
@@ -293,14 +311,19 @@ else
    _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
    _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
    if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
-      hostname -v -b $_REVHOSTN
+      hostname -v $_REVHOSTN
       _THISHOST="$_REVHOSTN"
       _FQDNTEST="TRUE"
-      true
    else
       _FQDNTEST="FALSE"
    fi
 fi
+fi
+if [ "$_THISHOST" = "localhost" ] ; then
+  _FQDNTEST="FALSE"
+fi
+if [ "$_MY_FRONT" = "localhost" ] ; then
+  _FQDNTEST="FALSE"
 fi
 if [ ! -z "$_MY_FRONT" ] ; then
   _THIS_FRONT="$_MY_FRONT"
@@ -653,8 +676,11 @@ runner "make --quiet install"
 ###--------------------###
 msg "`date` INFO: Update rc.d"
 mrun "sleep 8"
+echo "UseDNS no" >> /etc/ssh/sshd_config
 cp -a /opt/etc/php.ini /usr/local/lib/
 killall nginx php-fpm
+runner "invoke-rc.d ssh restart"
+runner "update-rc.d cron defaults"
 runner "update-rc.d php-fpm defaults"
 runner "update-rc.d nginx defaults"
 runner "invoke-rc.d php-fpm start"
@@ -682,7 +708,8 @@ PXSWD=`cat /root/.my.pass.txt`
 PASWD=`echo -n $PXSWD | tr -d "\n"`
 for Files in `find /var/xdrago -type f`
 do
-  perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
+  sed -i 's/NdKBu34erty325r6mUHxWy/$PASWD/g' $Files
+  sed -i 's/help\\\@omega8.cc/$APTEMAIL/g' $Files
 done
 msg "`date` INFO: OS and services installation completed"
 mrun "sleep 8"
@@ -743,6 +770,7 @@ if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; t
   echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
   echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
 fi
+echo "`date` $_AEGIR_VERSION.$_INSTALLER_VERSION" > /var/aegir/config/includes/installer_version.txt
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 killall nginx
 runner "invoke-rc.d nginx start"
@@ -794,6 +822,7 @@ mrun "sleep 8"
 msg "`date` CARD: Now charging your credit card for this automated install service..."
 mrun "sleep 8"
 msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
+mrun "sleep 8"
 msg "`date` BYE!"
 exit 0
 

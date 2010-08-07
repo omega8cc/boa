@@ -1,3 +1,24 @@
+
+### Thu, 2010-08-07 06:10 - Edition 0.4-alpha9-A9.F
+
+Added/Fixed: (upgrade of existing installs not required)
+   
+1. By defult latest HEAD from git.aegirproject.org
+   is now installed, due to critical bug found,
+   see this for details: http://drupal.org/node/874716
+   The default install will be reverted to 0.4-alpha10
+   when it will be released. You can use 0.4-alpha9 with
+   caution (just don't use remote servers new feature
+   to stay safe).
+
+2. Fixed problem with setting up FQDN hostname on Linode
+   based servers. The fix can help also with other
+   providers probably.
+
+3. Installer now writes date and version used in file:
+   /var/aegir/config/includes/installer_version.txt
+
+
 ### Thu, 2010-08-05 22:00
 
 Added/Fixed: (upgrade of existing installs not required)
