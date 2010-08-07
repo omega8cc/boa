@@ -708,8 +708,7 @@ PXSWD=`cat /root/.my.pass.txt`
 PASWD=`echo -n $PXSWD | tr -d "\n"`
 for Files in `find /var/xdrago -type f`
 do
-  sed -i 's/NdKBu34erty325r6mUHxWy/$PASWD/g' $Files
-  sed -i 's/help\\\@omega8.cc/$APTEMAIL/g' $Files
+  perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
 done
 msg "`date` INFO: OS and services installation completed"
 mrun "sleep 8"
