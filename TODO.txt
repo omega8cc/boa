@@ -1,10 +1,36 @@
-### TODO
+### TODO before CPH DrupalCon
  
-* Do the same for Cherokee web server :)
- 
+* Aegir Nginx installer should come with ready to use platforms:
+
+  1. Open Atrium
+  2. Managing News
+  3. Feature Server
+  4. Vanilla Pressflow 6.x
+  5. Vanilla Drupal 7.x
+  6. Drupal Commons
+  
+* All 6.x platforms should:
+
+  1. Use Pressflow 6.x core
+  2. Come with enabled by default memcache/redis
+  3. Come with enabled Cache, Boost and DB Tuner modules
+
+* The server should come with ready to use multicore
+  Apache Solr Search.
+
+* Vanilla Nginx and PHP-FPM configuration should be tuned
+  for max performance, comparable with Mercury/Varnish.
+
+* Installer should support every popular VPS cloud service.
+
+* The codename of the finished installer is Barracuda.
+
+
 ### In progress
- 
-* Clone this for Cherokee web server.
+
+* Open reloaded every hour Aegir demo server.
+
+* Clone Nginx integration for Cherokee web server.
 
 ### Known issues
  
