@@ -1,4 +1,21 @@
 
+### Thu, 2010-08-12 06:10 - Edition 0.4-alpha10-A10.A
+
+Added/Fixed: (upgrade from previous versions recommended)
+   
+1. By defult Aegir 0.4-alpha10 with Drush 3.3
+   is now installed.
+
+2. Nginx version is now 0.8.49, MariaDB is 5.1.49
+   and Drupal is 6.19.
+
+3. Fixed freezing request on the first /admin hit.
+
+4. Better tuned Nginx, PHP-FPM and MariaDB settings.
+
+5. Various small improvements in the code.
+
+
 ### Thu, 2010-08-07 06:10 - Edition 0.4-alpha9-A9.F
 
 Added/Fixed: (upgrade of existing installs not required)

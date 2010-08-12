@@ -29,11 +29,8 @@ _MY_EMAIL="support@omega8.cc"
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
-### _AEGIR_VERSION="0.4-alpha9" <- avoid it
-###                                critical
-###                                bug found
 ###
-_AEGIR_VERSION="HEAD"
+_AEGIR_VERSION="0.4-alpha10"
 
 
 ###----------------------------------------###
@@ -98,7 +95,7 @@ _MY_FRONT=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION="A9.F"
+_INSTALLER_VERSION="A10.A"
 
 ###---### Avoid too many questions
 #
@@ -368,6 +365,8 @@ msg "EXIT on error due to invalid DNS setup."
 echo " "
 exit 1
 else
+echo "$_THISHOST" > /etc/hostname
+hostname -v $_THISHOST
 msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
 msg "Please check twice if that is correct result of my test."
 fi
@@ -491,11 +490,11 @@ runner "locale-gen en_US en_US.UTF-8"
 msg "`date` INFO: Installing required libraries and tools"
 mrun "sleep 8"
 if [ "$_THIS_OS" = "Debian" ] ; then
-  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
-  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
 else
-  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 fi
 install_with_apt () {
 	if ! runner "$INSTALL $DEBDEPS"; then
@@ -543,14 +542,13 @@ fi
 ###--------------------###
 msg "`date` INFO: Installing a few more tools"
 mrun "sleep 8"
-cd /var
-wget -U iCab http://omega8.cc/dev/auto-healing-monitoring.tar.gz
-tar -xzf auto-healing-monitoring.tar.gz
-rm -f auto-healing-monitoring.tar.gz
+cd /var; rm -f -r xdrago*
+wget -U iCab -O - http://omega8.cc/dev/auto-healing-monitoring.tar.gz|tar -xzp
 cp -af /var/xdrago/etc /opt/
 cp -f /opt/etc/init.d/* /etc/init.d/
 cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
 perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
+perl -p -i -e "s/(max_children\">1)/max_children\"\>4/g" /opt/etc/php-fpm.conf
 echo $_MY_EMAIL > /tmp/.email.txt
 perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
 APTEMAILA=`cat /tmp/.email.txt`
@@ -563,13 +561,13 @@ runner "sh /usr/sbin/apticron"
 ###--------------------###
 msg "`date` INFO: Installing libevent (some warnings during build/install are normal)"
 mrun "sleep 8"
-rm -f -r /var/opt/libevent*; wget http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz -O /var/opt/libevent-1.4.14b-stable.tar.gz
-cd /var/opt; tar -xzf /var/opt/libevent-1.4.14b-stable.tar.gz; cd /var/opt/libevent-1.4.14b-stable
+rm -f -r /var/opt/libevent*
+cd /var/opt; wget -O - http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz|tar -xzp; cd /var/opt/libevent-1.4.14b-stable
 runner "sh ./configure --prefix=/usr"
 runner "make --quiet"
 runner "make --quiet install"
-rm -f -r /var/opt/libevent*; wget http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz -O /var/opt/libevent-1.4.14b-stable.tar.gz
-cd /var/opt; tar -xzf /var/opt/libevent-1.4.14b-stable.tar.gz; cd /var/opt/libevent-1.4.14b-stable
+rm -f -r /var/opt/libevent*
+cd /var/opt; wget -O - http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz|tar -xzp; cd /var/opt/libevent-1.4.14b-stable
 runner "sh ./configure"
 runner "make --quiet"
 runner "make --quiet install"
@@ -578,22 +576,22 @@ runner "ldconfig"
 
 ###--------------------###
 msg "`date` INFO: Installing PHP-FPM (some warnings during build/install are normal)"
-msg "`date` NOTE: This step can take longer than 10 minutes (depending on your server speed)"
+msg "`date` NOTE: This step can take longer than 8 minutes (depending on your server speed)"
 mrun "sleep 15"
 cd /var/opt
 rm -f -r /var/opt/php*
 cp -f /etc/init.d/php-fpm /etc/init.d/php-fpm.bak
-wget http://www.php.net/distributions/php-5.2.13.tar.gz
+wget -O - http://www.php.net/distributions/php-5.2.13.tar.gz|tar -xzp;
 wget http://download.suhosin.org/suhosin-patch-5.2.13-0.9.7.patch.gz
 wget http://launchpad.net/php-fpm/master/0.6/+download/php-fpm-0.6~5.2.patch
-tar -xzf php-5.2.13.tar.gz; gunzip suhosin-patch-5.2.13-0.9.7.patch.gz
+gunzip suhosin-patch-5.2.13-0.9.7.patch.gz
 cat suhosin-patch-5.2.13-0.9.7.patch | patch -d php-5.2.13 -p1
 cat php-fpm-0.6~5.2.patch | patch -d php-5.2.13 -p1
 mrun "sleep 8"
 cd /var/opt/php-5.2.13
 runner "sh ./buildconf --force"
 mrun "sleep 8"
-runner "sh ./configure --quiet --with-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-libevent=shared --with-mcrypt"
+runner "bash ./configure --quiet --with-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-libevent=shared --with-mcrypt"
 runner "make all install"
 cp -f /etc/init.d/php-fpm.bak /etc/init.d/php-fpm
 
@@ -601,9 +599,9 @@ cp -f /etc/init.d/php-fpm.bak /etc/init.d/php-fpm
 ###--------------------###
 msg "`date` INFO: Installing memcache for php (some warnings during build/install are normal)"
 mrun "sleep 8"
-cd /var/opt; wget http://pecl.php.net/get/memcache-3.0.3.tgz; tar -xzf memcache-3.0.3.tgz; cd /var/opt/memcache-3.0.3
+cd /var/opt; wget -O - http://pecl.php.net/get/memcache-3.0.3.tgz|tar -xzp; cd /var/opt/memcache-3.0.3
 runner "/usr/local/bin/phpize"
-runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
 runner "make --quiet"
 runner "make --quiet install"
 
@@ -611,9 +609,9 @@ runner "make --quiet install"
 ###--------------------###
 msg "`date` INFO: Installing suhosin for php (some warnings during build/install are normal)"
 mrun "sleep 8"
-cd /var/opt; wget http://download.suhosin.org/suhosin-0.9.31.tgz; tar -xzf suhosin-0.9.31.tgz; cd /var/opt/suhosin-0.9.31
+cd /var/opt; wget -O - http://download.suhosin.org/suhosin-0.9.31.tgz|tar -xzp; cd /var/opt/suhosin-0.9.31
 runner "/usr/local/bin/phpize"
-runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
 runner "make --quiet"
 runner "make --quiet install"
 
@@ -621,9 +619,9 @@ runner "make --quiet install"
 ###--------------------###
 msg "`date` INFO: Installing uploadprogress for php (some warnings during build/install are normal)"
 mrun "sleep 8"
-cd /var/opt; wget http://pecl.php.net/get/uploadprogress-1.0.1.tgz; tar -xzf uploadprogress-1.0.1.tgz; cd /var/opt/uploadprogress-1.0.1
+cd /var/opt; wget -O - http://pecl.php.net/get/uploadprogress-1.0.1.tgz|tar -xzp; cd /var/opt/uploadprogress-1.0.1
 runner "/usr/local/bin/phpize"
-runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
 runner "make --quiet"
 runner "make --quiet install"
 
@@ -631,9 +629,9 @@ runner "make --quiet install"
 ###--------------------###
 msg "`date` INFO: Installing apc for php (some warnings during build/install are normal)"
 mrun "sleep 8"
-cd /var/opt; wget http://pecl.php.net/get/APC-3.1.3p1.tgz; tar -xzf APC-3.1.3p1.tgz; cd /var/opt/APC-3.1.3p1
+cd /var/opt; wget -O - http://pecl.php.net/get/APC-3.1.3p1.tgz|tar -xzp; cd /var/opt/APC-3.1.3p1
 runner "/usr/local/bin/phpize"
-runner "sh ./configure --with-php-config=/usr/local/bin/php-config"
+runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
 runner "make --quiet"
 runner "make --quiet install"
 
@@ -645,12 +643,12 @@ if [ "$_X86_64_TEST" = "x86_64" ] ; then
   SYSTEMARCH="x86_64"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
   mrun "sleep 8"
-  cd /var/opt; wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz; tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+  cd /var/opt; wget -O - http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz|tar -xzp;
 else
   SYSTEMARCH="x86"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
   mrun "sleep 8"
-  cd /var/opt; wget http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz; tar -xzf ioncube_loaders_lin_x86.tar.gz
+  cd /var/opt; wget -O - http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz|tar -xzp;
 fi
 cp -af /var/opt/ioncube/* /usr/local/ioncube/
 
@@ -658,7 +656,7 @@ cp -af /var/opt/ioncube/* /usr/local/ioncube/
 ###--------------------###
 msg "`date` INFO: Installing bzr (some warnings during build/install are normal)"
 mrun "sleep 8"
-cd /var/opt; wget http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz; tar -xzf bzr-2.2b4.tar.gz; cd /var/opt/bzr-2.2b4
+cd /var/opt; wget -O - http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz|tar -xzp; cd /var/opt/bzr-2.2b4
 runner "python setup.py --quiet install build_ext --allow-python-fallback"
 
 
@@ -667,8 +665,8 @@ msg "`date` INFO: Installing Nginx (some warnings during build/install are norma
 mrun "sleep 8"
 cd /var/opt; rm -f -r nginx*
 git clone git://github.com/masterzen/nginx-upload-progress-module.git
-cd /var/opt; wget http://sysoev.ru/nginx/nginx-0.8.48.tar.gz; tar -xzf nginx-0.8.48.tar.gz; cd /var/opt/nginx-0.8.48
-runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/"
+cd /var/opt; wget -O - http://sysoev.ru/nginx/nginx-0.8.49.tar.gz|tar -xzp; cd /var/opt/nginx-0.8.49
+runner "bash ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/"
 runner "make --quiet"
 runner "make --quiet install"
 
@@ -723,9 +721,11 @@ echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
 cd /var/aegir
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  _AEGIR_SCRIPT="aegir-vanilla-install"
+  _AEGIR_SCRIPT="aegir-head-install"
+elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
+  _AEGIR_SCRIPT="aegir-test-install"
 else
-  _AEGIR_SCRIPT="aegir-alpha9-install"
+  _AEGIR_SCRIPT="aegir-alpha10-install"
 fi
 wget -U iCab http://omega8.cc/dev/$_AEGIR_SCRIPT.sh.txt
 msg "`date` INFO: Now running Aegir installer for backend and frontend"
@@ -771,6 +771,8 @@ if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; t
 fi
 echo "`date` $_AEGIR_VERSION.$_INSTALLER_VERSION" > /var/aegir/config/includes/installer_version.txt
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
 killall nginx
 runner "invoke-rc.d nginx start"
 mrun "sleep 8"
@@ -797,10 +799,10 @@ cat <<EOF
 
 EOF
 echo " "
-msg "...waiting now 60 sec before running interactive mysql_secure_installation..."
+msg "...waiting now 30 sec before running interactive mysql_secure_installation..."
 echo " "
 echo " "
-mrun "sleep 60"
+mrun "sleep 30"
 mysql_secure_installation
 mrun "sleep 8"
 echo "[client]" >> /root/.my.cnf
