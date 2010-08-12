@@ -1,4 +1,20 @@
 
+### Thu, 2010-08-12 22:15 - Edition 0.4-alpha11-A11.A
+
+Added/Fixed: (upgrade from previous versions recommended)
+
+1. By defult Aegir 0.4-alpha11 with Drush 3.3
+   is now installed.
+
+2. PHP-FPM version is now 5.2.14.
+
+3. Improved UX - only interesting status messages
+   are now displayed.
+
+4. Hostmaster root directory now properly named using
+   Aegir version: '-0.4-alpha11' or '-HEAD'.
+
+
 ### Thu, 2010-08-12 06:10 - Edition 0.4-alpha10-A10.A
 
 Added/Fixed: (upgrade from previous versions recommended)

@@ -30,7 +30,7 @@ _MY_EMAIL="support@omega8.cc"
 ###
 ### _AEGIR_VERSION="HEAD"
 ###
-_AEGIR_VERSION="0.4-alpha10"
+_AEGIR_VERSION="0.4-alpha11"
 
 
 ###----------------------------------------###
@@ -95,7 +95,7 @@ _MY_FRONT=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION="A10.A"
+_INSTALLER_VERSION="A11.A"
 
 ###---### Avoid too many questions
 #
@@ -157,7 +157,6 @@ not_supported_os () {
 # Perform an action, log it, and run the spinner throughout
 runner () {
 	CMD="$1"
-	echo "...in progress, please wait..."
 	touch busy
 	bash $SRCDIR/spinner busy &
 	if $CMD >> $LOG; then
@@ -187,32 +186,54 @@ mrun () {
 		return 0
 	fi
 }
+#
+# Silent runner
+st_runner () {
+	CMD="$1"
+	touch busy
+	bash $SRCDIR/spinner busy &
+	if $CMD >> $LOG; then
+		rm busy
+		sleep 1
+		success "$CMD:"
+		return 0
+	else
+		rm busy
+		sleep 1
+		echo "$CMD failed.  Error (if any): $?"
+		echo
+		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
+		tail -15 $LOG
+		return 1
+	fi
+}
 
 
 ###--------------------###
-msg "`date` INFO: We need to download some helpers"
+msg "`date` INFO: Downloading little helpers, please wait..."
 sleep 8
 #
 # Download apt helper
 cd /var/tmp
 rm -f apt.conf.noninteractive*
-wget -U iCab http://omega8.cc/dev/apt.conf.noninteractive
+wget -U iCab http://omega8.cc/dev/apt.conf.noninteractive &> /dev/null
 #
 # Create tmp stuff
 SRCDIR=/var/tmp/files
 mkdir -p $SRCDIR
 LOG=/var/tmp/aegir-install.log
+SILENT=/var/tmp/silent.log
 cd $SRCDIR
 #
 # Download spinner
 rm -f spinner*
-wget -U iCab http://omega8.cc/dev/spinner
+wget -U iCab http://omega8.cc/dev/spinner &> /dev/null
 chmod +x spinner
 #
 
 
 ###--------------------###
-msg "`date` INFO: We need to install lsb-release / dnsutils first"
+msg "`date` INFO: We need to install lsb-release / dnsutils first, please wait..."
 mrun "sleep 8"
 INSTALL="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
 if ! runner "$INSTALL lsb-release dnsutils"; then
@@ -246,12 +267,14 @@ elif [ $_THIS_OS = "Debian" ] ; then
 else
   not_supported_os
 fi
+echo " "
 msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
+echo " "
 mrun "sleep 8"
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
 else
-  msg "ERROR: This script should be ran as a root user, su - root first."
+  msg "ERROR: This script should be ran as a root user, please su - root first."
   exit 1
 fi
 	
@@ -368,7 +391,7 @@ else
 echo "$_THISHOST" > /etc/hostname
 hostname -v $_THISHOST
 msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
-msg "Please check twice if that is correct result of my test."
+msg "Please double check whether this is a valid result of my test."
 fi
 mrun "sleep 8"
 echo " "
@@ -447,13 +470,15 @@ fi
 ###--------------------###
 msg "`date` INFO: Add apt sources for MariaDB"
 mrun "sleep 8"
-wget -O- http://ourdelta.org/deb/ourdelta.gpg | apt-key add -
-wget http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list -O /etc/apt/sources.list.d/ourdelta.list
+cd /var/opt
+wget http://ourdelta.org/deb/ourdelta.gpg &> /dev/null
+apt-key add ourdelta.gpg 2> /dev/null
+wget http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list &> /dev/null
+cp $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
 
 
 ###--------------------###
-msg "`date` INFO: Run apt update"
-mrun "sleep 8"
+msg "`date` INFO: Run apt update, please wait..."
 runner "aptitude update"
 runner "aptitude clean"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -466,8 +491,7 @@ fi
 
 
 ###--------------------###
-msg "`date` INFO: Run apt update again"
-mrun "sleep 8"
+msg "`date` INFO: Run apt update again, please wait..."
 runner "aptitude update"
 runner "aptitude clean"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -481,14 +505,12 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Install and set locales"
-mrun "sleep 8"
 runner "aptitude -y install locales"
 runner "locale-gen en_US en_US.UTF-8"
 
 
 ###--------------------###
-msg "`date` INFO: Installing required libraries and tools"
-mrun "sleep 8"
+msg "`date` INFO: Installing required libraries and tools, please wait..."
 if [ "$_THIS_OS" = "Debian" ] ; then
   DEBDEPS="apticron autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config git-core graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
@@ -540,10 +562,11 @@ fi
 
 
 ###--------------------###
-msg "`date` INFO: Installing a few more tools"
+msg "`date` INFO: Installing a few more tools, please wait..."
 mrun "sleep 8"
 cd /var; rm -f -r xdrago*
-wget -U iCab -O - http://omega8.cc/dev/auto-healing-monitoring.tar.gz|tar -xzp
+wget -U iCab http://omega8.cc/dev/auto-healing-monitoring.tar.gz &> /dev/null
+tar -xzf auto-healing-monitoring.tar.gz
 cp -af /var/xdrago/etc /opt/
 cp -f /opt/etc/init.d/* /etc/init.d/
 cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
@@ -559,81 +582,108 @@ runner "sh /usr/sbin/apticron"
 
 
 ###--------------------###
-msg "`date` INFO: Installing libevent (some warnings during build/install are normal)"
-mrun "sleep 8"
+msg "`date` INFO: Installing libevent, please wait..."
 rm -f -r /var/opt/libevent*
-cd /var/opt; wget -O - http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz|tar -xzp; cd /var/opt/libevent-1.4.14b-stable
-runner "sh ./configure --prefix=/usr"
-runner "make --quiet"
-runner "make --quiet install"
+cd /var/opt
+wget -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz &> /dev/null
+tar -xzf libevent-1.4.14b-stable.tar.gz
+cd /var/opt/libevent-1.4.14b-stable
+st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
 rm -f -r /var/opt/libevent*
-cd /var/opt; wget -O - http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz|tar -xzp; cd /var/opt/libevent-1.4.14b-stable
-runner "sh ./configure"
-runner "make --quiet"
-runner "make --quiet install"
-runner "ldconfig"
+cd /var/opt
+wget -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz &> /dev/null
+tar -xzf libevent-1.4.14b-stable.tar.gz
+cd /var/opt/libevent-1.4.14b-stable
+st_runner "sh ./configure" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
+st_runner "ldconfig" 2> /dev/null
 
 
 ###--------------------###
-msg "`date` INFO: Installing PHP-FPM (some warnings during build/install are normal)"
-msg "`date` NOTE: This step can take longer than 8 minutes (depending on your server speed)"
-mrun "sleep 15"
+msg "`date` INFO: Installing PHP-FPM"
+msg "`date` NOTE: This step can take longer than 8 minutes (depending on your server speed), please wait..."
+mrun "sleep 8"
 cd /var/opt
 rm -f -r /var/opt/php*
-cp -f /etc/init.d/php-fpm /etc/init.d/php-fpm.bak
-wget -O - http://www.php.net/distributions/php-5.2.13.tar.gz|tar -xzp;
-wget http://download.suhosin.org/suhosin-patch-5.2.13-0.9.7.patch.gz
-wget http://launchpad.net/php-fpm/master/0.6/+download/php-fpm-0.6~5.2.patch
-gunzip suhosin-patch-5.2.13-0.9.7.patch.gz
-cat suhosin-patch-5.2.13-0.9.7.patch | patch -d php-5.2.13 -p1
-cat php-fpm-0.6~5.2.patch | patch -d php-5.2.13 -p1
+mv /etc/init.d/php-fpm /etc/init.d/php-fpm-5-13
+wget -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz &> /dev/null
+wget -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz &> /dev/null
+wget -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz &> /dev/null
+tar -xzf php-5.2.14.tar.gz
+gunzip php-5.2.14-fpm-0.5.14.diff.gz
+gunzip suhosin-patch-5.2.14-0.9.7.patch.gz
+cat php-5.2.14-fpm-0.5.14.diff | patch -d php-5.2.14 -p1 &> /dev/null
+cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.14 -p1 &> /dev/null
+msg "`date` INFO: Installing PHP-FPM part 1/3"
 mrun "sleep 8"
-cd /var/opt/php-5.2.13
-runner "sh ./buildconf --force"
+cd /var/opt/php-5.2.14
+st_runner "sh ./buildconf --force" 2> /dev/null
+msg "`date` INFO: Installing PHP-FPM part 2/3"
 mrun "sleep 8"
-runner "bash ./configure --quiet --with-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-libevent=shared --with-mcrypt"
-runner "make all install"
-cp -f /etc/init.d/php-fpm.bak /etc/init.d/php-fpm
+st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt" 2> /dev/null
+msg "`date` INFO: Installing PHP-FPM part 3/3"
+mrun "sleep 8"
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
+ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
+perl -p -i -e "s/(php_fpm_CONF\")/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbin/php-fpm
+perl -p -i -e "s/(\/usr\/local\/etc\/php-fpm.conf)/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
+perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
 
 
 ###--------------------###
-msg "`date` INFO: Installing memcache for php (some warnings during build/install are normal)"
+msg "`date` INFO: Installing memcache for php, please wait..."
 mrun "sleep 8"
-cd /var/opt; wget -O - http://pecl.php.net/get/memcache-3.0.3.tgz|tar -xzp; cd /var/opt/memcache-3.0.3
-runner "/usr/local/bin/phpize"
-runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
-runner "make --quiet"
-runner "make --quiet install"
+cd /var/opt
+wget -U iCab http://pecl.php.net/get/memcache-3.0.3.tgz &> /dev/null
+tar -xzf memcache-3.0.3.tgz
+cd /var/opt/memcache-3.0.3
+st_runner "/usr/local/bin/phpize" 2> /dev/null
+st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
 
 
 ###--------------------###
-msg "`date` INFO: Installing suhosin for php (some warnings during build/install are normal)"
+msg "`date` INFO: Installing suhosin for php, please wait..."
 mrun "sleep 8"
-cd /var/opt; wget -O - http://download.suhosin.org/suhosin-0.9.31.tgz|tar -xzp; cd /var/opt/suhosin-0.9.31
-runner "/usr/local/bin/phpize"
-runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
-runner "make --quiet"
-runner "make --quiet install"
+cd /var/opt
+wget -U iCab http://download.suhosin.org/suhosin-0.9.31.tgz &> /dev/null
+tar -xzf suhosin-0.9.31.tgz
+cd /var/opt/suhosin-0.9.31
+st_runner "/usr/local/bin/phpize" 2> /dev/null
+st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
 
 
 ###--------------------###
-msg "`date` INFO: Installing uploadprogress for php (some warnings during build/install are normal)"
+msg "`date` INFO: Installing uploadprogress for php, please wait..."
 mrun "sleep 8"
-cd /var/opt; wget -O - http://pecl.php.net/get/uploadprogress-1.0.1.tgz|tar -xzp; cd /var/opt/uploadprogress-1.0.1
-runner "/usr/local/bin/phpize"
-runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
-runner "make --quiet"
-runner "make --quiet install"
+cd /var/opt
+wget -U iCab http://pecl.php.net/get/uploadprogress-1.0.1.tgz &> /dev/null
+tar -xzf uploadprogress-1.0.1.tgz
+cd /var/opt/uploadprogress-1.0.1
+st_runner "/usr/local/bin/phpize" 2> /dev/null
+st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
 
 
 ###--------------------###
-msg "`date` INFO: Installing apc for php (some warnings during build/install are normal)"
+msg "`date` INFO: Installing apc for php, please wait..."
 mrun "sleep 8"
-cd /var/opt; wget -O - http://pecl.php.net/get/APC-3.1.3p1.tgz|tar -xzp; cd /var/opt/APC-3.1.3p1
-runner "/usr/local/bin/phpize"
-runner "bash ./configure --with-php-config=/usr/local/bin/php-config"
-runner "make --quiet"
-runner "make --quiet install"
+cd /var/opt
+wget -U iCab http://pecl.php.net/get/APC-3.1.3p1.tgz &> /dev/null
+tar -xzf APC-3.1.3p1.tgz
+cd /var/opt/APC-3.1.3p1
+st_runner "/usr/local/bin/phpize" 2> /dev/null
+st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
 
 
 ###--------------------###
@@ -641,34 +691,44 @@ mkdir -p /usr/local/ioncube
 _X86_64_TEST=`uname -m`
 if [ "$_X86_64_TEST" = "x86_64" ] ; then
   SYSTEMARCH="x86_64"
-  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
+  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
   mrun "sleep 8"
-  cd /var/opt; wget -O - http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz|tar -xzp;
+  cd /var/opt
+wget -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz &> /dev/null
+tar -xzf ioncube_loaders_lin_x86-64.tar.gz
 else
   SYSTEMARCH="x86"
-  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php"
+  msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
   mrun "sleep 8"
-  cd /var/opt; wget -O - http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz|tar -xzp;
+  cd /var/opt
+wget -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz &> /dev/null
+tar -xzf ioncube_loaders_lin_x86.tar.gz
 fi
 cp -af /var/opt/ioncube/* /usr/local/ioncube/
 
 
 ###--------------------###
-msg "`date` INFO: Installing bzr (some warnings during build/install are normal)"
+msg "`date` INFO: Installing bzr, please wait..."
 mrun "sleep 8"
-cd /var/opt; wget -O - http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz|tar -xzp; cd /var/opt/bzr-2.2b4
-runner "python setup.py --quiet install build_ext --allow-python-fallback"
+cd /var/opt
+wget -U iCab http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz &> /dev/null
+tar -xzf bzr-2.2b4.tar.gz
+cd /var/opt/bzr-2.2b4
+st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
 
 
 ###--------------------###
-msg "`date` INFO: Installing Nginx (some warnings during build/install are normal)"
+msg "`date` INFO: Installing Nginx, please wait..."
 mrun "sleep 8"
 cd /var/opt; rm -f -r nginx*
-git clone git://github.com/masterzen/nginx-upload-progress-module.git
-cd /var/opt; wget -O - http://sysoev.ru/nginx/nginx-0.8.49.tar.gz|tar -xzp; cd /var/opt/nginx-0.8.49
-runner "bash ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/"
-runner "make --quiet"
-runner "make --quiet install"
+git clone git://github.com/masterzen/nginx-upload-progress-module.git &> /dev/null
+cd /var/opt
+wget -U iCab http://sysoev.ru/nginx/nginx-0.8.49.tar.gz &> /dev/null
+tar -xzf nginx-0.8.49.tar.gz
+cd /var/opt/nginx-0.8.49
+st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
 
 
 ###--------------------###
@@ -676,18 +736,18 @@ msg "`date` INFO: Update rc.d"
 mrun "sleep 8"
 echo "UseDNS no" >> /etc/ssh/sshd_config
 cp -a /opt/etc/php.ini /usr/local/lib/
-killall nginx php-fpm
-runner "invoke-rc.d ssh restart"
-runner "update-rc.d cron defaults"
-runner "update-rc.d php-fpm defaults"
-runner "update-rc.d nginx defaults"
-runner "invoke-rc.d php-fpm start"
-runner "invoke-rc.d nginx start"
+killall nginx php-cgi php-fpm &> /dev/null
+runner "invoke-rc.d ssh restart" &> /dev/null
+runner "update-rc.d cron defaults" &> /dev/null
+runner "update-rc.d php-fpm defaults" &> /dev/null
+runner "update-rc.d nginx defaults" &> /dev/null
+runner "invoke-rc.d php-fpm start" &> /dev/null
+runner "invoke-rc.d nginx start" &> /dev/null
 cd /etc/mysql
 mv -f my.cnf my.cnf.bak.copy
-wget -U iCab http://omega8.cc/dev/my.cnf.txt
+wget -U iCab http://omega8.cc/dev/my.cnf.txt &> /dev/null
 mv my.cnf.txt my.cnf
-runner "invoke-rc.d mysql restart"
+runner "invoke-rc.d mysql restart" &> /dev/null
 
 
 ###--------------------###
@@ -707,13 +767,14 @@ PASWD=`echo -n $PXSWD | tr -d "\n"`
 for Files in `find /var/xdrago -type f`
 do
   perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
+  perl -p -i -e "s/(php-fpm nginx php)/php-cgi php-fpm nginx php/g" $Files
 done
 msg "`date` INFO: OS and services installation completed"
 mrun "sleep 8"
 
 
 ###--------------------###
-msg "`date` INFO: Installing Aegir"
+msg "`date` INFO: Installing Aegir, please wait..."
 mrun "sleep 8"
 runner "adduser --system --group --home /var/aegir aegir"
 runner "adduser aegir www-data"
@@ -725,9 +786,9 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
 elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
   _AEGIR_SCRIPT="aegir-test-install"
 else
-  _AEGIR_SCRIPT="aegir-alpha10-install"
+  _AEGIR_SCRIPT="aegir-alpha-install"
 fi
-wget -U iCab http://omega8.cc/dev/$_AEGIR_SCRIPT.sh.txt
+wget -U iCab http://omega8.cc/dev/$_AEGIR_SCRIPT.sh.txt &> /dev/null
 msg "`date` INFO: Now running Aegir installer for backend and frontend"
 mrun "sleep 8"
 su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
@@ -750,7 +811,7 @@ msg "`date` INFO: Fix for access to global.inc for www-data user issue"
 mrun "sleep 8"
 chmod 755 /var/aegir/config/includes
 chmod 755 /var/aegir/config
-runner "invoke-rc.d cron restart"
+runner "invoke-rc.d cron restart" &> /dev/null
 mrun "sleep 8"
 
 
@@ -759,7 +820,7 @@ msg "`date` INFO: Fix for advanced Nginx config and Drush path"
 mrun "sleep 8"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
-wget -U iCab http://omega8.cc/dev/tiny-global.inc.txt
+wget -U iCab http://omega8.cc/dev/tiny-global.inc.txt &> /dev/null
 rm -f global.inc
 mv tiny-global.inc.txt global.inc
 mv nginx_simple_include.conf nginx_simple_include.conf.orig
@@ -773,8 +834,8 @@ echo "`date` $_AEGIR_VERSION.$_INSTALLER_VERSION" > /var/aegir/config/includes/i
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
-killall nginx
-runner "invoke-rc.d nginx start"
+killall nginx &> /dev/null
+runner "invoke-rc.d nginx start" &> /dev/null
 mrun "sleep 8"
 msg "`date` INFO: AEGIR installation completed"
 mrun "sleep 8"
