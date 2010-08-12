@@ -16,7 +16,7 @@ to install ready to use Aegir Hosting System for Drupal.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest version of MariaDB database server.
 * Latest version of Nginx web server with upload progress and Boost support.
-* PHP-FPM 5.2.13 with APC, memcache, uploadprogress, suhosin and ionCube.
+* PHP-FPM 5.2.14 with APC, memcache, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated daily backups for all databases in /data/disk/arch/sql.
 
