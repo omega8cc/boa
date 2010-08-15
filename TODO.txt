@@ -34,7 +34,9 @@
 
 ### Known issues
  
-* None yet.
+* Only dedicated servers and Xen based VPS systems
+  supported without issues. Details for Virtuozzo/OpenVZ:
+  http://github.com/omega8cc/nginx-for-drupal/issues#issue/13
 
 ### DONE
 

@@ -555,8 +555,8 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ### in this example it is for Voxel servers
 ###
-perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
-postfix reload
+# perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
+# postfix reload
 ###
 ###
 
