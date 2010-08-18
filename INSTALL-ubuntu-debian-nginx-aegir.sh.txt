@@ -29,8 +29,9 @@ _MY_EMAIL="support@omega8.cc"
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
+### _AEGIR_VERSION="0.4-alpha11"
 ###
-_AEGIR_VERSION="0.4-alpha11"
+_AEGIR_VERSION="HEAD"
 
 
 ###----------------------------------------###
@@ -95,7 +96,8 @@ _MY_FRONT=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION="A11.A"
+_INSTALLER_VERSION=A11.B
+_NGINX_VERSION=0.8.49
 
 ###---### Avoid too many questions
 #
@@ -212,6 +214,8 @@ st_runner () {
 ###--------------------###
 msg "`date` INFO: We need to install wget first, please wait..."
 sleep 8
+apt-get update &> /dev/null
+apt-get clean &> /dev/null
 apt-get install wget &> /dev/null
 
 
@@ -286,6 +290,13 @@ fi
 	
 
 ###--------------------###
+if [ -e "/proc/bean_counters" ] ; then
+   _VMFAMILY="VZ"
+   _IFCONFIG="venet0:0"
+else
+   _VMFAMILY="XEN"
+   _IFCONFIG="eth0"
+fi
 if [ ! -z "$_MY_OWNIP" ] ; then
    _THISHTIP="$_MY_OWNIP"
    _THISHOST="$_MY_HOSTN"
@@ -309,7 +320,7 @@ if [ ! -z "$_MY_OWNIP" ] ; then
       _FQDNTEST="FALSE"
    fi
 else
-_THISHTIP=`ifconfig eth0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
 _FQDNPROB=`hostname -f 2> /dev/null`
 _FQDNTEST="FALSE"
 _THISHOST=`uname -n`
@@ -729,9 +740,9 @@ mrun "sleep 8"
 cd /var/opt; rm -f -r nginx*
 git clone git://github.com/masterzen/nginx-upload-progress-module.git &> /dev/null
 cd /var/opt
-wget -U iCab http://sysoev.ru/nginx/nginx-0.8.49.tar.gz &> /dev/null
-tar -xzf nginx-0.8.49.tar.gz
-cd /var/opt/nginx-0.8.49
+wget -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz &> /dev/null
+tar -xzf nginx-$_NGINX_VERSION.tar.gz
+cd /var/opt/nginx-$_NGINX_VERSION
 st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/" 2> /dev/null
 st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null

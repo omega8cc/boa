@@ -1,4 +1,15 @@
 
+### Thu, 2010-08-18 21:30 - Edition 0.4-HEAD-A11.B
+
+Added/Fixed: (upgrade from previous versions recommended)
+
+1. By defult Aegir 0.4-HEAD with Drush 3.3
+   is now installed.
+
+2. Introduced support for Virtuozzo/OpenVZ IP address
+   automatic discovery.
+
+
 ### Thu, 2010-08-12 22:15 - Edition 0.4-alpha11-A11.A
 
 Added/Fixed: (upgrade from previous versions recommended)
