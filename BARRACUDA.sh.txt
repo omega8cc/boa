@@ -628,8 +628,8 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ### in this example it is for Voxel servers
 ###
-perl -p -i -e "s/(smtp.cust.voxel.net)//g" /etc/postfix/main.cf
-perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
+# perl -p -i -e "s/(smtp.cust.voxel.net)//g" /etc/postfix/main.cf
+# perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
 postfix reload
 ###
 ###
@@ -909,6 +909,8 @@ fi
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update rc.d"
   mrun "sleep 8"
+  chown root:crontab /var/spool/cron/crontabs/root
+  chmod 600 /var/spool/cron/crontabs/root
   echo "UseDNS no" >> /etc/ssh/sshd_config
   #cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
@@ -1117,7 +1119,6 @@ msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 8"
 rm -f -r /var/opt/*
 rm -f -r /var/tmp/*
-chown root:crontab /var/spool/cron/crontabs/root
 msg "`date` BYE!"
 exit 0
 

@@ -1,4 +1,24 @@
 
+
+### Thu, 2010-08-26 19:30 - Edition 0.4-alpha12-A12.A
+
+Added/Fixed: (upgrade from previous versions recommended)
+
+1. Barracuda now includes multicore Apache Solr Search,
+   Redis and Memcache.
+
+2. Barracuda now can upgrade packages selectively.
+   Just run it again to upgrade the system and the main
+   Aegir instance.
+   
+3. Octopus can create many sub-instances on the same
+   server, each with different set of platforms, but
+   wit ability to share the code between instances,
+   so you can use this system even on the low end VPS.
+   
+
+
+
 ### Thu, 2010-08-26 08:55 - Edition 0.4-alpha12-A12.A
 
 Added/Fixed: (upgrade from previous versions recommended)
