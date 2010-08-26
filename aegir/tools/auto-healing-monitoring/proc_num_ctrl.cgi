@@ -14,9 +14,20 @@ $sumar = $sumar + $li_cnt{$USER};
 if ($USER eq "www-data") {$apachelives = "YES"; $wwwsumar = $li_cnt{$USER}}
 elsif ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
 }
+foreach $COMMAND (sort keys %li_cnt) {
+if ($COMMAND =~ /memcache/) {$memcachelives = "YES"; $memcachesumar = $li_cnt{$COMMAND};}
+if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
+if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
+}
 print "\n $sumar ALL procs\tGLOBAL";
+print "\n $tomcatsumar Tomcat procs\tGLOBAL";
+print "\n $memcachesumar Cache procs\tGLOBAL";
+print "\n $redissumar Redis procs\tGLOBAL";
 print "\n $mysqlsumar MySQL procs\tGLOBAL\n\n\n";
+`/var/xdrago/memcache.sh` if (!$memcachesumar || $memcachesumar < 8);
+`/etc/init.d/redis start` if (!$redissumar);
 `/var/xdrago/move_sql` if (!$mysqlsumar || $mysqlsumar > 150 || $mysqlsumar < 1);
+`/etc/init.d/tomcat start` if (!$tomcatsumar);
 $host=`hostname`;
 chomp($host);
 $thispid = $host . ".pid";

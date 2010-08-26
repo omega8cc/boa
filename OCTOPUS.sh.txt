@@ -39,8 +39,8 @@
 ### _DOMAIN=dragon.dev.omega8.cc
 ###
 _MY_EMAIL="noc@omega8.cc"
-_DOMAIN=dragon4.v246a.us.host8.biz
-_USER=dragon4
+_DOMAIN=dragon5.v246a.us.host8.biz
+_USER=dragon5
 
 
 ###----------------------------------------###
