@@ -19,6 +19,14 @@
 
 
 ###----------------------------------------###
+### HOW-TO: run it with bash, not with sh  ###
+###----------------------------------------###
+###
+### $ bash OCTOPUS.sh.txt
+###
+
+
+###----------------------------------------###
 ### EDITME                                 ###
 ###----------------------------------------###
 ###
@@ -28,8 +36,10 @@
 ### Define also your *new* Aegir user for this
 ### instance.
 ###
+### _DOMAIN=dragon.dev.omega8.cc
+###
 _MY_EMAIL="noc@omega8.cc"
-_DOMAIN=dragon.dev.omega8.cc
+_DOMAIN=dragon.v246a.us.host8.biz
 _USER=dragon
 
 

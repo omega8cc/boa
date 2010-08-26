@@ -35,7 +35,6 @@ msg () {
 # stop on error
 set -e
 
-
 ###---### Run Aegir upgrade
 _LASTNUM=001
 _DISTRO=001

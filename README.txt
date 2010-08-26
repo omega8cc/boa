@@ -4,6 +4,14 @@
 All-in-one scripts (see BARRACUDA.sh.txt and OCTOPUS.sh.txt)
 to install and/or upgrade Aegir Hosting System for Drupal.
 
+###--------------------------------------------------------------###
+### HOW-TO: run it with bash, not with sh                        ###
+###--------------------------------------------------------------###
+###
+### $ bash BARRACUDA.sh.txt
+### $ bash OCTOPUS.sh.txt
+###
+
 Barracuda will be still the main script for base system
 install and upgrades, including main Aegir instance,
 but no platforms will be added there to keep it compatible
