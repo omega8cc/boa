@@ -263,6 +263,7 @@ sleep 8
 #
 # Git clone all
 cd /var/tmp
+rm -f -r /var/tmp/nginx-for-drupal
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 #
 # Get apt helper
