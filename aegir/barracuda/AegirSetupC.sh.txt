@@ -48,7 +48,7 @@ _DOMAIN=EDIT_DOMAIN
 _DISTRO=EDIT_DISTRO
 _CORE="/data/all/$_DISTRO"
 if [ -d "$_CORE/o_contrib" ] ; then
-  _STATUS=UPGRADE
+  _STATUS=CLONE
   _ROOT="/data/disk/$_USER"
 else
   _STATUS=INIT
@@ -287,9 +287,9 @@ fi
 ###---### Acquia
 #
 echo " "
-if prompt_yes_no "Acquia Pressflow - do you want to proceed with the install?" ; then
+if prompt_yes_no "Acquia - do you want to proceed with the install?" ; then
 true
-msg "STATUS: Acquia Pressflow install in progress, please wait..."
+msg "STATUS: Acquia install in progress, please wait..."
 mrun "sleep 8"
 if [ $_STATUS = "INIT" ] ; then
   cd $_CORE
@@ -306,10 +306,10 @@ _CORE_DISTRO="$_CORE/acquia"
 mkdir -p $_ROOT/distro/$_DISTRO/acquia
 cd $_ROOT/distro/$_DISTRO/acquia
 create_symlinks
-msg "STATUS: Acquia Pressflow installation completed"
+msg "STATUS: Acquia installation completed"
 mrun "sleep 8"
 else
-  msg "STATUS: Acquia Pressflow installation skipped"
+  msg "STATUS: Acquia installation skipped"
   mrun "sleep 8"
 fi
 
@@ -317,9 +317,9 @@ fi
 ###---### Open Atrium
 #
 echo " "
-if prompt_yes_no "Open Atrium Pressflow - do you want to proceed with the install?" ; then
+if prompt_yes_no "Open Atrium - do you want to proceed with the install?" ; then
 true
-msg "STATUS: Open Atrium Pressflow install in progress, please wait..."
+msg "STATUS: Open Atrium install in progress, please wait..."
 mrun "sleep 8"
 if [ $_STATUS = "INIT" ] ; then
   cd $_CORE
@@ -338,10 +338,10 @@ create_symlinks
 if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
 fi
-msg "STATUS: Open Atrium Pressflow installation completed"
+msg "STATUS: Open Atrium installation completed"
 mrun "sleep 8"
 else
-  msg "STATUS: Open Atrium Pressflow installation skipped"
+  msg "STATUS: Open Atrium installation skipped"
   mrun "sleep 8"
 fi
 

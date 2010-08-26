@@ -150,6 +150,7 @@ SRCDIR=/var/tmp/files
 mkdir -p $SRCDIR
 chmod -R 777 /var/tmp
 cd /var/tmp
+rm -f -r /var/tmp/nginx-for-drupal
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 #
 # Get spinner
