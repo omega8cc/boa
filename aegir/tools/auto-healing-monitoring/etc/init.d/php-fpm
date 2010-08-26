@@ -1,19 +1,12 @@
 #! /bin/sh
 
-### BEGIN INIT INFO
-# Provides:          php-fpm
-# Required-Start:    $all
-# Required-Stop:     $all
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: starts php-fpm
-# Description:       starts the PHP FastCGI Process Manager daemon
-### END INIT INFO
-
-php_fpm_BIN=/usr/local/bin/php-fpm
+php_fpm_BIN=/usr/local/bin/php-cgi
 php_fpm_CONF=/opt/etc/php-fpm.conf
 php_fpm_PID=/var/run/php-fpm.pid
+
+
 php_opts="--fpm-config $php_fpm_CONF -c /opt/etc/php.ini"
+
 
 wait_for_pid () {
 	try=0
@@ -46,9 +39,9 @@ wait_for_pid () {
 
 case "$1" in
 	start)
-		echo -n "Starting php-fpm "
+		echo -n "Starting php_fpm "
 
-		$php_fpm_BIN $php_opts
+		$php_fpm_BIN --fpm $php_opts
 
 		if [ "$?" != 0 ] ; then
 			echo " failed"
@@ -66,27 +59,7 @@ case "$1" in
 	;;
 
 	stop)
-		echo -n "Gracefully shutting down php-fpm "
-
-		if [ ! -r $php_fpm_PID ] ; then
-			echo "warning, no pid file found - php-fpm is not running ?"
-			exit 1
-		fi
-
-		kill -QUIT `cat $php_fpm_PID`
-
-		wait_for_pid removed $php_fpm_PID
-
-		if [ -n "$try" ] ; then
-			echo " failed. Use force-exit"
-			exit 1
-		else
-			echo " done"
-		fi
-	;;
-
-	force-quit)
-		echo -n "Terminating php-fpm "
+		echo -n "Shutting down php_fpm "
 
 		if [ ! -r $php_fpm_PID ] ; then
 			echo "warning, no pid file found - php-fpm is not running ?"
@@ -94,6 +67,26 @@ case "$1" in
 		fi
 
 		kill -TERM `cat $php_fpm_PID`
+
+		wait_for_pid removed $php_fpm_PID
+
+		if [ -n "$try" ] ; then
+			echo " failed"
+			exit 1
+		else
+			echo " done"
+		fi
+	;;
+
+	quit)
+		echo -n "Gracefully shutting down php_fpm "
+
+		if [ ! -r $php_fpm_PID ] ; then
+			echo "warning, no pid file found - php-fpm is not running ?"
+			exit 1
+		fi
+
+		kill -QUIT `cat $php_fpm_PID`
 
 		wait_for_pid removed $php_fpm_PID
 
@@ -124,8 +117,22 @@ case "$1" in
 		echo " done"
 	;;
 
+	logrotate)
+
+		echo -n "Re-opening php-fpm log file "
+
+		if [ ! -r $php_fpm_PID ] ; then
+			echo "warning, no pid file found - php-fpm is not running ?"
+			exit 1
+		fi
+
+		kill -USR1 `cat $php_fpm_PID`
+
+		echo " done"
+	;;
+
 	*)
-		echo "Usage: $0 {start|stop|force-quit|restart|reload}"
+		echo "Usage: $0 {start|stop|quit|restart|reload|logrotate}"
 		exit 1
 	;;
 
