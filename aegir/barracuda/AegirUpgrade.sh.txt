@@ -34,10 +34,12 @@ msg () {
 #
 # stop on error
 #set -e
+export DEBIAN_FRONTEND=noninteractive
 
 ###---### Run Aegir upgrade
 _LASTNUM=001
 _DISTRO=001
+_DOMAIN=EDIT_DOMAIN
 _DRUSHCMD="php /var/aegir/drush/drush.php"
 _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
@@ -74,16 +76,14 @@ if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
 else
   msg "`date` UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
   mkdir -p $_ROOT/.drush
+  cd $_ROOT/.drush
   if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-    git clone git://git.aegirproject.org/provision $_ROOT/.drush/provision &> /dev/null
+    git clone git://git.aegirproject.org/provision &> /dev/null
   else
-    cd $_ROOT/.drush
     wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
     tar -xzf provision-$_AEGIR_VERSION.tgz
     rm provision-$_AEGIR_VERSION.tgz
-    if [ $_STATUS = "UPGRADE" ] ; then
-      $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
-    fi
+    $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
   fi
 fi
 cd $_ROOT/.drush

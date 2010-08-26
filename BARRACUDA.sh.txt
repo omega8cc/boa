@@ -676,6 +676,10 @@ mrun "sleep 8"
   else
     _PHP_INSTALL_REQUIRED=YES
   fi
+if [ -f "/usr/local/bin/php" ] ; then
+  msg "`date` INFO: Installed PHP version $_PHP_INSTALLED"
+  mrun "sleep 8"
+fi
 
 ###
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
@@ -1024,13 +1028,14 @@ mrun "sleep 8"
 else
   msg "`date` INFO: Run Aegir upgrade"
   mrun "sleep 8"
+  cd /var/aegir
+  cp /var/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
+  perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
+  su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
   cd /var/aegir/config/includes
   mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
   cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
   mv -f global.inc.aegir.txt global.inc
-  cd /var/aegir
-  cp /var/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
-  su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
   cd /var/aegir
   rm -f AegirUpgrade.sh.txt
 ###
