@@ -234,6 +234,7 @@ fi
 INITINS="/usr/bin/apt-get -y --force-yes install"
 INSTALL="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
 SRCDIR=/var/tmp/files
+rm -f -r /var/tmp/*
 mkdir -p $SRCDIR
 chmod -R 777 /var/tmp
 
@@ -575,11 +576,11 @@ fi
 msg "`date` INFO: Install/upgrade required libraries and tools"
 msg "`date` NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_THIS_OS" = "Debian" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config gnupg graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config gnupg graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config gnupg graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config gnupg graphicsmagick-imagemagick-compat htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
 else
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config gnupg graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config gnupg graphicsmagick-imagemagick-compat htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 fi
 install_with_apt () {
 	if ! runner "$INSTALL $DEBDEPS"; then
@@ -618,8 +619,9 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ### in this example it is for Voxel servers
 ###
-# perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
-# postfix reload
+perl -p -i -e "s/(smtp.cust.voxel.net)//g" /etc/postfix/main.cf
+perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
+postfix reload
 ###
 ###
 
@@ -629,14 +631,14 @@ msg "`date` INFO: Install/upgrade a few more tools, please wait..."
 mrun "sleep 8"
 cd /var
 if [ -d "/var/xdrago" ] ; then
-  mv -f /opt/etc/init.d /var/xdrago/log/init.d-pre-$_INSTALLER_VERSION
+  cp -af /opt/etc/init.d /var/xdrago/log/init.d-pre-$_INSTALLER_VERSION
   cp -af /var/spool/cron/crontabs/root /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION
   touch /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION
-  mv -f /var/xdrago /var/xdrago-pre-$_INSTALLER_VERSION
+  cp -af /var/xdrago /var/xdrago-pre-$_INSTALLER_VERSION
 fi
 if [ $_STATUS = "INIT" ] ; then
-  cp -af /var/tmp/nginx-for-drupal/aegir/tools/auto-healing-monitoring ./
-  mv auto-healing-monitoring xdrago
+  mkdir -p ./xdrago
+  cp -af /var/tmp/nginx-for-drupal/aegir/tools/auto-healing-monitoring/* ./xdrago/
   cp -af /var/xdrago/etc /opt/
   cp -af /opt/etc/init.d/* /etc/init.d/
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
@@ -854,25 +856,58 @@ fi
 
 
 ###--------------------###
-if [ ! -d "/var/www/chive" ] ; then
-  msg "`date` INFO: Installing Chive db manager, please wait..."
+if [ ! -f "/usr/local/bin/memcached" ] ; then
+  msg "`date` INFO: Installing Memcached, please wait..."
   mrun "sleep 8"
-  cd /var/www
-  wget -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz &> /dev/null
-  tar -xzf chive_0.3.0.tar.gz
-  rm -f chive_0.3.0.tar.gz
-  chown -R www-data:www-data /var/www/chive
-  _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/db.$_THIS_FRONT"
-  echo " " >> $_CHIVE_VHOST
-  echo "server {" >> $_CHIVE_VHOST
-  echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
-  echo "   listen       $_THISHTIP:80;" >> $_CHIVE_VHOST
-  echo "   server_name  db.$_THIS_FRONT;" >> $_CHIVE_VHOST
-  echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
-  echo "   index        index.php index.html;" >> $_CHIVE_VHOST
-  echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CHIVE_VHOST
-  echo "}" >> $_CHIVE_VHOST
-  echo " " >> $_CHIVE_VHOST
+  cd /var/opt
+  mv -f /opt/bin/memcached /opt/bin/memcached.bak.old
+  mv -f /usr/bin/memcached /usr/bin/memcached.bak.old
+  mv -f /usr/local/bin/memcached /usr/local/bin/memcached.bak.old
+  wget -U iCab wget http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz &> /dev/null
+  tar -xzf memcached-1.4.5.tar.gz
+  cd /var/opt/memcached-1.4.5
+  st_runner "sh ./configure" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  ln -s /usr/local/bin/memcached /usr/bin/memcached
+fi
+
+
+###--------------------###
+if [ ! -f "/usr/local/bin/memcached" ] ; then
+  msg "`date` INFO: Installing Memcached, please wait..."
+  mrun "sleep 8"
+  mkdir -p /opt/var/redis
+  chmod 777 /opt/var/redis
+  mkdir -p /opt/etc/redis
+  mkdir -p /var/log/redis
+  cd /var/opt
+  wget http://redis.googlecode.com/files/redis-1.2.6.tar.gz &> /dev/null
+  tar -xzf redis-1.2.6.tar.gz
+  cd redis-1.2.6
+  st_runner "make --quiet" 2> /dev/null
+  cp -f redis-server /opt/sbin/
+fi
+
+
+###--------------------###
+if [ ! -d "/opt/solr" ] ; then
+  msg "`date` INFO: Installing Apache Solr Tomcat, please wait..."
+  mrun "sleep 8"
+  cd /var/opt
+  rm -f -r apachesolr*
+  rm -f -r /opt/solr
+  rm -f -r /opt/tomcat6
+  wget http://omega8.cc/dev/apachesolr.tar.gz
+  tar -xzf apachesolr.tar.gz
+  cd apachesolr
+  mv tomcat /etc/init.d/
+  mv solr /opt/
+  mv tomcat6 /opt/
+  echo "ENABLED=1" > /etc/default/tomcat
+  perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
+  runner "update-rc.d tomcat defaults" &> /dev/null
+  runner "invoke-rc.d tomcat start" 2> /dev/null
 fi
 
 
@@ -1012,6 +1047,29 @@ else
 ###
 fi ### end of if [ $_STATUS = "INIT" ] ; then
 ###
+
+
+###--------------------###
+if [ ! -d "/var/www/chive" ] ; then
+  msg "`date` INFO: Installing Chive db manager, please wait..."
+  mrun "sleep 8"
+  cd /var/www
+  wget -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz &> /dev/null
+  tar -xzf chive_0.3.0.tar.gz
+  rm -f chive_0.3.0.tar.gz
+  chown -R www-data:www-data /var/www/chive
+  _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/db.$_THIS_FRONT"
+  echo " " >> $_CHIVE_VHOST
+  echo "server {" >> $_CHIVE_VHOST
+  echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
+  echo "   listen       $_THISHTIP:80;" >> $_CHIVE_VHOST
+  echo "   server_name  db.$_THIS_FRONT;" >> $_CHIVE_VHOST
+  echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
+  echo "   index        index.php index.html;" >> $_CHIVE_VHOST
+  echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CHIVE_VHOST
+  echo "}" >> $_CHIVE_VHOST
+  echo " " >> $_CHIVE_VHOST
+fi
 
 
 ###--------------------###
