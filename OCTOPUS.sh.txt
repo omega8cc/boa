@@ -39,8 +39,8 @@
 ### _DOMAIN=dragon.dev.omega8.cc
 ###
 _MY_EMAIL="noc@omega8.cc"
-_DOMAIN=dragon6.v246a.us.host8.biz
-_USER=dragon6
+_DOMAIN=dragon8.v246a.us.host8.biz
+_USER=dragon8
 
 
 ###----------------------------------------###
@@ -146,6 +146,7 @@ rm -f -r /var/tmp/nginx-for-drupal
 
 ###---### init
 #
+rm -f /tmp/testecho*
 SRCDIR=/var/tmp/files
 mkdir -p $SRCDIR
 chmod -R 777 /var/tmp
@@ -231,6 +232,12 @@ else
   echo "Installation/upgrade aborted by you."
   exit 1
 fi
+
+  echo $_MY_EMAIL > /tmp/.email.txt
+  perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
+  _MY_EMAIL=`cat /tmp/.email.txt`
+  _MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
+  rm -f /tmp/.email.txt
 
 action
 

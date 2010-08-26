@@ -266,9 +266,9 @@ fi
 msg "`date` $_STATUS B: Simple check if Aegir install is successful"
 mrun "sleep 8"
 if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "`date` $_STATUS INFO: Aegir upgrade test OK"
+  msg "`date` $_STATUS INFO: Aegir setup test OK"
 else
-  msg "`date` $_STATUS FATAL ERROR: Something is wrong, Aegir not upgraded - exit now"
+  msg "`date` $_STATUS FATAL ERROR: Something is wrong, Aegir not ready - exit now"
   exit 1
 fi
 

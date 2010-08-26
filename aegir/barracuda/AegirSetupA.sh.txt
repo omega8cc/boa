@@ -217,6 +217,7 @@ msg "`date` $_STATUS A: Run standard pre-installer completed"
 #
 msg "`date` $_STATUS A: Switch user and run AegirSetupB"
 mrun "sleep 8"
+rm -f /tmp/testecho*
 invoke-rc.d cron stop &> /dev/null
 su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
 
@@ -272,6 +273,7 @@ chmod 0700 $_ROOT/backups
 #
 msg "`date` $_STATUS A: Switch user and run Distros build"
 mrun "sleep 8"
+rm -f /tmp/testecho*
 su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
 
 
