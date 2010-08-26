@@ -161,6 +161,7 @@ chown $_USER:$_USRG /data/all
 chown -R $_USER:$_USRG /data/src
 chown -R $_USER:$_USRG /data/conf
 chown -R $_USER:$_USRG /var/tmp
+chown $_USER:$_USRG /tmp
 
 
 ###---### Prepare scripts
@@ -313,6 +314,7 @@ chown -R root:root /data/src
 chown -R root:root /data/conf
 chown -R root:root $_CORE
 chown root:root /var/tmp
+chown root:root /tmp
 msg "`date` BYE!"
 
 

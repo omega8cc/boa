@@ -237,7 +237,7 @@ if [ $_STATUS = "INIT" ] ; then
     AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
     AEGIR_HOST=`hostname -f`
 	msg "`date` B: Deploying hostmaster application init"
-	$_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION
+	$_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION 2> /dev/null
 	mrun "sleep 8"
 	cd $_AEGIR_ROOT
 	mkdir -p sites/$_DOMAIN/files/tmp
