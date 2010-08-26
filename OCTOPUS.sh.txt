@@ -113,7 +113,7 @@ prompt_yes_no () {
 }
 #
 # stop on error
-set -e
+# set -e
 #
 ###---### action
 #

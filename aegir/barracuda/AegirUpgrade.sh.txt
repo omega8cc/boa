@@ -33,7 +33,7 @@ msg () {
 }
 #
 # stop on error
-set -e
+#set -e
 
 ###---### Run Aegir upgrade
 _LASTNUM=001

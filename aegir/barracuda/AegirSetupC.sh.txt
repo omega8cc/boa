@@ -120,7 +120,7 @@ mrun () {
 }
 #
 # stop on error
-set -e
+# set -e
 #
 SRCDIR=/var/tmp/files
 LOG=/var/tmp/aegir-install.log
