@@ -101,6 +101,11 @@ mrun () {
 # stop on error
 set -e
 #
+SRCDIR=/var/tmp/files
+rm -f -r /var/tmp/*
+mkdir -p $SRCDIR
+chmod -R 777 /var/tmp
+#
 # Create tmp stuff
 LOG=/var/tmp/aegir-install.log
 SILENT=/var/tmp/silent.log

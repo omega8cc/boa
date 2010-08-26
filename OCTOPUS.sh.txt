@@ -112,8 +112,24 @@ prompt_yes_no () {
  done 
 }
 #
-# Stop on error
-set -e ### disable this for debugging
+# stop on error
+set -e
+#
+SRCDIR=/var/tmp/files
+rm -f -r /var/tmp/*
+mkdir -p $SRCDIR
+chmod -R 777 /var/tmp
+#
+# Create tmp stuff
+LOG=/var/tmp/aegir-install.log
+SILENT=/var/tmp/silent.log
+cd $SRCDIR
+#
+# Get spinner
+rm -f spinner*
+cp -af /var/tmp/nginx-for-drupal/aegir/helpers/spinner ./
+chmod +x spinner
+#
 #
 ###---### action
 #
