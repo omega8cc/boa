@@ -61,18 +61,18 @@ wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/n
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
-  msg "`date` INFO: Drush seems to be functionning properly"
+  msg "`date` UPGRADE INFO: Drush seems to be functionning properly"
 else
-  msg "`date` INFO: Drush is broken ($DRUSH help failed)"
+  msg "`date` UPGRADE INFO: Drush is broken ($DRUSH help failed)"
   exit 1
 fi
 mv $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
 mv $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
 mv $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
 if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
-  msg "`date` INFO: Provision already seems to be installed"
+  msg "`date` UPGRADE INFO: Provision already seems to be installed"
 else
-  msg "`date` INFO: Installing provision backend in $_ROOT/.drush"
+  msg "`date` UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
   mkdir -p $_ROOT/.drush
   if [ "$_AEGIR_VERSION" = "HEAD" ]; then
     git clone git://git.aegirproject.org/provision $_ROOT/.drush/provision &> /dev/null
@@ -89,7 +89,7 @@ fi
 cd $_ROOT/.drush
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
 cd $_PREV_AEGIR_ROOT
-$_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+$_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT &> /dev/null
 
 
 ###----------------------------------------###
