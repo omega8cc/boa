@@ -151,15 +151,9 @@ mkdir -p $SRCDIR
 chmod -R 777 /var/tmp
 cd /var/tmp
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
-cd $SRCDIR
-rm -f spinner*
-cp -af /var/tmp/nginx-for-drupal/aegir/helpers/spinner ./
-chmod +x spinner
-#
-
-
 #
 # Get spinner
+cd $SRCDIR
 rm -f spinner*
 cp -af /var/tmp/nginx-for-drupal/aegir/helpers/spinner ./
 chmod +x spinner
@@ -167,12 +161,6 @@ chmod +x spinner
 # Create tmp stuff
 LOG=/var/tmp/aegir-install.log
 SILENT=/var/tmp/silent.log
-#
-# Get spinner
-cd /var/tmp
-rm -f spinner*
-cp -af /var/tmp/nginx-for-drupal/aegir/helpers/spinner ./
-chmod +x spinner
 #
 #
 _LASTNUM=001

@@ -124,9 +124,9 @@ mrun () {
 # stop on error
 # set -e
 #
-msg "`date` C: Aegir automated install script part B"
+msg "`date` $_STATUS C: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
-  msg "`date` C: This script should be ran as a non-root user - exit now"
+  msg "`date` $_STATUS C: This script should be ran as a non-root user - exit now"
   exit 1
 fi
 #
@@ -180,7 +180,7 @@ create_symlinks () {
 
 ###---### Create directories
 #
-msg "`date` C: Create directories"
+msg "`date` $_STATUS C: Create directories"
 mrun "sleep 8"
 mkdir -p $_ROOT/distro/$_DISTRO
 chmod 0711 $_ROOT/distro
@@ -190,7 +190,7 @@ chmod 0711 $_ROOT/distro/$_DISTRO
 ###---### Prepare Pressflow core
 #
 if [ $_STATUS = "INIT" ] ; then
-msg "`date` C: Prepare Pressflow core"
+msg "`date` $_STATUS C: Prepare Pressflow core"
 mrun "sleep 8"
 mkdir -p /data/src/$_DISTRO
 chmod 0700 /data/src/$_DISTRO
@@ -668,7 +668,7 @@ fi
 
 ###---### remove some module and themes for all
 #
-msg "`date` C: remove some default themes for all"
+msg "`date` $_STATUS C: remove some default themes for all"
 mrun "sleep 8"
 rm -f -r $_CORE/*/themes/bluemarine
 rm -f -r $_CORE/*/themes/chameleon
@@ -682,7 +682,7 @@ rm -f $_CORE/*.tar.gz
 
 ###---### save & verify platforms
 #
-msg "`date` C: Save & Verify Platforms"
+msg "`date` $_STATUS C: Save & Verify Platforms"
 mrun "sleep 8"
 ## Palettes full names
 _F_ACQUIA="Acquia 6.19-svn P.$_DISTRO"
@@ -747,7 +747,7 @@ rm -f make_platform.php
 
 ####---### Done
 #
-msg "`date` C: All done!"
+msg "`date` $_STATUS C: All done!"
 
 
 ###----------------------------------------###
