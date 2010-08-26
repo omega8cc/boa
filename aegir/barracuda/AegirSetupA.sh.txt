@@ -95,7 +95,7 @@ mrun () {
 }
 #
 # stop on error
-set -e
+# set -e
 #
 SRCDIR=/var/tmp/files
 LOG=/var/tmp/aegir-install.log
@@ -108,7 +108,7 @@ msg "`date` A: Aegir automated install script part A"
 ###---### Stop the cron and wait 60 seconds
 #
 msg "`date` A: Stop the cron and wait 8 seconds.."
-runner "invoke-rc.d cron stop" 2> /dev/null
+runner "invoke-rc.d cron stop" &> /dev/null
 mrun "sleep 8"
 
 
