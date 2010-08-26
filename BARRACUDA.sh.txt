@@ -1117,6 +1117,7 @@ msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 8"
 rm -f -r /var/opt/*
 rm -f -r /var/tmp/*
+chown root:crontab /var/spool/cron/crontabs/root
 msg "`date` BYE!"
 exit 0
 
