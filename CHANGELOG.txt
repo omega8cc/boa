@@ -16,7 +16,8 @@ Added/Fixed: (upgrade from previous versions recommended)
    wit ability to share the code between instances,
    so you can use this system even on the low end VPS.
    
-
+4. Chive database manager added by default with db.
+   subdomain (may require dns entry or wildcard).
 
 
 ### Thu, 2010-08-26 08:55 - Edition 0.4-alpha12-A12.A
