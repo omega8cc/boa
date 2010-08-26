@@ -55,6 +55,8 @@ else
   _ROOT="/data/disk/$_USER"
 fi
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_DISTRO"
+SRCDIR=/var/tmp/files
+LOG=/var/tmp/aegir-install.log
 
 
 ###---### Functions
@@ -121,9 +123,6 @@ mrun () {
 #
 # stop on error
 # set -e
-#
-SRCDIR=/var/tmp/files
-LOG=/var/tmp/aegir-install.log
 #
 msg "`date` C: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
