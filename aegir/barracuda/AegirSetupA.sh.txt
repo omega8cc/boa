@@ -290,6 +290,8 @@ if [ $_STATUS = "INIT" ] ; then
  msg "`date` $_STATUS A: Add cron task"
  mrun "sleep 8"
  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
+ rm -f /var/spool/cron/crontabs/$_USER
+ invoke-rc.d cron restart &> /dev/null
 fi
 
 
