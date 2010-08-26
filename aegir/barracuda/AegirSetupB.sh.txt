@@ -115,16 +115,16 @@ mrun "sleep 8"
 if [ -f "$_ROOT/aegir.sh" ] ; then
 _STATUS=UPGRADE
 cd $_ROOT
-msg "`date` $_STATUS B: _STATUS is $_STATUS"
-if [ -d "$_PREV_AEGIR_ROOT" ] ; then
-  msg "`date` $_STATUS B: aegir backup now.."
-  mrun "sleep 8"
-  cd $_PREV_AEGIR_ROOT
-  $_DRUSHCMD --root=$_PREV_AEGIR_ROOT provision-backup $_DOMAIN -d
-  msg "`date` $_STATUS B: aegir backup completed"
-fi
-else
-msg "`date` $_STATUS B: _STATUS is $_STATUS"
+# msg "`date` $_STATUS B: _STATUS is $_STATUS"
+# if [ -d "$_PREV_AEGIR_ROOT" ] ; then
+#   msg "`date` $_STATUS B: aegir backup now.."
+#   mrun "sleep 8"
+#   cd $_PREV_AEGIR_ROOT
+#   $_DRUSHCMD --root=$_PREV_AEGIR_ROOT provision-backup $_DOMAIN -d
+#   msg "`date` $_STATUS B: aegir backup completed"
+# fi
+# else
+# msg "`date` $_STATUS B: _STATUS is $_STATUS"
 fi
 
 

@@ -160,21 +160,21 @@ create_dirs () {
 #
 # create standard symlinks
 create_symlinks () {
-  ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php
-  ln -s $_CORE_DISTRO/cron.php cron.php
-  ln -s $_CORE_DISTRO/.htaccess .htaccess
-  ln -s $_CORE_DISTRO/includes includes
-  ln -s $_CORE_DISTRO/index.php index.php
-  ln -s $_CORE_DISTRO/install.php install.php
-  ln -s $_CORE_DISTRO/misc misc
-  ln -s $_CORE_DISTRO/modules modules
-  ln -s $_CORE_DISTRO/profiles profiles
-  ln -s $_CORE_DISTRO/robots.txt robots.txt
-  ln -s $_CORE_DISTRO/themes themes
-  ln -s $_CORE_DISTRO/update.php update.php
-  ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php
-  cp -af $_CORE_DISTRO/cache ./
-  cp -af $_CORE_DISTRO/sites ./
+  ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
+  ln -s $_CORE_DISTRO/cron.php cron.php &> /dev/null
+  ln -s $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
+  ln -s $_CORE_DISTRO/includes includes &> /dev/null
+  ln -s $_CORE_DISTRO/index.php index.php &> /dev/null
+  ln -s $_CORE_DISTRO/install.php install.php &> /dev/null
+  ln -s $_CORE_DISTRO/misc misc &> /dev/null
+  ln -s $_CORE_DISTRO/modules modules &> /dev/null
+  ln -s $_CORE_DISTRO/profiles profiles &> /dev/null
+  ln -s $_CORE_DISTRO/robots.txt robots.txt &> /dev/null
+  ln -s $_CORE_DISTRO/themes themes &> /dev/null
+  ln -s $_CORE_DISTRO/update.php update.php &> /dev/null
+  ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
+  cp -af $_CORE_DISTRO/cache ./ &> /dev/null
+  cp -af $_CORE_DISTRO/sites ./ &> /dev/null
 }
 
 
