@@ -27,7 +27,7 @@ good results and who knows, maybe we will introduce it again.
 With multi-install system you have to remember that all of them
 will use the same Nginx server, so you could break the system
 trying to install site with the same domain on two or more instances.
-The instances will not be aware about other running instances,
+The instances will not be aware of other running instances,
 so it is your responsibility to use such system wisely.
 
 
@@ -56,6 +56,8 @@ so it is your responsibility to use such system wisely.
 ### MAINTAINERS
 
 * Grace - http://omega8.cc
+* Albert - http://omega8.cc
+* Matt - http://omega8.cc
 
 
 ### CREDITS
