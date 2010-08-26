@@ -190,7 +190,7 @@ chmod 0711 $_ROOT/distro/$_DISTRO
 ###---### Prepare Pressflow core
 #
 if [ $_STATUS = "INIT" ] ; then
-msg "`date` $_STATUS C: Prepare Pressflow core"
+msg "`date` $_STATUS C: Preparing Pressflow core, please wait.."
 mrun "sleep 8"
 mkdir -p /data/src/$_DISTRO
 chmod 0700 /data/src/$_DISTRO
@@ -258,7 +258,7 @@ fi
 ###---### Drupal 5 Pressflow
 #
 echo " "
-if prompt_yes_no "Drupal 5 - do you want to proceed with the install?" ; then
+if prompt_yes_no "Drupal 5 - do you want to include this distro?" ; then
 true
 msg "STATUS: Drupal 5 install in progress, please wait..."
 mrun "sleep 8"
@@ -287,7 +287,7 @@ fi
 ###---### Acquia
 #
 echo " "
-if prompt_yes_no "Acquia - do you want to proceed with the install?" ; then
+if prompt_yes_no "Acquia - do you want to include this distro?" ; then
 true
 msg "STATUS: Acquia install in progress, please wait..."
 mrun "sleep 8"
@@ -317,7 +317,7 @@ fi
 ###---### Open Atrium
 #
 echo " "
-if prompt_yes_no "Open Atrium - do you want to proceed with the install?" ; then
+if prompt_yes_no "Open Atrium - do you want to include this distro?" ; then
 true
 msg "STATUS: Open Atrium install in progress, please wait..."
 mrun "sleep 8"
@@ -349,7 +349,7 @@ fi
 ###---### Open Atrium Make
 #
 echo " "
-if prompt_yes_no "Open Atrium live head version - do you want to proceed with the install?" ; then
+if prompt_yes_no "Open Atrium live head version - do you want to include this distro?" ; then
 true
 msg "STATUS: Open Atrium live head version install in progress, please wait..."
 mrun "sleep 8"
@@ -386,7 +386,7 @@ fi
 ###---### Prosepoint
 #
 echo " "
-if prompt_yes_no "Prosepoint - do you want to proceed with the install?" ; then
+if prompt_yes_no "Prosepoint - do you want to include this distro?" ; then
 true
 msg "STATUS: Prosepoint install in progress, please wait..."
 mrun "sleep 8"
@@ -415,7 +415,7 @@ fi
 ###---### Pressflow
 #
 echo " "
-if prompt_yes_no "Drupal 6 Pressflow - do you want to proceed with the install?" ; then
+if prompt_yes_no "Drupal 6 Pressflow - do you want to include this distro?" ; then
 true
 msg "STATUS: Drupal 6 Pressflow install in progress, please wait..."
 mrun "sleep 8"
@@ -442,7 +442,7 @@ fi
 ###---### Ubercart
 #
 echo " "
-if prompt_yes_no "Ubercart - do you want to proceed with the install?" ; then
+if prompt_yes_no "Ubercart - do you want to include this distro?" ; then
 true
 msg "STATUS: Ubercart install in progress, please wait..."
 mrun "sleep 8"
@@ -471,7 +471,7 @@ fi
 ###---### OpenPublish
 #
 echo " "
-if prompt_yes_no "Open Publish - do you want to proceed with the install?" ; then
+if prompt_yes_no "Open Publish - do you want to include this distro?" ; then
 true
 msg "STATUS: Open Publish install in progress, please wait..."
 mrun "sleep 8"
@@ -503,7 +503,7 @@ fi
 ###---### ManagingNews
 #
 echo " "
-if prompt_yes_no "Managing News - do you want to proceed with the install?" ; then
+if prompt_yes_no "Managing News - do you want to include this distro?" ; then
 true
 msg "STATUS: Managing News install in progress, please wait..."
 mrun "sleep 8"
@@ -533,7 +533,7 @@ fi
 ###---### Managing News Make
 #
 echo " "
-if prompt_yes_no "Managing News live head version - do you want to proceed with the install?" ; then
+if prompt_yes_no "Managing News live head version - do you want to include this distro?" ; then
 true
 msg "STATUS: Managing News live head version install in progress, please wait..."
 mrun "sleep 8"
@@ -568,7 +568,7 @@ fi
 ###---### Feature Server Make
 #
 echo " "
-if prompt_yes_no "Feature Server - do you want to proceed with the install?" ; then
+if prompt_yes_no "Feature Server - do you want to include this distro?" ; then
 true
 msg "STATUS: Feature Server install in progress, please wait..."
 mrun "sleep 8"
@@ -605,7 +605,7 @@ fi
 ###---### Drupal Commons
 #
 echo " "
-if prompt_yes_no "Drupal Commons - do you want to proceed with the install?" ; then
+if prompt_yes_no "Drupal Commons - do you want to include this distro?" ; then
 true
 msg "STATUS: Drupal Commons install in progress, please wait..."
 mrun "sleep 8"
@@ -639,7 +639,7 @@ fi
 ###---### Drupal 7
 #
 echo " "
-if prompt_yes_no "Drupal 7 - do you want to proceed with the install?" ; then
+if prompt_yes_no "Drupal 7 - do you want to include this distro?" ; then
 true
 msg "STATUS: Drupal 7 install in progress, please wait..."
 mrun "sleep 8"
