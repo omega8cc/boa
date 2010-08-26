@@ -146,8 +146,8 @@ chmod 0711 /data/conf
 if [ ! -d "$_ROOT" ] ; then
   msg "`date` A: Add user"
   mrun "sleep 8"
-  adduser --system --home $_ROOT --ingroup $_USRG $_USER
-  adduser $_USER $_WEBG
+  adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
+  adduser $_USER $_WEBG &> /dev/null
 fi
 if [ ! -d "$_CORE" ] ; then
   mkdir -p $_CORE
@@ -160,6 +160,7 @@ chown -R $_USER:$_USRG $_CORE
 chown $_USER:$_USRG /data/all
 chown -R $_USER:$_USRG /data/src
 chown -R $_USER:$_USRG /data/conf
+chown -R $_USER:$_USRG /var/tmp
 
 
 ###---### Prepare scripts
@@ -270,10 +271,6 @@ chmod 0700 $_ROOT/backups
 msg "`date` A: Switch user and run Distros build"
 mrun "sleep 8"
 su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
-chown root:root /data/all
-chown -R root:root /data/src
-chown -R root:root /data/conf
-chown -R root:root $_CORE
 
 
 ###---### Clean up old and install files
@@ -311,6 +308,11 @@ msg "`date` A: Start the cron now"
 runner "invoke-rc.d cron start" 2> /dev/null
 msg "`date` STATUS: All done!"
 mrun "sleep 8"
+chown root:root /data/all
+chown -R root:root /data/src
+chown -R root:root /data/conf
+chown -R root:root $_CORE
+chown root:root /var/tmp
 msg "`date` BYE!"
 
 
