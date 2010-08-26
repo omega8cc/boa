@@ -1,0 +1,11 @@
+#!/bin/bash
+
+/etc/init.d/mysql stop
+sleep 5
+killall -9 mysqld
+killall -9 mysqladmin
+killall -9 mysqld_safe
+rm -f /var/run/mysqld/*
+touch /var/xdrago/log/move_sql.done
+/etc/init.d/mysql start
+		  

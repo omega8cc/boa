@@ -1,0 +1,701 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This script is free software licensed
+###  under the GNU GPLv3. No warranty is
+###  provided and the authors claims no
+###  responsibility for any disasters caused
+###  during the execution of this script.
+###
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+_INSTALLER_VERSION=A12.A
+
+
+###---### distro config
+#
+_DRUPAL5=EDIT_DRUPAL5
+_DRUPAL7=EDIT_DRUPAL7
+_PROSEPOINT=EDIT_PROSEPOINT
+_UBERCART=EDIT_UBERCART
+_OPENPUBLISH=EDIT_OPENPUBLISH
+_MANAGINGNEWS=EDIT_MANAGINGNEWS
+_OPENATRIUM=EDIT_OPENATRIUM
+_COMMONS=EDIT_COMMONS
+
+
+###---### main config
+#
+_WEBG=EDIT_WEBG
+_LASTNUM=EDIT_LASTNUM
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
+_USER=EDIT_USER
+_DOMAIN=EDIT_DOMAIN
+_DISTRO=EDIT_DISTRO
+_CORE="/data/all/$_DISTRO"
+if [ -d "$_CORE/o_contrib" ] ; then
+  _STATUS=UPGRADE
+  _ROOT="/data/disk/$_USER"
+else
+  _STATUS=INIT
+  _ROOT="/data/disk/$_USER"
+fi
+_AEGIR_ROOT="$_ROOT/aegir/distro/$_DISTRO"
+
+
+###---### Functions
+#
+# noticeable messages
+msg () {
+  echo "==> $*"
+}
+#
+# stop on error
+set -e
+msg "`date` C: Aegir automated install script part B"
+if [ `whoami` = "root" ] ; then
+  msg "`date` C: This script should be ran as a non-root user - exit now"
+  exit 1
+fi
+#
+# create standard directories
+create_dirs () {
+  cp -af /var/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
+  mkdir -p ./sites/default/files
+  mkdir -p ./cache/perm
+  mkdir -p ./cache/normal
+  chmod 777 -R ./cache
+  if [ -f "./sites/default/default.settings.php" ] ; then
+    cp -f ./sites/default/default.settings.php ./sites/default/settings.php
+  fi
+  chmod a+rw ./sites/default/settings.php
+  chmod a+rwx ./sites/default/files
+  mkdir -p ./sites/all/modules
+  mkdir -p ./sites/all/libraries
+  mkdir -p ./sites/all/themes
+  echo empty > ./sites/all/modules/EMPTY.txt
+  echo empty > ./sites/all/libraries/EMPTY.txt
+  echo empty > ./sites/all/themes/EMPTY.txt
+  chmod 0751 ./sites
+  chmod 0751 ./sites/all
+  chmod 02775 ./sites/all/modules
+  chmod 02775 ./sites/all/libraries
+  chmod 02775 ./sites/all/themes
+  rm -f .htaccess
+  wget -U iCab http://omega8.cc/get.htaccess.txt &> /dev/null
+  mv get.htaccess.txt .htaccess
+}
+#
+# create standard symlinks
+create_symlinks () {
+  ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php
+  ln -s $_CORE_DISTRO/cron.php cron.php
+  ln -s $_CORE_DISTRO/.htaccess .htaccess
+  ln -s $_CORE_DISTRO/includes includes
+  ln -s $_CORE_DISTRO/index.php index.php
+  ln -s $_CORE_DISTRO/install.php install.php
+  ln -s $_CORE_DISTRO/misc misc
+  ln -s $_CORE_DISTRO/modules modules
+  ln -s $_CORE_DISTRO/profiles profiles
+  ln -s $_CORE_DISTRO/robots.txt robots.txt
+  ln -s $_CORE_DISTRO/themes themes
+  ln -s $_CORE_DISTRO/update.php update.php
+  ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php
+  cp -af $_CORE_DISTRO/cache ./
+  cp -af $_CORE_DISTRO/sites ./
+}
+
+
+###---### Create directories
+#
+msg "`date` C: Create directories"
+mrun "sleep 8"
+mkdir -p $_ROOT/distro/$_DISTRO
+chmod 0711 $_ROOT/distro
+chmod 0711 $_ROOT/distro/$_DISTRO
+
+
+###---### Prepare Pressflow core
+#
+if [ $_STATUS = "INIT" ] ; then
+msg "`date` C: Prepare Pressflow core"
+mrun "sleep 8"
+mkdir -p /data/src/$_DISTRO
+chmod 0700 /data/src/$_DISTRO
+cd /data/src/$_DISTRO
+rm -f -r /data/src/$_DISTRO/pressflow-6
+bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
+cd /data/src/$_DISTRO/pressflow-6/
+rm -f /data/src/$_DISTRO/pressflow-6/*.txt
+cp -af /var/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
+wget -U iCab http://omega8.cc/boost_stats.php.txt &> /dev/null
+mv boost_stats.php.txt boost_stats.php
+if [ ! -d "$_CORE/o_contrib" ] ; then
+  mkdir -p $_CORE/o_contrib
+  cd $_CORE/o_contrib
+  wget -U iCab http://omega8.cc/dev/cache.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.0.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/bakery-6.x-1.x-dev.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz &> /dev/null
+  tar -xzf cache.tar.gz
+  tar -xzf boost-6.x-1.x-dev.tar.gz
+  tar -xzf dbtuner-6.x-1.x-dev.tar.gz
+  tar -xzf views_content_cache-6.x-2.x-dev.tar.gz
+  tar -xzf module_supports-6.x-1.0.tar.gz
+  tar -xzf filefield_nginx_progress-6.x-1.0.tar.gz
+  tar -xzf securesite-6.x-2.4.tar.gz
+  tar -xzf bakery-6.x-1.x-dev.tar.gz
+  tar -xzf image-6.x-1.x-dev.tar.gz
+  tar -xzf backup_migrate-6.x-2.x-dev.tar.gz
+  rm -f *.tar.gz
+ #wget -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz &> /dev/null
+ #wget -U iCab http://ftp.drupal.org/files/projects/authcache-6.x-1.0-rc2.tar.gz &> /dev/null
+ #wget -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz &> /dev/null
+fi
+if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
+  mkdir -p $_CORE/o_contrib_atrium
+  cd $_CORE/o_contrib_atrium
+  git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha12.tar.gz &> /dev/null
+  wget -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta4.tar.gz &> /dev/null
+  wget http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz &> /dev/null
+  mv atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz
+  tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz
+  rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
+  wget -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz &> /dev/null
+  tar -xzf apachesolr-6.x-1.0.tar.gz
+  rm -f apachesolr-6.x-1.0.tar.gz
+  cd apachesolr
+  svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient &> /dev/null
+  cd $_CORE/o_contrib_atrium
+  rm -f *.tar.gz
+fi
+cd /data/src/$_DISTRO/pressflow-6/
+ln -s $_CORE/o_contrib modules/o_contrib
+cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
+rm -f -r $_CORE/o_contrib/image
+fi
+
+
+###---### Drupal 5 Pressflow
+#
+echo " "
+if prompt_yes_no "Drupal 5 - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Drupal 5 install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget -U iCab http://launchpad.net/pressflow/5.x/$_DRUPAL5/+download/pressflow-$_DRUPAL5.tar.gz &> /dev/null
+  tar -xzf pressflow-$_DRUPAL5.tar.gz
+  rm -f pressflow-$_DRUPAL5.tar.gz
+  cd $_CORE/pressflow-$_DRUPAL5
+  rm -f $_CORE/pressflow-$_DRUPAL5/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/pressflow-$_DRUPAL5"
+mkdir -p $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
+cd $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
+create_symlinks
+rm -f boost_stats.php
+msg "STATUS: Drupal 5 installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Drupal 5 installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### Acquia
+#
+echo " "
+if prompt_yes_no "Acquia Pressflow - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Acquia Pressflow install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  mkdir -p $_CORE/acquia
+  cd $_CORE/acquia
+  svn co https://svn.acquia.com/drupal/branches/1.x-6.x . &> /dev/null
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/acquia/
+  cd $_CORE/acquia
+  #find . -name .svn -exec rm -rf {} \; &> /dev/null
+  rm -f $_CORE/acquia/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/acquia"
+mkdir -p $_ROOT/distro/$_DISTRO/acquia
+cd $_ROOT/distro/$_DISTRO/acquia
+create_symlinks
+msg "STATUS: Acquia Pressflow installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Acquia Pressflow installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### Open Atrium
+#
+echo " "
+if prompt_yes_no "Open Atrium Pressflow - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Open Atrium Pressflow install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip &> /dev/null
+  unzip atrium-$_OPENATRIUM.zip &> /dev/null
+  rm -f atrium-$_OPENATRIUM.zip
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/
+  cd $_CORE/atrium-$_OPENATRIUM
+  rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
+mkdir -p $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM
+cd $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM
+create_symlinks
+if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
+  ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
+fi
+msg "STATUS: Open Atrium Pressflow installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Open Atrium Pressflow installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### Open Atrium Make
+#
+echo " "
+if prompt_yes_no "Open Atrium live head version - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Open Atrium live head version install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  echo "core = \"6.x\"" > atrium_stub.make
+  echo "projects[] = \"drupal\"" >> atrium_stub.make
+  echo "projects[openatrium][type] = \"profile\"" >> atrium_stub.make
+  echo "projects[openatrium][download][type] = \"cvs\"" >> atrium_stub.make
+  echo "projects[openatrium][download][module] = \"contributions/profiles/openatrium\"" >> atrium_stub.make
+  echo "projects[openatrium][download][revision] = \"HEAD\"" >> atrium_stub.make
+  $_ROOT/tools/drush/drush make atrium_stub.make openatrium &> /dev/null
+  rm -f atrium_stub.make
+  cd $_CORE/openatrium
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/openatrium/
+  rm -f $_CORE/openatrium/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/openatrium"
+mkdir -p $_ROOT/distro/$_DISTRO/openatrium
+cd $_ROOT/distro/$_DISTRO/openatrium
+create_symlinks
+if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
+  ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
+fi
+msg "STATUS: Open Atrium live head installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Open Atrium live head installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### Prosepoint
+#
+echo " "
+if prompt_yes_no "Prosepoint - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Prosepoint install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz &> /dev/null
+  tar -xzf prosepoint-$_PROSEPOINT.tar.gz
+  rm -f prosepoint-$_PROSEPOINT.tar.gz
+  cd $_CORE/prosepoint-$_PROSEPOINT
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/
+  rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
+mkdir -p $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
+cd $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
+create_symlinks
+msg "STATUS: Prosepoint installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Prosepoint installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### Pressflow
+#
+echo " "
+if prompt_yes_no "Drupal 6 Pressflow - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Drupal 6 Pressflow install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  mkdir -p $_CORE/pressflow
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/pressflow/
+  cd $_CORE/pressflow
+  rm -f $_CORE/pressflow/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/pressflow"
+mkdir -p $_ROOT/distro/$_DISTRO/pressflow
+cd $_ROOT/distro/$_DISTRO/pressflow
+create_symlinks
+msg "STATUS: Drupal 6 Pressflow installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Drupal 6 Pressflow installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### Ubercart
+#
+echo " "
+if prompt_yes_no "Ubercart - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Ubercart install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget -U iCab http://omega8.cc/dev/$_UBERCART.tar.gz &> /dev/null
+  tar -xzf $_UBERCART.tar.gz
+  rm -f $_UBERCART.tar.gz
+  cd $_CORE/$_UBERCART
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/$_UBERCART/
+  rm -f $_CORE/$_UBERCART/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/uberdrupal"
+mkdir -p $_ROOT/distro/$_DISTRO/uberdrupal
+cd $_ROOT/distro/$_DISTRO/uberdrupal
+create_symlinks
+msg "STATUS: Ubercart installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Ubercart installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### OpenPublish
+#
+echo " "
+if prompt_yes_no "Open Publish - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Open Publish install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz &> /dev/null
+  tar -xzf openpublish-$_OPENPUBLISH.tar.gz
+  rm -f openpublish-$_OPENPUBLISH.tar.gz
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/openpublish/
+  cd $_CORE/openpublish
+  rm -f $_CORE/openpublish/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/openpublish"
+mkdir -p $_ROOT/distro/$_DISTRO/openpublish
+cd $_ROOT/distro/$_DISTRO/openpublish
+create_symlinks
+if [ ! -L "./sites/all/themes/openpublish_theme" ] ; then
+  ln -s $_CORE_DISTRO/profiles/openpublish/themes/openpublish_theme ./sites/all/themes/openpublish_theme
+fi
+msg "STATUS: Open Publish installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Open Publish installation skipped"
+  mrun "sleep 8"
+fi
+
+
+###---### ManagingNews
+#
+echo " "
+if prompt_yes_no "Managing News - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Managing News install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip &> /dev/null
+  unzip managingnews-$_MANAGINGNEWS.zip &> /dev/null
+  rm -f managingnews-$_MANAGINGNEWS.zip
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/
+  cd $_CORE/managingnews-$_MANAGINGNEWS
+  rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
+mkdir -p $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
+cd $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
+create_symlinks
+msg "STATUS: Managing News installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Managing News installation skipped"
+  mrun "sleep 8"
+fi
+
+
+
+###---### Managing News Make
+#
+echo " "
+if prompt_yes_no "Managing News live head version - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Managing News live head version install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  echo "core = \"6.x\"" > managingnews_stub.make
+  echo "projects[] = \"drupal\"" >> managingnews_stub.make
+  echo "projects[managingnews][type] = \"profile\"" >> managingnews_stub.make
+  echo "projects[managingnews][download][type] = \"cvs\"" >> managingnews_stub.make
+  echo "projects[managingnews][download][module] = \"contributions/profiles/managingnews\"" >> managingnews_stub.make
+  echo "projects[managingnews][download][revision] = \"DRUPAL-6--1\"" >> managingnews_stub.make
+  $_ROOT/tools/drush/drush make managingnews_stub.make managingnews &> /dev/null
+  rm -f managingnews_stub.make
+  cd $_CORE/managingnews
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/managingnews/
+  rm -f $_CORE/managingnews/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/managingnews"
+mkdir -p $_ROOT/distro/$_DISTRO/managingnews
+cd $_ROOT/distro/$_DISTRO/managingnews
+create_symlinks
+msg "STATUS: Managing News live head version installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Managing News live head version installation skipped"
+  mrun "sleep 8"
+fi
+
+
+
+###---### Feature Server Make
+#
+echo " "
+if prompt_yes_no "Feature Server - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Feature Server install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  echo "core = \"6.x\"" > fserver.make
+  echo "projects[] = \"drupal\"" >> fserver.make
+  echo "projects[feature_server][type] = \"profile\"" >> fserver.make
+  echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
+  echo "projects[feature_server][download][url] = \"git://git.mig5.net/drupal/profiles/feature_server\"" >> fserver.make
+  $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
+  rm -f fserver.make
+  cd $_CORE/fserver
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/fserver/
+  rm -f $_CORE/fserver/*.txt
+  create_dirs
+  cd ./profiles/feature_server/themes
+  wget -U iCab http://omega8.cc/dev/singular.patch.txt &> /dev/null
+  patch -p0 <./singular.patch.txt
+fi
+_CORE_DISTRO="$_CORE/fserver"
+mkdir -p $_ROOT/distro/$_DISTRO/fserver
+cd $_ROOT/distro/$_DISTRO/fserver
+create_symlinks
+msg "STATUS: Feature Server installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Feature Server installation skipped"
+  mrun "sleep 8"
+fi
+
+
+
+###---### Drupal Commons
+#
+echo " "
+if prompt_yes_no "Drupal Commons - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Drupal Commons install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz &> /dev/null
+  tar -xzf drupal_commons-$_COMMONS.tar.gz
+  rm -f drupal_commons-$_COMMONS.tar.gz
+  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/drupal_commons/
+  cd $_CORE/drupal_commons
+  rm -f $_CORE/drupal_commons/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/drupal_commons"
+mkdir -p $_ROOT/distro/$_DISTRO/drupal_commons
+cd $_ROOT/distro/$_DISTRO/drupal_commons
+create_symlinks
+if [ ! -d "$_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries" ] ; then
+  mkdir -p $_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries/getid3
+fi
+msg "STATUS: Drupal Commons installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Drupal Commons installation skipped"
+  mrun "sleep 8"
+fi
+
+
+
+###---### Drupal 7
+#
+echo " "
+if prompt_yes_no "Drupal 7 - do you want to proceed with the install?" ; then
+true
+msg "STATUS: Drupal 7 install in progress, please wait..."
+mrun "sleep 8"
+if [ $_STATUS = "INIT" ] ; then
+  cd $_CORE
+  wget -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz &> /dev/null
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  cd $_CORE/$_DRUPAL7
+  rm -f $_CORE/$_DRUPAL7/*.txt
+  create_dirs
+fi
+_CORE_DISTRO="$_CORE/$_DRUPAL7"
+mkdir -p $_ROOT/distro/$_DISTRO/$_DRUPAL7
+cd $_ROOT/distro/$_DISTRO/$_DRUPAL7
+create_symlinks
+rm -f boost_stats.php
+msg "STATUS: Drupal 7 installation completed"
+mrun "sleep 8"
+else
+  msg "STATUS: Drupal 7 installation skipped"
+  mrun "sleep 8"
+fi
+
+
+
+###---### remove some module and themes for all
+#
+msg "`date` C: remove some default themes for all"
+mrun "sleep 8"
+rm -f -r $_CORE/*/themes/bluemarine
+rm -f -r $_CORE/*/themes/chameleon
+rm -f -r $_CORE/*/themes/pushbutton
+rm -f -r $_CORE/*/scripts
+rm -f $_CORE/*/themes/README.txt
+rm -f $_CORE/*.make
+rm -f $_CORE/*.tar.gz
+
+
+
+###---### save & verify platforms
+#
+msg "`date` C: Save & Verify Platforms"
+mrun "sleep 8"
+## Palettes full names
+_F_ACQUIA="Acquia 6.19-svn P.$_DISTRO"
+_F_ATRIUM="Atrium 1.0-beta8 P.$_DISTRO"
+_F_ATRIUM_DEV="Atrium 1.0-beta9-dev P.$_DISTRO"
+_F_MANAGINGNEWS="MNews 1.0-beta10 P.$_DISTRO"
+_F_MANAGINGNEWS_DEV="MNews 1.0-beta11-dev P.$_DISTRO"
+_F_DRUPAL5="Drupal $_DRUPAL5 P.$_DISTRO"
+_F_DRUPAL6="Drupal 6.19 P.$_DISTRO"
+_F_DRUPAL7="Drupal 7.0-alpha6 P.$_DISTRO"
+_F_COMMONS="Drupal Commons 1.0 P.$_DISTRO"
+_F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_DISTRO"
+_F_UBERCART="Ubercart P.$_DISTRO"
+_F_OPENPUBLISH="OpenPublish 2.2.285 P.$_DISTRO"
+_F_FSERVER="Feature Server P.$_DISTRO"
+##
+cd $_AEGIR_ROOT/sites/$_DOMAIN
+DRUSHC="$_ROOT/tools/drush/drush"
+cp -af /var/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
+mv make_platform.php.txt make_platform.php
+if [ -d "$_ROOT/distro/$_DISTRO/acquia" ] ; then
+  $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_DISTRO/acquia 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM" ] ; then
+  $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/openatrium" ] ; then
+  $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_DISTRO/openatrium 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/pressflow" ] ; then
+  $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_DISTRO/pressflow 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/$_DRUPAL7" ] ; then
+  $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_DISTRO/$_DRUPAL7 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5" ] ; then
+  $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/drupal_commons" ] ; then
+  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_DISTRO/drupal_commons 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/fserver" ] ; then
+  $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_DISTRO/fserver 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS" ] ; then
+  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/managingnews" ] ; then
+  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_DISTRO/managingnews 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/openpublish" ] ; then
+  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_DISTRO/openpublish 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT" ] ; then
+  $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT 2> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/uberdrupal" ] ; then
+  $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_DISTRO/uberdrupal 2> /dev/null
+fi
+rm -f make_platform.php
+
+
+####---### Done
+#
+msg "`date` C: All done!"
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###----------------------------------------###

@@ -1,0 +1,100 @@
+[client]
+port                    = 3306
+socket                  = /var/run/mysqld/mysqld.sock
+default-character-set   = utf8
+
+[mysqld]
+user                    = mysql
+pid-file                = /var/run/mysqld/mysqld.pid
+socket                  = /var/run/mysqld/mysqld.sock
+port                    = 3306
+basedir                 = /usr
+datadir                 = /var/lib/mysql
+tmpdir                  = /tmp
+language                = /usr/share/mysql/english
+default-character-set   = utf8
+collation-server        = utf8_general_ci
+character_set_server    = utf8
+collation_server        = utf8_general_ci
+skip-external-locking
+connect_timeout         = 60
+join_buffer_size        = 1M
+key_buffer              = 8M
+key_buffer_size         = 64M
+log_warnings            = 2
+max_allowed_packet      = 32M
+max_connect_errors      = 30
+max_connections         = 30
+max_user_connections    = 30
+myisam_sort_buffer_size = 256M
+query_cache_limit       = 128K
+query_cache_size        = 32M
+query_cache_type        = 1
+read_buffer_size        = 8M
+read_rnd_buffer_size    = 4M
+sort_buffer_size        = 8M
+bulk_insert_buffer_size = 16M
+table_cache             = 888888
+table_definition_cache  = 888888
+thread_stack            = 128K
+thread_cache_size       = 128
+thread_concurrency      = 4
+wait_timeout            = 300
+tmp_table_size          = 32M
+max_heap_table_size     = 32M
+low_priority_updates    = 1
+concurrent_insert       = 2
+max_tmp_tables          = 888888
+server-id               = 8
+myisam-recover          = BACKUP
+log_bin                 = /var/log/mysql/mariadb-bin
+log_bin_index           = /var/log/mysql/mariadb-bin.index
+expire_logs_days        = 1
+max_binlog_size         = 100M
+open_files_limit        = 888888
+
+# * InnoDB
+#
+# InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.
+# Read the manual for more InnoDB related options. There are many!
+default_storage_engine  = InnoDB
+#sql_mode                = NO_ENGINE_SUBSTITUTION,TRADITIONAL
+# you can't just change log file size, requires special procedure
+#innodb_log_file_size   = 50M
+innodb_buffer_pool_size = 512M
+innodb_log_buffer_size  = 8M
+innodb_file_per_table   = 1
+innodb_open_files       = 888888
+innodb_io_capacity      = 888888
+innodb_flush_method     = O_DIRECT
+default-table-type      = innodb
+innodb_flush_log_at_trx_commit = 0
+
+[mysqld_safe]
+socket                  = /var/run/mysqld/mysqld.sock
+nice                    = 0
+
+[mysqldump]
+quick
+max_allowed_packet      = 32M
+quote-names
+
+[mysql]
+no-auto-rehash
+
+[myisamchk]
+key_buffer              = 32M
+sort_buffer_size        = 32M
+read_buffer             = 4M
+write_buffer            = 4M
+
+[isamchk]
+key_buffer              = 32M
+sort_buffer_size        = 32M
+read_buffer             = 4M
+write_buffer            = 4M
+
+[mysqlhotcopy]
+interactive-timeout
+
+!includedir /etc/mysql/conf.d/

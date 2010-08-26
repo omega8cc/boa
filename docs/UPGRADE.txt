@@ -1,0 +1,5 @@
+
+$ cd; wget http://github.com/omega8cc/nginx-for-drupal/raw/master/BARRACUDA.sh.txt
+$ cd; nano BARRACUDA.sh.txt (edit your e-mail address)
+$ cd; bash BARRACUDA.sh.txt
+

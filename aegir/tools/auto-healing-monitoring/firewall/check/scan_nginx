@@ -1,0 +1,99 @@
+#!/usr/bin/perl
+
+###
+### this is a httpd abuse monitor for nginx
+###
+
+if (-e "/var/xdrago/log/fire.pid") {exit;}
+
+&makeactions;
+print " CONTROL 1 done_______________________\n ...\n";
+exit;
+
+#############################################################################
+sub makeactions
+{
+local(@SYTUACJA) = `tail --lines=300 /var/log/nginx/access.log 2>&1`;
+local($maxnumber,$critnumber,$alert);
+local($sumar,$li_cnt{$VISITOR},$li_cndx{$DOMAIN});
+foreach $line (@SYTUACJA) {
+local($VISITOR, $DOMAIN, $RESTX) = split(/\s+/,$line);
+$VISITOR =~ s/[^0-9\.]//g;
+if ($VISITOR =~ /^((192.168.)|(172.16.)|(unknown)|(10.))/)
+{
+$VISITOR = $DOMAIN;
+}
+$VISITOR =~ s/[^0-9\.]//g;
+if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {      
+chomp($line);
+$li_cnt{$VISITOR}++;
+$li_cnt{$VISITOR} = "2222" if ($line =~ /(HTTrack)/);
+}
+}
+foreach $VISITOR (sort keys %li_cnt) {
+   $sumar = $sumar + $li_cnt{$VISITOR};
+   local($thissumar) = $li_cnt{$VISITOR};
+   $maxnumber = 10;   ### 200
+   $critnumber = 300;  ### 300
+   $critnumber = 300 if ($VISITOR =~ /^(66.249.)/); ### 800
+   local($blocked) = 0;
+   &check_ip($VISITOR);
+   if ($thissumar > $maxnumber && $thissumar <= $critnumber) {
+       &trash_it_action($VISITOR,$thissumar) if !$blocked;
+   }
+   if ($thissumar > $critnumber) {
+      `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 80 -j DROP` if (!$blocked);
+      `echo "$VISITOR" >> /var/xdrago/log/blackIP.log` if (!$blocked);
+       &trash_it_action($VISITOR,"x$thissumar","$REMOTE_HOST ") if (!$blocked);
+   }
+}
+print "\n===[$sumar]\tGLOBAL===\n\n";
+undef (%li_cnt);
+}
+
+#############################################################################
+sub trash_it_action
+{               
+   $times = `date +%y%m%d-%H%M%S`;
+   local(@STAN) = `/usr/bin/uptime 2>&1`;
+   chomp($times);
+   $LOGpliczek = "/var/xdrago/log/VISITOR_ABUSE_ONE.log";
+   open (DISKF, ">>$LOGpliczek");
+   local($ABUSER,$ILE,$HOST) = @_;
+   
+   local($proxy_host) = 0;
+   local($REMOTE_HOST) = $ABUSER;
+   local($machine) = $ABUSER;
+   $machine =~ s/^\s+|\s+$//g;
+   @bytes = split (/\./, $machine);
+   $packaddr = pack ("C4", @bytes);
+   if (!(($name, $altnames, $addrtype, $len, @addrlist) =
+       gethostbyaddr ($packaddr, 2))) {
+       $REMOTE_HOST = "";
+   }
+   else {
+       $REMOTE_HOST = "$name";
+   }   
+   print "NORM $ABUSER [$ILE] recorded... $REMOTE_HOST\n";
+   print DISKF "NORM $ABUSER\t[$ILE] $times $REMOTE_HOST@STAN";
+   close (DISKF);
+}
+
+#############################################################################
+sub check_ip
+{               
+      $IP_log = "/var/xdrago/log/blackIP.log";
+      local($IP) = @_;
+      open (NOT,"<$IP_log");
+      @banetable = <NOT>;
+      close (NOT);
+      foreach $banerecord (@banetable) {
+          chomp ($banerecord);
+          if ($banerecord eq $IP) {
+              $blocked = 1;
+              last;
+          }
+      }
+}
+
+###EOF###

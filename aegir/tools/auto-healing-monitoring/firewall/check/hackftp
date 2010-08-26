@@ -1,0 +1,99 @@
+#!/usr/bin/perl
+
+$| = 1;
+$thisserver = "hackftp";
+&makeactions;
+print " CONTROL hack1 done_______________________\n ...\n";
+
+exit;
+#############################################################################
+sub makeactions
+{
+      $IP_log = "/var/xdrago/firewall/$thisserver";
+      if (!-e "$IP_log") {
+        `echo "#!/bin/bash" >> /var/xdrago/firewall/$thisserver`;
+        `echo " " >> /var/xdrago/firewall/$thisserver`;
+      }
+      open (NOT,"<$IP_log");
+      @banetable = <NOT>;
+      close (NOT);
+
+local(@SYTUACJA) = `tail --lines=9999 /var/log/messages 2>&1`;
+
+local($maxnumber,$critnumber,$alert);
+local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+foreach $line (@SYTUACJA) {
+if ($line =~ /(Authentication failed for user)/i) {
+local($a, $b, $c, $d, $e, $VISITORX, $rest) = split(/\s+/,$line);
+chomp($VISITORX);
+local($a, $VISITOR) = split(/\@/,$VISITORX);
+$VISITOR =~ s/[^0-9\.]//g;
+      if ($VISITOR =~ /^[0-9]/) {
+          chomp($line);
+          $li_cnt{$VISITOR}++;
+      }   
+}
+}
+foreach $VISITOR (sort keys %li_cnt) {
+   $sumar = $sumar + $li_cnt{$VISITOR};
+   local($thissumar) = $li_cnt{$VISITOR};
+   $maxnumber = 5; ### 11
+   local($blocked) = 0;
+   &check_ip($VISITOR);
+
+   if ($thissumar > $maxnumber && !$blocked) {
+       &trash_it_action($VISITOR,$thissumar);
+   }
+}
+
+print "\n===[$sumar]\tGLOBAL===\n\n";
+undef (%li_cnt);
+
+}
+
+#############################################################################
+sub trash_it_action
+{               
+   local($ABUSER,$ILE) = @_;
+   local($proxy_host) = 0;
+   local($REMOTE_HOST) = $ABUSER;
+   local($machine) = $ABUSER;
+   $machine =~ s/^\s+|\s+$//g;
+   @bytes = split (/\./, $machine);
+   $packaddr = pack ("C4", @bytes);
+   if (!(($name, $altnames, $addrtype, $len, @addrlist) =
+       gethostbyaddr ($packaddr, 2))) {
+       $REMOTE_HOST = "";
+   }
+   else {
+       $REMOTE_HOST = "$name";
+   }   
+   if ($REMOTE_HOST !~ /(my-white-listed-host)/)
+   {
+      $nowis = `date +%y%m%d-%H%M%S`;
+      chomp($nowis);
+      print "$ABUSER [$ILE] recorded... $REMOTE_HOST\n";
+     `/sbin/iptables -A INPUT -p tcp -s $ABUSER --dport 21 -j DROP` if (!$blocked);
+     `echo "#-- BELOW --# $ABUSER [$ILE] recorded... [$nowis] $REMOTE_HOST" >> /var/xdrago/firewall/$thisserver`;
+     `echo "/sbin/iptables -A INPUT -s $ABUSER -j DROP" >> /var/xdrago/firewall/$thisserver`;
+     `echo " " >> /var/xdrago/firewall/$thisserver`;
+   }
+}
+
+#############################################################################
+sub check_ip
+{
+      local($IP) = @_;
+      foreach $line (@banetable) {
+          chomp ($line);
+          if ($line =~ /(iptables)/) {
+              local($a, $b, $c, $d, $EXIST, $g, $h) = split(/\s+/,$line);
+              if ($EXIST eq $IP) {
+                  $blocked = 1;
+                  last;
+              }
+          }
+      }
+}
+
+###EOF### /sbin/iptables -A INPUT -s 213.209.160.37 -j DROP

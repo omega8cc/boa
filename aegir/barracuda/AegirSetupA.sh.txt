@@ -1,0 +1,285 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This script is free software licensed
+###  under the GNU GPLv3. No warranty is
+###  provided and the authors claims no
+###  responsibility for any disasters caused
+###  during the execution of this script.
+###
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+_INSTALLER_VERSION=A12.A
+
+
+###---### distro config
+#
+_DRUPAL5=EDIT_DRUPAL5
+_DRUPAL7=EDIT_DRUPAL7
+_PROSEPOINT=EDIT_PROSEPOINT
+_UBERCART=EDIT_UBERCART
+_OPENPUBLISH=EDIT_OPENPUBLISH
+_MANAGINGNEWS=EDIT_MANAGINGNEWS
+_OPENATRIUM=EDIT_OPENATRIUM
+_COMMONS=EDIT_COMMONS
+
+
+###---### main config
+#
+_DISTRO=EDIT_DISTRO
+_USER=EDIT_USER
+_DOMAIN=EDIT_DOMAIN
+_WEBG=EDIT_WEBG
+_USRG=EDIT_USRG
+_ROOT="/data/disk/$_USER"
+_CORE="/data/all/$_DISTRO"
+_AEGIR_ROOT="$_ROOT/aegir/distro/$_DISTRO"
+_DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
+_STATUS=INIT
+_LASTNUM=EDIT_LASTNUM
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
+
+
+###---### Functions
+# noticeable messages
+msg() {
+  echo "==> $*"
+}
+#
+# stop on error
+set -e
+msg "`date` A: Welcome `uname -a`"
+mrun "sleep 8"
+msg "`date` A: Aegir automated install script part A"
+
+
+###---### Stop the cron and wait 60 seconds
+#
+msg "`date` A: Stop the cron and wait 8 seconds.."
+runner "invoke-rc.d cron stop" 2> /dev/null
+mrun "sleep 8"
+
+
+###---### Checking status..
+#
+msg "`date` A: Checking status.."
+mrun "sleep 8"
+if [ -d "$_ROOT" ] ; then
+  _STATUS=UPGRADE
+  cd $_ROOT
+  msg "`date` A: _STATUS is $_STATUS"
+  mrun "sleep 8"
+  rm -f $_ROOT/AegirSetupC.sh.txt
+  rm -f $_ROOT/AegirSetupB.sh.txt
+else
+  msg "`date` A: _STATUS is $_STATUS"
+fi
+
+
+###---### Add required users and create directories
+#
+msg "`date` A: Create directories and/or set good permissions"
+mrun "sleep 8"
+mkdir -p /data/u
+mkdir -p /data/disk
+mkdir -p /data/conf
+chown root:root /data
+chown root:root /data/disk
+chown root:root /data/conf
+chown root:$_USRG /data/u
+chmod 0711 /data
+chmod 0771 /data/u
+chmod 0711 /data/disk
+chmod 0711 /data/conf
+if [ ! -d "$_ROOT" ] ; then
+  msg "`date` A: Add user"
+  mrun "sleep 8"
+  adduser --system --home $_ROOT --ingroup $_USRG $_USER
+  adduser $_USER $_WEBG
+fi
+if [ ! -d "$_CORE" ] ; then
+  mkdir -p $_CORE
+  mkdir -p /data/src
+  chmod 0711 $_CORE
+  chmod 0711 /data/all
+  chmod 0700 /data/src
+fi
+chown -R $_USER:$_USRG $_CORE
+chown $_USER:$_USRG /data/all
+chown -R $_USER:$_USRG /data/src
+chown -R $_USER:$_USRG /data/conf
+
+
+###---### Prepare scripts
+#
+msg "`date` A: Prepare scripts"
+mrun "sleep 8"
+chmod 0711 $_ROOT
+cd $_ROOT
+cp -af /var/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupB.sh.txt ./
+cp -af /var/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupC.sh.txt ./
+chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt
+chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt
+
+
+###---### Run standard pre-installer
+#
+msg "`date` A: Run standard pre-installer"
+mrun "sleep 8"
+if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
+  touch $_ROOT/.$_USER.pass.txt
+  chmod 0600 $_ROOT/.$_USER.pass.txt
+  pwgen -c -y -s > $_ROOT/.$_USER.pass.txt
+  chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt
+  echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+fi
+AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
+AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
+AEGIR_HOST=`hostname -f`
+_RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
+if [ -z "$_RESOLVEIP" ] ; then
+  msg "This server does not have a hostname that resolves to an IP address"
+  exit 1
+else
+  AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $6}'`
+  true
+fi
+/usr/bin/mysql -h localhost --port=3306 -u root mysql<<EOFMYSQL
+FLUSH PRIVILEGES;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_DOMAIN' IDENTIFIED BY '$AGRPASWD' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$AEGIR_HOST' IDENTIFIED BY '$AGRPASWD' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$AEGIR_HOST_IP' IDENTIFIED BY '$AGRPASWD' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'localhost' IDENTIFIED BY '$AGRPASWD' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+EOFMYSQL
+mrun "sleep 8"
+/usr/bin/mysqladmin -u root -h localhost --port=3306 reload &&
+cd $_ROOT
+msg "`date` A: Run standard pre-installer completed"
+
+
+###---### Switch user and run InitB & Distros
+#
+msg "`date` A: Switch user and run AegirSetupB"
+mrun "sleep 8"
+invoke-rc.d cron stop &> /dev/null
+su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+
+
+###---### Run standard post-installer
+#
+msg "`date` A: Run standard post-installer"
+mrun "sleep 8"
+if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
+  rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
+  echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
+  ln -s $_ROOT/config/$_USER.nginx.conf /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
+fi
+if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
+  cd $_ROOT/config/includes
+  mv nginx_simple_include.conf nginx_simple_include.conf.orig
+  mv nginx_advanced_include.conf nginx_advanced_include.conf.orig
+  cp -af /var/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  ln -s nginx_advanced_include.conf nginx_simple_include.conf
+fi
+if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
+  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+fi
+chgrp -R $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/files
+chgrp $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/settings.php
+rm -f -r $_AEGIR_ROOT/themes/bluemarine
+rm -f -r $_AEGIR_ROOT/themes/chameleon
+rm -f -r $_AEGIR_ROOT/themes/pushbutton
+rm -f -r $_AEGIR_ROOT/scripts
+rm -f $_AEGIR_ROOT/themes/README.txt
+rm -f $_AEGIR_ROOT/*.txt
+killall nginx &> /dev/null
+invoke-rc.d nginx start &> /dev/null
+invoke-rc.d cron start &> /dev/null
+cd $_AEGIR_ROOT
+cp -af /var/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
+cd $_ROOT
+msg "`date` A: Run standard post-installer completed"
+
+
+###---### Set permissions for all
+#
+msg "`date` A: Set permissions for all"
+mrun "sleep 8"
+chmod 0711 $_AEGIR_ROOT
+chmod 0711 $_ROOT/config
+chmod 0711 $_ROOT/config/includes
+chmod 0700 $_ROOT/backups
+
+
+###---### Switch user and run Distros build
+#
+msg "`date` A: Switch user and run Distros build"
+mrun "sleep 8"
+su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+chown root:root /data/all
+chown -R root:root /data/src
+chown -R root:root /data/conf
+chown -R root:root $_CORE
+
+
+###---### Clean up old and install files
+#
+msg "`date` A: Clean up old and install files"
+mrun "sleep 8"
+rm -f $_ROOT/AegirSetupC.sh.txt
+rm -f $_ROOT/AegirSetupB.sh.txt
+rm -f $_ROOT/*.sh.txt
+
+
+###---### Add cron task
+#
+if [ $_STATUS = "INIT" ] ; then
+ msg "`date` A: Add cron task"
+ mrun "sleep 8"
+ echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
+fi
+
+
+###---### Touch install logs
+#
+msg "`date` A: Touch install logs"
+TIME=`date`
+if [ $_STATUS = "INIT" ] ; then
+ echo $TIME > $_ROOT/log/date-init.txt
+else
+ echo $TIME > $_ROOT/log/date-upgrade-$_DISTRO.txt
+fi
+
+
+###---### Start the cron now
+#
+msg "`date` A: Start the cron now"
+runner "invoke-rc.d cron start" 2> /dev/null
+msg "`date` STATUS: All done!"
+mrun "sleep 8"
+msg "`date` BYE!"
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###----------------------------------------###

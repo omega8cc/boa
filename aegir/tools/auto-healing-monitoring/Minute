@@ -1,0 +1,9 @@
+#!/bin/bash
+
+/var/xdrago/firewall/check/hackcheck
+/var/xdrago/firewall/check/hackmail
+/var/xdrago/firewall/check/hackftp
+perl /var/xdrago/firewall/check/scan_nginx
+/var/xdrago/firewall/check/sqlcheck
+
+echo DONE!

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+action()
+{
+/etc/init.d/nginx stop
+killall -9 php-fpm nginx php
+/var/xdrago/move_sql
+/etc/init.d/php-fpm start
+/etc/init.d/nginx start
+touch /var/xdrago/log/enableStatus.done
+}
+
+if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
+touch /var/xdrago/log/optimizemysqlrunning-enabler
+exit
+else
+touch /var/xdrago/log/optimize_mysql_ao.pid
+sleep 15
+action
+rm -f /var/xdrago/log/optimize_mysql_ao.pid
+fi

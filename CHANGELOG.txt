@@ -1,4 +1,18 @@
 
+### Thu, 2010-08-26 08:55 - Edition 0.4-alpha12-A12.A
+
+Added/Fixed: (upgrade from previous versions recommended)
+
+1. By defult Aegir 0.4-alpha12 with Drush 3.3
+   is now installed.
+
+2. Introduced new Octopus and Barracuda installers.
+   See README.txt for more information.
+   Both are in pre-alpha debugging phase.
+   
+3. All installers code and helpers now hosted on GitHub.
+
+
 ### Thu, 2010-08-18 21:30 - Edition 0.4-HEAD-A11.B
 
 Added/Fixed: (upgrade from previous versions recommended)

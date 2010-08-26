@@ -1,0 +1,288 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This script is free software licensed
+###  under the GNU GPLv3. No warranty is
+###  provided and the authors claims no
+###  responsibility for any disasters caused
+###  during the execution of this script.
+###
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+_INSTALLER_VERSION=A12.A
+
+
+###---### distro config
+#
+_DRUPAL5=EDIT_DRUPAL5
+_DRUPAL7=EDIT_DRUPAL7
+_PROSEPOINT=EDIT_PROSEPOINT
+_UBERCART=EDIT_UBERCART
+_OPENPUBLISH=EDIT_OPENPUBLISH
+_MANAGINGNEWS=EDIT_MANAGINGNEWS
+_OPENATRIUM=EDIT_OPENATRIUM
+_COMMONS=EDIT_COMMONS
+
+
+###---### main config
+#
+_DISTRO=EDIT_DISTRO
+_USER=EDIT_USER
+_DOMAIN=EDIT_DOMAIN
+_WEBG=EDIT_WEBG
+_ROOT="/data/disk/$_USER"
+_AEGIR_ROOT="$_ROOT/aegir/distro/$_DISTRO"
+_DRUSHCMD="php $_ROOT/tools/drush/drush.php"
+_STATUS=INIT
+_LASTNUM=EDIT_LASTNUM
+_PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LASTNUM"
+_ADM_EMAIL="EDIT_MY_EMAIL"
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
+
+
+###---### Functions
+#
+# noticeable messages
+msg() {
+  echo "==> $*"
+}
+#
+# stop on error
+set -e
+msg "`date` B: Aegir automated install script part B"
+if [ `whoami` = "root" ] ; then
+  msg "`date` B: This script should be ran as a non-root user - exit now"
+  exit 1
+fi
+
+
+###---### Checking status..
+#
+msg "`date` B: Checking status.."
+mrun "sleep 8"
+if [ -f "$_ROOT/aegir.sh" ] ; then
+_STATUS=UPGRADE
+cd $_ROOT
+msg "`date` B: _STATUS is $_STATUS"
+if [ -d "$_PREV_AEGIR_ROOT" ] ; then
+  msg "`date` B: aegir backup now.."
+  mrun "sleep 8"
+  cd $_PREV_AEGIR_ROOT
+  $_DRUSHCMD --root=$_PREV_AEGIR_ROOT provision-backup $_DOMAIN -d
+  msg "`date` B: aegir backup completed"
+fi
+else
+msg "`date` B: _STATUS is $_STATUS"
+fi
+
+
+###---### Add required users and create directories
+#
+msg "`date` B: Create dirs and/or set good permissions"
+mrun "sleep 8"
+if [ -f "$_ROOT/aegir.sh" ] ; then
+ rm -f $_ROOT/aegir.sh
+fi
+touch $_ROOT/aegir.sh
+chmod 0755 $_ROOT/aegir.sh
+echo -e "#!/bin/sh\n\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
+
+mkdir -p $_ROOT/aegir/distro
+mkdir -p $_ROOT/distro/$_DISTRO
+mkdir -p $_ROOT/src/$_DISTRO
+mkdir -p $_ROOT/src/modules
+mkdir -p $_ROOT/src/themes
+mkdir -p $_ROOT/tools
+mkdir -p $_ROOT/log
+mkdir -p $_ROOT/u
+chmod 0711 $_ROOT/aegir/distro
+chmod 0711 $_ROOT/aegir
+chmod 0711 $_ROOT/tools
+chmod 0771 $_ROOT/u
+chmod 0711 $_ROOT/distro
+chmod 0711 $_ROOT/distro/$_DISTRO
+chmod 0700 $_ROOT/log
+chmod 0700 $_ROOT/src
+chmod 0700 $_ROOT/src/$_DISTRO
+chmod 0700 $_ROOT/src/modules
+chmod 0700 $_ROOT/src/themes
+
+if [ $_STATUS = "UPGRADE" ] ; then
+ echo UPGRADE in progress..
+ if [ -d "$_ROOT/distro" ] ; then
+  echo UPGRADE v.2 in progress..
+  if [ -f "$_ROOT/log/domain.txt" ] ; then
+   _DOMAIN=`cat $_ROOT/log/domain.txt`
+   _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+  fi
+  echo RAW _DOMAIN is $_DOMAIN
+ elif [ ! -d "$_ROOT/distro" ] ; then
+  echo UPGRADE v.1 in progress..
+  echo _DISTRO is $_DISTRO
+  if [ -f "$_ROOT/log/domain.txt" ] ; then
+   _DOMAIN=`cat $_ROOT/log/domain.txt`
+   _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
+  fi
+  echo RAW _DOMAIN is $_DOMAIN
+ fi
+else
+ echo NEW AEGIR setup in progress..
+ echo _DISTRO is $_DISTRO
+ echo RAW _DOMAIN is $_DOMAIN
+fi
+echo $_DOMAIN > $_ROOT/log/domain.txt
+
+
+###---### Run standard installer
+#
+msg "`date` B: Run standard installer"
+mrun "sleep 8"
+cd $_ROOT/tools
+if [ $_STATUS = "UPGRADE" ] ; then
+  mv drush $_ROOT/backups/drush-pre-$_DISTRO
+fi
+  wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
+  tar -xzf drush-$_DRUSH_VERSION.tar.gz
+  rm drush-$_DRUSH_VERSION.tar.gz
+if $_DRUSHCMD help > /dev/null ; then
+  msg "`date` B: Drush seems to be functionning properly"
+else
+  msg "`date` B: Drush is broken ($DRUSH help failed)"
+  exit 1
+fi
+if [ $_STATUS = "UPGRADE" ] ; then
+  mv $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
+  mv $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
+fi
+if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
+  msg "`date` B: Provision already seems to be installed"
+else
+  msg "`date` B: Installing provision backend in $_ROOT/.drush"
+  mkdir -p $_ROOT/.drush
+  if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+    git clone git://git.aegirproject.org/provision $_ROOT/.drush/provision &> /dev/null
+  else
+    cd $_ROOT/.drush
+    wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
+    tar -xzf provision-$_AEGIR_VERSION.tgz
+    rm provision-$_AEGIR_VERSION.tgz
+    if [ $_STATUS = "UPGRADE" ] ; then
+      $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
+    fi
+  fi
+fi
+git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+
+
+###---### Build Aegir base
+#
+msg "`date` B: Build Aegir base"
+mrun "sleep 8"
+#if [ ! -d "$_AEGIR_ROOT" ] ; then
+if [ $_STATUS = "INIT" ] ; then
+    cd $_ROOT
+    AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
+    AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
+    AEGIR_HOST=`hostname -f`
+	msg "`date` B: Deploying hostmaster application init"
+	$_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION
+	mrun "sleep 8"
+	cd $_AEGIR_ROOT
+	mkdir -p sites/$_DOMAIN/files/tmp
+	mkdir -p sites/$_DOMAIN/files/js
+	mkdir -p sites/$_DOMAIN/files/css
+	chmod 2770 -R sites/$_DOMAIN/files
+	chgrp -R $_WEBG sites/$_DOMAIN/files
+	rm -f /data/u/$_DOMAIN
+	rm -f $_ROOT/u/$_DOMAIN
+	ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
+	ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
+	msg "`date` B: Deploying hostmaster application done"
+elif [ $_STATUS = "UPGRADE" ] ; then
+    cd $_PREV_AEGIR_ROOT
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+fi
+
+
+###--------------------###
+msg "`date` B: Simple check if Aegir upgrade is successful"
+mrun "sleep 8"
+if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+  msg "`date` INFO: Aegir upgrade almost completed"
+else
+  msg "`date` FATAL ERROR: Something is wrong, Aegir not upgraded - exit now"
+  exit 1
+fi
+
+
+###---### Enhance Aegir UI
+#
+msg "`date` B: Enhance Aegir UI"
+mrun "sleep 8"
+cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
+cp -af /var/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
+patch -p1 <./eldir.diff &> /dev/null
+cd $_AEGIR_ROOT/sites/all/modules
+wget -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.0-alpha1.tar.gz &> /dev/null
+tar -xzf aegir_custom_settings-6.x-1.0-alpha1.tar.gz
+cd $_AEGIR_ROOT/sites/$_DOMAIN
+$_DRUSHCMD dl features -y &> /dev/null
+$_DRUSHCMD en aegir_custom_settings -y &> /dev/null
+$_DRUSHCMD en hosting_client -y &> /dev/null
+$_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
+$_DRUSHCMD vset --always-set client 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_feature_client 1 &> /dev/null
+$_DRUSHCMD vset --always-set clone 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
+$_DRUSHCMD vset --always-set site_frontpage "hosting/sites" &> /dev/null
+$_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Barracuda" &> /dev/null
+$_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
+$_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
+$_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
+perl -p -i -e "s/(320px)/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
+
+
+###---### Aegir global.inc file
+#
+msg "`date` B: Aegir global.inc file"
+cd $_ROOT
+if [ -f "/data/conf/global.inc" ] ; then
+  rm -f $_ROOT/config/includes/global.inc
+  ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
+else
+  rm -f $_ROOT/config/includes/global.inc
+  cd /data/conf
+  cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+  mv -f global.inc.aegir.txt global.inc
+  ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
+fi
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###----------------------------------------###
+

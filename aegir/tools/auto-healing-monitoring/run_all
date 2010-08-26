@@ -1,0 +1,13 @@
+#!/bin/bash
+
+###-------------SYSTEM-----------------###
+
+SERVERS="hackcheck hackmail hackftp"
+for i in $SERVERS; do
+bash /var/xdrago/firewall/$i
+done
+
+###-------------SYSTEM-----------------###
+
+
+

@@ -1,0 +1,8 @@
+
+### How to enable upload progress in Nginx
+
+$ su -s /bin/bash - aegir
+$ cd /path/to/site
+$ drush dl filefield filefield_nginx_progress
+$ drush en filefield filefield_nginx_progress -y
+

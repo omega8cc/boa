@@ -1,0 +1,26 @@
+diff -urp a/style.css b/style.css
+--- a/style.css	2010-04-05 09:52:59.000000000 -0400
++++ b/style.css	2010-04-05 09:36:46.000000000 -0400
+@@ -475,7 +475,7 @@ input.form-submit {
+   padding:5px;
+   color:#fff;
+   background:#666;
+-
++  text-align:center;
+   cursor:pointer;
+ 
+   -moz-border-radius:3px;
+@@ -905,3 +905,13 @@ body.error-page div.page-content {
+   border : 1px solid black;
+ 
+ }
++
++
++.form-submit {
++  width: 35%;
++  text-align:center;
++  display:block;
++  margin-top:15px;
++  margin-left:auto;
++  margin-right:auto;
++}

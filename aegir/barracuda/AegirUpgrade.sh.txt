@@ -1,0 +1,102 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This script is free software licensed
+###  under the GNU GPLv3. No warranty is
+###  provided and the authors claims no
+###  responsibility for any disasters caused
+###  during the execution of this script.
+###
+###  Code: http://github.com/omega8cc
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+_INSTALLER_VERSION=A12.A
+
+
+###---### Functions
+#
+# noticeable messages
+msg () {
+  echo "==> $*"
+}
+#
+# stop on error
+set -e
+
+
+###---### Run Aegir upgrade
+_LASTNUM=001
+_DISTRO=001
+_DRUSHCMD="php /var/aegir/drush/drush.php"
+_ROOT="/var/aegir"
+_AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
+_PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
+if [ -d "$_ROOT/host_master" ] ; then
+  cd $_ROOT/host_master
+  list=([0-9]*)
+  last=${list[@]: -1}
+  _LASTNUM=$last
+  nextnum=00$((10#${last%%[^0-9]*} + 1))
+  nextnum=${nextnum: -3}
+  _DISTRO=${nextnum}
+  _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+fi
+mkdir -p $_ROOT/host_master
+chmod 711 $_ROOT/host_master
+_AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
+cd $_ROOT
+mv drush $_ROOT/backups/drush-pre-$_DISTRO
+wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
+tar -xzf drush-$_DRUSH_VERSION.tar.gz
+rm drush-$_DRUSH_VERSION.tar.gz
+if $_DRUSHCMD help > /dev/null ; then
+  msg "`date` INFO: Drush seems to be functionning properly"
+else
+  msg "`date` INFO: Drush is broken ($DRUSH help failed)"
+  exit 1
+fi
+mv $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
+mv $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
+mv $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
+if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
+  msg "`date` INFO: Provision already seems to be installed"
+else
+  msg "`date` INFO: Installing provision backend in $_ROOT/.drush"
+  mkdir -p $_ROOT/.drush
+  if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+    git clone git://git.aegirproject.org/provision $_ROOT/.drush/provision &> /dev/null
+  else
+    cd $_ROOT/.drush
+    wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
+    tar -xzf provision-$_AEGIR_VERSION.tgz
+    rm provision-$_AEGIR_VERSION.tgz
+    if [ $_STATUS = "UPGRADE" ] ; then
+      $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
+    fi
+  fi
+fi
+cd $_ROOT/.drush
+git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+cd $_PREV_AEGIR_ROOT
+$_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+
+
+###----------------------------------------###
+###
+###  Octopus Aegir Installer
+###  Copyright 2010 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###----------------------------------------###
