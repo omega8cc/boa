@@ -253,10 +253,11 @@ if [ $_STATUS = "INIT" ] ; then
 	ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
 	msg "`date` $_STATUS B: Deploying hostmaster application done"
 elif [ $_STATUS = "UPGRADE" ] ; then
-    msg "`date` $_STATUS Hostmaster STATUS: Start"
+    msg "`date` $_STATUS Hostmaster STATUS: Start, please wait..."
     mrun "sleep 8"
+    export DEBIAN_FRONTEND=noninteractive
     cd $_PREV_AEGIR_ROOT
-    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT &> /dev/null
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
     msg "`date` $_STATUS Hostmaster STATUS: Completed"
 fi
 
