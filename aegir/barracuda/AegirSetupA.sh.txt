@@ -22,7 +22,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.A
+_INSTALLER_VERSION=A12.B
 
 
 ###---### distro config
@@ -101,7 +101,7 @@ SRCDIR=/var/tmp/files
 LOG=/var/tmp/aegir-install.log
 #
 msg "`date` $_STATUS A: Welcome `uname -a`"
-mrun "sleep 8"
+mrun "sleep 3"
 msg "`date` $_STATUS A: Aegir automated install script part A"
 
 
@@ -109,18 +109,18 @@ msg "`date` $_STATUS A: Aegir automated install script part A"
 #
 msg "`date` $_STATUS A: Stop the cron and wait 8 seconds.."
 runner "invoke-rc.d cron stop" &> /dev/null
-mrun "sleep 8"
+mrun "sleep 3"
 
 
 ###---### Checking status..
 #
 msg "`date` $_STATUS A: Checking status.."
-mrun "sleep 8"
+mrun "sleep 3"
 if [ -d "$_ROOT" ] ; then
   _STATUS=UPGRADE
   cd $_ROOT
   msg "`date` $_STATUS A: _STATUS is $_STATUS"
-  mrun "sleep 8"
+  mrun "sleep 3"
   rm -f $_ROOT/AegirSetupC.sh.txt
   rm -f $_ROOT/AegirSetupB.sh.txt
 else
@@ -131,7 +131,7 @@ fi
 ###---### Add required users and create directories
 #
 msg "`date` $_STATUS A: Create directories and/or set good permissions"
-mrun "sleep 8"
+mrun "sleep 3"
 mkdir -p /data/u
 mkdir -p /data/disk
 mkdir -p /data/conf
@@ -145,7 +145,7 @@ chmod 0711 /data/disk
 chmod 0711 /data/conf
 if [ ! -d "$_ROOT" ] ; then
   msg "`date` $_STATUS A: Add user"
-  mrun "sleep 8"
+  mrun "sleep 3"
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
 fi
@@ -168,7 +168,7 @@ chmod 755 $_CORE /data/all /data/src /data /data/conf
 ###---### Prepare scripts
 #
 msg "`date` $_STATUS A: Prepare scripts"
-mrun "sleep 8"
+mrun "sleep 3"
 chmod 0711 $_ROOT
 cd $_ROOT
 cp -af /var/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupB.sh.txt ./
@@ -180,7 +180,7 @@ chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt
 ###---### Run standard pre-installer
 #
 msg "`date` $_STATUS A: Run standard pre-installer"
-mrun "sleep 8"
+mrun "sleep 3"
 if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
@@ -207,7 +207,7 @@ GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$AEGIR_HOST_IP' IDENTIFIED BY '$AGRPASW
 GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'localhost' IDENTIFIED BY '$AGRPASWD' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 EOFMYSQL
-mrun "sleep 8"
+mrun "sleep 3"
 /usr/bin/mysqladmin -u root -h localhost --port=3306 reload
 cd $_ROOT
 msg "`date` $_STATUS A: Run standard pre-installer completed"
@@ -216,7 +216,7 @@ msg "`date` $_STATUS A: Run standard pre-installer completed"
 ###---### Switch user and run InitB & Distros
 #
 msg "`date` $_STATUS A: Switch user and run AegirSetupB"
-mrun "sleep 8"
+mrun "sleep 3"
 rm -f /tmp/testecho*
 invoke-rc.d cron stop &> /dev/null
 su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
@@ -225,7 +225,7 @@ su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
 ###---### Run standard post-installer
 #
 msg "`date` $_STATUS A: Run standard post-installer"
-mrun "sleep 8"
+mrun "sleep 3"
 if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
   rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
   echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
@@ -262,7 +262,7 @@ msg "`date` $_STATUS A: Run standard post-installer completed"
 ###---### Set permissions for all
 #
 msg "`date` $_STATUS A: Set permissions for all"
-mrun "sleep 8"
+mrun "sleep 3"
 chmod 0711 $_AEGIR_ROOT
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
@@ -272,7 +272,7 @@ chmod 0700 $_ROOT/backups
 ###---### Switch user and run Distros build
 #
 msg "`date` $_STATUS A: Switch user and run Distros build"
-mrun "sleep 8"
+mrun "sleep 3"
 rm -f /tmp/testecho*
 su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
 
@@ -280,7 +280,7 @@ su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
 ###---### Clean up old and install files
 #
 msg "`date` $_STATUS A: Clean up old and install files"
-mrun "sleep 8"
+mrun "sleep 3"
 rm -f $_ROOT/AegirSetupC.sh.txt
 rm -f $_ROOT/AegirSetupB.sh.txt
 rm -f $_ROOT/*.sh.txt
@@ -290,7 +290,7 @@ rm -f $_ROOT/*.sh.txt
 #
 if [ $_STATUS = "INIT" ] ; then
  msg "`date` $_STATUS A: Add cron task"
- mrun "sleep 8"
+ mrun "sleep 3"
  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
  rm -f /var/spool/cron/crontabs/$_USER
  invoke-rc.d cron restart &> /dev/null
@@ -313,7 +313,7 @@ fi
 msg "`date` $_STATUS A: Start the cron now"
 runner "invoke-rc.d cron start" 2> /dev/null
 msg "`date` $_STATUS STATUS: All done!"
-mrun "sleep 8"
+mrun "sleep 3"
 chown root:root /data/all
 chown -R root:root /data/src
 chown -R root:root /data/conf

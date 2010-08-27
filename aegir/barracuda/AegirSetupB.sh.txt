@@ -22,7 +22,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.A
+_INSTALLER_VERSION=A12.B
 
 
 ###---### distro config
@@ -111,14 +111,14 @@ fi
 ###---### Checking status..
 #
 msg "`date` $_STATUS B: Checking status.."
-mrun "sleep 8"
+mrun "sleep 3"
 if [ -f "$_ROOT/aegir.sh" ] ; then
 _STATUS=UPGRADE
 cd $_ROOT
 # msg "`date` $_STATUS B: _STATUS is $_STATUS"
 # if [ -d "$_PREV_AEGIR_ROOT" ] ; then
 #   msg "`date` $_STATUS B: aegir backup now.."
-#   mrun "sleep 8"
+#   mrun "sleep 3"
 #   cd $_PREV_AEGIR_ROOT
 #   $_DRUSHCMD --root=$_PREV_AEGIR_ROOT provision-backup $_DOMAIN -d
 #   msg "`date` $_STATUS B: aegir backup completed"
@@ -131,7 +131,7 @@ fi
 ###---### Add required users and create directories
 #
 msg "`date` $_STATUS B: Create dirs and/or set good permissions"
-mrun "sleep 8"
+mrun "sleep 3"
 if [ -f "$_ROOT/aegir.sh" ] ; then
  rm -f $_ROOT/aegir.sh
 fi
@@ -188,7 +188,7 @@ echo $_DOMAIN > $_ROOT/log/domain.txt
 ###---### Run standard installer
 #
 msg "`date` $_STATUS B: Run standard installer"
-mrun "sleep 8"
+mrun "sleep 3"
 cd $_ROOT/tools
 if [ $_STATUS = "UPGRADE" ] ; then
   mv drush $_ROOT/backups/drush-pre-$_DISTRO
@@ -229,18 +229,18 @@ git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/n
 ###---### Build Aegir base
 #
 msg "`date` $_STATUS B: Build Aegir base"
-mrun "sleep 8"
+mrun "sleep 3"
 #if [ ! -d "$_AEGIR_ROOT" ] ; then
 if [ $_STATUS = "INIT" ] ; then
     msg "`date` $_STATUS STATUS: INIT"
-    mrun "sleep 8"
+    mrun "sleep 3"
     cd $_ROOT
     AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
     AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
     AEGIR_HOST=`hostname -f`
 	msg "`date` $_STATUS B: Deploying hostmaster application init"
 	$_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION &> /dev/null
-	mrun "sleep 8"
+	mrun "sleep 3"
 	cd $_AEGIR_ROOT
 	mkdir -p sites/$_DOMAIN/files/tmp
 	mkdir -p sites/$_DOMAIN/files/js
@@ -254,7 +254,7 @@ if [ $_STATUS = "INIT" ] ; then
 	msg "`date` $_STATUS B: Deploying hostmaster application done"
 elif [ $_STATUS = "UPGRADE" ] ; then
     msg "`date` $_STATUS Hostmaster STATUS: Start, please wait..."
-    mrun "sleep 8"
+    mrun "sleep 3"
     export DEBIAN_FRONTEND=noninteractive
     cd $_PREV_AEGIR_ROOT
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
@@ -264,7 +264,7 @@ fi
 
 ###--------------------###
 msg "`date` $_STATUS B: Simple check if Aegir install is successful"
-mrun "sleep 8"
+mrun "sleep 3"
 if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "`date` $_STATUS INFO: Aegir setup test OK"
 else
@@ -276,7 +276,7 @@ fi
 ###---### Enhance Aegir UI
 #
 msg "`date` $_STATUS B: Enhance Aegir UI"
-mrun "sleep 8"
+mrun "sleep 3"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
 cp -af /var/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null

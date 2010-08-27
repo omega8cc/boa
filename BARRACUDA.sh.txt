@@ -112,7 +112,7 @@ _MY_FRONT=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.A
+_INSTALLER_VERSION=A12.B
 _NGINX_VERSION=0.8.49
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -285,7 +285,7 @@ chmod +x spinner
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Installing lsb-release / dnsutils now, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   if ! runner "$INSTALL lsb-release dnsutils"; then
     fatal "Installation failed: $?"
   fi
@@ -294,7 +294,7 @@ fi
 
 ###--------------------###
 msg "STATUS: Checking your Debian or Ubuntu version..."
-mrun "sleep 8"
+mrun "sleep 3"
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ $_THIS_OS = "Ubuntu" ] ; then
@@ -321,7 +321,7 @@ fi
 echo " "
 msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
 echo " "
-mrun "sleep 8"
+mrun "sleep 3"
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
 else
@@ -446,7 +446,7 @@ hostname -v $_THISHOST
 msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
 msg "Please double check whether this is a valid result of my test."
 fi
-mrun "sleep 8"
+mrun "sleep 3"
 echo " "
 msg "INSTALL START -> checkpoint: "
 cat <<EOF
@@ -472,7 +472,7 @@ else ### if [ $_STATUS = "UPGRADE" ] ; then
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
   _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep 'uri' | cut -d: -f2 | awk '{ print $3}'`
   _THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
-  mrun "sleep 8"
+  mrun "sleep 3"
   echo " "
   msg "UPGRADE START -> checkpoint: "
 cat <<EOF
@@ -494,7 +494,7 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Clean up temp files in /var/opt/"
-mrun "sleep 8"
+mrun "sleep 3"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
 chmod 777 /var/log/php*
@@ -503,7 +503,7 @@ chmod 777 /var/log/php*
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update apt sources"
-  mrun "sleep 8"
+  mrun "sleep 3"
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
     echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
@@ -538,7 +538,7 @@ fi
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Add apt sources for MariaDB"
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt
   wget http://ourdelta.org/deb/ourdelta.gpg &> /dev/null
   apt-key add ourdelta.gpg 2> /dev/null
@@ -602,7 +602,7 @@ install_with_apt
 
 ###--------------------###
 msg "`date` INFO: SMTP check"
-mrun "sleep 8"
+mrun "sleep 3"
 if ! netcat -w 8 -z smtp.host8.biz 25 ; then
   WE_NEED_RELAY="YES"
 cat <<EOF
@@ -637,7 +637,7 @@ postfix reload
 
 ###--------------------###
 msg "`date` INFO: Install/upgrade a few more tools, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var
 if [ -d "/var/xdrago" ] ; then
   cp -af /opt/etc/init.d /var/xdrago/log/init.d-pre-$_INSTALLER_VERSION
@@ -670,17 +670,20 @@ fi
 
 ###--------------------###
 msg "`date` INFO: PHP installed version auto-discovering now, please wait..."
-mrun "sleep 8"
-  _PHP_INSTALLED=`php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+mrun "sleep 3"
+if [ -f "/usr/local/bin/php" ] ; then
+  _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [ "$_PHP_INSTALLED" = "$_PHP_VERSION" ] ; then
     _PHP_INSTALL_REQUIRED=NO
   else
     _PHP_INSTALL_REQUIRED=YES
   fi
-if [ -f "/usr/local/bin/php" ] ; then
   msg "`date` INFO: Installed PHP version $_PHP_INSTALLED"
-  mrun "sleep 8"
+  mrun "sleep 3"
+else  
+  _PHP_INSTALL_REQUIRED=YES
 fi
+
 
 ###
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
@@ -710,7 +713,7 @@ st_runner "ldconfig" 2> /dev/null
 ###--------------------###
 msg "`date` INFO: Installing PHP-FPM"
 msg "`date` NOTE: This step can take longer than 8 minutes (depending on your server speed), please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var/opt
 rm -f -r /var/opt/php*
 mv /etc/init.d/php-fpm /etc/init.d/php-fpm-5-13
@@ -723,14 +726,14 @@ gunzip suhosin-patch-5.2.14-0.9.7.patch.gz
 cat php-5.2.14-fpm-0.5.14.diff | patch -d php-5.2.14 -p1 &> /dev/null
 cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.14 -p1 &> /dev/null
 msg "`date` INFO: Installing PHP-FPM part 1/3"
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var/opt/php-5.2.14
 st_runner "sh ./buildconf --force" 2> /dev/null
 msg "`date` INFO: Installing PHP-FPM part 2/3"
-mrun "sleep 8"
+mrun "sleep 3"
 st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt" 2> /dev/null
 msg "`date` INFO: Installing PHP-FPM part 3/3"
-mrun "sleep 8"
+mrun "sleep 3"
 st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
 ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
@@ -741,7 +744,7 @@ perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /u
 
 ###--------------------###
 msg "`date` INFO: Installing memcache for php, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var/opt
 wget -U iCab http://pecl.php.net/get/memcache-3.0.3.tgz &> /dev/null
 tar -xzf memcache-3.0.3.tgz
@@ -754,7 +757,7 @@ st_runner "make --quiet install" 2> /dev/null
 
 ###--------------------###
 msg "`date` INFO: Installing suhosin for php, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var/opt
 wget -U iCab http://download.suhosin.org/suhosin-0.9.31.tgz &> /dev/null
 tar -xzf suhosin-0.9.31.tgz
@@ -767,7 +770,7 @@ st_runner "make --quiet install" 2> /dev/null
 
 ###--------------------###
 msg "`date` INFO: Installing uploadprogress for php, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var/opt
 wget -U iCab http://pecl.php.net/get/uploadprogress-1.0.1.tgz &> /dev/null
 tar -xzf uploadprogress-1.0.1.tgz
@@ -780,7 +783,7 @@ st_runner "make --quiet install" 2> /dev/null
 
 ###--------------------###
 msg "`date` INFO: Installing apc for php, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 cd /var/opt
 wget -U iCab http://pecl.php.net/get/APC-3.1.3p1.tgz &> /dev/null
 tar -xzf APC-3.1.3p1.tgz
@@ -797,14 +800,14 @@ _X86_64_TEST=`uname -m`
 if [ "$_X86_64_TEST" = "x86_64" ] ; then
   SYSTEMARCH="x86_64"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt
 wget -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz &> /dev/null
 tar -xzf ioncube_loaders_lin_x86-64.tar.gz
 else
   SYSTEMARCH="x86"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt
 wget -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz &> /dev/null
 tar -xzf ioncube_loaders_lin_x86.tar.gz
@@ -818,7 +821,7 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt
   wget -U iCab http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz &> /dev/null
   tar -xzf bzr-2.2b4.tar.gz
@@ -829,7 +832,7 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Nginx version test, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 else
@@ -843,14 +846,14 @@ else
 fi
 if [ -f "/usr/sbin/nginx" ] ; then
   msg "`date` INFO: Installed $_NGINX_F_INSTALLED"
-  mrun "sleep 8"
+  mrun "sleep 3"
 fi
 
 
 ###--------------------###
 if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   msg "`date` INFO: Install/upgrade Nginx, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
   git clone git://github.com/masterzen/nginx-upload-progress-module.git &> /dev/null
   cd /var/opt
@@ -869,7 +872,7 @@ fi
 ###--------------------###
 if [ ! -f "/usr/local/bin/memcached" ] ; then
   msg "`date` INFO: Installing Memcached, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
@@ -887,7 +890,7 @@ fi
 ###--------------------###
 if [ ! -d "/opt/solr" ] ; then
   msg "`date` INFO: Installing Apache Solr Tomcat, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/opt
   rm -f -r apachesolr*
   rm -f -r /opt/solr
@@ -908,7 +911,7 @@ fi
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update rc.d"
-  mrun "sleep 8"
+  mrun "sleep 3"
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -928,7 +931,7 @@ if [ $_STATUS = "INIT" ] ; then
   runner "invoke-rc.d mysql restart" 2> /dev/null
 else
   msg "`date` INFO: Restarting php-fpm and Nginx"
-  mrun "sleep 8"
+  mrun "sleep 3"
   killall nginx php-cgi php-fpm &> /dev/null
   runner "invoke-rc.d php-fpm start" 2> /dev/null
   runner "invoke-rc.d nginx start" 2> /dev/null
@@ -938,7 +941,7 @@ fi
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Generate random password for MariaDB"
-  mrun "sleep 8"
+  mrun "sleep 3"
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt
   pwgen -c -v -s > /root/.my.pass.txt
@@ -951,7 +954,7 @@ do
   perl -p -i -e "s/(php-fpm nginx php)/php-fpm php-cgi nginx php/g" $Files
 done
 msg "`date` INFO: OS and services installation/upgrade completed"
-mrun "sleep 8"
+mrun "sleep 3"
 
 
 ###
@@ -960,7 +963,7 @@ if [ $_STATUS = "INIT" ] ; then
 
 ###--------------------###
 msg "`date` INFO: Installing Aegir, please wait..."
-mrun "sleep 8"
+mrun "sleep 3"
 runner "adduser --system --group --home /var/aegir aegir"
 runner "adduser aegir www-data"
 echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -975,14 +978,14 @@ else
 fi
 cp -af /var/tmp/nginx-for-drupal/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "`date` INFO: Now running Aegir installer for backend and frontend"
-mrun "sleep 8"
+mrun "sleep 3"
 su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
-mrun "sleep 8"
+mrun "sleep 3"
 
 
 ###--------------------###
 msg "`date` INFO: Simple check if Aegir install is successful"
-mrun "sleep 8"
+mrun "sleep 3"
 if [ -f "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
   msg "`date` INFO: Aegir installation almost completed"
 else
@@ -993,16 +996,16 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Fix for access to global.inc for www-data user issue"
-mrun "sleep 8"
+mrun "sleep 3"
 chmod 755 /var/aegir/config/includes
 chmod 755 /var/aegir/config
 runner "invoke-rc.d cron restart" &> /dev/null
-mrun "sleep 8"
+mrun "sleep 3"
 
 
 ###--------------------###
 msg "`date` INFO: Fix for advanced Nginx config and Drush path"
-mrun "sleep 8"
+mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
 cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
@@ -1025,12 +1028,12 @@ rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 killall nginx &> /dev/null
 runner "invoke-rc.d nginx start" 2> /dev/null
-mrun "sleep 8"
+mrun "sleep 3"
 msg "`date` INFO: AEGIR installation completed"
-mrun "sleep 8"
+mrun "sleep 3"
 else
   msg "`date` INFO: Run Aegir upgrade"
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/aegir
   cp /var/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
   perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
@@ -1049,7 +1052,7 @@ fi ### end of if [ $_STATUS = "INIT" ] ; then
 ###--------------------###
 if [ ! -d "/var/www/chive" ] ; then
   msg "`date` INFO: Installing Chive db manager, please wait..."
-  mrun "sleep 8"
+  mrun "sleep 3"
   cd /var/www
   wget -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz &> /dev/null
   tar -xzf chive_0.3.0.tar.gz
@@ -1072,7 +1075,7 @@ fi
 ###--------------------###
 if [ ! -f "/root/.my.cnf" ] ; then
 msg "`date` INFO: MariaDB final setup"
-mrun "sleep 8"
+mrun "sleep 3"
 echo " "
 msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
 echo " "
@@ -1094,7 +1097,7 @@ echo " "
 echo " "
 mrun "sleep 30"
 mysql_secure_installation
-mrun "sleep 8"
+mrun "sleep 3"
 echo "[client]" >> /root/.my.cnf
 echo "user=root" >> /root/.my.cnf
 echo "password=$PASWD" >> /root/.my.cnf
@@ -1105,18 +1108,18 @@ fi ### end of if [ ! -f "/root/.my.cnf" ] ; then
 
 
 ###--------------------###
-mrun "sleep 8"
+mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   echo " "
   _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
   msg "ACCESS -> $_AEGIR_LOGIN_URL"
   echo " "
-  mrun "sleep 8"
+  mrun "sleep 3"
 fi
 msg "`date` CARD: Now charging your credit card for this automated install/upgrade service..."
-mrun "sleep 8"
+mrun "sleep 3"
 msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
-mrun "sleep 8"
+mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /var/tmp/*
 msg "`date` BYE!"

@@ -22,7 +22,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.A
+_INSTALLER_VERSION=A12.B
 
 
 ###---### Functions

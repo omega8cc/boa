@@ -1,4 +1,16 @@
 
+### Thu, 2010-08-27 04:15 - Edition 0.4-alpha12-A12.B
+
+Added/Fixed: (upgrade optional)
+
+1. Octopus now allows to install or upgrade only Aegir
+   hostmaster instance without any platforms added.
+
+2. Enabled again early exit on the first error to avoid
+   confusing cascade of errors if something went wrong.
+
+3. Both Barracuda and Octopus runs now faster.
+
 
 ### Thu, 2010-08-26 19:30 - Edition 0.4-alpha12-A12.A
 
