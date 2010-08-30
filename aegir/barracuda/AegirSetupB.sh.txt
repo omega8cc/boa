@@ -257,6 +257,7 @@ elif [ $_STATUS = "UPGRADE" ] ; then
     cd $_PREV_AEGIR_ROOT
     export DEBIAN_FRONTEND=noninteractive
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+    export DEBIAN_FRONTEND=text
     msg "`date` $_STATUS B: Hostmaster STATUS: Completed"
 fi
 
