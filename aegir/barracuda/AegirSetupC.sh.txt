@@ -510,7 +510,7 @@ if [ $_STATUS = "INIT" ] ; then
   create_dirs
   cd ./profiles/feature_server/themes
   wget -U iCab http://omega8.cc/dev/singular.patch.txt &> /dev/null
-  patch -p0 <./singular.patch.txt
+  patch -p0 <./singular.patch.txt &> /dev/null
 fi
 _CORE_DISTRO="$_CORE/fserver"
 mkdir -p $_ROOT/distro/$_DISTRO/fserver
