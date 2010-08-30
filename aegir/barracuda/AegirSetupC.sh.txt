@@ -237,7 +237,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz
   tar -xzf views_content_cache-6.x-2.x-dev.tar.gz
   tar -xzf module_supports-6.x-1.0.tar.gz
-  tar -xzf filefield_nginx_progress-6.x-1.0.tar.gz
+  tar -xzf filefield_nginx_progress-6.x-1.1.tar.gz
   tar -xzf securesite-6.x-2.4.tar.gz
   tar -xzf bakery-6.x-1.x-dev.tar.gz
   tar -xzf image-6.x-1.x-dev.tar.gz
