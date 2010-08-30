@@ -279,7 +279,8 @@ if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/acquia"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   mkdir -p $_CORE/acquia
   cd $_CORE/acquia
@@ -289,7 +290,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/acquia/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/acquia"
 mkdir -p $_ROOT/distro/$_DISTRO/acquia
 cd $_ROOT/distro/$_DISTRO/acquia
 create_symlinks
@@ -308,7 +308,8 @@ if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
 true
 msg "STATUS: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip &> /dev/null
   unzip atrium-$_OPENATRIUM.zip &> /dev/null
@@ -318,7 +319,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 mkdir -p $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM
 cd $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM
 create_symlinks
@@ -340,7 +340,8 @@ if prompt_yes_no "$_F_ATRIUM_DEV - http://openatrium.com" ; then
 true
 msg "STATUS: $_F_ATRIUM_DEV install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/openatrium"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   echo "core = \"6.x\"" > atrium_stub.make
   echo "projects[] = \"drupal\"" >> atrium_stub.make
@@ -355,7 +356,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/openatrium/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/openatrium"
 mkdir -p $_ROOT/distro/$_DISTRO/openatrium
 cd $_ROOT/distro/$_DISTRO/openatrium
 create_symlinks
@@ -377,7 +377,8 @@ if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL5 install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/pressflow-$_DRUPAL5"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://launchpad.net/pressflow/5.x/$_DRUPAL5/+download/pressflow-$_DRUPAL5.tar.gz &> /dev/null
   tar -xzf pressflow-$_DRUPAL5.tar.gz
@@ -386,7 +387,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/pressflow-$_DRUPAL5/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/pressflow-$_DRUPAL5"
 mkdir -p $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
 cd $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
 create_symlinks
@@ -406,7 +406,8 @@ if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/pressflow"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   mkdir -p $_CORE/pressflow
   cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/pressflow/
@@ -414,7 +415,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/pressflow/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/pressflow"
 mkdir -p $_ROOT/distro/$_DISTRO/pressflow
 cd $_ROOT/distro/$_DISTRO/pressflow
 create_symlinks
@@ -433,7 +433,8 @@ if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/project/drupal" ; then
 true
 msg "STATUS: $_F_DRUPAL7 install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/$_DRUPAL7"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz &> /dev/null
   tar -xzf $_DRUPAL7.tar.gz
@@ -442,7 +443,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/$_DRUPAL7/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/$_DRUPAL7"
 mkdir -p $_ROOT/distro/$_DISTRO/$_DRUPAL7
 cd $_ROOT/distro/$_DISTRO/$_DRUPAL7
 create_symlinks
@@ -462,7 +462,8 @@ if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "STATUS: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/drupal_commons"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz &> /dev/null
   tar -xzf drupal_commons-$_COMMONS.tar.gz
@@ -472,7 +473,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/drupal_commons/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/drupal_commons"
 mkdir -p $_ROOT/distro/$_DISTRO/drupal_commons
 cd $_ROOT/distro/$_DISTRO/drupal_commons
 create_symlinks
@@ -495,7 +495,8 @@ if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
 msg "STATUS: $_F_FSERVER install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/fserver"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   echo "core = \"6.x\"" > fserver.make
   echo "projects[] = \"drupal\"" >> fserver.make
@@ -512,7 +513,6 @@ if [ $_STATUS = "INIT" ] ; then
   wget -U iCab http://omega8.cc/dev/singular.patch.txt &> /dev/null
   patch -p0 <./singular.patch.txt &> /dev/null
 fi
-_CORE_DISTRO="$_CORE/fserver"
 mkdir -p $_ROOT/distro/$_DISTRO/fserver
 cd $_ROOT/distro/$_DISTRO/fserver
 create_symlinks
@@ -531,7 +531,8 @@ if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
 msg "STATUS: $_F_MANAGINGNEWS install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip &> /dev/null
   unzip managingnews-$_MANAGINGNEWS.zip &> /dev/null
@@ -541,7 +542,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
 mkdir -p $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
 cd $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
 create_symlinks
@@ -560,7 +560,8 @@ if prompt_yes_no "$_F_MANAGINGNEWS_DEV - http://managingnews.com" ; then
 true
 msg "STATUS: $_F_MANAGINGNEWS_DEV install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/managingnews"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   echo "core = \"6.x\"" > managingnews_stub.make
   echo "projects[] = \"drupal\"" >> managingnews_stub.make
@@ -575,7 +576,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/managingnews/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/managingnews"
 mkdir -p $_ROOT/distro/$_DISTRO/managingnews
 cd $_ROOT/distro/$_DISTRO/managingnews
 create_symlinks
@@ -594,7 +594,8 @@ if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
 msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/openpublish"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz &> /dev/null
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
@@ -604,7 +605,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/openpublish/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/openpublish"
 mkdir -p $_ROOT/distro/$_DISTRO/openpublish
 cd $_ROOT/distro/$_DISTRO/openpublish
 create_symlinks
@@ -626,7 +626,8 @@ if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
 msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz &> /dev/null
   tar -xzf prosepoint-$_PROSEPOINT.tar.gz
@@ -636,7 +637,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
 mkdir -p $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
 cd $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
 create_symlinks
@@ -655,7 +655,8 @@ if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBERCART install in progress, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+_CORE_DISTRO="$_CORE/uberdrupal"
+if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://omega8.cc/dev/$_UBERCART.tar.gz &> /dev/null
   tar -xzf $_UBERCART.tar.gz
@@ -665,7 +666,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_CORE/$_UBERCART/*.txt
   create_dirs
 fi
-_CORE_DISTRO="$_CORE/uberdrupal"
 mkdir -p $_ROOT/distro/$_DISTRO/uberdrupal
 cd $_ROOT/distro/$_DISTRO/uberdrupal
 create_symlinks

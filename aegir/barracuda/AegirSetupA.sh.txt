@@ -313,19 +313,27 @@ chmod 0700 $_ROOT/backups
 
 ###---### Platforms [Y/n]
 #
-echo " "
-if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
-  true
-  msg "NOTE: Please choose only the platforms/distributions you want to have included"
-  mrun "sleep 3"
+if [ $_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS A: Switch user and run Distros build"
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
   msg "`date` $_STATUS A: Distributions install completed"
 else
-  msg "`date` $_STATUS A: No new platforms added this time"
-  mrun "sleep 3"
+  echo " "
+  if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
+    true
+    msg "NOTE: Please choose only the platforms/distributions you want to have included"
+    mrun "sleep 3"
+    msg "`date` $_STATUS A: Switch user and run Distros build"
+    mrun "sleep 3"
+    rm -f /opt/tmp/testecho*
+    su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+    msg "`date` $_STATUS A: Distributions install completed"
+  else
+    msg "`date` $_STATUS A: No new platforms added this time"
+    mrun "sleep 3"
+  fi
 fi
 
 
