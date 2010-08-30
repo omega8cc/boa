@@ -193,9 +193,9 @@ cd $_ROOT/tools
 if [ $_STATUS = "UPGRADE" ] ; then
   mv drush $_ROOT/backups/drush-pre-$_DISTRO
 fi
-  wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
-  tar -xzf drush-$_DRUSH_VERSION.tar.gz
-  rm drush-$_DRUSH_VERSION.tar.gz
+wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
+tar -xzf drush-$_DRUSH_VERSION.tar.gz
+rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
   msg "`date` $_STATUS B: Drush seems to be functioning properly"
 else
@@ -205,23 +205,24 @@ fi
 if [ $_STATUS = "UPGRADE" ] ; then
   mv $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
   mv $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
+  mv $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
 fi
-if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
-  msg "`date` $_STATUS B: Provision already seems to be installed"
+msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
+mkdir -p $_ROOT/.drush
+cd $_ROOT/.drush
+if [ $_AEGIR_VERSION = "HEAD" ]; then  
+  git clone git://git.aegirproject.org/provision 2> /dev/null
 else
-  msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
-  mkdir -p $_ROOT/.drush
-  if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-    git clone git://git.aegirproject.org/provision $_ROOT/.drush/provision &> /dev/null
-  else
-    cd $_ROOT/.drush
-    wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
-    tar -xzf provision-$_AEGIR_VERSION.tgz
-    rm provision-$_AEGIR_VERSION.tgz
-    $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
+  wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz 2> /dev/null
+  tar -xzf provision-$_AEGIR_VERSION.tgz
+  rm provision-$_AEGIR_VERSION.tgz
+  if [ $_STATUS = "UPGRADE" ] ; then
+    cd $_ROOT
+    $_DRUSHCMD dl drush_make-6.x-2.0-beta8 2> /dev/null
   fi
 fi
-git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+cd $_ROOT/.drush
+git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost 2> /dev/null
 
 
 ###---### Build Aegir base
@@ -249,7 +250,7 @@ if [ $_STATUS = "INIT" ] ; then
 	ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
 	ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
 	msg "`date` $_STATUS B: Deploying hostmaster application done"
-elif [ $_STATUS = "UPGRADE" ] ; then
+else
     msg "`date` $_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
     mrun "sleep 3"
     cd $_PREV_AEGIR_ROOT

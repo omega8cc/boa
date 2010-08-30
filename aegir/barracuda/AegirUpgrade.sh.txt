@@ -83,6 +83,7 @@ else
     wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
     tar -xzf provision-$_AEGIR_VERSION.tgz
     rm provision-$_AEGIR_VERSION.tgz
+    cd $_ROOT
     $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
   fi
 fi
