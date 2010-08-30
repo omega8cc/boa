@@ -96,7 +96,7 @@ mrun () {
 }
 #
 # stop on error
-# set -e ### disabled for debugging
+set -e ### disabled for debugging
 #
 SRCDIR=/opt/tmp/files
 LOG=/opt/tmp/aegir-install.log
@@ -218,9 +218,7 @@ else
     wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
     tar -xzf provision-$_AEGIR_VERSION.tgz
     rm provision-$_AEGIR_VERSION.tgz
-    if [ $_STATUS = "UPGRADE" ] ; then
-      $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
-    fi
+    $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
   fi
 fi
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
@@ -252,13 +250,13 @@ if [ $_STATUS = "INIT" ] ; then
 	ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
 	msg "`date` $_STATUS B: Deploying hostmaster application done"
 elif [ $_STATUS = "UPGRADE" ] ; then
-    msg "`date` $_STATUS B: Hostmaster STATUS: Start, please wait..."
+    msg "`date` $_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
     mrun "sleep 3"
     cd $_PREV_AEGIR_ROOT
     export DEBIAN_FRONTEND=noninteractive
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
     export DEBIAN_FRONTEND=text
-    msg "`date` $_STATUS B: Hostmaster STATUS: Completed"
+    msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
 
