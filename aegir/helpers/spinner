@@ -4,12 +4,7 @@ i=1
 sp="/-\|"
 esc=""
 reset="${esc}[0m"
-
-# Since FreeBSD has an echo that doesn't know anything, and a /bin/sh that 
-# doesn't handle positional variable access, we use a simpler ticker on 
-# that platform.  It could be done with awk, but I'm not figuring it out
-# right now.
-testecho=/tmp/testecho-$$
+testecho=/opt/tmp/testecho-$$
 echo -ne > $testecho
 if grep -q "\-ne" $testecho; then
 	while [ -e $1 ]
@@ -19,7 +14,6 @@ if grep -q "\-ne" $testecho; then
 	done
 	echo
 else
-	# Do something nicer platforms that allow it	
 	while [ -e $1 ]
 	do
   	echo -en "\b${sp:i++%${#sp}:1}"

@@ -5,8 +5,10 @@ action()
 rm -f -r /opt/tmp
 mkdir -p /opt/tmp
 chmod 777 /opt/tmp
-rm -f /tmp/sess*
+rm -f /opt/tmp/sess*
 rm -f /tmp/*error*
+rm -f /tmp/sess*
+rm -f /opt/tmp/*error*
 touch /var/xdrago/log/graceful.done
 }
 

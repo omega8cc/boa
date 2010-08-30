@@ -34,9 +34,7 @@
 ### the (sub)domain for this Aegir instance
 ### which is already pointed to your server.
 ### Define also your *new* Aegir user for this
-### instance.
-###
-### _DOMAIN=dragon.dev.omega8.cc
+### instance or existing if this is an upgrade
 ###
 _MY_EMAIL="noc@omega8.cc"
 _DOMAIN=host.aegir.cc
@@ -53,15 +51,16 @@ _USER=host
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
+### _AEGIR_VERSION="0.4-alpha12"
 ###
-_AEGIR_VERSION="0.4-alpha12"
+_AEGIR_VERSION="HEAD"
 
 
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.B
+_INSTALLER_VERSION=A12.C
 
 
 ## Sys
@@ -70,14 +69,14 @@ _USRG=users
 _DRUSH_VERSION=6.x-3.3
 
 ## Distributions
+_COMMONS=6.x-1.0
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.0-alpha6
-_PROSEPOINT=0.35
-_UBERCART=uberdrupal
-_OPENPUBLISH=2.2-build285
 _MANAGINGNEWS=1.0-beta10
 _OPENATRIUM=1-0-beta8
-_COMMONS=6.x-1.0
+_OPENPUBLISH=2.2-build285
+_PROSEPOINT=0.35
+_UBERCART=uberdrupal
 
 
 ###---### Functions
@@ -109,12 +108,12 @@ prompt_yes_no () {
 }
 #
 # stop on error
-# set -e
+# set -e ### disabled for debugging
 #
 ###---### action
 #
 action () {
-for Files in `find /var/tmp/nginx-for-drupal/aegir/barracuda -type f`
+for Files in `find /opt/tmp/nginx-for-drupal/aegir/barracuda -type f`
 do
   perl -p -i -e "s/(EDIT_DOMAIN)/$_DOMAIN/g" $Files
   perl -p -i -e "s/(EDIT_MY_EMAIL)/$_MY_EMAIL/g" $Files
@@ -133,36 +132,37 @@ do
   perl -p -i -e "s/(EDIT_MANAGINGNEWS)/$_MANAGINGNEWS/g" $Files
   perl -p -i -e "s/(EDIT_OPENATRIUM)/$_OPENATRIUM/g" $Files
   perl -p -i -e "s/(EDIT_COMMONS)/$_COMMONS/g" $Files
+  perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" $Files
 done
 if [ $_STATUS = "INIT" ] ; then
-  cp -f /var/tmp/nginx-for-drupal/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
+  cp -f /opt/tmp/nginx-for-drupal/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
   chmod 700 /var/xdrago/run-$_USER
 fi
-chmod 700 /var/tmp/nginx-for-drupal/aegir/barracuda/*
-bash /var/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupA.sh.txt
-rm -f -r /var/tmp/nginx-for-drupal
+chmod 700 /opt/tmp/nginx-for-drupal/aegir/barracuda/*
+bash /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupA.sh.txt
+rm -f -r /opt/tmp/nginx-for-drupal
 }
 
 
 ###---### init
 #
-rm -f /tmp/testecho*
-SRCDIR=/var/tmp/files
+rm -f /opt/tmp/testecho*
+SRCDIR=/opt/tmp/files
 mkdir -p $SRCDIR
-chmod -R 777 /var/tmp
-cd /var/tmp
-rm -f -r /var/tmp/nginx-for-drupal
+chmod -R 777 /opt/tmp
+cd /opt/tmp
+rm -f -r /opt/tmp/nginx-for-drupal
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 #
 # Get spinner
 cd $SRCDIR
 rm -f spinner*
-cp -af /var/tmp/nginx-for-drupal/aegir/helpers/spinner ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
 chmod +x spinner
 #
 # Create tmp stuff
-LOG=/var/tmp/aegir-install.log
-SILENT=/var/tmp/silent.log
+LOG=/opt/tmp/aegir-install.log
+SILENT=/opt/tmp/silent.log
 #
 #
 _LASTNUM=001
@@ -233,11 +233,11 @@ else
   exit 1
 fi
 
-  echo $_MY_EMAIL > /tmp/.email.txt
-  perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
-  _MY_EMAIL=`cat /tmp/.email.txt`
+  echo $_MY_EMAIL > /opt/tmp/.email.txt
+  perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
+  _MY_EMAIL=`cat /opt/tmp/.email.txt`
   _MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
-  rm -f /tmp/.email.txt
+  rm -f /opt/tmp/.email.txt
 
 action
 

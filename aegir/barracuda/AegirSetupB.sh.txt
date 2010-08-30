@@ -22,19 +22,19 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.B
+_INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 
 ###---### distro config
 #
+_COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
-_PROSEPOINT=EDIT_PROSEPOINT
-_UBERCART=EDIT_UBERCART
-_OPENPUBLISH=EDIT_OPENPUBLISH
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _OPENATRIUM=EDIT_OPENATRIUM
-_COMMONS=EDIT_COMMONS
+_OPENPUBLISH=EDIT_OPENPUBLISH
+_PROSEPOINT=EDIT_PROSEPOINT
+_UBERCART=EDIT_UBERCART
 
 
 ###---### main config
@@ -96,10 +96,10 @@ mrun () {
 }
 #
 # stop on error
-# set -e
+# set -e ### disabled for debugging
 #
-SRCDIR=/var/tmp/files
-LOG=/var/tmp/aegir-install.log
+SRCDIR=/opt/tmp/files
+LOG=/opt/tmp/aegir-install.log
 #
 msg "`date` $_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
@@ -197,7 +197,7 @@ fi
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
-  msg "`date` $_STATUS B: Drush seems to be functionning properly"
+  msg "`date` $_STATUS B: Drush seems to be functioning properly"
 else
   msg "`date` $_STATUS B: Drush is broken ($DRUSH help failed)"
   exit 1
@@ -230,9 +230,8 @@ git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/n
 #
 msg "`date` $_STATUS B: Build Aegir base"
 mrun "sleep 3"
-#if [ ! -d "$_AEGIR_ROOT" ] ; then
 if [ $_STATUS = "INIT" ] ; then
-    msg "`date` $_STATUS STATUS: INIT"
+    msg "`date` $_STATUS B: INIT"
     mrun "sleep 3"
     cd $_ROOT
     AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
@@ -253,22 +252,22 @@ if [ $_STATUS = "INIT" ] ; then
 	ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
 	msg "`date` $_STATUS B: Deploying hostmaster application done"
 elif [ $_STATUS = "UPGRADE" ] ; then
-    msg "`date` $_STATUS Hostmaster STATUS: Start, please wait..."
+    msg "`date` $_STATUS B: Hostmaster STATUS: Start, please wait..."
     mrun "sleep 3"
-    export DEBIAN_FRONTEND=noninteractive
     cd $_PREV_AEGIR_ROOT
-    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
-    msg "`date` $_STATUS Hostmaster STATUS: Completed"
+    export DEBIAN_FRONTEND=noninteractive
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+    msg "`date` $_STATUS B: Hostmaster STATUS: Completed"
 fi
 
 
 ###--------------------###
-msg "`date` $_STATUS B: Simple check if Aegir install is successful"
+msg "`date` $_STATUS B: Simple check if Aegir install or upgrade is successful"
 mrun "sleep 3"
 if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "`date` $_STATUS INFO: Aegir setup test OK"
+  msg "`date` $_STATUS B: Aegir setup test OK"
 else
-  msg "`date` $_STATUS FATAL ERROR: Something is wrong, Aegir not ready - exit now"
+  msg "`date` $_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready - exit now"
   exit 1
 fi
 
@@ -278,7 +277,7 @@ fi
 msg "`date` $_STATUS B: Enhance Aegir UI"
 mrun "sleep 3"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
-cp -af /var/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
@@ -299,7 +298,7 @@ $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
 $_DRUSHCMD vset --always-set site_frontpage "hosting/sites" &> /dev/null
-$_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Barracuda" &> /dev/null
+$_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
 $_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
 $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
@@ -317,7 +316,7 @@ if [ -f "/data/conf/global.inc" ] ; then
 else
   rm -f $_ROOT/config/includes/global.inc
   cd /data/conf
-  cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
   mv -f global.inc.aegir.txt global.inc
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi

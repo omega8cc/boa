@@ -22,7 +22,7 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.B
+_INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 
 ###---### Functions
@@ -63,7 +63,7 @@ wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/n
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
-  msg "`date` UPGRADE INFO: Drush seems to be functionning properly"
+  msg "`date` UPGRADE INFO: Drush seems to be functioning properly"
 else
   msg "`date` UPGRADE INFO: Drush is broken ($DRUSH help failed)"
   exit 1
@@ -89,7 +89,7 @@ fi
 cd $_ROOT/.drush
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
 cd $_PREV_AEGIR_ROOT
-$_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT &> /dev/null
+$_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
 
 
 ###----------------------------------------###

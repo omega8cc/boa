@@ -47,7 +47,7 @@ _MY_EMAIL="support@omega8.cc"
 ### _AEGIR_VERSION="HEAD"
 ### _AEGIR_VERSION="0.4-alpha12"
 ###
-_AEGIR_VERSION="0.4-alpha12"
+_AEGIR_VERSION="HEAD"
 
 
 ###----------------------------------------###
@@ -109,10 +109,19 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
+### SMTP RELAY - ONLY WHEN REQUIRED        ###
+###----------------------------------------###
+###
+### _SMTP_RELAY_HOST="smtp.cust.voxel.net"
+###
+_SMTP_RELAY_HOST=""
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.B
+_INSTALLER_VERSION=A12.C
 _NGINX_VERSION=0.8.49
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -240,11 +249,11 @@ else
   msg "`date` INFO: INIT..."
 fi
 INITINS="/usr/bin/apt-get -y --force-yes install"
-INSTALL="/usr/bin/apt-get --config-file /var/tmp/apt.conf.noninteractive -y --force-yes install"
-SRCDIR=/var/tmp/files
-rm -f -r /var/tmp/*
+INSTALL="/usr/bin/apt-get --config-file /opt/tmp/apt.conf.noninteractive -y --force-yes install"
+SRCDIR=/opt/tmp/files
+rm -f -r /opt/tmp/*
 mkdir -p $SRCDIR
-chmod -R 777 /var/tmp
+chmod -R 777 /opt/tmp
 
 
 ###--------------------###
@@ -262,22 +271,22 @@ msg "`date` INFO: Downloading little helpers, please wait..."
 sleep 8
 #
 # Git clone all
-cd /var/tmp
-rm -f -r /var/tmp/nginx-for-drupal
+cd /opt/tmp
+rm -f -r /opt/tmp/nginx-for-drupal
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 #
 # Get apt helper
 rm -f apt.conf.noninteractive*
-cp -af /var/tmp/nginx-for-drupal/aegir/helpers/apt.conf.noninteractive ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt.conf.noninteractive ./
 #
 # Create tmp stuff
-LOG=/var/tmp/aegir-install.log
-SILENT=/var/tmp/silent.log
+LOG=/opt/tmp/aegir-install.log
+SILENT=/opt/tmp/silent.log
 cd $SRCDIR
 #
 # Get spinner
 rm -f spinner*
-cp -af /var/tmp/nginx-for-drupal/aegir/helpers/spinner ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
 chmod +x spinner
 #
 
@@ -614,8 +623,8 @@ cat <<EOF
   It appears you need a SMTP relayhost added
   in your Postfix /etc/postfix/main.cf config.
   
-  Uncomment 2 lines in the 'SMTP check' section
-  and enter there your SMTP relayhost name.
+  Please enter your SMTP relay host name
+  as a value for _SMTP_RELAY_HOST="smtp.your.relay.server"
   
   Then run this script again.
     
@@ -626,11 +635,12 @@ else
 fi
 ###
 ### required if you have closed outgoing smtp port and you have to use smtp relay
-### in this example it is for Voxel servers
 ###
-# perl -p -i -e "s/(smtp.cust.voxel.net)//g" /etc/postfix/main.cf
-# perl -p -i -e "s/(relayhost =)/relayhost = smtp.cust.voxel.net/g" /etc/postfix/main.cf
-postfix reload
+if [ ! -z "$_SMTP_RELAY_HOST" ]; then
+  perl -p -i -e "s/($_SMTP_RELAY_HOST)//g" /etc/postfix/main.cf
+  perl -p -i -e "s/(relayhost =)/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf
+  postfix reload &> /dev/null
+fi
 ###
 ###
 
@@ -647,7 +657,7 @@ if [ -d "/var/xdrago" ] ; then
 fi
 if [ $_STATUS = "INIT" ] ; then
   mkdir -p ./xdrago
-  cp -af /var/tmp/nginx-for-drupal/aegir/tools/auto-healing-monitoring/* ./xdrago/
+  cp -af /opt/tmp/nginx-for-drupal/aegir/tools/auto-healing-monitoring/* ./xdrago/
   cp -af /var/xdrago/etc /opt/
   cp -af /opt/etc/init.d/* /etc/init.d/
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
@@ -655,12 +665,12 @@ if [ $_STATUS = "INIT" ] ; then
   perl -p -i -e "s/(max_children\">1)/max_children\"\>4/g" /opt/etc/php-fpm.conf
 fi
 if [ $_STATUS = "INIT" ] ; then
-  echo $_MY_EMAIL > /tmp/.email.txt
-  perl -p -i -e "s/(\@)/\\\@/g" /tmp/.email.txt
-  APTEMAILA=`cat /tmp/.email.txt`
+  echo $_MY_EMAIL > /opt/tmp/.email.txt
+  perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
+  APTEMAILA=`cat /opt/tmp/.email.txt`
   APTEMAIL=`echo -n $APTEMAILA | tr -d "\n"`
   perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf
-  rm -f /tmp/.email.txt
+  rm -f /opt/tmp/.email.txt
   runner "sh /usr/sbin/apticron"
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION" ] ; then
@@ -926,7 +936,7 @@ if [ $_STATUS = "INIT" ] ; then
   runner "invoke-rc.d nginx start" 2> /dev/null
   cd /etc/mysql
   mv -f my.cnf my.cnf.bak.copy
-  cp -af /var/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
   mv my.cnf.txt my.cnf
   runner "invoke-rc.d mysql restart" 2> /dev/null
 else
@@ -962,7 +972,7 @@ if [ $_STATUS = "INIT" ] ; then
 ###
 
 ###--------------------###
-msg "`date` INFO: Installing Aegir, please wait..."
+msg "`date` INFO: Installing core Aegir Hostmaster instance, please wait..."
 mrun "sleep 3"
 runner "adduser --system --group --home /var/aegir aegir"
 runner "adduser aegir www-data"
@@ -976,20 +986,20 @@ elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
 else
   _AEGIR_SCRIPT="aegir-alpha-install"
 fi
-cp -af /var/tmp/nginx-for-drupal/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
-msg "`date` INFO: Now running Aegir installer for backend and frontend"
+cp -af /opt/tmp/nginx-for-drupal/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
+msg "`date` INFO: Now running Aegir installer for backend and frontend, please wait..."
 mrun "sleep 3"
 su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
 mrun "sleep 3"
 
 
 ###--------------------###
-msg "`date` INFO: Simple check if Aegir install is successful"
+msg "`date` INFO: Simple check if core Aegir Hostmaster instance install is successful"
 mrun "sleep 3"
 if [ -f "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
   msg "`date` INFO: Aegir installation almost completed"
 else
-  msg "`date` FATAL ERROR: Something is wrong, Aegir not installed - exit now"
+  msg "`date` FATAL ERROR: Something is wrong, core Aegir Hostmaster instance not installed - exit now"
   exit 1
 fi
 
@@ -1008,9 +1018,9 @@ msg "`date` INFO: Fix for advanced Nginx config and Drush path"
 mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
-cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
-cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc
 mv -f nginx_simple_include.conf nginx_simple_include.conf.orig
 ln -s nginx_advanced_include.conf nginx_simple_include.conf
@@ -1029,21 +1039,32 @@ rm -f /etc/nginx/sites-enabled/default
 killall nginx &> /dev/null
 runner "invoke-rc.d nginx start" 2> /dev/null
 mrun "sleep 3"
-msg "`date` INFO: AEGIR installation completed"
+msg "`date` INFO: core Aegir Hostmaster instance installation completed"
 mrun "sleep 3"
 else
-  msg "`date` INFO: Run Aegir upgrade"
-  mrun "sleep 3"
-  cd /var/aegir
-  cp /var/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
-  perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
-  su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
-  cd /var/aegir/config/includes
-  mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
-  cp -af /var/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc
-  cd /var/aegir
-  rm -f AegirUpgrade.sh.txt
+  echo " "
+  if prompt_yes_no "Do you want to upgrade core Aegir Hostmaster instance?" ; then
+    true
+    mrun "sleep 3"
+    msg "`date` INFO: Running core Aegir Hostmaster instance upgrade"
+    mrun "sleep 3"
+    rm -f /opt/tmp/testecho*
+    invoke-rc.d cron stop &> /dev/null
+    cd /var/aegir
+    cp /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
+    perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
+    su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
+    cd /var/aegir/config/includes
+    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
+    cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+    mv -f global.inc.aegir.txt global.inc
+    cd /var/aegir
+    rm -f AegirUpgrade.sh.txt    
+    msg "`date` INFO: core Aegir Hostmaster instance upgrade completed"
+  else
+    msg "`date` INFO: core Aegir Hostmaster instance not upgraded this time"
+    mrun "sleep 3"
+  fi
 ###
 fi ### end of if [ $_STATUS = "INIT" ] ; then
 ###
@@ -1121,7 +1142,7 @@ mrun "sleep 3"
 msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 3"
 rm -f -r /var/opt/*
-rm -f -r /var/tmp/*
+rm -f -r /opt/tmp/*
 msg "`date` BYE!"
 exit 0
 

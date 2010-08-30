@@ -11,6 +11,8 @@ to install and/or upgrade Aegir Hosting System for Drupal.
 ### $ bash BARRACUDA.sh.txt
 ### $ bash OCTOPUS.sh.txt
 ###
+### For complete installation instructions see docs/INSTALL.txt
+###
 
 Barracuda will be still the main script for base system
 install and upgrades, including main Aegir instance,

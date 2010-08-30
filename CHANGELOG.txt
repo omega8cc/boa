@@ -1,5 +1,29 @@
 
-### Thu, 2010-08-27 04:15 - Edition 0.4-alpha12-A12.B
+### Sat, 2010-08-28 20:15 - Edition 0.4-HEAD-A12.C
+
+Added/Fixed: (upgrade recommended)
+
+1. By defult Aegir 0.4-HEAD with Drush 3.3
+   is now installed to fix critical issues with
+   importing sites. The fix is also available
+   as a patch for alpha12:
+   http://drupal.org/node/882970#comment-3382542
+
+2. Both Barracuda and Octopus now allow to choose
+   if the Aegir Hostmaster will be upgraded or not.
+
+3. Added versions numbers and links to all platforms
+   Yes/no prompts.
+   
+4. /tmp directory no longer used to avoid problems
+   due to secure noexec mount.
+   
+5. Improved readme and docs (in progress).
+
+6. Removed old, no longer supported installer.
+
+
+### Fri, 2010-08-27 04:15 - Edition 0.4-alpha12-A12.B
 
 Added/Fixed: (upgrade optional)
 

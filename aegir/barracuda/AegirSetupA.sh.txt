@@ -22,19 +22,19 @@
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.B
+_INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 
 ###---### distro config
 #
+_COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
-_PROSEPOINT=EDIT_PROSEPOINT
-_UBERCART=EDIT_UBERCART
-_OPENPUBLISH=EDIT_OPENPUBLISH
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _OPENATRIUM=EDIT_OPENATRIUM
-_COMMONS=EDIT_COMMONS
+_OPENPUBLISH=EDIT_OPENPUBLISH
+_PROSEPOINT=EDIT_PROSEPOINT
+_UBERCART=EDIT_UBERCART
 
 
 ###---### main config
@@ -95,19 +95,19 @@ mrun () {
 }
 #
 # stop on error
-# set -e
+# set -e ### disabled for debugging
 #
-SRCDIR=/var/tmp/files
-LOG=/var/tmp/aegir-install.log
+SRCDIR=/opt/tmp/files
+LOG=/opt/tmp/aegir-install.log
 #
 msg "`date` $_STATUS A: Welcome `uname -a`"
 mrun "sleep 3"
 msg "`date` $_STATUS A: Aegir automated install script part A"
 
 
-###---### Stop the cron and wait 60 seconds
+###---### Stop the cron and wait 3 seconds
 #
-msg "`date` $_STATUS A: Stop the cron and wait 8 seconds.."
+msg "`date` $_STATUS A: Stop the cron and wait 3 seconds.."
 runner "invoke-rc.d cron stop" &> /dev/null
 mrun "sleep 3"
 
@@ -160,8 +160,7 @@ chown -R $_USER:$_USRG $_CORE
 chown $_USER:$_USRG /data/all
 chown -R $_USER:$_USRG /data/src
 chown -R $_USER:$_USRG /data/conf
-chown -R $_USER:$_USRG /var/tmp
-chown $_USER:$_USRG /tmp
+chown -R $_USER:$_USRG /opt/tmp
 chmod 755 $_CORE /data/all /data/src /data /data/conf
 
 
@@ -171,15 +170,15 @@ msg "`date` $_STATUS A: Prepare scripts"
 mrun "sleep 3"
 chmod 0711 $_ROOT
 cd $_ROOT
-cp -af /var/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupB.sh.txt ./
-cp -af /var/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupC.sh.txt ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupB.sh.txt ./
+cp -af /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupC.sh.txt ./
 chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt
 chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt
 
 
-###---### Run standard pre-installer
+###---### Run standard pre-install
 #
-msg "`date` $_STATUS A: Run standard pre-installer"
+msg "`date` $_STATUS A: pre-install start"
 mrun "sleep 3"
 if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
@@ -210,58 +209,79 @@ EOFMYSQL
 mrun "sleep 3"
 /usr/bin/mysqladmin -u root -h localhost --port=3306 reload
 cd $_ROOT
-msg "`date` $_STATUS A: Run standard pre-installer completed"
-
-
-###---### Switch user and run InitB & Distros
-#
-msg "`date` $_STATUS A: Switch user and run AegirSetupB"
+msg "`date` $_STATUS A: pre-install completed"
 mrun "sleep 3"
-rm -f /tmp/testecho*
-invoke-rc.d cron stop &> /dev/null
-su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
 
 
-###---### Run standard post-installer
+###---### Install or upgrade Aegir Hostmaster instance [Y/n]
 #
-msg "`date` $_STATUS A: Run standard post-installer"
-mrun "sleep 3"
-if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
-  rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
-  echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
-  ln -s $_ROOT/config/$_USER.nginx.conf /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
+if [ $_STATUS = "INIT" ] ; then
+  msg "`date` $_STATUS A: Switch user and run AegirSetupB"
+  mrun "sleep 3"
+  rm -f /opt/tmp/testecho*
+  invoke-rc.d cron stop &> /dev/null
+  su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+  msg "`date` $_STATUS A: Aegir Hostmaster instance install completed"
+else
+  echo " "
+  if prompt_yes_no "Do you want to upgrade this Aegir Hostmaster instance?" ; then
+    true
+    mrun "sleep 3"
+    msg "`date` $_STATUS A: Switch user and run AegirSetupB"
+    mrun "sleep 3"
+    rm -f /opt/tmp/testecho*
+    invoke-rc.d cron stop &> /dev/null
+    su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+    msg "`date` $_STATUS A: Aegir Hostmaster instance install or upgrade completed"
+  else
+    msg "`date` $_STATUS A: Aegir Hostmaster instance not upgraded this time"
+    mrun "sleep 3"
+  fi
 fi
-if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
-  cd $_ROOT/config/includes
-  mv nginx_simple_include.conf nginx_simple_include.conf.orig
-  mv nginx_advanced_include.conf nginx_advanced_include.conf.orig
-  cp -af /var/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
-  ln -s nginx_advanced_include.conf nginx_simple_include.conf
+
+
+###---### Run standard post-install
+#
+if [ $_STATUS = "INIT" ] ; then
+  msg "`date` $_STATUS A: post-install start"
+  mrun "sleep 3"
+  if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
+    rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
+    echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
+    ln -s $_ROOT/config/$_USER.nginx.conf /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
+  fi
+  if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
+    cd $_ROOT/config/includes
+    mv nginx_simple_include.conf nginx_simple_include.conf.orig
+    mv nginx_advanced_include.conf nginx_advanced_include.conf.orig
+    cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+    ln -s nginx_advanced_include.conf nginx_simple_include.conf
+  fi
+  if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
+    echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+    echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+  fi
+  chgrp -R $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/files
+  chgrp $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/settings.php
+  rm -f -r $_AEGIR_ROOT/themes/bluemarine
+  rm -f -r $_AEGIR_ROOT/themes/chameleon
+  rm -f -r $_AEGIR_ROOT/themes/pushbutton
+  rm -f -r $_AEGIR_ROOT/scripts
+  rm -f $_AEGIR_ROOT/themes/README.txt
+  rm -f $_AEGIR_ROOT/*.txt
+  killall nginx &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
+  invoke-rc.d cron start &> /dev/null
+  cd $_AEGIR_ROOT
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
+  cd $_ROOT
+  msg "`date` $_STATUS A: post-install completed"
 fi
-if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
-  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
-  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
-fi
-chgrp -R $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/files
-chgrp $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/settings.php
-rm -f -r $_AEGIR_ROOT/themes/bluemarine
-rm -f -r $_AEGIR_ROOT/themes/chameleon
-rm -f -r $_AEGIR_ROOT/themes/pushbutton
-rm -f -r $_AEGIR_ROOT/scripts
-rm -f $_AEGIR_ROOT/themes/README.txt
-rm -f $_AEGIR_ROOT/*.txt
-killall nginx &> /dev/null
-invoke-rc.d nginx start &> /dev/null
-invoke-rc.d cron start &> /dev/null
-cd $_AEGIR_ROOT
-cp -af /var/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
-cd $_ROOT
-msg "`date` $_STATUS A: Run standard post-installer completed"
 
 
 ###---### Set permissions for all
 #
-msg "`date` $_STATUS A: Set permissions for all"
+msg "`date` $_STATUS A: Set correct permissions"
 mrun "sleep 3"
 chmod 0711 $_AEGIR_ROOT
 chmod 0711 $_ROOT/config
@@ -269,17 +289,27 @@ chmod 0711 $_ROOT/config/includes
 chmod 0700 $_ROOT/backups
 
 
-###---### Switch user and run Distros build
+###---### Platforms [Y/n]
 #
-msg "`date` $_STATUS A: Switch user and run Distros build"
-mrun "sleep 3"
-rm -f /tmp/testecho*
-su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+echo " "
+if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
+  true
+  msg "NOTE: Please choose only the platforms/distributions you want to have included"
+  mrun "sleep 3"
+  msg "`date` $_STATUS A: Switch user and run Distros build"
+  mrun "sleep 3"
+  rm -f /opt/tmp/testecho*
+  su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+  msg "`date` $_STATUS A: Distributions install completed"
+else
+  msg "`date` $_STATUS A: No new platforms added this time"
+  mrun "sleep 3"
+fi
 
 
 ###---### Clean up old and install files
 #
-msg "`date` $_STATUS A: Clean up old and install files"
+msg "`date` $_STATUS A: Clean up old install files"
 mrun "sleep 3"
 rm -f $_ROOT/AegirSetupC.sh.txt
 rm -f $_ROOT/AegirSetupB.sh.txt
@@ -292,9 +322,9 @@ if [ $_STATUS = "INIT" ] ; then
  msg "`date` $_STATUS A: Add cron task"
  mrun "sleep 3"
  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
- rm -f /var/spool/cron/crontabs/$_USER
- invoke-rc.d cron restart &> /dev/null
 fi
+rm -f /var/spool/cron/crontabs/$_USER
+invoke-rc.d cron restart &> /dev/null
 
 
 ###---### Touch install logs
@@ -312,16 +342,15 @@ fi
 #
 msg "`date` $_STATUS A: Start the cron now"
 runner "invoke-rc.d cron start" 2> /dev/null
-msg "`date` $_STATUS STATUS: All done!"
+msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
 chown root:root /data/all
 chown -R root:root /data/src
 chown -R root:root /data/conf
 chown -R root:root $_CORE
-chown root:root /var/tmp
-chown root:root /tmp
+chown root:root /opt/tmp
 chmod 0711 $_CORE /data/all /data/src /data /data/conf
-msg "`date` $_STATUS BYE!"
+msg "`date` BYE!"
 
 
 ###----------------------------------------###
