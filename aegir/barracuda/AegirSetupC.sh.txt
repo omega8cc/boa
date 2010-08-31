@@ -306,7 +306,7 @@ msg "STATUS: $_F_ACQUIA installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_ACQUIA installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -338,7 +338,7 @@ msg "STATUS: $_F_ATRIUM installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_ATRIUM installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -375,7 +375,7 @@ msg "STATUS: $_F_ATRIUM_DEV installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_ATRIUM_DEV installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -404,7 +404,7 @@ msg "STATUS: $_F_DRUPAL5 installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -431,7 +431,7 @@ msg "STATUS: $_F_DRUPAL6 installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_DRUPAL6 installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -460,7 +460,7 @@ msg "STATUS: $_F_DRUPAL7 installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -492,7 +492,7 @@ msg "STATUS: $_F_COCOMORE installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_COCOMORE installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -525,7 +525,7 @@ msg "STATUS: $_F_COMMONS installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_COMMONS installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -561,7 +561,7 @@ msg "STATUS: $_F_FSERVER installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_FSERVER installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -590,7 +590,7 @@ msg "STATUS: $_F_MANAGINGNEWS installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_MANAGINGNEWS installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -624,7 +624,7 @@ msg "STATUS: $_F_MANAGINGNEWS_DEV installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_MANAGINGNEWS_DEV installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -656,7 +656,7 @@ msg "STATUS: $_F_OPENPUBLISH installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_OPENPUBLISH installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -685,7 +685,7 @@ msg "STATUS: $_F_PROSEPOINT installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_PROSEPOINT installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 
@@ -714,7 +714,7 @@ msg "STATUS: $_F_UBERCART installation completed"
 mrun "sleep 3"
 else
   msg "STATUS: $_F_UBERCART installation skipped"
-  mrun "sleep 3"
+  mrun "sleep 2"
 fi
 
 

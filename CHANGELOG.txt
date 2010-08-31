@@ -1,14 +1,25 @@
 
-### Tue, 2010-08-31 23:00 - Edition 0.4-HEAD-A12.D
+### Tue, 2010-08-31 23:50 - Edition 0.4-HEAD-A12.D
 
-Added/Fixed: (upgrade recommended)
+Added/Fixed: (upgrade recommended because it works!)
 
-1. New platform Cocomore Drupal Core added in Octopus:
-   http://drupal.cocomore.com
-   
-2. Upgrade of core Hostmaster instance by Barracuda
+1. Upgrade of core Hostmaster instance by Barracuda
    and upgrade of Hostmaster instances by Octopus
    finally works as expected.
+
+2. It is now possible to use Barracuda to install
+   environment and core Hostmaster instance, to
+   upgrade only environment, to upgrade only core
+   Hostmaster instance, or both at the same time.
+   
+3. Octopus now can separately install and/or upgrade
+   any non-core Hostmaster instance or any platform
+   on any instance, separately, using detailed prompt
+   with version numbers and links to distributions
+   home pages.
+
+4. New platform Cocomore Drupal added in Octopus:
+   http://drupal.cocomore.com  
 
 
 ### Sat, 2010-08-28 20:15 - Edition 0.4-HEAD-A12.C
