@@ -33,7 +33,7 @@ msg () {
 }
 #
 # stop on error
-set -e
+# set -e
 export DEBIAN_FRONTEND=noninteractive
 
   _LASTNUM=001

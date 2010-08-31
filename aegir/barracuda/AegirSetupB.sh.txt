@@ -271,7 +271,7 @@ else
   mrun "sleep 3"
   export DEBIAN_FRONTEND=noninteractive
   cd $_PREV_AEGIR_ROOT
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT &> /dev/null
   export DEBIAN_FRONTEND=text
   msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
