@@ -260,13 +260,13 @@ if [ $_STATUS = "INIT" ] ; then
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   msg "`date` $_STATUS B: Deploying hostmaster application done"
 else
-#   msg "`date` $_STATUS B: Simple check if previous Hostmaster version was a valid install"
-#   if [ -d "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-#     msg "`date` $_STATUS B: Test OK, we can proceed with the Hostmaster upgrade"
-#   else
-#     msg "`date` $_STATUS B: FATAL ERROR: Something is wrong, Hostmaster not ready - exit now"
-#     exit 1
-#   fi
+  msg "`date` $_STATUS B: Simple check if previous Hostmaster version was a valid install"
+  if [ -d "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+    msg "`date` $_STATUS B: Test OK, we can proceed with the Hostmaster upgrade"
+  else
+    msg "`date` $_STATUS B: FATAL ERROR: Something is wrong, Hostmaster not ready - exit now"
+    exit 1
+  fi
   if [ -d "$_AEGIR_ROOT" ] ; then
     msg "`date` $_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
     exit 1
