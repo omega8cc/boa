@@ -121,7 +121,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.C
+_INSTALLER_VERSION=A12.D
 _NGINX_VERSION=0.8.49
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -159,7 +159,7 @@ prompt_yes_no () {
 }
 #
 # Stop on error
-set -e ### disable this for debugging
+# set -e ### disable this for debugging
 #
 # Success msg
 success () {
@@ -828,7 +828,7 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ ! -f "/usr/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -926,6 +926,7 @@ if [ $_STATUS = "INIT" ] ; then
   echo "UseDNS no" >> /etc/ssh/sshd_config
   #cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
+  chmod 700 /usr/local/sbin/php-fpm
   killall nginx php-cgi php-fpm &> /dev/null
   runner "invoke-rc.d ssh restart" &> /dev/null
   runner "update-rc.d cron defaults" &> /dev/null

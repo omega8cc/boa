@@ -1,4 +1,16 @@
 
+### Tue, 2010-08-31 12:00 - Edition 0.4-HEAD-A12.D
+
+Added/Fixed: (upgrade recommended)
+
+1. New platform Cocomore Drupal Core added in Octopus:
+   http://drupal.cocomore.com
+   
+2. Upgrade of core Hostmaster instance by Barracuda
+   and upgrade of Hostmaster instances by Octopus
+   finnaly works as expected.
+
+
 ### Sat, 2010-08-28 20:15 - Edition 0.4-HEAD-A12.C
 
 Added/Fixed: (upgrade recommended)
