@@ -35,16 +35,10 @@ msg () {
 # stop on error
 # set -e
 export DEBIAN_FRONTEND=noninteractive
-
-  _LASTNUM=001
-  _DISTRO=001
-  _DOMAIN=EDIT_DOMAIN
-  _AEGIR_VERSION=EDIT_AEGIR_VERSION
-  _DRUSH_VERSION=EDIT_DRUSH_VERSION
-
+#
 hostmaster_dr_up () {
   cd $_ROOT
-  mv -v drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
+  mv -v drush $_ROOT/backups/drush-pre-$_DISTRO
   wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm drush-$_DRUSH_VERSION.tar.gz
@@ -57,9 +51,9 @@ hostmaster_dr_up () {
 }
 #
 hostmaster_mv_up () {
-  mv -v $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
-  mv -v $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
-  mv -v $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
+  mv -v $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
+  mv -v $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
+  mv -v $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
 }
 #
 hostmaster_go_up () {
@@ -104,28 +98,34 @@ hostmaster_re_up () {
 }
 
 ###--------------------###
+  
+_LASTNUM=001
+_DISTRO=001
+_DOMAIN=EDIT_DOMAIN
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
+_DRUSHCMD="php /var/aegir/drush/drush.php"
+_ROOT="/var/aegir"
+_AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
+_PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
+if [ -d "$_ROOT/host_master/001" ] ; then
+  cd $_ROOT/host_master
+  list=([0-9]*)
+  last=${list[@]: -1}
+  _LASTNUM=$last
+  nextnum=00$((10#${last%%[^0-9]*} + 1))
+  nextnum=${nextnum: -3}
+  _DISTRO=${nextnum}
+  _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+fi
+mkdir -p $_ROOT/host_master
+chmod 711 $_ROOT/host_master
+_AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
+
 if [ -d "$_AEGIR_ROOT" ] ; then
   msg "`date` UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
   exit 1
 fi
-
-  _DRUSHCMD="php /var/aegir/drush/drush.php"
-  _ROOT="/var/aegir"
-  _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
-  _PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
-  if [ -d "$_ROOT/host_master" ] ; then
-    cd $_ROOT/host_master
-    list=([0-9]*)
-    last=${list[@]: -1}
-    _LASTNUM=$last
-    nextnum=00$((10#${last%%[^0-9]*} + 1))
-    nextnum=${nextnum: -3}
-    _DISTRO=${nextnum}
-    _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
-  fi
-  mkdir -p $_ROOT/host_master
-  chmod 711 $_ROOT/host_master
-  _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 
 msg "`date` UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
 if [ -f "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
