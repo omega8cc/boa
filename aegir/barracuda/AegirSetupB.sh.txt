@@ -232,34 +232,45 @@ git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost 2> /dev/n
 msg "`date` $_STATUS B: Build Aegir base"
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
-    msg "`date` $_STATUS B: INIT"
-    mrun "sleep 3"
-    cd $_ROOT
-    AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
-    AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
-    AEGIR_HOST=`hostname -f`
-	msg "`date` $_STATUS B: Deploying hostmaster application init"
-	$_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION &> /dev/null
-	mrun "sleep 3"
-	cd $_AEGIR_ROOT
-	mkdir -p sites/$_DOMAIN/files/tmp
-	mkdir -p sites/$_DOMAIN/files/js
-	mkdir -p sites/$_DOMAIN/files/css
-	chmod 2770 -R sites/$_DOMAIN/files
-	chgrp -R $_WEBG sites/$_DOMAIN/files
-	rm -f /data/u/$_DOMAIN
-	rm -f $_ROOT/u/$_DOMAIN
-	ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
-	ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
-	msg "`date` $_STATUS B: Deploying hostmaster application done"
+  msg "`date` $_STATUS B: INIT"
+  mrun "sleep 3"
+  cd $_ROOT
+  AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
+  AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
+  AEGIR_HOST=`hostname -f`
+  msg "`date` $_STATUS B: Deploying hostmaster application init"
+  $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION &> /dev/null
+  mrun "sleep 3"
+  cd $_AEGIR_ROOT
+  mkdir -p sites/$_DOMAIN/files/tmp
+  mkdir -p sites/$_DOMAIN/files/js
+  mkdir -p sites/$_DOMAIN/files/css
+  chmod 2770 -R sites/$_DOMAIN/files
+  chgrp -R $_WEBG sites/$_DOMAIN/files
+  rm -f /data/u/$_DOMAIN
+  rm -f $_ROOT/u/$_DOMAIN
+  ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
+  ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
+  msg "`date` $_STATUS B: Deploying hostmaster application done"
 else
-    msg "`date` $_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
-    mrun "sleep 3"
-    export DEBIAN_FRONTEND=noninteractive
-    cd $_PREV_AEGIR_ROOT
-    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
-    export DEBIAN_FRONTEND=text
-    msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
+  msg "`date` $_STATUS B: Simple check if previous Hostmaster version was a valid install"
+  if [ -f "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+    msg "`date` $_STATUS B: Test OK, we can proceed with the Hostmaster upgrade"
+  else
+    msg "`date` $_STATUS B: FATAL ERROR: Something is wrong, Hostmaster not ready - exit now"
+    exit 1
+  fi
+  if [ -d "$_AEGIR_ROOT" ] ; then
+    msg "`date` $_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
+    exit 1
+  fi
+  msg "`date` $_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
+  mrun "sleep 3"
+  export DEBIAN_FRONTEND=noninteractive
+  cd $_PREV_AEGIR_ROOT
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+  export DEBIAN_FRONTEND=text
+  msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
 

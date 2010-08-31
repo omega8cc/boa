@@ -93,6 +93,20 @@ fi
 cd $_ROOT/.drush
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
 cd $_PREV_AEGIR_ROOT
+
+###--------------------###
+msg "`date` UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
+if [ -f "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+  msg "`date` UPGRADE INFO: Test OK, we can proceed with the Hostmaster upgrade"
+else
+  msg "`date` UPGRADE INFO: FATAL ERROR: Something is wrong, Hostmaster not ready - exit now"
+  exit 1
+fi
+if [ -d "$_AEGIR_ROOT" ] ; then
+  msg "`date` UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
+  exit 1
+fi
+
 $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
 
 
