@@ -1,12 +1,12 @@
 
-### To upgrade OS/libraries/services and optionally core Aegir instance:
+### To upgrade OS/libraries/services and/or optionally core Aegir instance:
 #
 $ cd; wget http://github.com/omega8cc/nginx-for-drupal/raw/master/BARRACUDA.sh.txt
 $ cd; nano BARRACUDA.sh.txt (edit your e-mail address)
 $ cd; bash BARRACUDA.sh.txt (say Y/n on prompt for upgrade of hostmaster)
 
 
-### To upgrade any Aegir non-core instance:
+### To upgrade any Aegir non-core instance and/or platforms selectively:
 #
 $ cd; wget http://github.com/omega8cc/nginx-for-drupal/raw/master/OCTOPUS.sh.txt
 $ cd; nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name of upgraded instance)

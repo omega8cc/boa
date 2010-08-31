@@ -12,8 +12,9 @@ to install and/or upgrade Aegir Hosting System for Drupal.
 ### $ bash OCTOPUS.sh.txt
 ###
 ### For complete installation instructions see docs/INSTALL.txt
+### Upgrade complete installation instructions see docs/UPGRADE.txt
 ### For recipe on local working install see docs/HINTS.txt
-###
+### 
 
 Barracuda will be still the main script for base system
 install and upgrades, including main Aegir instance,
@@ -58,7 +59,7 @@ so it is your responsibility to use such system wisely.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.
-* Chive database manager.
+* Chive database manager in "db." subdomain.
 
 
 ### HELP

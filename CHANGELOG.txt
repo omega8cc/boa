@@ -1,5 +1,5 @@
 
-### Tue, 2010-08-31 12:00 - Edition 0.4-HEAD-A12.D
+### Tue, 2010-08-31 23:00 - Edition 0.4-HEAD-A12.D
 
 Added/Fixed: (upgrade recommended)
 
