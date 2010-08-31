@@ -40,6 +40,8 @@ export DEBIAN_FRONTEND=noninteractive
 _LASTNUM=001
 _DISTRO=001
 _DOMAIN=EDIT_DOMAIN
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
 _DRUSHCMD="php /var/aegir/drush/drush.php"
 _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
@@ -83,8 +85,9 @@ else
     wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
     tar -xzf provision-$_AEGIR_VERSION.tgz
     rm provision-$_AEGIR_VERSION.tgz
-    cd $_ROOT
-    $_DRUSHCMD dl drush_make-6.x-2.0-beta8 &> /dev/null
+    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
+    tar -xzf drush_make-6.x-2.0-beta8.tar.gz
+    rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi
 fi
 cd $_ROOT/.drush

@@ -120,6 +120,7 @@ do
   perl -p -i -e "s/(EDIT_USER)/$_USER/g" $Files
   perl -p -i -e "s/(EDIT_DISTRO)/$_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_LASTNUM)/$_LASTNUM/g" $Files
+  perl -p -i -e "s/(EDIT_LASTNUM_HMR)/$_LASTNUM_HMR/g" $Files
   perl -p -i -e "s/(EDIT_WEBG)/$_WEBG/g" $Files
   perl -p -i -e "s/(EDIT_USRG)/$_USRG/g" $Files
   perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g" $Files
