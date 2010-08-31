@@ -176,6 +176,7 @@ SILENT=/opt/tmp/silent.log
 _LASTNUM=001
 _LASTNUM_HMR=001
 _DISTRO=001
+_HM_DISTRO=001
 _STATUS=INIT
 _ROOT="/data/disk/$_USER"
 if [ -d "$_ROOT" ] ; then
