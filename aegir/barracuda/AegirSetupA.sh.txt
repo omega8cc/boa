@@ -278,8 +278,8 @@ if [ $_STATUS = "INIT" ] ; then
   fi
   if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
     cd $_ROOT/config/includes
-    mv nginx_simple_include.conf nginx_simple_include.conf.orig
-    mv nginx_advanced_include.conf nginx_advanced_include.conf.orig
+    mv -f nginx_simple_include.conf nginx_simple_include.conf.orig
+    mv -f nginx_advanced_include.conf nginx_advanced_include.conf.orig
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
     ln -s nginx_advanced_include.conf nginx_simple_include.conf
   fi
@@ -308,10 +308,10 @@ fi
 #
 msg "`date` $_STATUS A: Set correct permissions"
 mrun "sleep 3"
-chmod 0711 $_AEGIR_ROOT
-chmod 0711 $_ROOT/config
-chmod 0711 $_ROOT/config/includes
-chmod 0700 $_ROOT/backups
+chmod 0711 $_AEGIR_ROOT &> /dev/null
+chmod 0711 $_ROOT/config &> /dev/null
+chmod 0711 $_ROOT/config/includes &> /dev/null
+chmod 0700 $_ROOT/backups &> /dev/null
 
 
 ###---### Platforms [Y/n]
@@ -384,7 +384,7 @@ chown -R root:root /data/src
 chown -R root:root /data/conf
 chown -R root:root $_CORE
 chown root:root /opt/tmp
-chmod 0711 $_CORE /data/all /data/src /data /data/conf
+chmod 0711 $_CORE /data/all /data/src /data /data/conf &> /dev/null
 msg "`date` BYE!"
 
 
