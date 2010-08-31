@@ -207,9 +207,9 @@ else
   exit 1
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
-  mv $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
-  mv $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
-  mv $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
+  mv -v $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
+  mv -v $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
+  mv -v $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
 fi
 msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
@@ -227,7 +227,7 @@ else
   fi
 fi
 cd $_ROOT/.drush
-git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost 2> /dev/null
+git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
 
 
 ###---### Build Aegir base

@@ -69,10 +69,10 @@ hostmaster_go_up () {
       wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
       tar -xzf provision-$_AEGIR_VERSION.tgz
       rm provision-$_AEGIR_VERSION.tgz
-      wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
-      tar -xzf drush_make-6.x-2.0-beta8.tar.gz
-      rm -f drush_make-6.x-2.0-beta8.tar.gz
     fi
+    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
+    tar -xzf drush_make-6.x-2.0-beta8.tar.gz
+    rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi
   cd $_ROOT/.drush
   git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
@@ -80,7 +80,7 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT &> /dev/null
 }
 
 ###--------------------###
