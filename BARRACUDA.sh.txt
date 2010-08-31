@@ -159,7 +159,7 @@ prompt_yes_no () {
 }
 #
 # Stop on error
-# set -e ### disable this for debugging
+set -e ### disable this for debugging
 #
 # Success msg
 success () {

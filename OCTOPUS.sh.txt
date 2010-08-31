@@ -108,7 +108,7 @@ prompt_yes_no () {
 }
 #
 # stop on error
-# set -e ### disabled for debugging
+set -e ### disabled for debugging
 #
 ###---### action
 #
@@ -119,6 +119,7 @@ do
   perl -p -i -e "s/(EDIT_MY_EMAIL)/$_MY_EMAIL/g" $Files
   perl -p -i -e "s/(EDIT_USER)/$_USER/g" $Files
   perl -p -i -e "s/(EDIT_DISTRO)/$_DISTRO/g" $Files
+  perl -p -i -e "s/(EDIT_HM_DISTRO)/$_HM_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_LASTNUM)/$_LASTNUM/g" $Files
   perl -p -i -e "s/(EDIT_LASTNUM_HMR)/$_LASTNUM_HMR/g" $Files
   perl -p -i -e "s/(EDIT_WEBG)/$_WEBG/g" $Files
@@ -147,6 +148,12 @@ rm -f -r /opt/tmp/nginx-for-drupal
 
 ###---### init
 #
+if [ `whoami` = "root" ] ; then
+  msg "STATUS: This script is ran as a root user."
+else
+  msg "ERROR: This script should be ran as a root user, please su - root first."
+  exit 1
+fi
 rm -f /opt/tmp/testecho*
 SRCDIR=/opt/tmp/files
 mkdir -p $SRCDIR
@@ -167,6 +174,7 @@ SILENT=/opt/tmp/silent.log
 #
 #
 _LASTNUM=001
+_LASTNUM_HMR=001
 _DISTRO=001
 _STATUS=INIT
 _ROOT="/data/disk/$_USER"
@@ -188,6 +196,8 @@ if [ -d "$_ROOT" ] ; then
     exit 1
   fi
   echo RAW _DOMAIN is $_DOMAIN
+#
+# Check for last distro nr
   cd $_ROOT/distro
   list=([0-9]*)
   last=${list[@]: -1}
@@ -197,6 +207,18 @@ if [ -d "$_ROOT" ] ; then
   nextnum=${nextnum: -3}
   _DISTRO=${nextnum}
   echo _DISTRO is $_DISTRO
+#
+# Check for last hm nr
+  cd $_ROOT/aegir/distro
+  list=([0-9]*)
+  last=${list[@]: -1}
+  _LASTNUM_HMR=$last
+  echo _LASTNUM_HMR is $last
+  nextnum=00$((10#${last%%[^0-9]*} + 1))
+  nextnum=${nextnum: -3}
+  _HM_DISTRO=${nextnum}
+  echo _HM_DISTRO is $_HM_DISTRO
+#
  elif [ ! -d "$_ROOT/distro" ] ; then
   echo UPGRADE v.1 in progress..
   echo _DISTRO is $_DISTRO
