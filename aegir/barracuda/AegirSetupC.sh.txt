@@ -277,7 +277,6 @@ fi
 cd /data/src/$_DISTRO/pressflow-6/
 ln -s $_CORE/o_contrib modules/o_contrib
 cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
-rm -f -r $_CORE/o_contrib/image
 fi
 
 
@@ -464,7 +463,7 @@ else
 fi
 
 
-###---### Cocomore Drupal Core
+###---### Cocomore Drupal
 #
 echo " "
 if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
@@ -723,6 +722,7 @@ fi
 echo " "
 msg "`date` $_STATUS C: remove some default themes for all"
 mrun "sleep 3"
+rm -f -r $_CORE/o_contrib/image
 rm -f -r $_CORE/*/themes/bluemarine
 rm -f -r $_CORE/*/themes/chameleon
 rm -f -r $_CORE/*/themes/pushbutton
