@@ -120,7 +120,7 @@ do
   perl -p -i -e "s/(EDIT_DISTRO)/$_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_HM_DISTRO)/$_HM_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_LASTNUM)/$_LASTNUM/g" $Files
-  perl -p -i -e "s/(EDIT_LASTNUM_HMR)/$_LASTNUM_HMR/g" $Files
+  perl -p -i -e "s/(EDIT_LAST_HMR)/$_LAST_HMR/g" $Files
   perl -p -i -e "s/(EDIT_WEBG)/$_WEBG/g" $Files
   perl -p -i -e "s/(EDIT_USRG)/$_USRG/g" $Files
   perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g" $Files
@@ -174,7 +174,7 @@ SILENT=/opt/tmp/silent.log
 #
 #
 _LASTNUM=001
-_LASTNUM_HMR=001
+_LAST_HMR=001
 _DISTRO=001
 _HM_DISTRO=001
 _STATUS=INIT
@@ -213,8 +213,8 @@ if [ -d "$_ROOT" ] ; then
   cd $_ROOT/aegir/distro
   listx=([0-9]*)
   lastx=${listx[@]: -1}
-  _LASTNUM_HMR=$lastx
-  echo _LASTNUM_HMR is $lastx
+  _LAST_HMR=$lastx
+  echo _LAST_HMR is $lastx
   nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
   nextnumx=${nextnumx: -3}
   _HM_DISTRO=${nextnumx}
