@@ -211,13 +211,13 @@ if [ -d "$_ROOT" ] ; then
 #
 # Check for last hm nr
   cd $_ROOT/aegir/distro
-  list=([0-9]*)
-  last=${list[@]: -1}
-  _LASTNUM_HMR=$last
-  echo _LASTNUM_HMR is $last
-  nextnum=00$((10#${last%%[^0-9]*} + 1))
-  nextnum=${nextnum: -3}
-  _HM_DISTRO=${nextnum}
+  listx=([0-9]*)
+  lastx=${listx[@]: -1}
+  _LASTNUM_HMR=$lastx
+  echo _LASTNUM_HMR is $lastx
+  nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
+  nextnumx=${nextnumx: -3}
+  _HM_DISTRO=${nextnumx}
   echo _HM_DISTRO is $_HM_DISTRO
 #
  elif [ ! -d "$_ROOT/distro" ] ; then

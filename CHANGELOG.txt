@@ -8,7 +8,7 @@ Added/Fixed: (upgrade recommended)
    
 2. Upgrade of core Hostmaster instance by Barracuda
    and upgrade of Hostmaster instances by Octopus
-   finnaly works as expected.
+   finally works as expected.
 
 
 ### Sat, 2010-08-28 20:15 - Edition 0.4-HEAD-A12.C

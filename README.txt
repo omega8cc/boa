@@ -12,6 +12,7 @@ to install and/or upgrade Aegir Hosting System for Drupal.
 ### $ bash OCTOPUS.sh.txt
 ###
 ### For complete installation instructions see docs/INSTALL.txt
+### For recipe on local working install see docs/HINTS.txt
 ###
 
 Barracuda will be still the main script for base system
@@ -56,6 +57,8 @@ so it is your responsibility to use such system wisely.
 * PHP-FPM 5.2.14 with APC, memcache, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated daily backups for all databases in /data/disk/arch/sql.
+* MultiCore Apache Solr with Tomcat.
+* Chive database manager.
 
 
 ### HELP

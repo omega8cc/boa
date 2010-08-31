@@ -51,7 +51,6 @@ _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _DRUSHCMD="php $_ROOT/tools/drush/drush.php"
 _STATUS=INIT
 _LASTNUM=EDIT_LASTNUM
-_LASTNUM_HMR=EDIT_LASTNUM_HMR
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LASTNUM_HMR"
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
@@ -216,6 +215,11 @@ mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
   git clone git://git.aegirproject.org/provision &> /dev/null
+  if [ $_STATUS = "UPGRADE" ] ; then
+    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
+    tar -xzf drush_make-6.x-2.0-beta8.tar.gz
+    rm -f drush_make-6.x-2.0-beta8.tar.gz
+  fi
 else
   wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
   tar -xzf provision-$_AEGIR_VERSION.tgz
@@ -269,10 +273,10 @@ else
   fi
   msg "`date` $_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
   mrun "sleep 3"
-  export DEBIAN_FRONTEND=noninteractive
+  #export DEBIAN_FRONTEND=noninteractive
   cd $_PREV_AEGIR_ROOT
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
-  export DEBIAN_FRONTEND=text
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y 2> /dev/null
+  #export DEBIAN_FRONTEND=text
   msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 

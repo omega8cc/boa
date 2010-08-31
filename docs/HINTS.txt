@@ -1,4 +1,10 @@
 
+### How to install Barracuda and Octopus
+#   locally with working dns? Try this recipe:
+# 
+# http://groups.drupal.org/node/89594#comment-283074
+
+
 ### How to enable upload progress in Nginx
 #
 $ su -s /bin/bash - aegir
