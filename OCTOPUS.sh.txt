@@ -69,6 +69,7 @@ _USRG=users
 _DRUSH_VERSION=6.x-3.3
 
 ## Distributions
+_COCOMORE=cdc-6.19.0
 _COMMONS=6.x-1.0
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.0-alpha6
@@ -133,6 +134,7 @@ do
   perl -p -i -e "s/(EDIT_OPENPUBLISH)/$_OPENPUBLISH/g" $Files
   perl -p -i -e "s/(EDIT_MANAGINGNEWS)/$_MANAGINGNEWS/g" $Files
   perl -p -i -e "s/(EDIT_OPENATRIUM)/$_OPENATRIUM/g" $Files
+  perl -p -i -e "s/(EDIT_COCOMORE)/$_COCOMORE/g" $Files
   perl -p -i -e "s/(EDIT_COMMONS)/$_COMMONS/g" $Files
   perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" $Files
 done
