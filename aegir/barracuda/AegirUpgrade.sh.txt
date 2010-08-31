@@ -33,81 +33,110 @@ msg () {
 }
 #
 # stop on error
-set -e
+# set -e
 export DEBIAN_FRONTEND=noninteractive
 
 ###---### Run Aegir upgrade
-_LASTNUM=001
-_DISTRO=001
-_DOMAIN=EDIT_DOMAIN
-_AEGIR_VERSION=EDIT_AEGIR_VERSION
-_DRUSH_VERSION=EDIT_DRUSH_VERSION
-_DRUSHCMD="php /var/aegir/drush/drush.php"
-_ROOT="/var/aegir"
-_AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
-_PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
-if [ -d "$_ROOT/host_master" ] ; then
-  cd $_ROOT/host_master
-  list=([0-9]*)
-  last=${list[@]: -1}
-  _LASTNUM=$last
-  nextnum=00$((10#${last%%[^0-9]*} + 1))
-  nextnum=${nextnum: -3}
-  _DISTRO=${nextnum}
-  _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
-fi
-mkdir -p $_ROOT/host_master
-chmod 711 $_ROOT/host_master
-_AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
-cd $_ROOT
-mv drush $_ROOT/backups/drush-pre-$_DISTRO
-wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
-tar -xzf drush-$_DRUSH_VERSION.tar.gz
-rm drush-$_DRUSH_VERSION.tar.gz
-if $_DRUSHCMD help > /dev/null ; then
-  msg "`date` UPGRADE INFO: Drush seems to be functioning properly"
-else
-  msg "`date` UPGRADE INFO: Drush is broken ($DRUSH help failed)"
-  exit 1
-fi
-mv $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
-mv $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
-mv $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
-if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
-  msg "`date` UPGRADE INFO: Provision already seems to be installed"
-else
-  msg "`date` UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
-  mkdir -p $_ROOT/.drush
-  cd $_ROOT/.drush
-  if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-    git clone git://git.aegirproject.org/provision &> /dev/null
-  else
-    wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
-    tar -xzf provision-$_AEGIR_VERSION.tgz
-    rm provision-$_AEGIR_VERSION.tgz
-    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
-    tar -xzf drush_make-6.x-2.0-beta8.tar.gz
-    rm -f drush_make-6.x-2.0-beta8.tar.gz
+hostmaster_in_up () {
+  _LASTNUM=001
+  _DISTRO=001
+  _DOMAIN=EDIT_DOMAIN
+  _AEGIR_VERSION=EDIT_AEGIR_VERSION
+  _DRUSH_VERSION=EDIT_DRUSH_VERSION
+  _DRUSHCMD="php /var/aegir/drush/drush.php"
+  _ROOT="/var/aegir"
+  _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
+  _PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
+  if [ -d "$_ROOT/host_master" ] ; then
+    cd $_ROOT/host_master
+    list=([0-9]*)
+    last=${list[@]: -1}
+    _LASTNUM=$last
+    nextnum=00$((10#${last%%[^0-9]*} + 1))
+    nextnum=${nextnum: -3}
+    _DISTRO=${nextnum}
+    _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
   fi
-fi
-cd $_ROOT/.drush
-git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
-cd $_PREV_AEGIR_ROOT
+  mkdir -p $_ROOT/host_master
+  chmod 711 $_ROOT/host_master
+  _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
+}
+hostmaster_dr_up () {
+  cd $_ROOT
+  mv -v drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
+  wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
+  tar -xzf drush-$_DRUSH_VERSION.tar.gz
+  rm drush-$_DRUSH_VERSION.tar.gz
+  if $_DRUSHCMD help > /dev/null ; then
+    msg "`date` UPGRADE INFO: Drush seems to be functioning properly"
+  else
+    msg "`date` UPGRADE INFO: Drush is broken ($DRUSH help failed)"
+    exit 1
+  fi
+}
+hostmaster_mv_up () {
+  mv -v $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
+  mv -v $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
+  mv -v $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
+}
+hostmaster_go_up () {
+  if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
+    msg "`date` UPGRADE INFO: Provision already seems to be installed"
+  else
+    msg "`date` UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
+    mkdir -p $_ROOT/.drush
+    cd $_ROOT/.drush
+    if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+      git clone git://git.aegirproject.org/provision &> /dev/null
+    else
+      wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
+      tar -xzf provision-$_AEGIR_VERSION.tgz
+      rm provision-$_AEGIR_VERSION.tgz
+      wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
+      tar -xzf drush_make-6.x-2.0-beta8.tar.gz
+      rm -f drush_make-6.x-2.0-beta8.tar.gz
+    fi
+  fi
+  cd $_ROOT/.drush
+  git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+  cd $_PREV_AEGIR_ROOT
+}
+hostmaster_mi_up () {
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
+}
+hostmaster_re_up () {
+  cd $_ROOT
+  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+    _AEGIR_SCRIPT="aegir-head-install"
+  elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
+    _AEGIR_SCRIPT="aegir-test-install"
+  else
+    _AEGIR_SCRIPT="aegir-alpha-install"
+  fi
+  cp -af /opt/tmp/nginx-for-drupal/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
+  msg "`date` UPGRADE INFO: Now running Aegir re-installer for backend and frontend, please wait..."
+  bash $_AEGIR_SCRIPT.sh.txt $_DOMAIN --http_service_type='nginx' --db_service_type='mysql' >/var/aegir/re_install.log 2>&1
+}
 
 ###--------------------###
+hostmaster_in_up
 msg "`date` UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
 if [ -f "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "`date` UPGRADE INFO: Test OK, we can proceed with the Hostmaster upgrade"
+  hostmaster_dr_up
+  hostmaster_mv_up
+  hostmaster_go_up
+  hostmaster_mi_up
 else
-  msg "`date` UPGRADE INFO: FATAL ERROR: Something is wrong, Hostmaster not ready - exit now"
-  exit 1
+  msg "`date` UPGRADE INFO: ERROR: Something is wrong, trying to re-install Hostmaster.."
+  hostmaster_dr_up
+  hostmaster_go_up
+  hostmaster_re_up
 fi
 if [ -d "$_AEGIR_ROOT" ] ; then
   msg "`date` UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
   exit 1
 fi
-
-$_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT 2> /dev/null
 
 
 ###----------------------------------------###
