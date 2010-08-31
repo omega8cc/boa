@@ -108,8 +108,6 @@ prompt_yes_no () {
  done 
 }
 #
-# stop on error
-set -e ### disabled for debugging
 #
 ###---### action
 #
