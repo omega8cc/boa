@@ -921,8 +921,8 @@ fi
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update rc.d"
   mrun "sleep 3"
-  chown root:crontab /var/spool/cron/crontabs/root
-  chmod 600 /var/spool/cron/crontabs/root
+  chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+  chmod 600 /var/spool/cron/crontabs/root &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
   #cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
@@ -931,19 +931,19 @@ if [ $_STATUS = "INIT" ] ; then
   runner "update-rc.d cron defaults" &> /dev/null
   runner "update-rc.d php-fpm defaults" &> /dev/null
   runner "update-rc.d nginx defaults" &> /dev/null
-  runner "invoke-rc.d php-fpm start" &> /dev/null
-  runner "invoke-rc.d nginx start" &> /dev/null
+  runner "invoke-rc.d php-fpm start" 2> /dev/null
+  runner "invoke-rc.d nginx start" 2> /dev/null
   cd /etc/mysql
-  mv -f my.cnf my.cnf.bak.copy
+  mv -f my.cnf my.cnf.bak.copy &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
-  mv -v my.cnf.txt my.cnf
-  runner "invoke-rc.d mysql restart" &> /dev/null
+  mv -v my.cnf.txt my.cnf &> /dev/null
+  runner "invoke-rc.d mysql restart" 2> /dev/null
 else
   msg "`date` INFO: Restarting php-fpm and Nginx"
   mrun "sleep 3"
   killall nginx php-cgi php-fpm &> /dev/null
-  runner "invoke-rc.d php-fpm start" &> /dev/null
-  runner "invoke-rc.d nginx start" &> /dev/null
+  runner "invoke-rc.d php-fpm start" 2> /dev/null
+  runner "invoke-rc.d nginx start" 2> /dev/null
 fi
 
 
