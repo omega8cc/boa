@@ -474,10 +474,11 @@ mrun "sleep 3"
 _CORE_DISTRO="$_CORE/$_COCOMORE"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz &> /dev/null
+  #wget -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz &> /dev/null
+  wget -U iCab http://omega8.cc/dev/$_COCOMORE.tar.gz &> /dev/null
   tar -xzf $_COCOMORE.tar.gz
   rm -f $_COCOMORE.tar.gz
-  mv CDC-6.19.0 $_COCOMORE
+  #mv CDC-6.19.0 $_COCOMORE
   cd $_CORE/$_COCOMORE
   ln -s $_CORE/o_contrib modules/o_contrib
   cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
@@ -759,6 +760,9 @@ if [ -d "$_ROOT/distro/$_DISTRO/$_DRUPAL7" ] ; then
 fi
 if [ -d "$_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5" ] ; then
   $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5 &> /dev/null
+fi
+if [ -d "$_ROOT/distro/$_DISTRO/$_COCOMORE" ] ; then
+  $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_DISTRO/$_COCOMORE &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_DISTRO/drupal_commons" ] ; then
   $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_DISTRO/drupal_commons &> /dev/null

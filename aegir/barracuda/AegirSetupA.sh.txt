@@ -297,7 +297,6 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f $_AEGIR_ROOT/*.txt
   killall nginx &> /dev/null
   invoke-rc.d nginx start &> /dev/null
-  invoke-rc.d cron start &> /dev/null
   cd $_AEGIR_ROOT
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
   cd $_ROOT
@@ -331,9 +330,11 @@ else
     mrun "sleep 3"
     msg "`date` $_STATUS A: Switch user and run Distros build"
     mrun "sleep 3"
+    invoke-rc.d cron stop &> /dev/null
     rm -f /opt/tmp/testecho*
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
     msg "`date` $_STATUS A: Distributions install completed"
+    invoke-rc.d cron start &> /dev/null
   else
     msg "`date` $_STATUS A: No new platforms added this time"
     mrun "sleep 3"
