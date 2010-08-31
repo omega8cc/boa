@@ -139,8 +139,8 @@ EOF
 ###
 ### we don't need mysql root password prompt here
 ###
-# /usr/bin/mysql -uroot -p mysql<<EOFMYSQL
-/usr/bin/mysql -uroot mysql<<EOFMYSQL
+# mysql -uroot -p mysql<<EOFMYSQL
+mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST_IP' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;

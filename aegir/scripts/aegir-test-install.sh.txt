@@ -30,7 +30,7 @@
 #
 ########################################################################
 # basic variables, change before release
-AEGIR_VERSION="0.4-alpha12"
+AEGIR_VERSION="HEAD"
 DRUSH_VERSION=6.x-3.3
 
 # when adding a variable here, add it to the display below
@@ -139,8 +139,8 @@ EOF
 ###
 ### we don't need mysql root password prompt here
 ###
-# /usr/bin/mysql -uroot -p mysql<<EOFMYSQL
-/usr/bin/mysql -uroot mysql<<EOFMYSQL
+# mysql -uroot -p mysql<<EOFMYSQL
+mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST_IP' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
@@ -178,7 +178,8 @@ else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
-    git clone git://git.aegirproject.org/provision $AEGIR_HOME/.drush/provision
+    #git clone git://git.aegirproject.org/provision $AEGIR_HOME/.drush/provision
+    git clone git://github.com/omega8cc/provision.git $AEGIR_HOME/.drush/provision
   else
     cd $AEGIR_HOME/.drush
     wget http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz

@@ -80,7 +80,7 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT &> /dev/null
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
 }
 
 ###--------------------###
