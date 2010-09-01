@@ -349,6 +349,9 @@ else
    _IFCONFIG="eth0"
 fi
 if [ ! -z "$_MY_OWNIP" ] ; then
+   if [ ! -z "$_MY_HOSTN" ] ; then
+     hostname -v $_MY_HOSTN ### force our custom FQDN hostname
+   fi
    _THISHTIP="$_MY_OWNIP"
    _THISHOST="$_MY_HOSTN"
    _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`

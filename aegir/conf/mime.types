@@ -54,7 +54,8 @@ types {
     application/vnd.oasis.opendocument.text-template           ott;
     application/vnd.oasis.opendocument.text-web                oth;
 
-    application/vnd.openofficeorg.extension                                        oxt;
+    application/vnd.openofficeorg.extension                    oxt;
+    
     application/vnd.openxmlformats-officedocument.presentationml.presentation     pptx;
     application/vnd.openxmlformats-officedocument.presentationml.slide            sldx;
     application/vnd.openxmlformats-officedocument.presentationml.slideshow        ppsx;
