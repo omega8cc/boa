@@ -564,9 +564,15 @@ runner "aptitude update"
 runner "aptitude clean"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-get upgrade -y"
+  runner "aptitude update"
+  runner "aptitude clean"
   runner "apt-get dist-upgrade"
   runner "apt-get autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
+  runner "aptitude safe-upgrade -y"
+  runner "dpkg --configure -a"
+  runner "aptitude update"
+  runner "aptitude clean"
   runner "aptitude full-upgrade -y"
 fi
 

@@ -154,6 +154,11 @@ else
   msg "ERROR: This script should be ran as a root user, please su - root first."
   exit 1
 fi
+if [ ! -f "/var/aegir/config/includes/installer_version.txt" ] ; then
+  msg "ERROR: This script should be used only when BARRACUDA.sh.txt was used before."
+  msg "ERROR: Your system has to be configured by BARRACUDA.sh.txt installer first."
+  exit 1
+fi
 rm -f /opt/tmp/testecho*
 SRCDIR=/opt/tmp/files
 mkdir -p $SRCDIR
