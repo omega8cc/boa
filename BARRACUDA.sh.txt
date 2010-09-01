@@ -1073,6 +1073,18 @@ fi ### end of if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
+if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
+msg "`date` INFO: Fix for mime types in Nginx, please wait..."
+mrun "sleep 3"
+  cd /etc/nginx
+  mv -v mime.types mime.types-pre-$_INSTALLER_VERSION
+  cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./
+  killall nginx &> /dev/null
+  runner "invoke-rc.d nginx start" 2> /dev/null
+fi
+
+
+###--------------------###
 if [ ! -d "/var/www/chive" ] ; then
   msg "`date` INFO: Installing Chive db manager, please wait..."
   mrun "sleep 3"
