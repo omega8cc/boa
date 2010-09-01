@@ -159,6 +159,23 @@ if [ ! -f "/var/aegir/config/includes/installer_version.txt" ] ; then
   msg "ERROR: Your system has to be configured by BARRACUDA.sh.txt installer first."
   exit 1
 fi
+if [ -e "/proc/bean_counters" ] ; then
+  _VMFAMILY="VZ"
+  _IFCONFIG="venet0:0"
+else
+  _VMFAMILY="XEN"
+  _IFCONFIG="eth0"
+fi
+_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+_THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+  true
+else
+  msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP."
+  msg "Please make sure you have valid IN A or IN CNAME record in your DNS."
+  msg "It's also possible, that your DNS change didn't propagate yet. Wait a bit."
+  msg "Bye."
+fi
 rm -f /opt/tmp/testecho*
 SRCDIR=/opt/tmp/files
 mkdir -p $SRCDIR
