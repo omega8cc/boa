@@ -1,20 +1,24 @@
 
 ### README
 
-All-in-one scripts (see BARRACUDA.sh.txt and OCTOPUS.sh.txt)
-to install and/or upgrade Aegir Hosting System for Drupal.
+All-in-one bash scripts (see BARRACUDA.sh.txt and OCTOPUS.sh.txt)
+to install and/or upgrade Aegir Hosting Systems for Drupal.
+
 
 ###--------------------------------------------------------------###
-### HOW-TO: run it with bash, not with sh                        ###
+### IMPORTANT: run it as root (not via sudo!) with bash, not sh  ###
 ###--------------------------------------------------------------###
 ###
 ### $ bash BARRACUDA.sh.txt
 ### $ bash OCTOPUS.sh.txt
 ###
 ### For complete installation instructions see docs/INSTALL.txt
-### Upgrade complete installation instructions see docs/UPGRADE.txt
+### For the upgrade instructions see docs/UPGRADE.txt
 ### For recipe on local working install see docs/HINTS.txt
-### 
+### For how-to on using Solr Tomcat see docs/SOLR.txt
+###
+###--------------------------------------------------------------###
+
 
 Barracuda will be still the main script for base system
 install and upgrades, including main Aegir instance,
@@ -57,7 +61,7 @@ so it is your responsibility to use such system wisely.
 * Latest version of Nginx web server with upload progress and Boost support.
 * PHP-FPM 5.2.14 with APC, memcache, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
-* Automated daily backups for all databases in /data/disk/arch/sql.
+* Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.
 * Chive database manager in "db." subdomain.
 
@@ -69,9 +73,9 @@ so it is your responsibility to use such system wisely.
 
 ### MAINTAINERS
 
-* Grace - http://omega8.cc
+* Grace  - http://omega8.cc
 * Albert - http://omega8.cc
-* Matt - http://omega8.cc
+* Matt   - http://omega8.cc
 
 
 ### CREDITS
