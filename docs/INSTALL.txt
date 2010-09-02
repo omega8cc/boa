@@ -1,4 +1,22 @@
 
+                       ******** IMPORTANT ********
+                                    *
+                                    *
+                   Don't run both installers via sudo.
+                      You must be logged in as root.
+                         Always su - root first.
+                                    *
+                                    *
+                   Don't run any system updates before
+                       running Barracuda installer.
+                   You should use vanilla system only.
+                   If that doesn't work, please submit
+                     a bug on the github issue queue
+                  with the name of your host and os used.
+                                    *
+                                    *
+                                    
+                                
 ### Installing Barracuda (main system and core Aegir instance):
 #
 $ cd; wget http://github.com/omega8cc/nginx-for-drupal/raw/master/BARRACUDA.sh.txt
