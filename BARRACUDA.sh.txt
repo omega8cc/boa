@@ -109,7 +109,18 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
-### SMTP RELAY - ONLY WHEN REQUIRED        ###
+### SMTP CONNECTION TEST                   ###
+###----------------------------------------###
+###
+### If you don't want to test outgoing SMTP
+### connections, change _SMTP_RELAY_TEST
+### value to "NO".
+###
+_SMTP_RELAY_TEST="YES"
+
+
+###----------------------------------------###
+### SMTP RELAY HOST - ONLY WHEN REQUIRED   ###
 ###----------------------------------------###
 ###
 ### _SMTP_RELAY_HOST="smtp.cust.voxel.net"
@@ -122,7 +133,7 @@ _SMTP_RELAY_HOST=""
 ###----------------------------------------###
 
 _INSTALLER_VERSION=A12.D
-_NGINX_VERSION=0.8.49
+_NGINX_VERSION=0.8.50
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
 
@@ -554,7 +565,7 @@ if [ $_STATUS = "INIT" ] ; then
   wget http://ourdelta.org/deb/ourdelta.gpg &> /dev/null
   apt-key add ourdelta.gpg 2> /dev/null
   wget http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list &> /dev/null
-  cp $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
+  cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
 fi
 
 
@@ -618,6 +629,7 @@ install_with_apt
 
 
 ###--------------------###
+if [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "`date` INFO: SMTP check"
 mrun "sleep 3"
 if ! netcat -w 8 -z smtp.host8.biz 25 ; then
@@ -651,6 +663,7 @@ if [ ! -z "$_SMTP_RELAY_HOST" ]; then
 fi
 ###
 ###
+fi
 
 
 ###--------------------###

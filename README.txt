@@ -15,7 +15,7 @@ to install and/or upgrade Aegir Hosting Systems for Drupal.
 ### For complete installation instructions see docs/INSTALL.txt
 ### For the upgrade instructions see docs/UPGRADE.txt
 ### For recipe on local working install see docs/HINTS.txt
-### For how-to on using Multicore Solr Tomcat see docs/SOLR.txt
+### For how-to on using MultiCore Solr Tomcat see docs/SOLR.txt
 ###
 ###--------------------------------------------------------------###
 
