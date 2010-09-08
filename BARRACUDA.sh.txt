@@ -280,9 +280,7 @@ cd
 
 ###--------------------###
 if [ $_STATUS = "UPGRADE" ] ; then
-  if [ -f "/root/.my.cnf"] ; then
-    true
-  else
+  if [ ! -f "/root/.my.cnf"] ; then
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
 cat <<EOF
   
