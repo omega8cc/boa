@@ -250,9 +250,18 @@ st_runner () {
 
 
 ###--------------------###
+if [ `whoami` = "root" ] ; then
+  msg "STATUS: This script is ran as a root user."
+else
+  msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
+  exit 1
+fi
+
+
+###--------------------###
 msg "`date` INFO: Install or upgrade checking, please wait..."
 sleep 8
-if [ -f "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+if [ -d "/var/aegir" ] ; then
   _STATUS=UPGRADE
   msg "`date` INFO: UPGRADE..."
 else
@@ -262,9 +271,35 @@ fi
 INITINS="/usr/bin/apt-get -y --force-yes install"
 INSTALL="/usr/bin/apt-get --config-file /opt/tmp/apt.conf.noninteractive -y --force-yes install"
 SRCDIR=/opt/tmp/files
+rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 mkdir -p $SRCDIR
 chmod -R 777 /opt/tmp
+cd
+
+
+###--------------------###
+if [ $_STATUS = "UPGRADE" ] ; then
+  if [ -f "/root/.my.cnf"] ; then
+    true
+  else
+  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+cat <<EOF
+  
+  It appears you don't have required file with your root sql password.
+  Create this file first and run this script again:
+  
+    echo "[client]" > /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=your_SQL_ROOT_password" >> /root/.my.cnf
+    chmod 0600 /root/.my.cnf
+    
+EOF
+  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+  echo " "
+  exit 1
+  fi
+fi
 
 
 ###--------------------###
@@ -342,12 +377,6 @@ echo " "
 msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
 echo " "
 mrun "sleep 3"
-if [ `whoami` = "root" ] ; then
-  msg "STATUS: This script is ran as a root user."
-else
-  msg "ERROR: This script should be ran as a root user, please su - root first."
-  exit 1
-fi
 	
 
 ###--------------------###
@@ -492,8 +521,17 @@ fi
 else ### if [ $_STATUS = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
-  _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep 'uri' | cut -d: -f2 | awk '{ print $3}'`
-  _THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
+  if [ -f "/var/aegir/.drush/hostmaster.alias.drushrc.php"] ; then
+    _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep 'uri' | cut -d: -f2 | awk '{ print $3}'`
+    _THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
+  elif [ ! -z "$_MY_FRONT"] ; then
+    _THIS_FRONT="$_MY_FRONT"
+  else
+    msg "EXIT on error due to not found or not specified Aegir domain."
+    msg "Please specify your previously working Aegir domain as a value of _MY_FRONT."
+    echo " "
+    exit 1
+  fi
   mrun "sleep 3"
   echo " "
   msg "UPGRADE START -> checkpoint: "
@@ -978,15 +1016,31 @@ if [ $_STATUS = "INIT" ] ; then
   chmod 0600 /root/.my.pass.txt
   pwgen -c -v -s > /root/.my.pass.txt
 fi
-PXSWD=`cat /root/.my.pass.txt`
-PASWD=`echo -n $PXSWD | tr -d "\n"`
-for Files in `find /var/xdrago -type f`
-do
-  perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
-  perl -p -i -e "s/(php-fpm nginx php)/php-fpm php-cgi nginx php/g" $Files
-done
-msg "`date` INFO: OS and services installation/upgrade completed"
-mrun "sleep 3"
+if [ -f "/root/.my.pass.txt"] ; then
+  PXSWD=`cat /root/.my.pass.txt`
+  PASWD=`echo -n $PXSWD | tr -d "\n"`
+  for Files in `find /var/xdrago -type f`
+  do
+    perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
+    perl -p -i -e "s/(php-fpm nginx php)/php-fpm php-cgi nginx php/g" $Files
+  done
+  msg "`date` INFO: OS and services installation/upgrade completed"
+  mrun "sleep 3"
+else
+  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+cat <<EOF
+  
+  It appears you don't have required file with your root sql password.
+  Create this file first and run this script again:
+  
+    echo "your_SQL_ROOT_password" > /root/.my.pass.txt
+    chmod 0600 /root/.my.pass.txt
+    
+EOF
+  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+  echo " "
+  exit 1
+fi
 
 
 ###
