@@ -280,7 +280,7 @@ cd
 
 ###--------------------###
 if [ $_STATUS = "UPGRADE" ] ; then
-  if [ ! -f "/root/.my.cnf"] ; then
+  if [ ! -f "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
 cat <<EOF
   
@@ -1014,7 +1014,7 @@ if [ $_STATUS = "INIT" ] ; then
   chmod 0600 /root/.my.pass.txt
   pwgen -c -v -s > /root/.my.pass.txt
 fi
-if [ -f "/root/.my.pass.txt"] ; then
+if [ -f "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
   PASWD=`echo -n $PXSWD | tr -d "\n"`
   for Files in `find /var/xdrago -type f`
