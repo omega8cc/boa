@@ -431,23 +431,25 @@ fi
 chown $_USER:$_USRG $_ROOT/static
 chmod 02775 $_ROOT/static
 echo empty > $_ROOT/static/EMPTY.txt
-mkdir -p /home/$_USERFTP/platforms/$_DISTRO
-chown -R $_USER:$_USRG /home/$_USERFTP/platforms
-chmod 700 /home/$_USERFTP
-ln -s $_ROOT/distro/$_DISTRO/acquia/sites /home/$_USERFTP/platforms/$_DISTRO/acquia
-ln -s $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_DISTRO/drupal5
-ln -s $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews
-ln -s $_ROOT/distro/$_DISTRO/managingnews/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews-dev
-ln -s $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium
-ln -s $_ROOT/distro/$_DISTRO/openatrium/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium-dev
-ln -s $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_DISTRO/prosepoint
-ln -s $_ROOT/distro/$_DISTRO/pressflow/sites /home/$_USERFTP/platforms/$_DISTRO/drupal6
-ln -s $_ROOT/distro/$_DISTRO/uberdrupal/sites /home/$_USERFTP/platforms/$_DISTRO/ubercart
-ln -s $_ROOT/distro/$_DISTRO/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_DISTRO/drupal7
-ln -s $_ROOT/distro/$_DISTRO/openpublish/sites /home/$_USERFTP/platforms/$_DISTRO/openpublish
-ln -s $_ROOT/distro/$_DISTRO/fserver/sites /home/$_USERFTP/platforms/$_DISTRO/fserver
-ln -s $_ROOT/distro/$_DISTRO/drupal_commons/sites /home/$_USERFTP/platforms/$_DISTRO/commons
-ln -s $_ROOT/distro/$_DISTRO/$_COCOMORE/sites /home/$_USERFTP/platforms/$_DISTRO/cocomore
+if [ ! -d "/home/$_USERFTP/platforms/$_DISTRO" ] ; then
+  mkdir -p /home/$_USERFTP/platforms/$_DISTRO
+  chown -R $_USER:$_USRG /home/$_USERFTP/platforms
+  chmod 700 /home/$_USERFTP
+  ln -s $_ROOT/distro/$_DISTRO/acquia/sites /home/$_USERFTP/platforms/$_DISTRO/acquia
+  ln -s $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_DISTRO/drupal5
+  ln -s $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews
+  ln -s $_ROOT/distro/$_DISTRO/managingnews/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews-dev
+  ln -s $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium
+  ln -s $_ROOT/distro/$_DISTRO/openatrium/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium-dev
+  ln -s $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_DISTRO/prosepoint
+  ln -s $_ROOT/distro/$_DISTRO/pressflow/sites /home/$_USERFTP/platforms/$_DISTRO/drupal6
+  ln -s $_ROOT/distro/$_DISTRO/uberdrupal/sites /home/$_USERFTP/platforms/$_DISTRO/ubercart
+  ln -s $_ROOT/distro/$_DISTRO/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_DISTRO/drupal7
+  ln -s $_ROOT/distro/$_DISTRO/openpublish/sites /home/$_USERFTP/platforms/$_DISTRO/openpublish
+  ln -s $_ROOT/distro/$_DISTRO/fserver/sites /home/$_USERFTP/platforms/$_DISTRO/fserver
+  ln -s $_ROOT/distro/$_DISTRO/drupal_commons/sites /home/$_USERFTP/platforms/$_DISTRO/commons
+  ln -s $_ROOT/distro/$_DISTRO/$_COCOMORE/sites /home/$_USERFTP/platforms/$_DISTRO/cocomore
+fi
 
 
 ###---### Prepare setupmail.txt
@@ -455,12 +457,12 @@ ln -s $_ROOT/distro/$_DISTRO/$_COCOMORE/sites /home/$_USERFTP/platforms/$_DISTRO
 msg "`date` $_STATUS A: Prepare setupmail.txt"
 mrun "sleep 3"
 echo $_CLIENT_EMAIL > /opt/tmp/.clemail.txt
-perl -p -i -e "s/(\)//g" /opt/tmp/.clemail.txt
+perl -p -i -e "s/(\\)//g" /opt/tmp/.clemail.txt
 _AT_CLIENT_EMAIL=`cat /opt/tmp/.clemail.txt`
 _AT_CLIENT_EMAIL=`echo -n $_AT_CLIENT_EMAIL | tr -d "\n"`
 rm -f /opt/tmp/.clemail.txt
 echo $_ADM_EMAIL > /opt/tmp/.admemail.txt
-perl -p -i -e "s/(\)//g" /opt/tmp/.admemail.txt
+perl -p -i -e "s/(\\)//g" /opt/tmp/.admemail.txt
 _A_DM_EMAIL=`cat /opt/tmp/.admemail.txt`
 _A_DM_EMAIL=`echo -n $_A_DM_EMAIL | tr -d "\n"`
 rm -f /opt/tmp/.admemail.txt
