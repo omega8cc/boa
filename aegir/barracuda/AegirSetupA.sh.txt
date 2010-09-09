@@ -56,6 +56,9 @@ _LASTNUM=EDIT_LASTNUM
 _LAST_HMR=EDIT_LAST_HMR
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
+_ADM_EMAIL="EDIT_MY_EMAIL"
+_CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
+_THISHTIP=EDIT_THISHTIP
 
 
 ###---### Functions
@@ -362,6 +365,150 @@ rm -f /var/spool/cron/crontabs/$_USER
 invoke-rc.d cron restart &> /dev/null
 
 
+###---### Add ftps/lshell access
+#
+if [ $_STATUS = "INIT" ] ; then
+  _USERFTP="$_USER.ftp"
+  _USERFTP_ROOT="/home/$_USERFTP"
+  if [ ! -d "$_USERFTP_ROOT" ] ; then
+    msg "`date` $_STATUS A: Add ftps/lshell user"
+    mrun "sleep 3"
+    # add user
+    useradd -d /home/$_USERFTP -s /usr/bin/lshell -m -N -r $_USERFTP &> /dev/null
+    adduser $_USERFTP $_WEBG &> /dev/null
+    # Make sure new file which contains password is private
+    cd $_ROOT/log
+    touch $_ROOT/log/pass.txt
+    chmod 0600 $_ROOT/log/pass.txt
+    # generate a nice secure password and put it in a file
+    pwgen -c -y -s > $_ROOT/log/pass.txt
+    # get the password hash
+    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
+    # Set the password
+    usermod -p $ph $_USERFTP &> /dev/null
+    passwd -w 7 -x 90 $_USERFTP &> /dev/null
+    usermod -aG lshellg $_USERFTP &> /dev/null
+  fi
+  chsh -s /usr/bin/lshell $_USERFTP &> /dev/null
+  echo " " >> /etc/lshell.conf
+  echo "[$_USERFTP]" >> /etc/lshell.conf
+  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static']" >> /etc/lshell.conf
+fi
+
+
+###---### Read or create pass.txt
+#
+msg "`date` $_STATUS A: Read or create pass.txt"
+mrun "sleep 3"
+if [ -f "$_ROOT/pass.txt" ] ; then 
+ _PASWD=`cat $_ROOT/pass.txt`
+ _PASWD=`echo -n $_PASWD | tr -d "\n"`
+ mv $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
+elif [ -f "$_ROOT/log/pass.txt" ] ; then
+ _PASWD=`cat $_ROOT/log/pass.txt`
+ _PASWD=`echo -n $_PASWD | tr -d "\n"`
+ rm -f $_ROOT/pass.txt
+else
+ cd $_ROOT/log
+ touch $_ROOT/log/pass.txt
+ chmod 0600 $_ROOT/log/pass.txt
+ pwgen -c -y -s > $_ROOT/log/pass.txt &> /dev/null
+ ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
+ usermod -p $ph $_USERFTP &> /dev/null
+ _PASWD=`cat $_ROOT/log/pass.txt`
+ _PASWD=`echo -n $_PASWD | tr -d "\n"`
+fi
+
+
+###---### Create ftp symlinks
+#
+msg "`date` $_STATUS A: Create ftp symlinks"
+mrun "sleep 3"
+if [ ! -d "$_ROOT/static" ] ; then
+ mkdir -p $_ROOT/static
+ ln -s $_ROOT/static /home/$_USERFTP/static
+fi
+chown $_USER:$_USRG $_ROOT/static
+chmod 02775 $_ROOT/static
+echo empty > $_ROOT/static/EMPTY.txt
+mkdir -p /home/$_USERFTP/platforms/$_DISTRO
+chown -R $_USER:$_USRG /home/$_USERFTP/platforms
+chmod 700 /home/$_USERFTP
+ln -s $_ROOT/distro/$_DISTRO/acquia/sites /home/$_USERFTP/platforms/$_DISTRO/acquia
+ln -s $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_DISTRO/drupal5
+ln -s $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews
+ln -s $_ROOT/distro/$_DISTRO/managingnews/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews-dev
+ln -s $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium
+ln -s $_ROOT/distro/$_DISTRO/openatrium/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium-dev
+ln -s $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_DISTRO/prosepoint
+ln -s $_ROOT/distro/$_DISTRO/pressflow/sites /home/$_USERFTP/platforms/$_DISTRO/drupal6
+ln -s $_ROOT/distro/$_DISTRO/uberdrupal/sites /home/$_USERFTP/platforms/$_DISTRO/ubercart
+ln -s $_ROOT/distro/$_DISTRO/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_DISTRO/drupal7
+ln -s $_ROOT/distro/$_DISTRO/openpublish/sites /home/$_USERFTP/platforms/$_DISTRO/openpublish
+ln -s $_ROOT/distro/$_DISTRO/fserver/sites /home/$_USERFTP/platforms/$_DISTRO/fserver
+ln -s $_ROOT/distro/$_DISTRO/drupal_commons/sites /home/$_USERFTP/platforms/$_DISTRO/commons
+ln -s $_ROOT/distro/$_DISTRO/$_COCOMORE/sites /home/$_USERFTP/platforms/$_DISTRO/cocomore
+
+
+###---### Prepare setupmail.txt
+#
+msg "`date` $_STATUS A: Prepare setupmail.txt"
+mrun "sleep 3"
+echo $_CLIENT_EMAIL > /opt/tmp/.clemail.txt
+perl -p -i -e "s/(\)//g" /opt/tmp/.clemail.txt
+_AT_CLIENT_EMAIL=`cat /opt/tmp/.clemail.txt`
+_AT_CLIENT_EMAIL=`echo -n $_AT_CLIENT_EMAIL | tr -d "\n"`
+rm -f /opt/tmp/.clemail.txt
+echo $_ADM_EMAIL > /opt/tmp/.admemail.txt
+perl -p -i -e "s/(\)//g" /opt/tmp/.admemail.txt
+_A_DM_EMAIL=`cat /opt/tmp/.admemail.txt`
+_A_DM_EMAIL=`echo -n $_A_DM_EMAIL | tr -d "\n"`
+rm -f /opt/tmp/.admemail.txt
+if [ -f "$_ROOT/log/setupmail.txt" ] ; then
+ cd $_ROOT/log
+ if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
+   mv $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_DISTRO.txt
+ fi
+ cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
+ perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
+ perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/upgrademail.txt
+ perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/upgrademail.txt
+ perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+ perl -p -i -e "s/(ADMIN_EMAIL)/$_CLIENT_EMAIL/g" $_ROOT/log/upgrademail.txt
+elif [ $_STATUS = "INIT" ] ; then
+ cd $_ROOT/log
+ cp -af /opt/tmp/nginx-for-drupal/aegir/conf/setupmail.txt ./
+ perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/(ADMIN_EMAIL)/$_CLIENT_EMAIL/g" $_ROOT/log/setupmail.txt
+fi
+
+
+###---### Send setup e-mail
+#
+if [ $_STATUS = "INIT" ] ; then
+ msg "`date` $_STATUS A: Send setup e-mail on init"
+ mrun "sleep 3"
+ TIME=`date`
+ echo $TIME > $_ROOT/log/date-init.txt
+ if [ -f "$_ROOT/log/setupmail.txt" ] ; then
+   cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+ fi
+else
+ msg "`date` $_STATUS A: Resend setup e-mail on upgrade"
+ mrun "sleep 3"
+ TIME=`date`
+ echo $TIME > $_ROOT/log/date-upgrade-$_DISTRO.txt
+ if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
+   cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+ else
+   cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+ fi
+fi
+
+
 ###---### Touch install logs
 #
 msg "`date` $_STATUS A: Touch install logs"
@@ -379,6 +526,10 @@ msg "`date` $_STATUS A: Start the cron now"
 runner "invoke-rc.d cron start" 2> /dev/null
 msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
+cd /
+chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
+mv -v /etc/motd /etc/motd-pre-$_DISTRO &> /dev/null
+echo "Welcome to Octopus Aegir Hosting System" > /etc/motd
 chown root:root /data/all
 chown -R root:root /data/src
 chown -R root:root /data/conf

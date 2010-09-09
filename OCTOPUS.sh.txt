@@ -36,9 +36,10 @@
 ### Define also your *new* Aegir user for this
 ### instance or existing if this is an upgrade
 ###
-_MY_EMAIL="noc@omega8.cc"
 _DOMAIN=host.aegir.cc
 _USER=host
+_MY_EMAIL="noc@omega8.cc"
+_CLIENT_EMAIL="support@omega8.cc"
 
 
 ###----------------------------------------###
@@ -51,7 +52,7 @@ _USER=host
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
-### _AEGIR_VERSION="0.4-alpha12"
+### _AEGIR_VERSION="0.4-alpha13"
 ###
 _AEGIR_VERSION="HEAD"
 
@@ -69,8 +70,8 @@ _USRG=users
 _DRUSH_VERSION=6.x-3.3
 
 ## Distributions
-_COCOMORE=cdc-6.19.0
-_COMMONS=6.x-1.0
+_COCOMORE=cdc-6.19.7
+_COMMONS=6.x-1.1
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.0-alpha6
 _MANAGINGNEWS=1.0-beta10
@@ -115,7 +116,9 @@ action () {
 for Files in `find /opt/tmp/nginx-for-drupal/aegir/barracuda -type f`
 do
   perl -p -i -e "s/(EDIT_DOMAIN)/$_DOMAIN/g" $Files
+  perl -p -i -e "s/(EDIT_THISHTIP)/$_THISHTIP/g" $Files
   perl -p -i -e "s/(EDIT_MY_EMAIL)/$_MY_EMAIL/g" $Files
+  perl -p -i -e "s/(EDIT_CLIENT_EMAIL)/$_CLIENT_EMAIL/g" $Files
   perl -p -i -e "s/(EDIT_USER)/$_USER/g" $Files
   perl -p -i -e "s/(EDIT_DISTRO)/$_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_HM_DISTRO)/$_HM_DISTRO/g" $Files
@@ -279,11 +282,11 @@ else
   exit 1
 fi
 
-  echo $_MY_EMAIL > /opt/tmp/.email.txt
-  perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
-  _MY_EMAIL=`cat /opt/tmp/.email.txt`
-  _MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
-  rm -f /opt/tmp/.email.txt
+echo $_MY_EMAIL > /opt/tmp/.email.txt
+perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
+_MY_EMAIL=`cat /opt/tmp/.email.txt`
+_MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
+rm -f /opt/tmp/.email.txt
 
 action
 

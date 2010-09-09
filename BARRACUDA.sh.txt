@@ -975,6 +975,60 @@ fi
 
 
 ###--------------------###
+if [ ! -f "/usr/bin/lshell" ] ; then
+  msg "`date` INFO: Installing lshell, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  wget http://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download &> /dev/null
+  tar -xzf lshell-0.9.12.tar.gz
+  cd /var/opt/lshell-0.9.12
+  runner "python setup.py install" 2> /dev/null
+  addgroup lshellg &> /dev/null
+  mkdir -p /var/log/lsh
+  chown :lshellg /var/log/lsh
+  chmod 770 /var/log/lsh
+  cd /etc
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
+  mv -v lshell.conf lshell.conf-orig &> /dev/null
+  mv -v lshell.conf.txt lshell.conf &> /dev/null
+  echo "/usr/bin/lshell" >> /etc/shells
+fi
+
+
+###--------------------###
+if [ ! -f "/usr/local/sbin/pure-config.pl" ] ; then
+  msg "`date` INFO: Installing Pure-FTPd, please wait..."
+  mrun "sleep 3"
+  echo "/bin/false" >> /etc/shells
+  echo "/bin/true" >> /etc/shells
+  mkdir -p /etc/ssl/private/
+  rm -f /etc/ssl/private/pure-ftpd.pem
+  rm -f /usr/local/sbin/pure-ftpd
+  st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/private/pure-ftpd.pem -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
+  chmod 600 /etc/ssl/private/pure-ftpd.pem
+  cd /var/opt
+  mkdir -p /usr/local/etc
+  rm -f -r pure-ftpd*
+  wget -U iCab http://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-1.0.29.tar.gz &> /dev/null
+  tar -xzf pure-ftpd-1.0.29.tar.gz
+  cd pure-ftpd-1.0.29
+  st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
+  st_runner "make install-strip" 2> /dev/null
+  cd /usr/local/sbin/
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-config.pl.txt ./
+  mv -v pure-config.pl.txt pure-config.pl &> /dev/null
+  chmod 755 /usr/local/sbin/pure-config.pl
+  cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
+  cd /usr/local/etc
+  rm -f pure-ftpd.conf
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-ftpd.conf ./
+  mrun "sleep 3"
+  st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
+  cd /var/opt
+fi
+
+
+###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update rc.d"
   mrun "sleep 3"

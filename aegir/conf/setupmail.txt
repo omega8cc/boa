@@ -1,0 +1,202 @@
+Hello,
+
+Welcome to your new Aegir control panel
+for easy Drupal site deployment.
+
+Your Aegir control panel is available at:
+
+ http://aegir.dragon.ny.host8.biz
+
+
+The following topics are covered within this email:
+
+1. Logging into your Aegir control panel
+2. Deploying Aegir default web sites
+3. Setting up search with Solr
+4. Adding modules & themes
+5. Advanced user information
+
+
+Please read this e-mail in its entirety. It contains
+important information required to properly leverage
+all your available Aegir features.
+
+
+----------------------------------------
+#1 LOGGING INTO YOUR AEGIR CONTROL PANEL
+----------------------------------------
+
+To gain access, please visit your control panel site (the
+link above) and click on "Request new password".
+
+At the site, you'll need to enter your admin e-mail:
+ ADMIN_EMAIL
+and click the "E-mail new password" button.
+
+Once in your control panel, you'll find a number of
+Drupal distributions ready to deploy:
+ 
+ Atrium 1.0-beta8 ----------- http://openatrium.com
+ Atrium 1.0-beta9-dev ------- http://openatrium.com
+ Managing News 1.0-b10 ------ http://managingnews.com
+ Managing News 1.0-b11-dev -- http://managingnews.com
+ Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
+ Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
+ OpenPublish 2.2.285 -------- http://openpublishapp.com
+ ProsePoint 0.35 ------------ http://prosepoint.org
+ Ubercart ------------------- http://ubercart.org
+ Drupal 5.23 Pressflow ------ http://pressflow.org
+ Drupal 6.19 Pressflow ------ http://pressflow.org
+ Drupal 6.19 Cocomore ------- http://drupal.cocomore.com
+ Drupal 7.0-alpha6 ---------- http://drupal.org/project/drupal
+ Feature Server ------------- http://bit.ly/fserver
+                              http://bit.ly/fservermore
+
+All 5/6 platforms have been enhanced using Pressflow Drupal core.
+More details about Pressflow Drupal are here:
+
+ http://pressflow.org
+
+Every Open Atrium platform comes with a ready-to-use bonus
+feature - Atrium Reader - a mini version of Managing News.
+You can see it in action here: http://bit.ly/atriumreader
+
+Another great Open Atrium feature is the default
+Apache Solr Search integration. You can use it with any
+remotely hosted Solr service, including our own hosted
+version - learn more here:
+
+ http://omega8.cc/apache-solr-search-order
+
+
+----------------------------------------
+#2. DEPLOYING YOUR WEB SITES
+----------------------------------------
+
+The best way to get started is simply to log into the
+control panel and start testing how Aegir works. We're
+always ready to assist and guide you step by step, so please
+don't hesitate to ask questions - we would love to help you!
+
+Creating a new site is as easy as clicking the Add Site tab.
+
+To make a site "live" using any domain name you manage, you
+need to point its A or CNAME DNS record to your VPS address,
+like below:
+
+ yourdomain.com.           IN  A      166.84.6.231
+  or
+ subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz
+
+You can also use any subdomain in *.aegir.dragon.ny.host8.biz to create
+test sites, for example: http://atrium.aegir.dragon.ny.host8.biz etc.
+
+
+----------------------------------------
+#3. SETTING UP SEARCH WITH SOLR
+----------------------------------------
+
+One Apache Solr Core is available free with every hosted
+Aegir server, when paid yearly.
+
+Contact our support department to associate the Solr search
+with your desired site.
+
+
+----------------------------------------
+#4. ADDING MODULES & THEMES
+----------------------------------------
+
+To add modules/themes to any of the enabled platforms,
+you need to log into your FTPS/SSH account:
+
+  host: aegir.dragon.ny.host8.biz
+  user: dragon.ftp
+  pass: FN8rXcQn
+
+It is highly recommended you use only SSL/TLS connections for FTPS.
+Compatible FTP-SSL/TLS clients are listed here:
+
+ http://omega8.cc/dev/ftp-tls.txt
+
+Make sure you are adding modules and themes to your expected
+platform. If you experience issues, you can contact our
+support department.
+
+
+----------------------------------------
+#5. ADVANCED _USER INFORMATION
+----------------------------------------
+
+
+=== IMPORTANT DIRECTORY INFORMATION
+
+Your home directory shows a number of subdirectories, each
+one for a different platforms release, while each platform can
+include modules/themes in a separate, standard multisite
+directory tree.
+
+
+=== IMPORTANT CUSTOM PLATFORM INFORMATION
+
+When logged in via FTPS or SSH you'll find a subdirectory
+named 'static'. This is the place to upload your optional
+custom Drupal platform, each in a separate directory,
+named in the form:
+
+ /static/my-green-platform
+ /static/another-custom-platform
+
+When you want to enable any of those custom platforms, just let
+us know at support@omega8.cc the platform name(s) to be enabled.
+
+Note that we allow only Pressflow core based platforms for
+5.x and 6.x Drupal versions.
+
+You can also upload a tar.gz/zip archive with your existing site
+(including database dump) and we will create your custom
+platform in Aegir and import your site. You will be able
+to clone your custom site with a working address in the form of:
+
+ http://anyname.aegir.dragon.ny.host8.biz
+
+in order to test everything before changing your DNS to the
+new A or CNAME address.
+
+PLEASE NOTE: Having a custom platform created from an
+imported site is an add-on service, paid separately or
+free-of-charge with a yearly (hosted) subscription. Please
+find more details on our website:
+
+ http://omega8.cc/site-import
+ http://omega8.cc/hosted-aegir
+
+
+=== IMPORTANT DEVELOPMENT SITE INFORMATION
+
+When creating a development version of your site, you'll
+want to work with our optimized caching systems turned off.
+
+There is a speed-auto-switch available for dev/prod environments.
+Any site you create with *devel* as the subdomain, will have
+all caching and css/js aggregation disabled automatically.
+
+When the site is ready, just *clone* (not migrate) it using
+the final domain name (or subdomain, without *devel* to test
+how it will work with caching enabled).
+
+
+=== IMPORTANT CACHING INFORMATION
+
+To realize the full speed from our servers, you simply need
+to enable the module *cache* (it's like cacherouter, but
+with chained cache - memcache/redis/db with auto-failover)
+for every site you wish to accelerate.
+
+
+Questions? Comments? Please contact us:
+
+ http://omega8.cc/contact
+
+Thank you,
+Omega8.cc Team
