@@ -253,7 +253,7 @@ st_runner () {
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
   rm -f -r /opt/tmp/*
-  runner "invoke-rc.d cron stop" &> /dev/null
+  invoke-rc.d cron stop &> /dev/null
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
   exit 1
