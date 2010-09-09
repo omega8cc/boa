@@ -253,6 +253,7 @@ st_runner () {
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
   rm -f -r /opt/tmp/*
+  runner "invoke-rc.d cron stop" &> /dev/null
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
   exit 1
@@ -1137,7 +1138,6 @@ msg "`date` INFO: Fix for access to global.inc for www-data user issue"
 mrun "sleep 3"
 chmod 755 /var/aegir/config/includes
 chmod 755 /var/aegir/config
-runner "invoke-rc.d cron restart" &> /dev/null
 mrun "sleep 3"
 
 
@@ -1290,6 +1290,7 @@ msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
+runner "invoke-rc.d cron start" &> /dev/null
 msg "`date` BYE!"
 exit 0
 
