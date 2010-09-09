@@ -405,7 +405,7 @@ mrun "sleep 3"
 if [ -f "$_ROOT/pass.txt" ] ; then 
  _PASWD=`cat $_ROOT/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
- mv $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
+ mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
 elif [ -f "$_ROOT/log/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/log/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
@@ -473,7 +473,7 @@ rm -f /opt/tmp/.admemail.txt
 if [ -f "$_ROOT/log/setupmail.txt" ] ; then
  cd $_ROOT/log
  if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
-   mv $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_DISTRO.txt
+   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_DISTRO.txt
  fi
  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
  perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt

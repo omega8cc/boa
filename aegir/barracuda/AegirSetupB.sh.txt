@@ -194,7 +194,7 @@ msg "`date` $_STATUS B: Run standard installer"
 mrun "sleep 3"
 cd $_ROOT/tools
 if [ $_STATUS = "UPGRADE" ] ; then
-  mv drush $_ROOT/backups/drush-pre-$_DISTRO
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
 fi
 wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
 tar -xzf drush-$_DRUSH_VERSION.tar.gz

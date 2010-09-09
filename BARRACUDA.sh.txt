@@ -785,7 +785,7 @@ msg "`date` NOTE: This step can take longer than 8 minutes (depending on your se
 mrun "sleep 3"
 cd /var/opt
 rm -f -r /var/opt/php*
-mv /etc/init.d/php-fpm /etc/init.d/php-fpm-5-13
+mv -f /etc/init.d/php-fpm /etc/init.d/php-fpm-5-13
 wget -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz &> /dev/null
 wget -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz &> /dev/null
 wget -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz &> /dev/null
@@ -967,9 +967,9 @@ if [ ! -d "/opt/solr" ] ; then
   wget http://omega8.cc/dev/apachesolr.tar.gz &> /dev/null
   tar -xzf apachesolr.tar.gz
   cd apachesolr
-  mv tomcat /etc/init.d/
-  mv solr /opt/
-  mv tomcat6 /opt/
+  mv -f tomcat /etc/init.d/
+  mv -f solr /opt/
+  mv -f tomcat6 /opt/
   echo "ENABLED=1" > /etc/default/tomcat
   perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
   runner "update-rc.d tomcat defaults" &> /dev/null
