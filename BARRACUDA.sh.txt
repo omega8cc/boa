@@ -518,10 +518,10 @@ fi
 else ### if [ $_STATUS = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
-  if [ -f "/var/aegir/.drush/hostmaster.alias.drushrc.php"] ; then
+  if [ -f "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep 'uri' | cut -d: -f2 | awk '{ print $3}'`
     _THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
-  elif [ ! -z "$_MY_FRONT"] ; then
+  elif [ ! -z "$_MY_FRONT" ] ; then
     _THIS_FRONT="$_MY_FRONT"
   else
     msg "EXIT on error due to not found or not specified Aegir domain."
