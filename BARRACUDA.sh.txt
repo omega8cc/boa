@@ -979,7 +979,8 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   msg "`date` INFO: Installing lshell, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget http://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download &> /dev/null
+  wget http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz &> /dev/null
+  #wget https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download &> /dev/null
   tar -xzf lshell-0.9.12.tar.gz
   cd /var/opt/lshell-0.9.12
   runner "python setup.py install" 2> /dev/null
