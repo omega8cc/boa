@@ -476,7 +476,6 @@ if [ -f "$_ROOT/log/setupmail.txt" ] ; then
  perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/upgrademail.txt
  perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/upgrademail.txt
  perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
- perl -p -i -e "s/(ADMIN_EMAIL)/$_CLIENT_EMAIL/g" $_ROOT/log/upgrademail.txt
 elif [ $_STATUS = "INIT" ] ; then
  cd $_ROOT/log
  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/setupmail.txt ./
@@ -484,7 +483,6 @@ elif [ $_STATUS = "INIT" ] ; then
  perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/setupmail.txt
  perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/setupmail.txt
  perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/(ADMIN_EMAIL)/$_CLIENT_EMAIL/g" $_ROOT/log/setupmail.txt
 fi
 
 

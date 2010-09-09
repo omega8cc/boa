@@ -26,12 +26,9 @@ all your available Aegir features.
 #1 LOGGING INTO YOUR AEGIR CONTROL PANEL
 ----------------------------------------
 
-To gain access, please visit your control panel site (the
-link above) and click on "Request new password".
-
-At the site, you'll need to enter your admin e-mail:
- ADMIN_EMAIL
-and click the "E-mail new password" button.
+To gain access, please visit your control panel site
+using one-time login link you should receive shortly
+in a separate e-mail.
 
 Once in your control panel, you'll find a number of
 Drupal distributions ready to deploy:
