@@ -45,7 +45,7 @@ _MY_EMAIL="support@omega8.cc"
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
-### _AEGIR_VERSION="0.4-alpha12"
+### _AEGIR_VERSION="0.4-alpha13"
 ###
 _AEGIR_VERSION="HEAD"
 
@@ -989,8 +989,8 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   chmod 770 /var/log/lsh
   cd /etc
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
-  mv -v lshell.conf lshell.conf-orig &> /dev/null
-  mv -v lshell.conf.txt lshell.conf &> /dev/null
+  mv -f lshell.conf lshell.conf-orig &> /dev/null
+  mv -f lshell.conf.txt lshell.conf &> /dev/null
   echo "/usr/bin/lshell" >> /etc/shells
 fi
 
@@ -1016,7 +1016,7 @@ if [ ! -f "/usr/local/sbin/pure-config.pl" ] ; then
   st_runner "make install-strip" 2> /dev/null
   cd /usr/local/sbin/
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-config.pl.txt ./
-  mv -v pure-config.pl.txt pure-config.pl &> /dev/null
+  mv -f pure-config.pl.txt pure-config.pl &> /dev/null
   chmod 755 /usr/local/sbin/pure-config.pl
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
@@ -1048,7 +1048,7 @@ if [ $_STATUS = "INIT" ] ; then
   cd /etc/mysql
   mv -f my.cnf my.cnf.bak.copy &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
-  mv -v my.cnf.txt my.cnf &> /dev/null
+  mv -f my.cnf.txt my.cnf &> /dev/null
   runner "invoke-rc.d mysql restart" 2> /dev/null
 else
   msg "`date` INFO: Restarting php-fpm and Nginx"
@@ -1184,9 +1184,9 @@ else
     perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
-    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
+    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-    mv -f global.inc.aegir.txt global.inc
+    mv -f global.inc.aegir.txt global.inc &> /dev/null
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
     msg "`date` INFO: core Aegir Hostmaster instance upgrade completed"
@@ -1204,8 +1204,13 @@ if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
 msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
-  mv -v mime.types mime.types-pre-$_INSTALLER_VERSION
-  cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./
+  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION &> /dev/null
+  cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ &> /dev/null
+  cd /var/www/nginx-default
+  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ &> /dev/null
+  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
+  mv -f index.html index.html-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f uc.html index.html &> /dev/null
   killall nginx &> /dev/null
   runner "invoke-rc.d nginx start" 2> /dev/null
 fi

@@ -38,7 +38,7 @@ export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
   cd $_ROOT
-  mv -v drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
   wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
@@ -51,9 +51,9 @@ hostmaster_dr_up () {
 }
 #
 hostmaster_mv_up () {
-  mv -v $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
-  mv -v $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
-  mv -v $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
 }
 #
 hostmaster_go_up () {

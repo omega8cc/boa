@@ -528,7 +528,7 @@ msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
-mv -v /etc/motd /etc/motd-pre-$_DISTRO &> /dev/null
+mv -f /etc/motd /etc/motd-pre-$_DISTRO &> /dev/null
 echo "Welcome to Octopus Aegir Hosting System" > /etc/motd
 chown root:root /data/all
 chown -R root:root /data/src
