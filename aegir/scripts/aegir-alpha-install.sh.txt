@@ -30,7 +30,7 @@
 #
 ########################################################################
 # basic variables, change before release
-AEGIR_VERSION="0.4-alpha12"
+AEGIR_VERSION="0.4-alpha13"
 DRUSH_VERSION=6.x-3.3
 
 # when adding a variable here, add it to the display below
