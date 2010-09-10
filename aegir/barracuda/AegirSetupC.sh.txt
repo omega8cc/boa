@@ -146,7 +146,7 @@ mrun () {
 # stop on error
 # set -e ### disabled for debugging
 #
-msg "`date` $_STATUS C: Aegir automated install script part B"
+msg "`date` $_STATUS C: Aegir automated install script part C"
 if [ `whoami` = "root" ] ; then
   msg "`date` $_STATUS C: This script should be ran as a non-root user - exit now"
   exit 1

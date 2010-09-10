@@ -61,7 +61,7 @@ _AEGIR_VERSION="HEAD"
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.D
+_INSTALLER_VERSION=A12.E
 
 
 ## Sys

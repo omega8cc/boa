@@ -132,7 +132,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.D
+_INSTALLER_VERSION=A12.E
 _NGINX_VERSION=0.8.50
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -1064,7 +1064,7 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ ! -f "/root/.my.pass.txt" ] ; then
   msg "`date` INFO: Generate random password for MariaDB"
   mrun "sleep 3"
   touch /root/.my.pass.txt
