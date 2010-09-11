@@ -798,7 +798,7 @@ if [ -d "$_ROOT/distro/$_DISTRO/uberdrupal" ] ; then
   $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_DISTRO/uberdrupal &> /dev/null
 fi
 if [ -f "/data/u/$_DOMAIN/sites/$_DOMAIN/drushrc.php" ] ; then
-  _PLATF_IMP=$(ls -la /data/u | grep '$_ROOT/distro' | cut -d'>' -f2 | sort | uniq | awk '{ print $1}'
+  _PLATF_IMP=$(ls -la /data/u | grep '$_USER' | cut -d'>' -f2 | sort | uniq | awk '{ print $1}'
   for _PLATF in $_PLATF_IMP ; do
     if [[ $_PLATF =~ aegir ]] ; then
 	  _FOUND_HM=YES
