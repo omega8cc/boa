@@ -224,25 +224,33 @@ if [ -d "$_ROOT" ] ; then
   echo RAW _DOMAIN is $_DOMAIN
 #
 # Check for last distro nr
-  cd $_ROOT/distro
-  list=([0-9]*)
-  last=${list[@]: -1}
-  _LASTNUM=$last
-  echo _LASTNUM is $last
-  nextnum=00$((10#${last%%[^0-9]*} + 1))
-  nextnum=${nextnum: -3}
-  _DISTRO=${nextnum}
+  if [ -d "$_ROOT/distro" ] ; then
+    cd $_ROOT/distro
+    list=([0-9]*)
+    last=${list[@]: -1}
+    _LASTNUM=$last
+    echo _LASTNUM is $last
+    nextnum=00$((10#${last%%[^0-9]*} + 1))
+    nextnum=${nextnum: -3}
+    _DISTRO=${nextnum}
+  else
+    echo _LASTNUM is $_LASTNUM
+  fi
   echo _DISTRO is $_DISTRO
 #
 # Check for last hm nr
-  cd $_ROOT/aegir/distro
-  listx=([0-9]*)
-  lastx=${listx[@]: -1}
-  _LAST_HMR=$lastx
-  echo _LAST_HMR is $lastx
-  nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
-  nextnumx=${nextnumx: -3}
-  _HM_DISTRO=${nextnumx}
+  if [ -d "$_ROOT/aegir/distro" ] ; then
+    cd $_ROOT/aegir/distro
+    listx=([0-9]*)
+    lastx=${listx[@]: -1}
+    _LAST_HMR=$lastx
+    echo _LAST_HMR is $lastx
+    nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
+    nextnumx=${nextnumx: -3}
+    _HM_DISTRO=${nextnumx}
+  else
+    echo _LAST_HMR is $_LAST_HMR
+  fi
   echo _HM_DISTRO is $_HM_DISTRO
 #
  elif [ ! -d "$_ROOT/distro" ] ; then
@@ -294,6 +302,8 @@ _CLIENT_EMAIL=`cat /opt/tmp/.cemail.txt`
 _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
 rm -f /opt/tmp/.cemail.txt
 
+echo "8s before we will continue..."
+sleep 8
 action
 
 ###----------------------------------------###

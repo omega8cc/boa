@@ -177,7 +177,7 @@ create_dirs () {
   chmod 02775 ./sites/all/themes
   rm -f .htaccess
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/get.htaccess.txt ./
-  mv -f get.htaccess.txt .htaccess
+  mv -f get.htaccess.txt .htaccess &> /dev/null
 }
 #
 # create standard symlinks
@@ -223,7 +223,7 @@ cd /data/src/$_DISTRO/pressflow-6/
 rm -f /data/src/$_DISTRO/pressflow-6/*.txt
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
 wget -U iCab http://omega8.cc/boost_stats.php.txt &> /dev/null
-mv -f boost_stats.php.txt boost_stats.php
+mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -d "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
@@ -263,7 +263,7 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   wget -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha12.tar.gz &> /dev/null
   wget -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta4.tar.gz &> /dev/null
   wget http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz &> /dev/null
-  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz
+  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
   tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz
   rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
   #wget -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz &> /dev/null
@@ -280,7 +280,7 @@ ln -s $_CORE/o_contrib modules/o_contrib
 cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
 fi
 if [ -d "$_CORE/o_contrib/memcache" ] ; then
- rm -f -r $_CORE/o_contrib/memcache &> /dev/null
+  rm -f -r $_CORE/o_contrib/memcache &> /dev/null
 fi
 
 
@@ -743,13 +743,18 @@ find . -name .bzr -exec rm -rf {} \; &> /dev/null
 #
 msg "`date` $_STATUS C: Save & Verify Platforms"
 mrun "sleep 3"
-_THIS_FRONT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
-_THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
-cd $_THIS_FRONT
-#cd $_AEGIR_ROOT/sites/$_DOMAIN
+if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+  _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
+  _THIS_HOSTMASTER=`echo $_THIS_FRONT | sed "s/[\,']//g"`
+elif [ -d "/data/u/$_DOMAIN/sites/$_DOMAIN" ] ; then
+  _THIS_HOSTMASTER="/data/u/$_DOMAIN/sites/$_DOMAIN"
+else
+  _THIS_HOSTMASTER="$_AEGIR_ROOT/sites/$_DOMAIN"
+fi
+cd $_THIS_HOSTMASTER
 DRUSHC="$_ROOT/tools/drush/drush"
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
-mv -f make_platform.php.txt make_platform.php
+mv -f make_platform.php.txt make_platform.php &> /dev/null
 if [ -d "$_ROOT/distro/$_DISTRO/acquia" ] ; then
   $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_DISTRO/acquia &> /dev/null
 fi
@@ -791,6 +796,17 @@ if [ -d "$_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT" ] ; then
 fi
 if [ -d "$_ROOT/distro/$_DISTRO/uberdrupal" ] ; then
   $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_DISTRO/uberdrupal &> /dev/null
+fi
+if [ -f "/data/u/$_DOMAIN/sites/$_DOMAIN/drushrc.php" ] ; then
+  _PLATF_IMP=$(ls -la /data/u | grep '$_ROOT/distro' | cut -d'>' -f2 | sort | uniq | awk '{ print $1}'
+  for _PLATF in $_PLATF_IMP ; do
+    if [[ $_PLATF =~ aegir ]] ; then
+	  _FOUND_HM=YES
+    else
+      _PLATF_NAME=${_PLATF##*/}
+      $DRUSHC php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF &> /dev/null
+    fi
+  done
 fi
 rm -f make_platform.php
 

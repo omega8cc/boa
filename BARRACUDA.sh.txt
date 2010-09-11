@@ -785,7 +785,8 @@ msg "`date` NOTE: This step can take longer than 8 minutes (depending on your se
 mrun "sleep 3"
 cd /var/opt
 rm -f -r /var/opt/php*
-mv -f /etc/init.d/php-fpm /etc/init.d/php-fpm-5-13
+mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_DISTRO
+rm -f /etc/init.d/php-fpm*
 wget -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz &> /dev/null
 wget -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz &> /dev/null
 wget -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz &> /dev/null
@@ -1042,24 +1043,28 @@ if [ $_STATUS = "INIT" ] ; then
   #cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
   chmod 700 /usr/local/sbin/php-fpm
-  killall nginx php-cgi php-fpm &> /dev/null
-  runner "invoke-rc.d ssh restart" &> /dev/null
-  runner "update-rc.d cron defaults" &> /dev/null
-  runner "update-rc.d php-fpm defaults" &> /dev/null
-  runner "update-rc.d nginx defaults" &> /dev/null
-  runner "invoke-rc.d php-fpm start" 2> /dev/null
-  runner "invoke-rc.d nginx start" 2> /dev/null
+  if [ ! -f "/var/run/pound.pid" ] ; then
+    killall nginx php-cgi php-fpm &> /dev/null
+    runner "invoke-rc.d ssh restart" &> /dev/null
+    runner "update-rc.d cron defaults" &> /dev/null
+    runner "update-rc.d php-fpm defaults" &> /dev/null
+    runner "update-rc.d nginx defaults" &> /dev/null
+    runner "invoke-rc.d php-fpm start" 2> /dev/null
+    runner "invoke-rc.d nginx start" 2> /dev/null
+  fi
   cd /etc/mysql
   mv -f my.cnf my.cnf.bak.copy &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
   runner "invoke-rc.d mysql restart" 2> /dev/null
 else
-  msg "`date` INFO: Restarting php-fpm and Nginx"
-  mrun "sleep 3"
-  killall nginx php-cgi php-fpm &> /dev/null
-  runner "invoke-rc.d php-fpm start" 2> /dev/null
-  runner "invoke-rc.d nginx start" 2> /dev/null
+  if [ ! -f "/var/run/pound.pid" ] ; then
+    msg "`date` INFO: Restarting php-fpm and Nginx"
+    mrun "sleep 3"
+    killall nginx php-cgi php-fpm &> /dev/null
+    runner "invoke-rc.d php-fpm start" 2> /dev/null
+    runner "invoke-rc.d nginx start" 2> /dev/null
+  fi
 fi
 
 
@@ -1166,8 +1171,10 @@ perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/ng
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
-killall nginx &> /dev/null
-runner "invoke-rc.d nginx start" 2> /dev/null
+if [ ! -f "/var/run/pound.pid" ] ; then
+  killall nginx &> /dev/null
+  runner "invoke-rc.d nginx start" 2> /dev/null
+fi
 mrun "sleep 3"
 msg "`date` INFO: core Aegir Hostmaster instance installation completed"
 mrun "sleep 3"
@@ -1214,8 +1221,10 @@ mrun "sleep 3"
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
   mv -f index.html index.html-pre-$_INSTALLER_VERSION &> /dev/null
   mv -f uc.html index.html &> /dev/null
-  killall nginx &> /dev/null
-  runner "invoke-rc.d nginx start" 2> /dev/null
+  if [ ! -f "/var/run/pound.pid" ] ; then
+    killall nginx &> /dev/null
+    runner "invoke-rc.d nginx start" 2> /dev/null
+  fi
 fi
 
 
