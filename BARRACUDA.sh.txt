@@ -1301,6 +1301,7 @@ msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
+runner "invoke-rc.d php-fpm restart" 2> /dev/null
 runner "invoke-rc.d cron start" &> /dev/null
 msg "`date` BYE!"
 exit 0
