@@ -194,6 +194,13 @@ msg "`date` $_STATUS B: Run standard installer"
 mrun "sleep 3"
 cd $_ROOT/tools
 if [ $_STATUS = "UPGRADE" ] ; then
+  if [ ! -d "$_ROOT/backups" ] ; then
+    mkdir -p $_ROOT/backups
+  fi
+  if [ -d "$_ROOT/aegir/config" ] ; then
+    mv -f $_ROOT/aegir/config $_ROOT/ &> /dev/null
+    ln -s $_ROOT/config $_ROOT/aegir/config
+  fi
   mv -f drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
 fi
 wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
