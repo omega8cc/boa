@@ -746,8 +746,8 @@ mrun "sleep 3"
 if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
   _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
   _THIS_HOSTMASTER=`echo $_THIS_FRONT | sed "s/[\,']//g"`
-elif [ -d "/data/u/$_DOMAIN/sites/$_DOMAIN" ] ; then
-  _THIS_HOSTMASTER="/data/u/$_DOMAIN/sites/$_DOMAIN"
+# elif [ -d "/data/u/$_DOMAIN/sites/$_DOMAIN" ] ; then
+#   _THIS_HOSTMASTER="/data/u/$_DOMAIN/sites/$_DOMAIN"
 else
   _THIS_HOSTMASTER="$_AEGIR_ROOT/sites/$_DOMAIN"
 fi
@@ -798,7 +798,7 @@ if [ -d "$_ROOT/distro/$_DISTRO/uberdrupal" ] ; then
   $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_DISTRO/uberdrupal &> /dev/null
 fi
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
-  if [ -f "/data/u/$_DOMAIN/sites/$_DOMAIN/drushrc.php" ] ; then
+#   if [ -f "/data/u/$_DOMAIN/sites/$_DOMAIN/drushrc.php" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep '$_USER' | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
     if [[ $_PLATF =~ aegir ]] ; then
@@ -808,7 +808,7 @@ if [ -f "/var/run/aegir_upgrade.pid" ] ; then
       $DRUSHC php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF &> /dev/null
     fi
   done
-  fi
+#   fi
 fi
 rm -f make_platform.php
 
