@@ -20,13 +20,13 @@ skip-external-locking
 connect_timeout         = 60
 join_buffer_size        = 1M
 key_buffer              = 8M
-key_buffer_size         = 64M
+key_buffer_size         = 32M
 log_warnings            = 2
 max_allowed_packet      = 32M
 max_connect_errors      = 30
 max_connections         = 30
 max_user_connections    = 30
-myisam_sort_buffer_size = 256M
+myisam_sort_buffer_size = 32M
 query_cache_limit       = 128K
 query_cache_size        = 32M
 query_cache_type        = 1
@@ -61,7 +61,7 @@ default_storage_engine  = InnoDB
 #sql_mode                = NO_ENGINE_SUBSTITUTION,TRADITIONAL
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
-innodb_buffer_pool_size = 512M
+innodb_buffer_pool_size = 256M
 innodb_log_buffer_size  = 8M
 innodb_file_per_table   = 1
 innodb_open_files       = 888888
