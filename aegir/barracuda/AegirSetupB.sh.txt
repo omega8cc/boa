@@ -192,7 +192,6 @@ echo $_DOMAIN > $_ROOT/log/domain.txt
 #
 msg "`date` $_STATUS B: Run standard installer"
 mrun "sleep 3"
-cd $_ROOT/tools
 if [ $_STATUS = "UPGRADE" ] ; then
   if [ ! -d "$_ROOT/backups" ] ; then
     mkdir -p $_ROOT/backups
@@ -205,7 +204,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
   mv -f drush $_ROOT/backups/drush-pre-$_DISTRO 2> /dev/null
 fi
 cd $_ROOT/tools
-wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
+wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz 2> /dev/null
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
