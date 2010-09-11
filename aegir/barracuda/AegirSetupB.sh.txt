@@ -196,9 +196,11 @@ msg "`date` $_STATUS B: Run standard installer"
 mrun "sleep 3"
 if [ $_STATUS = "UPGRADE" ] ; then
   if [ -d "$_ROOT/aegir/config" ] ; then
-    cd $_ROOT/aegir
-    mv -f config $_ROOT/config
-    ln -s $_ROOT/config $_ROOT/aegir/config
+    if [ ! -d "$_ROOT/config" ] ; then
+      cd $_ROOT/aegir
+      mv -f config $_ROOT/config
+      ln -s $_ROOT/config $_ROOT/aegir/config
+    fi
   fi
   cd $_ROOT/tools
   mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
@@ -247,10 +249,11 @@ git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/n
 #
 msg "`date` $_STATUS B: Build Aegir base"
 mrun "sleep 3"
+_LOCAL_STATUS="$_STATUS"
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
-  _STATUS=INIT
+  _LOCAL_STATUS=INIT
 fi
-if [ $_STATUS = "INIT" ] ; then
+if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS B: INIT"
   mrun "sleep 3"
   cd $_ROOT

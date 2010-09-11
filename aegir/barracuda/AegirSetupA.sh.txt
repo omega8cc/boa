@@ -244,7 +244,11 @@ mrun "sleep 3"
 
 ###---### Install or upgrade Aegir Hostmaster instance [Y/n]
 #
-if [ $_STATUS = "INIT" ] ; then
+_LOCAL_STATUS="$_STATUS"
+if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+  _LOCAL_STATUS=INIT
+fi
+if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS A: Switch user and run AegirSetupB"
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
@@ -271,7 +275,11 @@ fi
 
 ###---### Run standard post-install
 #
-if [ $_STATUS = "INIT" ] ; then
+_LOCAL_STATUS="$_STATUS"
+if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+  _LOCAL_STATUS=INIT
+fi
+if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS A: post-install start"
   mrun "sleep 3"
   if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
@@ -321,7 +329,11 @@ chmod 0700 $_ROOT/backups &> /dev/null
 
 ###---### Platforms [Y/n]
 #
-if [ $_STATUS = "INIT" ] ; then
+_LOCAL_STATUS="$_STATUS"
+if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+  _LOCAL_STATUS=INIT
+fi
+if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS A: Switch user and run Distros build"
   mrun "sleep 3"
   _DIST_INSTALL=YES
@@ -360,7 +372,11 @@ rm -f $_ROOT/*.sh.txt
 
 ###---### Add cron task
 #
-if [ $_STATUS = "INIT" ] ; then
+_LOCAL_STATUS="$_STATUS"
+if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+  _LOCAL_STATUS=INIT
+fi
+if [ $_LOCAL_STATUS = "INIT" ] ; then
  msg "`date` $_STATUS A: Add cron task"
  mrun "sleep 3"
  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
@@ -371,7 +387,11 @@ rm -f /var/spool/cron/crontabs/$_USER
 
 ###---### Add ftps/lshell access
 #
-if [ $_STATUS = "INIT" ] ; then
+_LOCAL_STATUS="$_STATUS"
+if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+  _LOCAL_STATUS=INIT
+fi
+if [ $_LOCAL_STATUS = "INIT" ] ; then
   _USERFTP="$_USER.ftp"
   _USERFTP_ROOT="/home/$_USERFTP"
   if [ ! -d "$_USERFTP_ROOT" ] ; then
