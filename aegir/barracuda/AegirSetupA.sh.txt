@@ -298,7 +298,7 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f -r $_AEGIR_ROOT/scripts
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
-  if [ ! -f "/var/run/pound.pid" ] ; then
+  if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx &> /dev/null
     invoke-rc.d nginx start &> /dev/null
   fi
