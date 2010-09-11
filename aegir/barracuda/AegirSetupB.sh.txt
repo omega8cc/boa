@@ -198,11 +198,13 @@ if [ $_STATUS = "UPGRADE" ] ; then
     mkdir -p $_ROOT/backups
   fi
   if [ -d "$_ROOT/aegir/config" ] ; then
-    mv -f $_ROOT/aegir/config $_ROOT/ &> /dev/null
+    mv -f $_ROOT/aegir/config $_ROOT/ 2> /dev/null
     ln -s $_ROOT/config $_ROOT/aegir/config
   fi
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
+  cd $_ROOT/tools
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO 2> /dev/null
 fi
+cd $_ROOT/tools
 wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
