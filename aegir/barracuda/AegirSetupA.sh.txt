@@ -59,6 +59,7 @@ _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _THISHTIP=EDIT_THISHTIP
+_DIST_INSTALL=NO
 
 
 ###---### Functions
@@ -333,7 +334,7 @@ _LOCAL_STATUS="$_STATUS"
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-if [ $_LOCAL_STATUS = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "`date` $_STATUS A: Switch user and run Distros build"
   mrun "sleep 3"
   _DIST_INSTALL=YES
@@ -446,7 +447,7 @@ fi
 
 ###---### Create ftp symlinks
 #
-if [ $_DIST_INSTALL = "YES" ] ; then
+if [ "$_DIST_INSTALL" = "YES" ] ; then
 msg "`date` $_STATUS A: Create ftp symlinks"
 mrun "sleep 3"
 if [ ! -d "/home/$_USERFTP/platforms/$_DISTRO" ] ; then

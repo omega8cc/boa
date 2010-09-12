@@ -507,7 +507,7 @@ cat <<EOF
 
   NOTE: If your outgoing SMTP requires using relayhost, define first _SMTP_RELAY_HOST.
 
-  * Your core instance Aegir control panel will be available at http://$_THIS_FRONT.
+  * Your core Aegir instance control panel will be available at http://$_THIS_FRONT.
   * Your (optional) MultiCore Apache Solr Tomcat will listen on localhost:8080.
   * Your (optional) Chive MariaDB Manager will be available at http://db.$_THIS_FRONT.
   * Your (optional) Collectd Graph Panel will be available at http://cgp.$_THIS_FRONT.
