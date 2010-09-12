@@ -48,3 +48,15 @@
      <core name="4574a6866" instanceDir="site_007" />
      <core name="32x463677" instanceDir="site_008" />
    </cores>
+
+
+### NOTE: to turn off Apache Solr Search server type as root:
+
+    $ service tomcat stop
+    
+    
+### NOTE: to disable Apache Solr Search completely, type as root:
+
+    $ invoke-rc.d tomcat stop
+    $ update-rc.d -f tomcat remove
+

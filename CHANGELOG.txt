@@ -1,4 +1,86 @@
 
+### Tue, 2010-09-12 21:50 - Edition 0.4-HEAD-A13.A
+
+Added/Fixed: (upgrade recommended)
+
+1.  Octopus now creates SSH/FTPS separate, non-aegir
+    account for every non-core Hostmaster instance,
+    with limited shell to avoid using commands
+    like "drush up" since they should never be used
+    on sites managed in the Aegir system.
+   
+2.  Octopus now by default sends a welcome e-mail
+    with some useful intro information and access
+    details to the address defined as _CLIENT_EMAIL.
+
+3.  When Octopus is used the first time to create
+    a non-core Hostmaster instance, it doesn't allow
+    to skip installing all platforms, since it is
+    recommended to add all available platforms with
+    initial install, fore easier re-use the code
+    for next non-core Hostmaster instances.
+
+4.  The second and all future non-core Hostmaster
+    installs allows to choose one or more platforms
+    or to skip adding platforms at all.
+
+5.  Octopus by default honors initial domain used
+    for the non-core Hostmaster instance on every
+    upgrade to avoid mistakes with using different
+    copies of the script for different non-core
+    Hostmaster instances upgrades.
+
+6.  Also Barracuda will always honor initial
+    domain used for the core Hostmaster to avoid
+    mistakes on upgrade when you don't use
+    the original version of the script.
+
+7.  Better checks if the script is running as root.
+
+8.  Removed memcache module since cache is used.
+
+9.  SMTP connection test is now optional.
+
+10. Nginx version set to 0.8.50.
+
+11. By defult Aegir 0.4-HEAD instead of alpha13
+    is now installed to fix critical issues with
+    importing sites.
+    
+    See also: http://drupal.org/node/907248
+
+12. Solr and Chive are now optional (Yes/no).
+
+13. Added optional install of Collectd monitor.
+
+14. Fixed issue with SSL mode.
+
+15. Better compatibility for upgrades from
+    pre-Barracuda Nginx installs.
+   
+16. Now it doesn't cron before completing all
+    install tasks to avoid breaking spinner.
+
+17. Both Barracuda and Octopus now can better
+    support re-starting stopped install/upgrade.
+
+18. Octopus now refuses to run if defined domain
+    doesn't resolve yet to the server IP address.
+    
+19. Octopus now refuses to run on system not
+    created initially by Barracuda installer.
+    
+20. Custom FQDN hostname is now forced (if defined)
+    in Barracuda before running DNS checks. 
+
+21. Fix for some missing mime types in vanilla Nginx.
+
+22. Updated versions of Open Atrium, Drupal Commons
+    and Cocomore Drupal distros installed by Octopus.
+
+23. Lowered memory defaults in the MariaDB configuration.
+
+
 ### Tue, 2010-08-31 23:50 - Edition 0.4-HEAD-A12.D
 
 Added/Fixed: (upgrade recommended because it works!)

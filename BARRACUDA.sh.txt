@@ -132,7 +132,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A12.E
+_INSTALLER_VERSION=A13.A
 _NGINX_VERSION=0.8.50
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -502,12 +502,19 @@ msg "INSTALL START -> checkpoint: "
 cat <<EOF
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
-  * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
-  * Your Aegir control panel will be available at http://$_THIS_FRONT.
-  * Your Chive database manager will be available at http://db.$_THIS_FRONT.
   * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
-  * If your outgoing SMTP requires using relayhost, define first _SMTP_RELAY_HOST.
-    
+  * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
+
+  NOTE: If your outgoing SMTP requires using relayhost, define first _SMTP_RELAY_HOST.
+
+  * Your core instance Aegir control panel will be available at http://$_THIS_FRONT.
+  * Your (optional) MultiCore Apache Solr Tomcat will listen on localhost:8080.
+  * Your (optional) Chive MariaDB Manager will be available at http://db.$_THIS_FRONT.
+  * Your (optional) Collectd Graph Panel will be available at http://cgp.$_THIS_FRONT.
+  
+  NOTE: Chive and Collectd will work only if db. and cgp. subdomains point to your IP.
+
+
 EOF
 echo " "
 if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -744,10 +751,11 @@ if [ -f "/usr/local/bin/php" ] ; then
   _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [ "$_PHP_INSTALLED" = "$_PHP_VERSION" ] ; then
     _PHP_INSTALL_REQUIRED=NO
+    msg "`date` INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
   else
     _PHP_INSTALL_REQUIRED=YES
+    msg "`date` INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
   fi
-  msg "`date` INFO: Installed PHP version $_PHP_INSTALLED"
   mrun "sleep 3"
 else  
   _PHP_INSTALL_REQUIRED=YES
@@ -888,6 +896,7 @@ cp -af /var/opt/ioncube/* /usr/local/ioncube/
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
 
+
 ###--------------------###
 if [ ! -f "/usr/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
@@ -905,17 +914,17 @@ msg "`date` INFO: Nginx version test, please wait..."
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
-else
+fi
+if [ -f "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1`
   _NGINX_F_VERSION="nginx version: nginx/$_NGINX_VERSION"
   if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
+    msg "`date` INFO: Installed $_NGINX_F_INSTALLED, no upgrade required"
   else
     _NGINX_INSTALL_REQUIRED=YES
+    msg "`date` INFO: Installed $_NGINX_F_INSTALLED, upgrade required"
   fi
-fi
-if [ -f "/usr/sbin/nginx" ] ; then
-  msg "`date` INFO: Installed $_NGINX_F_INSTALLED"
   mrun "sleep 3"
 fi
 
@@ -954,27 +963,6 @@ if [ ! -f "/usr/local/bin/memcached" ] ; then
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   ln -s /usr/local/bin/memcached /usr/bin/memcached
-fi
-
-
-###--------------------###
-if [ ! -d "/opt/solr" ] ; then
-  msg "`date` INFO: Installing Apache Solr Tomcat, please wait..."
-  mrun "sleep 3"
-  cd /var/opt
-  rm -f -r apachesolr*
-  rm -f -r /opt/solr
-  rm -f -r /opt/tomcat6
-  wget http://omega8.cc/dev/apachesolr.tar.gz &> /dev/null
-  tar -xzf apachesolr.tar.gz
-  cd apachesolr
-  mv -f tomcat /etc/init.d/
-  mv -f solr /opt/
-  mv -f tomcat6 /opt/
-  echo "ENABLED=1" > /etc/default/tomcat
-  perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
-  runner "update-rc.d tomcat defaults" &> /dev/null
-  runner "invoke-rc.d tomcat start" 2> /dev/null
 fi
 
 
@@ -1229,25 +1217,98 @@ fi
 
 
 ###--------------------###
+if [ ! -d "/opt/solr" ] ; then
+  echo " "
+  if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
+    true
+    msg "`date` INFO: Installing MultiCore Apache Solr Tomcat, please wait..."
+    mrun "sleep 3"
+    cd /var/opt
+    rm -f -r apachesolr*
+    rm -f -r /opt/solr
+    rm -f -r /opt/tomcat6
+    wget -U iCab http://omega8.cc/dev/apachesolr.tar.gz &> /dev/null
+    tar -xzf apachesolr.tar.gz
+    cd apachesolr
+    mv -f tomcat /etc/init.d/
+    mv -f solr /opt/
+    mv -f tomcat6 /opt/
+    echo "ENABLED=1" > /etc/default/tomcat
+    perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
+    runner "update-rc.d tomcat defaults" &> /dev/null
+    runner "invoke-rc.d tomcat start" 2> /dev/null
+    msg "`date` INFO: MultiCore Apache Solr Tomcat installation completed"
+    mrun "sleep 2"
+  else
+    msg "`date` INFO: MultiCore Apache Solr Tomcat installation skipped"
+    mrun "sleep 2"
+  fi
+fi
+
+
+###--------------------###
 if [ ! -d "/var/www/chive" ] ; then
-  msg "`date` INFO: Installing Chive db manager, please wait..."
-  mrun "sleep 3"
-  cd /var/www
-  wget -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz &> /dev/null
-  tar -xzf chive_0.3.0.tar.gz
-  rm -f chive_0.3.0.tar.gz
-  chown -R www-data:www-data /var/www/chive
-  _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/db.$_THIS_FRONT"
-  echo " " >> $_CHIVE_VHOST
-  echo "server {" >> $_CHIVE_VHOST
-  echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
-  echo "   listen       $_THISHTIP:80;" >> $_CHIVE_VHOST
-  echo "   server_name  db.$_THIS_FRONT;" >> $_CHIVE_VHOST
-  echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
-  echo "   index        index.php index.html;" >> $_CHIVE_VHOST
-  echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CHIVE_VHOST
-  echo "}" >> $_CHIVE_VHOST
-  echo " " >> $_CHIVE_VHOST
+  echo " "
+  if prompt_yes_no "Do you want to install Chive MariaDB Manager?" ; then
+    true
+    msg "`date` INFO: Installing Chive MariaDB Manager, please wait..."
+    mrun "sleep 3"
+    cd /var/www
+    wget -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz &> /dev/null
+    tar -xzf chive_0.3.0.tar.gz
+    rm -f chive_0.3.0.tar.gz
+    chown -R www-data:www-data /var/www/chive
+    _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/db.$_THIS_FRONT"
+    echo " " >> $_CHIVE_VHOST
+    echo "server {" >> $_CHIVE_VHOST
+    echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
+    echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
+    echo "   listen       $_THISHTIP:80;" >> $_CHIVE_VHOST
+    echo "   server_name  db.$_THIS_FRONT;" >> $_CHIVE_VHOST
+    echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
+    echo "   index        index.php index.html;" >> $_CHIVE_VHOST
+    echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CHIVE_VHOST
+    echo "}" >> $_CHIVE_VHOST
+    echo " " >> $_CHIVE_VHOST
+    msg "`date` INFO: Chive MariaDB Manager installation completed"
+    mrun "sleep 2"
+  else
+    msg "`date` INFO: Chive MariaDB Manager installation skipped"
+    mrun "sleep 2"
+  fi
+fi
+
+
+###--------------------###
+if [ ! -d "/var/www/cgp" ] ; then
+  echo " "
+  if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
+    true
+    msg "`date` INFO: Installing Collectd Graph Panel, please wait..."
+    mrun "sleep 3"
+    runner "aptitude -y install collectd"
+    cd /var/www
+    git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
+    perl -p -i -e "s/(>uncategorized<)/>Barracuda Server</g" /var/www/cgp/index.php
+    chown -R www-data:www-data /var/www/cgp
+    _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
+    echo " " >> $_CGP_VHOST
+    echo "server {" >> $_CGP_VHOST
+    echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
+    echo "   limit_conn   gulag 10;" >> $_CGP_VHOST
+    echo "   listen       $_THISHTIP:80;" >> $_CGP_VHOST
+    echo "   server_name  cgp.$_THIS_FRONT;" >> $_CGP_VHOST
+    echo "   root         /var/www/cgp;" >> $_CGP_VHOST
+    echo "   index        index.php index.html;" >> $_CGP_VHOST
+    echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CGP_VHOST
+    echo "}" >> $_CGP_VHOST
+    echo " " >> $_CGP_VHOST
+    msg "`date` INFO: Collectd Graph Panel installation completed"
+    mrun "sleep 2"
+  else
+    msg "`date` INFO: Collectd Graph Panel installation skipped"
+    mrun "sleep 2"
+  fi
 fi
 
 
