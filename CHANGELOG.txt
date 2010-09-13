@@ -17,11 +17,11 @@ Added/Fixed: (upgrade recommended)
     a non-core Hostmaster instance, it doesn't allow
     to skip installing all platforms, since it is
     recommended to add all available platforms with
-    initial install, fore easier re-use the code
-    for next non-core Hostmaster instances.
+    initial install, for easier re-using the code
+    by next non-core Hostmaster instances.
 
 4.  The second and all future non-core Hostmaster
-    installs allows to choose one or more platforms
+    installs allow to choose one or more platforms
     or to skip adding platforms at all.
 
 5.  Octopus by default honors initial domain used
@@ -58,7 +58,7 @@ Added/Fixed: (upgrade recommended)
 15. Better compatibility for upgrades from
     pre-Barracuda Nginx installs.
    
-16. Now it doesn't cron before completing all
+16. Now it doesn't start cron before completing all
     install tasks to avoid breaking spinner.
 
 17. Both Barracuda and Octopus now can better
