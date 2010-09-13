@@ -307,13 +307,7 @@ if [ $_STATUS = "INIT" ] ; then
   apt-get update &> /dev/null
   apt-get clean &> /dev/null
   $INITINS wget git-core locales &> /dev/null
-  # sed -i 's/AcceptEnv LANG LC_*/#AcceptEnv LANG LC_*/g' /etc/ssh/sshd_config
-  # /etc/init.d/ssh restart &> /dev/null
-  # export LANGUAGE=en_US.UTF-8 && export LANG=en_US.UTF-8 && export LC_ALL=en_US.UTF-8
-  # locale-gen en_US.UTF-8 &> /dev/null
-  # dpkg-reconfigure -f noninteractive --force locales en_US.UTF-8 &> /dev/null
-  # echo "export LANG=en_US.UTF-8" >> /root/.bashrc
-  # echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
+  locale-gen en_US.UTF-8 &> /dev/null
 fi
 
 
