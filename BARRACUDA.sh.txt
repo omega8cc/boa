@@ -765,11 +765,16 @@ fi
 if [ $_STATUS = "INIT" ] ; then
   echo $_MY_EMAIL > /opt/tmp/.email.txt
   perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
-  APTEMAILA=`cat /opt/tmp/.email.txt`
-  APTEMAIL=`echo -n $APTEMAILA | tr -d "\n"`
+  APTEMAIL=`cat /opt/tmp/.email.txt`
+  APTEMAIL=`echo -n $APTEMAIL | tr -d "\n"`
   perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf
-  sed -i "s/help\\\@omega8.cc/$APTEMAIL/g" /var/xdrago/checksql.cgi
   rm -f /opt/tmp/.email.txt
+  echo $_MY_EMAIL > /opt/tmp/.xemail.txt
+  perl -p -i -e "s/(\@)/\\\\\@/g" /opt/tmp/.xemail.txt
+  XPTEMAIL=`cat /opt/tmp/.xemail.txt`
+  XPTEMAIL=`echo -n $XPTEMAIL | tr -d "\n"`
+  sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi
+  rm -f /opt/tmp/.xemail.txt
   runner "sh /usr/sbin/apticron"
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION" ] ; then
