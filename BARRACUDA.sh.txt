@@ -305,9 +305,18 @@ if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: We need to install wget & git first, please wait..."
   sleep 8
   apt-get update &> /dev/null
-  apt-get clean &> /dev/null
   $INITINS wget git-core locales &> /dev/null
-  locale-gen en_US.UTF-8 &> /dev/null
+  sleep 5
+  locale-gen en_US en_US.UTF-8 &> /dev/null
+  update-locale &> /dev/null
+  localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
+  echo "LANG=en_US" > /etc/default/locale
+  export LANG=en_US.UTF-8
+  export LC_ALL=en_US.UTF-8
+  export LANGUAGE=en_US.UTF-8
+  echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+  echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
+  echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
 fi
 
 
@@ -515,7 +524,6 @@ cat <<EOF
   
   NOTE: Chive and Collectd will work only if db. and cgp. subdomains point to your IP.
 
-
 EOF
 echo " "
 if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -616,7 +624,6 @@ fi
 ###--------------------###
 msg "`date` INFO: Run apt update, please wait..."
 runner "aptitude update"
-runner "aptitude clean"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-get upgrade -y"
   runner "aptitude update"
@@ -625,7 +632,6 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-get autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
   runner "aptitude safe-upgrade -y"
-  runner "dpkg --configure -a"
   runner "aptitude update"
   runner "aptitude clean"
   runner "aptitude full-upgrade -y"
