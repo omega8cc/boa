@@ -306,7 +306,8 @@ if [ $_STATUS = "INIT" ] ; then
   sleep 8
   apt-get update &> /dev/null
   apt-get clean &> /dev/null
-  $INITINS wget git-core &> /dev/null
+  $INITINS wget git-core locales &> /dev/null
+  locale-gen en_US en_US.UTF-8 &> /dev/null
 fi
 
 
@@ -605,9 +606,9 @@ if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Add apt sources for MariaDB"
   mrun "sleep 3"
   cd /var/opt
-  wget http://ourdelta.org/deb/ourdelta.gpg &> /dev/null
+  wget -U iCab http://ourdelta.org/deb/ourdelta.gpg &> /dev/null
   apt-key add ourdelta.gpg 2> /dev/null
-  wget http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list &> /dev/null
+  wget -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list &> /dev/null
   cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
 fi
 
@@ -645,18 +646,10 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
-msg "`date` INFO: Install and set locales"
-runner "aptitude -y install locales"
-runner "locale-gen en_US en_US.UTF-8"
-fi
-
-
-###--------------------###
 msg "`date` INFO: Install/upgrade required libraries and tools"
 msg "`date` NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_THIS_OS" = "Debian" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libltdl7 libltdl7-dev libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
 else
@@ -706,6 +699,41 @@ if [ ! -z "$_SMTP_RELAY_HOST" ]; then
 fi
 ###
 ###
+fi
+
+
+###--------------------###
+if [ ! -f "/usr/bin/redis-server" ] ; then
+if [ "$_THIS_OS" = "Debian" ] ; then
+  msg "`date` INFO: Installing Redis for Lenny, please wait..."
+  mrun "sleep 3"
+  runner "adduser --system --group redis"
+  cd /var/opt
+  rm -f -r /var/opt/redis*
+  wget -U iCab http://redis.googlecode.com/files/redis-2.0.1.tar.gz &> /dev/null
+  tar -xzf redis-2.0.1.tar.gz
+  cd redis-2.0.1
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  cd /usr/local/bin
+  cp -p redis-server /usr/bin/
+  cp -p redis-benchmark /usr/bin/
+  cp -p redis-cli /usr/bin/
+  cp -p redis-check-dump /usr/bin/
+  cp -p redis-check-aof /usr/bin/
+  cd /etc/init.d
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis-server ./
+  chmod 755 redis-server
+  runner "update-rc.d redis-server defaults" &> /dev/null
+  mkdir /etc/redis
+  cd /etc/redis
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis.conf ./
+  mkdir -p /var/log/redis
+  chown redis:redis /var/log/redis
+  mkdir -p /var/lib/redis
+  chown redis:redis /var/lib/redis
+  runner "invoke-rc.d redis-server start" 2> /dev/null
+fi
 fi
 
 
@@ -956,7 +984,7 @@ if [ ! -f "/usr/local/bin/memcached" ] ; then
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
   rm -f /usr/local/bin/memcached
-  wget -U iCab wget http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz &> /dev/null
+  wget -U iCab wget -U iCab http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz &> /dev/null
   tar -xzf memcached-1.4.5.tar.gz
   cd /var/opt/memcached-1.4.5
   st_runner "sh ./configure" 2> /dev/null
@@ -971,8 +999,8 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   msg "`date` INFO: Installing lshell, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz &> /dev/null
-  #wget https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download &> /dev/null
+  wget -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz &> /dev/null
+  #wget -U iCab https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download &> /dev/null
   tar -xzf lshell-0.9.12.tar.gz
   cd /var/opt/lshell-0.9.12
   runner "python setup.py install" 2> /dev/null
