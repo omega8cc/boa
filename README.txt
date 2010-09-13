@@ -63,7 +63,10 @@ so it is your responsibility to use such system wisely.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.
+* Redis and Memcached chained cache with DB failover.
 * Chive database manager in "db." subdomain.
+* Collectd server monitor in "cgp." subdomain.
+* Limited shell and FTPS separate accounts per Octopus instance.
 
 
 ### HELP
