@@ -305,10 +305,11 @@ if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: We need to install wget & git first, please wait..."
   sleep 8
   apt-get update &> /dev/null
-  $INITINS wget git-core locales &> /dev/null
+  $INITINS locales &> /dev/null
   sleep 5
-  locale-gen en_US en_US.UTF-8 &> /dev/null
-  if [ ! -f "/etc/default/locale" ] ; then
+  _LOC_TEST=`locale 2>&1`
+  if [[ $_LOC_TEST =~ Cannot ]] ; then
+    locale-gen en_US en_US.UTF-8 &> /dev/null
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
     echo "LANG=en_US.UTF-8" > /etc/default/locale
@@ -318,7 +319,10 @@ if [ $_STATUS = "INIT" ] ; then
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
     echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
+  else
+    locale-gen en_US en_US.UTF-8 &> /dev/null
   fi
+  $INITINS wget git-core &> /dev/null
 fi
 
 
