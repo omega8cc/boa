@@ -747,19 +747,27 @@ _LOCAL_STATUS="$_STATUS"
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-if [ $_LOCAL_STATUS = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _THIS_HOSTMASTER="$_AEGIR_ROOT/sites/$_DOMAIN"
+  msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER because _LOCAL_STATUS is $_LOCAL_STATUS"
 else
   if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
     _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
-    echo "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - read from $_ROOT/.drush/hostmaster.alias.drushrc.php"
+    msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - read from $_ROOT/.drush/hostmaster.alias.drushrc.php"
   else
     _THIS_HOSTMASTER="$_AEGIR_ROOT/sites/$_DOMAIN"
-    echo "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER"
+    msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER"
   fi
 fi
-cd $_THIS_HOSTMASTER
+if [ -d "$_THIS_HOSTMASTER" ] ; then
+  msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (1)"
+  cd $_THIS_HOSTMASTER
+else
+  _THIS_HOSTMASTER="$_PREV_AEGIR_ROOT/sites/$_DOMAIN"
+  msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (2)"
+  cd $_THIS_HOSTMASTER
+fi
 DRUSHC="$_ROOT/tools/drush/drush"
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
