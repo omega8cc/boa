@@ -62,7 +62,7 @@ _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 SRCDIR=/opt/tmp/files
 LOG=/opt/tmp/aegir-install.log
 if [ ! -f "$_HM_DISTRO/sites/$_DOMAIN/drushrc.php" ] ; then
-  $_AEGIR_ROOT="$_PREV_AEGIR_ROOT"
+  _AEGIR_ROOT="$_PREV_AEGIR_ROOT"
 fi
 
 
