@@ -308,15 +308,17 @@ if [ $_STATUS = "INIT" ] ; then
   $INITINS wget git-core locales &> /dev/null
   sleep 5
   locale-gen en_US en_US.UTF-8 &> /dev/null
-  update-locale &> /dev/null
-  localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
-  echo "LANG=en_US" > /etc/default/locale
-  export LANG=en_US.UTF-8
-  export LC_ALL=en_US.UTF-8
-  export LANGUAGE=en_US.UTF-8
-  echo "export LANG=en_US.UTF-8" >> /root/.bashrc
-  echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
-  echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
+  if [ ! -f "/etc/default/locale" ] ; then
+    update-locale &> /dev/null
+    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
+    echo "LANG=en_US.UTF-8" > /etc/default/locale
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export LANGUAGE=en_US.UTF-8
+    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
+    echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
+  fi
 fi
 
 
