@@ -1159,6 +1159,7 @@ if [ -f "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
   msg "`date` INFO: Aegir installation almost completed"
 else
   msg "`date` FATAL ERROR: Something is wrong, core Aegir Hostmaster instance not installed - exit now"
+  msg "`date` FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
   exit 1
 fi
 
