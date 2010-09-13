@@ -61,9 +61,6 @@ _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 SRCDIR=/opt/tmp/files
 LOG=/opt/tmp/aegir-install.log
-if [ ! -f "$_HM_DISTRO/sites/$_DOMAIN/drushrc.php" ] ; then
-  _AEGIR_ROOT="$_PREV_AEGIR_ROOT"
-fi
 
 
 ###---### Palettes full names
@@ -756,8 +753,10 @@ else
   if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
     _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
+    echo "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - read from $_ROOT/.drush/hostmaster.alias.drushrc.php"
   else
     _THIS_HOSTMASTER="$_AEGIR_ROOT/sites/$_DOMAIN"
+    echo "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER"
   fi
 fi
 cd $_THIS_HOSTMASTER
