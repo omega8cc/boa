@@ -307,7 +307,9 @@ if [ $_STATUS = "INIT" ] ; then
   apt-get update &> /dev/null
   apt-get clean &> /dev/null
   $INITINS wget git-core locales &> /dev/null
-  locale-gen en_US en_US.UTF-8 &> /dev/null
+  export LANGUAGE=en_US.UTF-8 && export LANG=en_US.UTF-8 && export LC_ALL=en_US.UTF-8
+  locale-gen en_US.UTF-8 &> /dev/null
+  dpkg-reconfigure -f noninteractive --force locales en_US.UTF-8 &> /dev/null
 fi
 
 
