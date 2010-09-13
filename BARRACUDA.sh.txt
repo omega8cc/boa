@@ -762,6 +762,7 @@ if [ $_STATUS = "INIT" ] ; then
   APTEMAILA=`cat /opt/tmp/.email.txt`
   APTEMAIL=`echo -n $APTEMAILA | tr -d "\n"`
   perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf
+  sed -i "s/help\\\@omega8.cc/$APTEMAIL/g" /var/xdrago/checksql.cgi
   rm -f /opt/tmp/.email.txt
   runner "sh /usr/sbin/apticron"
 fi
