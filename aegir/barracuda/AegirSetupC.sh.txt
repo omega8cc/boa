@@ -167,6 +167,10 @@ create_dirs () {
   mkdir -p ./sites/all/modules
   mkdir -p ./sites/all/libraries
   mkdir -p ./sites/all/themes
+  rm -f ./modules/*.txt
+  rm -f ./themes/*.txt
+  rm -f ./sites/all/*.txt
+  echo empty > ./sites/all/EMPTY.txt
   echo empty > ./sites/all/modules/EMPTY.txt
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
@@ -209,6 +213,32 @@ chmod 0711 $_ROOT/distro
 chmod 0711 $_ROOT/distro/$_DISTRO
 
 
+###---### Fixing problems
+#
+# Feature Server broken due to required now ctools fix
+#
+REVISIONS="001 002 003 004 005 006 007 008 009"
+for i in $REVISIONS; do
+  if [ -d "/data/all/$i/fserver" ] ; then
+    if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/ctools" ] ; then
+      cd; drush dl ctools --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
+      cd /data/all/$i/fserver/profiles/feature_server
+      rm -f feature_server.make
+      rm -f feature_server.profile
+      wget -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.make &> /dev/null
+      wget -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.profile &> /dev/null
+      if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+        _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
+        _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
+        cd _THIS_HOSTMASTER
+        drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
+      fi
+    fi
+  fi
+done
+cd
+
+
 ###---### Prepare Pressflow core
 #
 if [ $_STATUS = "INIT" ] ; then
@@ -221,6 +251,9 @@ rm -f -r /data/src/$_DISTRO/pressflow-6
 bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
 cd /data/src/$_DISTRO/pressflow-6/
 rm -f /data/src/$_DISTRO/pressflow-6/*.txt
+rm -f /data/src/$_DISTRO/pressflow-6/modules/*.txt
+rm -f /data/src/$_DISTRO/pressflow-6/themes/*.txt
+rm -f /data/src/$_DISTRO/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
 wget -U iCab http://omega8.cc/boost_stats.php.txt &> /dev/null
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
@@ -546,7 +579,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   echo "projects[] = \"drupal\"" >> fserver.make
   echo "projects[feature_server][type] = \"profile\"" >> fserver.make
   echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
-  echo "projects[feature_server][download][url] = \"git://git.mig5.net/drupal/profiles/feature_server\"" >> fserver.make
+  echo "projects[feature_server][download][url] = \"git://github.com/omega8cc/feature_server.git\"" >> fserver.make
   $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver

@@ -1200,7 +1200,7 @@ if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; t
   echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
 fi
 cd /var/aegir/config/includes
-echo "`date` Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./installer_version.txt
+echo "`date` `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./installer_version.txt
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf

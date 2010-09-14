@@ -186,8 +186,8 @@ if [ ! -d "$_CORE" ] ; then
   chmod 0711 /data/all
   chmod 0700 /data/src
 fi
-chown -R $_USER:$_USRG $_CORE
-chown $_USER:$_USRG /data/all
+#chown -R $_USER:$_USRG $_CORE
+chown -R $_USER:$_USRG /data/all
 chown -R $_USER:$_USRG /data/src
 chown -R $_USER:$_USRG /data/conf
 chown -R $_USER:$_USRG /opt/tmp
@@ -545,6 +545,8 @@ if [ $_STATUS = "INIT" ] ; then
 else
  echo $TIME > $_ROOT/log/date-upgrade-$_DISTRO.txt
 fi
+cd $_ROOT/log
+echo "`date` `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION" >> ./octopus_log.txt
 
 
 ###---### Start the cron now

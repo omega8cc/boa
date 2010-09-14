@@ -325,13 +325,21 @@ $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
-$_DRUSHCMD vset --always-set site_frontpage "hosting/sites" &> /dev/null
+#$_DRUSHCMD vset --always-set site_frontpage "hosting/sites" &> /dev/null
 $_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
 $_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
 $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
 perl -p -i -e "s/(320px)/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
+if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+  cd $_AEGIR_ROOT/sites/$_DOMAIN
+  DRUSHC="$_ROOT/tools/drush/drush"
+  cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_home.php.txt ./
+  mv -f make_home.php.txt make_home.php &> /dev/null
+  $DRUSHC php-script make_home &> /dev/null
+  rm -f make_home.php
+fi
 
 
 ###---### Aegir global.inc file
