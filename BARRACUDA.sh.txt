@@ -132,7 +132,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A13.A
+_INSTALLER_VERSION=A13.B
 _NGINX_VERSION=0.8.50
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -1199,8 +1199,6 @@ if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; t
   echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
   echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
 fi
-cd /var/aegir/config/includes
-echo "`date` `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./installer_version.txt
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
@@ -1403,6 +1401,9 @@ if [ $_STATUS = "INIT" ] ; then
   echo " "
   mrun "sleep 3"
 fi
+cd /var/aegir/config/includes
+echo "`date` `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
+touch installer_version.txt
 msg "`date` CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
 msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
