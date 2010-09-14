@@ -1,4 +1,20 @@
-### TODO before CPH DrupalCon
+
+### Known issues
+
+* Debian Lenny on 32bit systems is currently not compatible
+
+* Only dedicated servers and Xen based VPS systems
+  supported without issues. Details for Virtuozzo/OpenVZ:
+  http://github.com/omega8cc/nginx-for-drupal/issues#issue/13
+
+
+### In progress
+
+* Open reloaded every hour Aegir demo server.
+* Clone Nginx integration for Cherokee web server.
+
+
+### DONE on Aegir Day at CPH DrupalCon
  
 * Aegir Nginx installer should come with ready to use platforms:
 
@@ -25,18 +41,6 @@
 
 * The codename of the finished installer is Barracuda.
 
-
-### In progress
-
-* Open reloaded every hour Aegir demo server.
-
-* Clone Nginx integration for Cherokee web server.
-
-### Known issues
- 
-* Only dedicated servers and Xen based VPS systems
-  supported without issues. Details for Virtuozzo/OpenVZ:
-  http://github.com/omega8cc/nginx-for-drupal/issues#issue/13
 
 ### DONE
 

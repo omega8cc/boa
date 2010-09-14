@@ -49,9 +49,9 @@ so it is your responsibility to use such system wisely.
 
 ### REQUIREMENTS
 
-* Ubuntu Lucid 10.04 minimal OS fresh install, or
-* Ubuntu Karmic 9.10 minimal OS fresh install, or
-* Debian 5.0 Lenny minimal OS fresh install.
+* Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
+* Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
+* Debian 5.0 Lenny minimal OS 64bit fresh install.
 
 
 ### PROVIDES
