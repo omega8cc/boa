@@ -1402,7 +1402,7 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 3"
 fi
 cd /var/aegir/config/includes
-echo "`date` `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
+echo "`date` / `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
 touch installer_version.txt
 msg "`date` CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"

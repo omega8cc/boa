@@ -64,7 +64,8 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-      git clone git://git.aegirproject.org/provision &> /dev/null
+     #git clone git://git.aegirproject.org/provision &> /dev/null
+      git clone git://github.com/omega8cc/provision.git &> /dev/null
     else
       wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
       tar -xzf provision-$_AEGIR_VERSION.tgz
