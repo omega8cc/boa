@@ -40,26 +40,27 @@ _UBERCART=EDIT_UBERCART
 
 ###---### main config
 #
-_DISTRO=EDIT_DISTRO
-_HM_DISTRO=EDIT_HM_DISTRO
-_LAST_HMR=EDIT_LAST_HMR
+_STATUS=INIT
 _USER=EDIT_USER
 _DOMAIN=EDIT_DOMAIN
 _WEBG=EDIT_WEBG
 _USRG=EDIT_USRG
+_DISTRO=EDIT_DISTRO
+_HM_DISTRO=EDIT_HM_DISTRO
+_ALL_DISTRO=EDIT_ALL_DISTRO
 _ROOT="/data/disk/$_USER"
-_CORE="/data/all/$_DISTRO"
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
-_STATUS=INIT
 _LASTNUM=EDIT_LASTNUM
 _LAST_HMR=EDIT_LAST_HMR
+_LAST_ALL=EDIT_LAST_ALL
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _THISHTIP=EDIT_THISHTIP
 _DIST_INSTALL=NO
+_HOT_SAUCE=EDIT_HOT_SAUCE
 
 
 ###---### Functions
@@ -155,6 +156,19 @@ if [ -d "$_ROOT" ] ; then
   rm -f $_ROOT/AegirSetupB.sh.txt
 else
   msg "`date` $_STATUS A: _STATUS is $_STATUS"
+fi
+
+
+###---### Hot Sauce check..
+#
+msg "`date` $_STATUS A: Hot Sauce check.."
+mrun "sleep 3"
+if [ "$_HOT_SAUCE" = "NO" ] ; then
+  _CORE="/data/all/$_LAST_ALL"
+  msg "`date` $_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
+else
+  _CORE="/data/all/$_ALL_DISTRO"
+  msg "`date` $_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
 
 

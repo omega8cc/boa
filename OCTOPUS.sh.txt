@@ -36,8 +36,8 @@
 ### Define also your *new* Aegir user for this
 ### instance or existing if this is an upgrade
 ###
-_DOMAIN=host.aegir.cc
-_USER=host
+_DOMAIN=octopus.aegir.cc
+_USER=octopus
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="support@omega8.cc"
 
@@ -51,10 +51,36 @@ _CLIENT_EMAIL="support@omega8.cc"
 ### to test current HEAD, you can change it
 ### below to:
 ###
-### _AEGIR_VERSION="HEAD"
-### _AEGIR_VERSION="0.4-alpha13"
+### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=0.4-alpha13
 ###
-_AEGIR_VERSION="HEAD"
+_AEGIR_VERSION=HEAD
+
+
+###----------------------------------------###
+### DISTRO INITIAL VERSION NR              ###
+###----------------------------------------###
+###
+### By default every new Octopus instance
+### will use shared code for platforms
+### created during previous Octopus install
+### or upgrade, resulting with new 00x number
+### in the /data/all directory.
+###
+### It is not always good, since you want
+### to keep the code shared between instances,
+### but you also don't want to create a new
+### instance with outdated code if your last
+### install/upgrade was performed a few months
+### ago.
+###
+### If you don't want to build a new Octopus
+### instance with latest code, then leave it
+### at default value. Otherwise change it to:
+###
+### _HOT_SAUCE=YES
+###
+_HOT_SAUCE=NO
 
 
 ###----------------------------------------###
@@ -122,8 +148,10 @@ do
   perl -p -i -e "s/(EDIT_USER)/$_USER/g" $Files
   perl -p -i -e "s/(EDIT_DISTRO)/$_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_HM_DISTRO)/$_HM_DISTRO/g" $Files
+  perl -p -i -e "s/(EDIT_ALL_DISTRO)/$_ALL_DISTRO/g" $Files
   perl -p -i -e "s/(EDIT_LASTNUM)/$_LASTNUM/g" $Files
   perl -p -i -e "s/(EDIT_LAST_HMR)/$_LAST_HMR/g" $Files
+  perl -p -i -e "s/(EDIT_LAST_ALL)/$_LAST_ALL/g" $Files
   perl -p -i -e "s/(EDIT_WEBG)/$_WEBG/g" $Files
   perl -p -i -e "s/(EDIT_USRG)/$_USRG/g" $Files
   perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g" $Files
@@ -138,6 +166,7 @@ do
   perl -p -i -e "s/(EDIT_COCOMORE)/$_COCOMORE/g" $Files
   perl -p -i -e "s/(EDIT_COMMONS)/$_COMMONS/g" $Files
   perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" $Files
+  perl -p -i -e "s/(EDIT_HOT_SAUCE)/$_HOT_SAUCE/g" $Files
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -f /opt/tmp/nginx-for-drupal/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
@@ -211,8 +240,10 @@ SILENT=/opt/tmp/silent.log
 #
 _LASTNUM=001
 _LAST_HMR=001
+_LAST_ALL=001
 _DISTRO=001
 _HM_DISTRO=001
+_ALL_DISTRO=001
 _STATUS=INIT
 _ROOT="/data/disk/$_USER"
 if [ -d "$_ROOT" ] ; then
@@ -263,6 +294,22 @@ if [ -d "$_ROOT" ] ; then
     echo _LAST_HMR is $_LAST_HMR
   fi
   echo _HM_DISTRO is $_HM_DISTRO
+#
+# Check for last all nr
+  if [ -d "/data/all" ] ; then
+    cd /data/all
+    listl=([0-9]*)
+    lastl=${listl[@]: -1}
+    _LAST_ALL=$lastl
+    echo _LAST_ALL is $lastl
+    nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
+    nextnuml=${nextnuml: -3}
+    _ALL_DISTRO=${nextnuml}
+  else
+    echo _LAST_ALL is $_LAST_ALL
+  fi
+  echo _ALL_DISTRO is $_ALL_DISTRO
+#
 #
  elif [ ! -d "$_ROOT/distro" ] ; then
   echo UPGRADE v.1 in progress..

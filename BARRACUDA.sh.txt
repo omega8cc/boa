@@ -656,6 +656,19 @@ fi
 
 
 ###--------------------###
+msg "`date` INFO: Run apt update again, please wait..."
+runner "aptitude update"
+runner "aptitude clean"
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  runner "apt-get upgrade -y"
+  runner "apt-get dist-upgrade"
+  runner "apt-get autoclean"
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  runner "aptitude full-upgrade -y"
+fi
+
+
+###--------------------###
 msg "`date` INFO: Install/upgrade required libraries and tools"
 msg "`date` NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_THIS_OS" = "Debian" ] ; then
@@ -709,6 +722,22 @@ if [ ! -z "$_SMTP_RELAY_HOST" ]; then
 fi
 ###
 ###
+fi
+
+
+###--------------------###
+msg "`date` INFO: Fix for Nginx startup script, please wait..."
+mrun "sleep 3"
+_X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
+if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
+  true
+  msg "`date` INFO: No fix required"
+else
+  cd /etc/init.d
+  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_DISTRO
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx ./
+  chmod 755 /etc/init.d/nginx
+  msg "`date` INFO: Fix for Nginx startup script applied"
 fi
 
 
@@ -1302,6 +1331,9 @@ if [ ! -d "/var/www/chive" ] ; then
     rm -f chive_0.3.0.tar.gz
     chown -R www-data:www-data /var/www/chive
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/db.$_THIS_FRONT"
+    if [ -z "$_THISHTIP" ] ; then
+      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    fi
     echo " " >> $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
     echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
@@ -1335,6 +1367,9 @@ if [ ! -d "/var/www/cgp" ] ; then
     perl -p -i -e "s/(>uncategorized<)/>Barracuda Server</g" /var/www/cgp/index.php
     chown -R www-data:www-data /var/www/cgp
     _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
+    if [ -z "$_THISHTIP" ] ; then
+      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    fi
     echo " " >> $_CGP_VHOST
     echo "server {" >> $_CGP_VHOST
     echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
