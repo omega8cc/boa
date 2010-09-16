@@ -309,7 +309,7 @@ cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz &> /dev/null
+wget -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz &> /dev/null
 tar -xzf aegir_custom_settings-6.x-1.4.tar.gz
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features -y &> /dev/null
