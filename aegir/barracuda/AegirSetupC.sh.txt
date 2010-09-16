@@ -225,9 +225,9 @@ _F_UBERCART="Ubercart P.$_THIS_CORE"
 #
 msg "`date` $_STATUS C: Create directories"
 mrun "sleep 2"
-mkdir -p $_ROOT/distro/$_DISTRO
+mkdir -p $_ROOT/distro/$_THIS_CORE
 chmod 0711 $_ROOT/distro
-chmod 0711 $_ROOT/distro/$_DISTRO
+chmod 0711 $_ROOT/distro/$_THIS_CORE
 
 
 ###---### Fixing problems
@@ -261,16 +261,16 @@ cd
 if [ $_STATUS = "INIT" ] ; then
 msg "`date` $_STATUS C: Preparing Pressflow core, please wait.."
 mrun "sleep 2"
-mkdir -p /data/src/$_DISTRO
-chmod 0700 /data/src/$_DISTRO
-cd /data/src/$_DISTRO
-rm -f -r /data/src/$_DISTRO/pressflow-6
+mkdir -p /data/src/$_THIS_CORE
+chmod 0700 /data/src/$_THIS_CORE
+cd /data/src/$_THIS_CORE
+rm -f -r /data/src/$_THIS_CORE/pressflow-6
 bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
-cd /data/src/$_DISTRO/pressflow-6/
-rm -f /data/src/$_DISTRO/pressflow-6/*.txt
-rm -f /data/src/$_DISTRO/pressflow-6/modules/*.txt
-rm -f /data/src/$_DISTRO/pressflow-6/themes/*.txt
-rm -f /data/src/$_DISTRO/pressflow-6/sites/all/*.txt
+cd /data/src/$_THIS_CORE/pressflow-6/
+rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
+rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
+rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
+rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
 wget -U iCab http://omega8.cc/boost_stats.php.txt &> /dev/null
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
@@ -325,7 +325,7 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   cd $_CORE/o_contrib_atrium
   rm -f *.tar.gz
 fi
-cd /data/src/$_DISTRO/pressflow-6/
+cd /data/src/$_THIS_CORE/pressflow-6/
 ln -s $_CORE/o_contrib modules/o_contrib
 cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
 fi
@@ -347,13 +347,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   mkdir -p $_CORE/acquia
   cd $_CORE/acquia
   svn co https://svn.acquia.com/drupal/branches/1.x-6.x . &> /dev/null
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/acquia/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/acquia
-cd $_ROOT/distro/$_DISTRO/acquia
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia
+cd $_ROOT/distro/$_THIS_CORE/acquia
 create_symlinks
 msg "STATUS: $_F_ACQUIA installation completed"
 mrun "sleep 2"
@@ -376,13 +376,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip &> /dev/null
   unzip atrium-$_OPENATRIUM.zip &> /dev/null
   rm -f atrium-$_OPENATRIUM.zip
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM
-cd $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM
+mkdir -p $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
+cd $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
 create_symlinks
 if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
@@ -414,12 +414,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   $_ROOT/tools/drush/drush make atrium_stub.make openatrium &> /dev/null
   rm -f atrium_stub.make
   cd $_CORE/openatrium
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/openatrium/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openatrium/
   rm -f $_CORE/openatrium/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/openatrium
-cd $_ROOT/distro/$_DISTRO/openatrium
+mkdir -p $_ROOT/distro/$_THIS_CORE/openatrium
+cd $_ROOT/distro/$_THIS_CORE/openatrium
 create_symlinks
 if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
@@ -449,8 +449,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/pressflow-$_DRUPAL5/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
-cd $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5
+cd $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5
 create_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL5 installation completed"
@@ -472,13 +472,13 @@ _CORE_DISTRO="$_CORE/pressflow"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   mkdir -p $_CORE/pressflow
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/pressflow/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/
   cd $_CORE/pressflow
   rm -f $_CORE/pressflow/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/pressflow
-cd $_ROOT/distro/$_DISTRO/pressflow
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow
+cd $_ROOT/distro/$_THIS_CORE/pressflow
 create_symlinks
 msg "STATUS: $_F_DRUPAL6 installation completed"
 mrun "sleep 2"
@@ -505,8 +505,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/$_DRUPAL7/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/$_DRUPAL7
-cd $_ROOT/distro/$_DISTRO/$_DRUPAL7
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
+cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
 create_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7 installation completed"
@@ -537,8 +537,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/$_COCOMORE/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/$_COCOMORE
-cd $_ROOT/distro/$_DISTRO/$_COCOMORE
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_COCOMORE
+cd $_ROOT/distro/$_THIS_CORE/$_COCOMORE
 create_symlinks
 msg "STATUS: $_F_COCOMORE installation completed"
 mrun "sleep 2"
@@ -561,17 +561,17 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz &> /dev/null
   tar -xzf drupal_commons-$_COMMONS.tar.gz
   rm -f drupal_commons-$_COMMONS.tar.gz
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/drupal_commons/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons/
   cd $_CORE/drupal_commons
   rm -f $_CORE/drupal_commons/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/drupal_commons
-cd $_ROOT/distro/$_DISTRO/drupal_commons
+mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons
+cd $_ROOT/distro/$_THIS_CORE/drupal_commons
 create_symlinks
-if [ ! -L "$_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries/getid3" ] ; then
-  mkdir -p $_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries/getid3
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/drupal_commons/sites/all/libraries/getid3" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_THIS_CORE/drupal_commons/sites/all/libraries/getid3
 fi
 msg "STATUS: $_F_COMMONS installation completed"
 mrun "sleep 2"
@@ -599,15 +599,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/fserver/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/
   rm -f $_CORE/fserver/*.txt
   create_dirs
   cd ./profiles/feature_server/themes
   wget -U iCab http://omega8.cc/dev/singular.patch.txt &> /dev/null
   patch -p0 <./singular.patch.txt &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/fserver
-cd $_ROOT/distro/$_DISTRO/fserver
+mkdir -p $_ROOT/distro/$_THIS_CORE/fserver
+cd $_ROOT/distro/$_THIS_CORE/fserver
 create_symlinks
 msg "STATUS: $_F_FSERVER installation completed"
 mrun "sleep 2"
@@ -630,13 +630,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip &> /dev/null
   unzip managingnews-$_MANAGINGNEWS.zip &> /dev/null
   rm -f managingnews-$_MANAGINGNEWS.zip
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/
   cd $_CORE/managingnews-$_MANAGINGNEWS
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
-cd $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
+mkdir -p $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS
+cd $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS
 create_symlinks
 msg "STATUS: $_F_MANAGINGNEWS installation completed"
 mrun "sleep 2"
@@ -665,12 +665,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   $_ROOT/tools/drush/drush make managingnews_stub.make managingnews &> /dev/null
   rm -f managingnews_stub.make
   cd $_CORE/managingnews
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/managingnews/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews/
   rm -f $_CORE/managingnews/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/managingnews
-cd $_ROOT/distro/$_DISTRO/managingnews
+mkdir -p $_ROOT/distro/$_THIS_CORE/managingnews
+cd $_ROOT/distro/$_THIS_CORE/managingnews
 create_symlinks
 msg "STATUS: $_F_MANAGINGNEWS_DEV installation completed"
 mrun "sleep 2"
@@ -693,13 +693,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz &> /dev/null
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
   rm -f openpublish-$_OPENPUBLISH.tar.gz
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/openpublish/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish/
   cd $_CORE/openpublish
   rm -f $_CORE/openpublish/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/openpublish
-cd $_ROOT/distro/$_DISTRO/openpublish
+mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish
+cd $_ROOT/distro/$_THIS_CORE/openpublish
 create_symlinks
 if [ ! -L "./sites/all/themes/openpublish_theme" ] ; then
   ln -s $_CORE_DISTRO/profiles/openpublish/themes/openpublish_theme ./sites/all/themes/openpublish_theme
@@ -726,12 +726,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf prosepoint-$_PROSEPOINT.tar.gz
   rm -f prosepoint-$_PROSEPOINT.tar.gz
   cd $_CORE/prosepoint-$_PROSEPOINT
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
-cd $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
+mkdir -p $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT
+cd $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT
 create_symlinks
 msg "STATUS: $_F_PROSEPOINT installation completed"
 mrun "sleep 2"
@@ -755,12 +755,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf $_UBERCART.tar.gz
   rm -f $_UBERCART.tar.gz
   cd $_CORE/$_UBERCART
-  cp -af /data/src/$_DISTRO/pressflow-6/* $_CORE/$_UBERCART/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/
   rm -f $_CORE/$_UBERCART/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_DISTRO/uberdrupal
-cd $_ROOT/distro/$_DISTRO/uberdrupal
+mkdir -p $_ROOT/distro/$_THIS_CORE/uberdrupal
+cd $_ROOT/distro/$_THIS_CORE/uberdrupal
 create_symlinks
 msg "STATUS: $_F_UBERCART installation completed"
 mrun "sleep 2"
