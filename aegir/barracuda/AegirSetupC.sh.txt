@@ -821,47 +821,47 @@ fi
 DRUSHC="$_ROOT/tools/drush/drush"
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
-if [ -d "$_ROOT/distro/$_DISTRO/acquia" ] ; then
-  $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_DISTRO/acquia &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
+  $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM" ] ; then
-  $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
+  $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/openatrium" ] ; then
-  $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_DISTRO/openatrium &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium" ] ; then
+  $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_THIS_CORE/openatrium &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/pressflow" ] ; then
-  $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_DISTRO/pressflow &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
+  $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/$_DRUPAL7" ] ; then
-  $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_DISTRO/$_DRUPAL7 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
+  $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5" ] ; then
-  $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
+  $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/$_COCOMORE" ] ; then
-  $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_DISTRO/$_COCOMORE &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE" ] ; then
+  $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_THIS_CORE/$_COCOMORE &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/drupal_commons" ] ; then
-  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_DISTRO/drupal_commons &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons" ] ; then
+  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/drupal_commons &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/fserver" ] ; then
-  $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_DISTRO/fserver &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
+  $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS" ] ; then
-  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
+  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/managingnews" ] ; then
-  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_DISTRO/managingnews &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews" ] ; then
+  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_THIS_CORE/managingnews &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/openpublish" ] ; then
-  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_DISTRO/openpublish &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish" ] ; then
+  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT" ] ; then
-  $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
+  $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_DISTRO/uberdrupal" ] ; then
-  $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_DISTRO/uberdrupal &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
+  $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/uberdrupal &> /dev/null
 fi
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')

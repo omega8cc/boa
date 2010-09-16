@@ -165,9 +165,11 @@ msg "`date` $_STATUS A: Hot Sauce check.."
 mrun "sleep 3"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
+  _THIS_CORE="$_LAST_ALL"
   msg "`date` $_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used"
 else
   _CORE="/data/all/$_ALL_DISTRO"
+  _THIS_CORE="$_ALL_DISTRO"
   msg "`date` $_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
 
@@ -464,24 +466,24 @@ fi
 if [ "$_DIST_INSTALL" = "YES" ] ; then
 msg "`date` $_STATUS A: Create ftp symlinks"
 mrun "sleep 3"
-if [ ! -d "/home/$_USERFTP/platforms/$_DISTRO" ] ; then
-  mkdir -p /home/$_USERFTP/platforms/$_DISTRO
+if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
+  mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms
   chmod 700 /home/$_USERFTP
-  ln -s $_ROOT/distro/$_DISTRO/acquia/sites /home/$_USERFTP/platforms/$_DISTRO/acquia
-  ln -s $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_DISTRO/drupal5
-  ln -s $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews
-  ln -s $_ROOT/distro/$_DISTRO/managingnews/sites /home/$_USERFTP/platforms/$_DISTRO/managingnews-dev
-  ln -s $_ROOT/distro/$_DISTRO/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium
-  ln -s $_ROOT/distro/$_DISTRO/openatrium/sites /home/$_USERFTP/platforms/$_DISTRO/openatrium-dev
-  ln -s $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_DISTRO/prosepoint
-  ln -s $_ROOT/distro/$_DISTRO/pressflow/sites /home/$_USERFTP/platforms/$_DISTRO/drupal6
-  ln -s $_ROOT/distro/$_DISTRO/uberdrupal/sites /home/$_USERFTP/platforms/$_DISTRO/ubercart
-  ln -s $_ROOT/distro/$_DISTRO/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_DISTRO/drupal7
-  ln -s $_ROOT/distro/$_DISTRO/openpublish/sites /home/$_USERFTP/platforms/$_DISTRO/openpublish
-  ln -s $_ROOT/distro/$_DISTRO/fserver/sites /home/$_USERFTP/platforms/$_DISTRO/fserver
-  ln -s $_ROOT/distro/$_DISTRO/drupal_commons/sites /home/$_USERFTP/platforms/$_DISTRO/commons
-  ln -s $_ROOT/distro/$_DISTRO/$_COCOMORE/sites /home/$_USERFTP/platforms/$_DISTRO/cocomore
+  ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
+  ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal5
+  ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews
+  ln -s $_ROOT/distro/$_THIS_CORE/managingnews/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-dev
+  ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium
+  ln -s $_ROOT/distro/$_THIS_CORE/openatrium/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-dev
+  ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
+  ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6
+  ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
+  ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7
+  ln -s $_ROOT/distro/$_THIS_CORE/openpublish/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
+  ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver
+  ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons
+  ln -s $_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites /home/$_USERFTP/platforms/$_THIS_CORE/cocomore
 fi
 fi
 if [ ! -d "$_ROOT/static" ] ; then
@@ -510,7 +512,7 @@ rm -f /opt/tmp/.admemail.txt
 if [ -f "$_ROOT/log/setupmail.txt" ] ; then
  cd $_ROOT/log
  if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
-   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_DISTRO.txt &> /dev/null
+   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
  fi
  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
  perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
@@ -541,7 +543,7 @@ else
  msg "`date` $_STATUS A: Resend setup e-mail on upgrade, please wait..."
  mrun "sleep 3"
  TIME=`date`
- echo $TIME > $_ROOT/log/date-upgrade-$_DISTRO.txt
+ echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
  if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
    cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
  else
@@ -557,7 +559,7 @@ TIME=`date`
 if [ $_STATUS = "INIT" ] ; then
  echo $TIME > $_ROOT/log/date-init.txt
 else
- echo $TIME > $_ROOT/log/date-upgrade-$_DISTRO.txt
+ echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
 fi
 cd $_ROOT/log
 echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION" >> ./octopus_log.txt
@@ -571,7 +573,7 @@ msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
-mv -f /etc/motd /etc/motd-pre-$_DISTRO &> /dev/null
+mv -f /etc/motd /etc/motd-pre-$_THIS_CORE &> /dev/null
 echo "Octopus Aegir Hosting System v.$_INSTALLER_VERSION" > /etc/motd
 chown root:root /data/all
 chown -R root:root /data/src
