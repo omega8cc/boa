@@ -128,6 +128,8 @@ else
   hostmaster_dr_up
   hostmaster_go_up
 fi
+# cd $_AEGIR_ROOT/sites/$_DOMAIN
+# drush provision-save @server_master &> /dev/null
 
 
 ###----------------------------------------###

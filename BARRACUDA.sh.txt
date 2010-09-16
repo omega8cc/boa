@@ -605,12 +605,10 @@ if [ $_STATUS = "INIT" ] ; then
     echo "deb http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-    echo "deb http://ftp.us.debian.org/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
-    echo "deb-src http://ftp.us.debian.org/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://ftp.us.debian.org/debian experimental main" >> /etc/apt/sources.list
-    echo "deb-src http://ftp.us.debian.org/debian/ experimental main" >> /etc/apt/sources.list
+    echo "deb http://ftp.debian.org/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+    echo "deb-src http://ftp.debian.org/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+    echo "deb http://security.debian.org/ $_REL_VERSION/updates main" >> /etc/apt/sources.list
+    echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main" >> /etc/apt/sources.list
   fi
 fi
 
@@ -944,7 +942,7 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-if [ ! -f "/usr/bin/bzr" ] ; then
+if [ ! -f "/usr/local/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -1402,7 +1400,7 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 3"
 fi
 cd /var/aegir/config/includes
-echo "`date` / `lsb_release -si`/`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
+echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
 touch installer_version.txt
 msg "`date` CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
