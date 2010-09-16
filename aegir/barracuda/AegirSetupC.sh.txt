@@ -534,7 +534,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   #mv CDC-6.19.0 $_COCOMORE
   cd $_CORE/$_COCOMORE
   ln -s $_CORE/o_contrib modules/o_contrib
-  cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
   rm -f $_CORE/$_COCOMORE/*.txt
   create_dirs
 fi
