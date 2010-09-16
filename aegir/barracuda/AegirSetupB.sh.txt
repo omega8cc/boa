@@ -309,12 +309,12 @@ cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz &> /dev/null
-tar -xzf aegir_custom_settings-6.x-1.6.tar.gz
+wget -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz &> /dev/null
+tar -xzf aegir_custom_settings-6.x-1.4.tar.gz
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features -y &> /dev/null
-$_DRUSHCMD dl ctools -y &> /dev/null
-$_DRUSHCMD dl fe_block -y &> /dev/null
+# $_DRUSHCMD dl ctools -y &> /dev/null
+# $_DRUSHCMD dl features_extra -y &> /dev/null
 $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD en hosting_client -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
