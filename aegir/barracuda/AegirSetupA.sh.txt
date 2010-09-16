@@ -174,7 +174,7 @@ fi
 
 ###---### Add required users and create directories
 #
-msg "`date` $_STATUS A: Create directories and/or set good permissions"
+msg "`date` $_STATUS A: Create directories and/or set good permissions, please wait..."
 mrun "sleep 3"
 mkdir -p /data/u
 mkdir -p /data/disk
@@ -188,7 +188,7 @@ chmod 0771 /data/u
 chmod 0711 /data/disk
 chmod 0711 /data/conf
 if [ ! -d "$_ROOT" ] ; then
-  msg "`date` $_STATUS A: Add user"
+  msg "`date` $_STATUS A: Add user, please wait..."
   mrun "sleep 3"
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
@@ -210,7 +210,7 @@ chmod 755 $_CORE /data/all /data/src /data /data/conf
 
 ###---### Prepare scripts
 #
-msg "`date` $_STATUS A: Prepare scripts"
+msg "`date` $_STATUS A: Prepare scripts, please wait..."
 mrun "sleep 3"
 chmod 0711 $_ROOT
 cd $_ROOT
@@ -264,7 +264,7 @@ if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
-  msg "`date` $_STATUS A: Switch user and run AegirSetupB"
+  msg "`date` $_STATUS A: Switch user and run AegirSetupB, please wait..."
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
   invoke-rc.d cron stop &> /dev/null
@@ -275,7 +275,7 @@ else
   if prompt_yes_no "Do you want to upgrade this Aegir Hostmaster instance?" ; then
     true
     mrun "sleep 3"
-    msg "`date` $_STATUS A: Switch user and run AegirSetupB"
+    msg "`date` $_STATUS A: Switch user and run AegirSetupB, please wait..."
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
@@ -295,7 +295,7 @@ if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
-  msg "`date` $_STATUS A: post-install start"
+  msg "`date` $_STATUS A: post-install start, please wait..."
   mrun "sleep 3"
   if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
     rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
@@ -349,7 +349,7 @@ if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "`date` $_STATUS A: Switch user and run Distros build"
+  msg "`date` $_STATUS A: Switch user and run Distros build, please wait..."
   mrun "sleep 3"
   _DIST_INSTALL=YES
   rm -f /opt/tmp/testecho*
@@ -362,7 +362,7 @@ else
     _DIST_INSTALL=YES
     msg "NOTE: Please choose only the platforms/distributions you want to have included"
     mrun "sleep 3"
-    msg "`date` $_STATUS A: Switch user and run Distros build"
+    msg "`date` $_STATUS A: Switch user and run Distros build, please wait..."
     mrun "sleep 3"
     invoke-rc.d cron stop &> /dev/null
     rm -f /opt/tmp/testecho*
@@ -410,7 +410,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   _USERFTP="$_USER.ftp"
   _USERFTP_ROOT="/home/$_USERFTP"
   if [ ! -d "$_USERFTP_ROOT" ] ; then
-    msg "`date` $_STATUS A: Add ftps/lshell user"
+    msg "`date` $_STATUS A: Add ftps/lshell user, please wait..."
     mrun "sleep 3"
     # add user
     useradd -d /home/$_USERFTP -s /usr/bin/lshell -m -N -r $_USERFTP &> /dev/null
@@ -530,7 +530,7 @@ fi
 ###---### Send setup e-mail
 #
 if [ $_STATUS = "INIT" ] ; then
- msg "`date` $_STATUS A: Send setup e-mail on init"
+ msg "`date` $_STATUS A: Send setup e-mail on init, please wait..."
  mrun "sleep 3"
  TIME=`date`
  echo $TIME > $_ROOT/log/date-init.txt
@@ -538,7 +538,7 @@ if [ $_STATUS = "INIT" ] ; then
    cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
  fi
 else
- msg "`date` $_STATUS A: Resend setup e-mail on upgrade"
+ msg "`date` $_STATUS A: Resend setup e-mail on upgrade, please wait..."
  mrun "sleep 3"
  TIME=`date`
  echo $TIME > $_ROOT/log/date-upgrade-$_DISTRO.txt

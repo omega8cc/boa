@@ -56,24 +56,6 @@ _LOG=/opt/tmp/aegir-install.log
 _HOT_SAUCE=EDIT_HOT_SAUCE
 
 
-###---### Palettes full names
-#
-_F_ACQUIA="Acquia 6.19-svn P.$_DISTRO"
-_F_ATRIUM="Atrium 1.0-beta8 P.$_DISTRO"
-_F_ATRIUM_DEV="Atrium 1.0-beta9-dev P.$_DISTRO"
-_F_DRUPAL5="Drupal $_DRUPAL5 P.$_DISTRO"
-_F_DRUPAL6="Drupal 6.19 P.$_DISTRO"
-_F_DRUPAL7="Drupal 7.0-alpha6 P.$_DISTRO"
-_F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_DISTRO"
-_F_COMMONS="Drupal Commons 1.1 P.$_DISTRO"
-_F_FSERVER="Feature Server P.$_DISTRO"
-_F_MANAGINGNEWS="MNews 1.0-beta10 P.$_DISTRO"
-_F_MANAGINGNEWS_DEV="MNews 1.0-beta11-dev P.$_DISTRO"
-_F_OPENPUBLISH="OpenPublish 2.2.285 P.$_DISTRO"
-_F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_DISTRO"
-_F_UBERCART="Ubercart P.$_DISTRO"
-
-
 ###---### Functions
 #
 # noticeable messages
@@ -203,9 +185,11 @@ msg "`date` $_STATUS C: Hot Sauce check.."
 mrun "sleep 3"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
+  _THIS_CORE="$_LAST_ALL"
   msg "`date` $_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used"
 else
   _CORE="/data/all/$_ALL_DISTRO"
+  _THIS_CORE="$_ALL_DISTRO"
   msg "`date` $_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
 if [ -d "$_CORE/o_contrib" ] ; then
@@ -217,6 +201,24 @@ else
 fi
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
+
+
+###---### Palettes full names
+#
+_F_ACQUIA="Acquia 6.19-svn P.$_THIS_CORE"
+_F_ATRIUM="Atrium 1.0-beta8 P.$_THIS_CORE"
+_F_ATRIUM_DEV="Atrium 1.0-beta9-dev P.$_THIS_CORE"
+_F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
+_F_DRUPAL6="Drupal 6.19 P.$_THIS_CORE"
+_F_DRUPAL7="Drupal 7.0-alpha6 P.$_THIS_CORE"
+_F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
+_F_COMMONS="Drupal Commons 1.1 P.$_THIS_CORE"
+_F_FSERVER="Feature Server P.$_THIS_CORE"
+_F_MANAGINGNEWS="MNews 1.0-beta10 P.$_THIS_CORE"
+_F_MANAGINGNEWS_DEV="MNews 1.0-beta11-dev P.$_THIS_CORE"
+_F_OPENPUBLISH="OpenPublish 2.2.285 P.$_THIS_CORE"
+_F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
+_F_UBERCART="Ubercart P.$_THIS_CORE"
 
 
 ###---### Create directories
