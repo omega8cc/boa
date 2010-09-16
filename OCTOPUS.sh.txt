@@ -52,7 +52,7 @@ _CLIENT_EMAIL="support@omega8.cc"
 ### below to:
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=0.4-alpha13
+### _AEGIR_VERSION=0.4-alpha14
 ###
 _AEGIR_VERSION=HEAD
 
@@ -87,7 +87,7 @@ _HOT_SAUCE=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A13.B
+_INSTALLER_VERSION=A14.A
 
 
 ## Sys

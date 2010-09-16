@@ -45,7 +45,7 @@ _MY_EMAIL="support@omega8.cc"
 ### below to:
 ###
 ### _AEGIR_VERSION="HEAD"
-### _AEGIR_VERSION="0.4-alpha13"
+### _AEGIR_VERSION="0.4-alpha14"
 ###
 _AEGIR_VERSION="HEAD"
 
@@ -132,7 +132,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A13.B
+_INSTALLER_VERSION=A14.A
 _NGINX_VERSION=0.8.50
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3

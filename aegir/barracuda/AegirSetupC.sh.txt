@@ -182,7 +182,7 @@ create_symlinks () {
 ###---### Hot Sauce check..
 #
 msg "`date` $_STATUS C: Hot Sauce check.."
-mrun "sleep 3"
+mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
@@ -224,7 +224,7 @@ _F_UBERCART="Ubercart P.$_THIS_CORE"
 ###---### Create directories
 #
 msg "`date` $_STATUS C: Create directories"
-mrun "sleep 3"
+mrun "sleep 2"
 mkdir -p $_ROOT/distro/$_DISTRO
 chmod 0711 $_ROOT/distro
 chmod 0711 $_ROOT/distro/$_DISTRO
@@ -260,7 +260,7 @@ cd
 #
 if [ $_STATUS = "INIT" ] ; then
 msg "`date` $_STATUS C: Preparing Pressflow core, please wait.."
-mrun "sleep 3"
+mrun "sleep 2"
 mkdir -p /data/src/$_DISTRO
 chmod 0700 /data/src/$_DISTRO
 cd /data/src/$_DISTRO
@@ -340,7 +340,7 @@ echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/acquia"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -356,10 +356,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/acquia
 cd $_ROOT/distro/$_DISTRO/acquia
 create_symlinks
 msg "STATUS: $_F_ACQUIA installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_ACQUIA installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -369,7 +369,7 @@ echo " "
 if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
 true
 msg "STATUS: $_F_ATRIUM install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -388,10 +388,10 @@ if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
 fi
 msg "STATUS: $_F_ATRIUM installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_ATRIUM installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -401,7 +401,7 @@ echo " "
 if prompt_yes_no "$_F_ATRIUM_DEV - http://openatrium.com" ; then
 true
 msg "STATUS: $_F_ATRIUM_DEV install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openatrium"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -425,10 +425,10 @@ if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
 fi
 msg "STATUS: $_F_ATRIUM_DEV installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_ATRIUM_DEV installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -438,7 +438,7 @@ echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL5 install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/pressflow-$_DRUPAL5"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -454,10 +454,10 @@ cd $_ROOT/distro/$_DISTRO/pressflow-$_DRUPAL5
 create_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL5 installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -467,7 +467,7 @@ echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/pressflow"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -481,10 +481,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/pressflow
 cd $_ROOT/distro/$_DISTRO/pressflow
 create_symlinks
 msg "STATUS: $_F_DRUPAL6 installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_DRUPAL6 installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -494,7 +494,7 @@ echo " "
 if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/project/drupal" ; then
 true
 msg "STATUS: $_F_DRUPAL7 install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -510,10 +510,10 @@ cd $_ROOT/distro/$_DISTRO/$_DRUPAL7
 create_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7 installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -523,7 +523,7 @@ echo " "
 if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
 true
 msg "STATUS: $_F_COCOMORE install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_COCOMORE"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -541,10 +541,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/$_COCOMORE
 cd $_ROOT/distro/$_DISTRO/$_COCOMORE
 create_symlinks
 msg "STATUS: $_F_COCOMORE installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_COCOMORE installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -554,7 +554,7 @@ echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "STATUS: $_F_COMMONS install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/drupal_commons"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -574,10 +574,10 @@ if [ ! -L "$_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries/getid3" ] ;
   ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_DISTRO/drupal_commons/sites/all/libraries/getid3
 fi
 msg "STATUS: $_F_COMMONS installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_COMMONS installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -587,7 +587,7 @@ echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
 msg "STATUS: $_F_FSERVER install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/fserver"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -610,10 +610,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/fserver
 cd $_ROOT/distro/$_DISTRO/fserver
 create_symlinks
 msg "STATUS: $_F_FSERVER installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_FSERVER installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -623,7 +623,7 @@ echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
 msg "STATUS: $_F_MANAGINGNEWS install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -639,10 +639,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
 cd $_ROOT/distro/$_DISTRO/managingnews-$_MANAGINGNEWS
 create_symlinks
 msg "STATUS: $_F_MANAGINGNEWS installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_MANAGINGNEWS installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -652,7 +652,7 @@ echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS_DEV - http://managingnews.com" ; then
 true
 msg "STATUS: $_F_MANAGINGNEWS_DEV install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/managingnews"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -673,10 +673,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/managingnews
 cd $_ROOT/distro/$_DISTRO/managingnews
 create_symlinks
 msg "STATUS: $_F_MANAGINGNEWS_DEV installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_MANAGINGNEWS_DEV installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -686,7 +686,7 @@ echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
 msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openpublish"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -705,10 +705,10 @@ if [ ! -L "./sites/all/themes/openpublish_theme" ] ; then
   ln -s $_CORE_DISTRO/profiles/openpublish/themes/openpublish_theme ./sites/all/themes/openpublish_theme
 fi
 msg "STATUS: $_F_OPENPUBLISH installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_OPENPUBLISH installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -718,7 +718,7 @@ echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
 msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -734,10 +734,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
 cd $_ROOT/distro/$_DISTRO/prosepoint-$_PROSEPOINT
 create_symlinks
 msg "STATUS: $_F_PROSEPOINT installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_PROSEPOINT installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -747,7 +747,7 @@ echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBERCART install in progress, please wait..."
-mrun "sleep 3"
+mrun "sleep 2"
 _CORE_DISTRO="$_CORE/uberdrupal"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -763,10 +763,10 @@ mkdir -p $_ROOT/distro/$_DISTRO/uberdrupal
 cd $_ROOT/distro/$_DISTRO/uberdrupal
 create_symlinks
 msg "STATUS: $_F_UBERCART installation completed"
-mrun "sleep 3"
+mrun "sleep 2"
 else
   msg "STATUS: $_F_UBERCART installation skipped"
-  mrun "sleep 2"
+  mrun "sleep 1"
 fi
 
 
@@ -774,7 +774,7 @@ fi
 #
 echo " "
 msg "`date` $_STATUS C: remove some default themes for all"
-mrun "sleep 3"
+mrun "sleep 2"
 rm -f -r $_CORE/o_contrib/image
 rm -f -r $_CORE/*/themes/bluemarine
 rm -f -r $_CORE/*/themes/chameleon
@@ -791,7 +791,7 @@ find . -name .bzr -exec rm -rf {} \; &> /dev/null
 ###---### Save & verify platforms
 #
 msg "`date` $_STATUS C: Save & Verify Platforms"
-mrun "sleep 3"
+mrun "sleep 2"
 _LOCAL_STATUS="NOT_SET"
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
