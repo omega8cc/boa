@@ -198,8 +198,8 @@ not_supported_os () {
 runner () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		success "$CMD:"
@@ -209,8 +209,8 @@ runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
-		tail -15 $LOG
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
+		tail -15 $_LOG
 		return 1
 	fi
 }
@@ -219,8 +219,8 @@ runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		return 0
@@ -231,8 +231,8 @@ mrun () {
 st_runner () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		success "$CMD:"
@@ -242,8 +242,8 @@ st_runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
-		tail -15 $LOG
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
+		tail -15 $_LOG
 		return 1
 	fi
 }
@@ -272,9 +272,9 @@ else
 fi
 INITINS="/usr/bin/apt-get -y --force-yes install"
 INSTALL="/usr/bin/apt-get --config-file /opt/tmp/apt.conf.noninteractive -y --force-yes install"
-SRCDIR=/opt/tmp/files
+_SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
-mkdir -p $SRCDIR
+mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp
 
 
@@ -340,9 +340,9 @@ rm -f apt.conf.noninteractive*
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt.conf.noninteractive ./
 #
 # Create tmp stuff
-LOG=/opt/tmp/aegir-install.log
-SILENT=/opt/tmp/silent.log
-cd $SRCDIR
+_LOG=/opt/tmp/aegir-install.log
+_SILENT=/opt/tmp/silent.log
+cd $_SRCDIR
 #
 # Get spinner
 rm -f spinner*
@@ -1429,8 +1429,8 @@ fi ### end of if [ ! -f "/root/.my.cnf" ] ; then
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   echo " "
-  _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
-  msg "ACCESS -> $_AEGIR_LOGIN_URL"
+  _AEGIR__LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
+  msg "ACCESS -> $_AEGIR__LOGIN_URL"
   echo " "
   mrun "sleep 3"
 fi

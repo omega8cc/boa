@@ -69,8 +69,8 @@ msg() {
 runner () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		success "$CMD:"
@@ -80,8 +80,8 @@ runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
-		tail -15 $LOG
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
+		tail -15 $_LOG
 		return 1
 	fi
 }
@@ -90,8 +90,8 @@ runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		return 0
@@ -101,8 +101,8 @@ mrun () {
 # stop on error
 set -e ### disabled for debugging
 #
-SRCDIR=/opt/tmp/files
-LOG=/opt/tmp/aegir-install.log
+_SRCDIR=/opt/tmp/files
+_LOG=/opt/tmp/aegir-install.log
 #
 msg "`date` $_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then

@@ -220,22 +220,22 @@ else
   exit 1
 fi
 rm -f /opt/tmp/testecho*
-SRCDIR=/opt/tmp/files
-mkdir -p $SRCDIR
+_SRCDIR=/opt/tmp/files
+mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp
 cd /opt/tmp
 rm -f -r /opt/tmp/nginx-for-drupal
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 #
 # Get spinner
-cd $SRCDIR
+cd $_SRCDIR
 rm -f spinner*
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
 chmod +x spinner
 #
 # Create tmp stuff
-LOG=/opt/tmp/aegir-install.log
-SILENT=/opt/tmp/silent.log
+_LOG=/opt/tmp/aegir-install.log
+_SILENT=/opt/tmp/silent.log
 #
 #
 _LASTNUM=001

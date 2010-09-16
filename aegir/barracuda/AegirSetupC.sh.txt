@@ -42,25 +42,18 @@ _UBERCART=EDIT_UBERCART
 #
 _WEBG=EDIT_WEBG
 _HM_DISTRO=EDIT_HM_DISTRO
+_ALL_DISTRO=EDIT_ALL_DISTRO
 _LAST_HMR=EDIT_LAST_HMR
+_LAST_ALL=EDIT_LAST_ALL
 _LASTNUM=EDIT_LASTNUM
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _USER=EDIT_USER
 _DOMAIN=EDIT_DOMAIN
 _DISTRO=EDIT_DISTRO
-_CORE="/data/all/$_DISTRO"
-if [ -d "$_CORE/o_contrib" ] ; then
-  _STATUS=CLONE
-  _ROOT="/data/disk/$_USER"
-else
-  _STATUS=INIT
-  _ROOT="/data/disk/$_USER"
-fi
-_AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
-_PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
-SRCDIR=/opt/tmp/files
-LOG=/opt/tmp/aegir-install.log
+_SRCDIR=/opt/tmp/files
+_LOG=/opt/tmp/aegir-install.log
+_HOT_SAUCE=EDIT_HOT_SAUCE
 
 
 ###---### Palettes full names
@@ -114,8 +107,8 @@ prompt_yes_no () {
 runner () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		success "$CMD:"
@@ -125,8 +118,8 @@ runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $LOG to help troubleshoot this problem:"
-		tail -15 $LOG
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
+		tail -15 $_LOG
 		return 1
 	fi
 }
@@ -135,8 +128,8 @@ runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	bash $SRCDIR/spinner busy &
-	if $CMD >> $LOG; then
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
 		return 0
@@ -202,6 +195,28 @@ create_symlinks () {
   cp -af $_CORE_DISTRO/cache ./ &> /dev/null
   cp -af $_CORE_DISTRO/sites ./ &> /dev/null
 }
+
+
+###---### Hot Sauce check..
+#
+msg "`date` $_STATUS C: Hot Sauce check.."
+mrun "sleep 3"
+if [ "$_HOT_SAUCE" = "NO" ] ; then
+  _CORE="/data/all/$_LAST_ALL"
+  msg "`date` $_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used"
+else
+  _CORE="/data/all/$_ALL_DISTRO"
+  msg "`date` $_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
+fi
+if [ -d "$_CORE/o_contrib" ] ; then
+  _STATUS=CLONE
+  _ROOT="/data/disk/$_USER"
+else
+  _STATUS=INIT
+  _ROOT="/data/disk/$_USER"
+fi
+_AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
+_PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 
 
 ###---### Create directories
