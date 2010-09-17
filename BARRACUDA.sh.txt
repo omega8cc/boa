@@ -605,8 +605,8 @@ if [ $_STATUS = "INIT" ] ; then
     echo "deb http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-    echo "deb http://ftp.debian.org/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
-    echo "deb-src http://ftp.debian.org/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+    echo "deb http://ftp.us.debian.org/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+    echo "deb-src http://ftp.us.debian.org/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://security.debian.org/ $_REL_VERSION/updates main" >> /etc/apt/sources.list
     echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main" >> /etc/apt/sources.list
   fi
