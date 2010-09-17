@@ -268,7 +268,7 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Install or upgrade checking, please wait..."
-sleep 8
+sleep 3
 if [ -d "/var/aegir" ] ; then
   _STATUS=UPGRADE
   msg "`date` INFO: UPGRADE..."
@@ -309,12 +309,35 @@ fi
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: We need to install wget & git first, please wait..."
-  sleep 8
+  sleep 3
   apt-get update &> /dev/null
   $INITINS locales &> /dev/null
   sleep 5
   _LOC_TEST=`locale 2>&1`
   if [[ $_LOC_TEST =~ Cannot ]] ; then
+    _LOCALE_TEST=BROKEN
+  msg "WARNING!"
+cat <<EOF
+  
+  Locales on this system are broken or not installed
+  and/or not configured correctly yet. This is "default"
+  issue at Linode and RackSpaceCloud (and maybe others).
+  
+  We will fix this problem for you now, so you shouldn't
+  use any tricks to change system/ssh settings before
+  running this Barracuda installer.
+  
+  You can experience problems if your SSH client
+  forces locales other than en_US.UTF-8 we are using by default.
+  
+  You should log out when Barracuda will finish all its tasks
+  and display last line with "BYE!" and then log in again
+  to see the result (and possibly run Octopus installer).
+  
+  We will continue in 30 seconds...
+  
+EOF
+sleep 30
     locale-gen en_US en_US.UTF-8 &> /dev/null
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
@@ -326,6 +349,7 @@ if [ $_STATUS = "INIT" ] ; then
     echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
   else
+    _LOCALE_TEST=OK
     locale-gen en_US en_US.UTF-8 &> /dev/null
   fi
   $INITINS wget git-core &> /dev/null
@@ -334,7 +358,7 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Downloading little helpers, please wait..."
-sleep 8
+sleep 3
 #
 # Git clone all
 cd /opt/tmp
