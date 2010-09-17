@@ -209,7 +209,10 @@ runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
+		echo "command first and choose default answer, then run this installer again."
+		echo " "
 		tail -15 $_LOG
 		return 1
 	fi
@@ -242,7 +245,10 @@ st_runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
+		echo "command first and choose default answer, then run this installer again."
+		echo " "
 		tail -15 $_LOG
 		return 1
 	fi
