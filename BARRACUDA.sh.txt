@@ -718,6 +718,16 @@ install_with_apt
 
 
 ###--------------------###
+if [ "$_THIS_OS" = "Debian" ] ; then
+  msg "`date` INFO: Fix for broken git-core after upgrade to version: 1:1.5.6.5-3+lenny3.1 on Lenny 32bit"
+  mrun "sleep 3"
+  chmod 644 /usr/share/git-core/templates/description 
+  chmod 644 /usr/share/git-core/templates/hooks/* 
+  chmod 644 /usr/share/git-core/templates/info/* 
+fi
+
+
+###--------------------###
 if [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "`date` INFO: SMTP check"
 mrun "sleep 3"
