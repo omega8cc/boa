@@ -1486,19 +1486,7 @@ rm -f -r /opt/tmp/*
 runner "invoke-rc.d php-fpm restart" 2> /dev/null
 runner "invoke-rc.d cron start" &> /dev/null
 msg "`date` BYE!"
-
-
-###--------------------###
-if [ $_LOCALE_TEST = "BROKEN" ] ; then
-  echo " "
-  msg "LOGOUT -> You will be logged out in 8 seconds"
-  msg "LOGOUT -> Please log in again to use fixed locales"
-  mrun "sleep 8"
-  exit
-  exit
-else
-  exit 0
-fi
+exit 0
 
 
 ###----------------------------------------###

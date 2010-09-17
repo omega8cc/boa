@@ -1,4 +1,40 @@
 
+### Fri, 2010-09-17 11:00 - Edition 0.4-HEAD-A14.A
+
+Added/Fixed: (upgrade required)
+
+1. Barracuda and Octopus be default installs now
+   Aegir HEAD to use fix for critical issue
+   on sites import. It will be included in alpha14,
+   please don't use alpha13.
+   
+2. Debian Lenny on 32bit systems works again.
+   Fix for broken git-core after upgrade
+   to version: 1:1.5.6.5-3+lenny3.1 on Lenny 32bit.
+
+3. Fix and better inline warnings/info about
+   missing locales at Linode and RackSpaceCloud.
+   
+4. More details in the installer log for better
+   debugging and version tracking. 
+
+5. E-mail address for alerts on database repair
+   started by auto-healing now correctly replaced. 
+
+6. Redis for Lenny now built from sources due to
+   apt version moved already to Squeeze.
+
+7. Critical bugfix for failed platforms install
+   when hostmaster is not upgraded.
+   
+8. Introducing simple edition archive:
+   http://omega8.cc/dev/bo-a14a.tar.gz 
+
+9. Octopus now better supports using newer shared
+   code for platforms and introduces new setting:
+   _HOT_SAUCE to allow forced fresh/hot code.
+   
+   
 ### Tue, 2010-09-12 21:50 - Edition 0.4-HEAD-A13.A
 
 Added/Fixed: (upgrade recommended)
