@@ -3,8 +3,8 @@
 
 Added/Fixed: (upgrade required)
 
-1. Barracuda and Octopus be default installs now
-   Aegir HEAD to use fix for critical issue
+1. Barracuda and Octopus by default installs now
+   Aegir HEAD to use the fix for critical issue
    on sites import. It will be included in alpha14,
    please don't use alpha13.
    

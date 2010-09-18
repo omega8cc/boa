@@ -20,20 +20,19 @@ to install and/or upgrade Aegir Hosting Systems for Drupal.
 ###--------------------------------------------------------------###
 
 
-Barracuda will be still the main script for base system
-install and upgrades, including main Aegir instance,
+Barracuda is the main script for the base/core Aegir Hosting System
+install and upgrades, including OS env, main Aegir instance,
 but no platforms will be added there to keep it compatible
 with all existing and future installs, when you don't need
 any ready to use platforms and instead you are using the system
 for managing your own imported platforms/sites.
 
-Octopus will be Aegir + Platforms installer (you will be able
-to interactively choose the platforms you wish to install)
-and updater only and will allow to install new versions
-of platforms with clean directory structure, with code shared
-between all created sub-instances, so one vanilla instance
-will use only ~18MB, while most of the code, which is over
-330MB total, will be shared.
+Octopus is an Aegir + Platforms installer (you can interactively
+choose the platforms you wish to install on the instance)
+and updater only. It allows to install new versions of platforms
+with clean directory structure, with code shared between all created
+instances, so one vanilla Octopus instance is using only ~18MB,
+while most of the code, which is over 330MB total, is shared.
 
 Both Barracuda and Octopus don't use Pressflow for Aegir itself
 to avoid possible issues. There is no visible benefits to use
@@ -51,7 +50,7 @@ so it is your responsibility to use such system wisely.
 
 * Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
 * Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
-* Debian 5.0 Lenny minimal OS 64bit fresh install.
+* Debian 5.0 Lenny minimal OS 32/64bit fresh install.
 
 
 ### PROVIDES
@@ -69,9 +68,18 @@ so it is your responsibility to use such system wisely.
 * Limited shell and FTPS separate accounts per Octopus instance.
 
 
+### BUG SUBMISSION
+
+* Please follow bug submission guidelines:
+  http://groups.drupal.org/node/89594#comment-297894
+  
+* Issue queue:
+  http://github.com/omega8cc/nginx-for-drupal/issues
+  
+
 ### HELP
 
-* See: http://groups.drupal.org/nginx
+* Join us at: http://groups.drupal.org/nginx
 
 
 ### MAINTAINERS
