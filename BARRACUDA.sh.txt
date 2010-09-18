@@ -1011,7 +1011,7 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-if [ ! -f "/usr/local/bin/bzr" ] ; then
+if [ ! -f "/usr/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
