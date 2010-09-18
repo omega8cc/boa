@@ -357,6 +357,16 @@ fi
 
 
 ###--------------------###
+if [ -d "/usr/share/git-core" ] ; then
+  msg "`date` INFO: Fix for possibly broken git-core after upgrade to version: 1:1.5.6.5-3+lenny3.1"
+  mrun "sleep 3"
+  chmod 644 /usr/share/git-core/templates/description 
+  chmod 644 /usr/share/git-core/templates/hooks/* 
+  chmod 644 /usr/share/git-core/templates/info/* 
+fi
+
+
+###--------------------###
 msg "`date` INFO: Downloading little helpers, please wait..."
 sleep 3
 #
