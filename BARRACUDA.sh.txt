@@ -1368,7 +1368,7 @@ mrun "sleep 30"
     if [ -z "$_THISHTIP" ] ; then
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
     fi
-    runner "openssl req -x509 -nodes -days 7300 -subj '/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST' -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch" 2> /dev/null
+    openssl req -x509 -nodes -days 7300 -subj '/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST' -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/conf.d
     cp -a /opt/tmp/nginx-for-drupal/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
     perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf &> /dev/null
