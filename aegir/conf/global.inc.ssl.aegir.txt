@@ -6,6 +6,11 @@ if(!preg_match("/(standard)|(minimal)/", $conf['install_profile'])) { // don't u
   $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
 
   if(preg_match("/hostmaster/", $conf['install_profile'])) {
+    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+    if ($request_type != "SSL") { // we force secure connection here
+      header("HTTP/1.1 301 Moved Permanently");
+      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+    }
     $conf['hosting_ignore_default_profiles'] = 1;
   }
 
