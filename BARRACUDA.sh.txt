@@ -569,6 +569,8 @@ cat <<EOF
   * Your (optional) Collectd Graph Panel will be available at http://cgp.$_THIS_FRONT.
   
   NOTE: Chive and Collectd will work only if db. and cgp. subdomains point to your IP.
+        But don't worry, you can add proper DNS entries for those subdomains later,
+        if you didn't enable wildcard DNS yet. Barracuda can install it now, anyway.
 
 EOF
 echo " "
@@ -621,7 +623,7 @@ chmod 777 /var/log/php*
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+#if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -650,7 +652,7 @@ if [ $_STATUS = "INIT" ] ; then
     echo "deb http://security.debian.org/ $_REL_VERSION/updates main" >> /etc/apt/sources.list
     echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main" >> /etc/apt/sources.list
   fi
-fi
+#fi
 
 
 ###--------------------###
@@ -1040,6 +1042,7 @@ if [ $_STATUS = "INIT" ] ; then
 fi
 if [ -f "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1`
+  _NGINX_F_INSTALLED=`echo -n $_NGINX_F_INSTALLED | tr -d "\n"`
   _NGINX_F_VERSION="nginx version: nginx/$_NGINX_VERSION"
   if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
