@@ -84,6 +84,21 @@ _HOT_SAUCE=NO
 
 
 ###----------------------------------------###
+### REMOTE CACHE IP ADDRESS                ###
+###----------------------------------------###
+###
+### Use this option only when you want to
+### switch ALL your Octopus instances from
+### local Redis and Memcache servers
+### to the remote caches in your network.
+### It will also permanently disable your
+### local instances of Redis and Memcache.
+### By default your server localhost is used.
+###
+_REMOTE_CACHE_IP=127.0.0.1
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -167,6 +182,7 @@ do
   perl -p -i -e "s/(EDIT_COMMONS)/$_COMMONS/g" $Files
   perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" $Files
   perl -p -i -e "s/(EDIT_HOT_SAUCE)/$_HOT_SAUCE/g" $Files
+  perl -p -i -e "s/(EDIT_REMOTE_CACHE_IP)/$_REMOTE_CACHE_IP/g" $Files
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -f /opt/tmp/nginx-for-drupal/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER

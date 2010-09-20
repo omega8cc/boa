@@ -61,6 +61,7 @@ _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _THISHTIP=EDIT_THISHTIP
 _DIST_INSTALL=NO
 _HOT_SAUCE=EDIT_HOT_SAUCE
+_REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
 
 
 ###---### Functions
@@ -334,7 +335,8 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
 fi
 
 
-###--------------------###
+###---### Forced SSL settings
+#
 if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; then
   if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
     _SSL_TEST=`cat /data/conf/global.inc 2>&1`
@@ -355,6 +357,30 @@ if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; t
   fi  
 fi
 cd $_ROOT
+
+
+###---### Set/rewrite _REMOTE_CACHE_IP if defined and disable local caches
+#
+if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
+  if [ "$_REMOTE_CACHE_IP" = "127.0.0.1" ] ; then
+    _SKIP_THIS_IP=YES
+  else
+    msg "`date` $_STATUS A: Set/rewrite remote cache IP address and disable local caches"
+    mrun "sleep 3"
+    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc &> /dev/null
+    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc &> /dev/null
+    invoke-rc.d redis-server stop &> /dev/null
+    update-rc.d -f redis-server remove &> /dev/null
+    invoke-rc.d redis stop &> /dev/null
+    update-rc.d -f redis remove &> /dev/null
+    mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
+    mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
+    killall redis-server &> /dev/null
+    rm -f /var/run/redis.pid
+    mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
+    killall memcached &> /dev/null
+  fi
+fi
 
 
 ###---### Set permissions for all
