@@ -40,6 +40,7 @@ _UBERCART=EDIT_UBERCART
 
 ###---### main config
 #
+_STATUS=INIT
 _WEBG=EDIT_WEBG
 _HM_DISTRO=EDIT_HM_DISTRO
 _ALL_DISTRO=EDIT_ALL_DISTRO
@@ -54,6 +55,9 @@ _DISTRO=EDIT_DISTRO
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
 _HOT_SAUCE=EDIT_HOT_SAUCE
+_ROOT="/data/disk/$_USER"
+_AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
+_PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 
 
 ###---### Functions
@@ -121,12 +125,6 @@ mrun () {
 # stop on error
 # set -e ### disabled for debugging
 #
-msg "`date` $_STATUS C: Aegir automated install script part C"
-if [ `whoami` = "root" ] ; then
-  msg "`date` $_STATUS C: This script should be ran as a non-root user - exit now"
-  exit 1
-fi
-#
 # create standard directories
 create_dirs () {
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
@@ -179,6 +177,15 @@ create_symlinks () {
 }
 
 
+###---### User check
+#
+msg "`date` $_STATUS C: Aegir automated install script part C"
+if [ `whoami` = "root" ] ; then
+  msg "`date` $_STATUS C: This script should be ran as a non-root user - exit now"
+  exit 1
+fi
+
+
 ###---### Hot Sauce check..
 #
 msg "`date` $_STATUS C: Hot Sauce check.."
@@ -186,7 +193,13 @@ mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  msg "`date` $_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used"
+  if [ -d "$_ROOT/distro/$_THIS_CORE" ] ; then
+    _CORE="/data/all/$_ALL_DISTRO"
+    _THIS_CORE="$_ALL_DISTRO"
+    msg "`date` $_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
+  else
+    msg "`date` $_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
+  fi
 else
   _CORE="/data/all/$_ALL_DISTRO"
   _THIS_CORE="$_ALL_DISTRO"
@@ -194,13 +207,9 @@ else
 fi
 if [ -d "$_CORE/o_contrib" ] ; then
   _STATUS=CLONE
-  _ROOT="/data/disk/$_USER"
 else
   _STATUS=INIT
-  _ROOT="/data/disk/$_USER"
 fi
-_AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
-_PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 
 
 ###---### Palettes full names
