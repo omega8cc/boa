@@ -786,7 +786,7 @@ if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
   msg "`date` INFO: No fix required"
 else
   cd /etc/init.d
-  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_DISTRO
+  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx ./
   chmod 755 /etc/init.d/nginx
   msg "`date` INFO: Fix for Nginx startup script applied"
@@ -918,7 +918,7 @@ msg "`date` NOTE: This step can take longer than 8 minutes (depending on your se
 mrun "sleep 3"
 cd /var/opt
 rm -f -r /var/opt/php*
-mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_DISTRO
+mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION
 rm -f /etc/init.d/php-fpm*
 wget -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz &> /dev/null
 wget -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz &> /dev/null
