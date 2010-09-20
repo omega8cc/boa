@@ -43,6 +43,22 @@ _CLIENT_EMAIL="support@omega8.cc"
 
 
 ###----------------------------------------###
+### DNS SETUP TEST                         ###
+###----------------------------------------###
+###
+### If you don't want to test your DNS
+### because of some custom local setup
+### you know is correct but the script
+### can't validate it, set this to:
+###
+### _DNS_SETUP_TEST="NO"
+###
+### There is no guarantee it will work.
+###
+_DNS_SETUP_TEST="YES"
+
+
+###----------------------------------------###
 ### AEGIR VERSION                          ###
 ###----------------------------------------###
 ###
@@ -224,16 +240,21 @@ else
   _VMFAMILY="XEN"
   _IFCONFIG="eth0"
 fi
-_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-_THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
-if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
-  true
+if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
+  _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+    true
+  else
+    msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP."
+    msg "Please make sure you have valid IN A or IN CNAME record in your DNS."
+    msg "It's also possible, that your DNS change didn't propagate yet. Wait a bit."
+    msg "Bye."
+    exit 1
+  fi
 else
-  msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP."
-  msg "Please make sure you have valid IN A or IN CNAME record in your DNS."
-  msg "It's also possible, that your DNS change didn't propagate yet. Wait a bit."
-  msg "Bye."
-  exit 1
+  _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
 fi
 rm -f /opt/tmp/testecho*
 _SRCDIR=/opt/tmp/files
