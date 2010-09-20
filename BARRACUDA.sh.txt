@@ -109,6 +109,22 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
+### DNS SETUP TEST                         ###
+###----------------------------------------###
+###
+### If you don't want to test your DNS
+### because of some custom local setup
+### you know is correct but the script
+### can't validate it, set this to:
+###
+### _DNS_SETUP_TEST="NO"
+###
+### There is no guarantee it will work.
+###
+_DNS_SETUP_TEST="YES"
+
+
+###----------------------------------------###
 ### SMTP CONNECTION TEST                   ###
 ###----------------------------------------###
 ###
@@ -508,6 +524,9 @@ if [ ! -z "$_MY_FRONT" ] ; then
   _THIS_FRONT="$_MY_FRONT"
 else
   _THIS_FRONT="$_THISHOST"
+fi
+if [ "$_DNS_SETUP_TEST" = "NO" ] ; then
+  _FQDNTEST=TRUE
 fi
 if [ "$_FQDNTEST" = "FALSE" ] ; then
 echo " "
