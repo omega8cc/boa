@@ -256,7 +256,7 @@ for i in $REVISIONS; do
       if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
         _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
-        cd _THIS_HOSTMASTER
+        cd _THIS_HOSTMASTER &> /dev/null
         drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
       fi
     fi
