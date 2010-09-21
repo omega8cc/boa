@@ -40,6 +40,7 @@ _DOMAIN=octopus.aegir.cc
 _USER=octopus
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="support@omega8.cc"
+_MY_OWNIP=""
 
 
 ###----------------------------------------###
@@ -48,14 +49,15 @@ _CLIENT_EMAIL="support@omega8.cc"
 ###
 ### If you don't want to test your DNS
 ### because of some custom local setup
-### you know is correct but the script
-### can't validate it, set this to:
+### you know is correct (like DynDNS)
+### but the script can't validate it with its
+### standard ifconfig tests, set this to:
 ###
-### _DNS_SETUP_TEST="NO"
+### _DNS_SETUP_TEST=NO
 ###
 ### There is no guarantee it will work.
 ###
-_DNS_SETUP_TEST="YES"
+_DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
@@ -241,7 +243,11 @@ else
   _IFCONFIG="eth0"
 fi
 if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-  _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+  if [ -z "$_MY_OWNIP" ] ; then
+    _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+  else
+    _THISHTIP="$_MY_OWNIP"
+  fi
   _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
     true

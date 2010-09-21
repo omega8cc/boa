@@ -44,10 +44,10 @@ _MY_EMAIL="support@omega8.cc"
 ### to test current HEAD, you can change it
 ### below to:
 ###
-### _AEGIR_VERSION="HEAD"
-### _AEGIR_VERSION="0.4-alpha14"
+### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=0.4-alpha14
 ###
-_AEGIR_VERSION="HEAD"
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -85,9 +85,9 @@ _AEGIR_VERSION="HEAD"
 ###
 ### Example:
 ###
-### _MY_OWNIP="192.168.0.108"
-### _MY_HOSTN="server.mydomain.com"
-### _MY_FRONT="aegir.mydomain.com"
+### _MY_OWNIP=192.168.0.108
+### _MY_HOSTN=server.mydomain.com
+### _MY_FRONT=aegir.mydomain.com
 ###
 ### NOTE:
 ###
@@ -114,14 +114,15 @@ _MY_FRONT=""
 ###
 ### If you don't want to test your DNS
 ### because of some custom local setup
-### you know is correct but the script
-### can't validate it, set this to:
+### you know is correct (like DynDNS)
+### but the script can't validate it with its
+### standard ifconfig tests, set this to:
 ###
-### _DNS_SETUP_TEST="NO"
+### _DNS_SETUP_TEST=NO
 ###
 ### There is no guarantee it will work.
 ###
-_DNS_SETUP_TEST="YES"
+_DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
@@ -132,7 +133,7 @@ _DNS_SETUP_TEST="YES"
 ### connections, change _SMTP_RELAY_TEST
 ### value to "NO".
 ###
-_SMTP_RELAY_TEST="YES"
+_SMTP_RELAY_TEST=YES
 
 
 ###----------------------------------------###
@@ -203,9 +204,10 @@ fatal () {
 #
 # Not supported OS
 not_supported_os () {
-    msg "EXIT: Invalid install script or OS used."
-    msg "EXIT: It is not any supported Ubuntu or Debian version. Sorry."
-    msg "EXIT: You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty)."
+    msg "== FATAL ERROR =="
+    msg "Invalid install script or OS used."
+    msg "It is not any supported Ubuntu or Debian version. Sorry."
+    msg "You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty)."
     msg "Ciao... :)"
     exit 1
 }

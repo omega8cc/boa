@@ -1,6 +1,6 @@
 <?php # global settings.php
 
-if(!preg_match("/(standard)|(minimal)/", $conf['install_profile'])) { // don't use it for d7
+if(!preg_match("/(standard)|(minimal)|(testing)/", $conf['install_profile'])) { // don't use it for d7
 
   $conf['page_compression'] = 0; // required for Nginx
   $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
