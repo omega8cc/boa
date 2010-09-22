@@ -143,6 +143,7 @@ chmod 0755 $_ROOT/aegir.sh
 echo -e "#!/bin/sh\n\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
 
 mkdir -p $_ROOT/aegir/distro
+mkdir -p $_ROOT/distro/$_DISTRO
 mkdir -p $_ROOT/src/$_DISTRO
 mkdir -p $_ROOT/src/modules
 mkdir -p $_ROOT/src/themes
@@ -151,6 +152,7 @@ mkdir -p $_ROOT/log
 mkdir -p $_ROOT/u
 mkdir -p $_ROOT/backups
 chmod 0711 $_ROOT/aegir/distro
+chmod 0711 $_ROOT/distro/$_DISTRO
 chmod 0711 $_ROOT/aegir
 chmod 0711 $_ROOT/tools
 chmod 0771 $_ROOT/u
