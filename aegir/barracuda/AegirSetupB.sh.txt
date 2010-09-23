@@ -224,8 +224,8 @@ msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
-  #git clone git://git.aegirproject.org/provision &> /dev/null
-  git clone git://github.com/omega8cc/provision.git &> /dev/null
+  git clone git://git.aegirproject.org/provision &> /dev/null
+  #git clone git://github.com/omega8cc/provision.git &> /dev/null
   if [ $_STATUS = "UPGRADE" ] ; then
     wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
