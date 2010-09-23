@@ -1,4 +1,49 @@
 
+### Thu, 2010-09-23 17:30 - Edition 0.4-HEAD-A14.B
+
+Added/Fixed: (upgrade for all pre-A14.A required)
+
+1.  Introducing default SSL Wildcard Nginx Proxy.
+    Works for all sites/hostmaster instances on
+    the same server and can be used also for
+    encrypted connections to Chive and Collectd.
+    Doesn't interfere even with SSL enabled sites
+    on the same IP (with separate certs).
+   
+2.  The redirects are now back and enhanced.
+    Fully compatible with Nginx in any combination
+    with aliases and SSL settings/modes.
+   
+3.  Barracuda and Octopus by default installs still
+    Aegir HEAD, but the latest alpha14 also works.
+
+4.  Octopus can define its separate IP address
+    if available.
+   
+5.  Fixed issue with too aggresive Hot Sauce check,
+    causing creating not shared copies of code
+    for platforms on every install or upgrade.
+   
+6.  Barracuda and Octopus now allows to skip DNS
+    test, to make it possible to install on any
+    virtualbox with dynamic DNS/IP etc. There is
+    no guarantee it will work, but another switch
+    is now available, if someone needs it.
+   
+7.  Octopus can now turn off local Memcache and Redis
+    caches and switch all sites to use defined remote
+    caches.
+   
+8.  Forced /etc/apt/sources.list rewrite also before
+    the Barracuda system upgrade.
+
+9.  Fix for the already installed and possibly broken
+    git-core. 
+
+10. Fix for Aegir sites with .info domains, the path
+    alias should now work without 403 error.
+   
+
 ### Fri, 2010-09-17 11:00 - Edition 0.4-HEAD-A14.A
 
 Added/Fixed: (upgrade required)
