@@ -176,8 +176,8 @@ else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
-    #git clone git://git.aegirproject.org/provision $AEGIR_HOME/.drush/provision
-    git clone git://github.com/omega8cc/provision.git $AEGIR_HOME/.drush/provision
+    git clone git://git.aegirproject.org/provision $AEGIR_HOME/.drush/provision
+    #git clone git://github.com/omega8cc/provision.git $AEGIR_HOME/.drush/provision
   else
     cd $AEGIR_HOME/.drush
     wget http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz

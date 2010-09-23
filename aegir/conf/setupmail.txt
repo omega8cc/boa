@@ -35,8 +35,8 @@ Drupal distributions ready to deploy:
  
  Atrium 1.0-beta8 ----------- http://openatrium.com
  Atrium 1.0-beta9-dev ------- http://openatrium.com
- Managing News 1.0-b10 ------ http://managingnews.com
- Managing News 1.0-b11-dev -- http://managingnews.com
+ Managing News 1.1-beta2 ---- http://managingnews.com
+ Managing News 1.1-dev ------ http://managingnews.com
  Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
  Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
  OpenPublish 2.2.285 -------- http://openpublishapp.com
