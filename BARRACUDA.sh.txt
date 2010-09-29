@@ -1559,10 +1559,12 @@ touch installer_version.txt
 msg "`date` CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
 msg "`date` JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
+msg "`date` Final post-install cleaning, please wait..."
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-runner "invoke-rc.d php-fpm restart" 2> /dev/null
+runner "invoke-rc.d php-fpm restart" &> /dev/null
+runner "invoke-rc.d nginx restart" &> /dev/null
 runner "invoke-rc.d cron start" &> /dev/null
 msg "`date` BYE!"
 exit 0
