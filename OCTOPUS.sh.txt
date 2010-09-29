@@ -120,7 +120,7 @@ _REMOTE_CACHE_IP=127.0.0.1
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B
+_INSTALLER_VERSION=A14.B.dev
 
 
 ## Sys
@@ -129,11 +129,11 @@ _USRG=users
 _DRUSH_VERSION=6.x-3.3
 
 ## Distributions
-_COCOMORE=cdc-6.19.7
+_COCOMORE=cdc-6.19.8
 _COMMONS=6.x-1.1
 _DRUPAL5=5.23.50
-_DRUPAL7=drupal-7.0-alpha6
-_MANAGINGNEWS=1.1-beta2
+_DRUPAL7=drupal-7.0-alpha7
+_MANAGINGNEWS=1.1
 _OPENATRIUM=1-0-beta8
 _OPENPUBLISH=2.2-build285
 _PROSEPOINT=0.35

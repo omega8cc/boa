@@ -19,6 +19,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /memcache/) {$memcachelives = "YES"; $memcachesumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\tGLOBAL";
 print "\n $mysqlsumar MySQL procs\tGLOBAL" if ($mysqlives);
@@ -27,6 +28,10 @@ print "\n $phpsumar PHP procs\tGLOBAL" if ($phplives);
 print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
 print "\n $memcachesumar Cache procs\tGLOBAL" if ($memcachelives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
+print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
+if (-f "/usr/local/sbin/pure-config.pl") {
+  `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
+}
 if (-f "/var/xdrago/memcache.sh") {
   `/var/xdrago/memcache.sh` if (!$memcachesumar || $memcachesumar < 8);
 }
