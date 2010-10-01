@@ -62,6 +62,7 @@ _THISHTIP=EDIT_THISHTIP
 _DIST_INSTALL=NO
 _HOT_SAUCE=EDIT_HOT_SAUCE
 _REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
+_DEBUG_MODE=EDIT_DEBUG_MODE
 
 
 ###---### Functions
@@ -137,10 +138,20 @@ mrun "sleep 3"
 msg "`date` $_STATUS A: Aegir automated install script part A"
 
 
+###--------------------###
+if [ "$_DEBUG_MODE" = "YES" ] ; then
+  _SHOW_A=""
+  _SHOW_B=""
+else
+  _SHOW_A="&> /dev/null"
+  _SHOW_B="2> /dev/null"
+fi
+
+
 ###---### Stop the cron and wait 3 seconds
 #
 msg "`date` $_STATUS A: Stop the cron and wait 5 seconds.."
-runner "invoke-rc.d cron stop" &> /dev/null
+runner "invoke-rc.d cron stop" $_SHOW_A
 mrun "sleep 5"
 
 
@@ -199,8 +210,8 @@ chmod 0711 /data/conf
 if [ ! -d "$_ROOT" ] ; then
   msg "`date` $_STATUS A: Add user, please wait..."
   mrun "sleep 3"
-  adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
-  adduser $_USER $_WEBG &> /dev/null
+  adduser --system --home $_ROOT --ingroup $_USRG $_USER $_SHOW_A
+  adduser $_USER $_WEBG $_SHOW_A
 fi
 if [ ! -d "$_CORE" ] ; then
   mkdir -p $_CORE
@@ -243,7 +254,7 @@ fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
 AEGIR_HOST=`hostname -f`
-_RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
+_RESOLVEIP=`resolveip $AEGIR_HOST $_SHOW_B`
 if [ -z "$_RESOLVEIP" ] ; then
   msg "This server does not have a hostname that resolves to an IP address"
   exit 1
@@ -276,7 +287,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS A: Switch user and run AegirSetupB, please wait..."
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
-  invoke-rc.d cron stop &> /dev/null
+  invoke-rc.d cron stop $_SHOW_A
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
   msg "`date` $_STATUS A: Aegir Hostmaster instance install completed"
 else
@@ -287,7 +298,7 @@ else
     msg "`date` $_STATUS A: Switch user and run AegirSetupB, please wait..."
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
-    invoke-rc.d cron stop &> /dev/null
+    invoke-rc.d cron stop $_SHOW_A
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
     msg "`date` $_STATUS A: Aegir Hostmaster instance install or upgrade completed"
   else
@@ -313,10 +324,10 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   fi
   if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
     cd $_ROOT/config/includes
-    mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
-    mv -f nginx_advanced_include.conf nginx_advanced_include.conf.orig &> /dev/null
+    mv -f nginx_simple_include.conf nginx_simple_include.conf.orig $_SHOW_A
+    mv -f nginx_advanced_include.conf nginx_advanced_include.conf.orig $_SHOW_A
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
-    ln -s nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+    ln -s nginx_advanced_include.conf nginx_simple_include.conf $_SHOW_A
   fi
   if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
     echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
@@ -331,8 +342,8 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-    killall nginx &> /dev/null
-    invoke-rc.d nginx start &> /dev/null
+    killall nginx $_SHOW_A
+    invoke-rc.d nginx start $_SHOW_A
   fi
   cd $_AEGIR_ROOT
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
@@ -352,12 +363,12 @@ if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; t
       msg "`date` $_STATUS A: Installing forced SSL settings for this Hostmaster site, please wait..."
       mrun "sleep 3"
       cd /data/conf
-      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
-      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ $_SHOW_A
+      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION $_SHOW_A
+      mv -f global.inc.ssl.aegir.txt global.inc $_SHOW_A
       if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-        killall nginx &> /dev/null
-        runner "invoke-rc.d nginx start" 2> /dev/null
+        killall nginx $_SHOW_A
+        runner "invoke-rc.d nginx start" $_SHOW_B
       fi
     fi
   fi  
@@ -373,18 +384,18 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
   else
     msg "`date` $_STATUS A: Set/rewrite remote cache IP address and disable local caches"
     mrun "sleep 3"
-    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc &> /dev/null
-    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc &> /dev/null
-    invoke-rc.d redis-server stop &> /dev/null
-    update-rc.d -f redis-server remove &> /dev/null
-    invoke-rc.d redis stop &> /dev/null
-    update-rc.d -f redis remove &> /dev/null
-    mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
-    mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
-    killall redis-server &> /dev/null
+    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc $_SHOW_A
+    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc $_SHOW_A
+    invoke-rc.d redis-server stop $_SHOW_A
+    update-rc.d -f redis-server remove $_SHOW_A
+    invoke-rc.d redis stop $_SHOW_A
+    update-rc.d -f redis remove $_SHOW_A
+    mv -f /etc/init.d/redis /etc/init.d/redis-off $_SHOW_A
+    mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off $_SHOW_A
+    killall redis-server $_SHOW_A
     rm -f /var/run/redis.pid
-    mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
-    killall memcached &> /dev/null
+    mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off $_SHOW_A
+    killall memcached $_SHOW_A
   fi
 fi
 
@@ -393,10 +404,10 @@ fi
 #
 msg "`date` $_STATUS A: Set correct permissions"
 mrun "sleep 3"
-chmod 0711 $_AEGIR_ROOT &> /dev/null
-chmod 0711 $_ROOT/config &> /dev/null
-chmod 0711 $_ROOT/config/includes &> /dev/null
-chmod 0700 $_ROOT/backups &> /dev/null
+chmod 0711 $_AEGIR_ROOT $_SHOW_A
+chmod 0711 $_ROOT/config $_SHOW_A
+chmod 0711 $_ROOT/config/includes $_SHOW_A
+chmod 0700 $_ROOT/backups $_SHOW_A
 
 
 ###---### Platforms [Y/n]
@@ -421,11 +432,11 @@ else
     mrun "sleep 3"
     msg "`date` $_STATUS A: Switch user and run Distros build, please wait..."
     mrun "sleep 3"
-    invoke-rc.d cron stop &> /dev/null
+    invoke-rc.d cron stop $_SHOW_A
     rm -f /opt/tmp/testecho*
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
     msg "`date` $_STATUS A: Distributions install completed"
-    #invoke-rc.d cron start &> /dev/null
+    #invoke-rc.d cron start $_SHOW_A
   else
     msg "`date` $_STATUS A: No new platforms added this time"
     mrun "sleep 3"
@@ -454,7 +465,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
 fi
 rm -f /var/spool/cron/crontabs/$_USER
-#invoke-rc.d cron restart &> /dev/null
+#invoke-rc.d cron restart $_SHOW_A
 
 
 ###---### Add ftps/lshell access
@@ -470,8 +481,8 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
     msg "`date` $_STATUS A: Add ftps/lshell user, please wait..."
     mrun "sleep 3"
     # add user
-    useradd -d /home/$_USERFTP -s /usr/bin/lshell -m -N -r $_USERFTP &> /dev/null
-    adduser $_USERFTP $_WEBG &> /dev/null
+    useradd -d /home/$_USERFTP -s /usr/bin/lshell -m -N -r $_USERFTP $_SHOW_A
+    adduser $_USERFTP $_WEBG $_SHOW_A
     # Make sure new file which contains password is private
     cd $_ROOT/log
     touch $_ROOT/log/pass.txt
@@ -481,11 +492,11 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
     # get the password hash
     ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
     # Set the password
-    usermod -p $ph $_USERFTP &> /dev/null
-    passwd -w 7 -x 90 $_USERFTP &> /dev/null
-    usermod -aG lshellg $_USERFTP &> /dev/null
+    usermod -p $ph $_USERFTP $_SHOW_A
+    passwd -w 7 -x 90 $_USERFTP $_SHOW_A
+    usermod -aG lshellg $_USERFTP $_SHOW_A
   fi
-  chsh -s /usr/bin/lshell $_USERFTP &> /dev/null
+  chsh -s /usr/bin/lshell $_USERFTP $_SHOW_A
   echo " " >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
   echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static']" >> /etc/lshell.conf
@@ -499,7 +510,7 @@ mrun "sleep 3"
 if [ -f "$_ROOT/pass.txt" ] ; then 
  _PASWD=`cat $_ROOT/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
- mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
+ mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt $_SHOW_A
 elif [ -f "$_ROOT/log/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/log/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
@@ -508,9 +519,9 @@ else
  cd $_ROOT/log
  touch $_ROOT/log/pass.txt
  chmod 0600 $_ROOT/log/pass.txt
- pwgen -c -y -s > $_ROOT/log/pass.txt &> /dev/null
+ pwgen -c -y -s > $_ROOT/log/pass.txt $_SHOW_A
  ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
- usermod -p $ph $_USERFTP &> /dev/null
+ usermod -p $ph $_USERFTP $_SHOW_A
  _PASWD=`cat $_ROOT/log/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
 fi
@@ -591,7 +602,7 @@ rm -f /opt/tmp/.admemail.txt
 if [ -f "$_ROOT/log/setupmail.txt" ] ; then
  cd $_ROOT/log
  if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
-   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
+   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt $_SHOW_A
  fi
  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
  perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
@@ -647,19 +658,19 @@ echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VE
 ###---### Start the cron now
 #
 msg "`date` $_STATUS A: Start the cron now"
-runner "invoke-rc.d cron start" 2> /dev/null
+runner "invoke-rc.d cron start" $_SHOW_B
 msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
 cd /
-chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
-mv -f /etc/motd /etc/motd-pre-$_THIS_CORE &> /dev/null
+chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var $_SHOW_A
+mv -f /etc/motd /etc/motd-pre-$_THIS_CORE $_SHOW_A
 echo "Octopus Aegir Hosting System v.$_INSTALLER_VERSION" > /etc/motd
 chown root:root /data/all
 chown -R root:root /data/src
 chown -R root:root /data/conf
 chown -R root:root $_CORE
 chown root:root /opt/tmp
-chmod 0711 $_CORE /data/all /data/src /data /data/conf &> /dev/null
+chmod 0711 $_CORE /data/all /data/src /data /data/conf $_SHOW_A
 msg "`date` BYE!"
 
 

@@ -44,6 +44,19 @@ _MY_OWNIP=""
 
 
 ###----------------------------------------###
+### DEBUG MODE SWITCH                      ###
+###----------------------------------------###
+###
+### Use this when you experience silent hangs
+### or other hard to debug problems to display
+### all errors on screen.
+###
+### _DEBUG_MODE=YES
+###
+_DEBUG_MODE=NO
+
+
+###----------------------------------------###
 ### DNS SETUP TEST                         ###
 ###----------------------------------------###
 ###
@@ -120,7 +133,7 @@ _REMOTE_CACHE_IP=127.0.0.1
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B.dev
+_INSTALLER_VERSION=A14.B.dev2
 
 
 ## Sys
@@ -201,6 +214,7 @@ do
   perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" $Files
   perl -p -i -e "s/(EDIT_HOT_SAUCE)/$_HOT_SAUCE/g" $Files
   perl -p -i -e "s/(EDIT_REMOTE_CACHE_IP)/$_REMOTE_CACHE_IP/g" $Files
+  perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g" $Files
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -f /opt/tmp/nginx-for-drupal/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER

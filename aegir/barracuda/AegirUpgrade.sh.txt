@@ -38,8 +38,8 @@ export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
   cd $_ROOT
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
-  wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz &> /dev/null
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO $_SHOW_A
+  wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz $_SHOW_A
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
   if $_DRUSHCMD help > /dev/null ; then
@@ -51,9 +51,9 @@ hostmaster_dr_up () {
 }
 #
 hostmaster_mv_up () {
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
-  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO $_SHOW_A
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO $_SHOW_A
+  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO $_SHOW_A
 }
 #
 hostmaster_go_up () {
@@ -64,24 +64,24 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-     #git clone git://git.aegirproject.org/provision &> /dev/null
-      git clone git://github.com/omega8cc/provision.git &> /dev/null
+     #git clone git://git.aegirproject.org/provision $_SHOW_A
+      git clone git://github.com/omega8cc/provision.git $_SHOW_A
     else
-      wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz &> /dev/null
+      wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz $_SHOW_A
       tar -xzf provision-$_AEGIR_VERSION.tgz
       rm provision-$_AEGIR_VERSION.tgz
     fi
-    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz &> /dev/null
+    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz $_SHOW_A
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
     rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi
   cd $_ROOT/.drush
-  git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+  git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost $_SHOW_A
   cd $_PREV_AEGIR_ROOT
 }
 #
 hostmaster_mi_up () {
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y $_SHOW_A
 }
 
 ###--------------------###
@@ -91,10 +91,21 @@ _DISTRO=001
 _DOMAIN=EDIT_DOMAIN
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
+_DEBUG_MODE=EDIT_DEBUG_MODE
 _DRUSHCMD="php /var/aegir/drush/drush.php"
 _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
 _PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
+
+###--------------------###
+if [ "$_DEBUG_MODE" = "YES" ] ; then
+  _SHOW_A=""
+  _SHOW_B=""
+else
+  _SHOW_A="&> /dev/null"
+  _SHOW_B="2> /dev/null"
+fi
+
 if [ -d "$_ROOT/host_master/001" ] ; then
   cd $_ROOT/host_master
   list=([0-9]*)
@@ -129,7 +140,7 @@ else
   hostmaster_go_up
 fi
 # cd $_AEGIR_ROOT/sites/$_DOMAIN
-# drush provision-save @server_master &> /dev/null
+# drush provision-save @server_master $_SHOW_A
 
 
 ###----------------------------------------###
