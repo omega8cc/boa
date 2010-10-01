@@ -852,8 +852,8 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE" ] ; then
   $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_THIS_CORE/$_COCOMORE &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons" ] ; then
-  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/drupal_commons &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
+  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
   $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver &> /dev/null
@@ -864,8 +864,8 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews" ] ; then
   $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_THIS_CORE/managingnews &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish" ] ; then
-  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH" ] ; then
+  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
   $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT &> /dev/null
