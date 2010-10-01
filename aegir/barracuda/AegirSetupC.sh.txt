@@ -406,39 +406,39 @@ fi
 
 ###---### Open Atrium Make
 #
-echo " "
-if prompt_yes_no "$_F_ATRIUM_DEV - http://openatrium.com" ; then
-true
-msg "STATUS: $_F_ATRIUM_DEV install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/openatrium"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  echo "core = \"6.x\"" > atrium_stub.make
-  echo "projects[] = \"drupal\"" >> atrium_stub.make
-  echo "projects[openatrium][type] = \"profile\"" >> atrium_stub.make
-  echo "projects[openatrium][download][type] = \"cvs\"" >> atrium_stub.make
-  echo "projects[openatrium][download][module] = \"contributions/profiles/openatrium\"" >> atrium_stub.make
-  echo "projects[openatrium][download][revision] = \"HEAD\"" >> atrium_stub.make
-  $_ROOT/tools/drush/drush make atrium_stub.make openatrium &> /dev/null
-  rm -f atrium_stub.make
-  cd $_CORE/openatrium
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openatrium/
-  rm -f $_CORE/openatrium/*.txt
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/openatrium
-cd $_ROOT/distro/$_THIS_CORE/openatrium
-create_symlinks
-if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
-  ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
-fi
-msg "STATUS: $_F_ATRIUM_DEV installation completed"
-mrun "sleep 2"
-else
-  msg "STATUS: $_F_ATRIUM_DEV installation skipped"
-  mrun "sleep 1"
-fi
+# echo " "
+# if prompt_yes_no "$_F_ATRIUM_DEV - http://openatrium.com" ; then
+# true
+# msg "STATUS: $_F_ATRIUM_DEV install in progress, please wait..."
+# mrun "sleep 2"
+# _CORE_DISTRO="$_CORE/openatrium"
+# if [ ! -d "$_CORE_DISTRO" ] ; then
+#   cd $_CORE
+#   echo "core = \"6.x\"" > atrium_stub.make
+#   echo "projects[] = \"drupal\"" >> atrium_stub.make
+#   echo "projects[openatrium][type] = \"profile\"" >> atrium_stub.make
+#   echo "projects[openatrium][download][type] = \"cvs\"" >> atrium_stub.make
+#   echo "projects[openatrium][download][module] = \"contributions/profiles/openatrium\"" >> atrium_stub.make
+#   echo "projects[openatrium][download][revision] = \"HEAD\"" >> atrium_stub.make
+#   $_ROOT/tools/drush/drush make atrium_stub.make openatrium &> /dev/null
+#   rm -f atrium_stub.make
+#   cd $_CORE/openatrium
+#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openatrium/
+#   rm -f $_CORE/openatrium/*.txt
+#   create_dirs
+# fi
+# mkdir -p $_ROOT/distro/$_THIS_CORE/openatrium
+# cd $_ROOT/distro/$_THIS_CORE/openatrium
+# create_symlinks
+# if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
+#   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
+# fi
+# msg "STATUS: $_F_ATRIUM_DEV installation completed"
+# mrun "sleep 2"
+# else
+#   msg "STATUS: $_F_ATRIUM_DEV installation skipped"
+#   mrun "sleep 1"
+# fi
 
 
 ###---### Drupal 5 Pressflow
@@ -564,23 +564,24 @@ if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "STATUS: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/drupal_commons"
+_CORE_DISTRO="$_CORE/drupal_commons-$_COMMONS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz &> /dev/null
   tar -xzf drupal_commons-$_COMMONS.tar.gz
   rm -f drupal_commons-$_COMMONS.tar.gz
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons/
-  cd $_CORE/drupal_commons
-  rm -f $_CORE/drupal_commons/*.txt
+  mv $_CORE/drupal_commons $_CORE/drupal_commons-$_COMMONS
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons-$_COMMONS/
+  cd $_CORE/drupal_commons-$_COMMONS
+  rm -f $_CORE/drupal_commons-$_COMMONS/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons
-cd $_ROOT/distro/$_THIS_CORE/drupal_commons
+mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS
+cd $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS
 create_symlinks
-if [ ! -L "$_ROOT/distro/$_THIS_CORE/drupal_commons/sites/all/libraries/getid3" ] ; then
-  mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_THIS_CORE/drupal_commons/sites/all/libraries/getid3
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites/all/libraries/getid3" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites/all/libraries/getid3
 fi
 msg "STATUS: $_F_COMMONS installation completed"
 mrun "sleep 2"
@@ -657,36 +658,36 @@ fi
 
 ###---### Managing News Make
 #
-echo " "
-if prompt_yes_no "$_F_MANAGINGNEWS_DEV - http://managingnews.com" ; then
-true
-msg "STATUS: $_F_MANAGINGNEWS_DEV install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/managingnews"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  echo "core = \"6.x\"" > managingnews_stub.make
-  echo "projects[] = \"drupal\"" >> managingnews_stub.make
-  echo "projects[managingnews][type] = \"profile\"" >> managingnews_stub.make
-  echo "projects[managingnews][download][type] = \"cvs\"" >> managingnews_stub.make
-  echo "projects[managingnews][download][module] = \"contributions/profiles/managingnews\"" >> managingnews_stub.make
-  echo "projects[managingnews][download][revision] = \"DRUPAL-6--1\"" >> managingnews_stub.make
-  $_ROOT/tools/drush/drush make managingnews_stub.make managingnews &> /dev/null
-  rm -f managingnews_stub.make
-  cd $_CORE/managingnews
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews/
-  rm -f $_CORE/managingnews/*.txt
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/managingnews
-cd $_ROOT/distro/$_THIS_CORE/managingnews
-create_symlinks
-msg "STATUS: $_F_MANAGINGNEWS_DEV installation completed"
-mrun "sleep 2"
-else
-  msg "STATUS: $_F_MANAGINGNEWS_DEV installation skipped"
-  mrun "sleep 1"
-fi
+# echo " "
+# if prompt_yes_no "$_F_MANAGINGNEWS_DEV - http://managingnews.com" ; then
+# true
+# msg "STATUS: $_F_MANAGINGNEWS_DEV install in progress, please wait..."
+# mrun "sleep 2"
+# _CORE_DISTRO="$_CORE/managingnews"
+# if [ ! -d "$_CORE_DISTRO" ] ; then
+#   cd $_CORE
+#   echo "core = \"6.x\"" > managingnews_stub.make
+#   echo "projects[] = \"drupal\"" >> managingnews_stub.make
+#   echo "projects[managingnews][type] = \"profile\"" >> managingnews_stub.make
+#   echo "projects[managingnews][download][type] = \"cvs\"" >> managingnews_stub.make
+#   echo "projects[managingnews][download][module] = \"contributions/profiles/managingnews\"" >> managingnews_stub.make
+#   echo "projects[managingnews][download][revision] = \"DRUPAL-6--1\"" >> managingnews_stub.make
+#   $_ROOT/tools/drush/drush make managingnews_stub.make managingnews &> /dev/null
+#   rm -f managingnews_stub.make
+#   cd $_CORE/managingnews
+#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews/
+#   rm -f $_CORE/managingnews/*.txt
+#   create_dirs
+# fi
+# mkdir -p $_ROOT/distro/$_THIS_CORE/managingnews
+# cd $_ROOT/distro/$_THIS_CORE/managingnews
+# create_symlinks
+# msg "STATUS: $_F_MANAGINGNEWS_DEV installation completed"
+# mrun "sleep 2"
+# else
+#   msg "STATUS: $_F_MANAGINGNEWS_DEV installation skipped"
+#   mrun "sleep 1"
+# fi
 
 
 ###---### OpenPublish
@@ -696,19 +697,20 @@ if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
 msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/openpublish"
+_CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz &> /dev/null
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
   rm -f openpublish-$_OPENPUBLISH.tar.gz
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish/
-  cd $_CORE/openpublish
-  rm -f $_CORE/openpublish/*.txt
+  mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/
+  cd $_CORE/openpublish-$_OPENPUBLISH
+  rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish
-cd $_ROOT/distro/$_THIS_CORE/openpublish
+mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
+cd $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
 create_symlinks
 if [ ! -L "./sites/all/themes/openpublish_theme" ] ; then
   ln -s $_CORE_DISTRO/profiles/openpublish/themes/openpublish_theme ./sites/all/themes/openpublish_theme
