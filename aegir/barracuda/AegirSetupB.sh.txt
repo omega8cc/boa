@@ -229,7 +229,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
   mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
 fi
 cd $_ROOT/tools
-wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz $_SHOW_B
+wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz $_SHOW_B
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
@@ -239,9 +239,9 @@ else
   exit 1
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO $_SHOW_A
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO $_SHOW_A
-  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO $_SHOW_A
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
+  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
 fi
 msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
@@ -250,16 +250,16 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
   #git clone git://git.aegirproject.org/provision $_SHOW_A
   git clone git://github.com/omega8cc/provision.git $_SHOW_A
   if [ $_STATUS = "UPGRADE" ] ; then
-    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz $_SHOW_A
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
     rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi
 else
-  wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz $_SHOW_A
+  wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
   tar -xzf provision-$_AEGIR_VERSION.tgz
   rm provision-$_AEGIR_VERSION.tgz
   if [ $_STATUS = "UPGRADE" ] ; then
-    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz $_SHOW_A
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
     rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi
@@ -332,7 +332,7 @@ cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff $_SHOW_A
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz $_SHOW_A
+wget -q -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.4.tar.gz
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features -y $_SHOW_A
@@ -361,7 +361,7 @@ if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_home.php.txt ./
-  mv -f make_home.php.txt make_home.php $_SHOW_A
+  mv -f make_home.php.txt make_home.php
   $DRUSHC php-script make_home $_SHOW_A
   rm -f make_home.php
 fi
@@ -378,7 +378,7 @@ else
   rm -f $_ROOT/config/includes/global.inc
   cd /data/conf
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc $_SHOW_A
+  mv -f global.inc.aegir.txt global.inc
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi
 

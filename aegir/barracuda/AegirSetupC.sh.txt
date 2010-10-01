@@ -168,7 +168,7 @@ create_dirs () {
   chmod 02775 ./sites/all/themes
   rm -f .htaccess
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/get.htaccess.txt ./
-  mv -f get.htaccess.txt .htaccess $_SHOW_A
+  mv -f get.htaccess.txt .htaccess
 }
 #
 # create standard symlinks
@@ -182,7 +182,7 @@ create_symlinks () {
   ln -s $_CORE_DISTRO/misc misc $_SHOW_A
   ln -s $_CORE_DISTRO/modules modules $_SHOW_A
   ln -s $_CORE_DISTRO/profiles profiles $_SHOW_A
-  ln -s $_CORE_DISTRO/robots.txt robots.txt $_SHOW_A
+  ln -s $_CORE_DISTRO/robots.txt robots.txt
   ln -s $_CORE_DISTRO/themes themes $_SHOW_A
   ln -s $_CORE_DISTRO/update.php update.php $_SHOW_A
   ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php $_SHOW_A
@@ -275,8 +275,8 @@ for i in $REVISIONS; do
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
-      wget -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.make $_SHOW_A
-      wget -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.profile $_SHOW_A
+      wget -q -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.make
+      wget -q -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.profile
       if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
         _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
@@ -305,23 +305,23 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
-wget -U iCab http://omega8.cc/boost_stats.php.txt $_SHOW_A
-mv -f boost_stats.php.txt boost_stats.php $_SHOW_A
+wget -q -U iCab http://omega8.cc/boost_stats.php.txt
+mv -f boost_stats.php.txt boost_stats.php
 if [ ! -d "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
-  wget -U iCab http://omega8.cc/dev/cache.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz $_SHOW_A
-  #wget -U iCab http://drupal.cocomore.com/system/files/memcache-6.1.4-cocomore-beta3.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.1.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/bakery-6.x-1.x-dev.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/cron_control-6.x-1.x-dev.tar.gz $_SHOW_A
+  wget -q -U iCab http://omega8.cc/dev/cache.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
+  #wget -q -U iCab http://drupal.cocomore.com/system/files/memcache-6.1.4-cocomore-beta3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/bakery-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/cron_control-6.x-1.x-dev.tar.gz
   tar -xzf cache.tar.gz
   tar -xzf boost-6.x-1.x-dev.tar.gz
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz
@@ -335,22 +335,22 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf backup_migrate-6.x-2.x-dev.tar.gz
   tar -xzf cron_control-6.x-1.x-dev.tar.gz
   rm -f *.tar.gz
- #wget -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz $_SHOW_A
- #wget -U iCab http://ftp.drupal.org/files/projects/authcache-6.x-1.0-rc2.tar.gz $_SHOW_A
- #wget -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz $_SHOW_A
+ #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
+ #wget -q -U iCab http://ftp.drupal.org/files/projects/authcache-6.x-1.0-rc2.tar.gz
+ #wget -q -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   mkdir -p $_CORE/o_contrib_atrium
   cd $_CORE/o_contrib_atrium
   git clone git://github.com/developmentseed/atrium_reader.git $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha12.tar.gz $_SHOW_A
-  wget -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta4.tar.gz $_SHOW_A
-  wget http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz $_SHOW_A
-  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz $_SHOW_A
+  wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha12.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta4.tar.gz
+  wget -q -U iCab http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
+  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz
   tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz
   rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
-  #wget -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz $_SHOW_A
-  wget -U iCab http://drupal.cocomore.com/system/files/apachesolr-6.1.0-cocomore-1.tar.gz $_SHOW_A
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
+  wget -q -U iCab http://drupal.cocomore.com/system/files/apachesolr-6.1.0-cocomore-1.tar.gz
   tar -xzf apachesolr-6.1.0-cocomore-1.tar.gz
   rm -f apachesolr-6.1.0-cocomore-1.tar.gz
   #cd apachesolr
@@ -406,8 +406,8 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip $_SHOW_A
-  unzip atrium-$_OPENATRIUM.zip $_SHOW_A
+  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip
+  unzip atrium-$_OPENATRIUM.zip
   rm -f atrium-$_OPENATRIUM.zip
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/
   cd $_CORE/atrium-$_OPENATRIUM
@@ -475,7 +475,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/pressflow-$_DRUPAL5"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://launchpad.net/pressflow/5.x/$_DRUPAL5/+download/pressflow-$_DRUPAL5.tar.gz $_SHOW_A
+  wget -q -U iCab http://launchpad.net/pressflow/5.x/$_DRUPAL5/+download/pressflow-$_DRUPAL5.tar.gz
   tar -xzf pressflow-$_DRUPAL5.tar.gz
   rm -f pressflow-$_DRUPAL5.tar.gz
   cd $_CORE/pressflow-$_DRUPAL5
@@ -531,7 +531,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz $_SHOW_A
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
   cd $_CORE/$_DRUPAL7
@@ -560,8 +560,8 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_COCOMORE"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  #wget -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz $_SHOW_A
-  wget -U iCab http://omega8.cc/dev/$_COCOMORE.tar.gz $_SHOW_A
+  #wget -q -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz
+  wget -q -U iCab http://omega8.cc/dev/$_COCOMORE.tar.gz
   tar -xzf $_COCOMORE.tar.gz
   rm -f $_COCOMORE.tar.gz
   #mv CDC-6.19.0 $_COCOMORE
@@ -591,7 +591,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/drupal_commons-$_COMMONS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz $_SHOW_A
+  wget -q -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz
   tar -xzf drupal_commons-$_COMMONS.tar.gz
   rm -f drupal_commons-$_COMMONS.tar.gz
   mv $_CORE/drupal_commons $_CORE/drupal_commons-$_COMMONS
@@ -637,8 +637,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/fserver/*.txt
   create_dirs
   cd ./profiles/feature_server/themes
-  wget -U iCab http://omega8.cc/dev/singular.patch.txt $_SHOW_A
-  patch -p0 <./singular.patch.txt $_SHOW_A
+  wget -q -U iCab http://omega8.cc/dev/singular.patch.txt
+  patch -p0 <./singular.patch.txt
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/fserver
 cd $_ROOT/distro/$_THIS_CORE/fserver
@@ -661,8 +661,8 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip $_SHOW_A
-  unzip managingnews-$_MANAGINGNEWS.zip $_SHOW_A
+  wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip
+  unzip managingnews-$_MANAGINGNEWS.zip
   rm -f managingnews-$_MANAGINGNEWS.zip
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/
   cd $_CORE/managingnews-$_MANAGINGNEWS
@@ -724,7 +724,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz $_SHOW_A
+  wget -q -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
   rm -f openpublish-$_OPENPUBLISH.tar.gz
   mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
@@ -757,7 +757,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz $_SHOW_A
+  wget -q -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz
   tar -xzf prosepoint-$_PROSEPOINT.tar.gz
   rm -f prosepoint-$_PROSEPOINT.tar.gz
   cd $_CORE/prosepoint-$_PROSEPOINT
@@ -786,7 +786,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/uberdrupal"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -U iCab http://omega8.cc/dev/$_UBERCART.tar.gz $_SHOW_A
+  wget -q -U iCab http://omega8.cc/dev/$_UBERCART.tar.gz
   tar -xzf $_UBERCART.tar.gz
   rm -f $_UBERCART.tar.gz
   cd $_CORE/$_UBERCART
@@ -854,7 +854,7 @@ else
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
-mv -f make_platform.php.txt make_platform.php $_SHOW_A
+mv -f make_platform.php.txt make_platform.php
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia $_SHOW_A
 fi

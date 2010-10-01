@@ -38,8 +38,8 @@ export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
   cd $_ROOT
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO $_SHOW_A
-  wget http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz $_SHOW_A
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
   if $_DRUSHCMD help > /dev/null ; then
@@ -51,9 +51,9 @@ hostmaster_dr_up () {
 }
 #
 hostmaster_mv_up () {
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO $_SHOW_A
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO $_SHOW_A
-  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO $_SHOW_A
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
+  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
 }
 #
 hostmaster_go_up () {
@@ -67,11 +67,11 @@ hostmaster_go_up () {
      #git clone git://git.aegirproject.org/provision $_SHOW_A
       git clone git://github.com/omega8cc/provision.git $_SHOW_A
     else
-      wget http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz $_SHOW_A
+      wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
       tar -xzf provision-$_AEGIR_VERSION.tgz
       rm provision-$_AEGIR_VERSION.tgz
     fi
-    wget http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz $_SHOW_A
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
     rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi

@@ -708,10 +708,10 @@ if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Add apt sources for MariaDB"
   mrun "sleep 3"
   cd /var/opt
-  wget -U iCab http://ourdelta.org/deb/ourdelta.gpg $_SHOW_A
+  wget -q -U iCab http://ourdelta.org/deb/ourdelta.gpg
   apt-key add ourdelta.gpg $_SHOW_B
-  wget -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list $_SHOW_A
-  cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list $_SHOW_A
+  wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
+  cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list
 fi
 
 
@@ -849,7 +849,7 @@ if [ "$_THIS_OS" = "Debian" ] ; then
   runner "adduser --system --group redis"
   cd /var/opt
   rm -f -r /var/opt/redis*
-  wget -U iCab http://redis.googlecode.com/files/redis-2.0.1.tar.gz $_SHOW_A
+  wget -q -U iCab http://redis.googlecode.com/files/redis-2.0.1.tar.gz
   tar -xzf redis-2.0.1.tar.gz
   cd redis-2.0.1
   st_runner "make --quiet" $_SHOW_B
@@ -943,7 +943,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 msg "`date` INFO: Installing libevent, please wait..."
 rm -f -r /var/opt/libevent*
 cd /var/opt
-wget -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz $_SHOW_A
+wget -q -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz
 tar -xzf libevent-1.4.14b-stable.tar.gz
 cd /var/opt/libevent-1.4.14b-stable
 st_runner "sh ./configure --prefix=/usr" $_SHOW_B
@@ -951,7 +951,7 @@ st_runner "make --quiet" $_SHOW_B
 st_runner "make --quiet install" $_SHOW_B
 rm -f -r /var/opt/libevent*
 cd /var/opt
-wget -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz $_SHOW_A
+wget -q -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz
 tar -xzf libevent-1.4.14b-stable.tar.gz
 cd /var/opt/libevent-1.4.14b-stable
 st_runner "sh ./configure" $_SHOW_B
@@ -968,9 +968,9 @@ cd /var/opt
 rm -f -r /var/opt/php*
 mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION
 rm -f /etc/init.d/php-fpm*
-wget -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz $_SHOW_A
-wget -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz $_SHOW_A
-wget -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz $_SHOW_A
+wget -q -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz
+wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz
+wget -q -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz
 tar -xzf php-5.2.14.tar.gz
 gunzip php-5.2.14-fpm-0.5.14.diff.gz
 gunzip suhosin-patch-5.2.14-0.9.7.patch.gz
@@ -997,7 +997,7 @@ perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /u
 msg "`date` INFO: Installing memcache for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -U iCab http://pecl.php.net/get/memcache-3.0.3.tgz $_SHOW_A
+wget -q -U iCab http://pecl.php.net/get/memcache-3.0.3.tgz
 tar -xzf memcache-3.0.3.tgz
 cd /var/opt/memcache-3.0.3
 st_runner "/usr/local/bin/phpize" $_SHOW_B
@@ -1010,7 +1010,7 @@ st_runner "make --quiet install" $_SHOW_B
 msg "`date` INFO: Installing suhosin for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -U iCab http://download.suhosin.org/suhosin-0.9.31.tgz $_SHOW_A
+wget -q -U iCab http://download.suhosin.org/suhosin-0.9.31.tgz
 tar -xzf suhosin-0.9.31.tgz
 cd /var/opt/suhosin-0.9.31
 st_runner "/usr/local/bin/phpize" $_SHOW_B
@@ -1023,7 +1023,7 @@ st_runner "make --quiet install" $_SHOW_B
 msg "`date` INFO: Installing uploadprogress for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -U iCab http://pecl.php.net/get/uploadprogress-1.0.1.tgz $_SHOW_A
+wget -q -U iCab http://pecl.php.net/get/uploadprogress-1.0.1.tgz
 tar -xzf uploadprogress-1.0.1.tgz
 cd /var/opt/uploadprogress-1.0.1
 st_runner "/usr/local/bin/phpize" $_SHOW_B
@@ -1036,7 +1036,7 @@ st_runner "make --quiet install" $_SHOW_B
 msg "`date` INFO: Installing apc for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -U iCab http://pecl.php.net/get/APC-3.1.3p1.tgz $_SHOW_A
+wget -q -U iCab http://pecl.php.net/get/APC-3.1.3p1.tgz
 tar -xzf APC-3.1.3p1.tgz
 cd /var/opt/APC-3.1.3p1
 st_runner "/usr/local/bin/phpize" $_SHOW_B
@@ -1053,14 +1053,14 @@ if [ "$_X86_64_TEST" = "x86_64" ] ; then
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-wget -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz $_SHOW_A
+wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
 tar -xzf ioncube_loaders_lin_x86-64.tar.gz
 else
   SYSTEMARCH="x86"
   msg "`date` INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-wget -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz $_SHOW_A
+wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
 tar -xzf ioncube_loaders_lin_x86.tar.gz
 fi
 cp -af /var/opt/ioncube/* /usr/local/ioncube/
@@ -1075,7 +1075,7 @@ if [ ! -f "/usr/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -U iCab http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz $_SHOW_A
+  wget -q -U iCab http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz
   tar -xzf bzr-2.2b4.tar.gz
   cd /var/opt/bzr-2.2b4
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" $_SHOW_B
@@ -1110,7 +1110,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   cd /var/opt; rm -f -r nginx*
   git clone git://github.com/masterzen/nginx-upload-progress-module.git $_SHOW_A
   cd /var/opt
-  wget -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz $_SHOW_A
+  wget -q -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
   cd /var/opt/nginx-$_NGINX_VERSION
   st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-rtsig_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --add-module=/var/opt/nginx-upload-progress-module/" $_SHOW_B
@@ -1130,7 +1130,7 @@ if [ ! -f "/usr/local/bin/memcached" ] ; then
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
   rm -f /usr/local/bin/memcached
-  wget -U iCab http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz $_SHOW_A
+  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz
   tar -xzf memcached-1.4.5.tar.gz
   cd /var/opt/memcached-1.4.5
   st_runner "sh ./configure" $_SHOW_B
@@ -1145,8 +1145,8 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   msg "`date` INFO: Installing lshell, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz $_SHOW_A
-  #wget -U iCab https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download $_SHOW_A
+  wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz
+  #wget -q -U iCab https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download $_SHOW_A
   tar -xzf lshell-0.9.12.tar.gz
   cd /var/opt/lshell-0.9.12
   runner "python setup.py install" $_SHOW_B
@@ -1156,8 +1156,8 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   chmod 770 /var/log/lsh
   cd /etc
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
-  mv -f lshell.conf lshell.conf-orig $_SHOW_A
-  mv -f lshell.conf.txt lshell.conf $_SHOW_A
+  mv -f lshell.conf lshell.conf-orig
+  mv -f lshell.conf.txt lshell.conf
   echo "/usr/bin/lshell" >> /etc/shells
 fi
 
@@ -1176,14 +1176,14 @@ if [ ! -f "/usr/local/sbin/pure-config.pl" ] ; then
   cd /var/opt
   mkdir -p /usr/local/etc
   rm -f -r pure-ftpd*
-  wget -U iCab http://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-1.0.29.tar.gz $_SHOW_A
+  wget -q -U iCab http://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-1.0.29.tar.gz
   tar -xzf pure-ftpd-1.0.29.tar.gz
   cd pure-ftpd-1.0.29
   st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" $_SHOW_B
   st_runner "make install-strip" $_SHOW_B
   cd /usr/local/sbin/
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-config.pl.txt ./
-  mv -f pure-config.pl.txt pure-config.pl $_SHOW_A
+  mv -f pure-config.pl.txt pure-config.pl
   chmod 755 /usr/local/sbin/pure-config.pl
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
@@ -1215,9 +1215,9 @@ if [ $_STATUS = "INIT" ] ; then
     runner "invoke-rc.d nginx start" $_SHOW_B
   fi
   cd /etc/mysql
-  mv -f my.cnf my.cnf.bak.copy $_SHOW_A
+  mv -f my.cnf my.cnf.bak.copy
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf $_SHOW_A
+  mv -f my.cnf.txt my.cnf
   runner "invoke-rc.d mysql restart" $_SHOW_B
 else
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
@@ -1354,9 +1354,9 @@ else
     perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
-    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION $_SHOW_A
+    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-    mv -f global.inc.aegir.txt global.inc $_SHOW_A
+    mv -f global.inc.aegir.txt global.inc
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
     msg "`date` INFO: core Aegir Hostmaster instance upgrade completed"
@@ -1374,13 +1374,13 @@ if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
 msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
-  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION $_SHOW_A
+  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION
   cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ $_SHOW_A
   cd /var/www/nginx-default
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ $_SHOW_A
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ $_SHOW_A
-  mv -f index.html index.html-pre-$_INSTALLER_VERSION $_SHOW_A
-  mv -f uc.html index.html $_SHOW_A
+  mv -f index.html index.html-pre-$_INSTALLER_VERSION
+  mv -f uc.html index.html
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx $_SHOW_A
     runner "invoke-rc.d nginx start" $_SHOW_B
@@ -1423,8 +1423,8 @@ mrun "sleep 30"
     if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ $_SHOW_A
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION $_SHOW_A
-      mv -f global.inc.ssl.aegir.txt global.inc $_SHOW_A
+      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
+      mv -f global.inc.ssl.aegir.txt global.inc
     fi
     if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
       killall nginx $_SHOW_A
@@ -1445,7 +1445,7 @@ if [ ! -d "/opt/solr" ] ; then
     rm -f -r apachesolr*
     rm -f -r /opt/solr
     rm -f -r /opt/tomcat6
-    wget -U iCab http://omega8.cc/dev/apachesolr.tar.gz $_SHOW_A
+    wget -q -U iCab http://omega8.cc/dev/apachesolr.tar.gz
     tar -xzf apachesolr.tar.gz
     cd apachesolr
     mv -f tomcat /etc/init.d/
@@ -1472,7 +1472,7 @@ if [ ! -d "/var/www/chive" ] ; then
     msg "`date` INFO: Installing Chive MariaDB Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
-    wget -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz $_SHOW_A
+    wget -q -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz
     tar -xzf chive_0.3.0.tar.gz
     rm -f chive_0.3.0.tar.gz
     chown -R www-data:www-data /var/www/chive
@@ -1590,9 +1590,9 @@ msg "`date` Final post-install cleaning, please wait..."
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-runner "invoke-rc.d php-fpm restart" $_SHOW_A
-runner "invoke-rc.d nginx restart" $_SHOW_A
-runner "invoke-rc.d cron start" $_SHOW_A
+invoke-rc.d php-fpm restart $_SHOW_A
+invoke-rc.d nginx restart $_SHOW_A
+invoke-rc.d cron start $_SHOW_A
 msg "`date` BYE!"
 exit 0
 

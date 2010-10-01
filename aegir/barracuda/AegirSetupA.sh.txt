@@ -336,10 +336,10 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   fi
   if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
     cd $_ROOT/config/includes
-    mv -f nginx_simple_include.conf nginx_simple_include.conf.orig $_SHOW_A
-    mv -f nginx_advanced_include.conf nginx_advanced_include.conf.orig $_SHOW_A
+    mv -f nginx_simple_include.conf nginx_simple_include.conf.orig
+    mv -f nginx_advanced_include.conf nginx_advanced_include.conf.orig
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
-    ln -s nginx_advanced_include.conf nginx_simple_include.conf $_SHOW_A
+    ln -s nginx_advanced_include.conf nginx_simple_include.conf
   fi
   if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
     echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
@@ -376,8 +376,8 @@ if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; t
       mrun "sleep 3"
       cd /data/conf
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ $_SHOW_A
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION $_SHOW_A
-      mv -f global.inc.ssl.aegir.txt global.inc $_SHOW_A
+      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
+      mv -f global.inc.ssl.aegir.txt global.inc
       if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
         killall nginx $_SHOW_A
         runner "invoke-rc.d nginx start" $_SHOW_B
@@ -402,11 +402,11 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
     update-rc.d -f redis-server remove $_SHOW_A
     invoke-rc.d redis stop $_SHOW_A
     update-rc.d -f redis remove $_SHOW_A
-    mv -f /etc/init.d/redis /etc/init.d/redis-off $_SHOW_A
-    mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off $_SHOW_A
+    mv -f /etc/init.d/redis /etc/init.d/redis-off
+    mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off
     killall redis-server $_SHOW_A
     rm -f /var/run/redis.pid
-    mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off $_SHOW_A
+    mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off
     killall memcached $_SHOW_A
   fi
 fi
@@ -522,7 +522,7 @@ mrun "sleep 3"
 if [ -f "$_ROOT/pass.txt" ] ; then 
  _PASWD=`cat $_ROOT/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
- mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt $_SHOW_A
+ mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt
 elif [ -f "$_ROOT/log/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/log/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
@@ -531,7 +531,7 @@ else
  cd $_ROOT/log
  touch $_ROOT/log/pass.txt
  chmod 0600 $_ROOT/log/pass.txt
- pwgen -c -y -s > $_ROOT/log/pass.txt $_SHOW_A
+ pwgen -c -y -s > $_ROOT/log/pass.txt
  ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
  usermod -p $ph $_USERFTP $_SHOW_A
  _PASWD=`cat $_ROOT/log/pass.txt`
@@ -614,7 +614,7 @@ rm -f /opt/tmp/.admemail.txt
 if [ -f "$_ROOT/log/setupmail.txt" ] ; then
  cd $_ROOT/log
  if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
-   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt $_SHOW_A
+   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt
  fi
  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
  perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
@@ -675,7 +675,7 @@ msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var $_SHOW_A
-mv -f /etc/motd /etc/motd-pre-$_THIS_CORE $_SHOW_A
+mv -f /etc/motd /etc/motd-pre-$_THIS_CORE
 echo "Octopus Aegir Hosting System v.$_INSTALLER_VERSION" > /etc/motd
 chown root:root /data/all
 chown -R root:root /data/src

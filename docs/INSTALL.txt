@@ -19,7 +19,7 @@
                                 
 ### Installing Barracuda (main system and core Aegir instance):
 #
-$ cd; wget http://github.com/omega8cc/nginx-for-drupal/raw/master/BARRACUDA.sh.txt
+$ cd; wget -q -U iCab http://github.com/omega8cc/nginx-for-drupal/raw/master/BARRACUDA.sh.txt
 $ cd; nano BARRACUDA.sh.txt (edit your e-mail address)
 $ cd; bash BARRACUDA.sh.txt
 
@@ -27,7 +27,7 @@ $ cd; bash BARRACUDA.sh.txt
 ### Optional: If in addition you want an instance of Aegir preloaded with platforms
 #             you will need to run OCTOPUS.sh.txt after running BARRACUDA.sh.txt
 #
-$ cd; wget http://github.com/omega8cc/nginx-for-drupal/raw/master/OCTOPUS.sh.txt
+$ cd; wget -q -U iCab http://github.com/omega8cc/nginx-for-drupal/raw/master/OCTOPUS.sh.txt
 $ cd; nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name)
 $ cd; bash OCTOPUS.sh.txt
 

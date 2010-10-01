@@ -157,8 +157,8 @@ elif [ -x $DRUSH ] ; then
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
-  #wget http://omega8.cc/dev/drush-$DRUSH_VERSION.tar.gz
-  wget http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
+  #wget -q -U iCab http://omega8.cc/dev/drush-$DRUSH_VERSION.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
   gunzip -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
   rm drush-$DRUSH_VERSION.tar.gz
   #cvs -z6 -d:pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib checkout -d drush -r DRUPAL-6--3 contributions/modules/drush/
@@ -181,7 +181,7 @@ else
     git clone git://git.aegirproject.org/provision $AEGIR_HOME/.drush/provision
   else
     cd $AEGIR_HOME/.drush
-    wget http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
+    wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
     gunzip -c provision-$AEGIR_VERSION.tgz | tar -xf -
     rm provision-$AEGIR_VERSION.tgz
   fi
