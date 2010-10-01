@@ -407,7 +407,7 @@ _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip
-  unzip atrium-$_OPENATRIUM.zip
+  unzip -qq atrium-$_OPENATRIUM.zip
   rm -f atrium-$_OPENATRIUM.zip
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/
   cd $_CORE/atrium-$_OPENATRIUM
@@ -662,7 +662,7 @@ _CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip
-  unzip managingnews-$_MANAGINGNEWS.zip
+  unzip -qq managingnews-$_MANAGINGNEWS.zip
   rm -f managingnews-$_MANAGINGNEWS.zip
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/
   cd $_CORE/managingnews-$_MANAGINGNEWS

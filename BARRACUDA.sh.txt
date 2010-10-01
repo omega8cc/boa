@@ -972,8 +972,8 @@ wget -q -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz
 wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz
 wget -q -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz
 tar -xzf php-5.2.14.tar.gz
-gunzip php-5.2.14-fpm-0.5.14.diff.gz
-gunzip suhosin-patch-5.2.14-0.9.7.patch.gz
+gunzip -q php-5.2.14-fpm-0.5.14.diff.gz
+gunzip -q suhosin-patch-5.2.14-0.9.7.patch.gz
 cat php-5.2.14-fpm-0.5.14.diff | patch -d php-5.2.14 -p1 $_SHOW_A
 cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.14 -p1 $_SHOW_A
 msg "`date` INFO: Installing PHP-FPM part 1/3"

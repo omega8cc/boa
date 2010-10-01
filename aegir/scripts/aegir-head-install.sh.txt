@@ -158,7 +158,7 @@ else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
-  gunzip -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
+  gunzip -q -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
   rm drush-$DRUSH_VERSION.tar.gz
   DRUSH="php $AEGIR_HOME/drush/drush.php"
 fi
@@ -181,7 +181,7 @@ else
   else
     cd $AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
-    gunzip -c provision-$AEGIR_VERSION.tgz | tar -xf -
+    gunzip -q -c provision-$AEGIR_VERSION.tgz | tar -xf -
     rm provision-$AEGIR_VERSION.tgz
   fi
 fi

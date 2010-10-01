@@ -159,7 +159,7 @@ else
   cd $AEGIR_HOME
   #wget -q -U iCab http://omega8.cc/dev/drush-$DRUSH_VERSION.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
-  gunzip -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
+  gunzip -q -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
   rm drush-$DRUSH_VERSION.tar.gz
   #cvs -z6 -d:pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib checkout -d drush -r DRUPAL-6--3 contributions/modules/drush/
   DRUSH="php $AEGIR_HOME/drush/drush.php"
@@ -182,7 +182,7 @@ else
   else
     cd $AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
-    gunzip -c provision-$AEGIR_VERSION.tgz | tar -xf -
+    gunzip -q -c provision-$AEGIR_VERSION.tgz | tar -xf -
     rm provision-$AEGIR_VERSION.tgz
   fi
 fi
