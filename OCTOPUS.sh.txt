@@ -221,11 +221,21 @@ else
   msg "Bye."
   exit 1
 fi
-if [ ! -f "/var/aegir/config/includes/installer_version.txt" ] ; then
-  msg "ERROR: This script should be used only when BARRACUDA.sh.txt was used before."
-  msg "Your system has to be configured by BARRACUDA.sh.txt installer first."
+if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
+  msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
+  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
   msg "Bye."
   exit 1
+else
+  _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
+  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+    _VERSIONS_TEST_RESULT=OK
+  else
+    msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
+    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
+    msg "Bye."
+    exit 1
+  fi
 fi
 if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
   true
