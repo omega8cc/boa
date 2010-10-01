@@ -525,20 +525,44 @@ if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
   mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms
   chmod 700 /home/$_USERFTP
-  ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
-  ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal5
-  ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews
 #   ln -s $_ROOT/distro/$_THIS_CORE/managingnews/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-dev
-  ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium
 #   ln -s $_ROOT/distro/$_THIS_CORE/openatrium/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-dev
-  ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
-  ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6
-  ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
-  ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7
-  ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
-  ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver
-  ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons
-  ln -s $_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites /home/$_USERFTP/platforms/$_THIS_CORE/cocomore
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal5
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/fserver/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites /home/$_USERFTP/platforms/$_THIS_CORE/cocomore
+  fi
 fi
 fi
 if [ ! -d "$_ROOT/static" ] ; then
