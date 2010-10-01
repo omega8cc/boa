@@ -65,6 +65,18 @@ msg() {
   echo "==> $*"
 }
 #
+# Success msg
+success () {
+	msg "$1 Succeeded."
+}
+#
+# Error msg
+fatal () {
+	echo
+	msg "Fatal Error Occurred: $1"
+	msg "Cannot continue installation."
+	exit 1
+}
 #
 # Perform an action, log it, and run the spinner throughout
 runner () {
