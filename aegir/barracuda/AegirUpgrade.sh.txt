@@ -64,8 +64,8 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-     #git clone git://git.aegirproject.org/provision 2> /dev/null
-      git clone git://github.com/omega8cc/provision.git 2> /dev/null
+     #git clone git://git.aegirproject.org/provision &> /dev/null
+      git clone git://github.com/omega8cc/provision.git &> /dev/null
     else
       wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
       tar -xzf provision-$_AEGIR_VERSION.tgz
@@ -76,7 +76,7 @@ hostmaster_go_up () {
     rm -f drush_make-6.x-2.0-beta8.tar.gz
   fi
   cd $_ROOT/.drush
-  git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost 2> /dev/null
+  git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
   cd $_PREV_AEGIR_ROOT
 }
 #

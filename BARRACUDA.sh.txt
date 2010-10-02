@@ -433,7 +433,7 @@ sleep 3
 # Git clone all
 cd /opt/tmp
 rm -f -r /opt/tmp/nginx-for-drupal
-git clone git://github.com/omega8cc/nginx-for-drupal.git $_SHOW_A
+git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 #
 # Get apt helper
 rm -f apt.conf.noninteractive*
@@ -1152,7 +1152,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   msg "`date` INFO: Install/upgrade Nginx, please wait..."
   mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
-  git clone git://github.com/masterzen/nginx-upload-progress-module.git 2> /dev/null
+  git clone git://github.com/masterzen/nginx-upload-progress-module.git &> /dev/null
   cd /var/opt
   wget -q -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
@@ -1553,7 +1553,7 @@ if [ ! -d "/var/www/cgp" ] ; then
     mrun "sleep 3"
     runner "apt-fast -y install collectd"
     cd /var/www
-    git clone http://git.nethuis.nl/pub/cgp.git 2> /dev/null
+    git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
     perl -p -i -e "s/(>uncategorized<)/>Barracuda Server</g" /var/www/cgp/index.php
     chown -R www-data:www-data /var/www/cgp
     _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
