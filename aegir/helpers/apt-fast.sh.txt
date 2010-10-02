@@ -30,7 +30,7 @@ then echo "axel is not installed, perform this?(y/n)"
 fi
 
 # If the user entered arguments contain upgrade, install, or dist-upgrade
-if echo "$@" | grep -q "upgrade\|install\|dist-upgrade"; then
+if echo "$@" | grep -q "upgrade\|install\|dist-upgrade\|full-upgrade\|safe-upgrade"; then
   echo "Working...";
 
   # Go into the directory apt-get normally puts downloaded packages
