@@ -723,7 +723,7 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
     echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
     msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
-    $_INITINS netselect-apt $_SHOW_A
+    $_INITINS netselect-apt &> /dev/null
     cd /var/opt
     netselect-apt -n -s $_REL_VERSION >/dev/null 2>&1
     if [ -f "/var/opt/sources.list" ] ; then
@@ -741,9 +741,11 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
     echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
   fi
-  cd /var/aegir/config/includes
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Mirror $_MIRROR / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./apt-fast-install-log.txt
-  cd /var/opt
+  if [ -d "/var/aegir/config/includes" ] ; then
+    cd /var/aegir/config/includes
+    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Mirror $_MIRROR / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./apt-fast-install-log.txt
+    cd /var/opt
+  fi
 fi
 
 
