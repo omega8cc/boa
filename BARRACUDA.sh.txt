@@ -771,10 +771,12 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-fast dist-upgrade"
   runner "apt-fast autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "apt-fast safe-upgrade -y"
+  runner "apt-fast upgrade -y"
   runner "apt-fast update"
   runner "apt-fast clean"
-  runner "apt-fast full-upgrade -y"
+  runner "apt-fast dist-upgrade"
+  runner "aptitude full-upgrade -y"
+  runner "apt-fast autoclean"
 fi
 
 
@@ -787,7 +789,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-fast dist-upgrade"
   runner "apt-fast autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "apt-fast full-upgrade -y"
+  runner "aptitude full-upgrade -y"
 fi
 
 
@@ -800,7 +802,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-fast dist-upgrade"
   runner "apt-fast autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "apt-fast full-upgrade -y"
+  runner "aptitude full-upgrade -y"
 fi
 
 
