@@ -299,7 +299,7 @@ if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
   msg "STATUS: Stop cron and wait 5 sec."
   rm -f -r /opt/tmp/*
-  invoke-rc.d cron stop $_SHOW_A
+  invoke-rc.d cron stop &> /dev/null
   sleep 5
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
@@ -351,8 +351,8 @@ fi
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: We need to install wget, axel & git first, please wait..."
   sleep 3
-  apt-get update $_SHOW_A
-  $_INITINS locales $_SHOW_A
+  apt-get update 2> /dev/null
+  $_INITINS locales 2> /dev/null
   sleep 5
   _LOC_TEST=`locale 2>&1`
   if [[ $_LOC_TEST =~ Cannot ]] ; then
@@ -379,9 +379,9 @@ cat <<EOF
   
 EOF
 sleep 30
-    locale-gen en_US en_US.UTF-8 $_SHOW_A
-    update-locale $_SHOW_A
-    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 $_SHOW_A
+    locale-gen en_US en_US.UTF-8 &> /dev/null
+    update-locale 2> /dev/null
+    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
     echo "LANG=en_US.UTF-8" > /etc/default/locale
     export LANG=en_US.UTF-8
     export LC_ALL=en_US.UTF-8
@@ -391,9 +391,9 @@ sleep 30
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
   else
     _LOCALE_TEST=OK
-    locale-gen en_US en_US.UTF-8 $_SHOW_A
+    locale-gen en_US en_US.UTF-8 2> /dev/null
   fi
-  $_INITINS wget git-core axel netcat $_SHOW_A
+  $_INITINS wget git-core axel netcat 2> /dev/null
 fi
 
 
