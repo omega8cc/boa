@@ -11,7 +11,6 @@ ch.archive.ubuntu.com
 cl.archive.ubuntu.com
 cn.archive.ubuntu.com
 cz.archive.ubuntu.com
-cz.archive.ubuntu.com
 de.archive.ubuntu.com
 dk.archive.ubuntu.com
 ee.archive.ubuntu.com
@@ -27,8 +26,6 @@ it.archive.ubuntu.com
 jp.archive.ubuntu.com
 kr.archive.ubuntu.com
 lt.archive.ubuntu.com
-lu.archive.ubuntu.com
-lu.archive.ubuntu.com
 lu.archive.ubuntu.com
 lv.archive.ubuntu.com
 mx.archive.ubuntu.com

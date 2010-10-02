@@ -1,4 +1,3 @@
-ftp.ar.debian.org
 ftp.at.debian.org
 ftp.au.debian.org
 ftp.ba.debian.org
@@ -7,16 +6,12 @@ ftp.bg.debian.org
 ftp.br.debian.org
 ftp.ca.debian.org
 ftp.ch.debian.org
-ftp.cl.debian.org
-ftp.cn.debian.org
-ftp.cz.debian.org
 ftp.cz.debian.org
 ftp.de.debian.org
 ftp.debian.org
 ftp.dk.debian.org
 ftp.ee.debian.org
 ftp.es.debian.org
-ftp.fi.debian.org
 ftp.fi.debian.org
 ftp.fr.debian.org
 ftp.gr.debian.org
@@ -27,10 +22,6 @@ ftp.it.debian.org
 ftp.jp.debian.org
 ftp.kr.debian.org
 ftp.lt.debian.org
-ftp.lu.debian.org
-ftp.lu.debian.org
-ftp.lu.debian.org
-ftp.lv.debian.org
 ftp.mx.debian.org
 ftp.nl.debian.org
 ftp.nz.debian.org
@@ -40,7 +31,6 @@ ftp.ro.debian.org
 ftp.ru.debian.org
 ftp.se.debian.org
 ftp.sk.debian.org
-ftp.sl.debian.org
 ftp.th.debian.org
 ftp.tr.debian.org
 ftp.tw.debian.org
