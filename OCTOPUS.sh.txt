@@ -308,7 +308,7 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp
 cd /opt/tmp
 rm -f -r /opt/tmp/nginx-for-drupal
-git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
+git clone git://github.com/omega8cc/nginx-for-drupal.git 2> /dev/null
 #
 # Get spinner
 cd $_SRCDIR

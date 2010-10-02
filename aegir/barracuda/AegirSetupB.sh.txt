@@ -127,10 +127,8 @@ fi
 ###--------------------###
 if [ "$_DEBUG_MODE" = "YES" ] ; then
   _SHOW_A=""
-  _SHOW_B=""
 else
   _SHOW_A="&> /dev/null"
-  _SHOW_B="2> /dev/null"
 fi
 
 
@@ -229,7 +227,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
   mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
 fi
 cd $_ROOT/tools
-wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz $_SHOW_B
+wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz 2> /dev/null
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
@@ -247,8 +245,8 @@ msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
-  #git clone git://git.aegirproject.org/provision $_SHOW_A
-  git clone git://github.com/omega8cc/provision.git $_SHOW_A
+  #git clone git://git.aegirproject.org/provision 2> /dev/null
+  git clone git://github.com/omega8cc/provision.git 2> /dev/null
   if [ $_STATUS = "UPGRADE" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
@@ -265,7 +263,7 @@ else
   fi
 fi
 cd $_ROOT/.drush
-git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost $_SHOW_A
+git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost 2> /dev/null
 
 
 ###---### Build Aegir base

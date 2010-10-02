@@ -153,10 +153,8 @@ msg "`date` $_STATUS A: Aegir automated install script part A"
 ###--------------------###
 if [ "$_DEBUG_MODE" = "YES" ] ; then
   _SHOW_A=""
-  _SHOW_B=""
 else
   _SHOW_A="&> /dev/null"
-  _SHOW_B="2> /dev/null"
 fi
 
 
@@ -266,7 +264,7 @@ fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
 AEGIR_HOST=`hostname -f`
-_RESOLVEIP=`resolveip $AEGIR_HOST $_SHOW_B`
+_RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
 if [ -z "$_RESOLVEIP" ] ; then
   msg "This server does not have a hostname that resolves to an IP address"
   exit 1
@@ -380,7 +378,7 @@ if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; t
       mv -f global.inc.ssl.aegir.txt global.inc
       if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
         killall nginx $_SHOW_A
-        runner "invoke-rc.d nginx start" $_SHOW_B
+        runner "invoke-rc.d nginx start" 2> /dev/null
       fi
     fi
   fi  
@@ -670,7 +668,7 @@ echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VE
 ###---### Start the cron now
 #
 msg "`date` $_STATUS A: Start the cron now"
-runner "invoke-rc.d cron start" $_SHOW_B
+runner "invoke-rc.d cron start" 2> /dev/null
 msg "`date` $_STATUS A: All done!"
 mrun "sleep 3"
 cd /
