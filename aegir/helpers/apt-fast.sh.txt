@@ -17,7 +17,7 @@
 [ "`whoami`" = root ] || exec sudo "$0" "$@"
 
 # Test if the axel is installed
-if [ ! -x /usr/bin/axel ]
+if [ ! -x /usr/bin/axel ] ; then
     apt-get install axel -y --force-yes
 fi
 
