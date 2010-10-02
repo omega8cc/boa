@@ -81,7 +81,7 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y $_SHOW_A
+  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
 }
 
 ###--------------------###
@@ -138,7 +138,7 @@ else
   hostmaster_go_up
 fi
 # cd $_AEGIR_ROOT/sites/$_DOMAIN
-# drush provision-save @server_master $_SHOW_A
+# drush provision-save @server_master &> /dev/null
 
 
 ###----------------------------------------###

@@ -810,11 +810,11 @@ fi
 msg "`date` INFO: Install/upgrade required libraries and tools"
 msg "`date` NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_THIS_OS" = "Debian" ] ; then
-  DEBDEPS="apticron apt-fast autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
-  DEBDEPS="apticron apt-fast autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
 else
-  DEBDEPS="apticron apt-fast autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 fi
 install_with_apt () {
 	if ! runner "$_INSTALL $DEBDEPS"; then
@@ -866,7 +866,7 @@ fi
 if [ ! -z "$_SMTP_RELAY_HOST" ]; then
   perl -p -i -e "s/($_SMTP_RELAY_HOST)//g" /etc/postfix/main.cf
   perl -p -i -e "s/(relayhost =)/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf
-  postfix reload $_SHOW_A
+  postfix reload &> /dev/null
 fi
 ###
 ###
@@ -911,7 +911,7 @@ if [ "$_THIS_OS" = "Debian" ] ; then
   cd /etc/init.d
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis-server ./
   chmod 755 redis-server
-  runner "update-rc.d redis-server defaults" $_SHOW_A
+  runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir /etc/redis
   cd /etc/redis
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis.conf ./
@@ -1022,8 +1022,8 @@ wget -q -U iCab http://php-fpm.org/downloads/php-5.2.14-fpm-0.5.14.diff.gz
 tar -xzf php-5.2.14.tar.gz
 gunzip -q php-5.2.14-fpm-0.5.14.diff.gz
 gunzip -q suhosin-patch-5.2.14-0.9.7.patch.gz
-cat php-5.2.14-fpm-0.5.14.diff | patch -d php-5.2.14 -p1 $_SHOW_A
-cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.14 -p1 $_SHOW_A
+cat php-5.2.14-fpm-0.5.14.diff | patch -d php-5.2.14 -p1 &> /dev/null
+cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.14 -p1 &> /dev/null
 msg "`date` INFO: Installing PHP-FPM part 1/3"
 mrun "sleep 3"
 cd /var/opt/php-5.2.14
@@ -1194,11 +1194,11 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz
-  #wget -q -U iCab https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download $_SHOW_A
+  #wget -q -U iCab https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download &> /dev/null
   tar -xzf lshell-0.9.12.tar.gz
   cd /var/opt/lshell-0.9.12
   runner "python setup.py install" 2> /dev/null
-  addgroup lshellg $_SHOW_A
+  addgroup lshellg &> /dev/null
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh
@@ -1238,7 +1238,7 @@ if [ ! -f "/usr/local/sbin/pure-config.pl" ] ; then
   rm -f pure-ftpd.conf
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-ftpd.conf ./
   mrun "sleep 3"
-  st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" $_SHOW_A
+  st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
   cd /var/opt
 fi
 
@@ -1247,18 +1247,18 @@ fi
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Update rc.d"
   mrun "sleep 3"
-  chown root:crontab /var/spool/cron/crontabs/root $_SHOW_A
-  chmod 600 /var/spool/cron/crontabs/root $_SHOW_A
+  chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+  chmod 600 /var/spool/cron/crontabs/root &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
   #cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
   chmod 700 /usr/local/sbin/php-fpm
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-    killall nginx php-cgi php-fpm $_SHOW_A
-    runner "invoke-rc.d ssh restart" $_SHOW_A
-    runner "update-rc.d cron defaults" $_SHOW_A
-    runner "update-rc.d php-fpm defaults" $_SHOW_A
-    runner "update-rc.d nginx defaults" $_SHOW_A
+    killall nginx php-cgi php-fpm &> /dev/null
+    runner "invoke-rc.d ssh restart" &> /dev/null
+    runner "update-rc.d cron defaults" &> /dev/null
+    runner "update-rc.d php-fpm defaults" &> /dev/null
+    runner "update-rc.d nginx defaults" &> /dev/null
     runner "invoke-rc.d php-fpm start" 2> /dev/null
     runner "invoke-rc.d nginx start" 2> /dev/null
   fi
@@ -1271,7 +1271,7 @@ else
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     msg "`date` INFO: Restarting php-fpm and Nginx"
     mrun "sleep 3"
-    killall nginx php-cgi php-fpm $_SHOW_A
+    killall nginx php-cgi php-fpm &> /dev/null
     runner "invoke-rc.d php-fpm start" 2> /dev/null
     runner "invoke-rc.d nginx start" 2> /dev/null
   fi
@@ -1380,7 +1380,7 @@ perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_n
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-  killall nginx $_SHOW_A
+  killall nginx &> /dev/null
   runner "invoke-rc.d nginx start" 2> /dev/null
 fi
 mrun "sleep 3"
@@ -1394,7 +1394,7 @@ else
     msg "`date` INFO: Running core Aegir Hostmaster instance upgrade"
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
-    invoke-rc.d cron stop $_SHOW_A
+    invoke-rc.d cron stop &> /dev/null
     cd /var/aegir
     cp /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
     perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
@@ -1423,14 +1423,14 @@ msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
   mv -f mime.types mime.types-pre-$_INSTALLER_VERSION
-  cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ $_SHOW_A
+  cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ &> /dev/null
   cd /var/www/nginx-default
-  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ $_SHOW_A
-  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ $_SHOW_A
+  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ &> /dev/null
+  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
   mv -f index.html index.html-pre-$_INSTALLER_VERSION
   mv -f uc.html index.html
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-    killall nginx $_SHOW_A
+    killall nginx &> /dev/null
     runner "invoke-rc.d nginx start" 2> /dev/null
   fi
 fi
@@ -1466,16 +1466,16 @@ mrun "sleep 30"
     fi
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/conf.d
-    cp -a /opt/tmp/nginx-for-drupal/aegir/conf/nginx_wild_ssl.conf ./ $_SHOW_A
-    perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf $_SHOW_A
+    cp -a /opt/tmp/nginx-for-drupal/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
+    perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf &> /dev/null
     if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
-      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ $_SHOW_A
+      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
       mv -f global.inc.ssl.aegir.txt global.inc
     fi
     if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-      killall nginx $_SHOW_A
+      killall nginx &> /dev/null
       runner "invoke-rc.d nginx start" 2> /dev/null
     fi
   fi
@@ -1501,7 +1501,7 @@ if [ ! -d "/opt/solr" ] ; then
     mv -f tomcat6 /opt/
     echo "ENABLED=1" > /etc/default/tomcat
     perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
-    runner "update-rc.d tomcat defaults" $_SHOW_A
+    runner "update-rc.d tomcat defaults" &> /dev/null
     runner "invoke-rc.d tomcat start" 2> /dev/null
     msg "`date` INFO: MultiCore Apache Solr Tomcat installation completed"
     mrun "sleep 2"
@@ -1638,9 +1638,9 @@ msg "`date` Final post-install cleaning, please wait..."
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-invoke-rc.d php-fpm restart $_SHOW_A
-invoke-rc.d nginx restart $_SHOW_A
-invoke-rc.d cron start $_SHOW_A
+invoke-rc.d php-fpm restart &> /dev/null
+invoke-rc.d nginx restart &> /dev/null
+invoke-rc.d cron start &> /dev/null
 msg "`date` BYE!"
 exit 0
 

@@ -173,21 +173,21 @@ create_dirs () {
 #
 # create standard symlinks
 create_symlinks () {
-  ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php $_SHOW_A
-  ln -s $_CORE_DISTRO/cron.php cron.php $_SHOW_A
-  ln -s $_CORE_DISTRO/.htaccess .htaccess $_SHOW_A
-  ln -s $_CORE_DISTRO/includes includes $_SHOW_A
-  ln -s $_CORE_DISTRO/index.php index.php $_SHOW_A
-  ln -s $_CORE_DISTRO/install.php install.php $_SHOW_A
-  ln -s $_CORE_DISTRO/misc misc $_SHOW_A
-  ln -s $_CORE_DISTRO/modules modules $_SHOW_A
-  ln -s $_CORE_DISTRO/profiles profiles $_SHOW_A
+  ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
+  ln -s $_CORE_DISTRO/cron.php cron.php &> /dev/null
+  ln -s $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
+  ln -s $_CORE_DISTRO/includes includes &> /dev/null
+  ln -s $_CORE_DISTRO/index.php index.php &> /dev/null
+  ln -s $_CORE_DISTRO/install.php install.php &> /dev/null
+  ln -s $_CORE_DISTRO/misc misc &> /dev/null
+  ln -s $_CORE_DISTRO/modules modules &> /dev/null
+  ln -s $_CORE_DISTRO/profiles profiles &> /dev/null
   ln -s $_CORE_DISTRO/robots.txt robots.txt
-  ln -s $_CORE_DISTRO/themes themes $_SHOW_A
-  ln -s $_CORE_DISTRO/update.php update.php $_SHOW_A
-  ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php $_SHOW_A
-  cp -af $_CORE_DISTRO/cache ./ $_SHOW_A
-  cp -af $_CORE_DISTRO/sites ./ $_SHOW_A
+  ln -s $_CORE_DISTRO/themes themes &> /dev/null
+  ln -s $_CORE_DISTRO/update.php update.php &> /dev/null
+  ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
+  cp -af $_CORE_DISTRO/cache ./ &> /dev/null
+  cp -af $_CORE_DISTRO/sites ./ &> /dev/null
 }
 
 
@@ -269,7 +269,7 @@ REVISIONS="001 002 003 004 005 006 007 008 009"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/fserver" ] ; then
     if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/ctools" ] ; then
-      cd; drush dl ctools --destination=/data/all/$i/fserver/profiles/feature_server/modules $_SHOW_A
+      cd; drush dl ctools --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
@@ -278,8 +278,8 @@ for i in $REVISIONS; do
       if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
         _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
-        cd _THIS_HOSTMASTER $_SHOW_A
-        drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i $_SHOW_A
+        cd _THIS_HOSTMASTER &> /dev/null
+        drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
       fi
     fi
   fi
@@ -296,7 +296,7 @@ mkdir -p /data/src/$_THIS_CORE
 chmod 0700 /data/src/$_THIS_CORE
 cd /data/src/$_THIS_CORE
 rm -f -r /data/src/$_THIS_CORE/pressflow-6
-bzr branch lp:pressflow/6.x pressflow-6 $_SHOW_A
+bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
 cd /data/src/$_THIS_CORE/pressflow-6/
 rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
@@ -352,7 +352,7 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   tar -xzf apachesolr-6.1.0-cocomore-1.tar.gz
   rm -f apachesolr-6.1.0-cocomore-1.tar.gz
   #cd apachesolr
-  #svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient $_SHOW_A
+  #svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient &> /dev/null
   cd $_CORE/o_contrib_atrium
   rm -f *.tar.gz
 fi
@@ -361,7 +361,7 @@ ln -s $_CORE/o_contrib modules/o_contrib
 cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
 fi
 if [ -d "$_CORE/o_contrib/memcache" ] ; then
-  rm -f -r $_CORE/o_contrib/memcache $_SHOW_A
+  rm -f -r $_CORE/o_contrib/memcache &> /dev/null
 fi
 
 
@@ -377,7 +377,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   mkdir -p $_CORE/acquia
   cd $_CORE/acquia
-  svn co https://svn.acquia.com/drupal/branches/1.x-6.x . $_SHOW_A
+  svn co https://svn.acquia.com/drupal/branches/1.x-6.x . &> /dev/null
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
@@ -442,7 +442,7 @@ fi
 #   echo "projects[openatrium][download][type] = \"cvs\"" >> atrium_stub.make
 #   echo "projects[openatrium][download][module] = \"contributions/profiles/openatrium\"" >> atrium_stub.make
 #   echo "projects[openatrium][download][revision] = \"HEAD\"" >> atrium_stub.make
-#   $_ROOT/tools/drush/drush make atrium_stub.make openatrium $_SHOW_A
+#   $_ROOT/tools/drush/drush make atrium_stub.make openatrium &> /dev/null
 #   rm -f atrium_stub.make
 #   cd $_CORE/openatrium
 #   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openatrium/
@@ -628,7 +628,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   echo "projects[feature_server][type] = \"profile\"" >> fserver.make
   echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
   echo "projects[feature_server][download][url] = \"git://github.com/omega8cc/feature_server.git\"" >> fserver.make
-  $_ROOT/tools/drush/drush make fserver.make fserver $_SHOW_A
+  $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/
@@ -694,7 +694,7 @@ fi
 #   echo "projects[managingnews][download][type] = \"cvs\"" >> managingnews_stub.make
 #   echo "projects[managingnews][download][module] = \"contributions/profiles/managingnews\"" >> managingnews_stub.make
 #   echo "projects[managingnews][download][revision] = \"DRUPAL-6--1\"" >> managingnews_stub.make
-#   $_ROOT/tools/drush/drush make managingnews_stub.make managingnews $_SHOW_A
+#   $_ROOT/tools/drush/drush make managingnews_stub.make managingnews &> /dev/null
 #   rm -f managingnews_stub.make
 #   cd $_CORE/managingnews
 #   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews/
@@ -817,8 +817,8 @@ rm -f $_CORE/*/themes/README.txt
 rm -f $_CORE/*.make
 rm -f $_CORE/*.tar.gz
 cd $_CORE
-find . -name .svn -exec rm -rf {} \; $_SHOW_A
-find . -name .bzr -exec rm -rf {} \; $_SHOW_A
+find . -name .svn -exec rm -rf {} \; &> /dev/null
+find . -name .bzr -exec rm -rf {} \; &> /dev/null
 
 
 ###---### Save & verify platforms
@@ -854,46 +854,46 @@ DRUSHC="$_ROOT/tools/drush/drush"
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
-  $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
-  $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium" ] ; then
-  $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_THIS_CORE/openatrium $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_THIS_CORE/openatrium &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-  $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_THIS_CORE/pressflow $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-  $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
-  $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE" ] ; then
-  $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_THIS_CORE/$_COCOMORE $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_THIS_CORE/$_COCOMORE &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
-  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
-  $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
-  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews" ] ; then
-  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_THIS_CORE/managingnews $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_THIS_CORE/managingnews &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH" ] ; then
-  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
-  $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT &> /dev/null
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
-  $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/uberdrupal $_SHOW_A
+  $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/uberdrupal &> /dev/null
 fi
 if [ -f "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
@@ -903,7 +903,7 @@ if [ -f "/var/run/aegir_upgrade.pid" ] ; then
     else
       _PLATF_NAME=${_PLATF##*/}
       $DRUSHC php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF
-      # $_SHOW_A
+      # &> /dev/null
     fi
   done
 fi
