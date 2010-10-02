@@ -1,0 +1,47 @@
+#!/bin/bash
+# ffmirror.sh - http://grulos.blogspot.com
+# find fastest mirror (?!?)
+# give it a list of hosts and it will sort them
+# according to their response time
+# no switches (ATM) just ./ffmirror<mirrors.txt
+# www.foo.org or http://www.foo.org or
+# http://foo.org/page or ...
+
+trap 'printf "\ncaught signal\nGot only ${#slist[@]}\n" &&
+  printf "%s\n" "${slist[@]}" && exit 1' 2
+
+while read line; do
+
+  # b-a to get time difference.
+  # could have used date +%s%N
+  # I guess this won't work on a BSD
+  a=$(</proc/uptime)
+  a=${a%%\ *}
+  a=${a/./}
+
+  # wget stuff
+  wget --spider -q -O /dev/null $line &&
+     b=$(</proc/uptime) &&
+       b=${b%%\ *} &&
+         b=${b/./}
+
+  # printf "%06s%04s%s\n" "$((b-a))0ms ${response[1]} $host"
+
+  # try next if not connected within 2s
+  [ $((b-a)) -lt 0 ] && continue
+
+  # this is my lazy sort algorithm (c)
+  c=$(((b-a)*100))
+  until [ "${slist[$c]}" == "" ]; do
+    ((c++))
+  done
+  # slist[$c]="$((b-a))0ms $line"
+  slist[$c]="$line\n"
+done
+
+# printf "%s\n" "${slist[@]}"
+printf "${slist[@]}"
+
+# root@lucid:~# bash ffmirror.sh.txt < apt-list-ubuntu.txt 2>> err.log
+# fr.archive.ubuntu.com
+# root@lucid:~# 

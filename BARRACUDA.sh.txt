@@ -162,7 +162,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B.dev2
+_INSTALLER_VERSION=A14.B.dev3
 _NGINX_VERSION=0.8.52
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -319,8 +319,8 @@ else
   _STATUS=INIT
   msg "`date` INFO: INIT..."
 fi
-INITINS="/usr/bin/apt-get -y --force-yes install"
-INSTALL="/usr/bin/apt-get --config-file /opt/tmp/apt.conf.noninteractive -y --force-yes install"
+_INITINS="/usr/bin/apt-get -y --force-yes install"
+_INSTALL="/usr/bin/apt-fast --config-file /opt/tmp/apt.conf.noninteractive -y --force-yes install"
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
@@ -351,10 +351,10 @@ fi
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
-  msg "`date` INFO: We need to install wget & git first, please wait..."
+  msg "`date` INFO: We need to install wget, axel & git first, please wait..."
   sleep 3
   apt-get update $_SHOW_A
-  $INITINS locales $_SHOW_A
+  $_INITINS locales $_SHOW_A
   sleep 5
   _LOC_TEST=`locale 2>&1`
   if [[ $_LOC_TEST =~ Cannot ]] ; then
@@ -395,7 +395,26 @@ sleep 30
     _LOCALE_TEST=OK
     locale-gen en_US en_US.UTF-8 $_SHOW_A
   fi
-  $INITINS wget git-core $_SHOW_A
+  $_INITINS wget git-core axel netcat $_SHOW_A
+fi
+
+
+###--------------------###
+if ! netcat -w 8 -z github.com 9418 ; then
+  _GITHUB_WORKS="NO"
+cat <<EOF
+
+  The GitHub server doesn't respond now,
+  so we can't continue this installation.
+  
+  Please try again later.
+  
+  Bye.
+    
+EOF
+  exit 1
+else
+  true
 fi
 
 
@@ -432,13 +451,21 @@ rm -f spinner*
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
 chmod +x spinner
 #
+# Get axelerator
+if [ ! -f "/usr/bin/apt-fast" ] ; then
+  cd /usr/bin
+  cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt-fast.sh.txt ./
+  mv -f apt-fast.sh.txt apt-fast
+  chmod +x apt-fast
+  cd /opt/tmp
+fi
 
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: Installing lsb-release / dnsutils now, please wait..."
   mrun "sleep 3"
-  if ! runner "$INSTALL lsb-release dnsutils"; then
+  if ! runner "$_INSTALL lsb-release dnsutils"; then
     fatal "Installation failed: $?"
   fi
 fi
@@ -600,7 +627,7 @@ msg "Please double check whether this is a valid result of my test."
 fi
 mrun "sleep 3"
 echo " "
-msg "INSTALL START -> checkpoint: "
+msg "_INSTALL START -> checkpoint: "
 cat <<EOF
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
@@ -670,37 +697,56 @@ chmod 777 /var/log/php*
 
 ###--------------------###
 #if [ $_STATUS = "INIT" ] ; then
+if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+    mrun "sleep 3"
+    cd /opt/tmp/nginx-for-drupal/aegir/helpers
+    _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+    msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
+    cd /var/opt
+    mrun "sleep 3"
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-    echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-    echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## BACKPORTS REPOSITORY" >> /etc/apt/sources.list
-    echo "deb http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://us.archive.ubuntu.com/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "" >> /etc/apt/sources.list
-    echo "## PROPOSED REPOSITORY" >> /etc/apt/sources.list
-    echo "deb http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://archive.ubuntu.com/ubuntu $_REL_VERSION-proposed main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-    echo "deb http://ftp.debian.org/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
-    echo "deb-src http://ftp.debian.org/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+    msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+    $_INITINS netselect-apt $_SHOW_A
+    cd /var/opt
+    netselect-apt -n -s $_REL_VERSION >/dev/null 2>&1
+    if [ -f "/var/opt/sources.list" ] ; then
+      _MIRROR=`cat sources.list | grep 'deb-src http' | cut -d/ -f3 | awk '{ print $1}'`
+    else
+      _MIRROR=ftp.debian.org
+    fi
+    msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
+    cd /var/opt
+    mrun "sleep 3"
+    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
   fi
-#fi
+  cd /var/aegir/config/includes
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Mirror $_MIRROR / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./apt-fast-install-log.txt
+  cd /var/opt
+fi
 
 
 ###--------------------###
@@ -717,44 +763,44 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Run apt update, please wait..."
-runner "aptitude update"
+runner "apt-fast update"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  runner "apt-get upgrade -y"
-  runner "aptitude update"
-  runner "aptitude clean"
-  runner "apt-get dist-upgrade"
-  runner "apt-get autoclean"
+  runner "apt-fast upgrade -y"
+  runner "apt-fast update"
+  runner "apt-fast clean"
+  runner "apt-fast dist-upgrade"
+  runner "apt-fast autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude safe-upgrade -y"
-  runner "aptitude update"
-  runner "aptitude clean"
-  runner "aptitude full-upgrade -y"
+  runner "apt-fast safe-upgrade -y"
+  runner "apt-fast update"
+  runner "apt-fast clean"
+  runner "apt-fast full-upgrade -y"
 fi
 
 
 ###--------------------###
 msg "`date` INFO: Run apt update again, please wait..."
-runner "aptitude update"
-runner "aptitude clean"
+runner "apt-fast update"
+runner "apt-fast clean"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  runner "apt-get upgrade -y"
-  runner "apt-get dist-upgrade"
-  runner "apt-get autoclean"
+  runner "apt-fast upgrade -y"
+  runner "apt-fast dist-upgrade"
+  runner "apt-fast autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade -y"
+  runner "apt-fast full-upgrade -y"
 fi
 
 
 ###--------------------###
 msg "`date` INFO: Run apt update again, please wait..."
-runner "aptitude update"
-runner "aptitude clean"
+runner "apt-fast update"
+runner "apt-fast clean"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  runner "apt-get upgrade -y"
-  runner "apt-get dist-upgrade"
-  runner "apt-get autoclean"
+  runner "apt-fast upgrade -y"
+  runner "apt-fast dist-upgrade"
+  runner "apt-fast autoclean"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade -y"
+  runner "apt-fast full-upgrade -y"
 fi
 
 
@@ -762,14 +808,14 @@ fi
 msg "`date` INFO: Install/upgrade required libraries and tools"
 msg "`date` NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_THIS_OS" = "Debian" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk"
+  DEBDEPS="apticron apt-fast autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk"
 elif [ "$_REL_VERSION" = "lucid" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
+  DEBDEPS="apticron apt-fast autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc"
 else
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
+  DEBDEPS="apticron apt-fast autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-gnutls-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip"
 fi
 install_with_apt () {
-	if ! runner "$INSTALL $DEBDEPS"; then
+	if ! runner "$_INSTALL $DEBDEPS"; then
 		fatal "Installation failed: $?"
 	fi
 	return 0
@@ -1507,7 +1553,7 @@ if [ ! -d "/var/www/cgp" ] ; then
     true
     msg "`date` INFO: Installing Collectd Graph Panel, please wait..."
     mrun "sleep 3"
-    runner "aptitude -y install collectd"
+    runner "apt-fast -y install collectd"
     cd /var/www
     git clone http://git.nethuis.nl/pub/cgp.git $_SHOW_A
     perl -p -i -e "s/(>uncategorized<)/>Barracuda Server</g" /var/www/cgp/index.php
