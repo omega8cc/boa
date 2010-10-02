@@ -351,8 +351,8 @@ fi
 if [ $_STATUS = "INIT" ] ; then
   msg "`date` INFO: We need to install wget, axel & git first, please wait..."
   sleep 3
-  apt-get update 2> /dev/null
-  $_INITINS locales 2> /dev/null
+  apt-get update &> /dev/null
+  $_INITINS locales &> /dev/null
   sleep 5
   _LOC_TEST=`locale 2>&1`
   if [[ $_LOC_TEST =~ Cannot ]] ; then
@@ -380,7 +380,7 @@ cat <<EOF
 EOF
 sleep 30
     locale-gen en_US en_US.UTF-8 &> /dev/null
-    update-locale 2> /dev/null
+    update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
     echo "LANG=en_US.UTF-8" > /etc/default/locale
     export LANG=en_US.UTF-8
@@ -391,9 +391,9 @@ sleep 30
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
   else
     _LOCALE_TEST=OK
-    locale-gen en_US en_US.UTF-8 2> /dev/null
+    locale-gen en_US en_US.UTF-8 &> /dev/null
   fi
-  $_INITINS wget git-core axel netcat 2> /dev/null
+  $_INITINS wget git-core axel netcat &> /dev/null
 fi
 
 
@@ -433,7 +433,7 @@ sleep 3
 # Git clone all
 cd /opt/tmp
 rm -f -r /opt/tmp/nginx-for-drupal
-git clone git://github.com/omega8cc/nginx-for-drupal.git 2> /dev/null
+git clone git://github.com/omega8cc/nginx-for-drupal.git $_SHOW_A
 #
 # Get apt helper
 rm -f apt.conf.noninteractive*
@@ -753,7 +753,7 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://ourdelta.org/deb/ourdelta.gpg
-  apt-key add ourdelta.gpg 2> /dev/null
+  apt-key add ourdelta.gpg &> /dev/null
   wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
   cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list
 fi
