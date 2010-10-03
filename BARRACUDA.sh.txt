@@ -727,7 +727,7 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
       mrun "sleep 3"
       cd /opt/tmp/nginx-for-drupal/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
+      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_UBUNTU_MIRROR
@@ -760,7 +760,7 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
       mrun "sleep 3"
       cd /opt/tmp/nginx-for-drupal/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
+      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_DEBIAN_MIRROR
@@ -813,7 +813,7 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
   runner "apt-fast update -y --force-yes"
   runner "apt-fast clean -y --force-yes"
   runner "apt-fast dist-upgrade -y --force-yes"
-  runner "aptitude full-upgrade -y --force-yes"
+  runner "aptitude full-upgrade -y"
   runner "apt-fast autoclean -y --force-yes"
 fi
 
@@ -827,7 +827,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-fast dist-upgrade -y --force-yes"
   runner "apt-fast autoclean -y --force-yes"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade -y --force-yes"
+  runner "aptitude full-upgrade -y"
 fi
 
 
@@ -840,7 +840,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   runner "apt-fast dist-upgrade -y --force-yes"
   runner "apt-fast autoclean -y --force-yes"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade -y --force-yes"
+  runner "aptitude full-upgrade -y"
 fi
 
 
