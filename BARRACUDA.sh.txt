@@ -703,7 +703,6 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
     mrun "sleep 3"
     cd /opt/tmp/nginx-for-drupal/aegir/helpers
     _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-    _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
     mrun "sleep 3"
@@ -723,22 +722,9 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
     echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-#     msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
-#     $_INITINS netselect-apt &> /dev/null
-#     cd /var/opt
-#     netselect-apt -n -s $_REL_VERSION >/dev/null 2>&1
-#     if [ -f "/var/opt/sources.list" ] ; then
-#       _MIRROR=`cat sources.list | grep 'deb-src http' | cut -d/ -f3 | awk '{ print $1}'`
-#     else
-#       _MIRROR=ftp.debian.org
-#     fi
-#     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
-#     cd /var/opt
-#     mrun "sleep 3"
     msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
     mrun "sleep 3"
     cd /opt/tmp/nginx-for-drupal/aegir/helpers
-    _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
     _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt

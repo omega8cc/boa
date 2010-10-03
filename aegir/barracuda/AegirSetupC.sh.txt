@@ -636,7 +636,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
   cd ./profiles/feature_server/themes
   wget -q -U iCab http://omega8.cc/dev/singular.patch.txt
-  patch -p0 <./singular.patch.txt
+  patch -p0 <./singular.patch.txt &> /dev/null
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/fserver
 cd $_ROOT/distro/$_THIS_CORE/fserver
