@@ -424,9 +424,14 @@ else
 #
  echo _DISTRO is $_DISTRO
  echo RAW _DOMAIN is $_DOMAIN
+  if [ "$_USER" = "admin" ] ; then
+    echo ERROR: $_USER is a restricted username, please choose different _USER.
+    exit 1  
+  fi
   _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
   if [ ! -z "$_FREEID" ]; then
-    echo ALERT! _USER is already used or too similar to an existing username, exit now...
+    echo ERROR: $_USER is already used or too similar to an existing username.
+    echo Please choose different _USER.
     exit 1
   fi
 fi
