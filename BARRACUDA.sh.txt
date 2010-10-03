@@ -36,6 +36,21 @@ _MY_EMAIL="support@omega8.cc"
 
 
 ###----------------------------------------###
+### LOCAL DEBIAN OR UBUNTU MIRROR          ###
+###----------------------------------------###
+###
+### Use this when you prefer to use the mirror
+### you know is the best / the fastest for you
+### and skip searching around the globe.
+###
+### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
+### _LOCAL_UBUNTU_MIRROR=au.archive.ubuntu.com
+###
+_LOCAL_DEBIAN_MIRROR=""
+_LOCAL_UBUNTU_MIRROR=""
+
+
+###----------------------------------------###
 ### DEBUG MODE SWITCH                      ###
 ###----------------------------------------###
 ###
@@ -198,14 +213,14 @@ prompt_yes_no () {
     esac
  done 
 }
-
+#
+# Prompt to confirm choice
 prompt_confirm_choice () {
 	read -p "$1 [$2]:" _CONFIRMED_ANSWER
 	if [ -z "$_CONFIRMED_ANSWER" ] ; then
 		_CONFIRMED_ANSWER=$2
 	fi
 }
-
 #
 # Stop on error
 # set -e ### disable this for debugging
@@ -707,44 +722,58 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
-    msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
-    mrun "sleep 3"
-    cd /opt/tmp/nginx-for-drupal/aegir/helpers
-    _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-		_MIRROR="http://$_MIRROR/ubuntu/"
-		prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
-		_MIRROR=$_CONFIRMED_ANSWER
+    if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
+      msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+      mrun "sleep 3"
+      cd /opt/tmp/nginx-for-drupal/aegir/helpers
+      _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
+      _MIRROR=$_CONFIRMED_ANSWER
+    else
+      _MIRROR=$_LOCAL_UBUNTU_MIRROR
+    fi
+    if ! netcat -w 5 -z $_MIRROR 80 ; then
+      msg "`date` INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+      _MIRROR=archive.ubuntu.com
+    fi
     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
     mrun "sleep 3"
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-    echo "deb $_MIRROR $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src $_MIRROR $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-    echo "deb $_MIRROR $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src $_MIRROR $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## BACKPORTS REPOSITORY" >> /etc/apt/sources.list
-    echo "deb $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-    msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
-    mrun "sleep 3"
-    cd /opt/tmp/nginx-for-drupal/aegir/helpers
-    _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-		_MIRROR="http://$_MIRROR/debian/"
-		prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
-		_MIRROR=$_CONFIRMED_ANSWER
+    if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
+      msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+      mrun "sleep 3"
+      cd /opt/tmp/nginx-for-drupal/aegir/helpers
+      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
+      _MIRROR=$_CONFIRMED_ANSWER
+    else
+      _MIRROR=$_LOCAL_DEBIAN_MIRROR
+    fi    
+    if ! netcat -w 5 -z $_MIRROR 80 ; then
+      msg "`date` INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+      _MIRROR=ftp.debian.org
+    fi
     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
     mrun "sleep 3"
-    echo "deb $_MIRROR $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
-    echo "deb-src $_MIRROR $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+    echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list

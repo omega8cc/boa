@@ -28,7 +28,7 @@ while read line; do
   # printf "%06s%04s%s\n" "$((b-a))0ms ${response[1]} $host"
 
   # try next if not connected within 2s
-  [ $((b-a)) -lt 0 ] && continue
+  [ $((b-a)) -lt 1 ] && continue
 
   # this is my lazy sort algorithm (c)
   c=$(((b-a)*100))
