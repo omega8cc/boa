@@ -198,6 +198,14 @@ prompt_yes_no () {
     esac
  done 
 }
+
+prompt_confirm_choice () {
+	read -p "$1 [$2]:" _CONFIRMED_ANSWER
+	if [ -z "$_CONFIRMED_ANSWER" ] ; then
+		_CONFIRMED_ANSWER=$2
+	fi
+}
+
 #
 # Stop on error
 # set -e ### disable this for debugging
@@ -703,34 +711,40 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
     mrun "sleep 3"
     cd /opt/tmp/nginx-for-drupal/aegir/helpers
     _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+		_MIRROR="http://$_MIRROR/ubuntu/"
+		prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
+		_MIRROR=$_CONFIRMED_ANSWER
     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
     mrun "sleep 3"
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb $_MIRROR $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src $_MIRROR $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb $_MIRROR $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src $_MIRROR $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## BACKPORTS REPOSITORY" >> /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+    echo "deb-src $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
     msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
     mrun "sleep 3"
     cd /opt/tmp/nginx-for-drupal/aegir/helpers
     _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+		_MIRROR="http://$_MIRROR/debian/"
+		prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
+		_MIRROR=$_CONFIRMED_ANSWER
     msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
     mrun "sleep 3"
-    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+    echo "deb $_MIRROR $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+    echo "deb-src $_MIRROR $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
@@ -758,46 +772,46 @@ fi
 
 ###--------------------###
 msg "`date` INFO: Run apt update, please wait..."
-runner "apt-fast update"
+runner "apt-fast update -y --force-yes"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  runner "apt-fast upgrade -y"
-  runner "apt-fast update"
-  runner "apt-fast clean"
-  runner "apt-fast dist-upgrade"
-  runner "apt-fast autoclean"
+  runner "apt-fast upgrade -y --force-yes"
+  runner "apt-fast update -y --force-yes"
+  runner "apt-fast clean -y --force-yes"
+  runner "apt-fast dist-upgrade -y --force-yes"
+  runner "apt-fast autoclean -y --force-yes"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "apt-fast upgrade -y"
-  runner "apt-fast update"
-  runner "apt-fast clean"
-  runner "apt-fast dist-upgrade"
-  runner "aptitude full-upgrade -y"
-  runner "apt-fast autoclean"
+  runner "apt-fast upgrade -y --force-yes"
+  runner "apt-fast update -y --force-yes"
+  runner "apt-fast clean -y --force-yes"
+  runner "apt-fast dist-upgrade -y --force-yes"
+  runner "aptitude full-upgrade -y --force-yes"
+  runner "apt-fast autoclean -y --force-yes"
 fi
 
 
 ###--------------------###
 msg "`date` INFO: Run apt update again, please wait..."
-runner "apt-fast update"
-runner "apt-fast clean"
+runner "apt-fast update -y --force-yes"
+runner "apt-fast clean -y --force-yes"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  runner "apt-fast upgrade -y"
-  runner "apt-fast dist-upgrade"
-  runner "apt-fast autoclean"
+  runner "apt-fast upgrade -y --force-yes"
+  runner "apt-fast dist-upgrade -y --force-yes"
+  runner "apt-fast autoclean -y --force-yes"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade -y"
+  runner "aptitude full-upgrade -y --force-yes"
 fi
 
 
 ###--------------------###
 msg "`date` INFO: Run apt update again, please wait..."
-runner "apt-fast update"
-runner "apt-fast clean"
+runner "apt-fast update -y --force-yes"
+runner "apt-fast clean -y --force-yes"
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  runner "apt-fast upgrade -y"
-  runner "apt-fast dist-upgrade"
-  runner "apt-fast autoclean"
+  runner "apt-fast upgrade -y --force-yes"
+  runner "apt-fast dist-upgrade -y --force-yes"
+  runner "apt-fast autoclean -y --force-yes"
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  runner "aptitude full-upgrade -y"
+  runner "aptitude full-upgrade -y --force-yes"
 fi
 
 
