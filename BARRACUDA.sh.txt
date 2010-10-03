@@ -727,6 +727,7 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
       mrun "sleep 3"
       cd /opt/tmp/nginx-for-drupal/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+      _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
       _MIRROR=$_CONFIRMED_ANSWER
     else
@@ -759,6 +760,7 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
       msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
       mrun "sleep 3"
       cd /opt/tmp/nginx-for-drupal/aegir/helpers
+      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
       _MIRROR=$_CONFIRMED_ANSWER
