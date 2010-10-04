@@ -556,7 +556,7 @@ if [ ! -z "$_MY_OWNIP" ] ; then
       _FQDNTEST="TRUE"
       _THEFRDIP=`host $_MY_FRONT | cut -d: -f2 | awk '{ print $4}'`
       if [ "$_THEFRDIP" = "$_THISHTIP" ] ; then
-         _TESTHOST=`hostname -v`
+         _TESTHOST=`hostname -f`
          _TESTRDIP=`host $_TESTHOST | cut -d: -f2 | awk '{ print $4}'`
          if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
             _FQDNTEST="TRUE"
@@ -572,11 +572,11 @@ if [ ! -z "$_MY_OWNIP" ] ; then
    fi
 else
 _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-_FQDNPROB=`hostname -v 2> /dev/null`
+_FQDNPROB=`hostname -f 2> /dev/null`
 _FQDNTEST="FALSE"
 _THISHOST=`uname -n`
 if [ ! -z "$_FQDNPROB" ] ; then
-   _THISHOST=`hostname -v`
+   _THISHOST=`hostname -f`
    _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
    if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
       _FQDNTEST="TRUE"
@@ -634,7 +634,7 @@ cat <<EOF
 
   * Please make sure that below command returns your FQDN hostname "$_MY_HOSTN":
     
-    $ hostname -v
+    $ hostname -f
     
 EOF
 fi
