@@ -1,10 +1,12 @@
 <?php # global settings.php
 
-if(!preg_match("/(standard)|(minimal)|(testing)/", $conf['install_profile'])) { // don't use it for d7
+if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
 
   $conf['page_compression'] = 0; // required for Nginx
-  $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
-
+  if (isset($_SERVER['HTTP_HOST'])) {
+    $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
+  }
+  
   if(preg_match("/hostmaster/", $conf['install_profile'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
     if ($request_type != "SSL") { // we force secure connection here
@@ -14,13 +16,13 @@ if(!preg_match("/(standard)|(minimal)|(testing)/", $conf['install_profile'])) { 
     $conf['hosting_ignore_default_profiles'] = 1;
   }
 
-  if(!preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+  if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
     $conf['preprocess_css'] = 1;
     $conf['preprocess_js'] = 1;
     $conf['cache'] = 1;
     $conf['error_level'] = 0;
     $conf['statistics_enable_access_log'] = 0;
-    if (file_exists('./modules/o_contrib/cache/cache.inc') && preg_match("/cache/", $_SERVER['HTTP_COOKIE']) && preg_match("/SESS/", $_SERVER['HTTP_COOKIE'])) {
+    if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/cache/", $_SERVER['HTTP_COOKIE']) && preg_match("/SESS/", $_SERVER['HTTP_COOKIE'])) {
     $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
     $conf['cache_settings'] = array(
       'engines' => array(
