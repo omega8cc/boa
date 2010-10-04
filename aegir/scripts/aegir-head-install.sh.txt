@@ -69,7 +69,7 @@ prompt_yes_no() {
 # Main script
 
 AEGIR_HOME="$HOME"
-AEGIR_HOST=`hostname -f`
+AEGIR_HOST=`hostname -v`
 DRUSH="$AEGIR_HOME/drush/drush.php"
 
 msg "Aegir automated install script"

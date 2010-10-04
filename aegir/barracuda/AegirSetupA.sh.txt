@@ -263,7 +263,7 @@ if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
 fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
-AEGIR_HOST=`hostname -f`
+AEGIR_HOST=`hostname -v`
 _RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
 if [ -z "$_RESOLVEIP" ] ; then
   msg "This server does not have a hostname that resolves to an IP address"
