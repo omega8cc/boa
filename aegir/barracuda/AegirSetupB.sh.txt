@@ -124,14 +124,6 @@ if [ `whoami` = "root" ] ; then
 fi
 
 
-###--------------------###
-if [ "$_DEBUG_MODE" = "YES" ] ; then
-  _SHOW_A=""
-else
-  _SHOW_A="&> /dev/null"
-fi
-
-
 ###---### Checking status..
 #
 msg "`date` $_STATUS B: Checking status.."
@@ -227,7 +219,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
   mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
 fi
 cd $_ROOT/tools
-wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz 2> /dev/null
+wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
@@ -282,7 +274,11 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
   AEGIR_HOST=`hostname -f`
   msg "`date` $_STATUS B: Deploying hostmaster application init, please wait..."
-  $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION &> /dev/null
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION
+  else
+    $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION &> /dev/null  
+  fi
   mrun "sleep 3"
   cd $_AEGIR_ROOT
   mkdir -p sites/$_DOMAIN/files/tmp
@@ -304,7 +300,11 @@ else
   mrun "sleep 3"
   export DEBIAN_FRONTEND=noninteractive
   cd $_PREV_AEGIR_ROOT
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y
+  else
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
+  fi
   export DEBIAN_FRONTEND=text
   msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
