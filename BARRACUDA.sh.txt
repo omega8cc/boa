@@ -189,7 +189,7 @@ _SMTP_RELAY_HOST=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B.dev3
+_INSTALLER_VERSION=A14.B.dev4
 _NGINX_VERSION=0.8.52
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -736,6 +736,13 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    if [ $_STATUS = "INIT" ] ; then
+      _S_N=$_THISHOST
+      _S_T=${_S_N#*.*}
+      _S_Q=${_S_N%%${_S_T}}
+      _S_E=${_S_Q%*.*}
+      echo "$_THISHTIP $_THISHOST $_THIS_FRONT $_S_E" >> /etc/hosts
+    fi
     if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
       msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
       mrun "sleep 3"
