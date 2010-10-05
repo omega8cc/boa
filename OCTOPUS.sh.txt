@@ -44,7 +44,7 @@ _MY_OWNIP=""
 
 
 ###----------------------------------------###
-### DEBUG MODE SWITCH (disabled)           ###
+### DEBUG MODE SWITCH (available)          ###
 ###----------------------------------------###
 ###
 ### Use this when you experience silent hangs

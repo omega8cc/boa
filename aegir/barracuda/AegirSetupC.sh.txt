@@ -200,14 +200,6 @@ if [ `whoami` = "root" ] ; then
 fi
 
 
-###--------------------###
-if [ "$_DEBUG_MODE" = "YES" ] ; then
-  _SHOW_A=""
-else
-  _SHOW_A="&> /dev/null"
-fi
-
-
 ###---### Hot Sauce check..
 #
 msg "`date` $_STATUS C: Hot Sauce check.."

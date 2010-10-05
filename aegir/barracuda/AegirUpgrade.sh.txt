@@ -81,7 +81,11 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
-  $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y -d
+  else
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
+  fi
 }
 
 ###--------------------###
@@ -96,13 +100,6 @@ _DRUSHCMD="php /var/aegir/drush/drush.php"
 _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
 _PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
-
-###--------------------###
-if [ "$_DEBUG_MODE" = "YES" ] ; then
-  _SHOW_A=""
-else
-  _SHOW_A="&> /dev/null"
-fi
 
 if [ -d "$_ROOT/host_master/001" ] ; then
   cd $_ROOT/host_master
@@ -137,8 +134,6 @@ else
   hostmaster_dr_up
   hostmaster_go_up
 fi
-# cd $_AEGIR_ROOT/sites/$_DOMAIN
-# drush provision-save @server_master &> /dev/null
 
 
 ###----------------------------------------###
