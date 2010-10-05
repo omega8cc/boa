@@ -1,0 +1,6 @@
+core = "6.x"
+projects[] = "drupal"
+projects[managingnews][type] = "profile"
+projects[managingnews][download][type] = "cvs"
+projects[managingnews][download][module] = "contributions/profiles/managingnews"
+projects[managingnews][download][revision] = "DRUPAL-6--1"
