@@ -1,4 +1,9 @@
+; Open Atrium HEAD makefile
+;
+
+api = 2
 core = "6.x"
+
 projects[] = "drupal"
 projects[openatrium][type] = "profile"
 projects[openatrium][download][type] = "cvs"

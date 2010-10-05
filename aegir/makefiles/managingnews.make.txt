@@ -1,4 +1,9 @@
+; Managing News HEAD makefile
+;
+
+api = 2
 core = "6.x"
+
 projects[] = "drupal"
 projects[managingnews][type] = "profile"
 projects[managingnews][download][type] = "cvs"
