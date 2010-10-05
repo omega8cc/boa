@@ -547,7 +547,13 @@ else
 fi
 if [ ! -z "$_MY_OWNIP" ] ; then
    if [ ! -z "$_MY_HOSTN" ] ; then
+     _S_N=$_MY_HOSTN
+     _S_T=${_S_N#*.*}
+     _S_Q=${_S_N%%${_S_T}}
+     _S_E=${_S_Q%*.*}
+     echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT $_S_E" >> /etc/hosts
      hostname -v $_MY_HOSTN ### force our custom FQDN hostname
+     echo "$_MY_HOSTN" >> /etc/hostname
    fi
    _THISHTIP="$_MY_OWNIP"
    _THISHOST="$_MY_HOSTN"
@@ -736,13 +742,6 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
-    if [ $_STATUS = "INIT" ] ; then
-      _S_N=$_THISHOST
-      _S_T=${_S_N#*.*}
-      _S_Q=${_S_N%%${_S_T}}
-      _S_E=${_S_Q%*.*}
-      echo "$_THISHTIP $_THISHOST $_THIS_FRONT $_S_E" >> /etc/hosts
-    fi
     if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
       msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
       mrun "sleep 3"
