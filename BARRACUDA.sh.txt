@@ -553,7 +553,7 @@ if [ ! -z "$_MY_OWNIP" ] ; then
      _S_E=${_S_Q%*.*}
      echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT $_S_E" >> /etc/hosts
      hostname -v $_MY_HOSTN ### force our custom FQDN hostname
-     echo "$_MY_HOSTN" >> /etc/hostname
+     echo "$_MY_HOSTN" > /etc/hostname
    fi
    _THISHTIP="$_MY_OWNIP"
    _THISHOST="$_MY_HOSTN"
@@ -675,11 +675,11 @@ cat <<EOF
 
   NOTE: If your outgoing SMTP requires using relayhost, define first _SMTP_RELAY_HOST.
 
-  * Your core Aegir instance control panel will be available at http://$_THIS_FRONT.
+  * Your core Aegir instance control panel will be available at https://$_THIS_FRONT.
   * Your (optional) MultiCore Apache Solr Tomcat will listen on localhost:8080.
-  * Your (optional) Chive MariaDB Manager will be available at http://chive.$_THIS_FRONT.
-  * Your (optional) SQL Buddy MariaDB Manager will be available at http://sqlbuddy.$_THIS_FRONT.
-  * Your (optional) Collectd Graph Panel will be available at http://cgp.$_THIS_FRONT.
+  * Your (optional) Chive MariaDB Manager will be available at https://chive.$_THIS_FRONT.
+  * Your (optional) SQL Buddy MariaDB Manager will be available at https://sqlbuddy.$_THIS_FRONT.
+  * Your (optional) Collectd Graph Panel will be available at https://cgp.$_THIS_FRONT.
   
   NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
         subdomains point to your IP (we recommend using wildcard DNS to simplify it).
