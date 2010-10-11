@@ -1022,11 +1022,7 @@ if [ ! -e "/usr/bin/vnstat" ] ; then
   st_runner "make --quiet install" &> /dev/null
   st_runner "vnstat -u -i $_IFCONFIG" &> /dev/null
   cd /etc/init.d
-  if [ "$_THIS_OS" = "Debian" ] ; then
-    cp -af /var/opt/vnstat-1.10/examples/init.d/debian ./vnstat
-  else
-    cp -af /var/opt/vnstat-1.10/examples/init.d/ubuntu ./vnstat
-  fi
+  cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
   chmod 755 vnstat
   st_runner "update-rc.d vnstat defaults" &> /dev/null
   st_runner "invoke-rc.d vnstat start" 2> /dev/null
