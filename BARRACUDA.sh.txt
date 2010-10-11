@@ -672,6 +672,7 @@ cat <<EOF
   * Your (optional) Chive MariaDB Manager will be available at https://chive.$_THIS_FRONT.
   * Your (optional) SQL Buddy MariaDB Manager will be available at https://sqlbuddy.$_THIS_FRONT.
   * Your (optional) Collectd Graph Panel will be available at https://cgp.$_THIS_FRONT.
+  * Your (optional) Webmin Control Panel will be available at https://$_THISHOST:10000.
   
   NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
         subdomains point to your IP (we recommend using wildcard DNS to simplify it).
@@ -1175,9 +1176,9 @@ if [ ! -f "/usr/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://launchpad.net/bzr/2.2/2.2b4/+download/bzr-2.2b4.tar.gz
-  tar -xzf bzr-2.2b4.tar.gz
-  cd /var/opt/bzr-2.2b4
+  wget -q -U iCab http://launchpad.net/bzr/2.3/2.3b1/+download/bzr-2.3b1.tar.gz
+  tar -xzf bzr-2.3b1.tar.gz
+  cd /var/opt/bzr-2.3b1
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
 fi
 
@@ -1425,6 +1426,9 @@ cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc
 mv -f nginx_simple_include.conf nginx_simple_include.conf.orig
 ln -s nginx_advanced_include.conf nginx_simple_include.conf
+cd /var/aegir/drush
+cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
+patch -p0 < user.drush.inc.patch &> /dev/null
 cd /var/aegir
 if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
   echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
@@ -1671,6 +1675,28 @@ if [ ! -d "/var/www/cgp" ] ; then
     mrun "sleep 2"
   else
     msg "`date` INFO: Collectd Graph Panel installation skipped"
+    mrun "sleep 2"
+  fi
+fi
+
+
+###--------------------###
+if [ ! -d "/etc/webmin" ] ; then
+  echo " "
+  if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
+    true
+    msg "`date` INFO: Installing Webmin Control Panel, please wait..."
+    mrun "sleep 3"
+    cd /var/opt
+    echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
+    wget -q -U iCab http://software.virtualmin.com/lib/RPM-GPG-KEY-webmin
+    apt-key add RPM-GPG-KEY-webmin &> /dev/null
+    runner "apt-fast update -y --force-yes"
+    runner "apt-fast -y install webmin libxml-simple-perl libcrypt-ssleay-perl"
+    msg "`date` INFO: Webmin Control Panel installation completed"
+    mrun "sleep 2"
+  else
+    msg "`date` INFO: Webmin Control Panel installation skipped"
     mrun "sleep 2"
   fi
 fi

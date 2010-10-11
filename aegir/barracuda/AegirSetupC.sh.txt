@@ -306,24 +306,26 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   #wget -q -U iCab http://drupal.cocomore.com/system/files/memcache-6.1.4-cocomore-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/bakery-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cron_control-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-6.x-1.2.tar.gz
   tar -xzf cache.tar.gz
   tar -xzf boost-6.x-1.x-dev.tar.gz
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz
   #tar -xzf memcache-6.1.4-cocomore-beta3.tar.gz
   tar -xzf views_content_cache-6.x-2.x-dev.tar.gz
   tar -xzf module_supports-6.x-1.0.tar.gz
-  tar -xzf filefield_nginx_progress-6.x-1.1.tar.gz
+  tar -xzf filefield_nginx_progress-6.x-1.x-dev.tar.gz
   tar -xzf securesite-6.x-2.4.tar.gz
   tar -xzf bakery-6.x-1.x-dev.tar.gz
   tar -xzf image-6.x-1.x-dev.tar.gz
   tar -xzf backup_migrate-6.x-2.x-dev.tar.gz
   tar -xzf cron_control-6.x-1.x-dev.tar.gz
+  tar -xzf openidadmin-6.x-1.2.tar.gz
   rm -f *.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/authcache-6.x-1.0-rc2.tar.gz
@@ -340,6 +342,7 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz
   rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.2.tar.gz
   wget -q -U iCab http://drupal.cocomore.com/system/files/apachesolr-6.1.0-cocomore-1.tar.gz
   tar -xzf apachesolr-6.1.0-cocomore-1.tar.gz
   rm -f apachesolr-6.1.0-cocomore-1.tar.gz

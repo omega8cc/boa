@@ -332,6 +332,9 @@ mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.4.tar.gz
+cd $_ROOT/tools/drush
+cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
+patch -p0 < user.drush.inc.patch &> /dev/null
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features -y &> /dev/null
 # $_DRUSHCMD dl ctools -y &> /dev/null
@@ -362,6 +365,12 @@ if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mv -f make_home.php.txt make_home.php
   $DRUSHC php-script make_home &> /dev/null
   rm -f make_home.php
+  cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_client.php.txt ./
+  mv -f make_client.php.txt make_client.php
+  $DRUSHC php-script make_client $_ADM_EMAIL &> /dev/null
+  rm -f make_client.php
+  $DRUSHC urol "admin" --mail=$_ADM_EMAIL &> /dev/null
+  $DRUSHC urol "aegir account manager" --mail=$_ADM_EMAIL &> /dev/null
 fi
 
 

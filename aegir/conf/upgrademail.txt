@@ -130,7 +130,7 @@ support department.
 
 
 ----------------------------------------
-#5. ADVANCED _USER INFORMATION
+#5. ADVANCED USER INFORMATION
 ----------------------------------------
 
 

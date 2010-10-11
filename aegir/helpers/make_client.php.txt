@@ -1,0 +1,15 @@
+<?php
+
+  // Create the client node
+  $types = node_types_rebuild();
+  $node = new stdClass();
+  $node->uid = 1;
+  $node->type = 'client';
+  $node->email = $_SERVER[argv][4];
+  $node->organization = 'Aegir';
+  $node->status = 1;
+  node_save($node);
+  $this_client_id = $node->nid;
+  variable_set('hosting_default_client', $node->nid);
+
+?>

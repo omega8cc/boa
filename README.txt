@@ -12,7 +12,12 @@ to install and/or upgrade Aegir Hosting Systems for Drupal.
 ### $ bash BARRACUDA.sh.txt
 ### $ bash OCTOPUS.sh.txt
 ###
-### For complete installation instructions see docs/INSTALL.txt
+### Please read all comments for configuration options in both
+### installers, since there is information not included in the
+### README or INSTALL and can be modified/updated with every
+### new Edition.
+###
+### For basic installation instructions see docs/INSTALL.txt
 ### For the upgrade instructions see docs/UPGRADE.txt
 ### For recipe on local working install see docs/HINTS.txt
 ### For how-to on using MultiCore Solr Tomcat see docs/SOLR.txt
@@ -64,7 +69,8 @@ so it is your responsibility to use such system wisely.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.
 * Redis and Memcached chained cache with DB failover.
-* Chive database manager in "db." subdomain.
+* Chive database manager in "chive." subdomain.
+* SQL Buddy database manager in "sqlbuddy." subdomain.
 * Collectd server monitor in "cgp." subdomain.
 * Limited shell and FTPS separate accounts per Octopus instance.
 
