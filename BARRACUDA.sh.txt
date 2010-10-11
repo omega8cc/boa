@@ -512,7 +512,7 @@ chmod +x spinner
 if [ ! -f "/usr/bin/apt-fast" ] ; then
   cd /usr/bin
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt-fast.sh.txt ./
-  mv -f apt-fast.sh.txt apt-fast
+  mv -f apt-fast.sh.txt apt-fast &> /dev/null
   chmod +x apt-fast
   cd /opt/tmp
 fi
@@ -974,7 +974,7 @@ if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
   msg "`date` INFO: No fix required"
 else
   cd /etc/init.d
-  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION
+  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx ./
   chmod 755 /etc/init.d/nginx
   msg "`date` INFO: Fix for Nginx startup script applied"
@@ -1111,7 +1111,7 @@ msg "`date` NOTE: This step can take longer than 8 minutes (depending on your se
 mrun "sleep 3"
 cd /var/opt
 rm -f -r /var/opt/php*
-mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION
+mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION &> /dev/null
 rm -f /etc/init.d/php-fpm*
 wget -q -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz
 wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz
@@ -1301,8 +1301,8 @@ if [ ! -f "/usr/bin/lshell" ] ; then
   chmod 770 /var/log/lsh
   cd /etc
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
-  mv -f lshell.conf lshell.conf-orig
-  mv -f lshell.conf.txt lshell.conf
+  mv -f lshell.conf lshell.conf-orig &> /dev/null
+  mv -f lshell.conf.txt lshell.conf &> /dev/null
   echo "/usr/bin/lshell" >> /etc/shells
 fi
 
@@ -1328,7 +1328,7 @@ if [ ! -f "/usr/local/sbin/pure-config.pl" ] ; then
   st_runner "make install-strip" 2> /dev/null
   cd /usr/local/sbin/
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-config.pl.txt ./
-  mv -f pure-config.pl.txt pure-config.pl
+  mv -f pure-config.pl.txt pure-config.pl &> /dev/null
   chmod 755 /usr/local/sbin/pure-config.pl
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
@@ -1360,9 +1360,9 @@ if [ $_STATUS = "INIT" ] ; then
     runner "invoke-rc.d nginx start" 2> /dev/null
   fi
   cd /etc/mysql
-  mv -f my.cnf my.cnf.bak.copy
+  mv -f my.cnf my.cnf.bak.copy &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf
+  mv -f my.cnf.txt my.cnf &> /dev/null
   runner "invoke-rc.d mysql restart" 2> /dev/null
 else
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
@@ -1465,10 +1465,10 @@ msg "`date` INFO: Fix for advanced Nginx config and Drush path"
 mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
-mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
+mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-mv -f global.inc.aegir.txt global.inc
-mv -f nginx_simple_include.conf nginx_simple_include.conf.orig
+mv -f global.inc.aegir.txt global.inc &> /dev/null
+mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
 ln -s nginx_advanced_include.conf nginx_simple_include.conf
 cd /var/aegir/drush
 cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
@@ -1506,9 +1506,9 @@ else
     perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
-    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
+    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-    mv -f global.inc.aegir.txt global.inc
+    mv -f global.inc.aegir.txt global.inc &> /dev/null
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
     msg "`date` INFO: core Aegir Hostmaster instance upgrade completed"
@@ -1526,13 +1526,13 @@ if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
 msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
-  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION
+  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION &> /dev/null
   cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ &> /dev/null
   cd /var/www/nginx-default
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ &> /dev/null
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
-  mv -f index.html index.html-pre-$_INSTALLER_VERSION
-  mv -f uc.html index.html
+  mv -f index.html index.html-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f uc.html index.html &> /dev/null
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx &> /dev/null
     runner "invoke-rc.d nginx start" 2> /dev/null
@@ -1575,8 +1575,8 @@ mrun "sleep 30"
     if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION
-      mv -f global.inc.ssl.aegir.txt global.inc
+      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
+      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
     if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
       killall nginx &> /dev/null
@@ -1600,9 +1600,9 @@ if [ ! -d "/opt/solr" ] ; then
     wget -q -U iCab http://omega8.cc/dev/apachesolr.tar.gz
     tar -xzf apachesolr.tar.gz
     cd apachesolr
-    mv -f tomcat /etc/init.d/
-    mv -f solr /opt/
-    mv -f tomcat6 /opt/
+    mv -f tomcat /etc/init.d/ &> /dev/null
+    mv -f solr /opt/ &> /dev/null
+    mv -f tomcat6 /opt/ &> /dev/null
     echo "ENABLED=1" > /etc/default/tomcat
     perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
     runner "update-rc.d tomcat defaults" &> /dev/null
@@ -1735,8 +1735,8 @@ if [ ! -d "/etc/webmin" ] ; then
     echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
     wget -q -U iCab http://software.virtualmin.com/lib/RPM-GPG-KEY-webmin
     apt-key add RPM-GPG-KEY-webmin &> /dev/null
-    runner "apt-fast update -y --force-yes"
-    runner "apt-fast -y install webmin libxml-simple-perl libcrypt-ssleay-perl"
+    runner "apt-fast update -y --force-yes" 2> /dev/null
+    runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
     msg "`date` INFO: Webmin Control Panel installation completed"
     mrun "sleep 2"
   else

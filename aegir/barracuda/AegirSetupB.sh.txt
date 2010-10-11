@@ -211,12 +211,12 @@ if [ $_STATUS = "UPGRADE" ] ; then
   if [ -d "$_ROOT/aegir/config" ] ; then
     if [ ! -d "$_ROOT/config" ] ; then
       cd $_ROOT/aegir
-      mv -f config $_ROOT/config
+      mv -f config $_ROOT/config &> /dev/null
       ln -s $_ROOT/config $_ROOT/aegir/config
     fi
   fi
   cd $_ROOT/tools
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
 fi
 cd $_ROOT/tools
 wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
@@ -229,9 +229,9 @@ else
   exit 1
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO
-  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
 fi
 msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
@@ -362,11 +362,11 @@ if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_home.php.txt ./
-  mv -f make_home.php.txt make_home.php
+  mv -f make_home.php.txt make_home.php &> /dev/null
   $DRUSHC php-script make_home &> /dev/null
   rm -f make_home.php
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_client.php.txt ./
-  mv -f make_client.php.txt make_client.php
+  mv -f make_client.php.txt make_client.php &> /dev/null
   $DRUSHC php-script make_client $_ADM_EMAIL &> /dev/null
   rm -f make_client.php
   $DRUSHC urol "admin" --mail=$_ADM_EMAIL &> /dev/null
@@ -385,7 +385,7 @@ else
   rm -f $_ROOT/config/includes/global.inc
   cd /data/conf
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc
+  mv -f global.inc.aegir.txt global.inc &> /dev/null
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi
 

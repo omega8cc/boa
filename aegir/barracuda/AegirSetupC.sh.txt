@@ -168,7 +168,7 @@ create_dirs () {
   chmod 02775 ./sites/all/themes
   rm -f .htaccess
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/get.htaccess.txt ./
-  mv -f get.htaccess.txt .htaccess
+  mv -f get.htaccess.txt .htaccess &> /dev/null
 }
 #
 # create standard symlinks
@@ -296,7 +296,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
 wget -q -U iCab http://omega8.cc/boost_stats.php.txt
-mv -f boost_stats.php.txt boost_stats.php
+mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -d "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
@@ -338,7 +338,7 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha12.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta4.tar.gz
   wget -q -U iCab http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
-  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz
+  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
   tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz
   rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
@@ -847,7 +847,7 @@ else
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
-mv -f make_platform.php.txt make_platform.php
+mv -f make_platform.php.txt make_platform.php &> /dev/null
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia &> /dev/null
 fi

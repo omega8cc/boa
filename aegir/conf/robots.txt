@@ -25,7 +25,7 @@ Disallow: /misc/
 Disallow: /modules/
 Disallow: /profiles/
 Disallow: /scripts/
-Disallow: /sites/
+# Disallow: /sites/ # this should be allowed for multisite/images
 Disallow: /themes/
 # Files
 Disallow: /boost_stats.php
