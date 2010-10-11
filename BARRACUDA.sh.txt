@@ -582,7 +582,7 @@ if [ ! -z "$_MY_OWNIP" ] ; then
      _S_T=${_S_N#*.*}
      _S_Q=${_S_N%%${_S_T}}
      _S_E=${_S_Q%*.*}
-     echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT $_S_E" >> /etc/hosts
+     echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT cgp.$_MY_FRONT sqlbuddy.$_MY_FRONT chive.$_MY_FRONT $_S_E" >> /etc/hosts
      hostname -v $_MY_HOSTN ### force our custom FQDN hostname
      echo "$_MY_HOSTN" > /etc/hostname
    fi
