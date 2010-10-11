@@ -53,6 +53,7 @@ _STATUS=INIT
 _LASTNUM=EDIT_LASTNUM
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 _ADM_EMAIL="EDIT_MY_EMAIL"
+_CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _DEBUG_MODE=EDIT_DEBUG_MODE
@@ -367,10 +368,10 @@ if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   rm -f make_home.php
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_client.php.txt ./
   mv -f make_client.php.txt make_client.php &> /dev/null
-  $DRUSHC php-script make_client $_ADM_EMAIL &> /dev/null
+  $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
   rm -f make_client.php
-  $DRUSHC urol "admin" --mail=$_ADM_EMAIL &> /dev/null
-  $DRUSHC urol "aegir account manager" --mail=$_ADM_EMAIL &> /dev/null
+  $DRUSHC urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null
+  $DRUSHC urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
 fi
 
 
