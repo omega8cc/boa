@@ -1761,6 +1761,12 @@ if [ ! -e "/usr/sbin/csf" ] ; then
   tar -xzf csf.tgz
   cd csf
   runner "sh install.sh" &> /dev/null
+  cd /etc/csf
+  mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION &> /dev/null
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/csf.conf ./
+  chmod 600 csf.conf
+  runner "invoke-rc.d csf restart" &> /dev/null
+  runner "invoke-rc.d lfd restart" &> /dev/null
 fi
 
 
