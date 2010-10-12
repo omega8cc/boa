@@ -529,16 +529,18 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+#if [ $_STATUS = "INIT" ] ; then
   if [ ! -e "/usr/sbin/pdnsd" ] ; then
     msg "`date` INFO: Installing DNS cache pdnsd, please wait..."
     mrun "sleep 3"
+    cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
     runner "$_INSTALL pdnsd";
     perl -p -i -e "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
     cat /opt/tmp/nginx-for-drupal/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+    st_runner "invoke-rc.d pdnsd restart" &> /dev/null
     st_runner "invoke-rc.d pdnsd restart" 2> /dev/null
   fi
-fi
+#fi
 
 
 ###--------------------###
