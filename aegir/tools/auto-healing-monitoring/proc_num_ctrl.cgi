@@ -20,8 +20,10 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\tGLOBAL";
+print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
 print "\n $mysqlsumar MySQL procs\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\tGLOBAL" if ($nginxlives);
 print "\n $phpsumar PHP procs\tGLOBAL" if ($phplives);
@@ -29,6 +31,9 @@ print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
 print "\n $memcachesumar Cache procs\tGLOBAL" if ($memcachelives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
 print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
+if (-e "/usr/sbin/pdnsd") {
+  `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
+}
 if (-f "/usr/local/sbin/pure-config.pl") {
   `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
 }

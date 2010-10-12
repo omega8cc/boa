@@ -1755,6 +1755,16 @@ fi
 
 
 ###--------------------###
+if [ ! -e "/usr/sbin/csf" ] ; then
+  cd /var/opt
+  wget -q -U iCab http://www.configserver.com/free/csf.tgz
+  tar -xzf csf.tgz
+  cd csf
+  runner "sh install.sh" &> /dev/null
+fi
+
+
+###--------------------###
 if [ ! -f "/root/.my.cnf" ] ; then
 msg "`date` INFO: MariaDB final setup"
 mrun "sleep 3"
