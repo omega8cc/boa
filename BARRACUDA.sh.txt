@@ -869,7 +869,7 @@ chmod 777 /var/log/php*
 
 ###--------------------###
 #if [ $_STATUS = "INIT" ] ; then
-if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
+if [ ! -f "/var/log/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -933,11 +933,9 @@ if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
     echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
   fi
-  if [ -d "/var/aegir/config/includes" ] ; then
-    cd /var/aegir/config/includes
-    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Mirror $_MIRROR / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./apt-fast-install-log.txt
-    cd /var/opt
-  fi
+  cd /var/log
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Mirror $_MIRROR / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./apt-fast-install-log.txt
+  cd /var/opt
 fi
 
 
