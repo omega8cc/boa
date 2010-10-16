@@ -39,7 +39,7 @@
 _DOMAIN=octopus.aegir.cc
 _USER=octopus
 _MY_EMAIL="noc@omega8.cc"
-_CLIENT_EMAIL="support@omega8.cc"
+_CLIENT_EMAIL="notify@omega8.cc"
 _MY_OWNIP=""
 
 
@@ -49,7 +49,7 @@ _MY_OWNIP=""
 ###
 ### Use this when you experience silent hangs
 ### or other hard to debug problems to display
-### all errors on screen.
+### some errors on screen.
 ###
 ### _DEBUG_MODE=YES
 ###
@@ -130,13 +130,55 @@ _REMOTE_CACHE_IP=127.0.0.1
 
 
 ###----------------------------------------###
+### LOCALHOST ON LOCAL NETWORK             ###
+###----------------------------------------###
+###
+### When enabled, it will force your Nginx web
+### server to listen only on local IP:
+###
+### _LOCAL_NETWORK_IP=10.10.80.80
+###
+### In this example 10.10.80.80 is your local
+### server IP address, where public traffic
+### is NAT'd from another, public IP address.
+###
+### This option is useful when your server is
+### available only in your local network
+### without any public IP address assigned/
+### available on any eth interface. This also
+### means it should work as a handy local
+### setup on your wirelessly connected laptop
+### or netbook, with improved DNS cache
+### support - pdnsd will save results in file.
+###
+### In this case you could use 127.0.1.1 as
+### _LOCAL_NETWORK_IP to avoid issues with
+### DHCP changing your assigned IP on the fly
+### and to avoid conflicts with some other
+### services listening on 127.0.0.1
+###
+### In general: DON'T TRY THIS OPTION, unless
+### you know, what are you doing. It is only
+### to make local install easier and helps
+### with using Aegir on servers without direct
+### connection to the Internet, but again, you
+### must understand how it works.
+###
+### You should use this option only when you
+### already used it with initial Barracuda
+### install. It will override also any
+### defined above _MY_OWNIP value.
+###
+_LOCAL_NETWORK_IP=""
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B.dev5
+_INSTALLER_VERSION=A14.B.dev6
 
-
-## Sys
+## System
 _WEBG=www-data
 _USRG=users
 _DRUSH_VERSION=6.x-3.3
@@ -145,13 +187,13 @@ _DRUSH_VERSION=6.x-3.3
 _COCOMORE=cdc-6.19.8
 _COMMONS=6.x-1.1
 _DRUPAL5=5.23.50
-_DRUPAL7=drupal-7.0-alpha7
+_DRUPAL7=drupal-7.0-beta1
 _MANAGINGNEWS=1.1
 _OPENATRIUM=1-0-beta8
 _OPENPUBLISH=2.2-build285
+_OPENSCHOLAR=2.0-beta8-3.1-mod
 _PROSEPOINT=0.35
 _UBERCART=uberdrupal
-
 
 ###---### Functions
 #
@@ -207,6 +249,7 @@ do
   perl -p -i -e "s/(EDIT_PROSEPOINT)/$_PROSEPOINT/g" $Files
   perl -p -i -e "s/(EDIT_UBERCART)/$_UBERCART/g" $Files
   perl -p -i -e "s/(EDIT_OPENPUBLISH)/$_OPENPUBLISH/g" $Files
+  perl -p -i -e "s/(EDIT_OPENSCHOLAR)/$_OPENSCHOLAR/g" $Files
   perl -p -i -e "s/(EDIT_MANAGINGNEWS)/$_MANAGINGNEWS/g" $Files
   perl -p -i -e "s/(EDIT_OPENATRIUM)/$_OPENATRIUM/g" $Files
   perl -p -i -e "s/(EDIT_COCOMORE)/$_COCOMORE/g" $Files
@@ -228,6 +271,11 @@ rm -f -r /opt/tmp/nginx-for-drupal
 
 ###---### init
 #
+if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
+  _DNS_SETUP_TEST=NO
+  _DEBUG_MODE=YES
+  _MY_OWNIP="$_LOCAL_NETWORK_IP"
+fi
 if ! netcat -w 8 -z github.com 9418 ; then
   _GITHUB_WORKS="NO"
 cat <<EOF

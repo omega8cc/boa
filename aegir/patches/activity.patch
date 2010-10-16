@@ -1,0 +1,19 @@
+diff -urp a/activity.install b/activity.install
+--- a/activity.install	2010-06-30 21:04:18.000000000 +0000
++++ b/activity.install	2010-10-15 21:41:11.000000000 +0000
+@@ -5,7 +5,7 @@ function activity_install() {
+   drupal_install_schema('activity');
+   // Set Trigger's weight to 2 so that it will fire AFTER pathauto. This makes
+   // pathauto alias' work.
+-  if (activity_bad_trigger_weight()) {
++  if (activity_bad_trigger_weight() && isset($_SERVER['HTTP_USER_AGENT'])) {
+     drupal_set_message(t('In order for proper Pathauto behavior with Activity module, the Trigger module\'s weight needs to be fixed up. !clickhere', array('!clickhere' => l(t('Click here to fix Trigger\'s weight'), 'admin/activity/weight', array('query' => drupal_get_destination())))), 'error');
+   }
+ }
+@@ -214,4 +214,4 @@ function activity_update_6201() {
+   $ret = array();
+   db_change_field($ret, 'activity_messages', 'amid', 'amid', array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE));
+   return $ret;
+-}
+\ No newline at end of file
++}

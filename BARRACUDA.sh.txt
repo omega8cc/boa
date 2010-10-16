@@ -32,7 +32,7 @@
 ###
 ### Enter your valid e-mail address below.
 ###
-_MY_EMAIL="support@omega8.cc"
+_MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
@@ -56,7 +56,7 @@ _LOCAL_UBUNTU_MIRROR=""
 ###
 ### Use this when you experience silent hangs
 ### or other hard to debug problems to display
-### all errors on screen.
+### some errors on screen.
 ###
 ### _DEBUG_MODE=YES
 ###
@@ -137,12 +137,6 @@ _AEGIR_VERSION=HEAD
 ### will disable the DNS test completely
 ### below in _DNS_SETUP_TEST).
 ###
-### You can't use "localhost" as your
-### _MY_HOSTN and/or _MY_FRONT, because
-### there is already default Nginx host
-### with this name in every vanilla install
-### and we don't want to override it.
-###
 _MY_OWNIP=""
 _MY_HOSTN=""
 _MY_FRONT=""
@@ -186,13 +180,69 @@ _SMTP_RELAY_HOST=""
 
 
 ###----------------------------------------###
+### LOCALHOST ON LOCAL NETWORK             ###
+###----------------------------------------###
+###
+### When enabled, it will force your Nginx web
+### server to listen only on local IP with
+### local hostname:
+###
+### _LOCAL_NETWORK_IP=10.10.80.80
+### _LOCAL_NETWORK_HN=aegir.local
+###
+### In this example 10.10.80.80 is your local
+### server IP address, where public traffic
+### is NAT'd from another, public IP address.
+###
+### In this case "aegir.local" will be used
+### as your hostname and all connections and
+### grants will use "aegir.local" instead of
+### FQDN. Also your core Hostmaster will be
+### available at http://aegir.local
+###
+### This option is useful when your server is
+### available only in your local network
+### without any public IP address assigned/
+### available on any eth interface. This also
+### means it should work as a handy local
+### setup on your wirelessly connected laptop
+### or netbook, with improved DNS cache
+### support - pdnsd will save results in file.
+###
+### In this case you could use 127.0.1.1 as
+### _LOCAL_NETWORK_IP to avoid issues with
+### DHCP changing your assigned IP on the fly
+### and to avoid conflicts with some other
+### services listening on 127.0.0.1
+###
+### This option works only with initial
+### install and is disabled for upgrades.
+### When used, it will override all defined
+### above _MY_OWNIP, _MY_HOSTN and _MY_FRONT.
+### It will also disable all DNS and SMTP
+### relay tests automatically. It will also
+### enable debug mode by default.
+###
+### In general: DON'T TRY THIS OPTION, unless
+### you know, what are you doing. It is only
+### to make local install easier and helps
+### with using Aegir on servers without direct
+### connection to the Internet, but again, you
+### must understand how it works.
+###
+_LOCAL_NETWORK_IP=""
+_LOCAL_NETWORK_HN=""
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B.dev5
+_INSTALLER_VERSION=A14.B.dev6
 _NGINX_VERSION=0.8.52
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
+_NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
 #
@@ -255,7 +305,8 @@ not_supported_os () {
     msg "== FATAL ERROR =="
     msg "Invalid install script or OS used."
     msg "It is not any supported Ubuntu or Debian version. Sorry."
-    msg "You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty)."
+    msg "You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty),"
+    msg "or Jolicloud (Robby)."
     msg "Ciao... :)"
     exit 1
 }
@@ -351,6 +402,11 @@ install_redis_src () {
   chown redis:redis /var/lib/redis
   runner "invoke-rc.d redis-server start" 2> /dev/null
 }
+#
+# Fix this on upgrade
+fix_on_upgrade () {
+  perl -p -i -e "s/apc.include_once_override = 1/apc.include_once_override = 0/g" /opt/etc/php.ini
+}
 
 
 ###--------------------###
@@ -386,6 +442,7 @@ chmod -R 777 /opt/tmp
 
 ###--------------------###
 if [ $_STATUS = "UPGRADE" ] ; then
+  fix_on_upgrade
   if [ ! -f "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
 cat <<EOF
@@ -537,7 +594,10 @@ fi
     runner "$_INSTALL pdnsd";
     perl -p -i -e "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
     cat /opt/tmp/nginx-for-drupal/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-    st_runner "invoke-rc.d pdnsd restart" &> /dev/null
+    mrun "sleep 3"
+    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    mrun "sleep 3"
     st_runner "invoke-rc.d pdnsd restart" 2> /dev/null
   fi
 #fi
@@ -584,6 +644,24 @@ mrun "sleep 3"
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
+  if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
+    if [ -z "$_LOCAL_NETWORK_HN" ] ; then
+      msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
+      exit 1
+    else
+      _DNS_SETUP_TEST=NO
+      _SMTP_RELAY_TEST=NO
+      _DEBUG_MODE=YES
+      _MY_OWNIP="$_LOCAL_NETWORK_IP"
+      _MY_HOSTN="$_LOCAL_NETWORK_HN"
+      _MY_FRONT="$_LOCAL_NETWORK_HN"
+    fi
+  fi
+fi
+
+
+###--------------------###
+if [ $_STATUS = "INIT" ] ; then
 if [ -e "/proc/bean_counters" ] ; then
    _VMFAMILY="VZ"
    _IFCONFIG="venet0:0"
@@ -597,9 +675,14 @@ if [ ! -z "$_MY_OWNIP" ] ; then
      _S_T=${_S_N#*.*}
      _S_Q=${_S_N%%${_S_T}}
      _S_E=${_S_Q%*.*}
-     echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT cgp.$_MY_FRONT sqlbuddy.$_MY_FRONT chive.$_MY_FRONT $_S_E" >> /etc/hosts
-     hostname -v $_MY_HOSTN ### force our custom FQDN hostname
+     if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
+       echo "$_MY_OWNIP $_MY_FRONT cgp.$_MY_FRONT sqlbuddy.$_MY_FRONT chive.$_MY_FRONT $_S_E" >> /etc/hosts
+     else
+       echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT cgp.$_MY_FRONT sqlbuddy.$_MY_FRONT chive.$_MY_FRONT $_S_E" >> /etc/hosts
+     fi
+     hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
      echo "$_MY_HOSTN" > /etc/hostname
+     echo "$_MY_HOSTN" > /etc/mailname
    fi
    _THISHTIP="$_MY_OWNIP"
    _THISHOST="$_MY_HOSTN"
@@ -706,6 +789,7 @@ echo " "
 exit 1
 else
 echo "$_THISHOST" > /etc/hostname
+echo "$_THISHOST" > /etc/mailname
 hostname -v $_THISHOST
 msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
 msg "Please double check whether this is a valid result of my test."
@@ -719,7 +803,7 @@ cat <<EOF
   * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
   * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
 
-  NOTE: If your outgoing SMTP requires using relayhost, define first _SMTP_RELAY_HOST.
+  NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
 
   * Your core Aegir instance control panel will be available at https://$_THIS_FRONT.
   * Your (optional) MultiCore Apache Solr Tomcat will listen on localhost:8080.
@@ -731,7 +815,7 @@ cat <<EOF
   NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
         subdomains point to your IP (we recommend using wildcard DNS to simplify it).
         But don't worry, you can add proper DNS entries for those subdomains later,
-        if you didn't enable wildcard DNS yet. Barracuda can install it now, anyway.
+        if you didn't enable wildcard DNS yet. Barracuda can install it all now, anyway.
 
 EOF
 echo " "
@@ -788,7 +872,7 @@ chmod 777 /var/log/php*
 if [ ! -f "/var/aegir/config/includes/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
-  mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
     if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
       msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
@@ -990,7 +1074,7 @@ if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
   msg "`date` INFO: No fix required"
 else
   cd /etc/init.d
-  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx ./
   chmod 755 /etc/init.d/nginx
   msg "`date` INFO: Fix for Nginx startup script applied"
@@ -1038,10 +1122,10 @@ msg "`date` INFO: Install/upgrade a few more tools, please wait..."
 mrun "sleep 3"
 cd /var
 if [ -d "/var/xdrago" ] ; then
-  cp -af /opt/etc/init.d /var/xdrago/log/init.d-pre-$_INSTALLER_VERSION
-  cp -af /var/spool/cron/crontabs/root /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION
-  touch /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION
-  cp -af /var/xdrago /var/xdrago-pre-$_INSTALLER_VERSION
+  cp -af /opt/etc/init.d /var/xdrago/log/init.d-pre-$_INSTALLER_VERSION-$_NOW
+  cp -af /var/spool/cron/crontabs/root /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION-$_NOW
+  touch /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION-$_NOW
+  cp -af /var/xdrago /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW
 fi
 if [ $_STATUS = "INIT" ] ; then
   mkdir -p ./xdrago
@@ -1067,8 +1151,8 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f /opt/tmp/.xemail.txt
   runner "sh /usr/sbin/apticron"
 fi
-if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION" ] ; then
-  cp -af /var/xdrago-pre-$_INSTALLER_VERSION/run* /var/xdrago/
+if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
+  cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run* /var/xdrago/
 fi
 chmod 700 /var/xdrago/*
 chmod 700 /var/xdrago
@@ -1123,7 +1207,7 @@ msg "`date` NOTE: This step can take longer than 8 minutes (depending on your se
 mrun "sleep 3"
 cd /var/opt
 rm -f -r /var/opt/php*
-mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION &> /dev/null
+mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 rm -f /etc/init.d/php-fpm*
 wget -q -U iCab http://www.php.net/distributions/php-5.2.14.tar.gz
 wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz
@@ -1477,7 +1561,7 @@ msg "`date` INFO: Fix for advanced Nginx config and Drush path"
 mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
-mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
+mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
@@ -1486,9 +1570,9 @@ cd /var/aegir/drush
 cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
 cd /var/aegir
-if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
-  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
-  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
+if [ ! -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
+  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
+  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
 fi
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
@@ -1511,6 +1595,10 @@ else
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
+    if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
+      cd /var/aegir/config/server_master/nginx
+      mv conf.d pre.d
+    fi
     cd /var/aegir
     cp /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
     perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
@@ -1518,7 +1606,7 @@ else
     perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
-    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
+    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
     mv -f global.inc.aegir.txt global.inc &> /dev/null
     cd /var/aegir
@@ -1538,12 +1626,12 @@ if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
 msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
-  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ &> /dev/null
   cd /var/www/nginx-default
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ &> /dev/null
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
-  mv -f index.html index.html-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx &> /dev/null
@@ -1553,7 +1641,7 @@ fi
 
 
 ###--------------------###
-if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; then
+if [ ! -f "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   msg "`date` INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
   mrun "sleep 3"
   _HTTPS_TEST=`netstat -lnW | grep :443 2>&1`
@@ -1581,13 +1669,13 @@ mrun "sleep 30"
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
     fi
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-    cd /var/aegir/config/server_master/nginx/conf.d
+    cd /var/aegir/config/server_master/nginx/pre.d
     cp -a /opt/tmp/nginx-for-drupal/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
-    perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf &> /dev/null
+    perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
+      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
     if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
@@ -1766,8 +1854,9 @@ if [ ! -e "/usr/sbin/csf" ] ; then
   cd csf
   runner "sh install.sh" &> /dev/null
   cd /etc/csf
-  mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION &> /dev/null
+  mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/csf.conf ./
+  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" csf.conf
   chmod 600 csf.conf
   runner "invoke-rc.d csf restart" &> /dev/null
   runner "invoke-rc.d lfd restart" &> /dev/null

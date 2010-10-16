@@ -34,6 +34,7 @@ _DRUPAL7=EDIT_DRUPAL7
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _OPENATRIUM=EDIT_OPENATRIUM
 _OPENPUBLISH=EDIT_OPENPUBLISH
+_OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PROSEPOINT=EDIT_PROSEPOINT
 _UBERCART=EDIT_UBERCART
 
@@ -63,6 +64,7 @@ _DIST_INSTALL=NO
 _HOT_SAUCE=EDIT_HOT_SAUCE
 _REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
 _DEBUG_MODE=EDIT_DEBUG_MODE
+_NOW=`date +%y%m%d-%H%M`
 
 
 ###---### Functions
@@ -366,7 +368,7 @@ if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; t
       mrun "sleep 3"
       cd /data/conf
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION &> /dev/null
+      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
       if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
         killall nginx &> /dev/null
@@ -564,6 +566,9 @@ if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites" ] ; then
     ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/fserver/sites" ] ; then
     ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver

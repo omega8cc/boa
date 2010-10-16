@@ -1,0 +1,13 @@
+Index: imagefield_crop.module
+===================================================================
+--- imagefield_crop.module	(revision 1120)
++++ imagefield_crop.module	(working copy)
+@@ -45,6 +45,8 @@
+  * Delegated to filefield.
+  */
+ function imagefield_crop_widget_settings($op, $widget) {
++  // make sure we have the functions as this may be called from update.php
++  module_load_include('inc', 'imagefield_crop', 'imagefield_crop_widget');
+   switch ($op) {
+     case 'form':
+       return imagefield_crop_widget_settings_form($widget);

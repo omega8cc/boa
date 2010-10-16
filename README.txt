@@ -56,7 +56,7 @@ so it is your responsibility to use such system wisely.
 * Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
 * Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
 * Debian 5.0 Lenny minimal OS 32/64bit fresh install.
-* For HEAD installs, the Git standard port 9418 must be open.
+* The Git standard port 9418 must be open.
 
 
 ### PROVIDES

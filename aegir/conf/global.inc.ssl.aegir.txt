@@ -1,19 +1,30 @@
 <?php # global settings.php
 
+$conf['page_compression'] = 0; // required for Nginx
+
 if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
 
-  $conf['page_compression'] = 0; // required for Nginx
   if (isset($_SERVER['HTTP_HOST'])) {
     $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
   }
+
+  if (isset($_SERVER['REQUEST_URI'])) {
+    $request_uri = $_SERVER['REQUEST_URI'];
+  }  
   
-  if(preg_match("/hostmaster/", $conf['install_profile'])) {
+  if(preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
     if ($request_type != "SSL") { // we force secure connection here
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
     }
     $conf['hosting_ignore_default_profiles'] = 1;
+  }
+
+  if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', TRUE);
+    ini_set('display_startup_errors', TRUE);
   }
 
   if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {

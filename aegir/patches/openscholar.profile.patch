@@ -1,0 +1,128 @@
+diff -urp a/openscholar.profile b/openscholar.profile
+--- a/openscholar.profile	2010-08-24 20:16:19.000000000 +0000
++++ b/openscholar.profile	2010-10-16 01:00:00.000000000 +0000
+@@ -35,16 +35,43 @@ function openscholar_profile_modules() {
+   );
+ }
+ 
++
++/**
++ * Returns an array list of core contributed modules to be installed first.
++ */
++function _openscholar_core_modules_first() {
++ $contrib_modules = array(
++  //cck
++    'content',
++    'content_copy',
++    'diff',
++    'date_timezone',
++    'date_api',
++    'date',
++    'date_popup',
++    'filefield',
++    'fieldgroup',
++    'imagecache',
++    'imagecache_ui',
++    'imagefield',
++    'link',
++    'text',
++    'number',
++    'nodereference',
++    'nodereference_url',
++    'optionwidgets',
++  );
++  return $contrib_modules;
++}
++
++
+ /**
+  * Returns an array list of core contributed modules.
+  */
+ function _openscholar_core_modules() {
+  $contrib_modules = array(
+-  // sites/all/contrib
+-    'activity',
+     'addthis',
+     'advanced_help',
+-    'calendar',
+     'litecal',
+     'context',
+     'context_contrib',
+@@ -83,7 +110,6 @@ function _openscholar_core_modules() {
+     'stringoverrides',
+     'strongarm',
+     'token',
+-    'trigger',
+     'transliteration',
+     'twitter_pull',
+     'ucreate',
+@@ -95,38 +121,17 @@ function _openscholar_core_modules() {
+     'views_attach',
+     'vertical_tabs',
+     'wysiwyg',
+-  
+-  //cck
+-    'content',
+-    'content_copy',
+-    'diff',
+-    'date_timezone',
+-    'date_api',
+-    'date',
+-    'date_popup',
+-    'filefield',
+-    'fieldgroup',
+-    'imagecache',
+-    'imagecache_ui',
+-    'imagefield',
+-    'imagefield_crop',
+-    'link',
+-    'text',
+-    'number',
+-    'nodereference',
+-    'nodereference_url',
+-    'optionwidgets',
+-
+     'install_profile_api',
+     'schema',
+- 
+     // Optional Development Resources
+-    //'admin_menu',
++    'admin_menu',
+     //'devel',
+     //'devel_generate',
+-    
++    'calendar',
++    'trigger',
++    'imagefield_crop',
++    'activity',
+   );
+-  
+   return $contrib_modules;
+ }
+ 
+@@ -190,8 +195,6 @@ function openscholar_profile_task_list()
+   global $conf;
+   $conf['site_name'] = 'OpenScholar';
+   $conf['site_footer'] = '<a href="http://openscholar.harvard.edu">OpenScholar</a> by <a href="http://iq.harvard.edu">IQSS</a> at Harvard University';
+-  
+-  
+   $tasks = array(
+     'openscholar-configure' => st('openscholar  configuration'),
+   );
+@@ -206,11 +209,15 @@ function openscholar_profile_tasks(&$tas
+   $output = '';
+ 
+   if ($task == 'profile') {
++
++    $modules_first = _openscholar_core_modules_first();
+     $modules = _openscholar_core_modules();
+     $modules = array_merge($modules, _openscholar_scholar_modules());
+-
+     $files = module_rebuild_cache();
+     $operations = array();
++    foreach ($modules_first as $module) {
++      $operations[] = array('_install_module_batch', array($module, $files[$module]->info['name']));
++    }
+     foreach ($modules as $module) {
+       $operations[] = array('_install_module_batch', array($module, $files[$module]->info['name']));
+     }
