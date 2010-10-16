@@ -2,6 +2,12 @@
 
 $conf['page_compression'] = 0; // required for Nginx
 
+  if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', TRUE);
+    ini_set('display_startup_errors', TRUE);
+  }
+
 if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
 
   if (isset($_SERVER['HTTP_HOST'])) {
@@ -10,12 +16,6 @@ if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // d
 
   if(preg_match("/hostmaster/", $conf['install_profile'])) {
     $conf['hosting_ignore_default_profiles'] = 1;
-  }
-
-  if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', TRUE);
-    ini_set('display_startup_errors', TRUE);
   }
 
   if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
