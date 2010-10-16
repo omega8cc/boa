@@ -148,7 +148,7 @@ create_dirs () {
   mkdir -p ./cache/normal
   chmod 777 -R ./cache
   if [ -f "./sites/default/default.settings.php" ] ; then
-    cp -f ./sites/default/default.settings.php ./sites/default/settings.php
+    cp -af ./sites/default/default.settings.php ./sites/default/settings.php
   fi
   chmod a+rw ./sites/default/settings.php
   chmod a+rwx ./sites/default/files
@@ -765,6 +765,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
   cp -af /opt/tmp/nginx-for-drupal/aegir/patches/imagefield_crop.patch ./
   patch -p0 < imagefield_crop.patch &> /dev/null
+  cd $_CORE/openscholar-$_OPENSCHOLAR
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR
