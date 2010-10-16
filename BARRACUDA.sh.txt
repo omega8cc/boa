@@ -1564,8 +1564,8 @@ cd /var/aegir/config/includes
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
-# mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
-# ln -s nginx_advanced_include.conf nginx_simple_include.conf
+mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
+ln -s nginx_advanced_include.conf nginx_simple_include.conf
 cd /var/aegir/drush
 cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
