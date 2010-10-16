@@ -1564,16 +1564,16 @@ cd /var/aegir/config/includes
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
-mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
-ln -s nginx_advanced_include.conf nginx_simple_include.conf
+# mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
+# ln -s nginx_advanced_include.conf nginx_simple_include.conf
 cd /var/aegir/drush
 cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
 cd /var/aegir
-if [ ! -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
-  echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
-  echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
-fi
+# if [ ! -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
+#   echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
+#   echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
+# fi
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
@@ -1598,6 +1598,9 @@ else
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
       cd /var/aegir/config/server_master/nginx
       mv conf.d pre.d
+      if [ -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
+        rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
+      fi
     fi
     cd /var/aegir
     cp /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./

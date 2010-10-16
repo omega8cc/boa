@@ -333,10 +333,6 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
     ln -s nginx_advanced_include.conf nginx_simple_include.conf
   fi
-  if [ ! -f "/var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf" ] ; then
-    echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
-    echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/conf.d/custom_nginx.conf
-  fi
   chgrp -R $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/files
   chgrp $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/settings.php
   rm -f -r $_AEGIR_ROOT/themes/bluemarine
@@ -358,7 +354,7 @@ fi
 
 ###---### Forced SSL settings
 #
-if [ -f "/var/aegir/config/server_master/nginx/conf.d/nginx_wild_ssl.conf" ] ; then
+if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
     _SSL_TEST=`cat /data/conf/global.inc 2>&1`
     if [[ $_SSL_TEST =~ HTTP_X_FORWARDED_PROTO ]] ; then
