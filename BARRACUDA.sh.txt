@@ -1882,6 +1882,7 @@ fi
 ###--------------------###
 if [ ! -e "/usr/sbin/csf" ] ; then
   cd /var/opt
+  rm -f /var/xdrago/log/lastFire
   wget -q -U iCab http://www.configserver.com/free/csf.tgz
   tar -xzf csf.tgz
   cd csf
@@ -1890,7 +1891,14 @@ if [ ! -e "/usr/sbin/csf" ] ; then
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/csf.conf ./
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" csf.conf
-  chmod 600 csf.conf
+  chmod 600 csf.conf 
+  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+  runner "invoke-rc.d csf restart" &> /dev/null
+  runner "invoke-rc.d lfd restart" &> /dev/null
+fi
+if [ -f "/var/xdrago/log/lastFire" ] ; then
+  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+  rm -f /var/xdrago/log/lastFire
   runner "invoke-rc.d csf restart" &> /dev/null
   runner "invoke-rc.d lfd restart" &> /dev/null
 fi
