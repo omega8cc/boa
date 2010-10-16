@@ -255,6 +255,10 @@ if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt
   echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 fi
+if [ -e "/usr/sbin/named" ] ; then
+  echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
+  echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
 AEGIR_HOST=`hostname -f`
