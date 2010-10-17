@@ -76,6 +76,42 @@ so it is your responsibility to use such system wisely.
 * Limited shell and FTPS separate accounts per Octopus instance.
 
 
+### OCTOPUS PLATFORMS
+
+Octopus can install the platforms listed below:
+
+ Atrium 1.0-beta8 ----------- http://openatrium.com
+ Managing News 1.1 ---------- http://managingnews.com
+ Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
+ Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
+ OpenPublish 2.2.285 -------- http://openpublishapp.com
+ OpenScholar 2.0-b8-3.1 ----- http://openscholar.harvard.edu
+ ProsePoint 0.35 ------------ http://prosepoint.org
+ Ubercart ------------------- http://ubercart.org
+ Drupal 5.23 Pressflow ------ http://pressflow.org
+ Drupal 6.19 Pressflow ------ http://pressflow.org
+ Drupal 6.19 Cocomore ------- http://drupal.cocomore.com
+ Drupal 7.0-beta1 ----------- http://drupal.org/project/drupal
+ Feature Server ------------- http://bit.ly/fserver
+                              http://bit.ly/fservermore
+
+All 5/6 platforms have been enhanced using Pressflow Drupal core.
+
+There are also some useful and/or performance related modules
+added to all 6.x platforms:
+
+ cache-6.x-1.x-dev
+ boost-6.x-1.x-dev
+ dbtuner-6.x-1.x-dev
+ views_content_cache-6.x-2.x-dev
+ filefield_nginx_progress-6.x-1.x-dev
+ securesite-6.x-2.4
+ backup_migrate-6.x-2.x-dev
+ openidadmin-6.x-1.2
+ elysia_cron-6.x-1.x-dev
+ session_expire-6.x-1.x-dev
+
+
 ### BUG SUBMISSION
 
 * Please follow bug submission guidelines:

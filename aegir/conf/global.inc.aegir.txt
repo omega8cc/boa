@@ -1,12 +1,21 @@
 <?php # global settings.php
 
-$conf['page_compression'] = 0; // required for Nginx
+$conf['page_compression'] = 0; // required for Nginx, since it already compresses everything
 
-  if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
-    error_reporting(E_ALL);
-    ini_set('display_errors', TRUE);
-    ini_set('display_startup_errors', TRUE);
-  }
+if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+  error_reporting(E_ALL);
+  ini_set('display_errors', TRUE);
+  ini_set('display_startup_errors', TRUE);
+  unset($conf['cache']); // disable hardcoded caching
+}
+
+if (isset($_SERVER['HTTP_HOST'])) {
+  $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
+}
+
+// Improve sessions management if module session_expire is not used
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_divisor', 100);
 
 if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
 
