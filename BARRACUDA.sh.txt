@@ -1238,13 +1238,14 @@ perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /u
 msg "`date` INFO: Installing memcache for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://pecl.php.net/get/memcache-3.0.3.tgz
-tar -xzf memcache-3.0.3.tgz
-cd /var/opt/memcache-3.0.3
+wget -q -U iCab http://pecl.php.net/get/memcache-3.0.5.tgz
+tar -xzf memcache-3.0.5.tgz
+cd /var/opt/memcache-3.0.5
 st_runner "/usr/local/bin/phpize" &> /dev/null
 st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" &> /dev/null
 st_runner "make --quiet" &> /dev/null
 st_runner "make --quiet install" &> /dev/null
+echo "memcache-3.0.5" > /var/log/memcache-3.0.5
 
 
 ###--------------------###
@@ -1309,6 +1310,21 @@ cp -af /var/opt/ioncube/* /usr/local/ioncube/
 ###
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
+
+
+###--------------------###
+if [ ! -e "/var/log/memcache-3.0.5" ] ; then
+  msg "`date` INFO: Installing memcache upgrade for php, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  wget -q -U iCab http://pecl.php.net/get/memcache-3.0.5.tgz
+  tar -xzf memcache-3.0.5.tgz
+  cd /var/opt/memcache-3.0.5
+  st_runner "/usr/local/bin/phpize" &> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" &> /dev/null
+  st_runner "make --quiet" &> /dev/null
+  st_runner "make --quiet install" &> /dev/null
+fi
 
 
 ###--------------------###

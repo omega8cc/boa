@@ -18,14 +18,6 @@ ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 100);
 
 if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
-
-  if (isset($_SERVER['HTTP_HOST'])) {
-    $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
-  }
-
-  if (isset($_SERVER['REQUEST_URI'])) {
-    $request_uri = $_SERVER['REQUEST_URI'];
-  }  
   
   if(preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
@@ -34,8 +26,11 @@ if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // d
       header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
     }
     $conf['hosting_ignore_default_profiles'] = 1;
+    if(isset($_SERVER['HTTP_HOST'])) {
+      $base_url = 'https://' . $_SERVER['HTTP_HOST'];
+    }
   }
-
+  
   if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
     $conf['preprocess_css'] = 1;
     $conf['preprocess_js'] = 1;

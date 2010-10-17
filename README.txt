@@ -103,6 +103,7 @@ added to all 6.x platforms:
  cache-6.x-1.x-dev
  boost-6.x-1.x-dev
  dbtuner-6.x-1.x-dev
+ javascript_aggregator-6.x-1.x-dev
  views_content_cache-6.x-2.x-dev
  filefield_nginx_progress-6.x-1.x-dev
  securesite-6.x-2.4
