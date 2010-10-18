@@ -70,6 +70,9 @@ so it is your responsibility to use such system wisely.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.
 * Redis and Memcached chained cache with DB failover.
+* Fast proxy DNS server (pdnsd) with permanent caching.
+* Bind9 DNS server integrated with experimental Aegir DNS feature.
+* Webmin Control Panel.
 * Chive database manager in "chive." subdomain.
 * SQL Buddy database manager in "sqlbuddy." subdomain.
 * Collectd server monitor in "cgp." subdomain.

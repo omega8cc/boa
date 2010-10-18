@@ -13,20 +13,24 @@ if (isset($_SERVER['HTTP_HOST'])) {
   $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
 }
 
-// Improve sessions management if module session_expire is not used
+// Improve sessions management if module session_expire and/or Pressflow core is not used.
+// It is already enabled in the php.ini, but we are forcing it here, just in case.
 ini_set('session.gc_probability', 1);
-ini_set('session.gc_divisor', 100);
+ini_set('session.gc_divisor', 1000);
 
 if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
 
   if(preg_match("/hostmaster/", $conf['install_profile'])) {
     $conf['hosting_ignore_default_profiles'] = 1;
+    unset($conf['cache']); // disable hardcoded caching
   }
 
   if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
     $conf['preprocess_css'] = 1;
     $conf['preprocess_js'] = 1;
-    $conf['cache'] = 1;
+    if(!preg_match("/hostmaster/", $conf['install_profile'])) {
+      $conf['cache'] = 1;
+    }
     $conf['error_level'] = 0;
     $conf['statistics_enable_access_log'] = 0;
     if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/cache/", $_SERVER['HTTP_COOKIE']) && preg_match("/SESS/", $_SERVER['HTTP_COOKIE'])) {
