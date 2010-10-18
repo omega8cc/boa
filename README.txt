@@ -103,14 +103,18 @@ added to all 6.x platforms:
  cache-6.x-1.x-dev
  boost-6.x-1.x-dev
  dbtuner-6.x-1.x-dev
- javascript_aggregator-6.x-1.x-dev
- views_content_cache-6.x-2.x-dev
- filefield_nginx_progress-6.x-1.x-dev
- securesite-6.x-2.4
- backup_migrate-6.x-2.x-dev
- openidadmin-6.x-1.2
+ expire-6.x-1.x-dev
  elysia_cron-6.x-1.x-dev
  session_expire-6.x-1.x-dev
+ javascript_aggregator-6.x-1.x-dev
+ css_emimage-6.x-2.x-dev
+ views_content_cache-6.x-2.x-dev
+ views404-6.x-1.x-dev
+ filefield_nginx_progress-6.x-1.x-dev
+ securesite-6.x-2.4
+ session443-6.x-1.x-dev
+ backup_migrate-6.x-2.x-dev
+ openidadmin-6.x-1.2
 
 
 ### BUG SUBMISSION

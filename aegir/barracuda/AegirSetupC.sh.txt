@@ -315,6 +315,10 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/javascript_aggregator-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
   tar -xzf cache.tar.gz
   tar -xzf boost-6.x-1.x-dev.tar.gz
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz
@@ -328,6 +332,10 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf elysia_cron-6.x-1.x-dev.tar.gz
   tar -xzf session_expire-6.x-1.x-dev.tar.gz
   tar -xzf javascript_aggregator-6.x-1.x-dev.tar.gz
+  tar -xzf css_emimage-6.x-2.x-dev.tar.gz
+  tar -xzf views404-6.x-1.x-dev.tar.gz
+  tar -xzf expire-6.x-1.x-dev.tar.gz
+  tar -xzf session443-6.x-1.x-dev.tar.gz
   rm -f *.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/authcache-6.x-1.0-rc2.tar.gz
