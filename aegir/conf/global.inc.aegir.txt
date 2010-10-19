@@ -1,6 +1,8 @@
 <?php # global settings.php
 
 $conf['page_compression'] = 0; // required for Nginx, since it already compresses everything
+unset($conf['session.cookie_lifetime']); // disable forced log-out on browser quit
+ini_set('session.cookie_lifetime', 200000); // set standard default value
 
 if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
   error_reporting(E_ALL);
@@ -23,6 +25,7 @@ if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // d
   if(preg_match("/hostmaster/", $conf['install_profile'])) {
     $conf['hosting_ignore_default_profiles'] = 1;
     unset($conf['cache']); // disable hardcoded caching
+    ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
   }
 
   if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
