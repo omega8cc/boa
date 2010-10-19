@@ -1,0 +1,19 @@
+diff -aburN --exclude='CVS*' drupal_commons.orig/profiles/drupal_commons/drupal_commons.profile drupal_commons/profiles/drupal_commons/drupal_commons.profile
+--- drupal_commons.orig/profiles/drupal_commons/drupal_commons.profile	2010-08-17 08:36:12.000000000 +1000
++++ drupal_commons/profiles/drupal_commons/drupal_commons.profile	2010-10-11 12:46:40.428489204 +1100
+@@ -177,6 +177,7 @@
+  *   modify the $task, otherwise discarded.
+  */
+ function drupal_commons_profile_tasks(&$task, $url) {
++  drupal_commons_config_vars();
+   drupal_commons_build_directories();
+   drupal_commons_config_taxonomy();
+   drupal_commons_config_profile();
+@@ -193,7 +194,6 @@
+   drupal_commons_config_views();
+   drupal_commons_config_theme();
+   drupal_commons_config_images();
+-  drupal_commons_config_vars();
+   drupal_commons_cleanup();
+ }
+ 
