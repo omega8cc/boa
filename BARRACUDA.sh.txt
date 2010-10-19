@@ -594,11 +594,14 @@ fi
     runner "$_INSTALL pdnsd";
     perl -p -i -e "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
     cat /opt/tmp/nginx-for-drupal/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-    mrun "sleep 3"
     st_runner "invoke-rc.d pdnsd stop" &> /dev/null
     rm -f /var/cache/pdnsd/pdnsd.cache
+    st_runner "invoke-rc.d pdnsd start" &> /dev/null
     mrun "sleep 3"
-    st_runner "invoke-rc.d pdnsd restart" 2> /dev/null
+    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+    mrun "sleep 3"
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    st_runner "invoke-rc.d pdnsd start" 2> /dev/null
   fi
 #fi
 
@@ -1611,13 +1614,6 @@ else
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
-    if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
-      cd /var/aegir/config/server_master/nginx
-      mv conf.d pre.d
-      if [ -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
-        rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
-      fi
-    fi
     cd /var/aegir
     cp /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
     perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
@@ -1630,6 +1626,15 @@ else
     mv -f global.inc.aegir.txt global.inc &> /dev/null
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
+    if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
+      if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
+        cd /var/aegir/config/server_master/nginx
+        cp -a conf.d pre.d
+      fi
+      if [ -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
+        rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
+      fi
+    fi
     msg "`date` INFO: core Aegir Hostmaster instance upgrade completed"
   else
     msg "`date` INFO: core Aegir Hostmaster instance not upgraded this time"
