@@ -1327,6 +1327,7 @@ if [ ! -e "/var/log/memcache-3.0.5" ] ; then
   st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" &> /dev/null
   st_runner "make --quiet" &> /dev/null
   st_runner "make --quiet install" &> /dev/null
+  echo "memcache-3.0.5" > /var/log/memcache-3.0.5
 fi
 
 
