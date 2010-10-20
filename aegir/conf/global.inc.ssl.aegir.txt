@@ -1,6 +1,7 @@
 <?php # global settings.php
 
 $conf['page_compression'] = 0; // required for Nginx, since it already compresses everything
+$conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
 unset($conf['session.cookie_lifetime']); // disable forced log-out on browser quit
 ini_set('session.cookie_lifetime', 200000); // set standard default value
 
