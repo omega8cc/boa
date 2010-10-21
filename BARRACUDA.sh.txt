@@ -1690,8 +1690,18 @@ EOF
 mrun "sleep 30"
   else
     _HTTPS_TEST=FREE
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
+      if [ -z "$_LOCAL_NETWORK_HN" ] ; then
+        msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
+        exit 1
+      else
+        _MY_OWNIP="$_LOCAL_NETWORK_IP"
+        _MY_HOSTN="$_LOCAL_NETWORK_HN"
+        _MY_FRONT="$_LOCAL_NETWORK_HN"
+        _THISHTIP="$_LOCAL_NETWORK_IP"
+      fi
+    else
+      _THISHTIP="hostname -i"
     fi
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch &> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
