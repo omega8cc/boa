@@ -2,18 +2,25 @@
 
 $conf['page_compression'] = 0; // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
-unset($conf['session.cookie_lifetime']); // disable forced log-out on browser quit
-ini_set('session.cookie_lifetime', 200000); // set standard default value
 
-if(isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
-  error_reporting(E_ALL);
-  ini_set('display_errors', TRUE);
-  ini_set('display_startup_errors', TRUE);
-  unset($conf['cache']); // disable hardcoded caching
+ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
+ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
+ini_set('session.gc_maxlifetime', 172800);  // set it also to 48 hours max
+
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+   error_reporting(E_ALL);
+   ini_set('display_errors', TRUE);
+   ini_set('display_startup_errors', TRUE);
+   unset($conf['cache']); // disable hardcoded caching
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
-  $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
+   $cookie_domain = $_SERVER['HTTP_HOST']; // required by some Drupal modules
+}
+
+// http://drupal.org/node/912682#comment-3503636
+if (preg_match("/(managingnews)/", $conf['install_profile'])) { 
+   ini_set('auto_detect_line_endings', TRUE);
 }
 
 // Improve sessions management if module session_expire and/or Pressflow core is not used.
@@ -21,33 +28,33 @@ if (isset($_SERVER['HTTP_HOST'])) {
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
-if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
+if (!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
   
-  if(preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
-    if ($request_type != "SSL") { // we force secure connection here
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-    }
-    $conf['hosting_ignore_default_profiles'] = 1;
-    if(isset($_SERVER['HTTP_HOST'])) {
-      $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-    }
-    unset($conf['cache']); // disable hardcoded caching
-    ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
+  if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+     if ($request_type != "SSL") { // we force secure connection here
+        header("HTTP/1.1 301 Moved Permanently");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+     }
+     $conf['hosting_ignore_default_profiles'] = 1;
+     if (isset($_SERVER['HTTP_HOST'])) {
+        $base_url = 'https://' . $_SERVER['HTTP_HOST'];
+     }
+     unset($conf['cache']); // disable hardcoded caching
+     ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
   }
   
-  if(isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
-    $conf['preprocess_css'] = 1;
-    $conf['preprocess_js'] = 1;
-    if(!preg_match("/hostmaster/", $conf['install_profile'])) {
-      $conf['cache'] = 1;
-    }
-    $conf['error_level'] = 0;
-    $conf['statistics_enable_access_log'] = 0;
-    if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/cache/", $_SERVER['HTTP_COOKIE']) && preg_match("/SESS/", $_SERVER['HTTP_COOKIE'])) {
-    $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
-    $conf['cache_settings'] = array(
+  if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+     $conf['preprocess_css'] = 1;
+     $conf['preprocess_js'] = 1;
+     if (!preg_match("/hostmaster/", $conf['install_profile'])) {
+        $conf['cache'] = 1;
+     }
+     $conf['error_level'] = 0;
+     $conf['statistics_enable_access_log'] = 0;
+     if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/cache/", $_SERVER['HTTP_COOKIE']) && preg_match("/SESS/", $_SERVER['HTTP_COOKIE'])) {
+     $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
+     $conf['cache_settings'] = array(
       'engines' => array(
         'redis-engine' => array(
           'engine' => 'redis',
@@ -210,8 +217,8 @@ if(!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // d
       ),
     );
     } // end of if (file_exists('./modules/o_contrib/cache/cache.inc'))
-  } // end of if(!preg_match("/(dev)/", $_SERVER['HTTP_HOST'])
-} // end of if(!preg_match("/(standard)|(minimal)/", $conf['install_profile']))
+  } // end of if (!preg_match("/(dev)/", $_SERVER['HTTP_HOST'])
+} // end of if (!preg_match("/(standard)|(minimal)/", $conf['install_profile']))
 
 /**
  * Drupal for Facebook (fb)
