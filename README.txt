@@ -123,10 +123,25 @@ added to all 6.x platforms:
 ### BUG SUBMISSION
 
 * Please follow bug submission guidelines:
-  http://groups.drupal.org/node/89594#comment-297894
+  
+  Before you submit a bug, make sure you have diagnosed your
+  configuration as documented in this guide:
+  http://groups.drupal.org/node/21890. It is Aegir specific,
+  but the good rules are the same: always search for similar
+  bug report before submitting your own, and include as much
+  information about your context as possible, especially
+  please include, using http://gist.github.com, the contents
+  of files:
+  
+    /var/aegir/config/includes/barracuda_log.txt
+    /data/disk/user/log/octopus_log.txt
+    /var/aegir/install.log (remove the password)  
   
 * Issue queue:
   http://github.com/omega8cc/nginx-for-drupal/issues
+  
+  Please don't post your server logs here. Instead use
+  http://gist.github.com and post the link in your submission.
   
 
 ### HELP
