@@ -665,7 +665,11 @@ fi
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
-if [ -e "/proc/bean_counters" ] ; then
+   _ETH_TEST=`ifconfig 2>&1`
+if [[ $_ETH_TEST =~ venet0 ]] ; then
+   _VMFAMILY="VZ"
+   _IFCONFIG="venet0:0"
+elif [ -e "/proc/bean_counters" ] ; then
    _VMFAMILY="VZ"
    _IFCONFIG="venet0:0"
 else
