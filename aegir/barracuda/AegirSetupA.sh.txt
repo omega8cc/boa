@@ -224,8 +224,7 @@ if [ ! -d "$_CORE" ] ; then
   chmod 0711 /data/all
   chmod 0700 /data/src
 fi
-#chown -R $_USER:$_USRG $_CORE
-chown -R $_USER:$_USRG /data/all
+runner "chown -R $_USER:$_USRG /data/all" &> /dev/null
 chown -R $_USER:$_USRG /data/src
 chown -R $_USER:$_USRG /data/conf
 chown -R $_USER:$_USRG /opt/tmp
@@ -605,15 +604,19 @@ _A_DM_EMAIL=`cat /opt/tmp/.admemail.txt`
 _A_DM_EMAIL=`echo -n $_A_DM_EMAIL | tr -d "\n"`
 rm -f /opt/tmp/.admemail.txt
 if [ -f "$_ROOT/log/setupmail.txt" ] ; then
- cd $_ROOT/log
- if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
-   mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
- fi
- cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
- perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
- perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/upgrademail.txt
- perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/upgrademail.txt
- perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+  if [ "$_DIST_INSTALL" = "YES" ] ; then
+    cd $_ROOT/log
+    if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
+      mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
+    fi
+    cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
+    perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+  else
+    _SEND_UPGRADE_EMAIL=NO
+  fi
 elif [ $_STATUS = "INIT" ] ; then
  cd $_ROOT/log
  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/setupmail.txt ./

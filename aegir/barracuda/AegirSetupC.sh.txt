@@ -339,7 +339,6 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf session443-6.x-1.x-dev.tar.gz
   rm -f *.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
- #wget -q -U iCab http://ftp.drupal.org/files/projects/authcache-6.x-1.0-rc2.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then

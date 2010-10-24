@@ -40,10 +40,12 @@
 ### to define the _USER value only, since
 ### _DOMAIN will be auto-discovered.
 ###
-_USER=octopus
-_DOMAIN=octopus.aegir.cc
+_USER=o1
+_DOMAIN=o1.`hostname -f`
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
+_CLIENT_OPTION=CLASSIC
+_CLIENT_SUBSCR=M
 _MY_OWNIP=""
 
 
@@ -269,6 +271,15 @@ if [ $_STATUS = "INIT" ] ; then
 fi
 chmod 700 /opt/tmp/nginx-for-drupal/aegir/barracuda/*
 bash /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupA.sh.txt
+if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
+  echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
+fi
+if [ ! -e "/data/disk/$_USER/log/option.txt" ] ; then
+  echo $_CLIENT_OPTION > /data/disk/$_USER/log/option.txt
+fi
+if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
+  echo $_CLIENT_SUBSCR > /data/disk/$_USER/log/subscr.txt
+fi
 rm -f -r /opt/tmp/nginx-for-drupal
 }
 
