@@ -1,30 +1,47 @@
 diff -urp a/style.css b/style.css
---- a/style.css 2010-08-29 23:58:34.000000000 +0000
-+++ b/style.css 2010-08-28 23:57:44.000000000 +0000
-@@ -201,7 +201,7 @@ div#navigation div.breadcrumb {
- div#navigation ul.links {
-   padding:5px 0px 0px;
-   float:right;
--  width: 320px;
-+  width: 640px;
-   }
-
- div#navigation ul.links li {
-@@ -480,7 +480,7 @@ input.form-submit {
+--- a/style.css	2010-10-24 17:01:06.000000000 +0000
++++ b/style.css	2010-10-24 17:06:52.000000000 +0000
+@@ -261,7 +261,7 @@ div#header-region h2.page-title {
+     padding:0px 10px;
+     line-height:30px;
+ 
+-    background:#666;
++    background:#369;
+     color:#fff;
+     }
+ 
+@@ -277,7 +277,7 @@ div#header-region ul.tabs { clear:both; 
+     }
+ 
+   div#header-region ul.tabs li a:hover {
+-    background:#666;
++    background:#369;
+     color:#fff;
+     }
+ 
+@@ -444,7 +444,7 @@ div.krumo-root, div.krumo-root a {
+  * FOOTER =============================================================
+  */
+ #footer {
+-  background:#666;
++  background:#369;
+   padding:20px 0px;
+   line-height:40px;
+   height:40px;
+@@ -493,14 +493,21 @@ input.form-submit {
+   border:0px;
    padding:5px 10px;
    color:#fff;
-   background:#666;
+-  background:#666;
+-
++  background:#369;
+   cursor:pointer;
 -
 +  text-align:center;
-   cursor:pointer;
-
    -moz-border-radius:3px;
-@@ -937,3 +937,13 @@ body.error-page div.page-content {
-   border : 1px solid black;
-
- }
-+
-+
+   -webkit-border-radius: 3px;
+   }
+ 
 +.form-submit {
 +  width: 25%;
 +  text-align:center;
@@ -33,3 +50,33 @@ diff -urp a/style.css b/style.css
 +  margin-left:auto;
 +  margin-right:auto;
 +}
+ 
+ input.form-submit[disabled] {
+   color:#ddd;
+@@ -572,7 +579,7 @@ div.form-item div.description {
+   margin:5px 0px;
+   line-height:15px;
+   font-size:11px;
+-  color:#666;
++  color:#369;
+   }
+ 
+ /* Fieldsets... what a nightmare */
+@@ -673,7 +680,7 @@ div.node h2 {
+     margin:5px 10px 0px 0px;
+     padding:0px 5px;
+ 
+-    background:#666;
++    background:#369;
+     color:#fff;
+     }
+ 
+@@ -746,7 +753,7 @@ table.hosting-table td {
+ table th,
+ table.hosting-table th {
+   font-size:11px;
+-  background:#666 !important;
++  background:#369 !important;
+   }
+ 
+  table th.active,
