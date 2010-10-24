@@ -258,6 +258,9 @@ else
 fi
 cd $_ROOT/.drush
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+cd $_ROOT/.drush/drush_make
+cp -af /opt/tmp/nginx-for-drupal/aegir/patches/drush_make.drush.inc.patch ./
+patch -p0 < drush_make.drush.inc.patch &> /dev/null
 
 
 ###---### Build Aegir base
