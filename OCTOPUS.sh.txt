@@ -36,8 +36,12 @@
 ### Define also your *new* Aegir user for this
 ### instance or existing if this is an upgrade
 ###
-_DOMAIN=octopus.aegir.cc
+### NOTE: if this is an upgrade, it's enough
+### to define the _USER value only, since
+### _DOMAIN will be auto-discovered.
+###
 _USER=octopus
+_DOMAIN=octopus.aegir.cc
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
 _MY_OWNIP=""
@@ -276,6 +280,8 @@ if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
   _DEBUG_MODE=YES
   _MY_OWNIP="$_LOCAL_NETWORK_IP"
 fi
+#
+#
 if ! netcat -w 8 -z github.com 9418 ; then
   _GITHUB_WORKS="NO"
 cat <<EOF
@@ -292,6 +298,8 @@ EOF
 else
   true
 fi
+#
+#
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
 else
@@ -299,6 +307,8 @@ else
   msg "Bye."
   exit 1
 fi
+#
+#
 if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
   msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
@@ -315,41 +325,8 @@ else
     exit 1
   fi
 fi
-if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
-  true
-else
-  msg "ERROR: Your defined domain: $_DOMAIN is already used on the core Hostmaster instance."
-  msg "Please change the value for _DOMAIN to make it unique."
-  msg "Bye."
-  exit 1
-fi
-if [ -e "/proc/bean_counters" ] ; then
-  _VMFAMILY="VZ"
-  _IFCONFIG="venet0:0"
-else
-  _VMFAMILY="XEN"
-  _IFCONFIG="eth0"
-fi
-if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-  if [ -z "$_MY_OWNIP" ] ; then
-    _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-  else
-    _THISHTIP="$_MY_OWNIP"
-  fi
-  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
-  if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
-    true
-  else
-    msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP."
-    msg "Please make sure you have valid IN A or IN CNAME record in your DNS."
-    msg "It's also possible, that your DNS change didn't propagate yet. Wait a bit."
-    msg "Bye."
-    exit 1
-  fi
-else
-  _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
-  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
-fi
+#
+#
 rm -f /opt/tmp/testecho*
 _SRCDIR=/opt/tmp/files
 mkdir -p $_SRCDIR
@@ -377,6 +354,8 @@ _HM_DISTRO=001
 _ALL_DISTRO=001
 _STATUS=INIT
 _ROOT="/data/disk/$_USER"
+#
+#
 if [ -d "$_ROOT" ] ; then
  _STATUS=UPGRADE
  echo UPGRADE in progress..
@@ -483,7 +462,49 @@ else
     exit 1
   fi
 fi
-
+#
+#
+if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
+  true
+else
+  msg "ERROR: Your defined domain: $_DOMAIN is already used on the core Hostmaster instance."
+  msg "Please change the value for _DOMAIN to make it unique."
+  msg "Bye."
+  exit 1
+fi
+_ETH_TEST=`ifconfig 2>&1`
+if [[ $_ETH_TEST =~ venet0 ]] ; then
+   _VMFAMILY="VZ"
+   _IFCONFIG="venet0:0"
+elif [ -e "/proc/bean_counters" ] ; then
+   _VMFAMILY="VZ"
+   _IFCONFIG="venet0:0"
+else
+   _VMFAMILY="XEN"
+   _IFCONFIG="eth0"
+fi
+if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
+  if [ -z "$_MY_OWNIP" ] ; then
+    _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+  else
+    _THISHTIP="$_MY_OWNIP"
+  fi
+  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+    true
+  else
+    msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP."
+    msg "Please make sure you have valid IN A or IN CNAME record in your DNS."
+    msg "It's also possible, that your DNS change didn't propagate yet. Wait a bit."
+    msg "Bye."
+    exit 1
+  fi
+else
+  _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+fi
+#
+#
 echo " "
 msg "START -> checkpoint: "
 cat <<EOF

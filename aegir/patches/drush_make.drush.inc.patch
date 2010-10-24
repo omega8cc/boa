@@ -1,0 +1,18 @@
+Index: drush_make.drush.inc
+===================================================================
+RCS file: /cvs/drupal-contrib/contributions/modules/drush_make/Attic/drush_make.drush.inc,v
+retrieving revision 1.11.2.74
+diff -u -p -r1.11.2.74 drush_make.drush.inc
+--- drush_make.drush.inc	10 Oct 2010 18:04:07 -0000	1.11.2.74
++++ drush_make.drush.inc	24 Oct 2010 02:27:15 -0000
+@@ -225,8 +225,8 @@ function drush_make_updatexml($project) 
+     $term_map = array(
+       'Modules' => 'module',
+       'Themes' => 'theme',
+-      'Drupal project' => 'core',
+-      'Installation profiles' => 'profile',
++      'Drupal Project' => 'core',
++      'Installation Profiles' => 'profile',
+       'Translations' => 'translation'
+     );
+     // Iterate through all terms related to this project.

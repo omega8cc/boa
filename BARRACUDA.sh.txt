@@ -757,6 +757,11 @@ fi
 if [ "$_DNS_SETUP_TEST" = "NO" ] ; then
   _FQDNTEST=TRUE
 fi
+if [ $_THISHOST = "localhost" ] ; then
+  msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
+  msg "Please try something like: aegir.local"
+  exit 1
+fi
 if [ "$_FQDNTEST" = "FALSE" ] ; then
 echo " "
 msg "EXIT on error due to invalid DNS setup."
