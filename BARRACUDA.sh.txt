@@ -685,8 +685,7 @@ if [ ! -z "$_MY_OWNIP" ] ; then
      if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
        echo "$_MY_OWNIP $_MY_FRONT cgp.$_MY_FRONT sqlbuddy.$_MY_FRONT chive.$_MY_FRONT $_S_E" >> /etc/hosts
      else
-       # don't add this for non-local installs to avoid broken DNS for subdomains in the hostname with pdnsd enabled
-       #echo "$_MY_OWNIP $_MY_HOSTN $_MY_FRONT cgp.$_MY_FRONT sqlbuddy.$_MY_FRONT chive.$_MY_FRONT $_S_E" >> /etc/hosts
+       echo "$_MY_OWNIP $_MY_HOSTN $_S_E" >> /etc/hosts
      fi
      hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
      echo "$_MY_HOSTN" > /etc/hostname
