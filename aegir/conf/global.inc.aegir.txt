@@ -32,6 +32,7 @@ if (!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // 
 
    if (preg_match("/hostmaster/", $conf['install_profile'])) {
       $conf['hosting_ignore_default_profiles'] = 1;
+      $conf['hosting_require_disable_before_delete'] = 0;
       unset($conf['cache']); // disable hardcoded caching
       ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
    }

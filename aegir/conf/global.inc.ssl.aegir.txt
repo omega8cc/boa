@@ -37,6 +37,7 @@ if (!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // 
         header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
      }
      $conf['hosting_ignore_default_profiles'] = 1;
+     $conf['hosting_require_disable_before_delete'] = 0;
      if (isset($_SERVER['HTTP_HOST'])) {
         $base_url = 'https://' . $_SERVER['HTTP_HOST'];
      }
