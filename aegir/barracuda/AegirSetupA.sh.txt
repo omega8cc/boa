@@ -147,6 +147,22 @@ prompt_yes_no () {
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
 #
+# Create shared dirs
+create_shared_dirs () {
+  if [ ! -d "$_CORE" ] ; then
+    mkdir -p $_CORE
+    mkdir -p /data/src
+    chmod 0711 $_CORE
+    chmod 0711 /data/all
+    chmod 0700 /data/src
+  fi
+  chown -R $_USER:$_USRG /data/all
+  chown -R $_USER:$_USRG /data/src
+  chown -R $_USER:$_USRG /data/conf
+  chown -R $_USER:$_USRG /opt/tmp
+  chmod 755 $_CORE /data/all /data/src /data /data/conf
+}
+
 msg "`date` $_STATUS A: Welcome `uname -a`"
 mrun "sleep 3"
 msg "`date` $_STATUS A: Aegir automated install script part A"
@@ -217,18 +233,6 @@ if [ ! -d "$_ROOT" ] ; then
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
 fi
-if [ ! -d "$_CORE" ] ; then
-  mkdir -p $_CORE
-  mkdir -p /data/src
-  chmod 0711 $_CORE
-  chmod 0711 /data/all
-  chmod 0700 /data/src
-fi
-runner "chown -R $_USER:$_USRG /data/all" &> /dev/null
-chown -R $_USER:$_USRG /data/src
-chown -R $_USER:$_USRG /data/conf
-chown -R $_USER:$_USRG /opt/tmp
-chmod 755 $_CORE /data/all /data/src /data /data/conf
 
 
 ###---### Prepare scripts
@@ -255,8 +259,11 @@ if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
   echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 fi
 if [ -e "/usr/sbin/named" ] ; then
-  echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
-  echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+  if [ ! -f "$_ROOT/log/named_sudo_exist.txt" ] ; then
+    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
+    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+    touch $_ROOT/log/named_sudo_exist.txt
+  fi
 fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
@@ -424,6 +431,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   mrun "sleep 3"
   _DIST_INSTALL=YES
   rm -f /opt/tmp/testecho*
+  create_shared_dirs
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
   msg "`date` $_STATUS A: Distributions install completed"
 else
@@ -437,6 +445,7 @@ else
     mrun "sleep 3"
     invoke-rc.d cron stop &> /dev/null
     rm -f /opt/tmp/testecho*
+    create_shared_dirs
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
     msg "`date` $_STATUS A: Distributions install completed"
   else
@@ -638,14 +647,18 @@ if [ $_STATUS = "INIT" ] ; then
    cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
  fi
 else
- msg "`date` $_STATUS A: Resend setup e-mail on upgrade, please wait..."
- mrun "sleep 3"
- TIME=`date`
- echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
- if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
-   cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+ if [ "$_DIST_INSTALL" = "YES" ] ; then
+   msg "`date` $_STATUS A: Resend setup e-mail on upgrade, please wait..."
+   mrun "sleep 3"
+   TIME=`date`
+   echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
+   if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
+     cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+   else
+     cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+   fi
  else
-   cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+   _SEND_UPGRADE_EMAIL=NO
  fi
 fi
 
