@@ -41,7 +41,7 @@
 ### _DOMAIN will be auto-discovered.
 ###
 _USER=o1
-_DOMAIN=o1.`hostname -f`
+_DOMAIN=$_USER.`hostname -f`
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_OPTION=CLASSIC
