@@ -539,6 +539,8 @@ _MY_EMAIL=`cat /opt/tmp/.email.txt`
 _MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
 rm -f /opt/tmp/.email.txt
 
+_RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
+
 echo $_CLIENT_EMAIL > /opt/tmp/.cemail.txt
 perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.cemail.txt
 _CLIENT_EMAIL=`cat /opt/tmp/.cemail.txt`
