@@ -928,6 +928,7 @@ if [ ! -f "/var/log/apt-fast-install-log.txt" ] ; then
       cd /opt/tmp/nginx-for-drupal/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+      echo " "
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
       _MIRROR=$_CONFIRMED_ANSWER
     else

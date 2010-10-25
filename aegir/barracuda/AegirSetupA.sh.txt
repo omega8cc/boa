@@ -173,6 +173,7 @@ msg "`date` $_STATUS A: Aegir automated install script part A"
 msg "`date` $_STATUS A: Stop the cron and wait 5 seconds.."
 runner "invoke-rc.d cron stop" &> /dev/null
 mrun "sleep 5"
+chown -R $_USER:$_USRG /opt/tmp
 
 
 ###---### Checking status..
