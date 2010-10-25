@@ -400,7 +400,7 @@ install_redis_src () {
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
   chown redis:redis /var/lib/redis
-  runner "invoke-rc.d redis-server start" 2> /dev/null
+  runner "invoke-rc.d redis-server start" &> /dev/null
 }
 #
 # Fix this on upgrade
@@ -601,7 +601,7 @@ fi
     st_runner "invoke-rc.d pdnsd stop" &> /dev/null
     mrun "sleep 3"
     rm -f /var/cache/pdnsd/pdnsd.cache
-    st_runner "invoke-rc.d pdnsd start" 2> /dev/null
+    st_runner "invoke-rc.d pdnsd start" &> /dev/null
   fi
 #fi
 
@@ -1126,7 +1126,7 @@ if [ ! -e "/usr/bin/vnstat" ] ; then
   cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
   chmod 755 vnstat
   st_runner "update-rc.d vnstat defaults" &> /dev/null
-  st_runner "invoke-rc.d vnstat start" 2> /dev/null
+  st_runner "invoke-rc.d vnstat start" &> /dev/null
 fi
 
 
@@ -1482,21 +1482,21 @@ if [ $_STATUS = "INIT" ] ; then
     runner "update-rc.d cron defaults" &> /dev/null
     runner "update-rc.d php-fpm defaults" &> /dev/null
     runner "update-rc.d nginx defaults" &> /dev/null
-    runner "invoke-rc.d php-fpm start" 2> /dev/null
-    runner "invoke-rc.d nginx start" 2> /dev/null
+    runner "invoke-rc.d php-fpm start" &> /dev/null
+    runner "invoke-rc.d nginx start" &> /dev/null
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf.bak.copy &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
-  runner "invoke-rc.d mysql restart" 2> /dev/null
+  runner "invoke-rc.d mysql restart" &> /dev/null
 else
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     msg "`date` INFO: Restarting php-fpm and Nginx"
     mrun "sleep 3"
     killall nginx php-cgi php-fpm &> /dev/null
-    runner "invoke-rc.d php-fpm start" 2> /dev/null
-    runner "invoke-rc.d nginx start" 2> /dev/null
+    runner "invoke-rc.d php-fpm start" &> /dev/null
+    runner "invoke-rc.d nginx start" &> /dev/null
   fi
 fi
 
@@ -1611,7 +1611,7 @@ rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
   killall nginx &> /dev/null
-  runner "invoke-rc.d nginx start" 2> /dev/null
+  runner "invoke-rc.d nginx start" &> /dev/null
 fi
 mrun "sleep 3"
 msg "`date` INFO: core Aegir Hostmaster instance installation completed"
@@ -1670,7 +1670,7 @@ mrun "sleep 3"
   mv -f uc.html index.html &> /dev/null
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx &> /dev/null
-    runner "invoke-rc.d nginx start" 2> /dev/null
+    runner "invoke-rc.d nginx start" &> /dev/null
   fi
 fi
 
@@ -1725,7 +1725,7 @@ mrun "sleep 30"
     fi
     if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
       killall nginx &> /dev/null
-      runner "invoke-rc.d nginx start" 2> /dev/null
+      runner "invoke-rc.d nginx start" &> /dev/null
     fi
   fi
 fi
@@ -1751,7 +1751,7 @@ if [ ! -d "/opt/solr" ] ; then
     echo "ENABLED=1" > /etc/default/tomcat
     perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
     runner "update-rc.d tomcat defaults" &> /dev/null
-    runner "invoke-rc.d tomcat start" 2> /dev/null
+    runner "invoke-rc.d tomcat start" &> /dev/null
     msg "`date` INFO: MultiCore Apache Solr Tomcat installation completed"
     mrun "sleep 2"
   else
@@ -1879,12 +1879,12 @@ if [ ! -e "/usr/sbin/named" ] ; then
     if [ -z "$_THISHTIP" ] ; then
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
     fi
-    runner "$_INSTALL bind9" 2> /dev/null
+    runner "$_INSTALL bind9" &> /dev/null
     cd /etc/bind
     rm -f named.conf.options
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/named.conf.options ./ &> /dev/null
     perl -p -i -e "s/127.0.1.1/$_THISHTIP/g" named.conf.options
-    runner "invoke-rc.d bind9 restart" 2> /dev/null
+    runner "invoke-rc.d bind9 restart" &> /dev/null
     if [ ! -f "/etc/init.d/bind" ] ; then
       ln -s /etc/init.d/bind9 /etc/init.d/bind
     fi
@@ -1910,8 +1910,8 @@ if [ ! -d "/etc/webmin" ] ; then
     echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
     wget -q -U iCab http://software.virtualmin.com/lib/RPM-GPG-KEY-webmin
     apt-key add RPM-GPG-KEY-webmin &> /dev/null
-    runner "apt-fast update -y --force-yes" 2> /dev/null
-    runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
+    runner "apt-fast update -y --force-yes" &> /dev/null
+    runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" &> /dev/null
     msg "`date` INFO: Webmin Control Panel installation completed"
     mrun "sleep 2"
   else
