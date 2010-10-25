@@ -286,6 +286,12 @@ rm -f -r /opt/tmp/nginx-for-drupal
 
 ###---### init
 #
+invoke-rc.d pdnsd stop &> /dev/null
+sleep 1
+rm -f /var/cache/pdnsd/pdnsd.cache
+sleep 1
+invoke-rc.d pdnsd start &> /dev/null
+
 if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
   _DNS_SETUP_TEST=NO
   _DEBUG_MODE=YES
