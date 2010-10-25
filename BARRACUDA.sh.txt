@@ -685,7 +685,8 @@ if [ ! -z "$_MY_OWNIP" ] ; then
      if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
        echo "$_MY_OWNIP .$_MY_HOSTN $_MY_HOSTN $_S_E" >> /etc/hosts
      else
-       echo "$_MY_OWNIP .$_MY_HOSTN $_MY_HOSTN $_S_E" >> /etc/hosts
+       _TURNED=OFF
+       #echo "$_MY_OWNIP .$_MY_HOSTN $_MY_HOSTN $_S_E" >> /etc/hosts
      fi
      hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
      echo "$_MY_HOSTN" > /etc/hostname
@@ -777,7 +778,7 @@ cat <<EOF
     
   * Please add/check correct line in your /etc/hosts file on the server:
     
-    $ echo "$_MY_OWNIP *.$_MY_HOSTN $_MY_FRONT" >> /etc/hosts
+    $ echo "$_MY_OWNIP .$_MY_HOSTN $_MY_FRONT" >> /etc/hosts
 
   * Please make sure that below command returns your FQDN hostname "$_MY_HOSTN":
     
