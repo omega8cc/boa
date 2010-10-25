@@ -258,13 +258,6 @@ if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt
   echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 fi
-if [ -e "/usr/sbin/named" ] ; then
-  if [ ! -f "$_ROOT/log/named_sudo_exist.txt" ] ; then
-    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
-    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
-    touch $_ROOT/log/named_sudo_exist.txt
-  fi
-fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
 AEGIR_HOST=`hostname -f`
@@ -406,6 +399,17 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
     rm -f /var/run/redis.pid
     mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
     killall memcached &> /dev/null
+  fi
+fi
+
+
+###---### Add sudo for named if exist
+#
+if [ -e "/usr/sbin/named" ] ; then
+  if [ ! -f "$_ROOT/log/named_sudo_exist.txt" ] ; then
+    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
+    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+    touch $_ROOT/log/named_sudo_exist.txt
   fi
 fi
 
