@@ -320,6 +320,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/varnish-6.x-1.x-dev.tar.gz
   tar -xzf cache.tar.gz
   tar -xzf boost-6.x-1.x-dev.tar.gz
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz
@@ -337,6 +338,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf views404-6.x-1.x-dev.tar.gz
   tar -xzf expire-6.x-1.x-dev.tar.gz
   tar -xzf session443-6.x-1.x-dev.tar.gz
+  tar -xzf varnish-6.x-1.x-dev.tar.gz
   rm -f *.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz
