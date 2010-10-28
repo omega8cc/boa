@@ -228,7 +228,7 @@ else
 fi
 
 
-###---### Palettes full names
+###---### Distributions full names
 #
 _F_ACQUIA="Acquia 6.19-svn P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0-beta8 P.$_THIS_CORE"
@@ -321,6 +321,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/varnish-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
   tar -xzf cache.tar.gz
   tar -xzf boost-6.x-1.x-dev.tar.gz
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz
@@ -339,6 +340,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf expire-6.x-1.x-dev.tar.gz
   tar -xzf session443-6.x-1.x-dev.tar.gz
   tar -xzf varnish-6.x-1.x-dev.tar.gz
+  tar -xzf site_verify-6.x-1.x-dev.tar.gz
   rm -f *.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz

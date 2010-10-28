@@ -59,10 +59,11 @@ Drupal distributions ready to deploy:
                               http://bit.ly/fservermore
 
 (*) Some platforms are not available in all options.
-    OpenPublish and OpenScholar are not available in
-    Aegir MINI, while Aegir NANO includes only Acquia
-    platform. Consider upgrade to Aegir CLASSIC to get
-    the access to all our standard platforms.
+    Drupal Commons, OpenPublish and OpenScholar are
+    not available in Aegir MINI, while Aegir NANO
+    includes only Acquia platform. Consider upgrade
+    to the Aegir CLASSIC to get the access to all our
+    standard platforms.
 
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
 More details about Pressflow Drupal are here:
