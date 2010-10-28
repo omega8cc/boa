@@ -58,6 +58,7 @@ _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _DEBUG_MODE=EDIT_DEBUG_MODE
+_NOW=`date +%y%m%d-%H%M`
 
 
 ###---### Functions
@@ -218,7 +219,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
     fi
   fi
   cd $_ROOT/tools
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO &> /dev/null
+  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO-$_NOW &> /dev/null
 fi
 cd $_ROOT/tools
 wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
@@ -231,9 +232,9 @@ else
   exit 1
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO &> /dev/null
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO &> /dev/null
-  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO &> /dev/null
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO-$_NOW &> /dev/null
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
+  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
 fi
 msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
