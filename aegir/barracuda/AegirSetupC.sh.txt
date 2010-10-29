@@ -191,6 +191,12 @@ create_symlinks () {
   cp -af $_CORE_DISTRO/cache ./ &> /dev/null
   cp -af $_CORE_DISTRO/sites ./ &> /dev/null
 }
+#
+# create d7 symlinks
+create_d7_symlinks () {
+  ln -s $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
+  ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
+}
 
 
 ###---### User check
@@ -549,6 +555,7 @@ fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
 create_symlinks
+create_d7_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7 installation completed"
 mrun "sleep 2"
