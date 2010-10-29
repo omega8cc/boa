@@ -527,7 +527,9 @@ msg "START -> checkpoint: "
 cat <<EOF
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
-  * Your Aegir control panel for this instance will be available at http://$_DOMAIN.
+  * Your client e-mail address appears to be $_CLIENT_EMAIL - is that correct?
+  * This server options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR
+  * Your Aegir control panel for this instance will be available at https://$_DOMAIN.
   * Your Aegir user for this instance will be $_USER.
     
 EOF

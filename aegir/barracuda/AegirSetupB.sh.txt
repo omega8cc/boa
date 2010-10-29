@@ -234,9 +234,15 @@ else
   exit 1
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO-$_NOW &> /dev/null
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
-  mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
+  if [ -d "$_ROOT/.drush/provision" ] ; then
+    mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+  if [ -d "$_ROOT/.drush/drush_make" ] ; then
+    mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+  if [ -d "$_ROOT/.drush/provision_boost" ] ; then
+    mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
 fi
 msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
