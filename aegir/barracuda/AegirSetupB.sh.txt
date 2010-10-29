@@ -218,8 +218,10 @@ if [ $_STATUS = "UPGRADE" ] ; then
       ln -s $_ROOT/config $_ROOT/aegir/config
     fi
   fi
-  cd $_ROOT/tools
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO-$_NOW &> /dev/null
+  if [ -d "$_ROOT/tools/drush" ] ; then
+    cd $_ROOT/tools
+    mv -f drush $_ROOT/backups/drush-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
 fi
 cd $_ROOT/tools
 wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
