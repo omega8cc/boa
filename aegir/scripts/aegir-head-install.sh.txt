@@ -135,4 +135,4 @@ fi
 
 msg "Installing the frontend"
 AEGIROOT="$AEGIR_HOME/hostmaster-$AEGIR_VERSION"
-$DRUSH hostmaster-install --aegir_host=$AEGIR_HOST --aegir_root=$AEGIR_HOME --root=$AEGIROOT --version=$AEGIR_VERSION $@
+$DRUSH hostmaster-install --aegir_host=$AEGIR_HOST --aegir_db_user=$AEGIR_DB_USER --aegir_db_pass=$AEGIR_DB_PASS --aegir_root=$AEGIR_HOME --root=$AEGIROOT --version=$AEGIR_VERSION $@
