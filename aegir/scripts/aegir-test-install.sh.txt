@@ -166,7 +166,7 @@ else
 fi
 
 if $DRUSH help > /dev/null ; then
-  msg "Drush seems to be functionning properly"
+  msg "Drush seems to be functioning properly"
 else
   msg "Drush is broken ($DRUSH help failed)"
   exit 1
