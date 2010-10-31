@@ -842,7 +842,7 @@ fi
 else ### if [ $_STATUS = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
-  if [ -f "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
+  if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep 'uri' | cut -d: -f2 | awk '{ print $3}'`
     _THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
   elif [ ! -z "$_MY_FRONT" ] ; then
@@ -1175,7 +1175,7 @@ chmod 700 /var/xdrago
 ###--------------------###
 msg "`date` INFO: PHP installed version auto-discovering now, please wait..."
 mrun "sleep 3"
-if [ -f "/usr/local/bin/php" ] ; then
+if [ -e "/usr/local/bin/php" ] ; then
   _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [ "$_PHP_INSTALLED" = "$_PHP_VERSION" ] ; then
     _PHP_INSTALL_REQUIRED=NO
@@ -1360,7 +1360,7 @@ mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 fi
-if [ -f "/usr/sbin/nginx" ] ; then
+if [ -e "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1`
   _NGINX_F_INSTALLED=`echo -n $_NGINX_F_INSTALLED | tr -d "\n"`
   _NGINX_F_VERSION="nginx version: nginx/$_NGINX_VERSION"
@@ -1510,7 +1510,7 @@ if [ ! -f "/root/.my.pass.txt" ] ; then
   chmod 0600 /root/.my.pass.txt
   pwgen -c -v -s > /root/.my.pass.txt
 fi
-if [ -f "/root/.my.pass.txt" ] ; then
+if [ -e "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
   PASWD=`echo -n $PXSWD | tr -d "\n"`
   for Files in `find /var/xdrago -type f`
@@ -1570,7 +1570,7 @@ mrun "sleep 3"
 ###--------------------###
 msg "`date` INFO: Simple check if core Aegir Hostmaster instance install is successful"
 mrun "sleep 3"
-if [ -f "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+if [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
   msg "`date` INFO: Aegir installation almost completed"
 else
   msg "`date` FATAL ERROR: Something is wrong, core Aegir Hostmaster instance not installed - exit now"
@@ -1643,7 +1643,7 @@ else
         cd /var/aegir/config/server_master/nginx
         cp -a conf.d pre.d
       fi
-      if [ -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
+      if [ -e "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
         rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
       fi
     fi
@@ -1658,7 +1658,7 @@ fi ### end of if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
-if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
+if [ -e "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
 msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
@@ -1718,7 +1718,7 @@ mrun "sleep 30"
     cd /var/aegir/config/server_master/nginx/pre.d
     cp -a /opt/tmp/nginx-for-drupal/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
     perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
-    if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
+    if [ -e "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -1939,7 +1939,7 @@ if [ ! -e "/usr/sbin/csf" ] ; then
   st_runner "invoke-rc.d csf restart" &> /dev/null
   st_runner "invoke-rc.d lfd restart" &> /dev/null
 fi
-if [ -f "/var/xdrago/log/lastFire" ] ; then
+if [ -e "/var/xdrago/log/lastFire" ] ; then
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
   rm -f /var/xdrago/log/lastFire
   st_runner "invoke-rc.d csf restart" &> /dev/null

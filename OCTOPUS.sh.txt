@@ -378,7 +378,7 @@ if [ -d "$_ROOT" ] ; then
  echo UPGRADE in progress..
  if [ -d "$_ROOT/distro" ] ; then
   echo UPGRADE v.2 in progress..
-  if [ -f "$_ROOT/log/domain.txt" ] ; then
+  if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
@@ -441,7 +441,7 @@ if [ -d "$_ROOT" ] ; then
  elif [ ! -d "$_ROOT/distro" ] ; then
   echo UPGRADE v.1 in progress..
   echo _DISTRO is $_DISTRO
-  if [ -f "$_ROOT/log/domain.txt" ] ; then
+  if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi

@@ -288,7 +288,7 @@ mrun "sleep 3"
 ###---### Install or upgrade Aegir Hostmaster instance [Y/n]
 #
 _LOCAL_STATUS="$_STATUS"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
@@ -319,7 +319,7 @@ fi
 ###---### Run standard post-install
 #
 _LOCAL_STATUS="$_STATUS"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
@@ -358,8 +358,8 @@ fi
 
 ###---### Forced SSL settings
 #
-if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-  if [ -f "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
+if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+  if [ -e "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
     _SSL_TEST=`cat /data/conf/global.inc 2>&1`
     if [[ $_SSL_TEST =~ HTTP_X_FORWARDED_PROTO ]] ; then
       _SSL_TEST=OK
@@ -428,7 +428,7 @@ chmod 0700 $_ROOT/backups
 ###---### Platforms [Y/n]
 #
 _LOCAL_STATUS="$_STATUS"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
@@ -472,7 +472,7 @@ rm -f $_ROOT/*.sh.txt
 ###---### Add cron task
 #
 _LOCAL_STATUS="$_STATUS"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
@@ -486,7 +486,7 @@ rm -f /var/spool/cron/crontabs/$_USER
 ###---### Add ftps/lshell access
 #
 _LOCAL_STATUS="$_STATUS"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
@@ -522,11 +522,11 @@ fi
 #
 msg "`date` $_STATUS A: Read or create pass.txt"
 mrun "sleep 3"
-if [ -f "$_ROOT/pass.txt" ] ; then 
+if [ -e "$_ROOT/pass.txt" ] ; then 
  _PASWD=`cat $_ROOT/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
  mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
-elif [ -f "$_ROOT/log/pass.txt" ] ; then
+elif [ -e "$_ROOT/log/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/log/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
  rm -f $_ROOT/pass.txt
@@ -617,10 +617,10 @@ perl -p -i -e "s/(\\\@)/\@/g" /opt/tmp/.admemail.txt
 _A_DM_EMAIL=`cat /opt/tmp/.admemail.txt`
 _A_DM_EMAIL=`echo -n $_A_DM_EMAIL | tr -d "\n"`
 rm -f /opt/tmp/.admemail.txt
-if [ -f "$_ROOT/log/setupmail.txt" ] ; then
+if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   if [ "$_DIST_INSTALL" = "YES" ] ; then
     cd $_ROOT/log
-    if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
+    if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
       mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
     fi
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/upgrademail.txt ./
@@ -648,7 +648,7 @@ if [ $_STATUS = "INIT" ] ; then
  mrun "sleep 3"
  TIME=`date`
  echo $TIME > $_ROOT/log/date-init.txt
- if [ -f "$_ROOT/log/setupmail.txt" ] ; then
+ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
    cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
  fi
 else
@@ -657,7 +657,7 @@ else
    mrun "sleep 3"
    TIME=`date`
    echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
-   if [ -f "$_ROOT/log/upgrademail.txt" ] ; then
+   if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
      cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
    else
      cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL

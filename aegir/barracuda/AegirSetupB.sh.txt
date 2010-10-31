@@ -131,7 +131,7 @@ fi
 #
 msg "`date` $_STATUS B: Checking status.."
 mrun "sleep 3"
-if [ -f "$_ROOT/aegir.sh" ] ; then
+if [ -e "$_ROOT/aegir.sh" ] ; then
 _STATUS=UPGRADE
 cd $_ROOT
 # msg "`date` $_STATUS B: _STATUS is $_STATUS"
@@ -151,7 +151,7 @@ fi
 #
 msg "`date` $_STATUS B: Create dirs and/or set good permissions"
 mrun "sleep 3"
-if [ -f "$_ROOT/aegir.sh" ] ; then
+if [ -e "$_ROOT/aegir.sh" ] ; then
  rm -f $_ROOT/aegir.sh
 fi
 touch $_ROOT/aegir.sh
@@ -184,7 +184,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
  msg "`date` $_STATUS B: UPGRADE in progress.."
  if [ -d "$_ROOT/distro" ] ; then
   msg "`date` $_STATUS B: UPGRADE v.2 in progress.."
-  if [ -f "$_ROOT/log/domain.txt" ] ; then
+  if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
@@ -192,7 +192,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
  elif [ ! -d "$_ROOT/distro" ] ; then
   msg "`date` $_STATUS B: UPGRADE v.1 in progress.."
   msg "`date` $_STATUS B: _DISTRO is $_DISTRO"
-  if [ -f "$_ROOT/log/domain.txt" ] ; then
+  if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
@@ -279,7 +279,7 @@ fi
 msg "`date` $_STATUS B: Build Aegir base"
 mrun "sleep 3"
 _LOCAL_STATUS="$_STATUS"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
@@ -329,7 +329,7 @@ fi
 ###--------------------###
 msg "`date` $_STATUS B: Simple check if Aegir install or upgrade is successful"
 mrun "sleep 3"
-if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "`date` $_STATUS B: Aegir setup test OK"
 else
   msg "`date` $_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready - exit now"
@@ -374,7 +374,7 @@ $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
 perl -p -i -e "s/(320px)/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
-if [ -f "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_home.php.txt ./
@@ -394,7 +394,7 @@ fi
 #
 msg "`date` $_STATUS B: Aegir global.inc file"
 cd $_ROOT
-if [ -f "/data/conf/global.inc" ] ; then
+if [ -e "/data/conf/global.inc" ] ; then
   rm -f $_ROOT/config/includes/global.inc
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 else

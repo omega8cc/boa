@@ -147,7 +147,7 @@ create_dirs () {
   mkdir -p ./cache/perm
   mkdir -p ./cache/normal
   chmod 777 -R ./cache
-  if [ -f "./sites/default/default.settings.php" ] ; then
+  if [ -e "./sites/default/default.settings.php" ] ; then
     cp -af ./sites/default/default.settings.php ./sites/default/settings.php
   fi
   chmod a+rw ./sites/default/settings.php
@@ -276,7 +276,7 @@ for i in $REVISIONS; do
       rm -f feature_server.profile
       wget -q -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.make
       wget -q -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.profile
-      if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+      if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
         _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
@@ -886,14 +886,14 @@ find . -name .bzr -exec rm -rf {} \; &> /dev/null
 msg "`date` $_STATUS C: Save & Verify Platforms"
 mrun "sleep 2"
 _LOCAL_STATUS="NOT_SET"
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _THIS_HOSTMASTER="$_AEGIR_ROOT/sites/$_DOMAIN"
   #msg "_THIS_HOSTMASTER is read static $_THIS_HOSTMASTER because _LOCAL_STATUS is $_LOCAL_STATUS"
 else
-  if [ -f "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+  if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
     _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
     #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER - read from $_ROOT/.drush/hostmaster.alias.drushrc.php"
@@ -958,7 +958,7 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
   $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/uberdrupal &> /dev/null
 fi
-if [ -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
     if [[ $_PLATF =~ aegir ]] ; then
