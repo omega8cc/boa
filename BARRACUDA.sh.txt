@@ -1560,9 +1560,9 @@ cp -af /opt/tmp/nginx-for-drupal/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "`date` INFO: Now running Aegir installer for backend and frontend, please wait..."
 mrun "sleep 3"
 if [ "$_DEBUG_MODE" = "YES" ] ; then
-  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' -d"
+  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' -y -d"
 else
-  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' >/var/aegir/install.log 2>&1"
+  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
 fi
 mrun "sleep 3"
 
