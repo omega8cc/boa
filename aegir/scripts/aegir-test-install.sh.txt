@@ -5,29 +5,26 @@
 ########################################################################
 # Aegir quick install script
 #
-# This script takes care of deploying all the required PHP scripts for
-# the frontend to run properly. It should be ran as the Aegir user.
+# This script is just a wrapper to the hostmaster-install command, which
+# is part of the provision module. It is designed to be quickly
+# downloaded and ran as the Aegir user (created as per the INSTALL.txt)
+# and bootstrap aegir by downloading drush and provision.
+#
+# The real work happens in PHP, within the hostmaster-install command.
 #
 # It should keep to strict POSIX shell syntax to ensure maximum
-# portability. The aim here is to ease the burden on porters but also
-# allow people using various platforms to zip through the install
-# quicker.
+# portability. The aim here is to ease the burden allow people using
+# various platforms to zip through the install quicker.
 #
-# This script also *DOES NOT CHECK* if the requirements have been met.
-# It's up to the admin to follow the proper install instructions or use
-# the packages provided by their platform.
+# This script also *DOES NOT CHECK* if the requirements specified in
+# INSTALL.txt have been met.  It's up to the admin to follow the proper
+# install instructions or use the packages provided by their platform.
 ########################################################################
 # This script takes the following steps:
 #
-# 1. parse commandline
-# 2. prompt for confirmation
-# 3. creates a basic directory structure in $AEGIR_HOME
-# 4. downloads drush in $AEGIR_HOME
-# 5. downloads drush_make in $AEGIR_HOME/.drush
-# 6. downloads provision in $AEGIR_HOME/.drush
-# 7. deploys hostmaster in $AEGIR_HOME using drush
-# 8. creates an apache config file in $AEGIR_HOME/config/vhost.d
-#
+# 1. downloads drush in $AEGIR_HOME
+# 2. downloads provision in $AEGIR_HOME/.drush
+# 3. delegate the rest of the install to hostmaster-install
 ########################################################################
 # basic variables, change before release
 AEGIR_VERSION="HEAD"
@@ -43,36 +40,12 @@ msg() {
   echo "==> $*"
 }
 
-# simple prompt
-prompt_yes_no() {
-  while true ; do
-    printf "$* [Y/n] "
-    read answer
-    if [ -z "$answer" ] ; then
-      return 0
-    fi
-    case $answer in
-      [Yy]|[Yy][Ee][Ss])
-        return 0
-        ;;
-      [Nn]|[Nn][Oo])
-        return 1
-        ;;
-      *)
-        echo "Please answer yes or no"
-        ;;
-    esac
- done 
-}
-
 ########################################################################
 # Main script
 
 AEGIR_HOME="$HOME"
 AEGIR_HOST=`hostname -f`
 DRUSH="$AEGIR_HOME/drush/drush.php"
-
-msg "Aegir automated install script"
 
 if [ `whoami` = "root" ] ; then
   msg "This script should be ran as a non-root user"
@@ -105,16 +78,6 @@ cat <<EOF
  * you are running as your "aegir" user
 EOF
 
-###
-### we don't need to ask that again
-###
-# if prompt_yes_no "Do you want to proceed with the install?" ; then
-#   true
-# else
-#   echo "installation aborted by user"
-#   exit 1
-# fi
-
 AEGIR_DB_USER=aegir_root
 AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5`
 
@@ -125,27 +88,11 @@ cat <<EOF
   Hostname : $AEGIR_HOST ($AEGIR_HOST_IP)
 EOF
 
-###
-### we don't need mysql root password prompt
-###
-# cat <<EOF
-#   Username : $AEGIR_DB_USER
-#   Password : $AEGIR_DB_PASS
-#   Hostname : $AEGIR_HOST ($AEGIR_HOST_IP)
-# 
-# You will be asked to enter your mysql root user password now :
-# EOF
-
-###
-### we don't need mysql root password prompt here
-###
-# mysql -uroot -p mysql<<EOFMYSQL
 mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST_IP' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
 EOFMYSQL
-
 
 # we need to check both because some platforms (like SunOS) return 0 even if the binary is not found
 if which drush 2> /dev/null && which drush | grep -v 'no drush in' > /dev/null; then
@@ -157,11 +104,9 @@ elif [ -x $DRUSH ] ; then
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
-  #wget -q -U iCab http://omega8.cc/dev/drush-$DRUSH_VERSION.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
   gunzip -q -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
   rm drush-$DRUSH_VERSION.tar.gz
-  #cvs -z6 -d:pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib checkout -d drush -r DRUPAL-6--3 contributions/modules/drush/
   DRUSH="php $AEGIR_HOME/drush/drush.php"
 fi
 
@@ -178,7 +123,6 @@ else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
-    #git clone git://git.aegirproject.org/provision $AEGIR_HOME/.drush/provision
     git clone git://github.com/omega8cc/provision.git $AEGIR_HOME/.drush/provision
   else
     cd $AEGIR_HOME/.drush

@@ -89,7 +89,7 @@ _DNS_SETUP_TEST=YES
 ### below to:
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=0.4-alpha14
+### _AEGIR_VERSION=0.4-alpha15
 ###
 _AEGIR_VERSION=HEAD
 

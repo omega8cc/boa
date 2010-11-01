@@ -73,7 +73,7 @@ _DEBUG_MODE=NO
 ### below to:
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=0.4-alpha14
+### _AEGIR_VERSION=0.4-alpha15
 ###
 _AEGIR_VERSION=HEAD
 
@@ -894,7 +894,9 @@ if [ ! -f "/var/log/apt-fast-install-log.txt" ] ; then
       cd /opt/tmp/nginx-for-drupal/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+      echo " "
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
+      echo " "
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_UBUNTU_MIRROR
@@ -930,6 +932,7 @@ if [ ! -f "/var/log/apt-fast-install-log.txt" ] ; then
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       echo " "
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
+      echo " "
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_DEBIAN_MIRROR
