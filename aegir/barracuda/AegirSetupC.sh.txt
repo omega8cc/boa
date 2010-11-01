@@ -965,8 +965,6 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 	  _FOUND_HM=YES
     else
       _PLATF_NAME=${_PLATF##*/}
-      chown -R $_USER:www-data $_PLATF/sites/*/files
-      chmod -R 777 $_PLATF/sites/*/files
       $DRUSHC php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF
       # &> /dev/null
     fi
