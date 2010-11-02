@@ -158,8 +158,8 @@ create_shared_dirs () {
   fi
   chown -R $_USER:$_USRG /data/all
   chown -R $_USER:$_USRG /data/src
-  chown -R $_USER:$_USRG /data/conf
   chown -R $_USER:$_USRG /opt/tmp
+  chown -R $_USER:$_USRG /data/conf
   chmod 755 $_CORE /data/all /data/src /data /data/conf
 }
 
@@ -221,7 +221,6 @@ mkdir -p /data/disk
 mkdir -p /data/conf
 chown root:root /data
 chown root:root /data/disk
-chown root:root /data/conf
 chown root:$_USRG /data/u
 chmod 0711 /data
 chmod 0771 /data/u
@@ -234,6 +233,7 @@ if [ ! -d "$_ROOT" ] ; then
   adduser $_USER $_WEBG &> /dev/null
 fi
 chown -R $_USER:$_USRG /opt/tmp
+chown -R $_USER:$_USRG /data/conf
 
 
 ###---### Prepare scripts
