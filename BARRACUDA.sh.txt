@@ -1498,9 +1498,8 @@ else
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
     msg "`date` INFO: Restarting php-fpm and Nginx"
     mrun "sleep 3"
-    killall nginx php-cgi php-fpm &> /dev/null
-    st_runner "invoke-rc.d php-fpm start" &> /dev/null
-    st_runner "invoke-rc.d nginx start" &> /dev/null
+    st_runner "invoke-rc.d php-fpm reload" &> /dev/null
+    st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
 
@@ -1614,8 +1613,7 @@ perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_n
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-  killall nginx &> /dev/null
-  st_runner "invoke-rc.d nginx start" &> /dev/null
+  st_runner "invoke-rc.d nginx reload" &> /dev/null
 fi
 mrun "sleep 3"
 msg "`date` INFO: core Aegir Hostmaster instance installation completed"
@@ -1673,8 +1671,7 @@ mrun "sleep 3"
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
-    killall nginx &> /dev/null
-    st_runner "invoke-rc.d nginx start" &> /dev/null
+    st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
 
