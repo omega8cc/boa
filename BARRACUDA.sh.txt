@@ -585,7 +585,7 @@ fi
 
 
 ###--------------------###
-#if [ $_STATUS = "INIT" ] ; then
+if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
   if [ ! -e "/usr/sbin/pdnsd" ] ; then
     msg "`date` INFO: Installing DNS cache pdnsd, please wait..."
     mrun "sleep 3"
@@ -602,7 +602,7 @@ fi
     rm -f /var/cache/pdnsd/pdnsd.cache
     st_runner "invoke-rc.d pdnsd start" &> /dev/null
   fi
-#fi
+fi
 
 
 ###--------------------###
@@ -818,7 +818,7 @@ cat <<EOF
   NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
 
   * Your core Aegir instance control panel will be available at https://$_THIS_FRONT.
-  * Your fast DNS cache server (pdnsd) will listen on 127.0.0.1:53.
+  * Your (optional) fast DNS cache server (pdnsd) will listen on 127.0.0.1:53.
   * Your (optional) Bind9 DNS Server will listen on $_THISHTIP:53.
   * Your (optional) MultiCore Apache Solr Tomcat will listen on 127.0.0.1:8080.
   * Your (optional) Chive MariaDB Manager will be available at https://chive.$_THIS_FRONT.

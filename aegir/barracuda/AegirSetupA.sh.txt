@@ -524,8 +524,8 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
     # Set the password
     usermod -p $ph $_USERFTP &> /dev/null
     passwd -w 7 -x 90 $_USERFTP &> /dev/null
-    usermod -aG lshellg $_USERFTP &> /dev/null
   fi
+  usermod -aG lshellg $_USERFTP &> /dev/null
   chsh -s /usr/bin/lshell $_USERFTP &> /dev/null
   echo " " >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
