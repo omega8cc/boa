@@ -288,7 +288,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   cd $_ROOT
   AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
   AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
-  AEGIR_HOST=`hostname -f`
+  AEGIR_HOST=`uname -n`
   msg "`date` $_STATUS B: Deploying hostmaster application init, please wait..."
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
