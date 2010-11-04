@@ -44,7 +44,7 @@ msg() {
 # Main script
 
 AEGIR_HOME="$HOME"
-AEGIR_HOST=`hostname -f`
+AEGIR_HOST=`uname -n`
 DRUSH="$AEGIR_HOME/drush/drush.php"
 
 if [ `whoami` = "root" ] ; then
