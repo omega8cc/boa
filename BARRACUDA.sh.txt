@@ -1112,12 +1112,16 @@ fi
 ###--------------------###
 if [ ! -e "/usr/bin/vnstat" ] ; then
   msg "`date` INFO: Installing VnStat monitor, please wait..."
-  if [ -e "/proc/bean_counters" ] ; then
-     _VMFAMILY="VZ"
-     _IFCONFIG="venet0:0"
+  _ETH_TEST=`ifconfig 2>&1`
+  if [[ $_ETH_TEST =~ venet0 ]] ; then
+    _VMFAMILY="VZ"
+    _IFCONFIG="venet0:0"
+  elif [ -e "/proc/bean_counters" ] ; then
+    _VMFAMILY="VZ"
+    _IFCONFIG="venet0:0"
   else
-     _VMFAMILY="XEN"
-     _IFCONFIG="eth0"
+    _VMFAMILY="XEN"
+    _IFCONFIG="eth0"
   fi
   cd /var/opt
   wget -q -U iCab http://humdi.net/vnstat/vnstat-1.10.tar.gz
@@ -1712,7 +1716,18 @@ mrun "sleep 30"
         _THISHTIP="$_LOCAL_NETWORK_IP"
       fi
     else
-      _THISHTIP=`hostname -i`
+      _ETH_TEST=`ifconfig 2>&1`
+      if [[ $_ETH_TEST =~ venet0 ]] ; then
+        _VMFAMILY="VZ"
+        _IFCONFIG="venet0:0"
+      elif [ -e "/proc/bean_counters" ] ; then
+        _VMFAMILY="VZ"
+        _IFCONFIG="venet0:0"
+      else
+        _VMFAMILY="XEN"
+        _IFCONFIG="eth0"
+      fi
+      _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
     fi
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
