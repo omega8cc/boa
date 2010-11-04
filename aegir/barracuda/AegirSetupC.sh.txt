@@ -274,8 +274,8 @@ for i in $REVISIONS; do
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
-      wget -q -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.make
-      wget -q -U iCab http://github.com/omega8cc/feature_server/raw/master/feature_server.profile
+      wget --no-check-certificate -q -U iCab https://github.com/omega8cc/feature_server/raw/master/feature_server.make
+      wget --no-check-certificate -q -U iCab https://github.com/omega8cc/feature_server/raw/master/feature_server.profile
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
         _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
