@@ -118,7 +118,7 @@ if [ -d "$_AEGIR_ROOT" ] ; then
   exit 1
 fi
 mkdir -p $_ROOT/host_master
-chmod 711 $_ROOT/host_master
+chmod 711 $_ROOT/host_master &> /dev/null
 msg "`date` UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
 if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "`date` UPGRADE INFO: Test OK, we can proceed with the Hostmaster upgrade"

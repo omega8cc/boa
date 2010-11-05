@@ -155,7 +155,7 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
  rm -f $_ROOT/aegir.sh
 fi
 touch $_ROOT/aegir.sh
-chmod 0755 $_ROOT/aegir.sh
+chmod 0755 $_ROOT/aegir.sh &> /dev/null
 echo -e "#!/bin/sh\n\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
 
 mkdir -p $_ROOT/aegir/distro
@@ -167,18 +167,18 @@ mkdir -p $_ROOT/tools
 mkdir -p $_ROOT/log
 mkdir -p $_ROOT/u
 mkdir -p $_ROOT/backups
-chmod 0711 $_ROOT/aegir/distro
-chmod 0711 $_ROOT/distro/$_DISTRO
-chmod 0711 $_ROOT/aegir
-chmod 0711 $_ROOT/tools
-chmod 0771 $_ROOT/u
-chmod 0711 $_ROOT/distro
-chmod 0700 $_ROOT/log
-chmod 0700 $_ROOT/src
-chmod 0700 $_ROOT/src/$_DISTRO
-chmod 0700 $_ROOT/src/modules
-chmod 0700 $_ROOT/src/themes
-chmod 0700 $_ROOT/backups
+chmod 0711 $_ROOT/aegir/distro &> /dev/null
+chmod 0711 $_ROOT/distro/$_DISTRO &> /dev/null
+chmod 0711 $_ROOT/aegir &> /dev/null
+chmod 0711 $_ROOT/tools &> /dev/null
+chmod 0771 $_ROOT/u &> /dev/null
+chmod 0711 $_ROOT/distro &> /dev/null
+chmod 0700 $_ROOT/log &> /dev/null
+chmod 0700 $_ROOT/src &> /dev/null
+chmod 0700 $_ROOT/src/$_DISTRO &> /dev/null
+chmod 0700 $_ROOT/src/modules &> /dev/null
+chmod 0700 $_ROOT/src/themes &> /dev/null
+chmod 0700 $_ROOT/backups &> /dev/null
 
 if [ $_STATUS = "UPGRADE" ] ; then
  msg "`date` $_STATUS B: UPGRADE in progress.."
@@ -300,8 +300,8 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   mkdir -p sites/$_DOMAIN/files/tmp
   mkdir -p sites/$_DOMAIN/files/js
   mkdir -p sites/$_DOMAIN/files/css
-  chmod 2770 -R sites/$_DOMAIN/files
-  chgrp -R $_WEBG sites/$_DOMAIN/files
+  chmod 2770 -R sites/$_DOMAIN/files &> /dev/null
+  chgrp -R $_WEBG sites/$_DOMAIN/files &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN

@@ -146,12 +146,12 @@ create_dirs () {
   mkdir -p ./sites/default/files
   mkdir -p ./cache/perm
   mkdir -p ./cache/normal
-  chmod 777 -R ./cache
+  chmod 777 -R ./cache &> /dev/null
   if [ -e "./sites/default/default.settings.php" ] ; then
     cp -af ./sites/default/default.settings.php ./sites/default/settings.php
   fi
-  chmod a+rw ./sites/default/settings.php
-  chmod a+rwx ./sites/default/files
+  chmod a+rw ./sites/default/settings.php &> /dev/null
+  chmod a+rwx ./sites/default/files &> /dev/null
   mkdir -p ./sites/all/modules
   mkdir -p ./sites/all/libraries
   mkdir -p ./sites/all/themes
@@ -162,11 +162,11 @@ create_dirs () {
   echo empty > ./sites/all/modules/EMPTY.txt
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
-  chmod 0751 ./sites
-  chmod 0751 ./sites/all
-  chmod 02775 ./sites/all/modules
-  chmod 02775 ./sites/all/libraries
-  chmod 02775 ./sites/all/themes
+  chmod 0751 ./sites &> /dev/null
+  chmod 0751 ./sites/all &> /dev/null
+  chmod 02775 ./sites/all/modules &> /dev/null
+  chmod 02775 ./sites/all/libraries &> /dev/null
+  chmod 02775 ./sites/all/themes &> /dev/null
   rm -f .htaccess
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/get.htaccess.txt ./
   mv -f get.htaccess.txt .htaccess &> /dev/null
@@ -258,8 +258,8 @@ _F_UBERCART="Ubercart P.$_THIS_CORE"
 msg "`date` $_STATUS C: Create directories"
 mrun "sleep 2"
 mkdir -p $_ROOT/distro/$_THIS_CORE
-chmod 0711 $_ROOT/distro
-chmod 0711 $_ROOT/distro/$_THIS_CORE
+chmod 0711 $_ROOT/distro &> /dev/null
+chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 
 ###---### Fixing problems
@@ -294,7 +294,7 @@ if [ $_STATUS = "INIT" ] ; then
 msg "`date` $_STATUS C: Preparing Pressflow core, please wait.."
 mrun "sleep 2"
 mkdir -p /data/src/$_THIS_CORE
-chmod 0700 /data/src/$_THIS_CORE
+chmod 0700 /data/src/$_THIS_CORE &> /dev/null
 cd /data/src/$_THIS_CORE
 rm -f -r /data/src/$_THIS_CORE/pressflow-6
 bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null

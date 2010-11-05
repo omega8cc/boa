@@ -390,7 +390,7 @@ install_redis_src () {
   cp -p redis-check-aof /usr/bin/
   cd /etc/init.d
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis-server ./
-  chmod 755 redis-server
+  chmod 755 redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir /etc/redis
   cd /etc/redis
@@ -452,7 +452,7 @@ _INSTALL="/usr/bin/apt-fast -y --force-yes --config-file /opt/tmp/apt.conf.nonin
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
-chmod -R 777 /opt/tmp
+chmod -R 777 /opt/tmp &> /dev/null
 
 
 ###--------------------###
@@ -551,9 +551,9 @@ fi
 if [ -d "/usr/share/git-core" ] ; then
   msg "`date` INFO: Fix for possibly broken git-core after upgrade to version: 1:1.5.6.5-3+lenny3.1"
   sleep 3
-  chmod 644 /usr/share/git-core/templates/description 
-  chmod 644 /usr/share/git-core/templates/hooks/* 
-  chmod 644 /usr/share/git-core/templates/info/* 
+  chmod 644 /usr/share/git-core/templates/description &> /dev/null
+  chmod 644 /usr/share/git-core/templates/hooks/* &> /dev/null
+  chmod 644 /usr/share/git-core/templates/info/* &> /dev/null
 fi
 
 
@@ -578,14 +578,14 @@ cd $_SRCDIR
 # Get spinner
 rm -f spinner*
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
-chmod +x spinner
+chmod +x spinner &> /dev/null
 #
 # Get axelerator
 if [ ! -e "/usr/bin/apt-fast" ] ; then
   cd /usr/bin
   cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt-fast.sh.txt ./
   mv -f apt-fast.sh.txt apt-fast &> /dev/null
-  chmod +x apt-fast
+  chmod +x apt-fast &> /dev/null
   cd /opt/tmp
 fi
 
@@ -873,7 +873,7 @@ msg "`date` INFO: Clean up temp files in /var/opt/"
 mrun "sleep 3"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
-chmod 777 /var/log/php*
+chmod 777 /var/log/php* &> /dev/null
 
 
 ###--------------------###
@@ -1062,9 +1062,9 @@ st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 if [ "$_THIS_OS" = "Debian" ] ; then
   msg "`date` INFO: Fix for broken git-core after upgrade to version: 1:1.5.6.5-3+lenny3.1 on Lenny 32bit"
   mrun "sleep 3"
-  chmod 644 /usr/share/git-core/templates/description 
-  chmod 644 /usr/share/git-core/templates/hooks/* 
-  chmod 644 /usr/share/git-core/templates/info/* 
+  chmod 644 /usr/share/git-core/templates/description &> /dev/null
+  chmod 644 /usr/share/git-core/templates/hooks/* &> /dev/null
+  chmod 644 /usr/share/git-core/templates/info/* &> /dev/null
 fi
 
 
@@ -1117,7 +1117,7 @@ else
   cd /etc/init.d
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx ./
-  chmod 755 /etc/init.d/nginx
+  chmod 755 /etc/init.d/nginx &> /dev/null
   msg "`date` INFO: Fix for Nginx startup script applied"
 fi
 
@@ -1156,7 +1156,7 @@ if [ ! -e "/usr/bin/vnstat" ] ; then
   st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
   cd /etc/init.d
   cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
-  chmod 755 vnstat
+  chmod 755 vnstat &> /dev/null
   st_runner "update-rc.d vnstat defaults" &> /dev/null
   st_runner "invoke-rc.d vnstat start" &> /dev/null
 fi
@@ -1199,8 +1199,8 @@ fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
   cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run* /var/xdrago/
 fi
-chmod 700 /var/xdrago/*
-chmod 700 /var/xdrago
+chmod 700 /var/xdrago/* &> /dev/null
+chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
@@ -1444,7 +1444,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/bin/lshell" ] ; then
+if [ ! -e "/usr/local/bin/lshell" ] ; then
   msg "`date` INFO: Installing lshell, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -1456,7 +1456,7 @@ if [ ! -e "/usr/bin/lshell" ] ; then
   addgroup lshellg &> /dev/null
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
-  chmod 770 /var/log/lsh
+  chmod 770 /var/log/lsh &> /dev/null
   cd /etc
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
   mv -f lshell.conf lshell.conf-orig &> /dev/null
@@ -1475,7 +1475,7 @@ if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   rm -f /etc/ssl/private/pure-ftpd.pem
   rm -f /usr/local/sbin/pure-ftpd
   st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/private/pure-ftpd.pem -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
-  chmod 600 /etc/ssl/private/pure-ftpd.pem
+  chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
   cd /var/opt
   mkdir -p /usr/local/etc
   rm -f -r pure-ftpd*
@@ -1487,7 +1487,7 @@ if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   cd /usr/local/sbin/
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-config.pl.txt ./
   mv -f pure-config.pl.txt pure-config.pl &> /dev/null
-  chmod 755 /usr/local/sbin/pure-config.pl
+  chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
   rm -f pure-ftpd.conf
@@ -1507,7 +1507,7 @@ if [ $_STATUS = "INIT" ] ; then
   echo "UseDNS no" >> /etc/ssh/sshd_config
   cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
-  chmod 700 /usr/local/sbin/php-fpm
+  chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx php-cgi php-fpm &> /dev/null
     st_runner "invoke-rc.d ssh restart" &> /dev/null
@@ -1537,7 +1537,7 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
   msg "`date` INFO: Generate random password for MariaDB"
   mrun "sleep 3"
   touch /root/.my.pass.txt
-  chmod 0600 /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt &> /dev/null
   pwgen -c -v -s > /root/.my.pass.txt
 fi
 if [ -e "/root/.my.pass.txt" ] ; then
@@ -1612,8 +1612,8 @@ fi
 ###--------------------###
 msg "`date` INFO: Fix for access to global.inc for www-data user issue"
 mrun "sleep 3"
-chmod 711 /var/aegir/config/includes
-chmod 711 /var/aegir/config
+chmod 711 /var/aegir/config/includes &> /dev/null
+chmod 711 /var/aegir/config &> /dev/null
 mrun "sleep 3"
 
 
@@ -1974,7 +1974,7 @@ if [ ! -e "/usr/sbin/csf" ] ; then
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/csf.conf ./
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" csf.conf
-  chmod 600 csf.conf 
+  chmod 600 csf.conf &> /dev/null
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
   st_runner "invoke-rc.d csf restart" &> /dev/null
   st_runner "invoke-rc.d lfd restart" &> /dev/null
@@ -2016,7 +2016,7 @@ mrun "sleep 3"
 echo "[client]" >> /root/.my.cnf
 echo "user=root" >> /root/.my.cnf
 echo "password=$PASWD" >> /root/.my.cnf
-chmod 0600 /root/.my.cnf
+chmod 0600 /root/.my.cnf &> /dev/null
 msg "`date` INFO: MariaDB setup completed"
 msg "`date` INFO: You can now log in as root by typing only 'mysql' on the command line"
 fi ### end of if [ ! -e "/root/.my.cnf" ] ; then

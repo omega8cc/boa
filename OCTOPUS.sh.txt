@@ -267,9 +267,9 @@ do
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -f /opt/tmp/nginx-for-drupal/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
-  chmod 700 /var/xdrago/run-$_USER
+  chmod 700 /var/xdrago/run-$_USER &> /dev/null
 fi
-chmod 700 /opt/tmp/nginx-for-drupal/aegir/barracuda/*
+chmod 700 /opt/tmp/nginx-for-drupal/aegir/barracuda/* &> /dev/null
 bash /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupA.sh.txt
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
@@ -347,7 +347,7 @@ fi
 rm -f /opt/tmp/testecho*
 _SRCDIR=/opt/tmp/files
 mkdir -p $_SRCDIR
-chmod -R 777 /opt/tmp
+chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/nginx-for-drupal
 git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
@@ -356,7 +356,7 @@ git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
 cd $_SRCDIR
 rm -f spinner*
 cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
-chmod +x spinner
+chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
 _LOG=/opt/tmp/aegir-install.log

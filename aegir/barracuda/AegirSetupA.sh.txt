@@ -152,15 +152,15 @@ create_shared_dirs () {
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
     mkdir -p /data/src
-    chmod 0711 $_CORE
-    chmod 0711 /data/all
-    chmod 0700 /data/src
+    chmod 0711 $_CORE &> /dev/null
+    chmod 0711 /data/all &> /dev/null
+    chmod 0700 /data/src &> /dev/null
   fi
-  chown -R $_USER:$_USRG /data/all
-  chown -R $_USER:$_USRG /data/src
-  chown -R $_USER:$_USRG /opt/tmp
-  chown -R $_USER:$_USRG /data/conf
-  chmod 755 $_CORE /data/all /data/src /data /data/conf
+  chown -R $_USER:$_USRG /data/all &> /dev/null
+  chown -R $_USER:$_USRG /data/src &> /dev/null
+  chown -R $_USER:$_USRG /opt/tmp &> /dev/null
+  chown -R $_USER:$_USRG /data/conf &> /dev/null
+  chmod 755 $_CORE /data/all /data/src /data /data/conf &> /dev/null
 }
 
 msg "`date` $_STATUS A: Welcome `uname -a`"
@@ -219,21 +219,21 @@ mrun "sleep 3"
 mkdir -p /data/u
 mkdir -p /data/disk
 mkdir -p /data/conf
-chown root:root /data
-chown root:root /data/disk
-chown root:$_USRG /data/u
-chmod 0711 /data
-chmod 0771 /data/u
-chmod 0711 /data/disk
-chmod 0711 /data/conf
+chown root:root /data &> /dev/null
+chown root:root /data/disk &> /dev/null
+chown root:$_USRG /data/u &> /dev/null
+chmod 0711 /data &> /dev/null
+chmod 0771 /data/u &> /dev/null
+chmod 0711 /data/disk &> /dev/null
+chmod 0711 /data/conf &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
   msg "`date` $_STATUS A: Add user, please wait..."
   mrun "sleep 3"
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
 fi
-chown -R $_USER:$_USRG /opt/tmp
-chown -R $_USER:$_USRG /data/conf
+chown -R $_USER:$_USRG /opt/tmp &> /dev/null
+chown -R $_USER:$_USRG /data/conf &> /dev/null
 
 
 ###---### Prepare scripts
@@ -244,8 +244,8 @@ chmod 0711 $_ROOT
 cd $_ROOT
 cp -af /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupB.sh.txt ./
 cp -af /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirSetupC.sh.txt ./
-chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt
-chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt
+chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt &> /dev/null
+chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 
 
 ###---### Run standard pre-install
@@ -256,7 +256,7 @@ if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
   pwgen -c -v -s > $_ROOT/.$_USER.pass.txt
-  chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt
+  chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
   echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
@@ -351,20 +351,20 @@ fi
 ###---### Force advanced Nginx config
 #
 #if [ ! -e "$_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION" ] ; then
-  msg "`date` $_STATUS A: force advanced Nginx config, please wait..."
+  msg "`date` $_STATUS A: Force advanced Nginx config, please wait..."
   mrun "sleep 3"
   cd $_ROOT/config/includes
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf
-  chown $_USER:$_USRG *
+  chown $_USER:$_USRG * &> /dev/null
   cd $_ROOT/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf
-  chown $_USER:$_USRG *
+  chown $_USER:$_USRG * &> /dev/null
   echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
 #fi
 
@@ -481,8 +481,8 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     if [[ $_PLATF =~ aegir ]] ; then
 	  _FOUND_HM=YES
     else
-      chown -R $_USER:www-data $_PLATF/sites/*/files
-      chmod -R 777 $_PLATF/sites/*/files
+      chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
+      chmod -R 777 $_PLATF/sites/*/files &> /dev/null
     fi
   done
 fi
@@ -577,8 +577,8 @@ msg "`date` $_STATUS A: Create ftp symlinks"
 mrun "sleep 3"
 if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
   mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
-  chown -R $_USER:$_USRG /home/$_USERFTP/platforms
-  chmod 700 /home/$_USERFTP
+  chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
+  chmod 700 /home/$_USERFTP &> /dev/null
 #   ln -s $_ROOT/distro/$_THIS_CORE/managingnews/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-dev
 #   ln -s $_ROOT/distro/$_THIS_CORE/openatrium/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-dev
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia/sites" ] ; then
@@ -626,8 +626,8 @@ if [ ! -d "$_ROOT/static" ] ; then
  mkdir -p $_ROOT/static
  ln -s $_ROOT/static /home/$_USERFTP/static
 fi
-chown $_USER:$_USRG $_ROOT/static
-chmod 02775 $_ROOT/static
+chown $_USER:$_USRG $_ROOT/static &> /dev/null
+chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
 
 
@@ -719,11 +719,11 @@ cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
 mv -f /etc/motd /etc/motd-pre-$_THIS_CORE &> /dev/null
 echo "Octopus Aegir Hosting System" > /etc/motd
-chown root:root /data/all
-chown -R root:root /data/src
-chown -R root:root /data/conf
-chown -R root:root $_CORE
-chown root:root /opt/tmp
+chown root:root /data/all &> /dev/null
+chown -R root:root /data/src &> /dev/null
+chown -R root:root /data/conf &> /dev/null
+chown -R root:root $_CORE &> /dev/null
+chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/src /data /data/conf &> /dev/null
 msg "`date` BYE!"
 
