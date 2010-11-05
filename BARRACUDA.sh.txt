@@ -1358,7 +1358,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/bin/bzr" ] ; then
+if [ ! -e "/usr/local/bin/bzr" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
