@@ -15,12 +15,12 @@
 /sbin/iptables -A INPUT -m limit --limit 5/min -j LOG --log-prefix "iptables denied: " --log-level 7
 
 # limit sql access
-# HOSTIP=`hostname -i`
-# /sbin/iptables -N sqlchain
-# /sbin/iptables -A INPUT -p tcp --dport 3306 -j sqlchain
-# /sbin/iptables -A sqlchain -s $HOSTIP -j ACCEPT
-# /sbin/iptables -A sqlchain -s 127.0.0.1 -j ACCEPT
-# /sbin/iptables -A sqlchain -j DROP
+HOSTIP=`hostname -i`
+/sbin/iptables -N sqlchain
+/sbin/iptables -A INPUT -p tcp --dport 3306 -j sqlchain
+/sbin/iptables -A sqlchain -s $HOSTIP -j ACCEPT
+/sbin/iptables -A sqlchain -s 127.0.0.1 -j ACCEPT
+/sbin/iptables -A sqlchain -j DROP
 
 # Run combo filters
 /var/xdrago/run_all

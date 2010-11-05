@@ -182,7 +182,7 @@ _LOCAL_NETWORK_IP=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.B.dev8
+_INSTALLER_VERSION=A14.C.dev1
 
 ## System
 _WEBG=www-data
@@ -194,7 +194,7 @@ _COCOMORE=cdc-6.19.9
 _COMMONS=6.x-1.1
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.0-beta2
-_MANAGINGNEWS=1.1
+_MANAGINGNEWS=1.2
 _OPENATRIUM=1-0-beta8
 _OPENPUBLISH=2.2.285
 _OPENSCHOLAR=2.0-beta8-3.1-mod
