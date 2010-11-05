@@ -84,7 +84,7 @@ so it is your responsibility to use such system wisely.
 Octopus can install the platforms listed below:
 
  Atrium 1.0-beta8 ----------- http://openatrium.com
- Managing News 1.1 ---------- http://managingnews.com
+ Managing News 1.2 ---------- http://managingnews.com
  Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
  Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
  OpenPublish 2.2.285 -------- http://openpublishapp.com
@@ -118,6 +118,7 @@ added to all 6.x platforms:
  session443-6.x-1.x-dev
  backup_migrate-6.x-2.x-dev
  openidadmin-6.x-1.2
+ site_verify-6.x-1.x-dev
 
 
 ### BUG SUBMISSION
