@@ -406,6 +406,22 @@ install_redis_src () {
 fix_on_upgrade () {
   perl -p -i -e "s/apc.include_once_override = 1/apc.include_once_override = 0/g" /opt/etc/php.ini
 }
+#
+# Force advanced Nginx configuration
+force_advanced_nginx_config () {
+  cd /var/aegir/config/includes
+  mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
+  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  chown aegir:aegir *
+  cd /var/aegir/.drush/provision/http/nginx
+  rm -f nginx_simple_include.conf
+  rm -f nginx_advanced_include.conf
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  chown aegir:aegir *
+}
 
 
 ###--------------------###
@@ -442,7 +458,7 @@ chmod -R 777 /opt/tmp
 ###--------------------###
 if [ $_STATUS = "UPGRADE" ] ; then
   fix_on_upgrade
-  if [ ! -f "/root/.my.cnf" ] ; then
+  if [ ! -e "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
 cat <<EOF
   
@@ -891,7 +907,7 @@ fi
 
 ###--------------------###
 #if [ $_STATUS = "INIT" ] ; then
-if [ ! -f "/var/log/apt-fast-install-log.txt" ] ; then
+if [ ! -e "/var/log/apt-fast-install-log.txt" ] ; then
   msg "`date` INFO: Update apt sources"
   mrun "sleep 3"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -1450,7 +1466,7 @@ fi
 
 
 ###--------------------###
-if [ ! -f "/usr/local/sbin/pure-config.pl" ] ; then
+if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   msg "`date` INFO: Installing Pure-FTPd, please wait..."
   mrun "sleep 3"
   echo "/bin/false" >> /etc/shells
@@ -1492,7 +1508,7 @@ if [ $_STATUS = "INIT" ] ; then
   cp -a /opt/etc/php.ini /usr/local/lib/
   rm -f /usr/local/lib/php.ini
   chmod 700 /usr/local/sbin/php-fpm
-  if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx php-cgi php-fpm &> /dev/null
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
@@ -1507,7 +1523,7 @@ if [ $_STATUS = "INIT" ] ; then
   mv -f my.cnf.txt my.cnf &> /dev/null
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
-  if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "`date` INFO: Restarting php-fpm and Nginx"
     mrun "sleep 3"
     st_runner "invoke-rc.d php-fpm reload" &> /dev/null
@@ -1517,7 +1533,7 @@ fi
 
 
 ###--------------------###
-if [ ! -f "/root/.my.pass.txt" ] ; then
+if [ ! -e "/root/.my.pass.txt" ] ; then
   msg "`date` INFO: Generate random password for MariaDB"
   mrun "sleep 3"
   touch /root/.my.pass.txt
@@ -1596,8 +1612,8 @@ fi
 ###--------------------###
 msg "`date` INFO: Fix for access to global.inc for www-data user issue"
 mrun "sleep 3"
-chmod 755 /var/aegir/config/includes
-chmod 755 /var/aegir/config
+chmod 711 /var/aegir/config/includes
+chmod 711 /var/aegir/config
 mrun "sleep 3"
 
 
@@ -1609,22 +1625,17 @@ cd /var/aegir/config/includes
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
-mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
-ln -s nginx_advanced_include.conf nginx_simple_include.conf
+force_advanced_nginx_config
 cd /var/aegir/drush
 cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
 cd /var/aegir
-# if [ ! -f "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
-#   echo "  gzip_static       on;" > /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
-#   echo "  upload_progress uploads 1m;" >> /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
-# fi
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
-if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
   st_runner "invoke-rc.d nginx reload" &> /dev/null
 fi
 mrun "sleep 3"
@@ -1647,8 +1658,14 @@ else
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
-    mv -f global.inc.aegir.txt global.inc &> /dev/null
+    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./
+      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+    else
+      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+      mv -f global.inc.aegir.txt global.inc &> /dev/null    
+    fi
+    force_advanced_nginx_config
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
@@ -1682,14 +1699,14 @@ mrun "sleep 3"
   cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
-  if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
 
 
 ###--------------------###
-if [ ! -f "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   msg "`date` INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
   mrun "sleep 3"
   _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
@@ -1747,7 +1764,7 @@ mrun "sleep 30"
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
-    if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+    if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
       killall nginx &> /dev/null
       st_runner "invoke-rc.d nginx start" &> /dev/null
     fi
@@ -1909,7 +1926,7 @@ if [ ! -e "/usr/sbin/named" ] ; then
     cp -af /opt/tmp/nginx-for-drupal/aegir/conf/named.conf.options ./ &> /dev/null
     perl -p -i -e "s/127.0.1.1/$_THISHTIP/g" named.conf.options
     st_runner "invoke-rc.d bind9 restart" &> /dev/null
-    if [ ! -f "/etc/init.d/bind" ] ; then
+    if [ ! -e "/etc/init.d/bind" ] ; then
       ln -s /etc/init.d/bind9 /etc/init.d/bind
     fi
     echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
@@ -1971,7 +1988,7 @@ fi
 
 
 ###--------------------###
-if [ ! -f "/root/.my.cnf" ] ; then
+if [ ! -e "/root/.my.cnf" ] ; then
 msg "`date` INFO: MariaDB final setup"
 mrun "sleep 3"
 echo " "
@@ -2002,7 +2019,7 @@ echo "password=$PASWD" >> /root/.my.cnf
 chmod 0600 /root/.my.cnf
 msg "`date` INFO: MariaDB setup completed"
 msg "`date` INFO: You can now log in as root by typing only 'mysql' on the command line"
-fi ### end of if [ ! -f "/root/.my.cnf" ] ; then
+fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
 
 
 ###--------------------###

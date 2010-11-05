@@ -252,7 +252,7 @@ chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt
 #
 msg "`date` $_STATUS A: pre-install start"
 mrun "sleep 3"
-if [ ! -f "$_ROOT/.$_USER.pass.txt" ] ; then
+if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
   pwgen -c -v -s > $_ROOT/.$_USER.pass.txt
@@ -325,17 +325,10 @@ fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "`date` $_STATUS A: post-install start, please wait..."
   mrun "sleep 3"
-  if [ ! -f "$_ROOT/config/$_USER.nginx.conf" ] ; then
+  if [ ! -e "$_ROOT/config/$_USER.nginx.conf" ] ; then
     rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
     echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
     ln -s $_ROOT/config/$_USER.nginx.conf /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
-  fi
-  if [ ! -f "$_ROOT/config/includes/nginx_advanced_include.conf.orig" ] ; then
-    cd $_ROOT/config/includes
-    mv -f nginx_simple_include.conf nginx_simple_include.conf.orig &> /dev/null
-    mv -f nginx_advanced_include.conf nginx_advanced_include.conf.orig &> /dev/null
-    cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
-    ln -s nginx_advanced_include.conf nginx_simple_include.conf
   fi
   chgrp -R $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/files
   chgrp $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/settings.php
@@ -345,7 +338,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   rm -f -r $_AEGIR_ROOT/scripts
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
-  if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     runner "invoke-rc.d nginx reload" 2> /dev/null
   fi
   cd $_AEGIR_ROOT
@@ -353,6 +346,27 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   cd $_ROOT
   msg "`date` $_STATUS A: post-install completed"
 fi
+
+
+###---### Force advanced Nginx config
+#
+#if [ ! -e "$_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION" ] ; then
+  msg "`date` $_STATUS A: force advanced Nginx config, please wait..."
+  mrun "sleep 3"
+  cd $_ROOT/config/includes
+  mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
+  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  chown $_USER:$_USRG *
+  cd $_ROOT/.drush/provision/http/nginx
+  rm -f nginx_simple_include.conf
+  rm -f nginx_advanced_include.conf
+  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  chown $_USER:$_USRG *
+  echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
+#fi
 
 
 ###---### Forced SSL settings
@@ -369,7 +383,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
       cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
-      if [ ! -f "/var/run/aegir_upgrade.pid" ] ; then
+      if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
         killall nginx &> /dev/null
         runner "invoke-rc.d nginx start" 2> /dev/null
       fi
@@ -406,7 +420,7 @@ fi
 ###---### Add sudo for named if exist
 #
 if [ -e "/usr/sbin/named" ] ; then
-  if [ ! -f "$_ROOT/log/named_sudo_exist.txt" ] ; then
+  if [ ! -e "$_ROOT/log/named_sudo_exist.txt" ] ; then
     echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
     echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
     touch $_ROOT/log/named_sudo_exist.txt
