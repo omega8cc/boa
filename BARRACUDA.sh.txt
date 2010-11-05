@@ -585,27 +585,6 @@ fi
 
 
 ###--------------------###
-if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-  if [ ! -e "/usr/sbin/pdnsd" ] ; then
-    msg "`date` INFO: Installing DNS cache pdnsd, please wait..."
-    mrun "sleep 3"
-    cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
-    st_runner "$_INSTALL pdnsd";
-    perl -p -i -e "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
-    cat /opt/tmp/nginx-for-drupal/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
-    rm -f /var/cache/pdnsd/pdnsd.cache
-    st_runner "invoke-rc.d pdnsd start" &> /dev/null
-    mrun "sleep 3"
-    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
-    mrun "sleep 3"
-    rm -f /var/cache/pdnsd/pdnsd.cache
-    st_runner "invoke-rc.d pdnsd start" &> /dev/null
-  fi
-fi
-
-
-###--------------------###
 msg "STATUS: Checking your Debian or Ubuntu version..."
 mrun "sleep 3"
 _THIS_OS=`lsb_release -si`
@@ -879,6 +858,35 @@ mrun "sleep 3"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
 chmod 777 /var/log/php*
+
+
+###--------------------###
+_INSTALL_PDNSD=NO
+_HOSTN_TEST=`hostname -f 2>&1`
+if [[ $_HOSTN_TEST =~ "Name or service not known" ]] ; then
+   _INSTALL_PDNSD=YES
+fi
+if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
+   _INSTALL_PDNSD=YES
+fi
+if [ $_INSTALL_PDNSD = "YES" ] ; then
+  if [ ! -e "/usr/sbin/pdnsd" ] ; then
+    msg "`date` INFO: Installing DNS cache pdnsd, please wait..."
+    mrun "sleep 3"
+    cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
+    st_runner "$_INSTALL pdnsd resolvconf";
+    perl -p -i -e "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
+    cat /opt/tmp/nginx-for-drupal/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    st_runner "invoke-rc.d pdnsd start" &> /dev/null
+    mrun "sleep 3"
+    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+    mrun "sleep 3"
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    st_runner "invoke-rc.d pdnsd start" &> /dev/null
+  fi
+fi
 
 
 ###--------------------###
