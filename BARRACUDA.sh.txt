@@ -238,7 +238,7 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=A14.C.dev1
+_INSTALLER_VERSION=A15.A.dev1
 _NGINX_VERSION=0.8.53
 _PHP_VERSION=5.2.14
 _DRUSH_VERSION=6.x-3.3
@@ -1374,7 +1374,12 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/local/bin/bzr" ] ; then
+if [ "$_THIS_OS" = "Debian" ] ; then
+  _PATH_BZR="/usr/bin/bzr"
+else
+  _PATH_BZR="/usr/local/bin/bzr"
+fi
+if [ ! -e "$_PATH_BZR" ] ; then
   msg "`date` INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -1444,12 +1449,16 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/local/bin/lshell" ] ; then
+if [ "$_THIS_OS" = "Debian" ] ; then
+  _PATH_LSHELL="/usr/bin/lshell"
+else
+  _PATH_LSHELL="/usr/local/bin/lshell"
+fi
+if [ ! -e "$_PATH_LSHELL" ] ; then
   msg "`date` INFO: Installing lshell, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/0.9.12/lshell-0.9.12.tar.gz
-  #wget -q -U iCab https://sourceforge.net/projects/lshell/files/lshell/0.9.12/lshell-0.9.12.tar.gz/download 2> /dev/null
   tar -xzf lshell-0.9.12.tar.gz
   cd /var/opt/lshell-0.9.12
   st_runner "python setup.py install" 2> /dev/null
@@ -1459,9 +1468,9 @@ if [ ! -e "/usr/local/bin/lshell" ] ; then
   chmod 770 /var/log/lsh &> /dev/null
   cd /etc
   cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
-  mv -f lshell.conf lshell.conf-orig &> /dev/null
+  mv -f lshell.conf lshell.conf-pre-$_NOW &> /dev/null
   mv -f lshell.conf.txt lshell.conf &> /dev/null
-  echo "/usr/bin/lshell" >> /etc/shells
+  echo "$_PATH_LSHELL" >> /etc/shells
 fi
 
 
