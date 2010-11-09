@@ -232,6 +232,7 @@ if (!preg_match("/(standard|minimal|testing)/", $conf['install_profile'])) { // 
 if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
   ini_set('arg_separator.output',     '&');
   require_once "sites/all/modules/fb/fb_settings.inc";
+  $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
 }
 
 /**

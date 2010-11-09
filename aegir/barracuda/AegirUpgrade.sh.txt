@@ -64,7 +64,6 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-     #git clone git://git.aegirproject.org/provision &> /dev/null
       git clone git://github.com/omega8cc/provision.git &> /dev/null
     else
       wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
@@ -109,8 +108,29 @@ if [ -d "$_ROOT/host_master/001" ] ; then
   _LASTNUM=$last
   nextnum=00$((10#${last%%[^0-9]*} + 1))
   nextnum=${nextnum: -3}
-  _DISTRO=${nextnum}
-  _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+  _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+  if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
+    msg "`date` UPGRADE INFO: Testing previous install.. OK"
+    _DISTRO=${nextnum}
+    _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+  else
+    _DEBUG_MODE=YES
+    msg "`date` UPGRADE INFO: Testing previous install.. OPS, zombie found, moving it to backups.."
+    mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/hostmaster-pre-$_DISTRO-$_NOW &> /dev/null
+    cd $_ROOT/host_master
+    list=([0-9]*)
+    last=${list[@]: -1}
+    _LASTNUM=$last
+    nextnum=00$((10#${last%%[^0-9]*} + 1))
+    nextnum=${nextnum: -3}
+    _DISTRO=${nextnum}
+    _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+    if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
+      msg "`date` UPGRADE INFO: Testing previous install.. OK"
+      _DISTRO=${nextnum}
+      _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+    fi
+  fi
 fi
 _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_AEGIR_ROOT" ] ; then
@@ -127,13 +147,15 @@ if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   hostmaster_go_up
   hostmaster_mi_up
 elif [ ! -d "/var/aegir/.drush/provision/http" ] ; then
-  msg "`date` UPGRADE INFO: ERROR: Something is wrong, trying to re-install Hostmaster..."
-  hostmaster_dr_up
-  hostmaster_go_up
+  msg "`date` UPGRADE ERROR: Something (1) is wrong, we should stop now.."
+  msg "`date` UPGRADE ERROR: Please report this in the GitHub queue"
+  msg "BYE!"
+  exit 1
 else
-  msg "`date` UPGRADE INFO: ERROR: Something is wrong, trying to re-install Hostmaster.."
-  hostmaster_dr_up
-  hostmaster_go_up
+  msg "`date` UPGRADE ERROR: Something (2) is wrong, we should stop now.."
+  msg "`date` UPGRADE ERROR: Please report this in the GitHub queue"
+  msg "BYE!"
+  exit 1
 fi
 
 
