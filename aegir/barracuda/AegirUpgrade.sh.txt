@@ -80,11 +80,13 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
+  export DEBIAN_FRONTEND=noninteractive
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y -d
   else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
   fi
+  export DEBIAN_FRONTEND=text
 }
 
 ###--------------------###
