@@ -328,25 +328,25 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/varnish-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
-  tar -xzf cache.tar.gz
-  tar -xzf boost-6.x-1.x-dev.tar.gz
-  tar -xzf dbtuner-6.x-1.x-dev.tar.gz
-  tar -xzf views_content_cache-6.x-2.x-dev.tar.gz
-  tar -xzf module_supports-6.x-1.0.tar.gz
-  tar -xzf filefield_nginx_progress-6.x-1.x-dev.tar.gz
-  tar -xzf securesite-6.x-2.4.tar.gz
-  tar -xzf image-6.x-1.x-dev.tar.gz
-  tar -xzf backup_migrate-6.x-2.x-dev.tar.gz
-  tar -xzf openidadmin-6.x-1.2.tar.gz
-  tar -xzf elysia_cron-6.x-1.x-dev.tar.gz
-  tar -xzf session_expire-6.x-1.x-dev.tar.gz
-  tar -xzf javascript_aggregator-6.x-1.x-dev.tar.gz
-  tar -xzf css_emimage-6.x-2.x-dev.tar.gz
-  tar -xzf views404-6.x-1.x-dev.tar.gz
-  tar -xzf expire-6.x-1.x-dev.tar.gz
-  tar -xzf session443-6.x-1.x-dev.tar.gz
-  tar -xzf varnish-6.x-1.x-dev.tar.gz
-  tar -xzf site_verify-6.x-1.x-dev.tar.gz
+  tar -xzf cache.tar.gz &> /dev/null
+  tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
+  tar -xzf module_supports-6.x-1.0.tar.gz &> /dev/null
+  tar -xzf filefield_nginx_progress-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf securesite-6.x-2.4.tar.gz &> /dev/null
+  tar -xzf image-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf backup_migrate-6.x-2.x-dev.tar.gz &> /dev/null
+  tar -xzf openidadmin-6.x-1.2.tar.gz &> /dev/null
+  tar -xzf elysia_cron-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf session_expire-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf javascript_aggregator-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
+  tar -xzf views404-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf session443-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf varnish-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
   rm -f *.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
  #wget -q -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz
@@ -360,12 +360,12 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   ### 173.203.111.184 features.chapterthree.com
   wget -q -U iCab http://173.203.111.184/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
   mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
-  tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz
+  tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
   rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.2.tar.gz
   wget -q -U iCab http://drupal.cocomore.com/system/files/apachesolr-6.1.0-cocomore-1.tar.gz
-  tar -xzf apachesolr-6.1.0-cocomore-1.tar.gz
+  tar -xzf apachesolr-6.1.0-cocomore-1.tar.gz &> /dev/null
   rm -f apachesolr-6.1.0-cocomore-1.tar.gz
   #cd apachesolr
   #svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient &> /dev/null
