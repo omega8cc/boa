@@ -348,28 +348,22 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf varnish-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
   rm -f *.tar.gz
- #wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxify_regions-6.x-1.x-dev.tar.gz
- #wget -q -U iCab http://ftp.drupal.org/files/projects/og_privacy-6.x-1.0-alpha1.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   mkdir -p $_CORE/o_contrib_atrium
   cd $_CORE/o_contrib_atrium
   git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
-  wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha12.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta4.tar.gz
-  ### 173.203.111.184 features.chapterthree.com
-  wget -q -U iCab http://173.203.111.184/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
-  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
-  tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
-  rm -f atrium_apachesolr_search-6.x-1.0.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha14.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta10.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-6.x-1.0-beta3.tar.gz
   wget -q -U iCab http://drupal.cocomore.com/system/files/apachesolr-6.1.0-cocomore-1.tar.gz
+  wget -q -U iCab http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
+  mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
+  tar -xzf data-6.x-1.0-alpha14.tar.gz &> /dev/null
+  tar -xzf feeds-6.x-1.0-beta10.tar.gz &> /dev/null
+  tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
   tar -xzf apachesolr-6.1.0-cocomore-1.tar.gz &> /dev/null
-  rm -f apachesolr-6.1.0-cocomore-1.tar.gz
-  #cd apachesolr
-  #svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient &> /dev/null
-  cd $_CORE/o_contrib_atrium
+  tar -xzf job_scheduler-6.x-1.0-beta3.tar.gz &> /dev/null
   rm -f *.tar.gz
 fi
 cd /data/src/$_THIS_CORE/pressflow-6/
