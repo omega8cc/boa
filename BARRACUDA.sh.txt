@@ -1134,7 +1134,8 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/bin/vnstat" ] ; then
+if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+ if [ ! -e "/usr/bin/vnstat" ] ; then
   msg "`date` INFO: Installing VnStat monitor, please wait..."
   _ETH_TEST=`ifconfig 2>&1`
   if [[ $_ETH_TEST =~ venet0 ]] ; then
@@ -1159,6 +1160,7 @@ if [ ! -e "/usr/bin/vnstat" ] ; then
   chmod 755 vnstat &> /dev/null
   st_runner "update-rc.d vnstat defaults" &> /dev/null
   st_runner "invoke-rc.d vnstat start" &> /dev/null
+ fi
 fi
 
 
@@ -1897,7 +1899,8 @@ fi
 
 
 ###--------------------###
-if [ ! -d "/var/www/cgp" ] ; then
+if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+ if [ ! -d "/var/www/cgp" ] ; then
   echo " "
   if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
     true
@@ -1929,6 +1932,7 @@ if [ ! -d "/var/www/cgp" ] ; then
     msg "`date` INFO: Collectd Graph Panel installation skipped"
     mrun "sleep 2"
   fi
+ fi
 fi
 
 
@@ -1985,7 +1989,8 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/sbin/csf" ] ; then
+if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+ if [ ! -e "/usr/sbin/csf" ] ; then
   cd /var/opt
   rm -f /var/xdrago/log/lastFire
   wget -q -U iCab http://www.configserver.com/free/csf.tgz
@@ -2006,6 +2011,7 @@ if [ -e "/var/xdrago/log/lastFire" ] ; then
   rm -f /var/xdrago/log/lastFire
   st_runner "invoke-rc.d csf restart" &> /dev/null
   st_runner "invoke-rc.d lfd restart" &> /dev/null
+ fi
 fi
 
 
@@ -2063,8 +2069,8 @@ msg "`date` Final post-install cleaning, please wait..."
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-invoke-rc.d php-fpm restart &> /dev/null
-invoke-rc.d nginx restart &> /dev/null
+invoke-rc.d php-fpm reload &> /dev/null
+invoke-rc.d nginx reload &> /dev/null
 invoke-rc.d cron start &> /dev/null
 msg "`date` BYE!"
 exit 0
