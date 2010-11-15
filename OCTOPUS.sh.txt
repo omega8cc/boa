@@ -121,6 +121,22 @@ _HOT_SAUCE=NO
 
 
 ###----------------------------------------###
+### DISTRO USING EXISTING VERSION NR       ###
+###----------------------------------------###
+###
+### Use this to avoid creating new shared
+### set of platforms with increased version
+### number. It will allow you to add some
+### newer platforms to the existing shared
+### code. If not sure what it does, avoid
+### using this option and leave the default
+### value. It will not work at all if you
+### are using _HOT_SAUCE=YES above.
+###
+_USE_CURRENT=NO
+
+
+###----------------------------------------###
 ### REMOTE CACHE IP ADDRESS                ###
 ###----------------------------------------###
 ###
@@ -262,6 +278,7 @@ do
   perl -p -i -e "s/(EDIT_COMMONS)/$_COMMONS/g" $Files
   perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" $Files
   perl -p -i -e "s/(EDIT_HOT_SAUCE)/$_HOT_SAUCE/g" $Files
+  perl -p -i -e "s/(EDIT_USE_CURRENT)/$_USE_CURRENT/g" $Files
   perl -p -i -e "s/(EDIT_REMOTE_CACHE_IP)/$_REMOTE_CACHE_IP/g" $Files
   perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g" $Files
 done

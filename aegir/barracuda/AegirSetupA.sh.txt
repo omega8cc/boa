@@ -62,6 +62,7 @@ _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _THISHTIP=EDIT_THISHTIP
 _DIST_INSTALL=NO
 _HOT_SAUCE=EDIT_HOT_SAUCE
+_USE_CURRENT=EDIT_USE_CURRENT
 _REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _NOW=`date +%y%m%d-%H%M`
@@ -198,7 +199,9 @@ mrun "sleep 3"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ -d "$_ROOT/distro/$_THIS_CORE" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] ; then
+    msg "`date` $_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
+  elif [ -d "$_ROOT/distro/$_THIS_CORE" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "`date` $_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
