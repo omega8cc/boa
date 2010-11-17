@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://github.com/omega8cc
+###  Code: http://gitorious.org/aegir
 ###
 ###----------------------------------------###
 
@@ -61,6 +61,8 @@ _ROOT="/data/disk/$_USER"
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 _DEBUG_MODE=EDIT_DEBUG_MODE
+_BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
+_BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 
 
 ###---### Functions
@@ -143,7 +145,7 @@ mrun () {
 #
 # create standard directories
 create_dirs () {
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   mkdir -p ./sites/default/files
   mkdir -p ./cache/perm
   mkdir -p ./cache/normal
@@ -169,9 +171,9 @@ create_dirs () {
   chmod 02775 ./sites/all/libraries &> /dev/null
   chmod 02775 ./sites/all/themes &> /dev/null
   rm -f .htaccess
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/get.htaccess.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./
   mv -f get.htaccess.txt .htaccess &> /dev/null
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/crossdomain.xml ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
 }
 #
 # create standard symlinks
@@ -277,8 +279,8 @@ for i in $REVISIONS; do
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
-      wget --no-check-certificate -q -U iCab https://github.com/omega8cc/feature_server/raw/master/feature_server.make
-      wget --no-check-certificate -q -U iCab https://github.com/omega8cc/feature_server/raw/master/feature_server.profile
+      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.make
+      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.profile
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
         _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
@@ -306,7 +308,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
-cp -af /opt/tmp/nginx-for-drupal/aegir/conf/robots.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
 wget -q -U iCab http://omega8.cc/boost_stats.php.txt
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -d "$_CORE/o_contrib" ] ; then
@@ -777,16 +779,16 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar
-  cp -af /opt/tmp/nginx-for-drupal/aegir/patches/openscholar.profile.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./
   patch -p1 < openscholar.profile.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar_projects
-  cp -af /opt/tmp/nginx-for-drupal/aegir/patches/openscholar_projects.profile.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./
   patch -p1 < openscholar_projects.profile.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/activity
-  cp -af /opt/tmp/nginx-for-drupal/aegir/patches/activity.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./
   patch -p1 < activity.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
-  cp -af /opt/tmp/nginx-for-drupal/aegir/patches/imagefield_crop.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./
   patch -p0 < imagefield_crop.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   create_dirs
@@ -908,7 +910,7 @@ else
   cd $_THIS_HOSTMASTER
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
-cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_platform.php.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia/drushrc.php" ] ; then

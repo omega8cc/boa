@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://github.com/omega8cc
+###  Code: http://gitorious.org/aegir
 ###
 ###----------------------------------------###
 
@@ -389,12 +389,12 @@ install_redis_src () {
   cp -p redis-check-dump /usr/bin/
   cp -p redis-check-aof /usr/bin/
   cd /etc/init.d
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis-server ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./
   chmod 755 redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir /etc/redis
   cd /etc/redis
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/redis.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./
   mkdir -p /var/log/redis
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
@@ -412,13 +412,13 @@ force_advanced_nginx_config () {
   cd /var/aegir/config/includes
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx_advanced_include.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf
   chown aegir:aegir *
 }
@@ -529,11 +529,23 @@ fi
 
 
 ###--------------------###
-if ! netcat -w 8 -z github.com 9418 ; then
+msg "`date` INFO: Testing Gitorious and GitHub servers availability, please wait..."
+sleep 3
+_GITORIOUS_WORKS=YES
+_GITHUB_WORKS=YES
+if ! netcat -w 8 -z gitorious.org 9418 ; then
+  _GITORIOUS_WORKS="NO"
+cat <<EOF
+
+  The Gitorious master repository server doesn't respond now,
+  let's try GitHub mirror...
+    
+EOF
+elif ! netcat -w 8 -z github.com 9418 ; then
   _GITHUB_WORKS="NO"
 cat <<EOF
 
-  The GitHub server doesn't respond now,
+  The GitHub mirror repository server doesn't respond now,
   so we can't continue this installation.
   
   Please try again later.
@@ -544,6 +556,15 @@ EOF
   exit 1
 else
   true
+fi
+if [ $_GITORIOUS_WORKS = "YES" ] ; then
+  _BOA_REPO_NAME="barracuda-octopus"
+  _BOA_REPO_GIT_URL="git://gitorious.org/aegir"
+  msg "`date` INFO: Gitorious master repository will be used for this install"
+elif [ $_GITHUB_WORKS = "YES" ] ; then
+  _BOA_REPO_NAME="nginx-for-drupal"
+  _BOA_REPO_GIT_URL="git://github.com/omega8cc"
+  msg "`date` INFO: GitHub mirror repository will be used for this install"
 fi
 
 
@@ -563,12 +584,12 @@ sleep 3
 #
 # Git clone all
 cd /opt/tmp
-rm -f -r /opt/tmp/nginx-for-drupal
-git clone git://github.com/omega8cc/nginx-for-drupal.git &> /dev/null
+rm -f -r /opt/tmp/$_BOA_REPO_NAME
+git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 #
 # Get apt helper
 rm -f apt.conf.noninteractive*
-cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt.conf.noninteractive ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./
 #
 # Create tmp stuff
 _LOG=/opt/tmp/aegir-install.log
@@ -577,13 +598,13 @@ cd $_SRCDIR
 #
 # Get spinner
 rm -f spinner*
-cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/spinner ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Get axelerator
 if [ ! -e "/usr/bin/apt-fast" ] ; then
   cd /usr/bin
-  cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/apt-fast.sh.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt-fast.sh.txt ./
   mv -f apt-fast.sh.txt apt-fast &> /dev/null
   chmod +x apt-fast &> /dev/null
   cd /opt/tmp
@@ -892,7 +913,7 @@ if [ $_INSTALL_PDNSD = "YES" ] ; then
     cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
     st_runner "$_INSTALL pdnsd resolvconf";
     perl -p -i -e "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
-    cat /opt/tmp/nginx-for-drupal/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+    cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
     st_runner "invoke-rc.d pdnsd stop" &> /dev/null
     rm -f /var/cache/pdnsd/pdnsd.cache
     st_runner "invoke-rc.d pdnsd start" &> /dev/null
@@ -915,7 +936,7 @@ if [ ! -e "/var/log/apt-fast-install-log.txt" ] ; then
     if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
       msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
       mrun "sleep 3"
-      cd /opt/tmp/nginx-for-drupal/aegir/helpers
+      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
       echo " "
@@ -951,7 +972,7 @@ if [ ! -e "/var/log/apt-fast-install-log.txt" ] ; then
     if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
       msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
       mrun "sleep 3"
-      cd /opt/tmp/nginx-for-drupal/aegir/helpers
+      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       echo " "
@@ -1116,7 +1137,7 @@ if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
 else
   cd /etc/init.d
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/nginx ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx ./
   chmod 755 /etc/init.d/nginx &> /dev/null
   msg "`date` INFO: Fix for Nginx startup script applied"
 fi
@@ -1176,7 +1197,7 @@ if [ -d "/var/xdrago" ] ; then
 fi
 if [ $_STATUS = "INIT" ] ; then
   mkdir -p ./xdrago
-  cp -af /opt/tmp/nginx-for-drupal/aegir/tools/auto-healing-monitoring/* ./xdrago/
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/
   cp -af /var/xdrago/etc /opt/
   cp -af /opt/etc/init.d/* /etc/init.d/
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
@@ -1431,7 +1452,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   msg "`date` INFO: Install/upgrade Nginx, please wait..."
   mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
-  git clone git://github.com/masterzen/nginx-upload-progress-module.git &> /dev/null
+  git clone git://gitorious.org/aegir/nginx-upload-progress-module.git &> /dev/null
   cd /var/opt
   wget -q -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
@@ -1482,7 +1503,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
   cd /etc
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/lshell.conf.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/lshell.conf.txt ./
   mv -f lshell.conf lshell.conf-pre-$_NOW &> /dev/null
   mv -f lshell.conf.txt lshell.conf &> /dev/null
   echo "$_PATH_LSHELL" >> /etc/shells
@@ -1509,13 +1530,13 @@ if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
   st_runner "make install-strip" 2> /dev/null
   cd /usr/local/sbin/
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-config.pl.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./
   mv -f pure-config.pl.txt pure-config.pl &> /dev/null
   chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
   rm -f pure-ftpd.conf
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/pure-ftpd.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
   mrun "sleep 3"
   st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
   cd /var/opt
@@ -1543,7 +1564,7 @@ if [ $_STATUS = "INIT" ] ; then
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf.bak.copy &> /dev/null
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/my.cnf.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
@@ -1610,7 +1631,13 @@ elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
 else
   _AEGIR_SCRIPT="aegir-alpha-install"
 fi
-cp -af /opt/tmp/nginx-for-drupal/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
+for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
+do
+  perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" $Files
+  perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g" $Files
+  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URL/g" $Files
+done
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "`date` INFO: Now running Aegir installer for backend and frontend, please wait..."
 mrun "sleep 3"
 if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -1647,11 +1674,11 @@ mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 force_advanced_nginx_config
 cd /var/aegir/drush
-cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
 cd /var/aegir
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
@@ -1675,18 +1702,22 @@ else
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
     cd /var/aegir
-    cp /opt/tmp/nginx-for-drupal/aegir/barracuda/AegirUpgrade.sh.txt ./
-    perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g" /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
+    cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
+    perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URL/g"   /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
-      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
     force_advanced_nginx_config
@@ -1712,15 +1743,15 @@ fi ### end of if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
-if [ -e "/opt/tmp/nginx-for-drupal/aegir/conf/mime.types" ] ; then
+if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
 msg "`date` INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
   mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp /opt/tmp/nginx-for-drupal/aegir/conf/mime.types ./ &> /dev/null
+  cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./ &> /dev/null
   cd /var/www/nginx-default
-  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/uc.html ./ &> /dev/null
-  cp -f /opt/tmp/nginx-for-drupal/aegir/conf/under_construction.jpg ./ &> /dev/null
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./ &> /dev/null
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./ &> /dev/null
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
@@ -1780,11 +1811,11 @@ mrun "sleep 30"
     fi
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
-    cp -a /opt/tmp/nginx-for-drupal/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
+    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
     perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
-    if [ -e "/opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
-      cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
@@ -1949,7 +1980,7 @@ if [ ! -e "/usr/sbin/named" ] ; then
     st_runner "$_INSTALL bind9" 2> /dev/null
     cd /etc/bind
     rm -f named.conf.options
-    cp -af /opt/tmp/nginx-for-drupal/aegir/conf/named.conf.options ./ &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./ &> /dev/null
     perl -p -i -e "s/127.0.1.1/$_THISHTIP/g" named.conf.options
     st_runner "invoke-rc.d bind9 restart" &> /dev/null
     if [ ! -e "/etc/init.d/bind" ] ; then
@@ -1999,7 +2030,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   st_runner "sh install.sh" 2> /dev/null
   cd /etc/csf
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/csf.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" csf.conf
   chmod 600 csf.conf &> /dev/null
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root

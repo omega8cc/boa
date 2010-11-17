@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://github.com/omega8cc
+###  Code: http://gitorious.org/aegir
 ###
 ###----------------------------------------###
 
@@ -23,6 +23,12 @@
 ###----------------------------------------###
 
 _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
+_BOA_REPO_NAME=EDIT_BOA_REPO_NAME
+_BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
+_DOMAIN=EDIT_DOMAIN
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
+_DEBUG_MODE=EDIT_DEBUG_MODE
 
 
 ###---### Functions
@@ -64,7 +70,7 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-      git clone git://github.com/omega8cc/provision.git &> /dev/null
+      git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
     else
       wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
       tar -xzf provision-$_AEGIR_VERSION.tgz
@@ -94,10 +100,6 @@ hostmaster_mi_up () {
 _NOW=`date +%y%m%d-%H%M`
 _LASTNUM=001
 _DISTRO=001
-_DOMAIN=EDIT_DOMAIN
-_AEGIR_VERSION=EDIT_AEGIR_VERSION
-_DRUSH_VERSION=EDIT_DRUSH_VERSION
-_DEBUG_MODE=EDIT_DEBUG_MODE
 _DRUSHCMD="php /var/aegir/drush/drush.php"
 _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`

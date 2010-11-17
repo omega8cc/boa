@@ -28,7 +28,10 @@
 ########################################################################
 # basic variables, change before release
 AEGIR_VERSION="0.4-alpha15"
-DRUSH_VERSION=6.x-3.3
+
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
+_BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
+_BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 
 # when adding a variable here, add it to the display below
 
@@ -104,9 +107,9 @@ elif [ -x $DRUSH ] ; then
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
-  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
-  gunzip -q -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
-  rm drush-$DRUSH_VERSION.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
+  gunzip -q -c drush-$_DRUSH_VERSION.tar.gz | tar -xf -
+  rm drush-$_DRUSH_VERSION.tar.gz
   DRUSH="php $AEGIR_HOME/drush/drush.php"
 fi
 
@@ -123,7 +126,7 @@ else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
-    git clone git://github.com/omega8cc/provision.git $AEGIR_HOME/.drush/provision
+    git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
   else
     cd $AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz

@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://github.com/omega8cc
+###  Code: http://gitorious.org/aegir
 ###
 ###----------------------------------------###
 
@@ -59,6 +59,8 @@ _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _NOW=`date +%y%m%d-%H%M`
+_BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
+_BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 
 
 ###---### Functions
@@ -248,8 +250,7 @@ msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
-  #git clone git://git.aegirproject.org/provision &> /dev/null
-  git clone git://github.com/omega8cc/provision.git &> /dev/null
+  git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
   if [ $_STATUS = "UPGRADE" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
     tar -xzf drush_make-6.x-2.0-beta8.tar.gz
@@ -269,7 +270,7 @@ cd $_ROOT/.drush
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
 if [ $_STATUS = "UPGRADE" ] ; then
   cd $_ROOT/.drush/drush_make
-  cp -af /opt/tmp/nginx-for-drupal/aegir/patches/drush_make.drush.inc.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush_make.drush.inc.patch ./
   patch -p0 < drush_make.drush.inc.patch &> /dev/null
 fi
 
@@ -342,14 +343,14 @@ fi
 msg "`date` $_STATUS B: Enhance Aegir UI"
 mrun "sleep 3"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
-cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/eldir.diff ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.4.tar.gz
 cd $_ROOT/tools/drush
-cp -af /opt/tmp/nginx-for-drupal/aegir/patches/user.drush.inc.patch ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features -y &> /dev/null
@@ -377,11 +378,11 @@ perl -p -i -e "s/(320px)/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
-  cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_home.php.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
   mv -f make_home.php.txt make_home.php &> /dev/null
   $DRUSHC php-script make_home &> /dev/null
   rm -f make_home.php
-  cp -af /opt/tmp/nginx-for-drupal/aegir/helpers/make_client.php.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
   mv -f make_client.php.txt make_client.php &> /dev/null
   $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
   rm -f make_client.php
@@ -400,7 +401,7 @@ if [ -e "/data/conf/global.inc" ] ; then
 else
   rm -f $_ROOT/config/includes/global.inc
   cd /data/conf
-  cp -af /opt/tmp/nginx-for-drupal/aegir/conf/global.inc.aegir.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
   mv -f global.inc.aegir.txt global.inc &> /dev/null
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi

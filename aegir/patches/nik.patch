@@ -17,7 +17,7 @@
  # set -e ### disable this for debugging
 @@ -703,34 +711,40 @@ if [ ! -f "/var/aegir/config/includes/ap
      mrun "sleep 3"
-     cd /opt/tmp/nginx-for-drupal/aegir/helpers
+     cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
      _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
 +		_MIRROR="http://$_MIRROR/ubuntu/"
 +		prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR
@@ -49,7 +49,7 @@
    elif [ "$_THIS_OS" = "Debian" ] ; then
      msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
      mrun "sleep 3"
-     cd /opt/tmp/nginx-for-drupal/aegir/helpers
+     cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
 +		_MIRROR="http://$_MIRROR/debian/"
 +		prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror " $_MIRROR

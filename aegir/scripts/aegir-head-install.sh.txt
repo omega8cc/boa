@@ -29,6 +29,8 @@
 # basic variables, change before release
 AEGIR_VERSION="HEAD"
 DRUSH_VERSION=6.x-3.3
+_BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
+_BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 
 # when adding a variable here, add it to the display below
 
@@ -123,7 +125,7 @@ else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
-    git clone git://github.com/omega8cc/provision.git $AEGIR_HOME/.drush/provision
+    git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
   else
     cd $AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
