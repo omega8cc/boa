@@ -410,6 +410,8 @@ fix_on_upgrade () {
 # Force advanced Nginx configuration
 force_advanced_nginx_config () {
   cd /var/aegir/config/includes
+  rm -f nginx_compact_include.conf
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
@@ -1881,15 +1883,39 @@ if [ ! -d "/var/www/chive" ] ; then
     echo "   server_name  chive.$_THIS_FRONT;" >> $_CHIVE_VHOST
     echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
     echo "   index        index.php index.html;" >> $_CHIVE_VHOST
-    echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CHIVE_VHOST
+    echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
     echo "}" >> $_CHIVE_VHOST
     echo " " >> $_CHIVE_VHOST
+    touch /var/log/chive_0.4.0.log
     msg "`date` INFO: Chive MariaDB Manager installation completed"
     mrun "sleep 2"
   else
     msg "`date` INFO: Chive MariaDB Manager installation skipped"
     mrun "sleep 2"
   fi
+fi
+
+
+###--------------------###
+if [ -d "/var/www/chive" ] ; then
+  if [ ! -e "/var/log/chive_0.4.0.log" ] ; then
+    msg "`date` INFO: Upgrading Chive MariaDB Manager, please wait..."
+    mrun "sleep 3"
+    cd /var/www
+    rm -f -r /var/www/chive
+    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.0.tar.gz
+    tar -xzf chive_0.4.0.tar.gz
+    rm -f chive_0.4.0.tar.gz
+    chown -R www-data:www-data /var/www/chive
+    touch /var/log/chive_0.4.0.log
+  fi
+fi
+
+
+###--------------------###
+_CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
+if [ -e "$_CHIVE_VHOST" ] ; then
+  perl -p -i -e "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CHIVE_VHOST
 fi
 
 
@@ -1917,7 +1943,7 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo "   server_name  sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
     echo "   root         /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
     echo "   index        index.php index.html;" >> $_SQLBUDDY_VHOST
-    echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_SQLBUDDY_VHOST
+    echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
     echo "}" >> $_SQLBUDDY_VHOST
     echo " " >> $_SQLBUDDY_VHOST
     msg "`date` INFO: SQL Buddy MariaDB Manager installation completed"
@@ -1926,6 +1952,13 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     msg "`date` INFO: SQL Buddy MariaDB Manager installation skipped"
     mrun "sleep 2"
   fi
+fi
+
+
+###--------------------###
+_SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
+if [ -e "$_SQLBUDDY_VHOST" ] ; then
+  perl -p -i -e "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_SQLBUDDY_VHOST
 fi
 
 
@@ -1954,7 +1987,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo "   server_name  cgp.$_THIS_FRONT;" >> $_CGP_VHOST
     echo "   root         /var/www/cgp;" >> $_CGP_VHOST
     echo "   index        index.php index.html;" >> $_CGP_VHOST
-    echo "   include      /var/aegir/config/includes/nginx_simple_include.conf;" >> $_CGP_VHOST
+    echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
     echo "}" >> $_CGP_VHOST
     echo " " >> $_CGP_VHOST
     msg "`date` INFO: Collectd Graph Panel installation completed"
@@ -1964,6 +1997,13 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     mrun "sleep 2"
   fi
  fi
+fi
+
+
+###--------------------###
+_CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
+if [ -e "$_CGP_VHOST" ] ; then
+  perl -p -i -e "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CGP_VHOST
 fi
 
 
