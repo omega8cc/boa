@@ -252,18 +252,18 @@ cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
   git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
   if [ $_STATUS = "UPGRADE" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
-    tar -xzf drush_make-6.x-2.0-beta8.tar.gz
-    rm -f drush_make-6.x-2.0-beta8.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta9.tar.gz
+    tar -xzf drush_make-6.x-2.0-beta9.tar.gz
+    rm -f drush_make-6.x-2.0-beta9.tar.gz
   fi
 else
   wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
   tar -xzf provision-$_AEGIR_VERSION.tgz
   rm provision-$_AEGIR_VERSION.tgz
   if [ $_STATUS = "UPGRADE" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta8.tar.gz
-    tar -xzf drush_make-6.x-2.0-beta8.tar.gz
-    rm -f drush_make-6.x-2.0-beta8.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta9.tar.gz
+    tar -xzf drush_make-6.x-2.0-beta9.tar.gz
+    rm -f drush_make-6.x-2.0-beta9.tar.gz
   fi
 fi
 cd $_ROOT/.drush
