@@ -1090,6 +1090,12 @@ fi
 
 
 ###--------------------###
+msg "`date` INFO: Install udev, just in case it is missing, please wait..."
+mrun "sleep 3"
+st_runner "apt-fast -y install udev" 2> /dev/null
+
+
+###--------------------###
 if [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "`date` INFO: SMTP check"
 mrun "sleep 3"
