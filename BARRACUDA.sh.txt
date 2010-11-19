@@ -1858,9 +1858,9 @@ if [ ! -d "/var/www/chive" ] ; then
     msg "`date` INFO: Installing Chive MariaDB Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
-    wget -q -U iCab http://launchpad.net/chive/trunk/0.3.0/+download/chive_0.3.0.tar.gz
-    tar -xzf chive_0.3.0.tar.gz
-    rm -f chive_0.3.0.tar.gz
+    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.0.tar.gz
+    tar -xzf chive_0.4.0.tar.gz
+    rm -f chive_0.4.0.tar.gz
     chown -R www-data:www-data /var/www/chive
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     if [ -z "$_THISHTIP" ] ; then
