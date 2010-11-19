@@ -18,17 +18,18 @@ mysql -u $DATABASEUSER -p$DATABASEPASS -e "show databases" -s > .databasesToBack
 #Parese list of databases and then backup using mysqldump
 cat .databasesToBackup | while read line; do
 /usr/bin/mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
+TRUNCATE sessions;
 TRUNCATE cache;
-TRUNCATE cache_content;
-TRUNCATE cache_path;
-TRUNCATE cache_block;
-TRUNCATE cache_filter;
-TRUNCATE cache_form;
 TRUNCATE cache_menu;
 TRUNCATE cache_page;
+TRUNCATE cache_filter;
+TRUNCATE cache_form;
+TRUNCATE cache_block;
 TRUNCATE cache_views_data;
 TRUNCATE cache_views;
-TRUNCATE sessions;
+TRUNCATE cache_content;
+TRUNCATE watchdog;
+TRUNCATE cache_path;
 EOFMYSQL
 mysqldump -u $DATABASEUSER -p$DATABASEPASS --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $line | gzip  > $SAVELOCATION/$line.sql.gz
 done

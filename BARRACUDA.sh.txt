@@ -1205,18 +1205,10 @@ if [ $_STATUS = "INIT" ] ; then
   perl -p -i -e "s/(max_children\">1)/max_children\"\>4/g" /opt/etc/php-fpm.conf
 fi
 if [ $_STATUS = "INIT" ] ; then
-  echo $_MY_EMAIL > /opt/tmp/.email.txt
-  perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
-  APTEMAIL=`cat /opt/tmp/.email.txt`
-  APTEMAIL=`echo -n $APTEMAIL | tr -d "\n"`
-  perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf
-  rm -f /opt/tmp/.email.txt
-  echo $_MY_EMAIL > /opt/tmp/.xemail.txt
-  perl -p -i -e "s/(\@)/\\\\\@/g" /opt/tmp/.xemail.txt
-  XPTEMAIL=`cat /opt/tmp/.xemail.txt`
-  XPTEMAIL=`echo -n $XPTEMAIL | tr -d "\n"`
+  APTEMAIL=${_MY_EMAIL//\@/\\\@}
+  perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf  
+  XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi
-  rm -f /opt/tmp/.xemail.txt
   st_runner "sh /usr/sbin/apticron"
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
@@ -1631,11 +1623,12 @@ elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
 else
   _AEGIR_SCRIPT="aegir-alpha-install"
 fi
+_BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
-  perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" $Files
-  perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g" $Files
-  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URL/g" $Files
+  perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"       $Files
+  perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g"       $Files
+  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
 done
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "`date` INFO: Now running Aegir installer for backend and frontend, please wait..."

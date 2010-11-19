@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # $Id$
 
@@ -28,7 +28,8 @@
 ########################################################################
 # basic variables, change before release
 AEGIR_VERSION="HEAD"
-DRUSH_VERSION=6.x-3.3
+
+_DRUSH_VERSION=EDIT_DRUSH_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 
@@ -106,9 +107,9 @@ elif [ -x $DRUSH ] ; then
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
-  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$DRUSH_VERSION.tar.gz
-  gunzip -q -c drush-$DRUSH_VERSION.tar.gz | tar -xf -
-  rm drush-$DRUSH_VERSION.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
+  gunzip -q -c drush-$_DRUSH_VERSION.tar.gz | tar -xf -
+  rm drush-$_DRUSH_VERSION.tar.gz
   DRUSH="php $AEGIR_HOME/drush/drush.php"
 fi
 

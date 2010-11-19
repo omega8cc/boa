@@ -282,13 +282,13 @@ do
   perl -p -i -e "s/(EDIT_REMOTE_CACHE_IP)/$_REMOTE_CACHE_IP/g" $Files
   perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g" $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g" $Files
-  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URL/g" $Files
+  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g" $Files
-  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URL/g" $Files
+  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
@@ -363,6 +363,7 @@ elif [ $_GITHUB_WORKS = "YES" ] ; then
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "`date` INFO: GitHub mirror repository will be used for this install"
 fi
+_BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 #
 #
 if [ `whoami` = "root" ] ; then
@@ -589,19 +590,21 @@ else
   exit 1
 fi
 
-echo $_MY_EMAIL > /opt/tmp/.email.txt
-perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
-_MY_EMAIL=`cat /opt/tmp/.email.txt`
-_MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
-rm -f /opt/tmp/.email.txt
+# echo $_MY_EMAIL > /opt/tmp/.email.txt
+# perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.email.txt
+# _MY_EMAIL=`cat /opt/tmp/.email.txt`
+# _MY_EMAIL=`echo -n $_MY_EMAIL | tr -d "\n"`
+# rm -f /opt/tmp/.email.txt
+_MY_EMAIL=${_MY_EMAIL//\@/\\\@}
 
 _RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
 
-echo $_CLIENT_EMAIL > /opt/tmp/.cemail.txt
-perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.cemail.txt
-_CLIENT_EMAIL=`cat /opt/tmp/.cemail.txt`
-_CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
-rm -f /opt/tmp/.cemail.txt
+# echo $_CLIENT_EMAIL > /opt/tmp/.cemail.txt
+# perl -p -i -e "s/(\@)/\\\@/g" /opt/tmp/.cemail.txt
+# _CLIENT_EMAIL=`cat /opt/tmp/.cemail.txt`
+# _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
+# rm -f /opt/tmp/.cemail.txt
+_CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
 echo "8s before we will continue..."
 sleep 8
