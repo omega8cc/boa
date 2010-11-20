@@ -58,7 +58,7 @@ hostmaster_dr_up () {
 #
 hostmaster_mv_up () {
   mv -f $_ROOT/.drush/provision $_ROOT/backups/provision-pre-$_DISTRO-$_NOW &> /dev/null
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/drush_make-pre-$_DISTRO-$_NOW
   mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
 }
 #
