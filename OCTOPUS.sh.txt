@@ -63,6 +63,36 @@ _DEBUG_MODE=NO
 
 
 ###----------------------------------------###
+### DATABASE CUSTOM HOST                   ###
+###----------------------------------------###
+###
+### If you prefer, you can set the database
+### to be connected locally via "localhost"
+### instead of FQDN pointing to your public IP
+### address.
+###
+### This feature allows you to "revert" to the
+### old Aegir behaviuor, when it was using by
+### default localhost for database connection.
+###
+### You could also use this feature to connect
+### to the remote database server by default,
+### since it allows to "override" the new
+### behaviuor, designed for Aegir multiserver
+### compatibility.
+###
+### If not sure, please don't change the
+### default, which is here still FQDN setup.
+###
+### Possible usage:
+###
+### _THIS_DB_HOST=localhost
+### _THIS_DB_HOST=some.remote.host.name
+###
+_THIS_DB_HOST=FQDN
+
+
+###----------------------------------------###
 ### DNS SETUP TEST                         ###
 ###----------------------------------------###
 ###
@@ -283,12 +313,14 @@ do
   perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g" $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g" $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
+  perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g" $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g" $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g" $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
+  perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g" $Files
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
@@ -593,6 +625,11 @@ fi
 _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
 _RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
 _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
+
+###--------------------###
+if [ $_THIS_DB_HOST = "FQDN" ] ; then
+  _THIS_DB_HOST=`uname -n`
+fi
 
 echo "8s before we will continue..."
 sleep 8

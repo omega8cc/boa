@@ -143,6 +143,36 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
+### DATABASE CUSTOM HOST                   ###
+###----------------------------------------###
+###
+### If you prefer, you can set the database
+### to be connected locally via "localhost"
+### instead of FQDN pointing to your public IP
+### address.
+###
+### This feature allows you to "revert" to the
+### old Aegir behaviuor, when it was using by
+### default localhost for database connection.
+###
+### You could also use this feature to connect
+### to the remote database server by default,
+### since it allows to "override" the new
+### behaviuor, designed for Aegir multiserver
+### compatibility.
+###
+### If not sure, please don't change the
+### default, which is here still FQDN setup.
+###
+### Possible usage:
+###
+### _THIS_DB_HOST=localhost
+### _THIS_DB_HOST=some.remote.host.name
+###
+_THIS_DB_HOST=FQDN
+
+
+###----------------------------------------###
 ### DNS SETUP TEST                         ###
 ###----------------------------------------###
 ###
@@ -892,6 +922,12 @@ fi
 
 
 ###--------------------###
+if [ $_THIS_DB_HOST = "FQDN" ] ; then
+  _THIS_DB_HOST="$_THISHOST"
+fi
+
+
+###--------------------###
 msg "`date` INFO: Clean up temp files in /var/opt/"
 mrun "sleep 3"
 rm -f -r /var/opt/*
@@ -1637,14 +1673,15 @@ do
   perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"        $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g"        $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
+  perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"          $Files
 done
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "`date` INFO: Now running Aegir installer for backend and frontend, please wait..."
 mrun "sleep 3"
 if [ "$_DEBUG_MODE" = "YES" ] ; then
-  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' -y -d"
+  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
 else
-  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
 fi
 mrun "sleep 3"
 
@@ -1712,6 +1749,7 @@ else
     perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
     perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
     perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
