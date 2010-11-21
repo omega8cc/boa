@@ -1750,7 +1750,7 @@ else
     perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
     perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
     perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
-    su -s /bin/bash aegir -c "/bin/bash AegirUpgrade.sh.txt"
+    su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
@@ -2084,8 +2084,10 @@ if [ ! -d "/etc/webmin" ] ; then
     mrun "sleep 3"
     cd /var/opt
     echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
-    wget -q -U iCab http://software.virtualmin.com/lib/RPM-GPG-KEY-webmin
-    apt-key add RPM-GPG-KEY-webmin &> /dev/null
+    wget -q -U iCab http://www.webmin.com/jcameron-key.asc
+    #wget -q -U iCab http://software.virtualmin.com/lib/RPM-GPG-KEY-webmin
+    #apt-key add RPM-GPG-KEY-webmin &> /dev/null
+    apt-key add jcameron-key.asc &> /dev/null
     st_runner "apt-fast update -y --force-yes" 2> /dev/null
     st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
     msg "`date` INFO: Webmin Control Panel installation completed"
