@@ -7,7 +7,7 @@ ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
 ini_set('session.gc_maxlifetime', 172800);  // set it also to 48 hours max
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
    error_reporting(E_ALL);
    ini_set('display_errors', TRUE);
    ini_set('display_startup_errors', TRUE);
