@@ -35,7 +35,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 #
 # noticeable messages
 msg () {
-  echo "==> $*"
+  echo "Barracuda ==> $*"
 }
 #
 # stop on error

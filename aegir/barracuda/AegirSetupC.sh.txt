@@ -70,7 +70,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 #
 # noticeable messages
 msg () {
-  echo "==> $*"
+  echo "Octopus ==> $*"
 }
 #
 # Simple prompt

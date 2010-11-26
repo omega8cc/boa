@@ -74,7 +74,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 ###---### Functions
 # noticeable messages
 msg() {
-  echo "==> $*"
+  echo "Octopus ==> $*"
 }
 #
 # Success msg

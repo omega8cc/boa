@@ -280,7 +280,7 @@ export DEBIAN_FRONTEND=noninteractive
 #
 # Noticeable messages
 msg () {
-  echo "==> $*"
+  echo "Barracuda ==> $*"
 }
 # Simple prompt
 prompt_yes_no () {

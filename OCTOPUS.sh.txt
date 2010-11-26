@@ -249,7 +249,7 @@ _UBERCART=uberdrupal
 #
 # Noticeable messages
 msg () {
-  echo "==> $*"
+  echo "Octopus ==> $*"
 }
 # Simple prompt
 prompt_yes_no () {
