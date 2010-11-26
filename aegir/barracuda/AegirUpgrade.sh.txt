@@ -105,6 +105,12 @@ _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
 _PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
 
+if [ -d "$_ROOT/host_master/002" ] ; then
+  if [ ! -d "$_ROOT/host_master/001" ] ; then
+    mkdir -p $_ROOT/host_master/001
+    touch $_ROOT/host_master/001/placeholder_dont_remove.txt
+  fi
+fi
 if [ -d "$_ROOT/host_master/001" ] ; then
   cd $_ROOT/host_master
   list=([0-9]*)
