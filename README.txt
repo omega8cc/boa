@@ -89,7 +89,7 @@ Octopus can install the platforms listed below:
  Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
  OpenPublish 2.2.285 -------- http://openpublishapp.com
  OpenScholar 2.0-b8-3.1 ----- http://openscholar.harvard.edu
- ProsePoint 0.35 ------------ http://prosepoint.org
+ ProsePoint 0.36 ------------ http://prosepoint.org
  Ubercart ------------------- http://ubercart.org
  Drupal 5.23 Pressflow ------ http://pressflow.org
  Drupal 6.19 Pressflow ------ http://pressflow.org
@@ -154,7 +154,6 @@ added to all 6.x platforms:
 
 * Grace  - http://omega8.cc
 * Albert - http://omega8.cc
-* Matt   - http://omega8.cc
 
 
 ### CREDITS

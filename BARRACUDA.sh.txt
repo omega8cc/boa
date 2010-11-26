@@ -442,8 +442,8 @@ force_advanced_nginx_config () {
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
-  mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
-  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
+  mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW &> /dev/null
+  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf
   chown aegir:aegir *
@@ -1236,7 +1236,7 @@ cd /var
 if [ -d "/var/xdrago" ] ; then
   mkdir -p /var/backups/dragon/x
   mkdir -p /var/backups/dragon/z
-  mv -f /var/xdrago-pre* /var/backups/dragon/x/
+  mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
   cp -af /var/xdrago /var/backups/dragon/x/xdrago-pre-$_INSTALLER_VERSION-$_NOW
   cp -af /opt/etc/init.d /var/backups/dragon/z/init.d-pre-$_INSTALLER_VERSION-$_NOW
   cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW
