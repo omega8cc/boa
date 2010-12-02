@@ -1,7 +1,8 @@
 <?php # global settings.php
 
-$conf['page_compression'] = 0; // required for Nginx, since it already compresses everything
+$conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
+$conf['cron_safe_threshold'] = 0; // disable cron in d7, since Aegir runs scheduled cron for sites
 
 ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
