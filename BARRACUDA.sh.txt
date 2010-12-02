@@ -1051,6 +1051,19 @@ fi
 
 
 ###--------------------###
+if [ -d "/etc/webmin" ] ; then
+  if [ ! -e "/var/log/webmin_new_apt.log" ] ; then
+    msg "`date` INFO: Fix for new Webmin Control Panel apt key, please wait..."
+    mrun "sleep 3"
+    cd /var/opt
+    wget -q -U iCab http://www.webmin.com/jcameron-key.asc
+    apt-key add jcameron-key.asc &> /dev/null
+    touch /var/log/webmin_new_apt.log
+  fi
+fi
+
+
+###--------------------###
 msg "`date` INFO: Run apt update, please wait..."
 st_runner "apt-fast update -y --force-yes" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
