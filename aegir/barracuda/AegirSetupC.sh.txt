@@ -247,7 +247,7 @@ _F_ATRIUM="Atrium 1.0-beta8 P.$_THIS_CORE"
 _F_ATRIUM_DEV="Atrium 1.0-beta9-dev P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal 6.19 P.$_THIS_CORE"
-_F_DRUPAL7="Drupal 7.0-beta3 P.$_THIS_CORE"
+_F_DRUPAL7="Drupal 7.0-rc1 P.$_THIS_CORE"
 _F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
 _F_COMMONS="Drupal Commons 1.1 P.$_THIS_CORE"
 _F_FSERVER="Feature Server P.$_THIS_CORE"
@@ -552,6 +552,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_DRUPAL7.tar.gz
   cd $_CORE/$_DRUPAL7
   rm -f $_CORE/$_DRUPAL7/*.txt
+  rm -f -r $_CORE/$_DRUPAL7/profiles/testing
+  for Files in `find $_CORE/$_DRUPAL7/profiles -type f`
+  do
+    perl -p -i -e "s/Minimal/Drupal 7 Minimal/g" $Files
+    perl -p -i -e "s/Standard/Drupal 7 Standard/g" $Files
+    perl -p -i -e "s/Testing/Drupal 7 Testing/g" $Files
+  done
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
