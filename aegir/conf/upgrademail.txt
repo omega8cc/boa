@@ -42,7 +42,7 @@ to avoid displaying it each time you are trying to log in.
 * Added crossdomain.xml in the root of every new platform.
 * Fixed web server rewrites to support ad module.
 * Fixed Aegir issue with .info and .pl domains extensions.
-* All 6.x platforms now receives some performance related modules by default disabled.
+* All 6.x platforms now receives some performance related modules (by default disabled).
 * Boost crawler option is now denied for performance reasons.
 * Forced log-out on browser quit only for Hostmaster/Aegir control panel. 
 * New rewrite introduced to map /files to /sites/domain/files on the fly.
