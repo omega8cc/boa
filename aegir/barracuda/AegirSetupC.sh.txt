@@ -405,7 +405,8 @@ if [ ! -d "/data/all/000/translations" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.uk.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.sk.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.fi.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.tr.po  
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.tr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.pt-br.po
 fi
 
 
