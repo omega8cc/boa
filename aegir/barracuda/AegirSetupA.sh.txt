@@ -441,7 +441,7 @@ mrun "sleep 3"
 chmod 0711 $_AEGIR_ROOT
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
-chmod 0700 $_ROOT/backups
+chmod 0750 $_ROOT/backups
 
 
 ###---### Platforms [Y/n]
@@ -553,7 +553,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   chsh -s /usr/bin/lshell $_USERFTP &> /dev/null
   echo " " >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
-  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static']" >> /etc/lshell.conf
+  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/backups', '/data/disk/$_USER/static']" >> /etc/lshell.conf
 fi
 
 

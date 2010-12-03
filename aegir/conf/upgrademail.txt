@@ -1,127 +1,66 @@
 Hello,
 
-Welcome to your new Aegir control panel
-for easy Drupal site deployment.
 
-Your Aegir control panel is available at:
+Your Aegir instance has been upgraded and now is based on version 0.4-beta1.
 
- http://aegir.dragon.ny.host8.biz
+Also your system services and libraries have been upgraded.
 
+Your Aegir control panel is available as before at:
 
-IMPORTANT:
----------
-Since this is an upgrade and not initial install, please allow
-up to 24 hours until all your used before platforms and sites
-will be visible again in your upgraded Aegir control panel.
-This upgrade process has no impact on your live sites and
-affects only your Aegir hosting back-end.
----------
+ https://aegir.dragon.ny.host8.biz
 
-
-The following topics are covered within this email:
-
-1. Logging into your Aegir control panel
-2. Deploying Aegir default web sites
-3. Setting up search with Solr
-4. Adding modules & themes
-5. Advanced user information
-
-
-Please read this e-mail in its entirety. It contains
-important information required to properly leverage
-all your available Aegir features.
+Note: your Aegir control panel is using self-signed SSL certificate, so you browser
+can display warning. Please add this certificate as accepted in your system settings
+to avoid displaying it each time you are trying to log in.
 
 
 ----------------------------------------
-#1 LOGGING INTO YOUR AEGIR CONTROL PANEL
+# Changes and Improvements
 ----------------------------------------
 
-To gain access, please visit your control panel site
-using one-time login link you should receive shortly
-in a separate e-mail.
-
-Once in your control panel, you'll find (*) a number of
-Drupal distributions ready to deploy:
- 
- Atrium 1.0-beta8 ----------- http://openatrium.com
- Managing News 1.2 ---------- http://managingnews.com
- Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
- Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
- OpenPublish 2.2.285 -------- http://openpublishapp.com
- OpenScholar 2.0-b8-3.1 ----- http://openscholar.harvard.edu
- ProsePoint 0.36 ------------ http://prosepoint.org
- Ubercart ------------------- http://ubercart.org
- Drupal 5.23 Pressflow ------ http://pressflow.org
- Drupal 6.19 Pressflow ------ http://pressflow.org
- Drupal 6.19 Cocomore ------- http://drupal.cocomore.com
- Drupal 7.0-beta3 ----------- http://drupal.org/project/drupal
- Feature Server ------------- http://bit.ly/fserver
-                              http://bit.ly/fservermore
-
-(*) Some platforms are not available in all options.
-    Drupal Commons, OpenPublish and OpenScholar are
-    not available in Aegir MINI, while Aegir NANO
-    includes only Acquia platform. Consider upgrade
-    to the Aegir CLASSIC to get the access to all our
-    standard platforms.
-
-All 5/6 platforms have been enhanced using Pressflow Drupal core.
-More details about Pressflow Drupal are here:
-
- http://pressflow.org
-
-Every Open Atrium platform comes with a ready-to-use bonus
-feature - Atrium Reader - a mini version of Managing News.
-You can see it in action here: http://bit.ly/atriumreader
-
-Another great Open Atrium feature is the default
-Apache Solr Search integration. You can use it with any
-remotely hosted Solr service, including our own hosted
-version - learn more here:
-
- http://omega8.cc/apache-solr-search-order
+* Your Aegir instance is using Pressflow 6.x core also in the control panel.
+* You can create and manage your own platforms (Pressflow core required).
+* It is possible to use local or remote makefiles to create platforms.
+* A few new commands have been added to your Aegir Drush Shell (SSH).
+* You can use git to manage code and rsync to manage remote backups.
+* Useful new commands from Drush v.4 are now available (backported).
+* Now it is possible to delete old sites backups created in Aegir.
+* You can cancel queued task in Aegir before it is started.
+* Known issue with sites cron semaphore in Aegir now resolved.
+* Known issue with PHP notices breaking some Aegir tasks is now resolved.
+* The "dev" anywhere in the subdomain enables all PHP errors and notices.
+* You can use "dev" type alias also for live site for easier debugging.
+* Latest Drupal 7.0-rc1 platform has been added.
+* Too generic D7 profile names replaced with unique Drupal 7 names.
+* The auto-cron in D7 now disabled, since Aegir runs scheduled cron for all sites.
+* Managing News 1.2 platform available on all servers.
+* Prosepoint 0.36 platform has been added.
+* Added support for imagecache_external module.
+* You can safely delete any not used platforms, including old Hostmaster.
+* Access to static files allowed only for currently used domain in multisite/platform.
+* Drush make via SSH now works as expected.
+* Added crossdomain.xml in the root of every new platform.
+* Fixed web server rewrites to support ad module.
+* Fixed Aegir issue with .info and .pl domains extensions.
+* All 6.x platforms now receives some performance related modules by default disabled.
+* Boost crawler option is now denied for performance reasons.
+* Forced log-out on browser quit only for Hostmaster/Aegir control panel. 
+* New rewrite introduced to map /files to /sites/domain/files on the fly.
+* New rewrite introduced to map /images to /sites/domain/files/images on the fly.
+* New rewrite introduced to map /downloads to /sites/domain/files/downloads on the fly.
+* The standard /update.php works again, however using "drush dbup" command is recommended.
+* The "drush mup" command allows now to upgrade contributed modules.
 
 
 ----------------------------------------
-#2. DEPLOYING YOUR WEB SITES
+# FTP and SSH access
 ----------------------------------------
 
-The best way to get started is simply to log into the
-control panel and start testing how Aegir works. We're
-always ready to assist and guide you step by step, so please
-don't hesitate to ask questions - we would love to help you!
+Your username didn't change, but password has been reset.
 
-Creating a new site is as easy as clicking the Add Site tab.
-
-To make a site "live" using any domain name you manage, you
-need to point its A or CNAME DNS record to your VPS address,
-like below:
-
- yourdomain.com.           IN  A      166.84.6.231
-  or
- subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz
-
-You can also use any subdomain in *.aegir.dragon.ny.host8.biz to create
-test sites, for example: http://atrium.aegir.dragon.ny.host8.biz etc.
-
-
-----------------------------------------
-#3. SETTING UP SEARCH WITH SOLR
-----------------------------------------
-
-One Apache Solr Core is available free with every hosted
-Aegir server, when paid yearly.
-
-Contact our support department to associate the Solr search
-with your desired site.
-
-
-----------------------------------------
-#4. ADDING MODULES & THEMES
-----------------------------------------
-
-To add modules/themes to any of the enabled platforms,
-you need to log into your FTPS/SSH account:
+Please change your password via SSH with "passwd" command
+at least every 3 months. Otherwise the password will expire in 90 days
+and you will have to log in via SSH to restore your FTP access.
 
   host: aegir.dragon.ny.host8.biz
   user: dragon.ftp
@@ -136,75 +75,8 @@ Make sure you are adding modules and themes to your expected
 platform. If you experience issues, you can contact our
 support department.
 
-
-----------------------------------------
-#5. ADVANCED USER INFORMATION
-----------------------------------------
-
-
-=== IMPORTANT DIRECTORY INFORMATION
-
-Your home directory shows a number of subdirectories, each
-one for a different platforms release, while each platform can
-include modules/themes in a separate, standard multisite
-directory tree.
-
-
-=== IMPORTANT CUSTOM PLATFORM INFORMATION
-
-When logged in via FTPS or SSH you'll find a subdirectory
-named 'static'. This is the place to upload your optional
-custom Drupal platform, each in a separate directory,
-named in the form:
-
- /static/my-green-platform
- /static/another-custom-platform
-
-When you want to enable any of those custom platforms, just let
-us know at support@omega8.cc the platform name(s) to be enabled.
-
-Note that we allow only Pressflow core based platforms for
-5.x and 6.x Drupal versions.
-
-You can also upload a tar.gz/zip archive with your existing site
-(including database dump) and we will create your custom
-platform in Aegir and import your site. You will be able
-to clone your custom site with a working address in the form of:
-
- http://anyname.aegir.dragon.ny.host8.biz
-
-in order to test everything before changing your DNS to the
-new A or CNAME address.
-
-PLEASE NOTE: Having a custom platform created from an
-imported site is an add-on service, paid separately or
-free-of-charge with a yearly (hosted) subscription. Please
-find more details on our website:
-
- http://omega8.cc/site-import
- http://omega8.cc/hosted-aegir
-
-
-=== IMPORTANT DEVELOPMENT SITE INFORMATION
-
-When creating a development version of your site, you'll
-want to work with our optimized caching systems turned off.
-
-There is a speed-auto-switch available for dev/prod environments.
-Any site you create with *devel* as the subdomain, will have
-all caching and css/js aggregation disabled automatically.
-
-When the site is ready, just *clone* (not migrate) it using
-the final domain name (or subdomain, without *devel* to test
-how it will work with caching enabled).
-
-
-=== IMPORTANT CACHING INFORMATION
-
-To realize the full speed from our servers, you simply need
-to enable the module *cache* (it's like cacherouter, but
-with chained cache - memcache/redis/db with auto-failover)
-for every site you wish to accelerate.
+To see all available shell commands please type "help" when
+logged in via SSH.
 
 
 Questions? Comments? Please contact us:

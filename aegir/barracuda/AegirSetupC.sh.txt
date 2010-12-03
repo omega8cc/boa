@@ -382,6 +382,32 @@ if [ -d "$_CORE/o_contrib/memcache" ] ; then
   rm -f -r $_CORE/o_contrib/memcache &> /dev/null
 fi
 
+if [ ! -d "/data/all/000/translations" ] ; then
+  mkdir -p /data/all/000/translations
+  cd /data/all/000/translations
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.zh-hant.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.zh-hans.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.ca.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.da.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.nl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.fr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.de.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.hu.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.ja.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.nb.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.pl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.pt-pt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.es.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.sv.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.el.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.et.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.it.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.uk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.sk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.fi.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.tr.po  
+fi
+
 
 ###---### Acquia
 #
@@ -400,6 +426,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
   create_dirs
+  ln -s /data/all/000/translations $_CORE/acquia/profiles/acquia/translations &> /dev/null
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/acquia
 cd $_ROOT/distro/$_THIS_CORE/acquia
@@ -434,7 +461,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
 cd $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
 create_symlinks
 if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
-  ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
+  ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium &> /dev/null
 fi
 msg "STATUS: $_F_ATRIUM installation completed"
 mrun "sleep 2"
@@ -525,6 +552,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/pressflow
   rm -f $_CORE/pressflow/*.txt
   create_dirs
+  ln -s /data/all/000/translations $_CORE/pressflow/profiles/default/translations &> /dev/null
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow
 cd $_ROOT/distro/$_THIS_CORE/pressflow
@@ -831,6 +859,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
   create_dirs
+  ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT
 cd $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT
@@ -860,6 +889,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/
   rm -f $_CORE/$_UBERCART/*.txt
   create_dirs
+  ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/uberdrupal
 cd $_ROOT/distro/$_THIS_CORE/uberdrupal

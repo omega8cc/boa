@@ -36,8 +36,8 @@ Octopus is an Aegir + Platforms installer (you can interactively
 choose the platforms you wish to install on the instance)
 and updater only. It allows to install new versions of platforms
 with clean directory structure, with code shared between all created
-instances, so one vanilla Octopus instance is using only ~18MB,
-while most of the code, which is over 330MB total, is shared.
+instances, so one vanilla Octopus instance is using only ~18 MB,
+while most of the code, which is over 450 MB total, is shared.
 
 Both Barracuda and Octopus don't use Pressflow for Aegir itself
 to avoid possible issues. There is no visible benefits to use
@@ -83,22 +83,29 @@ so it is your responsibility to use such system wisely.
 
 Octopus can install the platforms listed below:
 
- Atrium 1.0-beta8 ----------- http://openatrium.com
- Managing News 1.2 ---------- http://managingnews.com
- Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
- Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
- OpenPublish 2.2.285 -------- http://openpublishapp.com
- OpenScholar 2.0-b8-3.1 ----- http://openscholar.harvard.edu
- ProsePoint 0.36 ------------ http://prosepoint.org
- Ubercart ------------------- http://ubercart.org
- Drupal 5.23 Pressflow ------ http://pressflow.org
- Drupal 6.19 Pressflow ------ http://pressflow.org
- Drupal 6.19 Cocomore ------- http://drupal.cocomore.com
- Drupal 7.0-beta3 ----------- http://drupal.org/project/drupal
- Feature Server ------------- http://bit.ly/fserver
-                              http://bit.ly/fservermore
+ Atrium 1.0-beta8 ------------- http://openatrium.com
+ Managing News 1.2 ------------ http://managingnews.com
+ Drupal Commons 1.1 ----------- http://acquia.com/drupalcommons
+ Acquia 6.19-svn (int) -------- http://bit.ly/acquiadrupal
+ OpenPublish 2.2.285 ---------- http://openpublishapp.com
+ OpenScholar 2.0-b8-3.1 ------- http://openscholar.harvard.edu
+ ProsePoint 0.36 (int) -------- http://prosepoint.org
+ Ubercart (int) --------------- http://ubercart.org
+ Drupal 5.23 Pressflow -------- http://pressflow.org
+ Drupal 6.19 Pressflow (int) -- http://pressflow.org
+ Drupal 6.19 Cocomore --------- http://drupal.cocomore.com
+ Drupal 7.0-rc1 --------------- http://drupal.org/project/drupal
+ Feature Server --------------- http://bit.ly/fserver
+                                http://bit.ly/fservermore
 
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
+
+Platforms marked with (int) comes also with ready to use translations
+of Drupal core in 22 languages. Only languages with at least 10 maintainers
+and at least 60% of progress are included - http://localize.drupal.org
+
+Other platforms are using extended and customized translations or
+require far more than just core translation, so we don't touch them.
 
 There are also some useful and/or performance related modules
 added to all 6.x platforms:

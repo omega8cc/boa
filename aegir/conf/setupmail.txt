@@ -33,20 +33,20 @@ in a separate e-mail.
 Once in your control panel, you'll find (*) a number of
 Drupal distributions ready to deploy:
  
- Atrium 1.0-beta8 ----------- http://openatrium.com
- Managing News 1.2 ---------- http://managingnews.com
- Drupal Commons 1.1 --------- http://acquia.com/drupalcommons
- Acquia 6.19-svn ------------ http://bit.ly/acquiadrupal
- OpenPublish 2.2.285 -------- http://openpublishapp.com
- OpenScholar 2.0-b8-3.1 ----- http://openscholar.harvard.edu
- ProsePoint 0.36 ------------ http://prosepoint.org
- Ubercart ------------------- http://ubercart.org
- Drupal 5.23 Pressflow ------ http://pressflow.org
- Drupal 6.19 Pressflow ------ http://pressflow.org
- Drupal 6.19 Cocomore ------- http://drupal.cocomore.com
- Drupal 7.0-beta3 ----------- http://drupal.org/project/drupal
- Feature Server ------------- http://bit.ly/fserver
-                              http://bit.ly/fservermore
+ Atrium 1.0-beta8 ------------- http://openatrium.com
+ Managing News 1.2 ------------ http://managingnews.com
+ Drupal Commons 1.1 ----------- http://acquia.com/drupalcommons
+ Acquia 6.19-svn (int) -------- http://bit.ly/acquiadrupal
+ OpenPublish 2.2.285 ---------- http://openpublishapp.com
+ OpenScholar 2.0-b8-3.1 ------- http://openscholar.harvard.edu
+ ProsePoint 0.36 (int) -------- http://prosepoint.org
+ Ubercart (int) --------------- http://ubercart.org
+ Drupal 5.23 Pressflow -------- http://pressflow.org
+ Drupal 6.19 Pressflow (int) -- http://pressflow.org
+ Drupal 6.19 Cocomore --------- http://drupal.cocomore.com
+ Drupal 7.0-rc1 --------------- http://drupal.org/project/drupal
+ Feature Server --------------- http://bit.ly/fserver
+                                http://bit.ly/fservermore
 
 (*) Some platforms are not available in all options.
     Drupal Commons, OpenPublish and OpenScholar are
@@ -59,6 +59,13 @@ All 5/6 platforms have been enhanced using Pressflow Drupal core.
 More details about Pressflow Drupal are here:
 
  http://pressflow.org
+
+Platforms marked with (int) comes also with ready to use translations
+of Drupal core in 22 languages. Only languages with at least 10 maintainers
+and at least 60% of progress are included - http://localize.drupal.org
+
+Other platforms are using extended and customized translations or
+require far more than just core translation, so they are not modified.
 
 Every Open Atrium platform comes with a ready-to-use bonus
 feature - Atrium Reader - a mini version of Managing News.
