@@ -846,39 +846,39 @@ fi
 
 ###---## Open Scholar Make
 #
-echo " "
-if prompt_yes_no "$_F_OPENSCHOLAR_MAKE - http://openscholar.com" ; then
-true
-msg "STATUS: $_F_OPENSCHOLAR_MAKE install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/openscholar_make"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  echo "core = \"6.x\"" > openscholar_stub.make
-  echo "api = \"2\"" >> openscholar_stub.make
-  echo "projects[pressflow][type] = \"core\"" >> openscholar_stub.make
-  echo "projects[pressflow][download][type] = \"bzr\"" >> openscholar_stub.make
-  echo "projects[pressflow][download][url] = \"lp:pressflow/6.x\"" >> openscholar_stub.make
-  echo "projects[openscholar][type] = \"profile\"" >> openscholar_stub.make
-  echo "projects[openscholar][download][type] = \"cvs\"" >> openscholar_stub.make
-  echo "projects[openscholar][download][module] = \"contributions/profiles/openscholar\"" >> openscholar_stub.make
-  echo "projects[openscholar][download][revision] = \"DRUPAL-6--1\"" >> openscholar_stub.make
-  $_ROOT/tools/drush/drush make openscholar_stub.make openscholar_make &> /dev/null
-  rm -f openscholar_stub.make
-  cd $_CORE/openscholar_make
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar_make/
-  rm -f $_CORE/openscholar_make/*.txt
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar_make
-cd $_ROOT/distro/$_THIS_CORE/openscholar_make
-create_symlinks
-msg "STATUS: $_F_OPENSCHOLAR_MAKE installation completed"
-mrun "sleep 2"
-else
-  msg "STATUS: $_F_OPENSCHOLAR_MAKE installation skipped"
-  mrun "sleep 1"
-fi
+# echo " "
+# if prompt_yes_no "$_F_OPENSCHOLAR_MAKE - http://openscholar.com" ; then
+# true
+# msg "STATUS: $_F_OPENSCHOLAR_MAKE install in progress, please wait..."
+# mrun "sleep 2"
+# _CORE_DISTRO="$_CORE/openscholar_make"
+# if [ ! -d "$_CORE_DISTRO" ] ; then
+#   cd $_CORE
+#   echo "core = \"6.x\"" > openscholar_stub.make
+#   echo "api = \"2\"" >> openscholar_stub.make
+#   echo "projects[pressflow][type] = \"core\"" >> openscholar_stub.make
+#   echo "projects[pressflow][download][type] = \"bzr\"" >> openscholar_stub.make
+#   echo "projects[pressflow][download][url] = \"lp:pressflow/6.x\"" >> openscholar_stub.make
+#   echo "projects[openscholar][type] = \"profile\"" >> openscholar_stub.make
+#   echo "projects[openscholar][download][type] = \"cvs\"" >> openscholar_stub.make
+#   echo "projects[openscholar][download][module] = \"contributions/profiles/openscholar\"" >> openscholar_stub.make
+#   echo "projects[openscholar][download][revision] = \"DRUPAL-6--1\"" >> openscholar_stub.make
+#   $_ROOT/tools/drush/drush make openscholar_stub.make openscholar_make &> /dev/null
+#   rm -f openscholar_stub.make
+#   cd $_CORE/openscholar_make
+#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar_make/
+#   rm -f $_CORE/openscholar_make/*.txt
+#   create_dirs
+# fi
+# mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar_make
+# cd $_ROOT/distro/$_THIS_CORE/openscholar_make
+# create_symlinks
+# msg "STATUS: $_F_OPENSCHOLAR_MAKE installation completed"
+# mrun "sleep 2"
+# else
+#   msg "STATUS: $_F_OPENSCHOLAR_MAKE installation skipped"
+#   mrun "sleep 1"
+# fi
 
 
 ###---### Prosepoint
