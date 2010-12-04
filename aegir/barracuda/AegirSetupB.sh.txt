@@ -329,6 +329,10 @@ else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text
+  rm -f $_ROOT/u/$_DOMAIN
+  ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
+  rm -f /data/u/$_DOMAIN
+  ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
   msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
