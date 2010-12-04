@@ -1,33 +1,20 @@
 
-                       ******** IMPORTANT ********
-                                    *
-                                    *
-                   Don't run both installers via sudo.
-                      You must be logged in as root.
-                         Always su - root first.
-                                    *
-                                    *
-                   Don't run any system updates before
-                       running Barracuda installer.
-                   You should use vanilla system only.
-                   If that doesn't work, please submit
-                     a bug on the github issue queue
-                  with the name of your host and os used.
-                                    *
-                                    *
-                                    
-                                
+### IMPORTANT
+#
+* Don't run both installers via sudo. You must be logged in as root. Or sudo -i first.
+* Don't run any system updates before running Barracuda installer. You should use vanilla system.
+
+
 ### Installing Barracuda (main system and core Aegir instance):
 #
 $ cd; wget http://gitorious.org/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
-$ cd; nano BARRACUDA.sh.txt (edit your e-mail address)
+$ cd; nano BARRACUDA.sh.txt (edit your e-mail address, IP and hostname)
 $ cd; bash BARRACUDA.sh.txt
 
 
-### Optional: If in addition you want an instance of Aegir preloaded with platforms
+### Optional: If in addition you want a separate instance of Aegir preloaded with platforms
 #             you will need to run OCTOPUS.sh.txt after running BARRACUDA.sh.txt
 #
 $ cd; wget http://gitorious.org/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
 $ cd; nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name)
 $ cd; bash OCTOPUS.sh.txt
-
