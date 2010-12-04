@@ -87,7 +87,7 @@ Octopus can install the platforms listed below:
  Managing News 1.2 ------------ http://managingnews.com
  Drupal Commons 1.1 ----------- http://acquia.com/drupalcommons
  Acquia 6.19-svn (int) -------- http://bit.ly/acquiadrupal
- OpenPublish 2.2.285 ---------- http://openpublishapp.com
+ OpenPublish 2.3.432 ---------- http://openpublishapp.com
  OpenScholar 2.0-b8-3.1 ------- http://openscholar.harvard.edu
  ProsePoint 0.36 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
