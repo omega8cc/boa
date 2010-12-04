@@ -30,6 +30,7 @@ to avoid displaying it each time you are trying to log in.
 * Known issue with PHP notices breaking some Aegir tasks is now resolved.
 * The "dev" anywhere in the subdomain enables all PHP errors and notices.
 * You can use "dev" type alias also for live site for easier debugging.
+* Latest OpenPublish 2.3.432 platform has been added (Aegir Classic only).
 * Latest Drupal 7.0-rc1 platform has been added.
 * Too generic D7 profile names replaced with unique Drupal 7 names.
 * The auto-cron in D7 now disabled, since Aegir runs scheduled cron for all sites.
