@@ -43,8 +43,10 @@ msg () {
 export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
+  mkdir -p $_ROOT/backups/system
+  chmod 700 $_ROOT/backups/system
   cd $_ROOT
-  mv -f drush $_ROOT/backups/drush-pre-$_DISTRO-$_NOW &> /dev/null
+  mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
@@ -59,6 +61,7 @@ hostmaster_dr_up () {
 hostmaster_mv_up () {
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
+  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null

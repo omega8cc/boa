@@ -214,6 +214,8 @@ echo $_DOMAIN > $_ROOT/log/domain.txt
 msg "$_STATUS B: Run standard installer"
 mrun "sleep 3"
 if [ $_STATUS = "UPGRADE" ] ; then
+  mkdir -p $_ROOT/backups/system
+  chmod 700 $_ROOT/backups/system
   if [ -d "$_ROOT/aegir/config" ] ; then
     if [ ! -d "$_ROOT/config" ] ; then
       cd $_ROOT/aegir
@@ -223,7 +225,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
   fi
   if [ -d "$_ROOT/tools/drush" ] ; then
     cd $_ROOT/tools
-    mv -f drush $_ROOT/backups/drush-pre-$_DISTRO-$_NOW &> /dev/null
+    mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   fi
 fi
 cd $_ROOT/tools
@@ -239,6 +241,7 @@ fi
 if [ $_STATUS = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
+  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
