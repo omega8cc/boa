@@ -68,7 +68,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 #
 # noticeable messages
 msg() {
-  echo "Octopus ==> $*"
+  echo "Octopus [`date`] ==> $*"
 }
 #
 # Success msg
@@ -123,36 +123,36 @@ set -e ### disabled for debugging
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
 #
-msg "`date` $_STATUS B: Aegir automated install script part B"
+msg "$_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
-  msg "`date` $_STATUS B: This script should be ran as a non-root user - exit now"
+  msg "$_STATUS B: This script should be ran as a non-root user - exit now"
   exit 1
 fi
 
 
 ###---### Checking status..
 #
-msg "`date` $_STATUS B: Checking status.."
+msg "$_STATUS B: Checking status.."
 mrun "sleep 3"
 if [ -e "$_ROOT/aegir.sh" ] ; then
 _STATUS=UPGRADE
 cd $_ROOT
-# msg "`date` $_STATUS B: _STATUS is $_STATUS"
+# msg "$_STATUS B: _STATUS is $_STATUS"
 # if [ -d "$_PREV_AEGIR_ROOT" ] ; then
-#   msg "`date` $_STATUS B: aegir backup now.."
+#   msg "$_STATUS B: aegir backup now.."
 #   mrun "sleep 3"
 #   cd $_PREV_AEGIR_ROOT
 #   $_DRUSHCMD --root=$_PREV_AEGIR_ROOT provision-backup $_DOMAIN -d
-#   msg "`date` $_STATUS B: aegir backup completed"
+#   msg "$_STATUS B: aegir backup completed"
 # fi
 # else
-# msg "`date` $_STATUS B: _STATUS is $_STATUS"
+# msg "$_STATUS B: _STATUS is $_STATUS"
 fi
 
 
 ###---### Add required users and create directories
 #
-msg "`date` $_STATUS B: Create dirs and/or set good permissions"
+msg "$_STATUS B: Create dirs and/or set good permissions"
 mrun "sleep 3"
 if [ -e "$_ROOT/aegir.sh" ] ; then
  rm -f $_ROOT/aegir.sh
@@ -184,34 +184,34 @@ chmod 0700 $_ROOT/src/themes &> /dev/null
 chmod 0700 $_ROOT/backups &> /dev/null
 
 if [ $_STATUS = "UPGRADE" ] ; then
- msg "`date` $_STATUS B: UPGRADE in progress.."
+ msg "$_STATUS B: UPGRADE in progress.."
  if [ -d "$_ROOT/distro" ] ; then
-  msg "`date` $_STATUS B: UPGRADE v.2 in progress.."
+  msg "$_STATUS B: UPGRADE v.2 in progress.."
   if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
-  msg "`date` $_STATUS B: RAW _DOMAIN is $_DOMAIN"
+  msg "$_STATUS B: RAW _DOMAIN is $_DOMAIN"
  elif [ ! -d "$_ROOT/distro" ] ; then
-  msg "`date` $_STATUS B: UPGRADE v.1 in progress.."
-  msg "`date` $_STATUS B: _DISTRO is $_DISTRO"
+  msg "$_STATUS B: UPGRADE v.1 in progress.."
+  msg "$_STATUS B: _DISTRO is $_DISTRO"
   if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
-  msg "`date` $_STATUS B: RAW _DOMAIN is $_DOMAIN"
+  msg "$_STATUS B: RAW _DOMAIN is $_DOMAIN"
  fi
 else
- msg "`date` $_STATUS B: NEW AEGIR setup in progress.."
- msg "`date` $_STATUS B: _DISTRO is $_DISTRO"
- msg "`date` $_STATUS B: RAW _DOMAIN is $_DOMAIN"
+ msg "$_STATUS B: NEW AEGIR setup in progress.."
+ msg "$_STATUS B: _DISTRO is $_DISTRO"
+ msg "$_STATUS B: RAW _DOMAIN is $_DOMAIN"
 fi
 echo $_DOMAIN > $_ROOT/log/domain.txt
 
 
 ###---### Run standard installer
 #
-msg "`date` $_STATUS B: Run standard installer"
+msg "$_STATUS B: Run standard installer"
 mrun "sleep 3"
 if [ $_STATUS = "UPGRADE" ] ; then
   if [ -d "$_ROOT/aegir/config" ] ; then
@@ -231,9 +231,9 @@ wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.g
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
 if $_DRUSHCMD help > /dev/null ; then
-  msg "`date` $_STATUS B: Drush seems to be functioning properly"
+  msg "$_STATUS B: Drush seems to be functioning properly"
 else
-  msg "`date` $_STATUS B: Drush is broken ($DRUSH help failed)"
+  msg "$_STATUS B: Drush is broken ($DRUSH help failed)"
   exit 1
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
@@ -252,7 +252,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
     mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
   fi
 fi
-msg "`date` $_STATUS B: Installing provision backend in $_ROOT/.drush"
+msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
@@ -283,20 +283,20 @@ fi
 
 ###---### Build Aegir base
 #
-msg "`date` $_STATUS B: Build Aegir base"
+msg "$_STATUS B: Build Aegir base"
 mrun "sleep 3"
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ $_LOCAL_STATUS = "INIT" ] ; then
-  msg "`date` $_STATUS B: INIT"
+  msg "$_STATUS B: INIT"
   mrun "sleep 3"
   cd $_ROOT
   AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
   AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
   AEGIR_HOST=`uname -n`
-  msg "`date` $_STATUS B: Deploying hostmaster application init, please wait..."
+  msg "$_STATUS B: Deploying hostmaster application init, please wait..."
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --db_service_type=mysql --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
   else
@@ -313,13 +313,13 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
-  msg "`date` $_STATUS B: Deploying hostmaster application done"
+  msg "$_STATUS B: Deploying hostmaster application done"
 else
   if [ -d "$_AEGIR_ROOT" ] ; then
-    msg "`date` $_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
+    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
     exit 1
   fi
-  msg "`date` $_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
+  msg "$_STATUS B: Hostmaster STATUS: upgrade start, please wait..."
   mrun "sleep 3"
   export DEBIAN_FRONTEND=noninteractive
   cd $_PREV_AEGIR_ROOT
@@ -333,24 +333,24 @@ else
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
-  msg "`date` $_STATUS B: Hostmaster STATUS: upgrade completed"
+  msg "$_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
 
 ###--------------------###
-msg "`date` $_STATUS B: Simple check if Aegir install or upgrade is successful"
+msg "$_STATUS B: Simple check if Aegir install or upgrade is successful"
 mrun "sleep 3"
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "`date` $_STATUS B: Aegir setup test OK"
+  msg "$_STATUS B: Aegir setup test OK"
 else
-  msg "`date` $_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready - exit now"
+  msg "$_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready - exit now"
   exit 1
 fi
 
 
 ###---### Enhance Aegir UI
 #
-msg "`date` $_STATUS B: Enhance Aegir UI"
+msg "$_STATUS B: Enhance Aegir UI"
 mrun "sleep 3"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./
@@ -364,8 +364,6 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
 patch -p0 < user.drush.inc.patch &> /dev/null
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features -y &> /dev/null
-# $_DRUSHCMD dl ctools -y &> /dev/null
-# $_DRUSHCMD dl features_extra -y &> /dev/null
 $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD en hosting_client -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
@@ -378,7 +376,6 @@ $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
-#$_DRUSHCMD vset --always-set site_frontpage "hosting/sites" &> /dev/null
 $_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
 $_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
 $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
@@ -403,7 +400,7 @@ fi
 
 ###---### Aegir global.inc file
 #
-msg "`date` $_STATUS B: Aegir global.inc file"
+msg "$_STATUS B: Aegir global.inc file"
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then
   rm -f $_ROOT/config/includes/global.inc

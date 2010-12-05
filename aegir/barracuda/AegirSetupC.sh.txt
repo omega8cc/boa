@@ -70,7 +70,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 #
 # noticeable messages
 msg () {
-  echo "Octopus ==> $*"
+  echo "Octopus [`date`] ==> $*"
 }
 #
 # Simple prompt
@@ -207,33 +207,33 @@ create_d7_symlinks () {
 
 ###---### User check
 #
-msg "`date` $_STATUS C: Aegir automated install script part C"
+msg "$_STATUS C: Aegir automated install script part C"
 if [ `whoami` = "root" ] ; then
-  msg "`date` $_STATUS C: This script should be ran as a non-root user - exit now"
+  msg "$_STATUS C: This script should be ran as a non-root user - exit now"
   exit 1
 fi
 
 
 ###---### Hot Sauce check..
 #
-msg "`date` $_STATUS C: Hot Sauce check.."
+msg "$_STATUS C: Hot Sauce check.."
 mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
   if [ "$_USE_CURRENT" = "YES" ] ; then
-    msg "`date` $_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
+    msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   elif [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
-    msg "`date` $_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
+    msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
   else
-    msg "`date` $_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
+    msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   fi
 else
   _CORE="/data/all/$_ALL_DISTRO"
   _THIS_CORE="$_ALL_DISTRO"
-  msg "`date` $_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
+  msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
 if [ -d "$_CORE/o_contrib" ] ; then
   _STATUS=CLONE
@@ -264,7 +264,7 @@ _F_UBERCART="Ubercart P.$_THIS_CORE"
 
 ###---### Create directories
 #
-msg "`date` $_STATUS C: Create directories"
+msg "$_STATUS C: Create directories"
 mrun "sleep 2"
 mkdir -p $_ROOT/distro/$_THIS_CORE
 chmod 0711 $_ROOT/distro &> /dev/null
@@ -300,7 +300,7 @@ cd
 ###---### Prepare Pressflow core
 #
 if [ $_STATUS = "INIT" ] ; then
-msg "`date` $_STATUS C: Preparing Pressflow core, please wait.."
+msg "$_STATUS C: Preparing Pressflow core, please wait.."
 mrun "sleep 2"
 mkdir -p /data/src/$_THIS_CORE
 chmod 0700 /data/src/$_THIS_CORE &> /dev/null
@@ -946,7 +946,7 @@ fi
 ###---### remove some module and themes for all
 #
 echo " "
-msg "`date` $_STATUS C: remove some default themes for all"
+msg "$_STATUS C: remove some default themes for all"
 mrun "sleep 2"
 rm -f -r $_CORE/o_contrib/image
 rm -f -r $_CORE/*/themes/bluemarine
@@ -963,7 +963,7 @@ find . -name .bzr -exec rm -rf {} \; &> /dev/null
 
 ###---### Save & verify platforms
 #
-msg "`date` $_STATUS C: Save & Verify Platforms"
+msg "$_STATUS C: Save & Verify Platforms"
 mrun "sleep 2"
 _LOCAL_STATUS="NOT_SET"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then

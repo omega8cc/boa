@@ -35,7 +35,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 #
 # noticeable messages
 msg () {
-  echo "Barracuda ==> $*"
+  echo "Barracuda [`date`] ==> $*"
 }
 #
 # stop on error
@@ -49,9 +49,9 @@ hostmaster_dr_up () {
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
   if $_DRUSHCMD help > /dev/null ; then
-    msg "`date` UPGRADE INFO: Drush seems to be functioning properly"
+    msg "UPGRADE INFO: Drush seems to be functioning properly"
   else
-    msg "`date` UPGRADE INFO: Drush is broken ($DRUSH help failed)"
+    msg "UPGRADE INFO: Drush is broken ($DRUSH help failed)"
     exit 1
   fi
 }
@@ -69,9 +69,9 @@ hostmaster_mv_up () {
 #
 hostmaster_go_up () {
   if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
-    msg "`date` UPGRADE INFO: Provision already seems to be installed"
+    msg "UPGRADE INFO: Provision already seems to be installed"
   else
-    msg "`date` UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
+    msg "UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
@@ -126,12 +126,12 @@ if [ -d "$_ROOT/host_master/000" ] ; then
   nextnum=${nextnum: -3}
   _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
   if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
-    msg "`date` UPGRADE INFO: Testing previous install.. OK"
+    msg "UPGRADE INFO: Testing previous install.. OK"
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
   else
     _DEBUG_MODE=YES
-    msg "`date` UPGRADE INFO: Testing previous install.. OPS, zombie found, moving it to backups.."
+    msg "UPGRADE INFO: Testing previous install.. OPS, zombie found, moving it to backups.."
     mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/host-master-pre-$_DISTRO-$_NOW &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
@@ -142,7 +142,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
     if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
-      msg "`date` UPGRADE INFO: Testing previous install.. OK"
+      msg "UPGRADE INFO: Testing previous install.. OK"
       _DISTRO=${nextnum}
       _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
     fi
@@ -151,27 +151,27 @@ fi
 
 _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_AEGIR_ROOT" ] ; then
-  msg "`date` UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
+  msg "UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
   exit 1
 fi
 
 mkdir -p $_ROOT/host_master
 chmod 711 $_ROOT/host_master &> /dev/null
-msg "`date` UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
+msg "UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
 if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "`date` UPGRADE INFO: Test OK, we can proceed with the Hostmaster upgrade"
+  msg "UPGRADE INFO: Test OK, we can proceed with the Hostmaster upgrade"
   hostmaster_dr_up
   hostmaster_mv_up
   hostmaster_go_up
   hostmaster_mi_up
 elif [ ! -d "/var/aegir/.drush/provision/http" ] ; then
-  msg "`date` UPGRADE ERROR: Something (1) is wrong, we should stop now.."
-  msg "`date` UPGRADE ERROR: Please report this in the GitHub queue"
+  msg "UPGRADE ERROR: Something (1) is wrong, we should stop now.."
+  msg "UPGRADE ERROR: Please report this in the GitHub queue"
   msg "BYE!"
   exit 1
 else
-  msg "`date` UPGRADE ERROR: Something (2) is wrong, we should stop now.."
-  msg "`date` UPGRADE ERROR: Please report this in the GitHub queue"
+  msg "UPGRADE ERROR: Something (2) is wrong, we should stop now.."
+  msg "UPGRADE ERROR: Please report this in the GitHub queue"
   msg "BYE!"
   exit 1
 fi
