@@ -52,6 +52,7 @@ _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _USER=EDIT_USER
 _DOMAIN=EDIT_DOMAIN
+_CLIENT_OPTION=EDIT_CLIENT_OPTION
 _DISTRO=EDIT_DISTRO
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
@@ -639,6 +640,7 @@ fi
 
 ###---### Drupal Commons
 #
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
@@ -668,6 +670,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_COMMONS installation skipped"
   mrun "sleep 1"
+fi
 fi
 
 
@@ -773,6 +776,7 @@ fi
 
 ###---### OpenPublish
 #
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
@@ -802,10 +806,12 @@ else
   msg "STATUS: $_F_OPENPUBLISH installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### OpenScholar
 #
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
@@ -843,6 +849,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_OPENSCHOLAR installation skipped"
   mrun "sleep 1"
+fi
 fi
 
 

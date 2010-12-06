@@ -226,7 +226,7 @@ _LOCAL_NETWORK_IP=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B1.B.dev2
+_INSTALLER_VERSION=B1.C.dev1
 
 ## System
 _WEBG=www-data
@@ -283,6 +283,7 @@ do
   perl -p -i -e "s/(EDIT_THISHTIP)/$_THISHTIP/g"                   $Files
   perl -p -i -e "s/(EDIT_MY_EMAIL)/$_MY_EMAIL/g"                   $Files
   perl -p -i -e "s/(EDIT_CLIENT_EMAIL)/$_CLIENT_EMAIL/g"           $Files
+  perl -p -i -e "s/(EDIT_CLIENT_OPTION)/$_CLIENT_OPTION/g"         $Files
   perl -p -i -e "s/(EDIT_USER)/$_USER/g"                           $Files
   perl -p -i -e "s/(EDIT_DISTRO)/$_DISTRO/g"                       $Files
   perl -p -i -e "s/(EDIT_HM_DISTRO)/$_HM_DISTRO/g"                 $Files
@@ -321,7 +322,10 @@ do
   perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"           $Files
 done
 if [ $_STATUS = "INIT" ] ; then
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
+  chmod 700 /var/xdrago/run-$_USER &> /dev/null
+else
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 fi
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/* &> /dev/null
@@ -423,6 +427,7 @@ else
 fi
 #
 #
+rm -f /var/run/aegir_upgrade.pid
 rm -f /opt/tmp/testecho*
 _SRCDIR=/opt/tmp/files
 mkdir -p $_SRCDIR
@@ -470,6 +475,19 @@ if [ -d "$_ROOT" ] ; then
     exit 1
   fi
   echo RAW _DOMAIN is $_DOMAIN
+  if [ -e "/data/disk/$_USER/log/option.txt" ] ; then
+   _CLIENT_OPTION=`cat /data/disk/$_USER/log/option.txt`
+   _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
+  fi
+  if [ -e "/data/disk/$_USER/log/subscr.txt" ] ; then
+   _CLIENT_SUBSCR=`cat /data/disk/$_USER/log/subscr.txt`
+   _CLIENT_SUBSCR=`echo -n $_CLIENT_SUBSCR | tr -d "\n"`
+  fi
+  if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
+   _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
+   _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
+   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  fi
 #
 # Check for last distro nr
   if [ -d "$_ROOT/distro" ] ; then

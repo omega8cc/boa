@@ -1,6 +1,5 @@
 Hello,
 
-
 Your Aegir instance has been upgraded and now is based on version 0.4-beta1.
 
 Also your system services and libraries have been upgraded.
@@ -9,43 +8,37 @@ Your Aegir control panel is available as before at:
 
  https://aegir.dragon.ny.host8.biz
 
-Note: your Aegir control panel is using self-signed SSL certificate, so you browser
-can display warning. Please add this certificate as accepted in your system settings
-to avoid displaying it each time you are trying to log in.
-
 
 ----------------------------------------
-# Changes and Improvements
+# What is new or updated
 ----------------------------------------
 
-* Your Aegir instance is using Pressflow 6.x core also in the control panel.
+* Latest Drupal 7.0-rc1 platform has been added.
+* Managing News 1.2 platform now available on all servers.
+* Prosepoint 0.36 platform has been added.
+* Latest OpenPublish 2.3.432 platform has been added (Aegir Classic only).
 * You can create and manage your own platforms (Pressflow core required).
+* Your Aegir instance is using Pressflow 6.x core also in the control panel.
 * It is possible to use local or remote makefiles to create platforms.
+
+
+----------------------------------------
+# Improvements
+----------------------------------------
+
+* All 6.x platforms now receives some performance related modules (by default disabled).
+* Too generic D7 profile names replaced with unique Drupal 7 names.
 * A few new commands have been added to your Aegir Drush Shell (SSH).
-* You can use git to manage code and rsync to manage remote backups.
+* You can use git to manage the code and rsync to manage remote backups.
 * Useful new commands from Drush v.4 are now available (backported).
 * Now it is possible to delete old sites backups created in Aegir.
 * You can cancel queued task in Aegir before it is started.
-* Known issue with sites cron semaphore in Aegir now resolved.
-* Known issue with PHP notices breaking some Aegir tasks is now resolved.
 * The "dev" anywhere in the subdomain enables all PHP errors and notices.
 * You can use "dev" type alias also for live site for easier debugging.
-* Latest OpenPublish 2.3.432 platform has been added (Aegir Classic only).
-* Latest Drupal 7.0-rc1 platform has been added.
-* Too generic D7 profile names replaced with unique Drupal 7 names.
-* The auto-cron in D7 now disabled, since Aegir runs scheduled cron for all sites.
-* Managing News 1.2 platform available on all servers.
-* Prosepoint 0.36 platform has been added.
 * Added support for imagecache_external module.
 * You can safely delete any not used platforms, including old Hostmaster.
 * Access to static files allowed only for currently used domain in multisite/platform.
-* Drush make via SSH now works as expected.
 * Added crossdomain.xml in the root of every new platform.
-* Fixed web server rewrites to support ad module.
-* Fixed Aegir issue with .info and .pl domains extensions.
-* All 6.x platforms now receives some performance related modules (by default disabled).
-* Boost crawler option is now denied for performance reasons.
-* Forced log-out on browser quit only for Hostmaster/Aegir control panel. 
 * New rewrite introduced to map /files to /sites/domain/files on the fly.
 * New rewrite introduced to map /images to /sites/domain/files/images on the fly.
 * New rewrite introduced to map /downloads to /sites/domain/files/downloads on the fly.
@@ -54,10 +47,39 @@ to avoid displaying it each time you are trying to log in.
 
 
 ----------------------------------------
+# Fixes
+----------------------------------------
+
+* Known issue with sites cron semaphore in Aegir now resolved.
+* Known issue with PHP notices breaking some Aegir tasks is now resolved.
+* Fixed web server rewrites to support "ad" module.
+* Fixed Aegir issue with .info and .pl domains extensions.
+* Drush make via SSH now works as expected.
+
+
+----------------------------------------
+# Other changes
+----------------------------------------
+
+* Boost crawler option is now denied for performance reasons.
+* Forced log-out on browser quit only for Hostmaster/Aegir control panel. 
+* The auto-cron in D7 now disabled, since Aegir runs scheduled cron for all sites.
+
+
+----------------------------------------
+# Also worth to note
+----------------------------------------
+
+Your Aegir control panel is using self-signed SSL certificate, so you browser
+can display warning. Please add this certificate as accepted in your system settings
+to avoid displaying it each time you are trying to log in.
+
+
+----------------------------------------
 # FTP and SSH access
 ----------------------------------------
 
-Your username didn't change, but password has been reset.
+Your FTP/SSH username didn't change, but password has been reset.
 
 Please change your password via SSH with "passwd" command
 at least every 3 months. Otherwise the password will expire in 90 days
@@ -66,6 +88,8 @@ and you will have to log in via SSH to restore your FTP access.
   host: aegir.dragon.ny.host8.biz
   user: dragon.ftp
   pass: FN8rXcQn
+
+We recommend using SSH keys instead of password.
 
 It is highly recommended you use only SSL/TLS connections for FTPS.
 Compatible FTP-SSL/TLS clients are listed here:
