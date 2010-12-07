@@ -324,7 +324,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
@@ -343,7 +343,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
   tar -xzf module_supports-6.x-1.0.tar.gz &> /dev/null
-  tar -xzf filefield_nginx_progress-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf filefield_nginx_progress-6.x-1.2.tar.gz &> /dev/null
   tar -xzf securesite-6.x-2.4.tar.gz &> /dev/null
   tar -xzf image-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf backup_migrate-6.x-2.x-dev.tar.gz &> /dev/null
