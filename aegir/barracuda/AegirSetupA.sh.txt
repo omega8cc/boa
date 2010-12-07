@@ -747,6 +747,10 @@ chown -R root:root /data/conf &> /dev/null
 chown -R root:root $_CORE &> /dev/null
 chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/src /data /data/conf &> /dev/null
+mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
 msg "BYE!"
 
 
