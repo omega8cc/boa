@@ -242,10 +242,6 @@ fi
 if [ $_STATUS = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
-  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
   if [ -e "$_ROOT/.drush/provision" ] ; then
     mv -f $_ROOT/.drush/provision $_ROOT/backups/system/provision-pre-$_DISTRO-$_NOW &> /dev/null
   fi
@@ -255,6 +251,10 @@ if [ $_STATUS = "UPGRADE" ] ; then
   if [ -e "$_ROOT/.drush/provision_boost" ] ; then
     mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
   fi
+  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
 fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
