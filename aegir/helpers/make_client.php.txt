@@ -5,7 +5,7 @@
   $node = new stdClass();
   $node->uid = 1;
   $node->type = 'client';
-  $node->email = $_SERVER[argv][5];
+  $node->email = $_SERVER[argv][3];
   $node->organization = 'Aegir';
   $node->status = 1;
   node_save($node);
