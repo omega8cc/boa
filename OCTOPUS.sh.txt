@@ -226,12 +226,12 @@ _LOCAL_NETWORK_IP=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B1.C.dev1
+_INSTALLER_VERSION=B1.D.dev1
 
 ## System
 _WEBG=www-data
 _USRG=users
-_DRUSH_VERSION=6.x-3.3
+_DRUSH_VERSION=All-versions-4.0-rc1
 
 ## Distributions
 _COCOMORE=cdc-6.19.9

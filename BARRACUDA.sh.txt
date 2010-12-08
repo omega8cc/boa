@@ -266,11 +266,11 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B1.C.dev1
+_INSTALLER_VERSION=B1.D.dev1
 _NGINX_VERSION=0.8.53
 _PHP_VERSION=5.2.14
 _LSHELL_VERSION=0.9.14
-_DRUSH_VERSION=6.x-3.3
+_DRUSH_VERSION=All-versions-4.0-rc1
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
