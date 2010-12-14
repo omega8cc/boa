@@ -1490,7 +1490,7 @@ fi
 if [ -e "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1`
   _NGINX_F_INSTALLED=`echo -n $_NGINX_F_INSTALLED | tr -d "\n"`
-  _NGINX_F_VERSION="nginx version: nginx/$_NGINX_VERSION"
+  _NGINX_F_VERSION="nginx version: Barracuda/$_NGINX_VERSION"
   if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
     msg "INFO: Installed $_NGINX_F_INSTALLED, no upgrade required"
