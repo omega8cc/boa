@@ -1444,6 +1444,7 @@ fi
 cp -af /var/opt/ioncube/* /usr/local/ioncube/
 
 ###
+invoke-rc.d php-fpm restart &> /dev/null
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
 
