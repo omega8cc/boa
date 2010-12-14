@@ -13,24 +13,27 @@ Your Aegir control panel is available as before at:
 # What is new or updated
 ----------------------------------------
 
-* Latest Drupal 7.0-rc1 platform has been added.
+* Nginx server upgraded to version Barracuda/0.9.3
+* PHP-FPM server upgraded to version 5.2.15
+* Drush upgraded to version 4.0-rc3
+* Latest Drupal 7.0-rc2 platform has been added.
 * Managing News 1.2 platform now available on all servers.
 * Prosepoint 0.36 platform has been added.
 * Latest OpenPublish 2.3.432 platform has been added
   (Aegir Classic only).
-* You can create and manage your own platforms
-  (Pressflow core required).
 * Your Aegir instance is using Pressflow 6.x core also
   in the control panel.
+* You can create and manage your own platforms
+  (Pressflow core required) (Aegir Classic and Mini only).
 * It is possible to use local or remote makefiles
-  to create platforms.
+  to create platforms. (Aegir Classic and Mini only)
 
 
 ----------------------------------------
 # Improvements
 ----------------------------------------
 
-* All 6.x platforms now receives some performance related modules
+* All 6.x platforms now receive some performance related modules
   (by default disabled).
 * Too generic D7 profile names replaced with unique Drupal 7 names.
 * A few new commands have been added to your Aegir Drush Shell (SSH).
