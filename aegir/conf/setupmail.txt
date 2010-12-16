@@ -154,11 +154,14 @@ named 'static'. This is the place to upload your optional
 custom Drupal platform, each in a separate directory,
 named in the form:
 
- /static/my-green-platform
- /static/another-custom-platform
+ /static/platforms/my-green-platform
+ /static/platforms/another-custom-platform
 
-When you want to enable any of those custom platforms, just let
-us know at support@omega8.cc the platform name(s) to be enabled.
+When you want to enable any of those custom platforms, just use
+the built-in "Add platform" option in your Aegir control panel.
+
+Please remember to use full system paths. You can check the path
+with "pwd" command when logged in via SSH.
 
 Note that we allow only Pressflow core based platforms for
 5.x and 6.x Drupal versions.
@@ -174,7 +177,7 @@ in order to test everything before changing your DNS to the
 new A or CNAME address.
 
 PLEASE NOTE: Having a custom platform created from an
-imported site is an add-on service, paid separately or
+imported/uploaded site is an add-on service, paid separately or
 free-of-charge with a yearly (hosted) subscription. Please
 find more details on our website:
 
@@ -188,12 +191,14 @@ When creating a development version of your site, you'll
 want to work with our optimized caching systems turned off.
 
 There is a speed-auto-switch available for dev/prod environments.
-Any site you create with *devel* as the subdomain, will have
-all caching and css/js aggregation disabled automatically.
+Any site you create/access with *dev* in the subdomain, will have
+all caching and css/js aggregation disabled automatically,
+while all PHP errors (including critical wsod) enabled.
 
-When the site is ready, just *clone* (not migrate) it using
-the final domain name (or subdomain, without *devel* to test
-how it will work with caching enabled).
+You don't need to rename the site to be able to work on it
+in the "dev" mode. Simply add a *dev* domain alias and
+use it to access the site when you wish to skip all hardcoded
+caching used on the non-dev domain.
 
 
 === IMPORTANT CACHING INFORMATION
@@ -202,6 +207,19 @@ To realize the full speed from our servers, you simply need
 to enable the module *cache* (it's like cacherouter, but
 with chained cache - memcache/redis/db with auto-failover)
 for every site you wish to accelerate.
+
+
+=== USEFUL HINTS
+
+* Run verify task on every site and platform after modules updates.
+* Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
+* Chmod -R 777 all files uploaded to the sites/domain/files.
+* Run verify task on site and its platform before running clone.
+* Run verify task on site and both platforms before running migrate.
+* Use migrate task to rename the site (domain).
+* If any task is running longer than 10 minutes, contact us.
+* If any task fails, send us the task log for debugging.
+* Rename the site twice after import to get files paths rewritten.
 
 
 Questions? Comments? Please contact us:

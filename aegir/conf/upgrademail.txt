@@ -39,7 +39,7 @@ Your Aegir control panel is available as before at:
 * A few new commands have been added to your Aegir Drush Shell (SSH).
 * You can use git to manage the code and rsync to manage
   remote backups.
-* Useful new commands from Drush v.4 are now available (backported).
+* Useful new commands from Drush v.4 are now available.
 * Now it is possible to delete old sites backups created in Aegir.
 * You can cancel queued task in Aegir before it is started.
 * The "dev" anywhere in the subdomain enables all PHP errors.
@@ -66,6 +66,7 @@ Your Aegir control panel is available as before at:
 * Fixed web server rewrites to support "ad" module.
 * Fixed Aegir issue with .info and .pl domains extensions.
 * Drush make via SSH now works as expected.
+* Fixed Nginx issue with /system/ paths and static files or images.
 
 
 ----------------------------------------
@@ -117,6 +118,22 @@ support department.
 
 To see all available shell commands please type "help" when
 logged in via SSH.
+
+
+----------------------------------------
+# Useful hints
+----------------------------------------
+
+* Run verify task on every site and platform after modules updates.
+* Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
+* Chmod -R 777 all files uploaded to the sites/domain/files.
+* Run verify task on site and its platform before running clone.
+* Run verify task on site and both platforms before running migrate.
+* Use migrate task to rename the site (domain).
+* If any task is running longer than 10 minutes, contact us.
+* If any task fails, send us the task log for debugging.
+* Rename the site twice after import to get files paths rewritten.
+
 
 
 Questions? Comments? Please contact us:
