@@ -559,7 +559,16 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   chsh -s /usr/bin/lshell $_USERFTP &> /dev/null
   echo " " >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
-  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/backups', '/data/disk/$_USER/static']" >> /etc/lshell.conf
+  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static', '/data/disk/$_USER/backups']" >> /etc/lshell.conf
+  touch $_ROOT/log/backups.access.open
+fi
+
+
+###---### Add access to backups for older installs
+#
+if [ ! -e "$_ROOT/log/backups.access.open" ] ; then 
+  perl -p -i -e "s/\/$_USER\/static\'\]/\/$_USER\/static\', \'\/data\/disk\/$_USER\/backups\'\]/g" /etc/lshell.conf
+  chmod 0750 $_ROOT/backups
 fi
 
 
