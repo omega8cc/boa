@@ -1714,6 +1714,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   _AEGIR_SCRIPT="aegir-head-install"
 elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
   _AEGIR_SCRIPT="aegir-test-install"
+  _DRUSH_VERSION=All-Versions-HEAD
 else
   _AEGIR_SCRIPT="aegir-alpha-install"
 fi
