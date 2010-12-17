@@ -314,8 +314,13 @@ else
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
+    _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    chown -R $_USER $_THIS_HM_ROOT
+    chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
+    chmod -R 777 $_THIS_HM_SITE/files
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
-    msg "$_STATUS A: Aegir Hostmaster instance install or upgrade completed"
+    msg "$_STATUS A: Aegir Hostmaster instance upgrade completed"
   else
     msg "$_STATUS A: Aegir Hostmaster instance not upgraded this time"
     mrun "sleep 3"

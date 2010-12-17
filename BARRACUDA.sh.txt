@@ -891,8 +891,7 @@ else ### if [ $_STATUS = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
-    _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "uri'" | cut -d: -f2 | awk '{ print $3}'`
-    _THIS_FRONT=`echo $_THIS_FRONT | sed "s/[\,']//g"`
+    _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "uri'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   elif [ ! -z "$_MY_FRONT" ] ; then
     _THIS_FRONT="$_MY_FRONT"
   else
@@ -1790,6 +1789,11 @@ else
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
+    _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    chown -R aegir $_THIS_HM_ROOT
+    chown -R aegir:www-data $_THIS_HM_SITE/files
+    chmod -R 777 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
     _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
