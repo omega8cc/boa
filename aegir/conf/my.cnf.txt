@@ -12,22 +12,19 @@ basedir                 = /usr
 datadir                 = /var/lib/mysql
 tmpdir                  = /tmp
 language                = /usr/share/mysql/english
-default-character-set   = utf8
-collation-server        = utf8_general_ci
 character_set_server    = utf8
 collation_server        = utf8_general_ci
 skip-external-locking
-#skip-name-resolve
-connect_timeout         = 120
+connect_timeout         = 180
 join_buffer_size        = 1M
 key_buffer              = 32M
-key_buffer_size         = 64M
+key_buffer_size         = 32M
 log_warnings            = 2
 max_allowed_packet      = 32M
 max_connect_errors      = 30
 max_connections         = 30
 max_user_connections    = 30
-myisam_sort_buffer_size = 64M
+myisam_sort_buffer_size = 32M
 query_cache_limit       = 128K
 query_cache_size        = 32M
 query_cache_type        = 1
@@ -35,9 +32,9 @@ read_buffer_size        = 8M
 read_rnd_buffer_size    = 4M
 sort_buffer_size        = 32M
 bulk_insert_buffer_size = 32M
-table_cache             = 888888
-table_definition_cache  = 888888
-thread_stack            = 128K
+table_cache             = 524288
+table_definition_cache  = 524288
+thread_stack            = 256K
 thread_cache_size       = 128
 thread_concurrency      = 4
 wait_timeout            = 300
@@ -59,6 +56,7 @@ open_files_limit        = 888888
 # InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.
 # Read the manual for more InnoDB related options. There are many!
 default_storage_engine  = InnoDB
+sql_mode                = NO_ENGINE_SUBSTITUTION
 #sql_mode                = NO_ENGINE_SUBSTITUTION,TRADITIONAL
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
