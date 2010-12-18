@@ -1524,8 +1524,9 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --with-debug --with-ipv6 --add-module=/var/opt/nginx-upload-progress-module/" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  killall nginx &> /dev/null
-  invoke-rc.d nginx start &> /dev/null
+  st_runner "invoke-rc.d nginx stop" &> /dev/null
+  killall -9 nginx &> /dev/null
+  st_runner "invoke-rc.d nginx start" &> /dev/null
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
@@ -1649,7 +1650,7 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    killall nginx php-cgi php-fpm &> /dev/null
+    killall -9 nginx php-cgi php-fpm &> /dev/null
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
     st_runner "update-rc.d php-fpm defaults" &> /dev/null
@@ -1925,7 +1926,8 @@ mrun "sleep 30"
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
     if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-      killall nginx &> /dev/null
+      st_runner "invoke-rc.d nginx stop" &> /dev/null
+      killall -9 nginx &> /dev/null
       st_runner "invoke-rc.d nginx start" &> /dev/null
     fi
   fi
