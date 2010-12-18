@@ -211,15 +211,20 @@ for every site you wish to accelerate.
 
 === USEFUL HINTS
 
-* Run verify task on every site and platform after modules updates.
+* Create an empty site in Aegir to import your existing site db/files.
+* Use backup_migrate or drush sql-connect < /path/to/db.sql
+* Rename the site twice after import to get files paths rewritten.
 * Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
 * Chmod -R 777 all files uploaded to the sites/domain/files.
+* Re-verify the site in Aegir after uploading your modules and themes.
+* Run verify task on every site and platform after modules updates.
 * Run verify task on site and its platform before running clone.
 * Run verify task on site and both platforms before running migrate.
 * Use migrate task to rename the site (domain).
+* Your FTP/SSH access to platforms is limited to /sites directory.
 * If any task is running longer than 10 minutes, contact us.
 * If any task fails, send us the task log for debugging.
-* Rename the site twice after import to get files paths rewritten.
+
 
 
 Questions? Comments? Please contact us:
