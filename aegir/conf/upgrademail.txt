@@ -15,10 +15,13 @@ Your Aegir control panel is available as before at:
 
 * Nginx server upgraded to version Barracuda/0.9.3
 * PHP-FPM server upgraded to version 5.2.15
+* MariaDB server configuration improved.
 * Drush upgraded to version 4.0-rc3
+* All 6.x based platforms upgraded to Pressflow core 6.20
 * Latest Drupal 7.0-rc2 platform has been added.
 * Managing News 1.2 platform now available on all servers.
-* Prosepoint 0.36 platform has been added.
+* Prosepoint 0.37 platform has been added.
+* Drupal 6.20 Cocomore platform has been added.
 * Latest OpenPublish 2.3.432 platform has been added
   (Aegir Classic only).
 * Your Aegir instance is using Pressflow 6.x core also

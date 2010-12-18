@@ -1,7 +1,7 @@
 #!/bin/bash
 
 /etc/init.d/mysql stop
-sleep 5
+sleep 60
 killall -9 mysqld
 killall -9 mysqladmin
 killall -9 mysqld_safe

@@ -266,7 +266,7 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B1.D.dev2
+_INSTALLER_VERSION=B1.D.dev3
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.15
 _LSHELL_VERSION=0.9.14
@@ -434,6 +434,11 @@ install_redis_src () {
 # Fix this on upgrade
 fix_on_upgrade () {
   perl -p -i -e "s/apc.include_once_override = 1/apc.include_once_override = 0/g" /opt/etc/php.ini
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
+  if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
+    perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
+    touch /var/log/check_for_crashed_tables_disabled
+  fi
 }
 #
 # Force advanced Nginx configuration
@@ -489,7 +494,6 @@ rm -f /var/run/aegir_upgrade.pid
 
 ###--------------------###
 if [ $_STATUS = "UPGRADE" ] ; then
-  fix_on_upgrade
   if [ ! -e "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
 cat <<EOF
@@ -1248,6 +1252,7 @@ msg "INFO: Install/upgrade a few more tools, please wait..."
 mrun "sleep 3"
 cd /var
 if [ -d "/var/xdrago" ] ; then
+  fix_on_upgrade
   mkdir -p /var/backups/dragon/x
   mkdir -p /var/backups/dragon/z
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
@@ -1636,8 +1641,7 @@ if [ $_STATUS = "INIT" ] ; then
   chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
   chmod 600 /var/spool/cron/crontabs/root &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
-  cp -a /opt/etc/php.ini /usr/local/lib/
-  rm -f /usr/local/lib/php.ini
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall nginx php-cgi php-fpm &> /dev/null
