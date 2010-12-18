@@ -5,8 +5,13 @@ for easy Drupal site deployment.
 
 Your Aegir control panel is available at:
 
- http://aegir.dragon.ny.host8.biz
+ https://aegir.dragon.ny.host8.biz
 
+Note:
+  Your Aegir control panel is using self-signed SSL certificate,
+  so you browser can display warning. Please add this certificate
+  as accepted in your system settings to avoid displaying it
+  each time you are trying to log in.
 
 The following topics are covered within this email:
 

@@ -1,11 +1,9 @@
 #!/bin/bash
 
-/etc/init.d/mysql stop
-sleep 60
-killall -9 mysqld
-killall -9 mysqladmin
-killall -9 mysqld_safe
-rm -f /var/run/mysqld/*
-touch /var/xdrago/log/move_sql.done
-/etc/init.d/mysql start
-		  
+if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
+  touch /var/xdrago/log/wait-for-mysql-restart
+  exit
+else
+  /etc/init.d/mysql restart
+  touch /var/xdrago/log/last-mysql-restart-done
+fi
