@@ -434,6 +434,10 @@ install_redis_src () {
 # Fix this on upgrade
 fix_on_upgrade () {
   perl -p -i -e "s/apc.include_once_override = 1/apc.include_once_override = 0/g" /opt/etc/php.ini
+  mkdir -p /var/backups/dragon/t
+  cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini
+  cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
@@ -1641,6 +1645,7 @@ if [ $_STATUS = "INIT" ] ; then
   chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
   chmod 600 /var/spool/cron/crontabs/root &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
