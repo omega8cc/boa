@@ -357,8 +357,8 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -q -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.4.tar.gz
-tar -xzf aegir_custom_settings-6.x-1.4.tar.gz
+wget -q -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.5.tar.gz
+tar -xzf aegir_custom_settings-6.x-1.5.tar.gz
 # cd $_ROOT/tools/drush
 # cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
 # patch -p0 < user.drush.inc.patch &> /dev/null

@@ -44,7 +44,13 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
-`/var/xdrago/move_sql` if (!$mysqlsumar || $mysqlsumar > 150);
+if (!$mysqlsumar || $mysqlsumar > 150) {
+  `touch /var/xdrago/log/optimize_mysql_ao.pid`;
+  `touch /var/xdrago/log/mysql_restart_running.pid`;
+  `/etc/init.d/mysql restart`;
+  `rm -f /var/xdrago/log/optimize_mysql_ao.pid`;
+  `rm -f /var/xdrago/log/mysql_restart_running.pid`;
+}
 `/etc/init.d/nginx restart` if (!$nginxsumar && -f "/etc/init.d/nginx");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");

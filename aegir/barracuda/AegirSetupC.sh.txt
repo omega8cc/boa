@@ -287,8 +287,7 @@ for i in $REVISIONS; do
       wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.make
       wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.profile
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
-        _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}'`
-        _THIS_HOSTMASTER=`echo $_THIS_HOSTMASTER | sed "s/[\,']//g"`
+        _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
         drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
       fi
@@ -389,28 +388,28 @@ fi
 if [ ! -d "/data/all/000/translations" ] ; then
   mkdir -p /data/all/000/translations
   cd /data/all/000/translations
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.zh-hant.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.zh-hans.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.ca.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.da.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.nl.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.fr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.de.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.hu.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.ja.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.nb.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.pl.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.pt-pt.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.es.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.sv.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.el.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.et.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.it.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.uk.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.sk.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.fi.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.tr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.19.pt-br.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.zh-hant.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.zh-hans.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ca.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.da.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.nl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.fr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.de.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.hu.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ja.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.nb.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-pt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.es.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.sv.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.el.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.et.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.it.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.uk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.sk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.fi.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.tr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-br.po
 fi
 
 

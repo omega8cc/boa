@@ -58,6 +58,7 @@ so it is your responsibility to use such system wisely.
 * Jolicloud Robby for netbooks fresh or existing install, or
 * Debian 5.0 Lenny minimal OS 32/64bit fresh install.
 * The Git standard port 9418 must be open.
+* 512 MB of RAM or at least 1 GB of RAM for OpenPublish.
 
 
 ### PROVIDES
@@ -65,7 +66,7 @@ so it is your responsibility to use such system wisely.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest version of MariaDB database server.
 * Latest version of Nginx web server with upload progress and Boost support.
-* PHP-FPM 5.2.14 with APC, memcache, uploadprogress, suhosin and ionCube.
+* PHP-FPM 5.2.16 with APC, memcache, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.
@@ -154,7 +155,8 @@ added to all 6.x platforms:
 
 ### HELP
 
-* Join us at: http://groups.drupal.org/nginx
+* Join us at: http://community.aegirproject.org
+              http://groups.drupal.org/nginx
 
 
 ### MAINTAINERS
