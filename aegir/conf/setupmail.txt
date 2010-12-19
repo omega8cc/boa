@@ -129,6 +129,15 @@ you need to log into your FTPS/SSH account:
   user: dragon.ftp
   pass: FN8rXcQn
 
+To see all available shell commands please type "help" when
+logged in via SSH.
+
+Please change your password via SSH with "passwd" command
+at least every 3 months. Otherwise the password will expire in 90 days
+and you will have to log in via SSH to restore your FTP access.
+
+We recommend using SSH keys instead of password.
+
 It is highly recommended you use only SSL/TLS connections for FTPS.
 Compatible FTP-SSL/TLS clients are listed here:
 
@@ -137,9 +146,6 @@ Compatible FTP-SSL/TLS clients are listed here:
 Make sure you are adding modules and themes to your expected
 platform. If you experience issues, you can contact our
 support department.
-
-Currently allowed Drush and shell commands:
-
 
 
 ----------------------------------------
