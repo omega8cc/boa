@@ -1384,8 +1384,8 @@ echo "memcache-3.0.5" > /var/log/memcache-3.0.5
 msg "INFO: Installing suhosin for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://download.suhosin.org/suhosin-0.9.32.1.tgz
-tar -xzf suhosin-0.9.32.1.tgz
+wget -q -U iCab http://download.suhosin.org/suhosin-0.9.32.1.tar.gz
+tar -xzf suhosin-0.9.32.1.tar.gz
 cd /var/opt/suhosin-0.9.32.1
 st_runner "/usr/local/bin/phpize" 2> /dev/null
 st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null

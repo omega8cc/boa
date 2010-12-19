@@ -175,9 +175,9 @@ msg "$_STATUS A: Aegir automated install script part A"
 
 ###---### Stop the cron and wait 3 seconds
 #
-# msg "$_STATUS A: Stop the cron and wait 5 seconds.."
+# msg "$_STATUS A: Stop the cron and wait 3 seconds.."
 # runner "invoke-rc.d cron stop" &> /dev/null
-# mrun "sleep 5"
+# mrun "sleep 3"
 
 
 ###---### Checking status..
