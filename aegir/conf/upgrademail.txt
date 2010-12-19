@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir instance has been upgraded to version 0.4-beta1.
+Your Aegir Hosting System has been upgraded to version 0.4-beta1.
 
 Also your system services and libraries have been upgraded.
 
@@ -45,11 +45,12 @@ Your Aegir control panel is available as before at:
   remote backups.
 * Useful new commands from Drush v.4 are now available.
 * Now it is possible to delete old sites backups created in Aegir.
+* You can access Aegir backups also via SSH or SFTP/FTPS.
 * You can cancel queued task in Aegir before it is started.
-* The "dev" anywhere in the subdomain enables all PHP errors.
+* The "dev" anywhere in the subdomain enables all PHP errors/notices.
 * You can use "dev" type alias for live site for easier debugging.
 * Added support for imagecache_external module.
-* You can safely delete any not used platforms.
+* It is possible to safely delete any not used platforms on request.
 * Access to static files allowed only for currently used domain
   in multisite/platform.
 * Added crossdomain.xml in the root of every new platform.
@@ -128,15 +129,19 @@ logged in via SSH.
 # Useful hints
 ----------------------------------------
 
-* Run verify task on every site and platform after modules updates.
+* Create an empty site in Aegir to import your existing site db/files.
+* Use backup_migrate module or `drush sql-connect < /path/to/db.sql`
+* Rename the site twice after import to get files paths rewritten.
 * Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
 * Chmod -R 777 all files uploaded to the sites/domain/files.
+* Re-verify the site in Aegir after uploading your modules and themes.
+* Run verify task on every site and platform after modules updates.
 * Run verify task on site and its platform before running clone.
 * Run verify task on site and both platforms before running migrate.
 * Use migrate task to rename the site (domain).
+* Your FTP/SSH access to platforms is limited to /sites directory.
 * If any task is running longer than 10 minutes, contact us.
 * If any task fails, send us the task log for debugging.
-* Rename the site twice after import to get files paths rewritten.
 
 
 

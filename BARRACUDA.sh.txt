@@ -1581,6 +1581,11 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   echo "$_PATH_LSHELL" >> /etc/shells
   echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
 fi
+if [ -e "/usr/local/bin/lshell" ] ; then
+  if [ ! -L "/usr/bin/lshell" ] ; then
+    ln -s /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
+  fi
+fi
 
 
 ###--------------------###

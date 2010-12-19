@@ -138,6 +138,9 @@ Make sure you are adding modules and themes to your expected
 platform. If you experience issues, you can contact our
 support department.
 
+Currently allowed Drush and shell commands:
+
+
 
 ----------------------------------------
 #5. ADVANCED USER INFORMATION
