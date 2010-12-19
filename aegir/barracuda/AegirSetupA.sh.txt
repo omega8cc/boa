@@ -175,9 +175,9 @@ msg "$_STATUS A: Aegir automated install script part A"
 
 ###---### Stop the cron and wait 3 seconds
 #
-msg "$_STATUS A: Stop the cron and wait 5 seconds.."
-runner "invoke-rc.d cron stop" &> /dev/null
-mrun "sleep 5"
+# msg "$_STATUS A: Stop the cron and wait 5 seconds.."
+# runner "invoke-rc.d cron stop" &> /dev/null
+# mrun "sleep 5"
 
 
 ###---### Checking status..
@@ -302,7 +302,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
-  invoke-rc.d cron stop &> /dev/null
+  #invoke-rc.d cron stop &> /dev/null
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
   msg "$_STATUS A: Aegir Hostmaster instance install completed"
 else
@@ -745,10 +745,10 @@ cd $_ROOT/log
 echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION" >> ./octopus_log.txt
 
 
-###---### Start the cron now
+###---### Restart the cron now
 #
-msg "$_STATUS A: Start the cron now"
-runner "invoke-rc.d cron start" 2> /dev/null
+msg "$_STATUS A: Restart the cron now"
+runner "invoke-rc.d cron restart" 2> /dev/null
 msg "$_STATUS A: All done!"
 mrun "sleep 3"
 cd /

@@ -346,6 +346,7 @@ rm -f -r /opt/tmp/$_BOA_REPO_NAME
 
 ###---### init
 #
+touch /var/run/octopus_barracuda.pid
 if [ -d "/var/cache/pdnsd" ] ; then
   invoke-rc.d pdnsd stop &> /dev/null
   sleep 1
@@ -651,6 +652,7 @@ fi
 echo "8s before we will continue..."
 sleep 8
 action
+rm -f /var/run/octopus_barracuda.pid
 
 ###----------------------------------------###
 ###

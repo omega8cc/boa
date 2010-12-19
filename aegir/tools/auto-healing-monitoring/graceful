@@ -10,6 +10,12 @@ rm -f /tmp/*error*
 rm -f /tmp/sess*
 rm -f /opt/tmp/*error*
 touch /var/xdrago/log/graceful.done
+rm -f /var/xdrago/log/wait-for-octopus-barracuda-running
 }
 
-action
+if test -f /var/run/octopus_barracuda.pid ; then
+  touch /var/xdrago/log/wait-for-octopus-barracuda-running
+  exit
+else
+  action
+fi

@@ -467,10 +467,11 @@ force_advanced_nginx_config () {
 ###--------------------###
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
-  msg "STATUS: Stop cron and wait 5 sec."
+  #msg "STATUS: Stop cron and wait 3 sec."
   rm -f -r /opt/tmp/*
-  invoke-rc.d cron stop &> /dev/null
-  sleep 5
+  #invoke-rc.d cron stop &> /dev/null
+  touch /var/run/octopus_barracuda.pid
+  sleep 3
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
   exit 1
@@ -2245,6 +2246,7 @@ msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
+rm -f /var/run/octopus_barracuda.pid
 invoke-rc.d php-fpm reload &> /dev/null
 invoke-rc.d nginx reload &> /dev/null
 invoke-rc.d cron start &> /dev/null
