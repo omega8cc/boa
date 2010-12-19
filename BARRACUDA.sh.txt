@@ -2156,6 +2156,7 @@ if [ ! -d "/etc/webmin" ] ; then
     echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
     wget -q -U iCab http://www.webmin.com/jcameron-key.asc
     apt-key add jcameron-key.asc &> /dev/null
+    touch /var/log/webmin_new_apt.log
     st_runner "apt-fast update -y --force-yes" 2> /dev/null
     st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
     msg "INFO: Webmin Control Panel installation completed"
