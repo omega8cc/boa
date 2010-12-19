@@ -623,8 +623,6 @@ if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
   mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
-#   ln -s $_ROOT/distro/$_THIS_CORE/managingnews/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-dev
-#   ln -s $_ROOT/distro/$_THIS_CORE/openatrium/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-dev
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia/sites" ] ; then
     ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
   fi
