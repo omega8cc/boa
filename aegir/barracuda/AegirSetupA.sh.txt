@@ -351,7 +351,10 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    runner "invoke-rc.d nginx reload" 2> /dev/null
+    runner "invoke-rc.d nginx stop" &> /dev/null
+    killall -9 nginx &> /dev/null
+    runner "invoke-rc.d nginx start" 2> /dev/null
+    #runner "invoke-rc.d nginx reload" 2> /dev/null
   fi
   cd $_AEGIR_ROOT
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
@@ -396,7 +399,8 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
       if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-        killall nginx &> /dev/null
+        runner "invoke-rc.d nginx stop" &> /dev/null
+        killall -9 nginx &> /dev/null
         runner "invoke-rc.d nginx start" 2> /dev/null
       fi
     fi
