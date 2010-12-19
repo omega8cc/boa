@@ -523,7 +523,7 @@ fi
 rm -f /var/spool/cron/crontabs/$_USER
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
   sed -i "s/\*\/1 \* \* \* \* bash \/var\/xdrago\/run/#*\/1 * * * * bash \/var\/xdrago\/run/g" /var/spool/cron/crontabs/root
-  echo -e "*/2 * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
+  echo -e "* * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
   touch /var/log/cron_aegir_off.pid
 fi
 
