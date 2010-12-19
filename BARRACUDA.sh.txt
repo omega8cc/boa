@@ -266,9 +266,9 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B1.D.dev3
+_INSTALLER_VERSION=B1.E.dev
 _NGINX_VERSION=0.9.3
-_PHP_VERSION=5.2.15
+_PHP_VERSION=5.2.16
 _LSHELL_VERSION=0.9.14
 _DRUSH_VERSION=6.x-4.0-rc3
 _NOW=`date +%y%m%d-%H%M`
@@ -1340,17 +1340,17 @@ cd /var/opt
 rm -f -r /var/opt/php*
 mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 rm -f /etc/init.d/php-fpm*
-wget -q -U iCab http://www.php.net/distributions/php-5.2.15.tar.gz
+wget -q -U iCab http://www.php.net/distributions/php-5.2.16.tar.gz
 wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.14-0.9.7.patch.gz
-wget -q -U iCab http://php-fpm.org/downloads/php-5.2.15-fpm-0.5.14.diff.gz
-tar -xzf php-5.2.15.tar.gz
-gunzip -q php-5.2.15-fpm-0.5.14.diff.gz
+wget -q -U iCab http://php-fpm.org/downloads/php-5.2.16-fpm-0.5.14.diff.gz
+tar -xzf php-5.2.16.tar.gz
+gunzip -q php-5.2.16-fpm-0.5.14.diff.gz
 gunzip -q suhosin-patch-5.2.14-0.9.7.patch.gz
-cat php-5.2.15-fpm-0.5.14.diff | patch -d php-5.2.15 -p1 &> /dev/null
-cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.15 -p1 &> /dev/null
+cat php-5.2.16-fpm-0.5.14.diff | patch -d php-5.2.16 -p1 &> /dev/null
+cat suhosin-patch-5.2.14-0.9.7.patch | patch -d php-5.2.16 -p1 &> /dev/null
 msg "INFO: Installing PHP-FPM part 1/3"
 mrun "sleep 3"
-cd /var/opt/php-5.2.15
+cd /var/opt/php-5.2.16
 st_runner "sh ./buildconf --force" 2> /dev/null
 msg "INFO: Installing PHP-FPM part 2/3"
 mrun "sleep 3"
