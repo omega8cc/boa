@@ -1782,9 +1782,11 @@ mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 force_advanced_nginx_config
-# cd /var/aegir/drush
-# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-# patch -p0 < user.drush.inc.patch &> /dev/null
+### fix for typo http://drupal.org/node/979656
+cd /var/aegir/.drush/drush_make
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+patch -p0 < drush-remote_make_files.patch &> /dev/null
+###
 cd /var/aegir
 perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
 perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
@@ -1835,6 +1837,11 @@ else
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
     force_advanced_nginx_config
+    ### fix for typo http://drupal.org/node/979656
+    cd /var/aegir/.drush/drush_make
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+    patch -p0 < drush-remote_make_files.patch &> /dev/null
+    ###
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then

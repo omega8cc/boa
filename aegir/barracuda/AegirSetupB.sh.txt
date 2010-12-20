@@ -258,27 +258,27 @@ cd $_ROOT/.drush
 if [ $_AEGIR_VERSION = "HEAD" ]; then  
   git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
   if [ $_STATUS = "UPGRADE" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta9.tar.gz
-    tar -xzf drush_make-6.x-2.0-beta9.tar.gz
-    rm -f drush_make-6.x-2.0-beta9.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta10.tar.gz
+    tar -xzf drush_make-6.x-2.0-beta10.tar.gz
+    rm -f drush_make-6.x-2.0-beta10.tar.gz
   fi
 else
   wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
   tar -xzf provision-$_AEGIR_VERSION.tgz
   rm provision-$_AEGIR_VERSION.tgz
   if [ $_STATUS = "UPGRADE" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta9.tar.gz
-    tar -xzf drush_make-6.x-2.0-beta9.tar.gz
-    rm -f drush_make-6.x-2.0-beta9.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta10.tar.gz
+    tar -xzf drush_make-6.x-2.0-beta10.tar.gz
+    rm -f drush_make-6.x-2.0-beta10.tar.gz
   fi
 fi
 cd $_ROOT/.drush
 git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
-if [ $_STATUS = "UPGRADE" ] ; then
-  cd $_ROOT/.drush/drush_make
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush_make.drush.inc.patch ./
-  patch -p0 < drush_make.drush.inc.patch &> /dev/null
-fi
+# if [ $_STATUS = "UPGRADE" ] ; then
+#   cd $_ROOT/.drush/drush_make
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+#   patch -p0 < drush-remote_make_files.patch &> /dev/null
+# fi
 
 
 ###---### Build Aegir base
@@ -356,6 +356,15 @@ else
   msg "$_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready - exit now"
   exit 1
 fi
+
+
+### fix for typo http://drupal.org/node/979656
+#
+cd $_ROOT/.drush/drush_make
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+patch -p0 < drush-remote_make_files.patch &> /dev/null
+#
+###
 
 
 ###---### Enhance Aegir UI
