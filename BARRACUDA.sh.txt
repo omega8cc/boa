@@ -71,7 +71,7 @@ _DEBUG_MODE=NO
 ### be installed, but if you prefer, you can
 ### change it below to:
 ###
-### _AEGIR_VERSION=0.4-beta1
+### _AEGIR_VERSION=0.4-beta2
 ###
 _AEGIR_VERSION=HEAD
 
@@ -266,7 +266,7 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B1.E.dev2
+_INSTALLER_VERSION=B2.A.dev1
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.16
 _LSHELL_VERSION=0.9.14

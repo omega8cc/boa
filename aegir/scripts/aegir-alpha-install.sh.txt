@@ -27,7 +27,7 @@
 # 3. delegate the rest of the install to hostmaster-install
 ########################################################################
 # basic variables, change before release
-AEGIR_VERSION="0.4-beta1"
+AEGIR_VERSION="0.4-beta2"
 
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL

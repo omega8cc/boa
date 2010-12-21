@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 0.4-beta1.
+Your Aegir Hosting System has been upgraded to version 0.4-beta2.
 
 Also your system services and libraries have been upgraded.
 
@@ -14,7 +14,7 @@ Your Aegir control panel is available as before at:
 ----------------------------------------
 
 * Nginx server upgraded to version Barracuda/0.9.3
-* PHP-FPM server upgraded to version 5.2.15
+* PHP-FPM server upgraded to version 5.2.16
 * MariaDB server configuration improved.
 * Drush upgraded to version 4.0-rc3
 * Drush Make upgraded to version 2.0-beta10
