@@ -569,6 +569,9 @@ else
   if [ "$_USER" = "admin" ] ; then
     echo ERROR: $_USER is a restricted username, please choose different _USER.
     exit 1  
+  elif [ "$_USER" = "hostmaster" ] ; then
+    echo ERROR: $_USER is a restricted username, please choose different _USER.
+    exit 1  
   fi
   _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
   if [ ! -z "$_FREEID" ]; then
