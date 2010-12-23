@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://87.238.52.168/aegir
+###  Code: http://code.aegir.cc/aegir
 ###
 ###----------------------------------------###
 
@@ -365,7 +365,7 @@ msg "INFO: Testing Gitorious and GitHub servers availability, please wait..."
 sleep 3
 _GITORIOUS_WORKS=YES
 _GITHUB_WORKS=YES
-if ! netcat -w 8 -z 87.238.52.168 9418 ; then
+if ! netcat -w 8 -z code.aegir.cc 9418 ; then
   _GITORIOUS_WORKS="NO"
 cat <<EOF
 
@@ -391,7 +391,7 @@ else
 fi
 if [ $_GITORIOUS_WORKS = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
-  _BOA_REPO_GIT_URL="git://87.238.52.168/aegir"
+  _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
   msg "INFO: Gitorious master repository will be used for this install"
 elif [ $_GITHUB_WORKS = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"

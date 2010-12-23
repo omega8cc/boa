@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://87.238.52.168/aegir
+###  Code: http://code.aegir.cc/aegir
 ###
 ###----------------------------------------###
 
