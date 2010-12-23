@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://gitorious.org/aegir
+###  Code: http://87.238.52.168/aegir
 ###
 ###----------------------------------------###
 

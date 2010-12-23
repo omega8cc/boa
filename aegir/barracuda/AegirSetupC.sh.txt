@@ -13,7 +13,7 @@
 ###  responsibility for any disasters caused
 ###  during the execution of this script.
 ###
-###  Code: http://gitorious.org/aegir
+###  Code: http://87.238.52.168/aegir
 ###
 ###----------------------------------------###
 
@@ -284,8 +284,8 @@ for i in $REVISIONS; do
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
-      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.make
-      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.profile
+      wget -q -U iCab http://87.238.52.168/aegir/feature_server/blobs/raw/master/feature_server.make
+      wget -q -U iCab http://87.238.52.168/aegir/feature_server/blobs/raw/master/feature_server.profile
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
