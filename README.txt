@@ -95,7 +95,7 @@ Octopus can install the platforms listed below:
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.20 Pressflow (int) -- http://pressflow.org
  Drupal 6.20 Cocomore --------- http://drupal.cocomore.com
- Drupal 7.0-rc2 --------------- http://drupal.org/project/drupal
+ Drupal 7.0-rc3 --------------- http://drupal.org/project/drupal
  Feature Server --------------- http://bit.ly/fserver
                                 http://bit.ly/fservermore
 
