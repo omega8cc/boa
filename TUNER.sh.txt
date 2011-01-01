@@ -1,0 +1,357 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  Barracuda/Octopus Aegir System Tuner
+###  Copyright 2010-2011 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This script is free software licensed
+###  under the GNU GPLv3. No warranty is
+###  provided and the authors claims no
+###  responsibility for any disasters caused
+###  during the execution of this script.
+###
+###  Code: http://code.aegir.cc/aegir
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### HOW-TO: run it with bash, not with sh  ###
+###----------------------------------------###
+###
+### $ bash TUNER.sh.txt
+###
+### Note: to restore default values it is
+###       enough to start this script with
+###       any vaules defined below and answer
+###       NO when it prompts for confirmation
+###       "Are you ready to tune your Aegir".
+###       
+
+
+###----------------------------------------###
+### EDITME                                 ###
+###----------------------------------------###
+###
+### Enter below the settings you wish to use.
+### 
+
+
+###----------------------------------------###
+### Hostmaster root directory - /var/aegir
+###
+### Note: most of vaules tuned by this script
+###       are server-vide, while some, like
+###       mod_evasive settings will affect
+###       only sites hosted on the Aegir
+###       Hostmaster instance defined below.
+###
+_TUNE_HOSTMASTER=/data/disk/o1
+
+
+###----------------------------------------###
+### Nginx server mod_evasive - default ON
+###
+### Note: running verify task on any SITE
+###       will restore default value ON
+###       for that site only, while TUNER
+###       will turn OFF/ON this feature
+###       for all sites hosted on the
+###       Hostmaster defined above.
+###
+_TUNE_NGINX_CONNECT=OFF
+
+
+###----------------------------------------###
+### Nginx server fastcgi timeout - default 300
+###
+### Note: running verify task on the SERVER
+###       in the Hostmaster created
+###       by Barracuda (not Octopus!)
+###       will restore default value
+###       for the server and all existing
+###       Hostmaster instances.
+###
+_TUNE_NGINX_TIMEOUT=3600
+
+
+###----------------------------------------###
+### Database server timeout - default 300
+###
+_TUNE_SQL_TIMEOUT=3600
+
+
+###----------------------------------------###
+### PHP-FPM server timeout - default 300
+###
+_TUNE_PHP_TIMEOUT=3600
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+_INSTALLER_VERSION=B2.A.dev2
+_NOW=`date +%y%m%d-%H%M`
+
+###---### Functions
+#
+# Noticeable messages
+msg () {
+  echo "Tuner [`date`] ==> $*"
+}
+# Simple prompt
+prompt_yes_no () {
+  while true ; do
+    printf "$* [Y/n] "
+    read answer
+    if [ -z "$answer" ] ; then
+      return 0
+    fi
+    case $answer in
+      [Yy]|[Yy][Ee][Ss])
+        return 0
+        ;;
+      [Nn]|[Nn][Oo])
+        return 1
+        ;;
+      *)
+        echo "Please answer yes or no"
+        ;;
+    esac
+ done 
+}
+#
+# Silent runner
+st_runner () {
+	CMD="$1"
+	touch busy
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
+		rm busy
+		sleep 1
+		return 0
+	else
+		rm busy
+		sleep 1
+		echo "$CMD failed.  Error (if any): $?"
+		echo
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
+		echo "command first and choose default answer, then run this installer again."
+		echo " "
+		tail -15 $_LOG
+		return 1
+	fi
+}
+#
+# Small spinner
+mrun () {
+	CMD="$1"
+	touch busy
+	bash $_SRCDIR/spinner busy &
+	if $CMD >> $_LOG; then
+		rm busy
+		sleep 1
+		return 0
+	fi
+}
+#
+restore_default_php () {
+  cd /opt/etc
+  cp -af php.ini php.ini-pre-tuner-$_INSTALLER_VERSION-$_NOW
+  cp -af php-fpm.conf php-fpm.conf-pre-tuner-$_INSTALLER_VERSION-$_NOW
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf ./
+}
+#
+tune_php () {
+  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php.ini
+  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php-fpm.conf
+  st_runner "invoke-rc.d php-fpm restart" &> /dev/null
+}
+#
+restore_default_sql () {
+  cd /etc/mysql
+  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
+  mv -f my.cnf.txt my.cnf &> /dev/null
+}
+#
+tune_sql () {
+  sed -i "s/300/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf
+  st_runner "invoke-rc.d mysql restart" &> /dev/null
+}
+#
+restore_default_nginx () {
+  if [ -d "$_TUNE_HOSTMASTER" ] ; then
+    for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
+    do
+      sed -i "s/#limit_conn/limit_conn/g" $Files
+    done
+  fi
+  su -s /bin/bash aegir -c "drush @server_master provision-verify &> /dev/null"
+  mrun "sleep 8"
+}
+#
+tune_nginx () {
+  sed -i "s/300/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf
+  sed -i "s/180/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf
+  sed -i "s/limit_conn/#limit_conn/g"   /var/aegir/config/server_master/nginx.conf
+  if [ "$_TUNE_NGINX_CONNECT" = "OFF" ] ; then
+    if [ -d "$_TUNE_HOSTMASTER" ] ; then
+      for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
+      do
+        sed -i "s/limit_conn/#limit_conn/g" $Files
+      done
+    fi  
+  fi
+  st_runner "invoke-rc.d nginx restart" &> /dev/null
+}
+
+
+###---### init
+#
+touch /var/run/octopus_barracuda.pid
+
+
+###--------------------###
+msg "INFO: Testing Gitorious and GitHub servers availability, please wait..."
+sleep 3
+_GITORIOUS_WORKS=YES
+_GITHUB_WORKS=YES
+if ! netcat -w 8 -z code.aegir.cc 9418 ; then
+  _GITORIOUS_WORKS="NO"
+cat <<EOF
+
+  The Gitorious master repository server doesn't respond now,
+  let's try GitHub mirror...
+    
+EOF
+elif ! netcat -w 8 -z github.com 9418 ; then
+  _GITHUB_WORKS="NO"
+cat <<EOF
+
+  The GitHub mirror repository server doesn't respond now,
+  so we can't continue this installation.
+  
+  Please try again later.
+  
+  Bye.
+    
+EOF
+  exit 1
+else
+  true
+fi
+if [ $_GITORIOUS_WORKS = "YES" ] ; then
+  _BOA_REPO_NAME="barracuda-octopus"
+  _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
+  msg "INFO: Gitorious master repository will be used for this install"
+elif [ $_GITHUB_WORKS = "YES" ] ; then
+  _BOA_REPO_NAME="nginx-for-drupal"
+  _BOA_REPO_GIT_URL="git://github.com/omega8cc"
+  msg "INFO: GitHub mirror repository will be used for this install"
+fi
+_BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
+#
+#
+if [ `whoami` = "root" ] ; then
+  msg "STATUS: This script is ran as a root user."
+else
+  msg "ERROR: This script should be ran as a root user, please su - root first."
+  msg "Bye."
+  exit 1
+fi
+#
+#
+if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
+  msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
+  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
+  msg "Bye."
+  exit 1
+else
+  _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
+  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+    _VERSIONS_TEST_RESULT=OK
+  else
+    msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
+    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
+    msg "Bye."
+    exit 1
+  fi
+fi
+#
+#
+rm -f /var/run/aegir_upgrade.pid
+rm -f /opt/tmp/testecho*
+_SRCDIR=/opt/tmp/files
+mkdir -p $_SRCDIR
+chmod -R 777 /opt/tmp &> /dev/null
+cd /opt/tmp
+rm -f -r /opt/tmp/$_BOA_REPO_NAME
+git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+#
+# Get spinner
+cd $_SRCDIR
+rm -f spinner*
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
+chmod +x spinner &> /dev/null
+#
+# Create tmp stuff
+_LOG=/opt/tmp/aegir-install.log
+_SILENT=/opt/tmp/silent.log
+#
+#
+
+
+###---### Tune Your Aegir Hosting System
+#
+mrun "sleep 3"
+echo " "
+msg "TUNER START -> checkpoint: "
+cat <<EOF
+
+  * Hostmaster instance to tune: $_TUNE_HOSTMASTER
+  * Nginx server mod_evasive will be set to $_TUNE_NGINX_CONNECT
+  * Nginx server fastcgi timeout will be set to $_TUNE_NGINX_TIMEOUT seconds
+  * Database server timeout will be set to $_TUNE_SQL_TIMEOUT seconds
+  * PHP server timeout will be set to $_TUNE_PHP_TIMEOUT seconds
+
+EOF
+echo " "
+if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
+true
+msg "STATUS: Tuning in progress, please wait..."
+mrun "sleep 2"
+  restore_default_php
+  tune_php
+  restore_default_sql
+  tune_sql
+  restore_default_nginx
+  tune_nginx
+msg "STATUS: Tuning completed"
+mrun "sleep 2"
+else
+  restore_default_php
+  restore_default_sql
+  restore_default_nginx
+  msg "STATUS: Tuning stopped and default settings restored"
+  mrun "sleep 1"
+fi
+rm -f -r /var/opt/*
+rm -f -r /opt/tmp/*
+rm -f /var/run/octopus_barracuda.pid
+msg "BYE!"
+
+###----------------------------------------###
+###
+###  Barracuda/Octopus Aegir System Tuner
+###  Copyright 2010-2011 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###----------------------------------------###
+
