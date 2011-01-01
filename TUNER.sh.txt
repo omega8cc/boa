@@ -171,7 +171,6 @@ restore_default_php () {
 tune_php () {
   sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php.ini
   sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php-fpm.conf
-  st_runner "invoke-rc.d php-fpm restart" &> /dev/null
 }
 #
 restore_default_sql () {
@@ -183,7 +182,6 @@ restore_default_sql () {
 #
 tune_sql () {
   sed -i "s/300/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf
-  st_runner "invoke-rc.d mysql restart" &> /dev/null
 }
 #
 restore_default_nginx () {
@@ -209,9 +207,13 @@ tune_nginx () {
       done
     fi  
   fi
+}
+#
+restart_services () {
+  st_runner "invoke-rc.d php-fpm restart" &> /dev/null
+  st_runner "invoke-rc.d mysql restart" &> /dev/null
   st_runner "invoke-rc.d nginx restart" &> /dev/null
 }
-
 
 ###---### init
 #
@@ -333,12 +335,14 @@ mrun "sleep 2"
   tune_sql
   restore_default_nginx
   tune_nginx
+  restart_services
 msg "STATUS: Tuning completed"
 mrun "sleep 2"
 else
   restore_default_php
   restore_default_sql
   restore_default_nginx
+  restart_services
   msg "STATUS: Tuning stopped and default settings restored"
   mrun "sleep 1"
 fi
