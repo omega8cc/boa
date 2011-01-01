@@ -219,7 +219,6 @@ restart_services () {
 #
 touch /var/run/octopus_barracuda.pid
 
-
 ###--------------------###
 msg "INFO: Testing Gitorious and GitHub servers availability, please wait..."
 sleep 3
@@ -326,9 +325,12 @@ cat <<EOF
 EOF
 echo " "
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
-true
-msg "STATUS: Tuning in progress, please wait..."
-mrun "sleep 2"
+  true
+  msg "STATUS: We will stop cron and then wait 30 seconds..."
+  invoke-rc.d cron stop &> /dev/null
+  mrun "sleep 30"
+  msg "STATUS: Tuning in progress, please wait..."
+  mrun "sleep 2"
   restore_default_php
   tune_php
   restore_default_sql
@@ -336,19 +338,24 @@ mrun "sleep 2"
   restore_default_nginx
   tune_nginx
   restart_services
-msg "STATUS: Tuning completed"
-mrun "sleep 2"
+  msg "STATUS: Tuning completed"
+  mrun "sleep 2"
 else
+  msg "STATUS: We will stop cron and then wait 30 seconds..."
+  invoke-rc.d cron stop &> /dev/null
+  mrun "sleep 30"
   restore_default_php
   restore_default_sql
   restore_default_nginx
   restart_services
   msg "STATUS: Tuning stopped and default settings restored"
-  mrun "sleep 1"
+  mrun "sleep 2"
 fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
+invoke-rc.d cron start &> /dev/null
+msg "STATUS: Cron started again"
 msg "BYE!"
 
 ###----------------------------------------###

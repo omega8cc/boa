@@ -1,5 +1,9 @@
 Hello,
 
+
+***~~~*** Happy New 2011 Year from Omega8.cc team! ***~~~***
+
+
 Welcome to your new Aegir control panel
 for easy Drupal site deployment.
 

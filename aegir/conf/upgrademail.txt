@@ -1,5 +1,9 @@
 Hello,
 
+
+***~~~*** Happy New 2011 Year from Omega8.cc team! ***~~~***
+
+
 Your Aegir Hosting System has been upgraded to version 0.4-beta2.
 
 Also your system services and libraries have been upgraded.
@@ -16,7 +20,7 @@ Your Aegir control panel is available as before at:
 * Nginx server upgraded to version Barracuda/0.9.3
 * PHP-FPM server upgraded to version 5.2.16
 * MariaDB server configuration improved.
-* Drush upgraded to version 4.0-rc3
+* Drush upgraded to version 4.0-rc5
 * Drush Make upgraded to version 2.0-beta10
 * All 6.x based platforms upgraded to Pressflow core 6.20
 * Latest Drupal 7.0-rc4 platform has been added.
@@ -72,6 +76,7 @@ Your Aegir control panel is available as before at:
 * Fixed Aegir issue with .info and .pl domains extensions.
 * Drush make via SSH now works as expected.
 * Fixed Nginx issue with /system/ paths and static files or images.
+* Fixed issue with broken site when non-lowercase domain was used.
 
 
 ----------------------------------------
