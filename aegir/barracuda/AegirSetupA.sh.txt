@@ -4,7 +4,7 @@
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright 2010 Omega8.cc
+###  Copyright 2010-2011 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This script is free software licensed
@@ -773,7 +773,7 @@ msg "BYE!"
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright 2010 Omega8.cc
+###  Copyright 2010-2011 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###
