@@ -335,8 +335,9 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/varnish-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/data_uri_sprites-6.x-1.0-alpha1.tar.gz
   tar -xzf cache.tar.gz &> /dev/null
   tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
@@ -354,8 +355,9 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf views404-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf session443-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf varnish-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf variable_clean-6.x-1.x-dev.tar.gz &> /dev/null
+  #tar -xzf data_uri_sprites-6.x-1.0-alpha1.tar.gz &> /dev/null
   rm -f *.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then

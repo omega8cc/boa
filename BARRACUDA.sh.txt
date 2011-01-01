@@ -36,6 +36,22 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
+### SSH CUSTOM PORT                        ###
+###----------------------------------------###
+###
+### Change this if you want to use non-default
+### port for SSH and SFTP connections.
+###
+### Changing the port will alter also your
+### server firewall (csf) settings and can
+### be used only once - on initial Barracuda
+### install or on the first upgrade after
+### this feature has been introduced.
+###
+_SSH_PORT=22
+
+
+###----------------------------------------###
 ### LOCAL DEBIAN OR UBUNTU MIRROR          ###
 ###----------------------------------------###
 ###
@@ -1410,13 +1426,16 @@ st_runner "make --quiet install" 2> /dev/null
 msg "INFO: Installing apc for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://pecl.php.net/get/APC-3.1.4.tgz
-tar -xzf APC-3.1.4.tgz
-cd /var/opt/APC-3.1.4
+# wget -q -U iCab http://pecl.php.net/get/APC-3.1.4.tgz
+# tar -xzf APC-3.1.4.tgz
+# cd /var/opt/APC-3.1.4
+svn co http://svn.php.net/repository/pecl/apc/trunk apc-svn &> /dev/null
+cd apc-svn
 st_runner "/usr/local/bin/phpize" 2> /dev/null
 st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
 st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
+echo "apc-svn-3.1.6 $_NOW" > /var/log/apc-svn-3.1.6
 
 
 ###--------------------###
@@ -2201,18 +2220,33 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   cd /etc/csf
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
-  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" csf.conf
-  chmod 600 csf.conf &> /dev/null
+  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
+  sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
+  chmod 600 /etc/csf/csf.conf &> /dev/null
+  sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+  st_runner "invoke-rc.d ssh restart" &> /dev/null
   st_runner "invoke-rc.d csf restart" &> /dev/null
   st_runner "invoke-rc.d lfd restart" &> /dev/null
-fi
-if [ -e "/var/xdrago/log/lastFire" ] ; then
+ fi
+ if [ -e "/var/xdrago/log/lastFire" ] ; then
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
   rm -f /var/xdrago/log/lastFire
   st_runner "invoke-rc.d csf restart" &> /dev/null
   st_runner "invoke-rc.d lfd restart" &> /dev/null
  fi
+ echo $_SSH_PORT > /var/log/csf-setup-ssh-port.log
+fi
+if [ -e "/usr/sbin/csf" ] ; then
+  if [ ! -e "/var/log/csf-setup-ssh-port.log" ] ; then
+    cd /etc/csf
+    mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
+    sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
+    sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
+    touch /var/log/csf-setup-ssh-port.log
+    st_runner "invoke-rc.d ssh restart" &> /dev/null
+  fi
 fi
 
 
