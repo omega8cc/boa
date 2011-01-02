@@ -2247,6 +2247,7 @@ if [ -e "/usr/sbin/csf" ] ; then
     sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
     touch /var/log/csf-setup-ssh-port.log
     st_runner "invoke-rc.d ssh restart" &> /dev/null
+    st_runner "invoke-rc.d csf restart" &> /dev/null
   fi
 fi
 if [ ! -e "/var/log/sysctl.conf.custom.log" ] ; then
