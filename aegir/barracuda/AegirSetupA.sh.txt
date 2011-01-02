@@ -303,7 +303,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
   #invoke-rc.d cron stop &> /dev/null
-  su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+  su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt >$_ROOT/install.log 2>&1"
   msg "$_STATUS A: Aegir Hostmaster instance install completed"
 else
   echo " "
@@ -768,6 +768,13 @@ mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
+if [ $_STATUS = "INIT" ] ; then
+  echo " "
+  _AEGIR__LOGIN_URL=`grep "Aegir is now installed" $_ROOT/install.log 2> /dev/null`
+  msg "ACCESS -> $_AEGIR__LOGIN_URL"
+  echo " "
+  mrun "sleep 3"
+fi
 msg "BYE!"
 
 
