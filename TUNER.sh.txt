@@ -79,6 +79,30 @@ _TUNE_NGINX_TIMEOUT=3600
 
 
 ###----------------------------------------###
+### Nginx server firewall limit - default 300
+###
+### Note: don't change the default value
+###       if you are the only visitor, or
+###       you will lock yourself easily.
+###
+###       The default value 300 means the
+###       firewall limit is OFF because
+###       it scans only the last 300 lines
+###       of your web server log file.
+###
+###       If you will set this value to 100
+###       then every visitor IP with more
+###       than 100 out of the last 300
+###       requests will be locked.
+###
+###       Only dynamic requests (pages) are
+###       counted because static files like
+###       images are generally not logged.
+###
+_TUNE_NGINX_FIREWALL=300
+
+
+###----------------------------------------###
 ### Database server timeout - default 300
 ###
 _TUNE_SQL_TIMEOUT=3600
@@ -185,6 +209,8 @@ tune_sql () {
 }
 #
 restore_default_nginx () {
+  cd /var/xdrago/firewall/check
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/firewall/check/scan_nginx ./
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
     for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
     do
@@ -196,10 +222,11 @@ restore_default_nginx () {
 }
 #
 tune_nginx () {
+  sed -i "s/critnumber = 300/critnumber = $_TUNE_NGINX_FIREWALL/g" /var/xdrago/firewall/check/scan_nginx
   sed -i "s/300/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf
   sed -i "s/180/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf
-  sed -i "s/limit_conn/#limit_conn/g"   /var/aegir/config/server_master/nginx.conf
   if [ "$_TUNE_NGINX_CONNECT" = "OFF" ] ; then
+    sed -i "s/limit_conn/#limit_conn/g" /var/aegir/config/server_master/nginx.conf
     if [ -d "$_TUNE_HOSTMASTER" ] ; then
       for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
       do
@@ -213,6 +240,8 @@ restart_services () {
   st_runner "invoke-rc.d php-fpm restart" &> /dev/null
   st_runner "invoke-rc.d mysql restart" &> /dev/null
   st_runner "invoke-rc.d nginx restart" &> /dev/null
+  st_runner "bash /var/xdrago/FireStart" &> /dev/null
+  st_runner "invoke-rc.d csf restart" &> /dev/null
 }
 
 ###---### init
@@ -319,6 +348,7 @@ cat <<EOF
   * Hostmaster instance to tune: $_TUNE_HOSTMASTER
   * Nginx server mod_evasive will be set to $_TUNE_NGINX_CONNECT
   * Nginx server fastcgi timeout will be set to $_TUNE_NGINX_TIMEOUT seconds
+  * Nginx firewall limit of allowed requests will be set to $_TUNE_NGINX_FIREWALL/300
   * Database server timeout will be set to $_TUNE_SQL_TIMEOUT seconds
   * PHP server timeout will be set to $_TUNE_PHP_TIMEOUT seconds
 

@@ -452,6 +452,7 @@ chmod 0711 $_AEGIR_ROOT
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
 chmod 0750 $_ROOT/backups
+chmod 0711 $_ROOT/.drush
 
 
 ###---### Platforms [Y/n]

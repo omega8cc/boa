@@ -1798,6 +1798,7 @@ msg "INFO: Fix for access to global.inc for www-data user issue"
 mrun "sleep 3"
 chmod 711 /var/aegir/config/includes &> /dev/null
 chmod 711 /var/aegir/config &> /dev/null
+chmod 711 /var/aegir/.drush &> /dev/null
 mrun "sleep 3"
 
 
@@ -2247,6 +2248,12 @@ if [ -e "/usr/sbin/csf" ] ; then
     touch /var/log/csf-setup-ssh-port.log
     st_runner "invoke-rc.d ssh restart" &> /dev/null
   fi
+fi
+if [ ! -e "/var/log/sysctl.conf.custom.log" ] ; then
+  cd /etc
+  mv -f sysctl.conf sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf ./
+  touch /var/log/sysctl.conf.custom.log
 fi
 
 
