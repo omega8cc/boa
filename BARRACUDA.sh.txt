@@ -1882,6 +1882,7 @@ else
         rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
       fi
     fi
+    chmod 711 /var/aegir/.drush &> /dev/null
     msg "INFO: core Aegir Hostmaster instance upgrade completed"
   else
     msg "INFO: core Aegir Hostmaster instance not upgraded this time"
