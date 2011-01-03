@@ -1287,6 +1287,7 @@ if [ -d "/var/xdrago" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
   chown root:crontab /var/spool/cron/crontabs/root
+  chmod 600 /var/spool/cron/crontabs/root
   touch /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION-$_NOW
 fi
 if [ $_STATUS = "INIT" ] ; then
@@ -1296,6 +1297,7 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/etc/init.d/* /etc/init.d/
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
   chown root:crontab /var/spool/cron/crontabs/root
+  chmod 600 /var/spool/cron/crontabs/root
   perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
   perl -p -i -e "s/(max_children\">1)/max_children\"\>4/g" /opt/etc/php-fpm.conf
 fi
