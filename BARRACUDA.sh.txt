@@ -459,6 +459,10 @@ fix_on_upgrade () {
     perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
+  cd /etc/mysql
+  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
+  mv -f my.cnf.txt my.cnf &> /dev/null
 }
 #
 # Force advanced Nginx configuration
