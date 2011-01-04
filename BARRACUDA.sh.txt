@@ -2342,11 +2342,13 @@ rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
 invoke-rc.d php-fpm reload &> /dev/null
 invoke-rc.d cron restart &> /dev/null
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
+if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
   st_runner "invoke-rc.d nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
-  sleep 3
+  sleep 1
   st_runner "invoke-rc.d nginx start" &> /dev/null
+  sleep 1
+  st_runner "invoke-rc.d nginx restart" &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
