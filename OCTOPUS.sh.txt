@@ -231,7 +231,7 @@ _INSTALLER_VERSION=B2.A.dev3
 ## System
 _WEBG=www-data
 _USRG=users
-_DRUSH_VERSION=6.x-4.0-rc8
+_DRUSH_VERSION=6.x-4.0-rc5
 
 ## Distributions
 _COCOMORE=cdc-6.20.10
