@@ -487,11 +487,11 @@ force_advanced_nginx_config () {
 ###--------------------###
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
-  msg "STATUS: Stop cron and wait 3 sec."
+  msg "STATUS: Stop the cron and wait 5 sec."
   rm -f -r /opt/tmp/*
   invoke-rc.d cron stop &> /dev/null
   touch /var/run/octopus_barracuda.pid
-  sleep 3
+  sleep 5
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
   exit 1
@@ -648,6 +648,15 @@ cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 #
+if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
+  echo " "
+  msg "EXIT on error due to missing helpers."
+  msg "Please try to run this script again in a few minutes."
+  msg "Also, make sure the git port 9418 is open."
+  msg "Bye."
+  echo " "
+  exit 1
+fi
 # Get apt helper
 rm -f apt.conf.noninteractive*
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./
