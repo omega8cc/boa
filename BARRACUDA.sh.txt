@@ -286,7 +286,7 @@ _INSTALLER_VERSION=B2.A.dev3
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.16
 _LSHELL_VERSION=0.9.14
-_DRUSH_VERSION=6.x-4.0-rc5
+_DRUSH_VERSION=6.x-4.0-rc8
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
