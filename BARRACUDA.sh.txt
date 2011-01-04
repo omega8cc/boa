@@ -2324,7 +2324,7 @@ rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
 invoke-rc.d php-fpm reload &> /dev/null
-invoke-rc.d nginx reload &> /dev/null
+invoke-rc.d nginx restart &> /dev/null
 invoke-rc.d cron restart &> /dev/null
 msg "BYE!"
 exit 0
