@@ -1564,6 +1564,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   st_runner "invoke-rc.d nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
+  mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
@@ -1694,6 +1695,7 @@ if [ $_STATUS = "INIT" ] ; then
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
+    mrun "sleep 3"
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
     st_runner "update-rc.d php-fpm defaults" &> /dev/null
@@ -1840,13 +1842,16 @@ perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/ng
 perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
-if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
   st_runner "invoke-rc.d nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
+  mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
+else
+  invoke-rc.d nginx reload &> /dev/null
 fi
 mrun "sleep 3"
-msg "INFO: core Aegir Hostmaster instance installation completed"
+msg "INFO: Core Aegir Hostmaster instance installation completed"
 mrun "sleep 3"
 else
   echo " "
@@ -1988,10 +1993,13 @@ mrun "sleep 30"
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
-    if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
+    if [ "$_THIS_OS" = "Ubuntu" ] ; then
       st_runner "invoke-rc.d nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
+      mrun "sleep 3"
       st_runner "invoke-rc.d nginx start" &> /dev/null
+    else
+      invoke-rc.d nginx reload &> /dev/null
     fi
   fi
 fi
@@ -2333,8 +2341,15 @@ rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
 invoke-rc.d php-fpm reload &> /dev/null
-invoke-rc.d nginx restart &> /dev/null
 invoke-rc.d cron restart &> /dev/null
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  st_runner "invoke-rc.d nginx stop" &> /dev/null
+  killall -9 nginx &> /dev/null
+  sleep 3
+  st_runner "invoke-rc.d nginx start" &> /dev/null
+else
+  invoke-rc.d nginx reload &> /dev/null
+fi
 msg "BYE!"
 exit 0
 
