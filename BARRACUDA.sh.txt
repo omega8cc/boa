@@ -1412,6 +1412,7 @@ st_runner "sh ./configure" 2> /dev/null
 st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
 echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
+cd /var/opt
 wget -q -U iCab http://pecl.php.net/get/memcached-1.0.2.tgz
 tar -xzf memcached-1.0.2.tgz
 cd /var/opt/memcached-1.0.2
@@ -1515,6 +1516,7 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
+  cd /var/opt
   wget -q -U iCab http://pecl.php.net/get/memcached-1.0.2.tgz
   tar -xzf memcached-1.0.2.tgz
   cd /var/opt/memcached-1.0.2
