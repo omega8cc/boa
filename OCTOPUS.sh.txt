@@ -245,8 +245,6 @@ _OPENSCHOLAR=2.0-beta8-3.1-mod
 _PROSEPOINT=0.37
 _UBERCART=uberdrupal
 
-http://ftp.drupal.org/files/projects/drupal-7.0.tar.gz
-
 ###---### Functions
 #
 # Noticeable messages
