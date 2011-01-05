@@ -3,6 +3,11 @@ Hello,
 
 ***~~~ Happy New 2011 Year from Omega8.cc team! ~~~***
 
+     We proudly host www.drupal7releaseparty.org
+             Come celebrate the release!
+
+                         ***
+
 
 Your Aegir Hosting System has been upgraded to version 0.4-beta2.
 
@@ -17,37 +22,28 @@ Your Aegir control panel is available as before at:
 # What is new or updated
 ----------------------------------------
 
+* Latest Drupal 7.0 platform has been added.
+* All 6.x based platforms upgraded to Pressflow core 6.20
+* Managing News 1.2 platform now available on all servers.
 * Nginx server upgraded to version Barracuda/0.9.3
 * PHP-FPM server upgraded to version 5.2.16
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
 * Drush upgraded to version 4.0-rc9
 * Drush Make upgraded to version 2.0-beta10
-* All 6.x based platforms upgraded to Pressflow core 6.20
-* Latest Drupal 7.0 platform has been added.
-* Managing News 1.2 platform now available on all servers.
-* Prosepoint 0.37 platform has been added.
-* Drupal 6.20 Cocomore platform has been added.
-* Latest OpenPublish 2.3.432 platform has been added
-  (Aegir Classic and remotely managed only).
-* Your Aegir instance is using Pressflow 6.x core also
-  in the control panel.
-* You can create and manage your own platforms
-  (Pressflow core required) (Aegir Classic and Mini only).
-* It is possible to use local or remote makefiles
-  to create platforms. (Aegir Classic and Mini only)
+* Your Aegir control panel now runs on Pressflow core.
+* You can create and manage your own platforms.
+* You can use makefiles to create platforms.
 
 
 ----------------------------------------
 # Improvements
 ----------------------------------------
 
-* All 6.x platforms now receive some performance related modules
-  (by default disabled).
+* All 6.x platforms now receive some performance related modules.
 * Too generic D7 profile names replaced with unique Drupal 7 names.
 * A few new commands have been added to your Aegir Drush Shell (SSH).
-* You can use git to manage the code and rsync to manage
-  remote backups.
+* You can use git to manage the code and rsync to manage backups.
 * Useful new commands from Drush v.4 are now available.
 * Now it is possible to delete old sites backups created in Aegir.
 * You can access Aegir backups also via SSH or SFTP/FTPS.
@@ -56,8 +52,7 @@ Your Aegir control panel is available as before at:
 * You can use "dev" type alias for live site for easier debugging.
 * Added support for imagecache_external module.
 * It is possible to safely delete any not used platforms on request.
-* Access to static files allowed only for currently used domain
-  in multisite/platform.
+* Access to static files allowed only for currently used domain.
 * Added crossdomain.xml in the root of every new platform.
 * New rewrite introduced to map /files to /sites/domain/files,
   /images to /sites/domain/files/images and
