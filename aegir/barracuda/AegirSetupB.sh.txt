@@ -382,7 +382,7 @@ tar -xzf aegir_custom_settings-6.x-1.5.tar.gz
 # cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
 # patch -p0 < user.drush.inc.patch &> /dev/null
 cd $_AEGIR_ROOT/sites/$_DOMAIN
-$_DRUSHCMD dl features -y &> /dev/null
+$_DRUSHCMD dl features hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 -y &> /dev/null
 $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD en hosting_client -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null

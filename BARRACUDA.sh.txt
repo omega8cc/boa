@@ -286,7 +286,7 @@ _INSTALLER_VERSION=B2.A.dev3
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.16
 _LSHELL_VERSION=0.9.14
-_DRUSH_VERSION=6.x-4.0-rc8
+_DRUSH_VERSION=6.x-4.0-rc9
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
@@ -1402,17 +1402,47 @@ perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /u
 
 
 ###--------------------###
-msg "INFO: Installing memcache for php, please wait..."
+msg "INFO: Installing libmemcached with memcached for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://pecl.php.net/get/memcache-3.0.5.tgz
-tar -xzf memcache-3.0.5.tgz
-cd /var/opt/memcache-3.0.5
+wget -q -U iCab http://launchpad.net/libmemcached/1.0/0.44/+download/libmemcached-0.44.tar.gz
+tar -xzf libmemcached-0.44.tar.gz
+cd /var/opt/libmemcached-0.44
+st_runner "sh ./configure" 2> /dev/null
+st_runner "make --quiet" 2> /dev/null
+st_runner "make --quiet install" 2> /dev/null
+echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
+wget -q -U iCab http://pecl.php.net/get/memcached-1.0.2.tgz
+tar -xzf memcached-1.0.2.tgz
+cd /var/opt/memcached-1.0.2
 st_runner "/usr/local/bin/phpize" 2> /dev/null
 st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
 st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
-echo "memcache-3.0.5" > /var/log/memcache-3.0.5
+echo "memcached-1.0.2" > /var/log/memcached-1.0.2.log
+
+
+###--------------------###
+if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
+  msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  wget -q -U iCab http://launchpad.net/libmemcached/1.0/0.44/+download/libmemcached-0.44.tar.gz
+  tar -xzf libmemcached-0.44.tar.gz
+  cd /var/opt/libmemcached-0.44
+  st_runner "sh ./configure" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
+  wget -q -U iCab http://pecl.php.net/get/memcached-1.0.2.tgz
+  tar -xzf memcached-1.0.2.tgz
+  cd /var/opt/memcached-1.0.2
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "memcached-1.0.2" > /var/log/memcached-1.0.2.log
+fi
 
 
 ###--------------------###
@@ -1494,22 +1524,6 @@ cp -af /var/opt/ioncube/* /usr/local/ioncube/
 invoke-rc.d php-fpm restart &> /dev/null
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
-
-
-###--------------------###
-if [ ! -e "/var/log/memcache-3.0.5" ] ; then
-  msg "INFO: Installing memcache upgrade for php, please wait..."
-  mrun "sleep 3"
-  cd /var/opt
-  wget -q -U iCab http://pecl.php.net/get/memcache-3.0.5.tgz
-  tar -xzf memcache-3.0.5.tgz
-  cd /var/opt/memcache-3.0.5
-  st_runner "/usr/local/bin/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "memcache-3.0.5" > /var/log/memcache-3.0.5
-fi
 
 
 ###--------------------###
