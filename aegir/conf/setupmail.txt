@@ -48,7 +48,7 @@ Once in your control panel, you'll find a number of
 Drupal distributions ready to deploy:
  
  Drupal 7.0 ------------------- http://drupal.org/drupal-7.0
- Atrium 1.0-beta8 ------------- http://openatrium.com
+ Open Atrium 1.0-beta8 -------- http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  Acquia 6.20-svn -------------- http://bit.ly/acquiadrupal
  Ubercart --------------------- http://ubercart.org
