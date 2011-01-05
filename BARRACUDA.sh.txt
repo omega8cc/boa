@@ -1525,6 +1525,17 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "memcached-1.0.2" > /var/log/memcached-1.0.2.log
+  if [ -e "/data/conf/global.inc" ] ; then
+    cd /data/conf
+    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
+      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+    else
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
+      mv -f global.inc.aegir.txt global.inc &> /dev/null    
+    fi
+  fi
 fi
 
 
