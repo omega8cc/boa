@@ -84,6 +84,7 @@ so it is your responsibility to use such system wisely.
 
 Octopus can install the platforms listed below:
 
+ Drupal 7.0 ------------------- http://drupal.org/project/drupal
  Atrium 1.0-beta8 ------------- http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  Drupal Commons 1.1 ----------- http://acquia.com/drupalcommons
@@ -95,7 +96,6 @@ Octopus can install the platforms listed below:
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.20 Pressflow (int) -- http://pressflow.org
  Drupal 6.20 Cocomore --------- http://drupal.cocomore.com
- Drupal 7.0-rc4 --------------- http://drupal.org/project/drupal
  Feature Server --------------- http://bit.ly/fserver
                                 http://bit.ly/fservermore
 
