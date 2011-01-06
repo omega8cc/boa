@@ -91,11 +91,30 @@ Your Aegir control panel is available as before at:
 # Also worth to note
 ----------------------------------------
 
-Note:
-  Your Aegir control panel is using self-signed SSL certificate,
-  so you browser can display warning. Please add this certificate
-  as accepted in your system settings to avoid displaying it
-  each time you are trying to log in.
+To realize the full speed from our servers, you simply need
+to enable the module *cache* (it's like cacherouter, but
+with chained cache - memcache/redis/db with auto-failover)
+for every site you wish to accelerate. This module will
+accelerate the site only for logged in users.
+
+We also highly recommend to enable the *Boost* and *DB Tuner*
+modules. After enabling *DB Tuner* please add all standard and
+extra indexes recommended by the module.
+
+The *Boost* module will accelerate your site for anonymous
+visitors, while *DB Tuner* will do that both for anonymous
+and logged in users.
+
+All three modules are by default available for all 6.x
+platforms only.
+
+There are also two extra Pressflow core modules we recommend
+to enable: *Path alias cache* and *Cookie cache bypass*.
+
+Your Aegir control panel is using self-signed SSL certificate,
+so you browser can display warning. Please add this certificate
+as accepted in your system settings to avoid displaying it
+each time you are trying to log in.
 
 
 ----------------------------------------
