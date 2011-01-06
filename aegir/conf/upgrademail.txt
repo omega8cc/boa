@@ -34,6 +34,8 @@ Your Aegir control panel is available as before at:
 * Your Aegir control panel now runs on Pressflow core.
 * You can create and manage your own platforms.
 * You can use makefiles to create platforms.
+* Daily Usage Monitor displays your total disk and databases space
+  in the Aegir control panel footer.
 
 
 ----------------------------------------
