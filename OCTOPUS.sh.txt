@@ -46,6 +46,7 @@ _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_OPTION=CLASSIC
 _CLIENT_SUBSCR=M
+_PLATFORMS_ALL=YES
 _MY_OWNIP=""
 
 
@@ -313,6 +314,7 @@ do
   perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g"         $Files
   perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g"  $Files
   perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"           $Files
+  perl -p -i -e "s/(EDIT_PLATFORMS_ALL)/$_PLATFORMS_ALL/g"         $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do

@@ -48,12 +48,13 @@ Once in your control panel, you'll find a number of
 Drupal distributions ready to deploy:
  
  Drupal 7.0 ------------------- http://drupal.org/drupal-7.0
- Open Atrium 1.0-beta8 -------- http://openatrium.com
- Managing News 1.2 ------------ http://managingnews.com
- Acquia 6.20-svn -------------- http://bit.ly/acquiadrupal
- Ubercart --------------------- http://ubercart.org
  Drupal 6.20 ------------------ http://pressflow.org
-
+ Open Atrium 1.0-beta8 6.20 --- http://openatrium.com
+ Managing News 1.2 6.20 ------- http://managingnews.com
+ Feature Server 6.20 ---------- http://bit.ly/fserver
+ Acquia 6.20 ------------------ http://bit.ly/acquiadrupal
+ Ubercart 6.20 ---------------- http://ubercart.org
+ 
 All 6.x platforms have been enhanced using Pressflow Drupal core.
 More details about Pressflow Drupal are here:
 

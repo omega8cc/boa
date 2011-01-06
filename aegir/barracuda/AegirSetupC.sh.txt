@@ -65,6 +65,7 @@ _DEBUG_MODE=EDIT_DEBUG_MODE
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
+_PLATFORMS_ALL=EDIT_PLATFORMS_ALL
 
 
 ###---### Functions
@@ -516,6 +517,7 @@ fi
 
 ###---### Drupal 5 Pressflow
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
@@ -540,6 +542,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
   mrun "sleep 1"
+fi
 fi
 
 
@@ -610,6 +613,7 @@ fi
 
 ###---### Cocomore Drupal
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 echo " "
 if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
 true
@@ -637,10 +641,12 @@ else
   msg "STATUS: $_F_COCOMORE installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Drupal Commons
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
@@ -671,6 +677,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_COMMONS installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 
@@ -777,6 +784,7 @@ fi
 
 ###---### OpenPublish
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
@@ -808,10 +816,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### OpenScholar
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
@@ -850,6 +860,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_OPENSCHOLAR installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 
@@ -893,6 +904,7 @@ fi
 
 ###---### Prosepoint
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
@@ -918,6 +930,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_PROSEPOINT installation skipped"
   mrun "sleep 1"
+fi
 fi
 
 
