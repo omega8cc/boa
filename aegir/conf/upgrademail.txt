@@ -24,6 +24,7 @@ Your Aegir control panel is available as before at:
 
 * Latest Drupal 7.0 platform has been added.
 * All 6.x based platforms upgraded to Pressflow core 6.20
+* Open Atrium 1.0-beta9 platform now available on all servers.
 * Managing News 1.2 platform now available on all servers.
 * Nginx server upgraded to version Barracuda/0.9.3
 * PHP-FPM server upgraded to version 5.2.16

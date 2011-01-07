@@ -85,7 +85,7 @@ so it is your responsibility to use such system wisely.
 Octopus can install the platforms listed below:
 
  Drupal 7.0 ------------------- http://drupal.org/project/drupal
- Atrium 1.0-beta8 ------------- http://openatrium.com
+ Atrium 1.0-beta9 ------------- http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  Drupal Commons 1.1 ----------- http://acquia.com/drupalcommons
  Acquia 6.20-svn (int) -------- http://bit.ly/acquiadrupal
