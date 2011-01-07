@@ -362,7 +362,7 @@ fi
 ### fix for typo http://drupal.org/node/979656
 #
 cd $_ROOT/.drush/drush_make
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
 patch -p0 < drush-remote_make_files.patch &> /dev/null
 #
 ###
@@ -373,7 +373,7 @@ patch -p0 < drush-remote_make_files.patch &> /dev/null
 msg "$_STATUS B: Enhance Aegir UI"
 mrun "sleep 3"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
@@ -405,11 +405,11 @@ perl -p -i -e "s/(320px)/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
   mv -f make_home.php.txt make_home.php &> /dev/null
   $DRUSHC php-script make_home &> /dev/null
   rm -f make_home.php
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
   mv -f make_client.php.txt make_client.php &> /dev/null
   $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
   rm -f make_client.php
@@ -428,7 +428,7 @@ if [ -e "/data/conf/global.inc" ] ; then
 else
   rm -f $_ROOT/config/includes/global.inc
   cd /data/conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
   mv -f global.inc.aegir.txt global.inc &> /dev/null
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi

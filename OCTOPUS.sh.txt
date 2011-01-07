@@ -451,7 +451,7 @@ fi
 # Get spinner
 cd $_SRCDIR
 rm -f spinner*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff

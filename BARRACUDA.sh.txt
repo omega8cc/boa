@@ -435,12 +435,12 @@ install_redis_src () {
   cp -p redis-check-dump /usr/bin/
   cp -p redis-check-aof /usr/bin/
   cd /etc/init.d
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./
   chmod 755 redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir /etc/redis
   cd /etc/redis
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./
   mkdir -p /var/log/redis
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
@@ -462,7 +462,7 @@ fix_on_upgrade () {
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
 }
 #
@@ -470,16 +470,16 @@ fix_on_upgrade () {
 force_advanced_nginx_config () {
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW &> /dev/null
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
   cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown aegir:aegir *
 }
@@ -660,7 +660,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
 fi
 # Get apt helper
 rm -f apt.conf.noninteractive*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./
 #
 # Create tmp stuff
 _LOG=/opt/tmp/aegir-install.log
@@ -669,13 +669,13 @@ cd $_SRCDIR
 #
 # Get spinner
 rm -f spinner*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Get axelerator
 if [ ! -e "/usr/bin/apt-fast" ] ; then
   cd /usr/bin
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt-fast.sh.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt-fast.sh.txt ./
   mv -f apt-fast.sh.txt apt-fast &> /dev/null
   chmod +x apt-fast &> /dev/null
   cd /opt/tmp
@@ -1234,7 +1234,7 @@ if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
 else
   cd /etc/init.d
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx ./
   chmod 755 /etc/init.d/nginx &> /dev/null
   msg "INFO: Fix for Nginx startup script applied"
 fi
@@ -1274,7 +1274,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
   cd /etc/init.d
-  cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./ &> /dev/null
+  cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
   chmod 755 vnstat &> /dev/null
   st_runner "update-rc.d vnstat defaults" &> /dev/null
   st_runner "invoke-rc.d vnstat start" &> /dev/null
@@ -1533,10 +1533,10 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
     cd /data/conf
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
   fi
@@ -1645,7 +1645,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
   cd /etc
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/lshell.conf.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/lshell.conf.txt ./
   mv -f lshell.conf lshell.conf-pre-$_NOW &> /dev/null
   mv -f lshell.conf.txt lshell.conf &> /dev/null
   echo "$_PATH_LSHELL" >> /etc/shells
@@ -1702,13 +1702,13 @@ if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
   st_runner "make install-strip" 2> /dev/null
   cd /usr/local/sbin/
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./
   mv -f pure-config.pl.txt pure-config.pl &> /dev/null
   chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
   rm -f pure-ftpd.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
   mrun "sleep 3"
   st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
   cd /var/opt
@@ -1737,7 +1737,7 @@ if [ $_STATUS = "INIT" ] ; then
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
@@ -1813,7 +1813,7 @@ do
   perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
   perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"          $Files
 done
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
 mrun "sleep 3"
 if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -1860,12 +1860,12 @@ mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 force_advanced_nginx_config
 ### fix for typo http://drupal.org/node/979656
 cd /var/aegir/.drush/drush_make
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
 patch -p0 < drush-remote_make_files.patch &> /dev/null
 ###
 cd /var/aegir
@@ -1914,16 +1914,16 @@ else
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
     force_advanced_nginx_config
     ### fix for typo http://drupal.org/node/979656
     cd /var/aegir/.drush/drush_make
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./ &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
     patch -p0 < drush-remote_make_files.patch &> /dev/null
     ###
     cd /var/aegir
@@ -1954,10 +1954,10 @@ msg "INFO: Fix for mime types in Nginx, please wait..."
 mrun "sleep 3"
   cd /etc/nginx
   mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./ &> /dev/null
+  cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
   cd /var/www/nginx-default
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./ &> /dev/null
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./ &> /dev/null
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
@@ -2017,11 +2017,11 @@ mrun "sleep 30"
     fi
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
-    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./ &> /dev/null
+    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
     perl -p -i -e "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
@@ -2228,7 +2228,7 @@ if [ ! -e "/usr/sbin/named" ] ; then
     st_runner "$_INSTALL bind9" 2> /dev/null
     cd /etc/bind
     rm -f named.conf.options
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./ &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
     perl -p -i -e "s/127.0.1.1/$_THISHTIP/g" named.conf.options
     st_runner "invoke-rc.d bind9 restart" &> /dev/null
     if [ ! -e "/etc/init.d/bind" ] ; then
@@ -2279,7 +2279,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   st_runner "sh install.sh" 2> /dev/null
   cd /etc/csf
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
   sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
   chmod 600 /etc/csf/csf.conf &> /dev/null
@@ -2301,7 +2301,7 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ ! -e "/var/log/csf-setup-ssh-port.log" ] ; then
     cd /etc/csf
     mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./ &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
     sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
     sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
     touch /var/log/csf-setup-ssh-port.log
@@ -2312,7 +2312,7 @@ fi
 if [ ! -e "/var/log/sysctl.conf.custom.log" ] ; then
   cd /etc
   mv -f sysctl.conf sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf ./
   touch /var/log/sysctl.conf.custom.log
 fi
 

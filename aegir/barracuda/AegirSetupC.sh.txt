@@ -148,7 +148,7 @@ mrun () {
 #
 # create standard directories
 create_dirs () {
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   mkdir -p ./sites/default/files
   mkdir -p ./cache/perm
   mkdir -p ./cache/normal
@@ -176,9 +176,9 @@ create_dirs () {
   chmod 02775 ./sites/all/libraries &> /dev/null
   chmod 02775 ./sites/all/themes &> /dev/null
   rm -f .htaccess
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./
   mv -f get.htaccess.txt .htaccess &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
 }
 #
 # create standard symlinks
@@ -196,8 +196,8 @@ create_symlinks () {
   ln -s $_CORE_DISTRO/themes themes &> /dev/null
   ln -s $_CORE_DISTRO/update.php update.php &> /dev/null
   ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
-  cp -af $_CORE_DISTRO/cache ./ &> /dev/null
-  cp -af $_CORE_DISTRO/sites ./ &> /dev/null
+  cp -af $_CORE_DISTRO/cache ./
+  cp -af $_CORE_DISTRO/sites ./
 }
 #
 # create d7 symlinks
@@ -313,7 +313,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
 wget -q -U iCab http://omega8.cc/boost_stats.php.txt
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -d "$_CORE/o_contrib" ] ; then
@@ -838,16 +838,16 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./
   patch -p1 < openscholar.profile.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar_projects
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./
   patch -p1 < openscholar_projects.profile.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/activity
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./
   patch -p1 < activity.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./
   patch -p0 < imagefield_crop.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   create_dirs
@@ -1012,7 +1012,7 @@ else
   cd $_THIS_HOSTMASTER
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia/drushrc.php" ] ; then
