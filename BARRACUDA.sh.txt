@@ -285,6 +285,7 @@ _LOCAL_NETWORK_HN=""
 _INSTALLER_VERSION=B2.A.dev3
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.16
+_PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
 _DRUSH_VERSION=All-versions-4.0-rc10
 _NOW=`date +%y%m%d-%H%M`
@@ -1338,6 +1339,8 @@ if [ -e "/usr/local/bin/php" ] ; then
     msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
   fi
   mrun "sleep 3"
+elif [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+  _PHP_INSTALL_REQUIRED=YES
 else  
   _PHP_INSTALL_REQUIRED=YES
 fi
