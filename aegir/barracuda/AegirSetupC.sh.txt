@@ -148,7 +148,7 @@ mrun () {
 #
 # create standard directories
 create_dirs () {
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./ &> /dev/null
   mkdir -p ./sites/default/files
   mkdir -p ./cache/perm
   mkdir -p ./cache/normal
@@ -156,7 +156,7 @@ create_dirs () {
   #mkdir -p ./backup/modules
   #chmod 777 -R ./backup &> /dev/null
   if [ -e "./sites/default/default.settings.php" ] ; then
-    cp -af ./sites/default/default.settings.php ./sites/default/settings.php
+    cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
   fi
   chmod a+rw ./sites/default/settings.php &> /dev/null
   chmod a+rwx ./sites/default/files &> /dev/null
@@ -176,9 +176,9 @@ create_dirs () {
   chmod 02775 ./sites/all/libraries &> /dev/null
   chmod 02775 ./sites/all/themes &> /dev/null
   rm -f .htaccess
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./ &> /dev/null
   mv -f get.htaccess.txt .htaccess &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./ &> /dev/null
 }
 #
 # create standard symlinks
@@ -313,7 +313,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./ &> /dev/null
 wget -q -U iCab http://omega8.cc/boost_stats.php.txt
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -d "$_CORE/o_contrib" ] ; then
@@ -429,7 +429,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   mkdir -p $_CORE/acquia
   cd $_CORE/acquia
   svn co https://svn.acquia.com/drupal/branches/1.x-6.x . &> /dev/null
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
   create_dirs
@@ -459,7 +459,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip
   unzip -qq atrium-$_OPENATRIUM.zip
   rm -f atrium-$_OPENATRIUM.zip
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
   create_dirs
@@ -557,7 +557,7 @@ _CORE_DISTRO="$_CORE/pressflow"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   mkdir -p $_CORE/pressflow
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/ &> /dev/null
   cd $_CORE/pressflow
   rm -f $_CORE/pressflow/*.txt
   create_dirs
@@ -660,7 +660,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf drupal_commons-$_COMMONS.tar.gz
   rm -f drupal_commons-$_COMMONS.tar.gz
   mv $_CORE/drupal_commons $_CORE/drupal_commons-$_COMMONS
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons-$_COMMONS/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons-$_COMMONS/ &> /dev/null
   cd $_CORE/drupal_commons-$_COMMONS
   rm -f $_CORE/drupal_commons-$_COMMONS/*.txt
   create_dirs
@@ -701,7 +701,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/ &> /dev/null
   rm -f $_CORE/fserver/*.txt
   create_dirs
   cd ./profiles/feature_server/themes
@@ -732,7 +732,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip
   unzip -qq managingnews-$_MANAGINGNEWS.zip
   rm -f managingnews-$_MANAGINGNEWS.zip
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/ &> /dev/null
   cd $_CORE/managingnews-$_MANAGINGNEWS
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
   create_dirs
@@ -798,7 +798,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
   rm -f openpublish-$_OPENPUBLISH.tar.gz
   mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
   cd $_CORE/openpublish-$_OPENPUBLISH
   rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
   create_dirs
@@ -834,20 +834,20 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://omega8.cc/dev/distro/scholar/openscholar-$_OPENSCHOLAR.tar.gz
   tar -xzf openscholar-$_OPENSCHOLAR.tar.gz
   rm -f openscholar-$_OPENSCHOLAR.tar.gz
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./ &> /dev/null
   patch -p1 < openscholar.profile.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar_projects
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./ &> /dev/null
   patch -p1 < openscholar_projects.profile.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/activity
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./ &> /dev/null
   patch -p1 < activity.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./ &> /dev/null
   patch -p0 < imagefield_crop.patch &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   create_dirs
@@ -917,7 +917,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf prosepoint-$_PROSEPOINT.tar.gz
   rm -f prosepoint-$_PROSEPOINT.tar.gz
   cd $_CORE/prosepoint-$_PROSEPOINT
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
   create_dirs
   ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
@@ -948,7 +948,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf $_UBERCART.tar.gz
   rm -f $_UBERCART.tar.gz
   cd $_CORE/$_UBERCART
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/ &> /dev/null
   rm -f $_CORE/$_UBERCART/*.txt
   create_dirs
   ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations
@@ -1012,7 +1012,7 @@ else
   cd $_THIS_HOSTMASTER
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./ &> /dev/null
 mv -f make_platform.php.txt make_platform.php &> /dev/null
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia/drushrc.php" ] ; then

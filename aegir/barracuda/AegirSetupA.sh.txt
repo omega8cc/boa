@@ -251,8 +251,8 @@ msg "$_STATUS A: Prepare scripts, please wait..."
 mrun "sleep 3"
 chmod 0711 $_ROOT
 cd $_ROOT
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupB.sh.txt ./
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupC.sh.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupB.sh.txt ./ &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupC.sh.txt ./ &> /dev/null
 chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt &> /dev/null
 chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 
@@ -361,7 +361,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
     invoke-rc.d nginx reload &> /dev/null
   fi
   cd $_AEGIR_ROOT
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./ &> /dev/null
   cd $_ROOT
   msg "$_STATUS A: post-install completed"
 fi
@@ -375,14 +375,14 @@ fi
   cd $_ROOT/config/includes
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./ &> /dev/null
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown $_USER:$_USRG * &> /dev/null
   cd $_ROOT/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./ &> /dev/null
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown $_USER:$_USRG * &> /dev/null
   echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
 #fi
@@ -393,10 +393,10 @@ fi
 cd /data/conf
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
   mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
 else
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
   mv -f global.inc.aegir.txt global.inc &> /dev/null    
 fi
 
@@ -412,7 +412,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
       msg "$_STATUS A: Installing forced SSL settings for this Hostmaster site, please wait..."
       mrun "sleep 3"
       cd /data/conf
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
       if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -710,7 +710,7 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
       mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
     fi
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/upgrademail.txt ./
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/upgrademail.txt ./ &> /dev/null
     perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
     perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/upgrademail.txt
     perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/upgrademail.txt
@@ -720,7 +720,7 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   fi
 elif [ $_STATUS = "INIT" ] ; then
  cd $_ROOT/log
- cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./
+ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./ &> /dev/null
  perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/setupmail.txt
  perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/setupmail.txt
  perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/setupmail.txt

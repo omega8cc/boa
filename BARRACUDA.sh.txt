@@ -435,12 +435,12 @@ install_redis_src () {
   cp -p redis-check-dump /usr/bin/
   cp -p redis-check-aof /usr/bin/
   cd /etc/init.d
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./ &> /dev/null
   chmod 755 redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir /etc/redis
   cd /etc/redis
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./ &> /dev/null
   mkdir -p /var/log/redis
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
@@ -452,17 +452,17 @@ install_redis_src () {
 fix_on_upgrade () {
   perl -p -i -e "s/apc.include_once_override = 1/apc.include_once_override = 0/g" /opt/etc/php.ini
   mkdir -p /var/backups/dragon/t
-  cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini
-  cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
+  cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+  cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./ &> /dev/null
   mv -f my.cnf.txt my.cnf &> /dev/null
 }
 #
@@ -470,17 +470,17 @@ fix_on_upgrade () {
 force_advanced_nginx_config () {
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./ &> /dev/null
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW &> /dev/null
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./ &> /dev/null
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./ &> /dev/null
+  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown aegir:aegir *
 }
 
@@ -660,7 +660,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
 fi
 # Get apt helper
 rm -f apt.conf.noninteractive*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./ &> /dev/null
 #
 # Create tmp stuff
 _LOG=/opt/tmp/aegir-install.log
@@ -669,13 +669,13 @@ cd $_SRCDIR
 #
 # Get spinner
 rm -f spinner*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./ &> /dev/null
 chmod +x spinner &> /dev/null
 #
 # Get axelerator
 if [ ! -e "/usr/bin/apt-fast" ] ; then
   cd /usr/bin
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt-fast.sh.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt-fast.sh.txt ./ &> /dev/null
   mv -f apt-fast.sh.txt apt-fast &> /dev/null
   chmod +x apt-fast &> /dev/null
   cd /opt/tmp
@@ -1086,7 +1086,7 @@ if [ $_STATUS = "INIT" ] ; then
   wget -q -U iCab http://ourdelta.org/deb/ourdelta.gpg
   apt-key add ourdelta.gpg &> /dev/null
   wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
-  cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list
+  cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
 fi
 
 
@@ -1234,7 +1234,7 @@ if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
 else
   cd /etc/init.d
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx ./ &> /dev/null
   chmod 755 /etc/init.d/nginx &> /dev/null
   msg "INFO: Fix for Nginx startup script applied"
 fi
@@ -1274,7 +1274,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
   cd /etc/init.d
-  cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
+  cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./ &> /dev/null
   chmod 755 vnstat &> /dev/null
   st_runner "update-rc.d vnstat defaults" &> /dev/null
   st_runner "invoke-rc.d vnstat start" &> /dev/null
@@ -1292,21 +1292,21 @@ if [ -d "/var/xdrago" ] ; then
   mkdir -p /var/backups/dragon/x
   mkdir -p /var/backups/dragon/z
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
-  cp -af /var/xdrago /var/backups/dragon/x/xdrago-pre-$_INSTALLER_VERSION-$_NOW
-  cp -af /opt/etc/init.d /var/backups/dragon/z/init.d-pre-$_INSTALLER_VERSION-$_NOW
-  cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* /var/xdrago/
-  cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
+  cp -af /var/xdrago /var/backups/dragon/x/xdrago-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/etc/init.d /var/backups/dragon/z/init.d-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* /var/xdrago/ &> /dev/null
+  cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   touch /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION-$_NOW
 fi
 if [ $_STATUS = "INIT" ] ; then
   mkdir -p ./xdrago
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/
-  cp -af /var/xdrago/etc /opt/
-  cp -af /opt/etc/init.d/* /etc/init.d/
-  cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/ &> /dev/null
+  cp -af /var/xdrago/etc /opt/ &> /dev/null
+  cp -af /opt/etc/init.d/* /etc/init.d/ &> /dev/null
+  cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
@@ -1320,7 +1320,7 @@ if [ $_STATUS = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
-  cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run* /var/xdrago/
+  cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run* /var/xdrago/ &> /dev/null
 fi
 chmod 700 /var/xdrago/* &> /dev/null
 chmod 700 /var/xdrago &> /dev/null
@@ -1500,7 +1500,7 @@ else
 wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
 tar -xzf ioncube_loaders_lin_x86.tar.gz
 fi
-cp -af /var/opt/ioncube/* /usr/local/ioncube/
+cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
 
 ###
 invoke-rc.d php-fpm restart &> /dev/null
@@ -1533,10 +1533,10 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
     cd /data/conf
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
   fi
@@ -1645,7 +1645,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
   cd /etc
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/lshell.conf.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/lshell.conf.txt ./ &> /dev/null
   mv -f lshell.conf lshell.conf-pre-$_NOW &> /dev/null
   mv -f lshell.conf.txt lshell.conf &> /dev/null
   echo "$_PATH_LSHELL" >> /etc/shells
@@ -1662,8 +1662,8 @@ fi
 if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] ; then
   msg "INFO: Installing lshell upgrade, please wait..."
   mrun "sleep 3"
-  cp -af /etc/lshell.conf /etc/lshell.conf-bak
-  cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW
+  cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
+  cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   cd /var/opt
   wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
   tar -xzf lshell-$_LSHELL_VERSION.tar.gz
@@ -1673,7 +1673,7 @@ if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] ; then
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
   st_runner "python setup.py install" 2> /dev/null
-  cp -af /etc/lshell.conf-bak /etc/lshell.conf
+  cp -af /etc/lshell.conf-bak /etc/lshell.conf &> /dev/null
   addgroup lshellg &> /dev/null
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
@@ -1702,13 +1702,13 @@ if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
   st_runner "make install-strip" 2> /dev/null
   cd /usr/local/sbin/
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./ &> /dev/null
   mv -f pure-config.pl.txt pure-config.pl &> /dev/null
   chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
   cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
   rm -f pure-ftpd.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./ &> /dev/null
   mrun "sleep 3"
   st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
   cd /var/opt
@@ -1722,8 +1722,8 @@ if [ $_STATUS = "INIT" ] ; then
   chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
   chmod 600 /var/spool/cron/crontabs/root &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
@@ -1737,7 +1737,7 @@ if [ $_STATUS = "INIT" ] ; then
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./ &> /dev/null
   mv -f my.cnf.txt my.cnf &> /dev/null
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
@@ -1813,7 +1813,7 @@ do
   perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
   perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"          $Files
 done
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./ &> /dev/null
 msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
 mrun "sleep 3"
 if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -1860,12 +1860,12 @@ mrun "sleep 3"
 ln -s /var/aegir/drush/drush /usr/bin/drush
 cd /var/aegir/config/includes
 mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 force_advanced_nginx_config
 ### fix for typo http://drupal.org/node/979656
 cd /var/aegir/.drush/drush_make
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./ &> /dev/null
 patch -p0 < drush-remote_make_files.patch &> /dev/null
 ###
 cd /var/aegir
@@ -1914,16 +1914,16 @@ else
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./ &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./ &> /dev/null
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
     force_advanced_nginx_config
     ### fix for typo http://drupal.org/node/979656
     cd /var/aegir/.drush/drush_make
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./ &> /dev/null
     patch -p0 < drush-remote_make_files.patch &> /dev/null
     ###
     cd /var/aegir
@@ -2279,7 +2279,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   st_runner "sh install.sh" 2> /dev/null
   cd /etc/csf
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./ &> /dev/null
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
   sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
   chmod 600 /etc/csf/csf.conf &> /dev/null
@@ -2301,7 +2301,7 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ ! -e "/var/log/csf-setup-ssh-port.log" ] ; then
     cd /etc/csf
     mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./ &> /dev/null
     sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
     sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
     touch /var/log/csf-setup-ssh-port.log
@@ -2312,7 +2312,7 @@ fi
 if [ ! -e "/var/log/sysctl.conf.custom.log" ] ; then
   cd /etc
   mv -f sysctl.conf sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf ./ &> /dev/null
   touch /var/log/sysctl.conf.custom.log
 fi
 

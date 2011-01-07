@@ -324,10 +324,10 @@ do
   perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"           $Files
 done
 if [ $_STATUS = "INIT" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 else
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 fi
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/* &> /dev/null
@@ -451,7 +451,7 @@ fi
 # Get spinner
 cd $_SRCDIR
 rm -f spinner*
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./ &> /dev/null
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
