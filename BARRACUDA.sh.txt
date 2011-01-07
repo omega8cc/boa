@@ -1339,12 +1339,13 @@ if [ -e "/usr/local/bin/php" ] ; then
     msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
   fi
   mrun "sleep 3"
-elif [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-  _PHP_INSTALL_REQUIRED=YES
 else  
   _PHP_INSTALL_REQUIRED=YES
 fi
 
+if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+  _PHP_INSTALL_REQUIRED=YES
+fi
 
 ###
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
