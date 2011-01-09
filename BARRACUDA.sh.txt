@@ -1355,7 +1355,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 msg "INFO: Installing libevent, please wait..."
 rm -f -r /var/opt/libevent*
 cd /var/opt
-wget -q -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz
+wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
 tar -xzf libevent-1.4.14b-stable.tar.gz
 cd /var/opt/libevent-1.4.14b-stable
 st_runner "sh ./configure --prefix=/usr" 2> /dev/null
@@ -1363,7 +1363,7 @@ st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
 rm -f -r /var/opt/libevent*
 cd /var/opt
-wget -q -U iCab http://www.monkey.org/~provos/libevent-1.4.14b-stable.tar.gz
+wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
 tar -xzf libevent-1.4.14b-stable.tar.gz
 cd /var/opt/libevent-1.4.14b-stable
 st_runner "sh ./configure" 2> /dev/null
