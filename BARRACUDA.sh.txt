@@ -1417,7 +1417,7 @@ st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
 echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
 cd /var/opt
-wget -q -U iCab http://pecl.php.net/get/memcached-1.0.2.tgz
+wget -q -U iCab http://omega8.cc/dev/memcached-1.0.2.tgz
 tar -xzf memcached-1.0.2.tgz
 cd /var/opt/memcached-1.0.2
 st_runner "/usr/local/bin/phpize" 2> /dev/null
@@ -1444,7 +1444,7 @@ st_runner "make --quiet install" 2> /dev/null
 msg "INFO: Installing uploadprogress for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://pecl.php.net/get/uploadprogress-1.0.1.tgz
+wget -q -U iCab http://omega8.cc/dev/uploadprogress-1.0.1.tgz
 tar -xzf uploadprogress-1.0.1.tgz
 cd /var/opt/uploadprogress-1.0.1
 st_runner "/usr/local/bin/phpize" 2> /dev/null
@@ -1457,7 +1457,7 @@ st_runner "make --quiet install" 2> /dev/null
 msg "INFO: Installing apc for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-# wget -q -U iCab http://pecl.php.net/get/APC-3.1.4.tgz
+# wget -q -U iCab http://omega8.cc/dev/APC-3.1.4.tgz
 # tar -xzf APC-3.1.4.tgz
 # cd /var/opt/APC-3.1.4
 svn co http://svn.php.net/repository/pecl/apc/trunk apc-svn &> /dev/null
@@ -1473,7 +1473,7 @@ echo "apc-svn-3.1.6 $_NOW" > /var/log/apc-svn-3.1.6
 msg "INFO: Installing mailparse for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://pecl.php.net/get/mailparse-2.1.5.tgz
+wget -q -U iCab http://omega8.cc/dev/mailparse-2.1.5.tgz
 tar -xzf mailparse-2.1.5.tgz
 cd /var/opt/mailparse-2.1.5
 st_runner "/usr/local/bin/phpize" 2> /dev/null
@@ -1521,7 +1521,7 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
   cd /var/opt
-  wget -q -U iCab http://pecl.php.net/get/memcached-1.0.2.tgz
+  wget -q -U iCab http://omega8.cc/dev/memcached-1.0.2.tgz
   tar -xzf memcached-1.0.2.tgz
   cd /var/opt/memcached-1.0.2
   st_runner "/usr/local/bin/phpize" 2> /dev/null
