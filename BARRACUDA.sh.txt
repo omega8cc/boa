@@ -1957,8 +1957,7 @@ mrun "sleep 3"
   cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
   cd /var/www/nginx-default
   cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./
-  #cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
-  wget -q -U iCab http://image.omega8.cc/under_construction.jpg
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
