@@ -282,12 +282,12 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B2.A.dev3
+_INSTALLER_VERSION=B2.B.dev1
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.16
 _PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
-_DRUSH_VERSION=All-versions-4.0-rc10
+_DRUSH_VERSION=7.x-4.0
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
