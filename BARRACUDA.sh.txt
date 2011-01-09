@@ -2031,7 +2031,10 @@ mrun "sleep 30"
       mrun "sleep 3"
       st_runner "invoke-rc.d nginx start" &> /dev/null
     else
-      invoke-rc.d nginx reload &> /dev/null
+      st_runner "invoke-rc.d nginx stop" &> /dev/null
+      killall -9 nginx &> /dev/null
+      mrun "sleep 3"
+      st_runner "invoke-rc.d nginx start" &> /dev/null
     fi
   fi
 fi
