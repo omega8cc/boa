@@ -8,7 +8,6 @@
 
 ### In progress
 
-* Open reloaded every hour Aegir demo server.
 * Clone Nginx integration for Cherokee web server.
 
 
@@ -44,3 +43,4 @@
 
 * Port to Aegir standard provision/web_server module.
 * Add ssl config compatible with Aegir.
+* Open reloaded every hour Aegir demo server.

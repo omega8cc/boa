@@ -67,7 +67,7 @@ so it is your responsibility to use such system wisely.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest version of MariaDB database server.
 * Latest version of Nginx web server with upload progress and Boost support.
-* PHP-FPM 5.2.16 with APC, memcached, uploadprogress, suhosin and ionCube.
+* PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat.

@@ -5,14 +5,14 @@ control()
 NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
 CTL_LOAD=300
 if [ $NOW_LOAD -lt $CTL_LOAD ]; then
-echo load is $NOW_LOAD while maxload is $CTL_LOAD
-echo ... now doing CTL...
-perl /var/xdrago/proc_num_ctrl.cgi
-touch /var/xdrago/log/proc_num_ctrl.done
-echo CTL done
+  echo load is $NOW_LOAD while maxload is $CTL_LOAD
+  echo ... now doing CTL...
+  perl /var/xdrago/proc_num_ctrl.cgi
+  touch /var/xdrago/log/proc_num_ctrl.done
+  echo CTL done
 else
-echo load is $NOW_LOAD while maxload is $CTL_LOAD
-echo ...we have to wait...
+  echo load is $NOW_LOAD while maxload is $CTL_LOAD
+  echo ...we have to wait...
 fi
 }
 control

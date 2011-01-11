@@ -41,26 +41,23 @@ local(@SYTUACJA) = `tail --lines=999999999 $logfile 2>&1`;
 local($maxnumber,$critnumber,$alert);
 local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
 foreach $line (@SYTUACJA) {
-
-if ($line =~ /(Table \'\.\/)/i) {
-$status="ERROR";
-local($a, $b, $c, $VISITORX, $rest) = split(/\s+/,$line);
-chomp($VISITORX);
-local($a, $VISITOR, $b) = split(/\//,$VISITORX);
-$VISITOR =~ s/[^a-z0-9\_]//g;
-      if ($VISITOR =~ /^[a-z0-9]/) {
-          chomp($line);
-          $li_cnt{$VISITOR}++;
-      }   
-}
+  if ($line =~ /(Table \'\.\/)/i) {
+    $status="ERROR";
+    local($a, $b, $c, $VISITORX, $rest) = split(/\s+/,$line);
+    chomp($VISITORX);
+    local($a, $VISITOR, $b) = split(/\//,$VISITORX);
+    $VISITOR =~ s/[^a-z0-9\_]//g;
+    if ($VISITOR =~ /^[a-z0-9]/) {
+      chomp($line);
+      $li_cnt{$VISITOR}++;
+    }   
+  }
 }
 foreach $VISITOR (sort keys %li_cnt) {
    $sumar = $sumar + $li_cnt{$VISITOR};
    local($thissumar) = $li_cnt{$VISITOR};
    $maxnumber = 0;
    local($blocked) = 0;
-   #&check_ip($VISITOR);
-
    if ($thissumar > $maxnumber && !$blocked) {
        &trash_it_action($VISITOR,$thissumar);
    }
