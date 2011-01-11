@@ -72,9 +72,11 @@ done
 
 ###-------------SYSTEM-----------------###
 
+_NOW=`date +%y%m%d-%H%M`
+mkdir -p /var/xdrago/log/usage
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   touch /var/xdrago/log/wait-counter
   exit
 else
-  action
+  action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
 fi
