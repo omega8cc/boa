@@ -182,6 +182,24 @@ msg "$_STATUS A: Aegir automated install script part A"
 # mrun "sleep 3"
 
 
+###---### Checking version..
+#
+msg "INFO: Checking OCTOPUS version, please wait..."
+if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/version.txt" ] ; then
+  _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/version.txt`
+  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+    _VERSIONS_TEST_RESULT=OK
+    msg "INFO: Version test result: OK"
+  else
+    msg "ERROR: This OCTOPUS version is outdated and will not work correctly."
+    msg "Please download and use the latest version from:"
+    msg "http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt"
+    msg "Bye."
+    exit 1
+  fi
+fi
+
+
 ###---### Checking status..
 #
 msg "$_STATUS A: Checking status.."

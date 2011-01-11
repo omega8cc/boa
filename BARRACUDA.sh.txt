@@ -683,6 +683,23 @@ fi
 
 
 ###--------------------###
+msg "INFO: Checking BARRACUDA version, please wait..."
+if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/version.txt" ] ; then
+  _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/version.txt`
+  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+    _VERSIONS_TEST_RESULT=OK
+    msg "INFO: Version test result: OK"
+  else
+    msg "ERROR: This BARRACUDA version is outdated and will not work correctly."
+    msg "Please download and use the latest version from:"
+    msg "http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt"
+    msg "Bye."
+    exit 1
+  fi
+fi
+
+
+###--------------------###
 if [ $_STATUS = "INIT" ] ; then
   msg "INFO: Installing lsb-release and dnsutils now, please wait..."
   mrun "sleep 3"
