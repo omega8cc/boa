@@ -185,6 +185,7 @@ create_dirs () {
 create_symlinks () {
   ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
   ln -s $_CORE_DISTRO/cron.php cron.php &> /dev/null
+  ln -s $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
   ln -s $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
   ln -s $_CORE_DISTRO/includes includes &> /dev/null
   ln -s $_CORE_DISTRO/index.php index.php &> /dev/null
