@@ -1955,6 +1955,9 @@ else
       fi
     fi
     chmod 711 /var/aegir/.drush &> /dev/null
+    cd /var/aegir/config/includes
+    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
+    touch installer_version.txt
     msg "INFO: core Aegir Hostmaster instance upgrade completed"
   else
     msg "INFO: core Aegir Hostmaster instance not upgraded this time"
@@ -2375,15 +2378,15 @@ fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
 ###--------------------###
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
+  cd /var/aegir/config/includes
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
+  touch installer_version.txt
   echo " "
   _AEGIR__LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
   msg "ACCESS -> $_AEGIR__LOGIN_URL"
   echo " "
   mrun "sleep 3"
 fi
-cd /var/aegir/config/includes
-echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
-touch installer_version.txt
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
