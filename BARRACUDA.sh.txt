@@ -1426,7 +1426,7 @@ perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /u
 msg "INFO: Installing libmemcached with memcached for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://launchpad.net/libmemcached/1.0/0.44/+download/libmemcached-0.44.tar.gz
+wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
 tar -xzf libmemcached-0.44.tar.gz
 cd /var/opt/libmemcached-0.44
 st_runner "sh ./configure" 2> /dev/null
@@ -1530,7 +1530,7 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://launchpad.net/libmemcached/1.0/0.44/+download/libmemcached-0.44.tar.gz
+  wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
   tar -xzf libmemcached-0.44.tar.gz
   cd /var/opt/libmemcached-0.44
   st_runner "sh ./configure" 2> /dev/null
