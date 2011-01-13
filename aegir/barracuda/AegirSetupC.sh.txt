@@ -404,6 +404,7 @@ if [ ! -d "/data/all/000/translations" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.nb.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pl.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-pt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-br.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.es.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.sv.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.el.po
@@ -413,7 +414,9 @@ if [ ! -d "/data/all/000/translations" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.sk.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.fi.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.tr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-br.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.cs.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.lt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ru.po
 fi
 
 
