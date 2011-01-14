@@ -1344,6 +1344,24 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
+if [ ! -e "/usr/local/bin/memcached" ] ; then
+  msg "INFO: Installing Memcached, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f /opt/bin/memcached
+  rm -f /usr/bin/memcached
+  rm -f /usr/local/bin/memcached
+  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz
+  tar -xzf memcached-1.4.5.tar.gz
+  cd /var/opt/memcached-1.4.5
+  st_runner "sh ./configure" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  ln -s /usr/local/bin/memcached /usr/bin/memcached
+fi
+
+
+###--------------------###
 msg "INFO: PHP installed version auto-discovering now, please wait..."
 mrun "sleep 3"
 if [ -e "/usr/local/bin/php" ] ; then
@@ -1637,24 +1655,6 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
-fi
-
-
-###--------------------###
-if [ ! -e "/usr/local/bin/memcached" ] ; then
-  msg "INFO: Installing Memcached, please wait..."
-  mrun "sleep 3"
-  cd /var/opt
-  rm -f /opt/bin/memcached
-  rm -f /usr/bin/memcached
-  rm -f /usr/local/bin/memcached
-  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz
-  tar -xzf memcached-1.4.5.tar.gz
-  cd /var/opt/memcached-1.4.5
-  st_runner "sh ./configure" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  ln -s /usr/local/bin/memcached /usr/bin/memcached
 fi
 
 
