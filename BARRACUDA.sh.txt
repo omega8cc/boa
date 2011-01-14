@@ -1648,7 +1648,6 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module --without-http_scgi_module  --without-http_uwsgi_module --with-debug --with-ipv6 --add-module=/var/opt/nginx-upload-progress-module/" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  st_runner "invoke-rc.d nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
@@ -1911,7 +1910,6 @@ perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_n
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "invoke-rc.d nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
@@ -2065,12 +2063,10 @@ mrun "sleep 30"
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
     if [ "$_THIS_OS" = "Ubuntu" ] ; then
-      st_runner "invoke-rc.d nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
       mrun "sleep 3"
       st_runner "invoke-rc.d nginx start" &> /dev/null
     else
-      st_runner "invoke-rc.d nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
       mrun "sleep 3"
       st_runner "invoke-rc.d nginx start" &> /dev/null
@@ -2412,14 +2408,13 @@ msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
-  st_runner "invoke-rc.d nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
-  sleep 1
+  mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
-  sleep 1
+  mrun "sleep 3"
   st_runner "invoke-rc.d nginx restart" &> /dev/null
 else
-  invoke-rc.d nginx reload &> /dev/null
+  st_runner "invoke-rc.d nginx reload" &> /dev/null
 fi
 st_runner "invoke-rc.d php-fpm reload" &> /dev/null
 st_runner "invoke-rc.d cron restart" &> /dev/null
