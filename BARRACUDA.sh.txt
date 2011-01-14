@@ -1453,7 +1453,7 @@ if [ -e "/var/opt/libmemcached-0.44" ] ; then
   st_runner "sh ./configure" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
+  echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
   msg "INFO: libmemcached installed"
   mrun "sleep 3"
   cd /var/opt
@@ -1465,7 +1465,7 @@ if [ -e "/var/opt/libmemcached-0.44" ] ; then
     st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "memcached-1.0.2" > /var/log/memcached-1.0.2.log
+    echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
     msg "INFO: memcached installed"
     mrun "sleep 3"
   fi
@@ -1554,7 +1554,7 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
+if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -1566,7 +1566,7 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "libmemcached-0.44" > /var/log/libmemcached-0.44.log
+    echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
     msg "INFO: libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
@@ -1578,7 +1578,7 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
       st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "memcached-1.0.2" > /var/log/memcached-1.0.2.log
+      echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
       msg "INFO: memcached installed"
       mrun "sleep 3"
     fi
