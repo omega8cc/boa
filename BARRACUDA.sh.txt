@@ -1428,8 +1428,7 @@ mrun "sleep 3"
 cd /var/opt
 wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
 mrun "sleep 3"
-wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
-mrun "sleep 3"
+ldconfig &> /dev/null
 tar -xzf libmemcached-0.44.tar.gz
 if [ -e "/var/opt/libmemcached-0.44" ] ; then
   cd /var/opt/libmemcached-0.44
@@ -1541,8 +1540,6 @@ if [ ! -e "/var/log/memcached-1.0.2.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
-  mrun "sleep 3"
   wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
   mrun "sleep 3"
   tar -xzf libmemcached-0.44.tar.gz
