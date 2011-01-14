@@ -1344,6 +1344,30 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
+if [ ! -e "/var/log/fixed-libevent-1.4.14b-stable.log" ] ; then
+  msg "INFO: Installing libevent, please wait..."
+  rm -f -r /var/opt/libevent*
+  cd /var/opt
+  wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
+  tar -xzf libevent-1.4.14b-stable.tar.gz
+  cd /var/opt/libevent-1.4.14b-stable
+  st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  rm -f -r /var/opt/libevent*
+  cd /var/opt
+  wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
+  tar -xzf libevent-1.4.14b-stable.tar.gz
+  cd /var/opt/libevent-1.4.14b-stable
+  st_runner "sh ./configure" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  st_runner "ldconfig" 2> /dev/null
+  echo "libevent-1.4.14b-stable" > /var/log/fixed-libevent-1.4.14b-stable.log
+fi
+
+
+###--------------------###
 if [ ! -e "/usr/local/bin/memcached" ] ; then
   msg "INFO: Installing Memcached, please wait..."
   mrun "sleep 3"
@@ -1385,27 +1409,6 @@ fi
 ###
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
-
-###--------------------###
-msg "INFO: Installing libevent, please wait..."
-rm -f -r /var/opt/libevent*
-cd /var/opt
-wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
-tar -xzf libevent-1.4.14b-stable.tar.gz
-cd /var/opt/libevent-1.4.14b-stable
-st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-rm -f -r /var/opt/libevent*
-cd /var/opt
-wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
-tar -xzf libevent-1.4.14b-stable.tar.gz
-cd /var/opt/libevent-1.4.14b-stable
-st_runner "sh ./configure" 2> /dev/null
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-st_runner "ldconfig" 2> /dev/null
-
 
 ###--------------------###
 msg "INFO: Installing PHP-FPM"
