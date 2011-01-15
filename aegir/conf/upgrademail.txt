@@ -26,7 +26,7 @@ Your Aegir control panel is available as before at:
 * Open Atrium 1.0-beta9 platform now available on all servers.
 * Managing News 1.2 platform now available on all servers.
 * Nginx server upgraded to version Barracuda/0.9.3
-* PHP-FPM server upgraded to version 5.2.16
+* PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
 * Drush upgraded to version 7.x-4.1

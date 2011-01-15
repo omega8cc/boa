@@ -242,6 +242,78 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
 * If any task fails, send us the task log for debugging.
 
 
+----------------------------------------
+# What is new or updated
+----------------------------------------
+
+* Latest Drupal 7.0 platform has been added.
+* All 6.x based platforms upgraded to Pressflow core 6.20
+* Open Atrium 1.0-beta9 platform now available on all servers.
+* Managing News 1.2 platform now available on all servers.
+* Nginx server upgraded to version Barracuda/0.9.3
+* PHP-FPM server upgraded to version 5.2.17
+* MariaDB server configuration improved.
+* Memcache extension replaced with memcached and libmemcached.
+* Drush upgraded to version 7.x-4.1
+* The "drush dl module" command downloads by default 7.x versions,
+  so you need to specify version if you intend to download 6.x
+* Drush Make upgraded to version 2.0-beta10
+* Your Aegir control panel now runs on Pressflow core.
+* You can create and manage your own platforms.
+* You can use makefiles to create platforms.
+* Daily Usage Monitor displays your total disk and databases space
+  in the Aegir control panel footer (status updated every morning).
+
+
+----------------------------------------
+# Improvements
+----------------------------------------
+
+* All 6.x platforms now receive some performance related modules.
+* Too generic D7 profile names replaced with unique Drupal 7 names.
+* A few new commands have been added to your Aegir Drush Shell (SSH).
+* You can use git to manage the code and rsync to manage backups.
+* Useful new commands from Drush v.4 are now available.
+* Now it is possible to delete old sites backups created in Aegir.
+* You can access Aegir backups also via SSH or SFTP/FTPS.
+* You can cancel queued task in Aegir before it is started.
+* The "dev" anywhere in the subdomain enables all PHP errors/notices.
+* You can use "dev" type alias for live site for easier debugging.
+* Added support for imagecache_external module.
+* It is possible to safely delete any not used platforms on request.
+* Access to static files allowed only for currently used domain.
+* Added crossdomain.xml in the root of every new platform.
+* New rewrite introduced to map /files to /sites/domain/files,
+  /images to /sites/domain/files/images and
+  /downloads to /sites/domain/files/downloads.
+* The standard /update.php works again, however using "drush dbup"
+  command is recommended.
+* The "drush mup" command allows now to upgrade contributed modules.
+
+
+----------------------------------------
+# Fixes
+----------------------------------------
+
+* Known issue with sites cron semaphore in Aegir now resolved.
+* Known issue with PHP notices breaking some Aegir tasks resolved.
+* Fixed web server rewrites to support "ad" module.
+* Fixed Aegir issue with .info and .pl domains extensions.
+* Drush make via SSH now works as expected.
+* Fixed Nginx issue with /system/ paths and static files or images.
+* Fixed issue with broken site when non-lowercase domain was used.
+
+
+----------------------------------------
+# Other changes
+----------------------------------------
+
+* Boost crawler option is now denied for performance reasons.
+* Forced log-out on browser quit only for Aegir control panel. 
+* The auto-cron in D7 now disabled, since Aegir runs scheduled cron
+  for all sites.
+
+
 
 Questions? Comments? Please contact us:
 
@@ -249,3 +321,4 @@ Questions? Comments? Please contact us:
 
 Thank you,
 Omega8.cc Team
+
