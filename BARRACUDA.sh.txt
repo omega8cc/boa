@@ -2336,16 +2336,16 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   st_runner "invoke-rc.d csf restart" &> /dev/null
   st_runner "invoke-rc.d lfd restart" &> /dev/null
  fi
- echo $_SSH_PORT > /var/log/csf-setup-ssh-port.log
+ echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
 fi
 if [ -e "/usr/sbin/csf" ] ; then
-  if [ ! -e "/var/log/csf-setup-ssh-port.log" ] ; then
+  if [ ! -e "/var/log/csf-setup-ssh-port-new.log" ] ; then
     cd /etc/csf
     mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
     sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
     sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
-    touch /var/log/csf-setup-ssh-port.log
+    touch /var/log/csf-setup-ssh-port-new.log
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "invoke-rc.d csf restart" &> /dev/null
   fi
