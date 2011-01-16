@@ -103,7 +103,7 @@ Octopus can install the platforms listed below:
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
 
 Platforms marked with (int) comes also with ready to use translations
-of Drupal core in 22 languages. Only languages with at least 10 maintainers
+of Drupal core in 25 languages. Only languages with at least 10 maintainers
 and at least 60% of progress are included - http://localize.drupal.org
 
 Other platforms are using extended and customized translations or

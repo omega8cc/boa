@@ -58,7 +58,7 @@ do
       echo SumDat is $SumDat or $SumDatH MB
       _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       cd $_THIS_HM_SITE
-      drush vset --always-set site_footer "Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB" &> /dev/null
+      /usr/bin/drush vset --always-set site_footer "Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB" &> /dev/null
       echo Done for $User
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
