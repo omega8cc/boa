@@ -56,9 +56,10 @@ do
       echo HomSiz is $HomSiz or $HomSizH MB
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
+      _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
       _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       cd $_THIS_HM_SITE
-      /usr/bin/drush vset --always-set site_footer "Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB" &> /dev/null
+      su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
       echo Done for $User
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
