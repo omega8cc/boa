@@ -1,0 +1,15 @@
+; NodeStream makefile
+;
+
+api = 2
+core = "6.x"
+
+projects[pressflow][type] = "core"
+projects[pressflow][download][type] = "bzr"
+projects[pressflow][download][url] = "lp:pressflow/6.x"
+
+projects[nodestream][type] = "profile"
+projects[nodestream][download][type] = "cvs"
+projects[nodestream][download][module] = "contributions/profiles/nodestream"
+projects[nodestream][download][revision] = "DRUPAL-6--1"
+

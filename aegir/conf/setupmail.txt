@@ -88,7 +88,7 @@ like below:
 
  yourdomain.com.           IN  A      166.84.6.231
   or
- subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz
+ subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz.
 
 You can also use any subdomain in *.aegir.dragon.ny.host8.biz to create
 test sites, for example: http://atrium.aegir.dragon.ny.host8.biz etc.
