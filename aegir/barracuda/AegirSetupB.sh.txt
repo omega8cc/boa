@@ -273,12 +273,12 @@ else
     rm -f drush_make-6.x-2.0-beta10.tar.gz
   fi
 fi
-cd $_ROOT/.drush
-if ! netcat -w 8 -z git.koumbit.net 9418 ; then
-  _KOUMBIT_WORKS="NO"
-else
-  git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
-fi
+# cd $_ROOT/.drush
+# if ! netcat -w 8 -z git.koumbit.net 9418 ; then
+#   _KOUMBIT_WORKS="NO"
+# else
+#   git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
+# fi
 # if [ $_STATUS = "UPGRADE" ] ; then
 #   cd $_ROOT/.drush/drush_make
 #   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
