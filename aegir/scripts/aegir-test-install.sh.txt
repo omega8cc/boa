@@ -128,6 +128,8 @@ else
   mkdir -p $AEGIR_HOME/.drush
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
     git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
+    _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
+    perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $AEGIR_HOME/.drush/provision/aegir.make
   else
     cd $AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
