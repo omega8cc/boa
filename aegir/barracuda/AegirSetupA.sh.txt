@@ -455,8 +455,8 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
   else
     msg "$_STATUS A: Set/rewrite remote cache IP address and disable local caches"
     mrun "sleep 3"
-    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc
-    perl -p -i -e "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc
+    sed -i "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc
+    sed -i "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc
     invoke-rc.d redis-server stop &> /dev/null
     update-rc.d -f redis-server remove &> /dev/null
     invoke-rc.d redis stop &> /dev/null
@@ -615,7 +615,7 @@ fi
 ###---### Add access to backups for older installs
 #
 if [ ! -e "$_ROOT/log/backups.access.open" ] ; then 
-  perl -p -i -e "s/\/$_USER\/static\'\]/\/$_USER\/static\', \'\/data\/disk\/$_USER\/backups\'\]/g" /etc/lshell.conf
+  sed -i "s/\/$_USER\/static\'\]/\/$_USER\/static\', \'\/data\/disk\/$_USER\/backups\'\]/g" /etc/lshell.conf
   chmod 0750 $_ROOT/backups
 fi
 
@@ -734,20 +734,20 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
       mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
     fi
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/upgrademail.txt ./
-    perl -p -i -e "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
-    perl -p -i -e "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt
-    perl -p -i -e "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt
-    perl -p -i -e "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+    sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
+    sed -i "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt
+    sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt
+    sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
   else
     _SEND_UPGRADE_EMAIL=NO
   fi
 elif [ $_STATUS = "INIT" ] ; then
  cd $_ROOT/log
  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./
- perl -p -i -e "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt
+ sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt
+ sed -i "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt
+ sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt
+ sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt
 fi
 
 

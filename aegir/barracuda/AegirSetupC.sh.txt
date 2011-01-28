@@ -600,9 +600,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE/$_DRUPAL7/profiles/testing
   for Files in `find $_CORE/$_DRUPAL7/profiles -type f`
   do
-    perl -p -i -e "s/Minimal/Drupal 7 Minimal/g" $Files
-    perl -p -i -e "s/Standard/Drupal 7 Standard/g" $Files
-    perl -p -i -e "s/Testing/Drupal 7 Testing/g" $Files
+    sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+    sed -i "s/Testing/Drupal 7 Testing/g" $Files
   done
   create_dirs
 fi

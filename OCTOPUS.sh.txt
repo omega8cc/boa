@@ -280,48 +280,48 @@ prompt_yes_no () {
 action () {
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda -type f`
 do
-  perl -p -i -e "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
-  perl -p -i -e "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
-  perl -p -i -e "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
-  perl -p -i -e "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files
-  perl -p -i -e "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files
-  perl -p -i -e "s/EDIT_USER/$_USER/g"                           $Files
-  perl -p -i -e "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
-  perl -p -i -e "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files
-  perl -p -i -e "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
-  perl -p -i -e "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
-  perl -p -i -e "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files
-  perl -p -i -e "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files
-  perl -p -i -e "s/EDIT_WEBG/$_WEBG/g"                           $Files
-  perl -p -i -e "s/EDIT_USRG/$_USRG/g"                           $Files
-  perl -p -i -e "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
-  perl -p -i -e "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
-  perl -p -i -e "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
-  perl -p -i -e "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
-  perl -p -i -e "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
-  perl -p -i -e "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
-  perl -p -i -e "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
-  perl -p -i -e "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
-  perl -p -i -e "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
-  perl -p -i -e "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
-  perl -p -i -e "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
-  perl -p -i -e "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
-  perl -p -i -e "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
-  perl -p -i -e "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
-  perl -p -i -e "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
-  perl -p -i -e "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files
-  perl -p -i -e "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files
-  perl -p -i -e "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
-  perl -p -i -e "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
-  perl -p -i -e "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
-  perl -p -i -e "s/EDIT_PLATFORMS_ALL/$_PLATFORMS_ALL/g"         $Files
+  sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
+  sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
+  sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files
+  sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files
+  sed -i "s/EDIT_USER/$_USER/g"                           $Files
+  sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
+  sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files
+  sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
+  sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
+  sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files
+  sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files
+  sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files
+  sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
+  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
+  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
+  sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
+  sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
+  sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
+  sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
+  sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
+  sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
+  sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
+  sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
+  sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
+  sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
+  sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
+  sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
+  sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
+  sed -i "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files
+  sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files
+  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
+  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
+  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
+  sed -i "s/EDIT_PLATFORMS_ALL/$_PLATFORMS_ALL/g"         $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
-  perl -p -i -e "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
-  perl -p -i -e "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
-  perl -p -i -e "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
-  perl -p -i -e "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
+  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
+  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
+  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
+  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
 done
 if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
