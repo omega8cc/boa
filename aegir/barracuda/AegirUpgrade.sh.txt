@@ -88,9 +88,9 @@ hostmaster_go_up () {
       tar -xzf provision-$_AEGIR_VERSION.tgz
       rm provision-$_AEGIR_VERSION.tgz
     fi
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta10.tar.gz
-    tar -xzf drush_make-6.x-2.0-beta10.tar.gz
-    rm -f drush_make-6.x-2.0-beta10.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta11.tar.gz
+    tar -xzf drush_make-6.x-2.0-beta11.tar.gz
+    rm -f drush_make-6.x-2.0-beta11.tar.gz
   fi
 #   cd $_ROOT/.drush
 #   if ! netcat -w 8 -z git.koumbit.net 9418 ; then
