@@ -734,20 +734,20 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
       mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
     fi
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/upgrademail.txt ./
-    perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
-    perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/upgrademail.txt
-    perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/upgrademail.txt
-    perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt
+    perl -p -i -e "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
   else
     _SEND_UPGRADE_EMAIL=NO
   fi
 elif [ $_STATUS = "INIT" ] ; then
  cd $_ROOT/log
  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./
- perl -p -i -e "s/(aegir.dragon.ny.host8.biz)/$_DOMAIN/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/(dragon)/$_USER/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/(FN8rXcQn)/$_PASWD/g" $_ROOT/log/setupmail.txt
- perl -p -i -e "s/(166.84.6.231)/$_THISHTIP/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt
+ perl -p -i -e "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt
 fi
 
 

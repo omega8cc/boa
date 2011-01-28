@@ -1232,8 +1232,8 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ###
 if [ ! -z "$_SMTP_RELAY_HOST" ]; then
-  perl -p -i -e "s/($_SMTP_RELAY_HOST)//g" /etc/postfix/main.cf
-  perl -p -i -e "s/(relayhost =)/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf
+  perl -p -i -e "s/$_SMTP_RELAY_HOST//g" /etc/postfix/main.cf
+  perl -p -i -e "s/relayhost =/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf
   postfix reload &> /dev/null
 fi
 ###
@@ -1326,12 +1326,12 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
-  perl -p -i -e "s/(>127.0.0.1<)/\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
-  perl -p -i -e "s/(max_children\">1)/max_children\"\>4/g" /opt/etc/php-fpm.conf
+  perl -p -i -e "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
+  perl -p -i -e "s/max_children\">1/max_children\"\>4/g" /opt/etc/php-fpm.conf
 fi
 if [ $_STATUS = "INIT" ] ; then
   APTEMAIL=${_MY_EMAIL//\@/\\\@}
-  perl -p -i -e "s/(root)/$APTEMAIL/g" /etc/apticron/apticron.conf  
+  perl -p -i -e "s/root/$APTEMAIL/g" /etc/apticron/apticron.conf  
   XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
   sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi
   st_runner "sh /usr/sbin/apticron"
@@ -1438,9 +1438,9 @@ mrun "sleep 3"
 st_runner "make --quiet" 2> /dev/null
 st_runner "make --quiet install" 2> /dev/null
 ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
-perl -p -i -e "s/(php_fpm_CONF\")/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbin/php-fpm
-perl -p -i -e "s/(\/usr\/local\/etc\/php-fpm.conf)/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
-perl -p -i -e "s/(\/usr\/local\/logs\/php-fpm.pid)/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
+perl -p -i -e "s/php_fpm_CONF\"/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbin/php-fpm
+perl -p -i -e "s/\/usr\/local\/etc\/php-fpm.conf/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
+perl -p -i -e "s/\/usr\/local\/logs\/php-fpm.pid/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
 
 
 ###--------------------###
@@ -1801,8 +1801,8 @@ if [ -e "/root/.my.pass.txt" ] ; then
   PASWD=`echo -n $PXSWD | tr -d "\n"`
   for Files in `find /var/xdrago -type f`
   do
-    perl -p -i -e "s/(NdKBu34erty325r6mUHxWy)/$PASWD/g" $Files
-    perl -p -i -e "s/(php-fpm nginx php)/php-fpm php-cgi nginx php/g" $Files
+    perl -p -i -e "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files
+    perl -p -i -e "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files
   done
   msg "INFO: OS and services installation/upgrade completed"
   mrun "sleep 3"
@@ -1846,10 +1846,10 @@ fi
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
-  perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"        $Files
-  perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g"        $Files
-  perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $Files
-  perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"          $Files
+  perl -p -i -e "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
+  perl -p -i -e "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
+  perl -p -i -e "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
+  perl -p -i -e "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
 done
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
 msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
@@ -1907,9 +1907,9 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
 patch -p0 < drush-remote_make_files.patch &> /dev/null
 ###
 cd /var/aegir
-perl -p -i -e "s/(access_log)/\#access_log/g" /etc/nginx/nginx.conf
-perl -p -i -e "s/(worker_connections\s+1024)/worker_connections  4096/g" /etc/nginx/nginx.conf
-perl -p -i -e "s/(worker_processes\s+1\;)/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -1939,14 +1939,14 @@ else
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
     _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
-    perl -p -i -e "s/(EDIT_INSTALLER_VERSION)/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_BOA_REPO_NAME)/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_DOMAIN)/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_AEGIR_VERSION)/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_DRUSH_VERSION)/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_DEBUG_MODE)/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
-    perl -p -i -e "s/(EDIT_THIS_DB_HOST)/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
+    perl -p -i -e "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -2096,7 +2096,7 @@ if [ ! -d "/opt/solr" ] ; then
     mv -f solr /opt/ &> /dev/null
     mv -f tomcat6 /opt/ &> /dev/null
     echo "ENABLED=1" > /etc/default/tomcat
-    perl -p -i -e "s/(\/usr\/lib\/jvm\/java-6-sun\/jre)/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
+    perl -p -i -e "s/\/usr\/lib\/jvm\/java-6-sun\/jre/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
     st_runner "update-rc.d tomcat defaults" &> /dev/null
     st_runner "invoke-rc.d tomcat start" &> /dev/null
     msg "INFO: MultiCore Apache Solr Tomcat installation completed"
@@ -2222,7 +2222,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     st_runner "apt-fast -y install collectd" 2> /dev/null
     cd /var/www
     git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
-    perl -p -i -e "s/(>uncategorized<)/>Barracuda Server</g" /var/www/cgp/index.php
+    perl -p -i -e "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
     chown -R www-data:www-data /var/www/cgp
     _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
     if [ -z "$_THISHTIP" ] ; then

@@ -82,7 +82,7 @@ hostmaster_go_up () {
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
       git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
       _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
-      perl -p -i -e "s/(EDIT_BOA_REPO_GIT_URL)/$_BOA_REPO_GIT_URLX/g" $_ROOT/.drush/provision/aegir.make
+      sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $_ROOT/.drush/provision/aegir.make
     else
       wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
       tar -xzf provision-$_AEGIR_VERSION.tgz
