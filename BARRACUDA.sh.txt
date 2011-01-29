@@ -1958,12 +1958,12 @@ else
     fi
     force_advanced_nginx_config
     ### fix for typo http://drupal.org/node/979656
-    cd /var/aegir/.drush/drush_make
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-    patch -p0 < drush-remote_make_files.patch &> /dev/null
+    ### cd /var/aegir/.drush/drush_make
+    ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+    ### patch -p0 < drush-remote_make_files.patch &> /dev/null
     ###
     cd /var/aegir
-    rm -f AegirUpgrade.sh.txt    
+    ### rm -f AegirUpgrade.sh.txt    
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
       if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
         cd /var/aegir/config/server_master/nginx
