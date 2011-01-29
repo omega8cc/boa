@@ -282,7 +282,7 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B2.B.dev3
+_INSTALLER_VERSION=B2.C.dev1
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
@@ -1963,7 +1963,7 @@ else
     ### patch -p0 < drush-remote_make_files.patch &> /dev/null
     ###
     cd /var/aegir
-    ### rm -f AegirUpgrade.sh.txt    
+    rm -f AegirUpgrade.sh.txt    
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
       if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
         cd /var/aegir/config/server_master/nginx

@@ -805,7 +805,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
   rm -f openpublish-$_OPENPUBLISH.tar.gz
-  mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
+  #mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
   cd $_CORE/openpublish-$_OPENPUBLISH
   rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
