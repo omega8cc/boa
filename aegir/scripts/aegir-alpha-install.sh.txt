@@ -129,7 +129,7 @@ else
   if [ "$AEGIR_VERSION" = "HEAD" ]; then
     git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
     _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-    sed -i "s/MAKEFILE_EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make
+    sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make
   else
     cd $AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
