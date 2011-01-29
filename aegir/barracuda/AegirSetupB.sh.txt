@@ -367,9 +367,9 @@ fi
 
 ### fix for typo http://drupal.org/node/979656
 #
-cd $_ROOT/.drush/drush_make
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-patch -p0 < drush-remote_make_files.patch &> /dev/null
+# cd $_ROOT/.drush/drush_make
+# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+# patch -p0 < drush-remote_make_files.patch &> /dev/null
 #
 ###
 

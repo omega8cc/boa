@@ -1902,9 +1902,9 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 force_advanced_nginx_config
 ### fix for typo http://drupal.org/node/979656
-cd /var/aegir/.drush/drush_make
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-patch -p0 < drush-remote_make_files.patch &> /dev/null
+### cd /var/aegir/.drush/drush_make
+### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
+### patch -p0 < drush-remote_make_files.patch &> /dev/null
 ###
 cd /var/aegir
 sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
