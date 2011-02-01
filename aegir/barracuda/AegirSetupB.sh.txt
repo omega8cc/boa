@@ -234,6 +234,13 @@ cd $_ROOT/tools
 wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
 tar -xzf drush-$_DRUSH_VERSION.tar.gz
 rm drush-$_DRUSH_VERSION.tar.gz
+
+### backport some Drush 4.x useful and now required commands
+cd $_ROOT/tools/drush
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+patch -p0 < user.drush.inc.patch &> /dev/null
+###
+
 if $_DRUSHCMD help > /dev/null ; then
   msg "$_STATUS B: Drush seems to be functioning properly"
 else

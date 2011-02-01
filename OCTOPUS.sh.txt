@@ -232,7 +232,7 @@ _INSTALLER_VERSION=B2.C.dev1
 ## System
 _WEBG=www-data
 _USRG=users
-_DRUSH_VERSION=All-versions-4.1
+_DRUSH_VERSION=6.x-3.3
 
 ## Distributions
 _COCOMORE=cdc-6.20.12
