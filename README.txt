@@ -39,11 +39,6 @@ with clean directory structure, with code shared between all created
 instances, so one vanilla Octopus instance is using only ~18 MB,
 while most of the code, which is over 450 MB total, is shared.
 
-Both Barracuda and Octopus don't use Pressflow for Aegir itself
-to avoid possible issues. There is no visible benefits to use
-faster core for Aegir itself, however we used it before with
-good results and who knows, maybe we will introduce it again.
-
 With multi-install system you have to remember that all of them
 will use the same Nginx server, so you could break the system
 trying to install site with the same domain on two or more instances.
