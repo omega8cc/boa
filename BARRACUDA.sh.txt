@@ -1402,11 +1402,12 @@ if [ -e "/usr/local/bin/php" ] ; then
 else  
   _PHP_INSTALL_REQUIRED=YES
 fi
-
+if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
+  _PHP_INSTALL_REQUIRED=YES
+fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
 fi
-
 ###
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###
@@ -1442,6 +1443,7 @@ ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
 sed -i "s/php_fpm_CONF\"/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbin/php-fpm
 sed -i "s/\/usr\/local\/etc\/php-fpm.conf/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
 sed -i "s/\/usr\/local\/logs\/php-fpm.pid/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
+echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
 
 
 ###--------------------###
