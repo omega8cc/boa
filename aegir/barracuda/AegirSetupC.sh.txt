@@ -675,6 +675,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons-$_COMMONS/ &> /dev/null
   cd $_CORE/drupal_commons-$_COMMONS
   rm -f $_CORE/drupal_commons-$_COMMONS/*.txt
+  sed -i "s/\$logo =/\/\/\$logo =/g" $_CORE/drupal_commons-$_COMMONS/profiles/drupal_commons/drupal_commons.profile
+  sed -i "s/\$description /\/\/\$description /g" $_CORE/drupal_commons-$_COMMONS/profiles/drupal_commons/drupal_commons.profile
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS
