@@ -282,12 +282,12 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B2.C.dev3
+_INSTALLER_VERSION=B2.D.dev1
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
-_DRUSH_VERSION=6.x-3.3
+_DRUSH_VERSION=All-Versions-HEAD
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
@@ -1913,9 +1913,9 @@ force_advanced_nginx_config
 ### patch -p0 < drush-remote_make_files.patch &> /dev/null
 
 ### backport some Drush 4.x useful and now required commands
-cd /var/aegir/drush
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-patch -p0 < user.drush.inc.patch &> /dev/null
+# cd /var/aegir/drush
+# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+# patch -p0 < user.drush.inc.patch &> /dev/null
 ###
 
 cd /var/aegir
@@ -1975,9 +1975,9 @@ else
     ### patch -p0 < drush-remote_make_files.patch &> /dev/null
     ###
     ### backport some Drush 4.x useful and now required commands
-    cd /var/aegir/drush
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-    patch -p0 < user.drush.inc.patch &> /dev/null
+    # cd /var/aegir/drush
+    # cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+    # patch -p0 < user.drush.inc.patch &> /dev/null
     ###
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    

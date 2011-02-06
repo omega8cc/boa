@@ -53,7 +53,7 @@ so it is your responsibility to use such system wisely.
 * Jolicloud Robby for netbooks fresh or existing install, or
 * Debian 5.0 Lenny minimal OS 32/64bit fresh install.
 * The Git standard port 9418 must be open.
-* 512 MB of RAM or at least 2 GB of RAM for OpenPublish.
+* 512 MB of RAM or at least 1 GB of RAM for OpenPublish.
 * Basic sysadmin skills and experience.
 
 
@@ -65,14 +65,14 @@ so it is your responsibility to use such system wisely.
 * PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
-* MultiCore Apache Solr with Tomcat (optional install).
+* MultiCore Apache Solr with Tomcat.
 * Redis and Memcached chained cache with DB auto-failover.
 * Fast proxy DNS server (pdnsd) with permanent caching.
-* Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
-* Webmin Control Panel (optional).
-* Chive database manager in "chive." subdomain (optional).
-* SQL Buddy database manager in "sqlbuddy." subdomain (optional).
-* Collectd server monitor in "cgp." subdomain (optional).
+* Bind9 DNS server integrated with experimental Aegir DNS feature.
+* Webmin Control Panel.
+* Chive database manager in "chive." subdomain.
+* SQL Buddy database manager in "sqlbuddy." subdomain.
+* Collectd server monitor in "cgp." subdomain.
 * Limited shell and FTPS separate accounts per Octopus instance.
 
 

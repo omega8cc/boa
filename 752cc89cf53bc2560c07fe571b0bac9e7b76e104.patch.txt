@@ -1,0 +1,251 @@
+From 752cc89cf53bc2560c07fe571b0bac9e7b76e104 Mon Sep 17 00:00:00 2001
+From: Barracuda <omega8cc@gmail.com>
+Date: Sun, 6 Feb 2011 14:06:29 +0100
+Subject: [PATCH] Tagging as B2.D.dev1 and Drush upgrade to 5.0-dev (Albert)
+
+---
+ BARRACUDA.sh.txt                    |   16 ++++++++--------
+ OCTOPUS.sh.txt                      |    4 ++--
+ README.txt                          |   14 +++++++-------
+ TUNER.sh.txt                        |    2 +-
+ aegir/barracuda/AegirSetupB.sh.txt  |    6 +++---
+ aegir/conf/setupmail.txt            |    4 +++-
+ aegir/conf/upgrademail.txt          |    7 +++++--
+ aegir/conf/version.txt              |    2 +-
+ aegir/helpers/make_client.php.txt   |    2 +-
+ aegir/helpers/make_platform.php.txt |    8 ++++----
+ 10 files changed, 35 insertions(+), 30 deletions(-)
+
+diff --git a/BARRACUDA.sh.txt b/BARRACUDA.sh.txt
+index 1699a43..f4b9f4f 100644
+--- a/BARRACUDA.sh.txt
++++ b/BARRACUDA.sh.txt
+@@ -282,12 +282,12 @@ _LOCAL_NETWORK_HN=""
+ ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+ ###----------------------------------------###
+ 
+-_INSTALLER_VERSION=B2.C.dev3
++_INSTALLER_VERSION=B2.D.dev1
+ _NGINX_VERSION=0.9.3
+ _PHP_VERSION=5.2.17
+ _PHP_FORCE_REINSTALL=NO
+ _LSHELL_VERSION=0.9.14
+-_DRUSH_VERSION=6.x-3.3
++_DRUSH_VERSION=All-Versions-HEAD
+ _NOW=`date +%y%m%d-%H%M`
+ 
+ ###---### Avoid too many questions
+@@ -1909,9 +1909,9 @@ force_advanced_nginx_config
+ ### patch -p0 < drush-remote_make_files.patch &> /dev/null
+ 
+ ### backport some Drush 4.x useful and now required commands
+-cd /var/aegir/drush
+-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+-patch -p0 < user.drush.inc.patch &> /dev/null
++# cd /var/aegir/drush
++# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
++# patch -p0 < user.drush.inc.patch &> /dev/null
+ ###
+ 
+ cd /var/aegir
+@@ -1971,9 +1971,9 @@ else
+     ### patch -p0 < drush-remote_make_files.patch &> /dev/null
+     ###
+     ### backport some Drush 4.x useful and now required commands
+-    cd /var/aegir/drush
+-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+-    patch -p0 < user.drush.inc.patch &> /dev/null
++    # cd /var/aegir/drush
++    # cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
++    # patch -p0 < user.drush.inc.patch &> /dev/null
+     ###
+     cd /var/aegir
+     rm -f AegirUpgrade.sh.txt    
+diff --git a/OCTOPUS.sh.txt b/OCTOPUS.sh.txt
+index 7c0fe49..2e64f43 100644
+--- a/OCTOPUS.sh.txt
++++ b/OCTOPUS.sh.txt
+@@ -227,12 +227,12 @@ _LOCAL_NETWORK_IP=""
+ ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+ ###----------------------------------------###
+ 
+-_INSTALLER_VERSION=B2.C.dev3
++_INSTALLER_VERSION=B2.D.dev1
+ 
+ ## System
+ _WEBG=www-data
+ _USRG=users
+-_DRUSH_VERSION=6.x-3.3
++_DRUSH_VERSION=All-Versions-HEAD
+ 
+ ## Distributions
+ _COCOMORE=cdc-6.20.12
+diff --git a/README.txt b/README.txt
+index 5f3a64e..ebc0010 100644
+--- a/README.txt
++++ b/README.txt
+@@ -53,7 +53,7 @@ so it is your responsibility to use such system wisely.
+ * Jolicloud Robby for netbooks fresh or existing install, or
+ * Debian 5.0 Lenny minimal OS 32/64bit fresh install.
+ * The Git standard port 9418 must be open.
+-* 512 MB of RAM or at least 1 GB of RAM for OpenPublish.
++* 512 MB of RAM or at least 2 GB of RAM for OpenPublish.
+ * Basic sysadmin skills and experience.
+ 
+ 
+@@ -65,14 +65,14 @@ so it is your responsibility to use such system wisely.
+ * PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
+ * Maintenance & Auto-Healing scripts in /var/xdrago.
+ * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
+-* MultiCore Apache Solr with Tomcat.
++* MultiCore Apache Solr with Tomcat (optional install).
+ * Redis and Memcached chained cache with DB auto-failover.
+ * Fast proxy DNS server (pdnsd) with permanent caching.
+-* Bind9 DNS server integrated with experimental Aegir DNS feature.
+-* Webmin Control Panel.
+-* Chive database manager in "chive." subdomain.
+-* SQL Buddy database manager in "sqlbuddy." subdomain.
+-* Collectd server monitor in "cgp." subdomain.
++* Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
++* Webmin Control Panel (optional).
++* Chive database manager in "chive." subdomain (optional).
++* SQL Buddy database manager in "sqlbuddy." subdomain (optional).
++* Collectd server monitor in "cgp." subdomain (optional).
+ * Limited shell and FTPS separate accounts per Octopus instance.
+ 
+ 
+diff --git a/TUNER.sh.txt b/TUNER.sh.txt
+index b875f45..daed2b7 100755
+--- a/TUNER.sh.txt
++++ b/TUNER.sh.txt
+@@ -118,7 +118,7 @@ _TUNE_PHP_TIMEOUT=3600
+ ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+ ###----------------------------------------###
+ 
+-_INSTALLER_VERSION=B2.C.dev3
++_INSTALLER_VERSION=B2.D.dev1
+ _NOW=`date +%y%m%d-%H%M`
+ 
+ ###---### Functions
+diff --git a/aegir/barracuda/AegirSetupB.sh.txt b/aegir/barracuda/AegirSetupB.sh.txt
+index d87e4e2..d4e38e3 100644
+--- a/aegir/barracuda/AegirSetupB.sh.txt
++++ b/aegir/barracuda/AegirSetupB.sh.txt
+@@ -236,9 +236,9 @@ tar -xzf drush-$_DRUSH_VERSION.tar.gz
+ rm drush-$_DRUSH_VERSION.tar.gz
+ 
+ ### backport some Drush 4.x useful and now required commands
+-cd $_ROOT/tools/drush
+-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+-patch -p0 < user.drush.inc.patch &> /dev/null
++# cd $_ROOT/tools/drush
++# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
++# patch -p0 < user.drush.inc.patch &> /dev/null
+ ###
+ 
+ if $_DRUSHCMD help > /dev/null ; then
+diff --git a/aegir/conf/setupmail.txt b/aegir/conf/setupmail.txt
+index 8f986a2..96069c3 100644
+--- a/aegir/conf/setupmail.txt
++++ b/aegir/conf/setupmail.txt
+@@ -246,7 +246,7 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
+ * PHP-FPM server upgraded to version 5.2.17
+ * MariaDB server configuration improved.
+ * Memcache extension replaced with memcached and libmemcached.
+-* Drush downgraded to version 6.x-3.3
++* Drush upgraded to version 5.0-dev
+ * Drush Make upgraded to version 2.0-beta11
+ * Your Aegir control panel now runs on Pressflow core.
+ * You can create and manage your own platforms.
+@@ -279,6 +279,8 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
+ * The standard /update.php works again, however using "drush dbup"
+   command is recommended.
+ * The "drush mup" command allows now to upgrade contributed modules.
++* The "drush dl module" command downloads by default 7.x versions,
++  so you need to specify full version if you intend to download 6.x.
+ 
+ 
+ ----------------------------------------
+diff --git a/aegir/conf/upgrademail.txt b/aegir/conf/upgrademail.txt
+index 3ec8644..45ab946 100644
+--- a/aegir/conf/upgrademail.txt
++++ b/aegir/conf/upgrademail.txt
+@@ -1,7 +1,7 @@
+ Hello,
+ 
+ 
+-Your Aegir Hosting System has been upgraded to version 0.4-beta2.
++Your Aegir Hosting System has been upgraded to version 0.4-master.
+ 
+ Also your system services and libraries have been upgraded.
+ 
+@@ -22,7 +22,7 @@ Your Aegir control panel is available as before at:
+ * PHP-FPM server upgraded to version 5.2.17
+ * MariaDB server configuration improved.
+ * Memcache extension replaced with memcached and libmemcached.
+-* Drush downgraded to version 6.x-3.3
++* Drush upgraded to version 5.0-dev
+ * Drush Make upgraded to version 2.0-beta11
+ * Your Aegir control panel now runs on Pressflow core.
+ * You can create and manage your own platforms.
+@@ -84,6 +84,9 @@ Your Aegir control panel is available as before at:
+ # Also worth to note
+ ----------------------------------------
+ 
++The "drush dl module" command downloads by default 7.x versions,
++so you need to specify full version if you intend to download 6.x.
++
+ To realize the full speed from our servers, you simply need
+ to enable the module *cache* (it's like cacherouter, but
+ with chained cache - memcache/redis/db with auto-failover)
+diff --git a/aegir/conf/version.txt b/aegir/conf/version.txt
+index 7ede16c..c38e059 100644
+--- a/aegir/conf/version.txt
++++ b/aegir/conf/version.txt
+@@ -1 +1 @@
+-B2.C.dev3
++B2.D.dev1
+diff --git a/aegir/helpers/make_client.php.txt b/aegir/helpers/make_client.php.txt
+index ef86b71..b3fe4f4 100644
+--- a/aegir/helpers/make_client.php.txt
++++ b/aegir/helpers/make_client.php.txt
+@@ -5,7 +5,7 @@
+   $node = new stdClass();
+   $node->uid = 1;
+   $node->type = 'client';
+-  $node->email = $_SERVER[argv][4];
++  $node->email = $_SERVER[argv][3];
+   $node->organization = 'Aegir';
+   $node->status = 1;
+   node_save($node);
+diff --git a/aegir/helpers/make_platform.php.txt b/aegir/helpers/make_platform.php.txt
+index 1ee2512..fa06ce6 100644
+--- a/aegir/helpers/make_platform.php.txt
++++ b/aegir/helpers/make_platform.php.txt
+@@ -5,8 +5,8 @@
+   $node = new stdClass();
+   $node->uid = 1;
+   $node->type = 'platform';
+-  $node->title = $_SERVER[argv][4];
+-  $node->publish_path = $_SERVER[argv][6];
++  $node->title = $_SERVER[argv][3];
++  $node->publish_path = $_SERVER[argv][5];
+   $node->web_server = variable_get('hosting_default_web_server', 2);
+   $node->status = 1;
+   node_save($node);
+@@ -16,10 +16,10 @@
+   // Create the platform profile node
+   $node = new stdClass();
+   $node->uid = 1;
+-  $node->title = $_SERVER[argv][4];
++  $node->title = $_SERVER[argv][3];
+   $node->type = 'package';
+   $node->package_type = 'profile';
+-  $node->short_name = $_SERVER[argv][5];
++  $node->short_name = $_SERVER[argv][4];
+   $node->status = 1;
+   node_save($node);
+ 
+-- 
+1.6.1
+
