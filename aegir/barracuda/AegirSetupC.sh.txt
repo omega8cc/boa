@@ -667,7 +667,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz
   tar -xzf drupal_commons-$_COMMONS.tar.gz
   rm -f drupal_commons-$_COMMONS.tar.gz
-  mv $_CORE/commons $_CORE/drupal_commons-$_COMMONS
+  if [ -d "$_CORE/drupal_commons" ] ; then
+    mv $_CORE/drupal_commons $_CORE/drupal_commons-$_COMMONS
+  else
+    mv $_CORE/commons $_CORE/drupal_commons-$_COMMONS
+  fi
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons-$_COMMONS/ &> /dev/null
   cd $_CORE/drupal_commons-$_COMMONS
   rm -f $_CORE/drupal_commons-$_COMMONS/*.txt
