@@ -288,6 +288,7 @@ _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
 _DRUSH_VERSION=6.x-3.3
+_DRUSH_FAMILY=3
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Avoid too many questions
@@ -1853,6 +1854,7 @@ fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
+  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
@@ -1907,17 +1909,11 @@ mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
 mv -f global.inc.aegir.txt global.inc &> /dev/null
 force_advanced_nginx_config
-### fix for typo http://drupal.org/node/979656
-### cd /var/aegir/.drush/drush_make
-### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-### patch -p0 < drush-remote_make_files.patch &> /dev/null
-
-### backport some Drush 4.x useful and now required commands
-cd /var/aegir/drush
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-patch -p0 < user.drush.inc.patch &> /dev/null
-###
-
+if [ $_DRUSH_FAMILY = "3" ] ; then
+  cd /var/aegir/drush
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+  patch -p0 < user.drush.inc.patch &> /dev/null
+fi
 cd /var/aegir
 sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
 sed -i "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
@@ -1956,6 +1952,7 @@ else
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
@@ -1969,16 +1966,11 @@ else
       mv -f global.inc.aegir.txt global.inc &> /dev/null    
     fi
     force_advanced_nginx_config
-    ### fix for typo http://drupal.org/node/979656
-    ### cd /var/aegir/.drush/drush_make
-    ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-    ### patch -p0 < drush-remote_make_files.patch &> /dev/null
-    ###
-    ### backport some Drush 4.x useful and now required commands
-    cd /var/aegir/drush
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-    patch -p0 < user.drush.inc.patch &> /dev/null
-    ###
+    if [ $_DRUSH_FAMILY = "3" ] ; then
+      cd /var/aegir/drush
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+      patch -p0 < user.drush.inc.patch &> /dev/null
+    fi
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt    
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then

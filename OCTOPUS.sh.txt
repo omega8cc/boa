@@ -233,6 +233,7 @@ _INSTALLER_VERSION=B2.C.dev3
 _WEBG=www-data
 _USRG=users
 _DRUSH_VERSION=6.x-3.3
+_DRUSH_FAMILY=3
 
 ## Distributions
 _COCOMORE=cdc-6.20.12
@@ -296,6 +297,7 @@ do
   sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
   sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
+  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
   sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
   sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
   sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
@@ -319,6 +321,7 @@ done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
+  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
