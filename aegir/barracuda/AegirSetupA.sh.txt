@@ -486,7 +486,7 @@ fi
 #
 msg "$_STATUS A: Set correct permissions"
 mrun "sleep 3"
-chmod 0711 $_AEGIR_ROOT
+chmod 0711 $_AEGIR_ROOT &> /dev/null
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
 chmod 0750 $_ROOT/backups
@@ -617,6 +617,17 @@ fi
 if [ ! -e "$_ROOT/log/backups.access.open" ] ; then 
   sed -i "s/\/$_USER\/static\'\]/\/$_USER\/static\', \'\/data\/disk\/$_USER\/backups\'\]/g" /etc/lshell.conf
   chmod 0750 $_ROOT/backups
+fi
+
+
+###---### Add symlink to the sites backups
+#
+_USERFTP="$_USER.ftp"
+_USER_HD="/home/$_USERFTP"
+if [ ! -L "$_USER_HD/backups" ] ; then
+  msg "$_STATUS A: Add symlink to the sites backups"
+  mrun "sleep 3"
+  ln -s /data/disk/$_USER/backups $_USER_HD/backups
 fi
 
 
