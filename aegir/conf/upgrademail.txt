@@ -1,7 +1,7 @@
 Hello,
 
 
-Your Aegir Hosting System has been upgraded to version 0.4-beta2.
+Your Aegir Hosting System has been upgraded to version 0.4-master.
 
 Also your system services and libraries have been upgraded.
 
@@ -22,7 +22,7 @@ Your Aegir control panel is available as before at:
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
-* Drush downgraded to version 6.x-3.3
+* Drush upgraded to version 5.0-dev
 * Drush Make upgraded to version 2.0-beta11
 * Your Aegir control panel now runs on Pressflow core.
 * You can create and manage your own platforms.
@@ -83,6 +83,9 @@ Your Aegir control panel is available as before at:
 ----------------------------------------
 # Also worth to note
 ----------------------------------------
+
+The "drush dl module" command downloads by default 7.x versions,
+so you need to specify full version if you intend to download 6.x.
 
 To realize the full speed from our servers, you simply need
 to enable the module *cache* (it's like cacherouter, but

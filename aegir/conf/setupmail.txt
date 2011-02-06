@@ -246,7 +246,7 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
-* Drush downgraded to version 6.x-3.3
+* Drush upgraded to version 5.0-dev
 * Drush Make upgraded to version 2.0-beta11
 * Your Aegir control panel now runs on Pressflow core.
 * You can create and manage your own platforms.
@@ -279,6 +279,8 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
 * The standard /update.php works again, however using "drush dbup"
   command is recommended.
 * The "drush mup" command allows now to upgrade contributed modules.
+* The "drush dl module" command downloads by default 7.x versions,
+  so you need to specify full version if you intend to download 6.x.
 
 
 ----------------------------------------
