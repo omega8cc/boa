@@ -1404,9 +1404,13 @@ else
 fi
 if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
   _PHP_INSTALL_REQUIRED=YES
+  msg "INFO: PHP rebuild required to include libcurl4-openssl-dev"
+  mrun "sleep 3"
 fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
+  msg "INFO: PHP rebuild forced"
+  mrun "sleep 3"
 fi
 ###
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
