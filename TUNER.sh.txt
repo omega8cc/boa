@@ -118,7 +118,7 @@ _TUNE_PHP_TIMEOUT=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=0.4-boa-C
+_INSTALLER_VERSION=0.4-boa-D-dev1
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Functions
