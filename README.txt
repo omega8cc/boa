@@ -25,6 +25,10 @@ to install and/or upgrade Aegir Hosting Systems for Drupal.
 ###--------------------------------------------------------------###
 
 
+You can install one Aegir Master Instance on your server using
+Barracuda and any number of Aegir Satellite Instances using
+Octopus installer.
+
 Barracuda is the main script for the base/core Aegir Hosting System
 install and upgrades, including OS env, main Aegir instance,
 but no platforms will be added there to keep it compatible
@@ -45,15 +49,19 @@ trying to install site with the same domain on two or more instances.
 The instances will not be aware of other running instances,
 so it is your responsibility to use such system wisely.
 
+There is also Tuner script available (see TUNER.sh.txt) for easy
+system tuning for development and switching it back easily to the
+standard production settings.
+
 
 ### REQUIREMENTS
 
+* Debian 5.0 Lenny (recommended) minimal OS 32/64bit fresh install, or
 * Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
 * Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
-* Jolicloud Robby for netbooks fresh or existing install, or
-* Debian 5.0 Lenny minimal OS 32/64bit fresh install.
+* Jolicloud Robby for netbooks fresh or existing install.
 * The Git standard port 9418 must be open.
-* 512 MB of RAM or at least 1 GB of RAM for OpenPublish.
+* 512 MB of RAM or 2 GB of RAM for OpenPublish.
 * Basic sysadmin skills and experience.
 
 
@@ -65,14 +73,14 @@ so it is your responsibility to use such system wisely.
 * PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
-* MultiCore Apache Solr with Tomcat.
+* MultiCore Apache Solr with Tomcat (optional).
 * Redis and Memcached chained cache with DB auto-failover.
 * Fast proxy DNS server (pdnsd) with permanent caching.
-* Bind9 DNS server integrated with experimental Aegir DNS feature.
-* Webmin Control Panel.
-* Chive database manager in "chive." subdomain.
-* SQL Buddy database manager in "sqlbuddy." subdomain.
-* Collectd server monitor in "cgp." subdomain.
+* Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
+* Webmin Control Panel (optional).
+* Chive database manager in "chive." subdomain (optional).
+* SQL Buddy database manager in "sqlbuddy." subdomain (optional).
+* Collectd server monitor in "cgp." subdomain (optional).
 * Limited shell and FTPS separate accounts per Octopus instance.
 
 

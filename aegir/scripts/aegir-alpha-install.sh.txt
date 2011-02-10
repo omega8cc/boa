@@ -27,8 +27,7 @@
 # 3. delegate the rest of the install to hostmaster-install
 ########################################################################
 # basic variables, change before release
-AEGIR_VERSION="0.4-beta2"
-
+_AEGIR_VERSION=EDIT_AEGIR_VERSION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
@@ -111,7 +110,7 @@ else
   cd $AEGIR_HOME
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
   gunzip -q -c drush-$_DRUSH_VERSION.tar.gz | tar -xf -
-  rm drush-$_DRUSH_VERSION.tar.gz
+  rm -f drush-$_DRUSH_VERSION.tar.gz
   DRUSH="php $AEGIR_HOME/drush/drush.php"
 fi
 
@@ -127,18 +126,18 @@ if $DRUSH help | grep "^ provision-install" > /dev/null ; then
 else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
-  if [ "$AEGIR_VERSION" = "HEAD" ]; then
+  if [ "$_AEGIR_VERSION" = "HEAD" ]; then
     git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
     _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
     sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make
   else
     cd $AEGIR_HOME/.drush
-    wget -q -U iCab http://files.aegirproject.org/provision-$AEGIR_VERSION.tgz
-    gunzip -q -c provision-$AEGIR_VERSION.tgz | tar -xf -
-    rm provision-$AEGIR_VERSION.tgz
+    wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
+    gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
+    rm -f provision-$_AEGIR_VERSION.tar.gz
   fi
 fi
 
 msg "Installing the frontend"
-AEGIROOT="$AEGIR_HOME/hostmaster-$AEGIR_VERSION"
-$DRUSH hostmaster-install --aegir_host=$AEGIR_HOST --aegir_db_user=$AEGIR_DB_USER --aegir_db_pass=$AEGIR_DB_PASS --aegir_root=$AEGIR_HOME --root=$AEGIROOT --version=$AEGIR_VERSION $@
+AEGIROOT="$AEGIR_HOME/hostmaster-$_AEGIR_VERSION"
+$DRUSH hostmaster-install --aegir_host=$AEGIR_HOST --aegir_db_user=$AEGIR_DB_USER --aegir_db_pass=$AEGIR_DB_PASS --aegir_root=$AEGIR_HOME --root=$AEGIROOT --version=$_AEGIR_VERSION $@

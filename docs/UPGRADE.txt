@@ -1,13 +1,13 @@
 
-### To upgrade OS/libraries/services and/or optionally core Aegir instance:
+### To upgrade OS/libraries/services and/or optionally Aegir Master Instance:
 #
-$ cd; wget http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
-$ cd; nano BARRACUDA.sh.txt (edit your e-mail address)
-$ cd; bash BARRACUDA.sh.txt (say Y/n on prompt for upgrade of hostmaster)
+$ wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
+$ nano BARRACUDA.sh.txt (edit your e-mail address)
+$ bash BARRACUDA.sh.txt (say Y/n on prompt for upgrade of hostmaster)
 
 
-### To upgrade any Aegir non-core instance and/or platforms selectively:
+### To upgrade any Aegir Satellite Instance and/or platforms selectively:
 #
-$ cd; wget http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
-$ cd; nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name of upgraded instance)
-$ cd; bash OCTOPUS.sh.txt (say Y/n on prompts for upgrade of hostmaster and/or platforms)
+$ wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
+$ nano OCTOPUS.sh.txt (edit only your e-mail address and username of upgraded instance)
+$ bash OCTOPUS.sh.txt (say Y/n on prompts for upgrade of hostmaster and/or platforms)

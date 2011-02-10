@@ -186,7 +186,8 @@ want to work with our optimized caching systems turned off.
 There is a speed-auto-switch available for dev/prod environments.
 Any site you create/access with *dev* in the subdomain, will have
 all caching and css/js aggregation disabled automatically,
-while all PHP errors (including critical wsod) enabled.
+while all PHP errors and notices enabled for easier debugging of
+issues, including those causing WSOD.
 
 You don't need to rename the site to be able to work on it
 in the "dev" mode. Simply add a *dev* domain alias and

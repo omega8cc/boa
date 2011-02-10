@@ -36,6 +36,34 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
+### DEBUG MODE SWITCH (available)          ###
+###----------------------------------------###
+###
+### Use this when you experience silent hangs
+### or other hard to debug problems to display
+### some errors on screen.
+###
+### _DEBUG_MODE=YES
+###
+_DEBUG_MODE=NO
+
+
+###----------------------------------------###
+### AEGIR BARRACUDA VERSION                ###
+###----------------------------------------###
+###
+### By default latest release version will
+### be installed. Please never use HEAD (dev)
+### version on any production server.
+### The HEAD can be occasionally broken
+### and should be used **only** for testing!
+###
+### _AEGIR_VERSION=HEAD
+###
+_AEGIR_VERSION=0.4-boa-C
+
+
+###----------------------------------------###
 ### SSH CUSTOM PORT                        ###
 ###----------------------------------------###
 ###
@@ -64,32 +92,6 @@ _SSH_PORT=22
 ###
 _LOCAL_DEBIAN_MIRROR=""
 _LOCAL_UBUNTU_MIRROR=""
-
-
-###----------------------------------------###
-### DEBUG MODE SWITCH (available)          ###
-###----------------------------------------###
-###
-### Use this when you experience silent hangs
-### or other hard to debug problems to display
-### some errors on screen.
-###
-### _DEBUG_MODE=YES
-###
-_DEBUG_MODE=NO
-
-
-###----------------------------------------###
-### AEGIR VERSION                          ###
-###----------------------------------------###
-###
-### By default the current HEAD version will
-### be installed, but if you prefer, you can
-### change it below to:
-###
-### _AEGIR_VERSION=0.4-beta2
-###
-_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -282,7 +284,7 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B2.C.dev3
+_INSTALLER_VERSION=0.4-boa-C
 _NGINX_VERSION=0.9.3
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
@@ -458,13 +460,20 @@ fix_on_upgrade () {
   cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    sed -i "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
+    perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
   cd /etc/mysql
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
+  if [ ! -e "/var/log/nginx_config_fixed" ] ; then
+    cd /var/aegir
+    sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
+    perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
+    perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
+    touch /var/log/nginx_config_fixed
+  fi
 }
 #
 # Force advanced Nginx configuration
@@ -649,7 +658,14 @@ sleep 3
 # Git clone all
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
-git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+  git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+else
+  wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  gunzip -q -c nginx-for-drupal-$_AEGIR_VERSION.tar.gz | tar -xf -
+  rm -f nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  _BOA_REPO_NAME="nginx-for-drupal"
+fi
 #
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
   echo " "
@@ -1449,6 +1465,9 @@ sed -i "s/php_fpm_CONF\"/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbi
 sed -i "s/\/usr\/local\/etc\/php-fpm.conf/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
 sed -i "s/\/usr\/local\/logs\/php-fpm.pid/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
 echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
+cd /usr/local/sbin
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
+chmod 755 php-fpm
 
 
 ###--------------------###
@@ -1848,11 +1867,13 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
 elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
   _AEGIR_SCRIPT="aegir-test-install"
   _DRUSH_VERSION=All-Versions-HEAD
+  _DRUSH_FAMILY=5
 else
   _AEGIR_SCRIPT="aegir-alpha-install"
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
+  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
   sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
@@ -1877,6 +1898,7 @@ su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
 msg "INFO: Running hosting-dispatch (3/3), please wait..."
 mrun "sleep 8"
 su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
 
 
 ###--------------------###
@@ -1916,8 +1938,8 @@ if [ $_DRUSH_FAMILY = "3" ] ; then
 fi
 cd /var/aegir
 sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
-sed -i "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
-sed -i "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
+perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -1991,6 +2013,7 @@ else
     msg "INFO: core Aegir Hostmaster instance not upgraded this time"
     mrun "sleep 3"
   fi
+  rm -f /var/aegir/*install.sh.txt
 ###
 fi ### end of if [ $_STATUS = "INIT" ] ; then
 ###
@@ -2396,6 +2419,12 @@ echo "[client]" >> /root/.my.cnf
 echo "user=root" >> /root/.my.cnf
 echo "password=$PASWD" >> /root/.my.cnf
 chmod 0600 /root/.my.cnf &> /dev/null
+if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
+  perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
+  touch /var/log/check_for_crashed_tables_disabled
+  st_runner "invoke-rc.d mysql restart" &> /dev/null
+  mrun "sleep 3"
+fi
 msg "INFO: MariaDB setup completed"
 msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
 fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
@@ -2422,8 +2451,6 @@ if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
-  mrun "sleep 3"
-  st_runner "invoke-rc.d nginx restart" &> /dev/null
 else
   st_runner "invoke-rc.d nginx reload" &> /dev/null
 fi

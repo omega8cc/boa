@@ -118,7 +118,7 @@ _TUNE_PHP_TIMEOUT=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B2.C.dev3
+_INSTALLER_VERSION=0.4-boa-C
 _NOW=`date +%y%m%d-%H%M`
 
 ###---### Functions
@@ -323,7 +323,14 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
-git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+  git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+else
+  wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  gunzip -q -c nginx-for-drupal-$_AEGIR_VERSION.tar.gz | tar -xf -
+  rm -f nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  _BOA_REPO_NAME="nginx-for-drupal"
+fi
 #
 # Get spinner
 cd $_SRCDIR

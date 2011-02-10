@@ -64,6 +64,21 @@ _DEBUG_MODE=NO
 
 
 ###----------------------------------------###
+### AEGIR BARRACUDA VERSION                ###
+###----------------------------------------###
+###
+### By default latest release version will
+### be installed. Please never use HEAD (dev)
+### version on any production server.
+### The HEAD can be occasionally broken
+### and should be used **only** for testing!
+###
+### _AEGIR_VERSION=HEAD
+###
+_AEGIR_VERSION=0.4-boa-C
+
+
+###----------------------------------------###
 ### DATABASE CUSTOM HOST                   ###
 ###----------------------------------------###
 ###
@@ -108,19 +123,6 @@ _THIS_DB_HOST=FQDN
 ### There is no guarantee it will work.
 ###
 _DNS_SETUP_TEST=YES
-
-
-###----------------------------------------###
-### AEGIR VERSION                          ###
-###----------------------------------------###
-###
-### By default the current HEAD version will
-### be installed, but if you prefer, you can
-### change it below to:
-###
-### _AEGIR_VERSION=0.4-beta2
-###
-_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -227,7 +229,7 @@ _LOCAL_NETWORK_IP=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=B2.C.dev3
+_INSTALLER_VERSION=0.4-boa-C
 
 ## System
 _WEBG=www-data
@@ -320,6 +322,7 @@ do
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
+  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
   sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
@@ -440,7 +443,14 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
-git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+  git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+else
+  wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  gunzip -q -c nginx-for-drupal-$_AEGIR_VERSION.tar.gz | tar -xf -
+  rm -f nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  _BOA_REPO_NAME="nginx-for-drupal"
+fi
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
   echo " "
   msg "EXIT on error due to missing helpers."

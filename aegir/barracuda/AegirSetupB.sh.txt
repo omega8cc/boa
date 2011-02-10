@@ -272,26 +272,15 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
     rm -f drush_make-6.x-2.0-beta11.tar.gz
   fi
 else
-  wget -q -U iCab http://files.aegirproject.org/provision-$_AEGIR_VERSION.tgz
-  tar -xzf provision-$_AEGIR_VERSION.tgz
-  rm provision-$_AEGIR_VERSION.tgz
+  wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
+  tar -xzf provision-$_AEGIR_VERSION.tar.gz
+  rm provision-$_AEGIR_VERSION.tar.gz
   if [ $_STATUS = "UPGRADE" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.0-beta11.tar.gz
     tar -xzf drush_make-6.x-2.0-beta11.tar.gz
     rm -f drush_make-6.x-2.0-beta11.tar.gz
   fi
 fi
-# cd $_ROOT/.drush
-# if ! netcat -w 8 -z git.koumbit.net 9418 ; then
-#   _KOUMBIT_WORKS="NO"
-# else
-#   git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
-# fi
-# if [ $_STATUS = "UPGRADE" ] ; then
-#   cd $_ROOT/.drush/drush_make
-#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-#   patch -p0 < drush-remote_make_files.patch &> /dev/null
-# fi
 
 
 ###---### Build Aegir base
@@ -419,8 +408,13 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mv -f make_home.php.txt make_home.php &> /dev/null
   $DRUSHC php-script make_home &> /dev/null
   rm -f make_home.php
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
-  mv -f make_client.php.txt make_client.php &> /dev/null
+  if [ $_DRUSH_FAMILY = "3" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client_3.php.txt ./
+    mv -f make_client_3.php.txt make_client.php &> /dev/null
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
+    mv -f make_client.php.txt make_client.php &> /dev/null  
+  fi
   $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
   rm -f make_client.php
   $DRUSHC urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null

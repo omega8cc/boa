@@ -5,16 +5,16 @@
 * Don't run any system updates before running Barracuda installer. You should use vanilla system.
 
 
-### Installing Barracuda (main system and core Aegir instance):
+### Installing Barracuda (main system and Aegir Master Instance):
 #
-$ cd; wget http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
-$ cd; nano BARRACUDA.sh.txt (edit your e-mail address, IP and hostname)
-$ cd; bash BARRACUDA.sh.txt
+$ wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
+$ nano BARRACUDA.sh.txt (edit your e-mail address, IP and hostname)
+$ bash BARRACUDA.sh.txt
 
 
-### Optional: If in addition you want a separate instance of Aegir preloaded with platforms
+### Optional: If in addition you want an Aegir Satellite Instance(s) preloaded with platforms
 #             you will need to run OCTOPUS.sh.txt after running BARRACUDA.sh.txt
 #
-$ cd; wget http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
-$ cd; nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name)
-$ cd; bash OCTOPUS.sh.txt
+$ wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
+$ nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name)
+$ bash OCTOPUS.sh.txt

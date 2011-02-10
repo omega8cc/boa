@@ -275,35 +275,6 @@ chmod 0711 $_ROOT/distro &> /dev/null
 chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 
-###---### Fixing problems
-#
-# Feature Server broken due to required now ctools fix
-#
-# if ! netcat -w 8 -z code.aegir.cc 80 ; then
-#   _GITORIOUS_WORKS="NO"
-# else
-# REVISIONS="001 002 003 004 005 006 007 008 009"
-# for i in $REVISIONS; do
-#   if [ -d "/data/all/$i/fserver" ] ; then
-#     if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/ctools" ] ; then
-#       cd; drush dl ctools --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
-#       cd /data/all/$i/fserver/profiles/feature_server
-#       rm -f feature_server.make
-#       rm -f feature_server.profile
-#       wget -q -U iCab http://code.aegir.cc/aegir/feature_server/blobs/raw/master/feature_server.make
-#       wget -q -U iCab http://code.aegir.cc/aegir/feature_server/blobs/raw/master/feature_server.profile
-#       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
-#         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-#         cd _THIS_HOSTMASTER &> /dev/null
-#         drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
-#       fi
-#     fi
-#   fi
-# done
-# fi
-# cd
-
-
 ###---### Prepare Pressflow core
 #
 if [ $_STATUS = "INIT" ] ; then
@@ -1029,102 +1000,107 @@ else
   cd $_THIS_HOSTMASTER
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
-mv -f make_platform.php.txt make_platform.php &> /dev/null
+if [ $_DRUSH_FAMILY = "3" ] ; then
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform_3.php.txt ./
+  mv -f make_platform_3.php.txt make_platform.php &> /dev/null
+else
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
+  mv -f make_platform.php.txt make_platform.php &> /dev/null
+fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_THIS_CORE/openatrium &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_COCOMORE/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_THIS_CORE/$_COCOMORE &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_THIS_CORE/managingnews &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar_make" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar_make/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENSCHOLAR_MAKE" openscholar $_ROOT/distro/$_THIS_CORE/openscholar_make &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/uberdrupal/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/uberdrupal &> /dev/null
-    mrun "sleep 2"
+    mrun "sleep 3"
   fi
 fi
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
