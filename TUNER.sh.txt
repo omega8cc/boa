@@ -166,7 +166,7 @@ st_runner () {
 		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
 		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
 		echo "command first and choose default answer, then run this installer again."
-		echo " "
+		echo
 		tail -15 $_LOG
 		return 1
 	fi
@@ -348,7 +348,7 @@ _SILENT=/opt/tmp/silent.log
 ###---### Tune Your Aegir Hosting System
 #
 mrun "sleep 3"
-echo " "
+echo
 msg "TUNER START -> checkpoint: "
 cat <<EOF
 
@@ -360,7 +360,7 @@ cat <<EOF
   * PHP server timeout will be set to $_TUNE_PHP_TIMEOUT seconds
 
 EOF
-echo " "
+echo
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
   true
   msg "STATUS: We will stop cron and then wait 30 seconds..."

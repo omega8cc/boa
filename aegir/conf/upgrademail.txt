@@ -1,7 +1,7 @@
 Hello,
 
 
-Your Aegir Hosting System has been upgraded to version 0.4-beta2.
+Your Aegir Hosting System has been upgraded to version 0.4-boa-D-dev1.
 
 Also your system services and libraries have been upgraded.
 

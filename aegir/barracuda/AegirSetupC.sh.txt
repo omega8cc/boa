@@ -398,7 +398,7 @@ fi
 
 ###---### Acquia
 #
-echo " "
+echo
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA install in progress, please wait..."
@@ -428,7 +428,7 @@ fi
 
 ###---### Open Atrium
 #
-echo " "
+echo
 if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
 true
 msg "STATUS: $_F_ATRIUM install in progress, please wait..."
@@ -460,7 +460,7 @@ fi
 
 ###---### Open Atrium Make
 #
-# echo " "
+# echo
 # if prompt_yes_no "$_F_ATRIUM_DEV - http://openatrium.com" ; then
 # true
 # msg "STATUS: $_F_ATRIUM_DEV install in progress, please wait..."
@@ -498,7 +498,7 @@ fi
 ###---### Drupal 5 Pressflow
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-echo " "
+echo
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL5 install in progress, please wait..."
@@ -528,7 +528,7 @@ fi
 
 ###---### Pressflow
 #
-echo " "
+echo
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
@@ -556,7 +556,7 @@ fi
 
 ###---### Drupal 7
 #
-echo " "
+echo
 if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/project/drupal" ; then
 true
 msg "STATUS: $_F_DRUPAL7 install in progress, please wait..."
@@ -594,7 +594,7 @@ fi
 ###---### Cocomore Drupal
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-echo " "
+echo
 if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
 true
 msg "STATUS: $_F_COCOMORE install in progress, please wait..."
@@ -628,7 +628,7 @@ fi
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
-echo " "
+echo
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "STATUS: $_F_COMMONS install in progress, please wait..."
@@ -672,7 +672,7 @@ fi
 
 ###---### Feature Server Make
 #
-echo " "
+echo
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
 msg "STATUS: $_F_FSERVER install in progress, please wait..."
@@ -709,7 +709,7 @@ fi
 
 ###---### ManagingNews
 #
-echo " "
+echo
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
 msg "STATUS: $_F_MANAGINGNEWS install in progress, please wait..."
@@ -738,7 +738,7 @@ fi
 
 ###---### Managing News Make
 #
-# echo " "
+# echo
 # if prompt_yes_no "$_F_MANAGINGNEWS_DEV - http://managingnews.com" ; then
 # true
 # msg "STATUS: $_F_MANAGINGNEWS_DEV install in progress, please wait..."
@@ -774,7 +774,7 @@ fi
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
-echo " "
+echo
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
 msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
@@ -811,7 +811,7 @@ fi
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
-echo " "
+echo
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
 msg "STATUS: $_F_OPENSCHOLAR install in progress, please wait..."
@@ -855,7 +855,7 @@ fi
 
 ###---## Open Scholar Make
 #
-# echo " "
+# echo
 # if prompt_yes_no "$_F_OPENSCHOLAR_MAKE - http://openscholar.com" ; then
 # true
 # msg "STATUS: $_F_OPENSCHOLAR_MAKE install in progress, please wait..."
@@ -893,7 +893,7 @@ fi
 ###---### Prosepoint
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-echo " "
+echo
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
 msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
@@ -924,7 +924,7 @@ fi
 
 ###---### Ubercart
 #
-echo " "
+echo
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBERCART install in progress, please wait..."
@@ -954,7 +954,7 @@ fi
 
 ###---### remove some module and themes for all
 #
-echo " "
+echo
 msg "$_STATUS C: remove some default themes for all"
 mrun "sleep 2"
 rm -f -r $_CORE/o_contrib/image

@@ -452,12 +452,12 @@ else
   _BOA_REPO_NAME="nginx-for-drupal"
 fi
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
-  echo " "
+  echo
   msg "EXIT on error due to missing helpers."
   msg "Please try to run this script again in a few minutes."
   msg "Also, make sure the git port 9418 is open."
   msg "Bye."
-  echo " "
+  echo
   exit 1
 fi
 #
@@ -647,7 +647,7 @@ else
 fi
 #
 #
-echo " "
+echo
 msg "START -> checkpoint: "
 cat <<EOF
 
@@ -658,7 +658,7 @@ cat <<EOF
   * Your Aegir user for this instance will be $_USER.
     
 EOF
-echo " "
+echo
 if prompt_yes_no "Do you want to proceed with the setup?" ; then
   true
 else

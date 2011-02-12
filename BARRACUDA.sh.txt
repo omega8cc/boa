@@ -378,7 +378,7 @@ runner () {
 		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
 		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
 		echo "command first and choose default answer, then run this installer again."
-		echo " "
+		echo
 		tail -15 $_LOG
 		return 1
 	fi
@@ -413,7 +413,7 @@ st_runner () {
 		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
 		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
 		echo "command first and choose default answer, then run this installer again."
-		echo " "
+		echo
 		tail -15 $_LOG
 		return 1
 	fi
@@ -544,7 +544,7 @@ cat <<EOF
     
 EOF
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
-  echo " "
+  echo
   exit 1
   fi
 fi
@@ -668,12 +668,12 @@ else
 fi
 #
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
-  echo " "
+  echo
   msg "EXIT on error due to missing helpers."
   msg "Please try to run this script again in a few minutes."
   msg "Also, make sure the git port 9418 is open."
   msg "Bye."
-  echo " "
+  echo
   exit 1
 fi
 # Get apt helper
@@ -760,9 +760,9 @@ elif [ $_THIS_OS = "Jolicloud" ] ; then
 else
   not_supported_os
 fi
-echo " "
+echo
 msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
-echo " "
+echo
 mrun "sleep 3"
 	
 
@@ -885,7 +885,7 @@ if [ $_THISHOST = "localhost" ] ; then
   exit 1
 fi
 if [ "$_FQDNTEST" = "FALSE" ] ; then
-echo " "
+echo
 msg "EXIT on error due to invalid DNS setup."
 if [ ! -z "$_MY_OWNIP" ] ; then
 cat <<EOF
@@ -919,7 +919,7 @@ cat <<EOF
     
 EOF
 msg "EXIT on error due to invalid DNS setup."
-echo " "
+echo
 exit 1
 else
 echo "$_THISHOST" > /etc/hostname
@@ -929,7 +929,7 @@ msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THI
 msg "Please double check whether this is a valid result of my test."
 fi
 mrun "sleep 3"
-echo " "
+echo
 msg "INSTALL START -> checkpoint: "
 cat <<EOF
 
@@ -954,7 +954,7 @@ cat <<EOF
         if you didn't enable wildcard DNS yet. Barracuda can install it all now, anyway.
 
 EOF
-echo " "
+echo
 if prompt_yes_no "Do you want to proceed with the install?" ; then
   true
 else
@@ -971,11 +971,11 @@ else ### if [ $_STATUS = "UPGRADE" ] ; then
   else
     msg "EXIT on error due to not found or not specified Aegir domain."
     msg "Please specify your previously working Aegir domain as a value of _MY_FRONT."
-    echo " "
+    echo
     exit 1
   fi
   mrun "sleep 3"
-  echo " "
+  echo
   msg "UPGRADE START -> checkpoint: "
 cat <<EOF
 
@@ -984,7 +984,7 @@ cat <<EOF
     * Your Aegir control panel is/will be available at http://$_THIS_FRONT.
     
 EOF
-  echo " "
+  echo
   if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
     true
   else
@@ -1050,9 +1050,9 @@ if [ ! -e "/var/log/apt-fast-install-log.txt" ] ; then
       cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-      echo " "
+      echo
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
-      echo " "
+      echo
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_UBUNTU_MIRROR
@@ -1086,9 +1086,9 @@ if [ ! -e "/var/log/apt-fast-install-log.txt" ] ; then
       cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-      echo " "
+      echo
       prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
-      echo " "
+      echo
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_DEBIAN_MIRROR
@@ -1484,7 +1484,7 @@ if [ -e "/var/opt/libmemcached-0.44" ] ; then
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
-  msg "INFO: libmemcached installed"
+  #msg "INFO: OK libmemcached installed"
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://omega8.cc/dev/memcached-1.0.2.tgz
@@ -1496,7 +1496,7 @@ if [ -e "/var/opt/libmemcached-0.44" ] ; then
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
-    msg "INFO: memcached installed"
+    #msg "INFO: OK memcached installed"
     mrun "sleep 3"
   fi
 fi
@@ -1597,7 +1597,7 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
-    msg "INFO: libmemcached installed"
+    #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
     wget -q -U iCab http://omega8.cc/dev/memcached-1.0.2.tgz
@@ -1609,7 +1609,7 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
-      msg "INFO: memcached installed"
+      #msg "INFO: OK memcached installed"
       mrun "sleep 3"
     fi
   fi
@@ -1845,7 +1845,7 @@ cat <<EOF
     
 EOF
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
-  echo " "
+  echo
   exit 1
 fi
 
@@ -1953,7 +1953,7 @@ mrun "sleep 3"
 msg "INFO: Core Aegir Hostmaster instance installation completed"
 mrun "sleep 3"
 else
-  echo " "
+  echo
   if prompt_yes_no "Do you want to upgrade core Aegir Hostmaster instance?" ; then
     true
     mrun "sleep 3"
@@ -2111,7 +2111,7 @@ fi
 
 ###--------------------###
 if [ ! -d "/opt/solr" ] ; then
-  echo " "
+  echo
   if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
     true
     msg "INFO: Installing MultiCore Apache Solr Tomcat, please wait..."
@@ -2141,7 +2141,7 @@ fi
 
 ###--------------------###
 if [ ! -d "/var/www/chive" ] ; then
-  echo " "
+  echo
   if prompt_yes_no "Do you want to install Chive MariaDB Manager?" ; then
     true
     msg "INFO: Installing Chive MariaDB Manager, please wait..."
@@ -2155,7 +2155,7 @@ if [ ! -d "/var/www/chive" ] ; then
     if [ -z "$_THISHTIP" ] ; then
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
     fi
-    echo " " > $_CHIVE_VHOST
+    echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
     echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
     echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
@@ -2165,7 +2165,7 @@ if [ ! -d "/var/www/chive" ] ; then
     echo "   index        index.php index.html;" >> $_CHIVE_VHOST
     echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
     echo "}" >> $_CHIVE_VHOST
-    echo " " >> $_CHIVE_VHOST
+    echo >> $_CHIVE_VHOST
     touch /var/log/chive_0.4.0.log
     msg "INFO: Chive MariaDB Manager installation completed"
     mrun "sleep 2"
@@ -2201,7 +2201,7 @@ fi
 
 ###--------------------###
 if [ ! -d "/var/www/sqlbuddy" ] ; then
-  echo " "
+  echo
   if prompt_yes_no "Do you want to install SQL Buddy MariaDB Manager?" ; then
     true
     msg "INFO: Installing SQL Buddy MariaDB Manager, please wait..."
@@ -2215,7 +2215,7 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     if [ -z "$_THISHTIP" ] ; then
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
     fi
-    echo " " > $_SQLBUDDY_VHOST
+    echo > $_SQLBUDDY_VHOST
     echo "server {" >> $_SQLBUDDY_VHOST
     echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
     echo "   limit_conn   gulag 10;" >> $_SQLBUDDY_VHOST
@@ -2225,7 +2225,7 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo "   index        index.php index.html;" >> $_SQLBUDDY_VHOST
     echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
     echo "}" >> $_SQLBUDDY_VHOST
-    echo " " >> $_SQLBUDDY_VHOST
+    echo >> $_SQLBUDDY_VHOST
     msg "INFO: SQL Buddy MariaDB Manager installation completed"
     mrun "sleep 2"
   else
@@ -2245,7 +2245,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
  if [ ! -d "/var/www/cgp" ] ; then
-  echo " "
+  echo
   if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
     true
     msg "INFO: Installing Collectd Graph Panel, please wait..."
@@ -2259,7 +2259,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ -z "$_THISHTIP" ] ; then
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
     fi
-    echo " " > $_CGP_VHOST
+    echo > $_CGP_VHOST
     echo "server {" >> $_CGP_VHOST
     echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
     echo "   limit_conn   gulag 10;" >> $_CGP_VHOST
@@ -2269,7 +2269,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo "   index        index.php index.html;" >> $_CGP_VHOST
     echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
     echo "}" >> $_CGP_VHOST
-    echo " " >> $_CGP_VHOST
+    echo >> $_CGP_VHOST
     msg "INFO: Collectd Graph Panel installation completed"
     mrun "sleep 2"
   else
@@ -2289,7 +2289,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/usr/sbin/named" ] ; then
-  echo " "
+  echo
   if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
     true
     msg "INFO: Installing Bind9 DNS Server, please wait..."
@@ -2319,7 +2319,7 @@ fi
 
 ###--------------------###
 if [ ! -d "/etc/webmin" ] ; then
-  echo " "
+  echo
   if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
     true
     msg "INFO: Installing Webmin Control Panel, please wait..."
@@ -2393,13 +2393,13 @@ fi
 if [ ! -e "/root/.my.cnf" ] ; then
 msg "INFO: MariaDB final setup"
 mrun "sleep 3"
-echo " "
+echo
 msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
-echo " "
+echo
 echo --------vvvvvvvv--------
 echo ------- $PASWD -------
 echo --------^^^^^^^^--------
-echo " "
+echo
 msg "Please remember, you don't have the root password for MariaDB set yet."
 cat <<EOF
 
@@ -2408,10 +2408,10 @@ cat <<EOF
  * Then say Y on all remaining questions.
 
 EOF
-echo " "
+echo
 msg "...waiting now 30 sec before running interactive mysql_secure_installation..."
-echo " "
-echo " "
+echo
+echo
 mrun "sleep 30"
 mysql_secure_installation
 mrun "sleep 3"
@@ -2436,10 +2436,10 @@ if [ $_STATUS = "INIT" ] ; then
   cd /var/aegir/config/includes
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
   touch installer_version.txt
-  echo " "
+  echo
   _AEGIR__LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
   msg "ACCESS -> $_AEGIR__LOGIN_URL"
-  echo " "
+  echo
   mrun "sleep 3"
 fi
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
