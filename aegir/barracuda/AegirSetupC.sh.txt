@@ -654,6 +654,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1045778-fix-aegir-installs.patch &> /dev/null
     mrun "sleep 2"
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
+    cd $_CORE/drupal_commons-$_COMMONS
   fi
   create_dirs
 fi
