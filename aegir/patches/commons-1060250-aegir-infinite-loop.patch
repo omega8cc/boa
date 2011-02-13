@@ -1,0 +1,39 @@
+diff --git a/docroot/profiles/drupal_commons/drupal_commons.profile b/docroot/profiles/drupal_commons/drupal_commons.profile
+index 57b5089..ae0ffbd 100644
+--- a/docroot/profiles/drupal_commons/drupal_commons.profile
++++ b/docroot/profiles/drupal_commons/drupal_commons.profile
+@@ -116,7 +116,33 @@ function drupal_commons_profile_tasks(&$task, $url) {
+   
+   // Provide a form to choose features
+   if ($task == 'configure-commons') {
+-    $output = drupal_get_form('drupal_commons_features_form', $url);
++    if (defined('DRUSH_BASE_PATH')) {
++      // Set some sane defaults
++      $features = array(
++        'commons_core',
++        'commons_home',
++        'commons_blog',
++        'commons_discussion',
++        'commons_document',
++        'commons_wiki',
++        'commons_poll',
++        'commons_event',
++        'commons_dashboard',
++        'commons_notifications',
++        'commons_reputation',
++        'commons_group_aggregator',
++        'commons_admin',
++        'commons_seo'
++      );
++      variable_set('commons_selected_features', $features);
++  
++      // Initiate the next installation step
++      $task = 'install-commons';
++      variable_set('install_task', $task);
++    }
++    else {
++      $output = drupal_get_form('drupal_commons_features_form', $url);
++    }
+   }
+   
+   // Installation batch process
