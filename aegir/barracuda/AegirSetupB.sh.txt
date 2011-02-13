@@ -81,7 +81,7 @@ success () {
 #
 # Error msg
 fatal () {
-	echo
+	echo " "
 	msg "Fatal Error Occurred: $1"
 	msg "Cannot continue installation."
 	exit 1
@@ -101,7 +101,7 @@ runner () {
 		rm busy
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
-		echo
+		echo " "
 		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
 		tail -15 $_LOG
 		return 1

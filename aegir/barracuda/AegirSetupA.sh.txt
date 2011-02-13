@@ -88,7 +88,7 @@ success () {
 #
 # Error msg
 fatal () {
-	echo
+	echo " "
 	msg "Fatal Error Occurred: $1"
 	msg "Cannot continue installation."
 	exit 1
@@ -108,7 +108,7 @@ runner () {
 		rm busy
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
-		echo
+		echo " "
 		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
 		tail -15 $_LOG
 		return 1
@@ -327,7 +327,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
   msg "$_STATUS A: Aegir Hostmaster instance install completed"
 else
-  echo
+  echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Hostmaster instance?" ; then
     true
     mrun "sleep 3"
@@ -509,7 +509,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
   msg "$_STATUS A: Distributions install completed"
 else
-  echo
+  echo " "
   if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
     true
     _DIST_INSTALL=YES
@@ -824,10 +824,10 @@ mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
-  echo
+  echo " "
   _AEGIR__LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
   msg "ACCESS -> $_AEGIR__LOGIN_URL"
-  echo
+  echo " "
   mrun "sleep 3"
 fi
 msg "BYE!"

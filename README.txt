@@ -56,12 +56,14 @@ standard production settings.
 
 ### REQUIREMENTS
 
-* Debian 5.0 Lenny (recommended) minimal OS 32/64bit fresh install, or
+* Debian 6.0 Squeeze (recommended) minimal OS 32/64bit fresh install, or
+* Debian 5.0 Lenny minimal OS 32/64bit fresh install, or
+* Ubuntu Maverick 10.10 minimal OS 32/64bit fresh install, or
 * Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
 * Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
 * Jolicloud Robby for netbooks fresh or existing install.
 * The Git standard port 9418 must be open.
-* 512 MB of RAM or 2 GB of RAM for OpenPublish.
+* Minimum 512 MB of RAM or minimum 2 GB of RAM for OpenPublish.
 * Basic sysadmin skills and experience.
 
 
