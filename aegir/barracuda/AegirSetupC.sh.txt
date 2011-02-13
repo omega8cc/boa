@@ -648,8 +648,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/drupal_commons-$_COMMONS
   rm -f $_CORE/drupal_commons-$_COMMONS/*.txt
   if [ $_COMMONS = "6.x-1.3" ] ; then
-    sed -i "s/\$logo =/\/\/\$logo =/g" $_CORE/drupal_commons-$_COMMONS/profiles/drupal_commons/drupal_commons.profile
-    sed -i "s/\$description /\/\/\$description /g" $_CORE/drupal_commons-$_COMMONS/profiles/drupal_commons/drupal_commons.profile
+    cd $_CORE/drupal_commons-$_COMMONS/profiles/drupal_commons
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1045778-fix-aegir-installs.patch ./
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1060250-aegir-infinite-loop.patch ./
+    patch -p1 < commons-1045778-fix-aegir-installs.patch &> /dev/null
+    mrun "sleep 2"
+    patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
   fi
   create_dirs
 fi

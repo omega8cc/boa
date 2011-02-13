@@ -59,8 +59,9 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=0.4-boa-C
 ###
-_AEGIR_VERSION=0.4-boa-C
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
