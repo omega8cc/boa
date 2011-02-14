@@ -422,16 +422,23 @@ st_runner () {
 #
 # Install Redis from sources
 install_redis_src () {
-  msg "INFO: Installing Redis for $_THIS_OS/$_THIS_RV, please wait..."
+  msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
   mrun "sleep 3"
-  st_runner "adduser --system --group redis"
+  if [ ! -e "/var/lib/redis" ] ; then
+    st_runner "adduser --system --group redis" 2> /dev/null
+  fi
   cd /var/opt
   rm -f -r /var/opt/redis*
-  wget -q -U iCab http://redis.googlecode.com/files/redis-2.0.1.tar.gz
-  tar -xzf redis-2.0.1.tar.gz
-  cd redis-2.0.1
+  wget -q -U iCab http://redis.googlecode.com/files/redis-2.2.0-rc4.tar.gz
+  tar -xzf redis-2.2.0-rc4.tar.gz
+  cd redis-2.2.0-rc4
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
+  if [ -e "/var/lib/redis" ] ; then
+    st_runner "invoke-rc.d redis-server stop" &> /dev/null
+    mrun "sleep 5"
+    killall -9 redis-server &> /dev/null
+  fi
   cd /usr/local/bin
   cp -p redis-server /usr/bin/
   cp -p redis-benchmark /usr/bin/
@@ -450,6 +457,7 @@ install_redis_src () {
   mkdir -p /var/lib/redis
   chown redis:redis /var/lib/redis
   st_runner "invoke-rc.d redis-server start" &> /dev/null
+  touch /var/log/redis-2.2.0-rc4.log
 }
 #
 # Fix this on upgrade
