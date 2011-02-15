@@ -170,6 +170,36 @@ create_shared_dirs () {
   chown -R $_USER:$_USRG /data/conf &> /dev/null
   chmod 755 $_CORE /data/all /data/src /data /data/conf &> /dev/null
 }
+#
+###---### Fixing problems
+#
+# Feature Server broken due to required now strongarm fix
+#
+fix_platforms_issues () {
+if [ ! -e "/var/log/platforms-fixed-007.log" ] ; then
+REVISIONS="001 002 003 004 005 006 007 008 009"
+for i in $REVISIONS; do
+  if [ -d "/data/all/$i/fserver" ] ; then
+    if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
+      cd; drush dl strongarm-6.x-2.0 --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
+      cd /data/all/$i/fserver/profiles/feature_server
+      rm -f feature_server.make
+      rm -f feature_server.profile
+      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.make
+      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.profile
+      if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+        _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+        cd _THIS_HOSTMASTER &> /dev/null
+        drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
+      fi
+    fi
+  fi
+done
+touch /var/log/platforms-fixed-007.log
+cd
+fi
+}
+
 
 msg "$_STATUS A: Welcome `uname -a`"
 mrun "sleep 3"
