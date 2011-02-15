@@ -468,7 +468,7 @@ install_redis_src () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./
   chmod 755 redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
-  mkdir /etc/redis
+  mkdir -p /etc/redis
   cd /etc/redis
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./
   mkdir -p /var/log/redis
