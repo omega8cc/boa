@@ -96,6 +96,25 @@ _LOCAL_UBUNTU_MIRROR=""
 
 
 ###----------------------------------------###
+### FORCE PREFERRED GIT REPOSITORY         ###
+###----------------------------------------###
+###
+### Use this when you are experiencing issues
+### trying to connect to the default gitorious
+### repository. Valid options:
+###
+### _FORCE_GIT_MIRROR=github
+### _FORCE_GIT_MIRROR=gitorious
+###
+### Note: with forced mirror the script will
+### not try to connect and then switch to
+### alternate mirror. It will simply fail
+### if the forced mirror doesn't respond.
+###
+_FORCE_GIT_MIRROR=""
+
+
+###----------------------------------------###
 ### DNS MANUAL CONFIG                      ###
 ###----------------------------------------###
 ###
@@ -610,33 +629,30 @@ fi
 
 
 ###--------------------###
-msg "INFO: Testing Gitorious and GitHub servers availability, please wait..."
-sleep 3
-_GITORIOUS_WORKS=YES
-_GITHUB_WORKS=YES
-if ! netcat -w 8 -z code.aegir.cc 9418 ; then
+_GITORIOUS_WORKS=NO
+_GITHUB_WORKS=NO
+if [ $_FORCE_GIT_MIRROR = "github" ] ; then
+  msg "INFO: We will use forced GitHub mirror without testing connection"
   _GITORIOUS_WORKS="NO"
-cat <<EOF
-
-  The Gitorious master repository server doesn't respond now,
-  let's try GitHub mirror...
-    
-EOF
-elif ! netcat -w 8 -z github.com 9418 ; then
+  _GITHUB_WORKS="YES"
+  sleep 3
+elif [ $_FORCE_GIT_MIRROR = "gitorious" ] ; then
+  msg "INFO: We will use forced Gitorious mirror without testing connection"
+  _GITORIOUS_WORKS="YES"
   _GITHUB_WORKS="NO"
-cat <<EOF
-
-  The GitHub mirror repository server doesn't respond now,
-  so we can't continue this installation.
-  
-  Please try again later.
-  
-  Bye.
-    
-EOF
-  exit 1
+  sleep 3
 else
-  true
+  msg "INFO: Testing Gitorious and GitHub servers availability, please wait..."
+  sleep 3
+  _GITORIOUS_WORKS=YES
+  _GITHUB_WORKS=YES
+  if ! netcat -w 8 -z code.aegir.cc 9418 ; then
+    _GITORIOUS_WORKS="NO"
+    msg "WARN: The Gitorious master repository server doesn't respond..."
+  elif ! netcat -w 8 -z github.com 9418 ; then
+    _GITHUB_WORKS="NO"
+    msg "WARN: The GitHub mirror repository server doesn't respond..."
+  fi
 fi
 if [ $_GITORIOUS_WORKS = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
@@ -646,6 +662,18 @@ elif [ $_GITHUB_WORKS = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
+else
+cat <<EOF
+
+  Both GitHub and Gitorious repository servers don't respond,
+  so we can't continue this installation.
+  
+  Please try again later.
+  
+  Bye.
+    
+EOF
+  exit 1
 fi
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 
@@ -1310,6 +1338,9 @@ if [ ! -e "/usr/bin/redis-server" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] ; then
     install_redis_src
   fi
+fi
+if [ ! -e "/var/log/redis-2.2.0-rc4.log" ] ; then
+  install_redis_src
 fi
 
 

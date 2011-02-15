@@ -41,7 +41,7 @@ choose the platforms you wish to install on the instance)
 and updater only. It allows to install new versions of platforms
 with clean directory structure, with code shared between all created
 instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is over 450 MB total, is shared.
+while most of the code, which is almost 400 MB total, is shared.
 
 With multi-install system you have to remember that all of them
 will use the same Nginx server, so you could break the system
@@ -49,7 +49,7 @@ trying to install site with the same domain on two or more instances.
 The instances will not be aware of other running instances,
 so it is your responsibility to use such system wisely.
 
-There is also Tuner script available (see TUNER.sh.txt) for easy
+There is also Tuner script available (see BOND.sh.txt) for easy
 system tuning for development and switching it back easily to the
 standard production settings.
 
