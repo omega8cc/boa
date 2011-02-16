@@ -1,5 +1,8 @@
 
  How to use multiple IPs on your server, also for your SSL enabled sites?
+ 
+ We recommend to do that using built-in Aegir SSL feature, but you can
+ use also quick and simple workaround, explained below.
 
 
  1. Use existing or deploy a new site as usual - don't enable SSL features in Aegir.
