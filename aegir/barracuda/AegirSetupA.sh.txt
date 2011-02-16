@@ -171,13 +171,11 @@ create_shared_dirs () {
   chmod 755 $_CORE /data/all /data/src /data /data/conf &> /dev/null
 }
 #
-###---### Fixing problems
+# fix for FServer broken due to required now strongarm
 #
-# Feature Server broken due to required now strongarm fix
-#
-fix_platforms_issues () {
-if [ ! -e "/var/log/platforms-fixed-007.log" ] ; then
-REVISIONS="001 002 003 004 005 006 007 008 009"
+feature_server_fix_002() {
+if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/fserver" ] ; then
     if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
@@ -185,17 +183,17 @@ for i in $REVISIONS; do
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
-      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.make
-      wget -q -U iCab http://gitorious.org/aegir/feature_server/blobs/raw/master/feature_server.profile
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.make ./
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.profile ./
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
-        drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null
+        su -s /bin/bash $_USER -c "drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
       fi
     fi
   fi
 done
-touch /var/log/platforms-fixed-007.log
+touch /var/log/feature-server-fixed-002.log
 cd
 fi
 }
@@ -859,6 +857,8 @@ if [ $_STATUS = "INIT" ] ; then
   msg "ACCESS -> $_AEGIR__LOGIN_URL"
   echo " "
   mrun "sleep 3"
+else
+  feature_server_fix_002
 fi
 msg "BYE!"
 
