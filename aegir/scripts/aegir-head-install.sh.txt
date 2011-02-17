@@ -108,9 +108,16 @@ elif [ -x $DRUSH ] ; then
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
-  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
-  gunzip -q -c drush-$_DRUSH_VERSION.tar.gz | tar -xf -
-  rm -f drush-$_DRUSH_VERSION.tar.gz
+  if [ $_DRUSH_VERSION = "HEAD" ] ; then
+    cvs -z6 -d:pserver:anonymous:anonymous@cvs.drupal.org:/cvs/drupal-contrib checkout -d drush contributions/modules/drush/
+    cd $AEGIR_HOME/drush
+    cvs update -dPA &> /dev/null
+    cd $AEGIR_HOME
+  else
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
+    tar -xzf drush-$_DRUSH_VERSION.tar.gz
+    rm -f drush-$_DRUSH_VERSION.tar.gz
+  fi
   DRUSH="php $AEGIR_HOME/drush/drush.php"
 fi
 
