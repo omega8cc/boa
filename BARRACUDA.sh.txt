@@ -631,12 +631,12 @@ fi
 ###--------------------###
 _GITORIOUS_WORKS=NO
 _GITHUB_WORKS=NO
-if [ $_FORCE_GIT_MIRROR = "github" ] ; then
+if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
   msg "INFO: We will use forced GitHub mirror without testing connection"
   _GITORIOUS_WORKS="NO"
   _GITHUB_WORKS="YES"
   sleep 3
-elif [ $_FORCE_GIT_MIRROR = "gitorious" ] ; then
+elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   msg "INFO: We will use forced Gitorious mirror without testing connection"
   _GITORIOUS_WORKS="YES"
   _GITHUB_WORKS="NO"
