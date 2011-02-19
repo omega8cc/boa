@@ -120,6 +120,8 @@ added to all 6.x platforms:
  cache-6.x-1.x-dev
  boost-6.x-1.x-dev
  dbtuner-6.x-1.x-dev
+ advagg-6.x-1.x-dev
+ cookie_cache_bypass_adv-6.x-1.x-dev
  expire-6.x-1.x-dev
  elysia_cron-6.x-1.x-dev
  session_expire-6.x-1.x-dev
@@ -134,6 +136,15 @@ added to all 6.x platforms:
  openidadmin-6.x-1.2
  site_verify-6.x-1.x-dev
 
+The Drupal 7.0 platform comes with contrib modules:
+
+ filefield_nginx_progress-7.x-1.x-dev
+ backup_migrate-7.x-2.1
+ openidadmin-7.x-1.0
+ css_emimage-7.x-1.1
+ session443-7.x-1.x-dev
+ site_verify-7.x-1.0-rc2
+ 
 
 ### BUG SUBMISSION
 

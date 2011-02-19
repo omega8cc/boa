@@ -293,12 +293,31 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
 wget -q -U iCab http://omega8.cc/boost_stats.php.txt
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
+if [ ! -d "$_CORE/o_contrib_seven" ] ; then
+  mkdir -p $_CORE/o_contrib_seven
+  cd $_CORE/o_contrib_seven
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/session443-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0-rc2.tar.gz
+  tar -xzf filefield_nginx_progress-7.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf backup_migrate-7.x-2.1.tar.gz &> /dev/null
+  tar -xzf openidadmin-7.x-1.0.tar.gz &> /dev/null
+  tar -xzf css_emimage-7.x-1.1.tar.gz &> /dev/null
+  tar -xzf session443-7.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf site_verify-7.x-1.0-rc2.tar.gz &> /dev/null
+  rm -f *.tar.gz
+fi
 if [ ! -d "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
   wget -q -U iCab http://omega8.cc/dev/cache.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
@@ -315,10 +334,11 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/data_uri_sprites-6.x-1.0-alpha1.tar.gz
   tar -xzf cache.tar.gz &> /dev/null
   tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
   tar -xzf module_supports-6.x-1.0.tar.gz &> /dev/null
   tar -xzf filefield_nginx_progress-6.x-1.4.tar.gz &> /dev/null
@@ -364,6 +384,13 @@ fi
 if [ -d "$_CORE/o_contrib/memcache" ] ; then
   rm -f -r $_CORE/o_contrib/memcache &> /dev/null
 fi
+if [ -d "$_CORE/o_contrib/varnish" ] ; then
+  rm -f -r $_CORE/o_contrib/varnish &> /dev/null
+fi
+if [ -d "$_CORE/o_contrib/bakery" ] ; then
+  rm -f -r $_CORE/o_contrib/bakery &> /dev/null
+fi
+
 
 if [ ! -d "/data/all/000/translations" ] ; then
   mkdir -p /data/all/000/translations
@@ -569,6 +596,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_DRUPAL7.tar.gz
   cd $_CORE/$_DRUPAL7
   rm -f $_CORE/$_DRUPAL7/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/$_DRUPAL7/profiles/testing
   for Files in `find $_CORE/$_DRUPAL7/profiles -type f`
   do
