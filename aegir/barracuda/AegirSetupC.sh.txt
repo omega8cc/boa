@@ -390,8 +390,6 @@ fi
 if [ -d "$_CORE/o_contrib/bakery" ] ; then
   rm -f -r $_CORE/o_contrib/bakery &> /dev/null
 fi
-
-
 if [ ! -d "/data/all/000/translations" ] ; then
   mkdir -p /data/all/000/translations
   cd /data/all/000/translations
@@ -584,7 +582,7 @@ fi
 ###---### Drupal 7
 #
 echo " "
-if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/project/drupal" ; then
+if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.0" ; then
 true
 msg "STATUS: $_F_DRUPAL7 install in progress, please wait..."
 mrun "sleep 2"
