@@ -724,8 +724,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/fserver/*.txt
   create_dirs
   cd ./profiles/feature_server/themes
-  wget -q -U iCab http://omega8.cc/dev/singular.patch.txt
-  patch -p0 <./singular.patch.txt &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
+  patch -p0 <./singular.patch &> /dev/null
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/fserver
 cd $_ROOT/distro/$_THIS_CORE/fserver

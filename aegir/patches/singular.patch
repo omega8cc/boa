@@ -1,0 +1,49 @@
+diff -urp singular/style.css singular/style.css
+--- singular/style.css	2009-08-12 21:41:25.000000000 +0200
++++ singular/style.css	2009-08-18 14:51:26.000000000 +0200
+@@ -20,6 +20,8 @@ a {
+ #sidebar {
+   -moz-border-radius-topright:5px;
+   -moz-border-radius-bottomright:5px;
++  -webkit-border-top-right-radius:5px;
++  -webkit-border-bottom-right-radius:5px;
+ 
+   font-size:13px;
+   line-height:20px;
+@@ -35,6 +37,8 @@ a {
+ #main {
+   -moz-border-radius:10px;
+   -moz-border-radius:10px;
++  -webkit-border-radius:10px;
++  -webkit-border-radius:10px;
+   background:url(images/mask.png);
+   width:740px;
+   }
+@@ -187,9 +191,10 @@ div.left div.admin-panel { margin-right:
+   background:#f8f8f8;
+   border-top:1px solid #ddd;
+   padding:19px 20px 20px;
+-
+   -moz-border-radius-bottomleft:5px;
+   -moz-border-radius-bottomright:5px;
++  -webkit-border-bottom-left-radius:5px;
++  -webkit-border-bottom-right-radius:5px;
+   }
+ 
+ #page #content div.block {
+@@ -206,6 +211,7 @@ div.left div.admin-panel { margin-right:
+ 
+ #page #content div.block-content {
+   -moz-border-radius:10px;
++  -webkit-border-radius:10px;
+   background:#fff;
+   padding:10px;
+   }
+@@ -383,6 +389,7 @@ div.node-submitted { margin:0px 0px 20px
+ div.node-links ul.links {
+   margin:20px 0px 0px;
+   -moz-border-radius:5px;
++  -webkit-border-radius:5px;
+   background:#fff;
+   float:right;
+   }
