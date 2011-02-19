@@ -716,7 +716,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   echo "projects[drupal][type] = \"core\"" >> fserver.make
   echo "projects[feature_server][type] = \"profile\"" >> fserver.make
   echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
-  echo "projects[feature_server][download][url] = \"git://github.com/omega8cc/feature_server.git\"" >> fserver.make
+  echo "projects[feature_server][download][url] = \"$_BOA_REPO_GIT_URL/feature_server.git\"" >> fserver.make
   $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver
@@ -736,6 +736,7 @@ else
   msg "STATUS: $_F_FSERVER installation skipped"
   mrun "sleep 1"
 fi
+
 
 
 ###---### ManagingNews
