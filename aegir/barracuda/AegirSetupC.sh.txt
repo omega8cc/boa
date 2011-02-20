@@ -302,12 +302,16 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0-rc2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
   tar -xzf filefield_nginx_progress-7.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf backup_migrate-7.x-2.1.tar.gz &> /dev/null
   tar -xzf openidadmin-7.x-1.0.tar.gz &> /dev/null
   tar -xzf css_emimage-7.x-1.1.tar.gz &> /dev/null
   tar -xzf session443-7.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-7.x-1.0-rc2.tar.gz &> /dev/null
+  tar -xzf core_library-7.x-1.0-beta6.tar.gz &> /dev/null
+  tar -xzf agrcache-7.x-1.0-alpha2.tar.gz &> /dev/null
   rm -f *.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib" ] ; then

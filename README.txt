@@ -138,6 +138,8 @@ added to all 6.x platforms:
 
 The Drupal 7.0 platform comes with contrib modules:
 
+ agrcache-7.x-1.0-alpha2
+ core_library-7.x-1.0-beta6
  filefield_nginx_progress-7.x-1.x-dev
  backup_migrate-7.x-2.1
  openidadmin-7.x-1.0
