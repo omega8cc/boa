@@ -5,7 +5,6 @@
 ; Modified by Albert Szelagowski - http://omega8.cc
 
 api = 2
-
 core = 6.x
 
 projects[cck] = 2.9

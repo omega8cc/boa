@@ -93,12 +93,6 @@ hostmaster_go_up () {
     tar -xzf drush_make-6.x-2.0-beta11.tar.gz
     rm -f drush_make-6.x-2.0-beta11.tar.gz
   fi
-#   cd $_ROOT/.drush
-#   if ! netcat -w 8 -z git.koumbit.net 9418 ; then
-#     _KOUMBIT_WORKS="NO"
-#   else
-#     git clone git://git.koumbit.net/drupal/contrib/modules/provision_boost &> /dev/null
-#   fi
   cd $_PREV_AEGIR_ROOT
 }
 #
