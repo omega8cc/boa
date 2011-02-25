@@ -264,6 +264,7 @@ _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.0
 _MANAGINGNEWS=1.2
 _OPENATRIUM=1-0-beta9
+_NODESTREAM=6.x-1.x
 _OPENPUBLISH=2.3.441
 _OPENSCHOLAR=2.0-beta8-3.1-mod
 _PROSEPOINT=0.37
@@ -328,6 +329,7 @@ do
   sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
+  sed -i "s/EDIT_NODESTREAM/$_NODESTREAM/g"               $Files
   sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
