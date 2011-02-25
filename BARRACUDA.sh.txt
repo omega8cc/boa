@@ -2523,11 +2523,9 @@ mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
+  killall -9 nginx &> /dev/null
+  mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
-  mrun "sleep 5"
-  st_runner "invoke-rc.d nginx restart" &> /dev/null
-  mrun "sleep 5"
-  st_runner "invoke-rc.d nginx restart" &> /dev/null
 else
   st_runner "invoke-rc.d nginx reload" &> /dev/null
 fi
