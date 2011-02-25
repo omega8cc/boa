@@ -668,7 +668,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/drupal_commons-$_COMMONS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz
+  wget -q -U iCab http://network.acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz
   tar -xzf drupal_commons-$_COMMONS.tar.gz
   rm -f drupal_commons-$_COMMONS.tar.gz
   if [ -d "$_CORE/drupal_commons" ] ; then
