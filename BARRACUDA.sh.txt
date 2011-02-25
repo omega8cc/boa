@@ -1809,11 +1809,12 @@ fi
 if [ ! -e "/var/log/umask_fixed.log" ] ; then
   msg "INFO: Setting better default umask for users, please wait..."
   mrun "sleep 3"
+  mkdir -p /var/www
   echo "UMASK=002" >> /etc/default/login
   echo "UMASK 002" >> /etc/login.defs
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   echo "umask 002" >> /var/www/.profile
-  chown www-data:www-data /var/www/.profile
+  chown -R www-data:www-data /var/www/*
   touch /var/log/umask_fixed.log
 fi
 
