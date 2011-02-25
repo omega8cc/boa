@@ -368,6 +368,10 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   mkdir -p $_CORE/o_contrib_atrium
   cd $_CORE/o_contrib_atrium
   git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
+  git clone --branch 6.x-1.x http://git.drupal.org/project/ideation.git &> /dev/null
+  git clone --branch master http://git.drupal.org/project/better_exposed_filters.git &> /dev/null
+  git clone --branch 6.x-2.x http://git.drupal.org/project/fivestar.git &> /dev/null
+  git clone --branch 6.x-2.x http://git.drupal.org/project/votingapi.git &> /dev/null
   wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha14.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-6.x-1.0-beta3.tar.gz
