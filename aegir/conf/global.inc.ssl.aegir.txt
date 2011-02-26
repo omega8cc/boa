@@ -9,6 +9,16 @@ ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
 ini_set('session.gc_maxlifetime', 172800);  // set it also to 48 hours max
 
+if (isset($_SERVER['HTTP_HOST'])) {
+  $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+  if ($request_type == "SSL") { // we check for secure connection to set correct base_url
+    $base_url = 'https://' . $_SERVER['HTTP_HOST'];
+  }
+  else {
+    $base_url = 'http://' . $_SERVER['HTTP_HOST'];                                                        
+  }
+}
+
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
    error_reporting(E_ALL);
    ini_set('display_errors', TRUE);
@@ -36,9 +46,6 @@ if (!preg_match("/(?:standard|minimal|testing)/", $conf['install_profile'])) { /
      }
      $conf['hosting_ignore_default_profiles'] = 1;
      $conf['hosting_require_disable_before_delete'] = 0;
-     if (isset($_SERVER['HTTP_HOST'])) {
-        $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-     }
      unset($conf['cache']); // disable hardcoded caching
      ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
   }
