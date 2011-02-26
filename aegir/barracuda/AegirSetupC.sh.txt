@@ -368,10 +368,6 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   mkdir -p $_CORE/o_contrib_atrium
   cd $_CORE/o_contrib_atrium
   git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
-  git clone --branch 6.x-1.x http://git.drupal.org/project/ideation.git &> /dev/null
-  git clone --branch master http://git.drupal.org/project/better_exposed_filters.git &> /dev/null
-  git clone --branch 6.x-2.x http://git.drupal.org/project/fivestar.git &> /dev/null
-  git clone --branch 6.x-2.x http://git.drupal.org/project/votingapi.git &> /dev/null
   wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha14.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-6.x-1.0-beta3.tar.gz
@@ -476,9 +472,12 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip
-  unzip -qq atrium-$_OPENATRIUM.zip
-  rm -f atrium-$_OPENATRIUM.zip
+#   wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip
+#   unzip -qq atrium-$_OPENATRIUM.zip
+#   rm -f atrium-$_OPENATRIUM.zip
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make.txt ./
+  $_ROOT/tools/drush/drush make atrium.make.txt atrium-$_OPENATRIUM &> /dev/null
+  rm -f atrium.make.txt
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
