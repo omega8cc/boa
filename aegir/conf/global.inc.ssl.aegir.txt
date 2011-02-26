@@ -44,10 +44,6 @@ if (!preg_match("/(?:standard|minimal|testing)/", $conf['install_profile'])) { /
   }
   
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
-     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
-     if ($request_type = "SSL") { // we check for secure connection to hardcode base_url
-        $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-     }
      $conf['preprocess_css'] = 1;
      $conf['preprocess_js'] = 1;
      if (!preg_match("/hostmaster/", $conf['install_profile'])) {
