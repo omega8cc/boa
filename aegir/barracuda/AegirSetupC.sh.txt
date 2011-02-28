@@ -262,7 +262,7 @@ _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
 _F_MANAGINGNEWS_DEV="MNews 1.1-dev P.$_THIS_CORE"
 _F_NODESTREAM="NodeStream $_NODESTREAM P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH P.$_THIS_CORE"
-_F_OPENSCHOLAR="OpenScholar 2.0-b8-3.1 P.$_THIS_CORE"
+_F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR P.$_THIS_CORE"
 _F_OPENSCHOLAR_MAKE="OpenScholar 2.0-dev P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
 _F_UBERCART="Ubercart P.$_THIS_CORE"
@@ -902,19 +902,19 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
-  cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./
-  patch -p1 < openscholar.profile.patch &> /dev/null
-  cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar_projects
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./
-  patch -p1 < openscholar_projects.profile.patch &> /dev/null
-  cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/activity
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./
-  patch -p1 < activity.patch &> /dev/null
-  cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./
-  patch -p0 < imagefield_crop.patch &> /dev/null
-  cd $_CORE/openscholar-$_OPENSCHOLAR
+#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./
+#   patch -p1 < openscholar.profile.patch &> /dev/null
+#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar_projects
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./
+#   patch -p1 < openscholar_projects.profile.patch &> /dev/null
+#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/activity
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./
+#   patch -p1 < activity.patch &> /dev/null
+#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./
+#   patch -p0 < imagefield_crop.patch &> /dev/null
+#   cd $_CORE/openscholar-$_OPENSCHOLAR
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR

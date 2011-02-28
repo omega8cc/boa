@@ -266,7 +266,7 @@ _MANAGINGNEWS=1.2
 _OPENATRIUM=1-0-beta9
 _NODESTREAM=6.x-1.x
 _OPENPUBLISH=2.3.441
-_OPENSCHOLAR=2.0-beta8-3.1-mod
+_OPENSCHOLAR=2.0-beta10
 _PROSEPOINT=0.37
 _UBERCART=uberdrupal
 
@@ -351,6 +351,7 @@ do
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
 done
+sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
