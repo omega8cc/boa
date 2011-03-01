@@ -74,6 +74,7 @@ _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _PLATFORMS_ALL=EDIT_PLATFORMS_ALL
+_USE_SPEED_BOOSTER=EDIT_USE_SPEED_BOOSTER
 
 
 ###---### Functions
@@ -423,14 +424,26 @@ fi
   cd $_ROOT/config/includes
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf ./
+    cp -af nginx_octopus_include.conf nginx_simple_include.conf &> /dev/null
+    cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+  fi
   chown $_USER:$_USRG * &> /dev/null
   cd $_ROOT/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf ./
+    cp -af nginx_octopus_include.conf nginx_simple_include.conf &> /dev/null
+    cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+  fi
   chown $_USER:$_USRG * &> /dev/null
   echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
 #fi

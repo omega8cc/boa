@@ -99,6 +99,38 @@ _FORCE_GIT_MIRROR=""
 
 
 ###----------------------------------------###
+### SPEED BOOSTER                          ###
+###----------------------------------------###
+###
+### It is an experimental feature allowing you
+### to use Nginx built-in cache system, using
+### static copies of full pages, similar to
+### those created by Boost module, but without
+### Boost at all, so it works the same with
+### any Drupal core version: 5.x, 6.x and 7.x.
+###
+### Note: this cache will use hardcoded
+### lifetime value, set to 10 minutes,
+### but if you have also Boost enabled, then
+### the Boost cached pages will be served
+### first, if exist, so it is still possible
+### to use both systems for a bit better
+### cache lifetime control.
+###
+### It will be even possible to use this cache
+### system for logged in users, with pages
+### cached per user, but it is not enabled
+### by default, for now.
+###
+### You can turn ON/OFF this feature on every
+### upgrade by changing the value below.
+###
+### _USE_SPEED_BOOSTER=YES
+###
+_USE_SPEED_BOOSTER=NO
+
+
+###----------------------------------------###
 ### DATABASE CUSTOM HOST                   ###
 ###----------------------------------------###
 ###
@@ -341,6 +373,7 @@ do
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_PLATFORMS_ALL/$_PLATFORMS_ALL/g"         $Files
+  sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
@@ -352,6 +385,7 @@ do
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
 done
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
+sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
 if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null

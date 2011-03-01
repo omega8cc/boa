@@ -22,6 +22,24 @@ if (isset($_SERVER['HTTP_HOST'])) {
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
+  if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+    $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT']; 
+    $identity = 'BOND'. md5("$identity"); 
+    $test_sess_name = 'SESS'. md5($cookie_domain);
+    $anon_sess_name = 'ANON'. md5($cookie_domain);
+    $lifetime = '600';
+    if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[Octopus_Cache_IN])) {
+      $lifetime = '0';
+      setcookie('Octopus_Cache_IN', $_COOKIE[$test_sess_name], $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+      setcookie('Octopus_Cache_ID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+    }
+    elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[Octopus_Cache_IN])) {
+      $loggedinactive = 'YES';
+    }
+    elseif (!isset($_COOKIE[Octopus_Cache_AN])) {
+      setcookie('Octopus_Cache_AN', $anon_sess_name, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+    }
+  }
 }
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
