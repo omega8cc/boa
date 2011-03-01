@@ -666,7 +666,6 @@ fi
 
 ###---### Drupal Commons
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
@@ -710,7 +709,6 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_COMMONS installation skipped"
   mrun "sleep 1"
-fi
 fi
 fi
 
@@ -818,7 +816,7 @@ fi
 
 ###---### NodeStream Make
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM - http://nodestream.org" ; then
 true
@@ -886,7 +884,6 @@ fi
 
 ###---### OpenScholar
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
@@ -902,19 +899,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
-#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar
-#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar.profile.patch ./
-#   patch -p1 < openscholar.profile.patch &> /dev/null
-#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar_projects
-#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openscholar_projects.profile.patch ./
-#   patch -p1 < openscholar_projects.profile.patch &> /dev/null
-#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/activity
-#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/activity.patch ./
-#   patch -p1 < activity.patch &> /dev/null
-#   cd $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/imagefield_crop
-#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagefield_crop.patch ./
-#   patch -p0 < imagefield_crop.patch &> /dev/null
-#   cd $_CORE/openscholar-$_OPENSCHOLAR
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR
@@ -925,7 +909,6 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_OPENSCHOLAR installation skipped"
   mrun "sleep 1"
-fi
 fi
 fi
 
