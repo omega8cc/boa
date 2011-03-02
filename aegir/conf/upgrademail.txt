@@ -1,9 +1,23 @@
 Hello,
 
 
-Your Aegir Hosting System has been upgraded to version 0.4-boa-D-dev2.
+We proudly sponsor Intimate Ægir Chicago Workshop
+       
+       by Geek Royale and Skwashd Services
 
-Also your system services and libraries have been upgraded.
+       http://intimateaegir.eventbrite.com
+
+Bonus: Antoine Beaupré (aka @anarcat), one of the core Aegir
+       developers, and Moshe Weitzman (@weitzman) drush lead
+       developer, will be offering an exclusive Q&A session
+       at the end of the workshop.        
+
+                         ***
+                         
+
+Your Aegir Hosting System has been upgraded to version 0.4-boa-E
+
+Also your system services, kernel and libraries have been upgraded.
 
 Your Aegir control panel is available as before at:
 
@@ -14,21 +28,18 @@ Your Aegir control panel is available as before at:
 # What is new or updated
 ----------------------------------------
 
-* Latest Drupal 7.0 platform has been added.
-* All 6.x based platforms upgraded to Pressflow core 6.20
-* Open Atrium 1.0-beta9 platform now available on all servers.
-* Managing News 1.2 platform now available on all servers.
-* Nginx server upgraded to version Barracuda/0.9.3
-* PHP-FPM server upgraded to version 5.2.17
-* MariaDB server configuration improved.
+* New platforms:
+
+  Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
+  NodeStream ------------------- http://nodestream.org
+  Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
+  OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
+
+* Open Atrium 1.0-beta9 now includes new Ideation feature.
+* Nginx server upgraded to version Barracuda/0.9.5
 * Memcache extension replaced with memcached and libmemcached.
 * Drush downgraded to version 6.x-3.3
 * Drush Make upgraded to version 2.0-beta11
-* Your Aegir control panel now runs on Pressflow core.
-* You can create and manage your own platforms.
-* You can use makefiles to create platforms.
-* Daily Usage Monitor displays your total disk and databases space
-  in the Aegir control panel footer (status updated every morning).
 
 
 ----------------------------------------
@@ -61,6 +72,7 @@ Your Aegir control panel is available as before at:
 # Fixes
 ----------------------------------------
 
+* Known issue with paths to files not rewritten is now fixed.
 * Known issue with sites cron semaphore in Aegir now resolved.
 * Known issue with PHP notices breaking some Aegir tasks resolved.
 * Fixed web server rewrites to support "ad" module.
