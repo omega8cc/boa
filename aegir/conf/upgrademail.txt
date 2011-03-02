@@ -28,15 +28,24 @@ Your Aegir control panel is available as before at:
 # What is new or updated
 ----------------------------------------
 
-* New platforms:
+* New platforms [supported only in Aegir Classic]:
 
   Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
   NodeStream ------------------- http://nodestream.org
   Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
+  ProsePoint 0.37 -------------- http://prosepoint.org
+  
+  Q: How to upgrade from Aegir Mini to Classic?
+  
+  A: Place a new order at http://omega8.cc/hosted-aegir
+     and your old subscription will be cancelled
+     plus any unused amount refunded the same day.
 
 * Open Atrium 1.0-beta9 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
+* PHP-FPM server upgraded to version 5.2.17
+* MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
 * Drush downgraded to version 6.x-3.3
 * Drush Make upgraded to version 2.0-beta11
@@ -167,12 +176,41 @@ logged in via SSH.
 
 
 ----------------------------------------
-# Useful hints
+# Import your sites in 8 easy steps
 ----------------------------------------
 
-* Create an empty site in Aegir to import your existing site db/files.
-* Use backup_migrate module or `drush sql-connect < /path/to/db.sql`
-* Rename the site twice after import to get files paths rewritten.
+Hint: Replace USER with your Aegir Octopus system (not ftp) username.
+      Your Aegir system username is the same as your ftp username,
+      minus .ftp.
+
+1. Upload or rsync full drupal root of your site to static/custom/name
+
+2. Chmod everything with: chmod -R 775 static/custom/name
+   Chmod files with: chmod -R 777 static/custom/name/sites/default/files
+
+3. Add platform in Aegir using full system path of static/custom/name
+   so it will be (in this case) /data/disk/USER/static/custom/name
+
+4. Create an empty site in the new platform with temporary subdomain
+   like custom-name.your-domain.com
+
+5. Move all files from sites/default/files to sites/domain/files
+   with: cp -af sites/default/files/* sites/domain/files/
+
+6. Import your uploaded database (or use backup_migrate module) with:
+   cd static/custom/name/sites/domain
+   drush sql-connect < /data/disk/USER/static/domain.sql
+   drush cc (choose 1 to clear all)
+
+7. Rename the site (using Migrate task) to your final domain.
+
+8. Finally, re-verify the site in Aegir. Done!
+
+
+----------------------------------------
+# Always useful hints
+----------------------------------------
+
 * Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
 * Chmod -R 777 all files uploaded to the sites/domain/files.
 * Re-verify the site in Aegir after uploading your modules and themes.

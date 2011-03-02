@@ -3,6 +3,22 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 site deployment.
 
+                         ***
+
+We proudly sponsor Intimate Ægir Chicago Workshop
+       
+       by Geek Royale and Skwashd Services
+
+       http://intimateaegir.eventbrite.com
+
+Bonus: Antoine Beaupré (aka @anarcat), one of the core Aegir
+       developers, and Moshe Weitzman (@weitzman) drush lead
+       developer, will be offering an exclusive Q&A session
+       at the end of the workshop.        
+
+                         ***
+
+
 Your Aegir control panel is available at:
 
  https://aegir.dragon.ny.host8.biz
@@ -36,7 +52,7 @@ using one-time login link you should receive shortly
 in a separate e-mail.
 
 Once in your control panel, you'll find a number of
-Drupal distributions ready to deploy:
+Drupal distributions ready to deploy [Mini + Classic]:
  
  Drupal 7.0 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.20 ------------------ http://pressflow.org
@@ -45,7 +61,21 @@ Drupal distributions ready to deploy:
  Feature Server 6.20 ---------- http://bit.ly/fserver
  Acquia 6.20 ------------------ http://bit.ly/acquiadrupal
  Ubercart 6.20 ---------------- http://ubercart.org
- 
+
+Some new platforms are supported by Aegir Classic only:
+
+ Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
+ NodeStream ------------------- http://nodestream.org
+ Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
+ OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
+ ProsePoint 0.37 -------------- http://prosepoint.org
+
+  Q: How to upgrade from Aegir Mini to Classic?
+  
+  A: Place a new order at http://omega8.cc/hosted-aegir
+     and your old subscription will be cancelled
+     plus any unused amount refunded the same day.
+
 All 6.x platforms have been enhanced using Pressflow Drupal core.
 More details about Pressflow Drupal are here:
 
@@ -218,11 +248,38 @@ There are also two extra Pressflow core modules we recommend
 to enable: *Path alias cache* and *Cookie cache bypass*.
 
 
-=== USEFUL HINTS
+=== IMPORT YOUR EXISTING SITES TO AEGIR IN 8 EASY STEPS
 
-* Create an empty site in Aegir to import your existing site db/files.
-* Use backup_migrate or drush sql-connect < /path/to/db.sql
-* Rename the site twice after import to get files paths rewritten.
+Hint: Replace USER with your Aegir Octopus system (not ftp) username.
+      Your Aegir system username is the same as your ftp username,
+      minus .ftp.
+
+1. Upload or rsync full drupal root of your site to static/custom/name
+
+2. Chmod everything with: chmod -R 775 static/custom/name
+   Chmod files with: chmod -R 777 static/custom/name/sites/default/files
+
+3. Add platform in Aegir using full system path of static/custom/name
+   so it will be (in this case) /data/disk/USER/static/custom/name
+
+4. Create an empty site in the new platform with temporary subdomain
+   like custom-name.your-domain.com
+
+5. Move all files from sites/default/files to sites/domain/files
+   with: cp -af sites/default/files/* sites/domain/files/
+
+6. Import your uploaded database (or use backup_migrate module) with:
+   cd static/custom/name/sites/domain
+   drush sql-connect < /data/disk/USER/static/domain.sql
+   drush cc (choose 1 to clear all)
+
+7. Rename the site (using Migrate task) to your final domain.
+
+8. Finally, re-verify the site in Aegir. Done!
+
+
+=== ALWAYS USEFUL HINTS
+
 * Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
 * Chmod -R 777 all files uploaded to the sites/domain/files.
 * Re-verify the site in Aegir after uploading your modules and themes.
@@ -239,11 +296,8 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
 # What is new or updated
 ----------------------------------------
 
-* Latest Drupal 7.0 platform has been added.
-* All 6.x based platforms upgraded to Pressflow core 6.20
-* Open Atrium 1.0-beta9 platform now available on all servers.
-* Managing News 1.2 platform now available on all servers.
-* Nginx server upgraded to version Barracuda/0.9.3
+* Open Atrium 1.0-beta9 now includes new Ideation feature.
+* Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
@@ -286,6 +340,7 @@ to enable: *Path alias cache* and *Cookie cache bypass*.
 # Fixes
 ----------------------------------------
 
+* Known issue with paths to files not rewritten is now fixed.
 * Known issue with sites cron semaphore in Aegir now resolved.
 * Known issue with PHP notices breaking some Aegir tasks resolved.
 * Fixed web server rewrites to support "ad" module.

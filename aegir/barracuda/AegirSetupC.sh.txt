@@ -252,7 +252,6 @@ fi
 #
 _F_ACQUIA="Acquia 6.20-svn P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0-beta9 P.$_THIS_CORE"
-_F_ATRIUM_DEV="Atrium 1.0-beta9-dev P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal 6.20 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal 7.0 P.$_THIS_CORE"
@@ -261,11 +260,9 @@ _F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
 _F_COMMONS="Drupal Commons $_COMMONS P.$_THIS_CORE"
 _F_FSERVER="Feature Server P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
-_F_MANAGINGNEWS_DEV="MNews 1.1-dev P.$_THIS_CORE"
 _F_NODESTREAM="NodeStream $_NODESTREAM P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR P.$_THIS_CORE"
-_F_OPENSCHOLAR_MAKE="OpenScholar 2.0-dev P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
 _F_UBERCART="Ubercart P.$_THIS_CORE"
 
@@ -499,43 +496,6 @@ else
 fi
 
 
-###---### Open Atrium Make
-#
-# echo " "
-# if prompt_yes_no "$_F_ATRIUM_DEV - http://openatrium.com" ; then
-# true
-# msg "STATUS: $_F_ATRIUM_DEV install in progress, please wait..."
-# mrun "sleep 2"
-# _CORE_DISTRO="$_CORE/openatrium"
-# if [ ! -d "$_CORE_DISTRO" ] ; then
-#   cd $_CORE
-#   echo "core = \"6.x\"" > atrium_stub.make
-#   echo "projects[] = \"drupal\"" >> atrium_stub.make
-#   echo "projects[openatrium][type] = \"profile\"" >> atrium_stub.make
-#   echo "projects[openatrium][download][type] = \"cvs\"" >> atrium_stub.make
-#   echo "projects[openatrium][download][module] = \"contributions/profiles/openatrium\"" >> atrium_stub.make
-#   echo "projects[openatrium][download][revision] = \"HEAD\"" >> atrium_stub.make
-#   $_ROOT/tools/drush/drush make atrium_stub.make openatrium &> /dev/null
-#   rm -f atrium_stub.make
-#   cd $_CORE/openatrium
-#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openatrium/
-#   rm -f $_CORE/openatrium/*.txt
-#   create_dirs
-# fi
-# mkdir -p $_ROOT/distro/$_THIS_CORE/openatrium
-# cd $_ROOT/distro/$_THIS_CORE/openatrium
-# create_symlinks
-# if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
-#   ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium
-# fi
-# msg "STATUS: $_F_ATRIUM_DEV installation completed"
-# mrun "sleep 2"
-# else
-#   msg "STATUS: $_F_ATRIUM_DEV installation skipped"
-#   mrun "sleep 1"
-# fi
-
-
 ###---### Drupal 5 Pressflow
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
@@ -635,6 +595,7 @@ fi
 
 ###---### Commerce 7.x Dev Make
 #
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
@@ -664,11 +625,13 @@ else
   msg "STATUS: $_F_COMMERCE installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Cocomore Drupal
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
 true
@@ -695,6 +658,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_COCOMORE installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 
@@ -785,7 +749,6 @@ else
 fi
 
 
-
 ###---### ManagingNews
 #
 echo " "
@@ -813,40 +776,6 @@ else
   msg "STATUS: $_F_MANAGINGNEWS installation skipped"
   mrun "sleep 1"
 fi
-
-
-###---### Managing News Make
-#
-# echo " "
-# if prompt_yes_no "$_F_MANAGINGNEWS_DEV - http://managingnews.com" ; then
-# true
-# msg "STATUS: $_F_MANAGINGNEWS_DEV install in progress, please wait..."
-# mrun "sleep 2"
-# _CORE_DISTRO="$_CORE/managingnews"
-# if [ ! -d "$_CORE_DISTRO" ] ; then
-#   cd $_CORE
-#   echo "core = \"6.x\"" > managingnews_stub.make
-#   echo "projects[] = \"drupal\"" >> managingnews_stub.make
-#   echo "projects[managingnews][type] = \"profile\"" >> managingnews_stub.make
-#   echo "projects[managingnews][download][type] = \"cvs\"" >> managingnews_stub.make
-#   echo "projects[managingnews][download][module] = \"contributions/profiles/managingnews\"" >> managingnews_stub.make
-#   echo "projects[managingnews][download][revision] = \"DRUPAL-6--1\"" >> managingnews_stub.make
-#   $_ROOT/tools/drush/drush make managingnews_stub.make managingnews &> /dev/null
-#   rm -f managingnews_stub.make
-#   cd $_CORE/managingnews
-#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews/
-#   rm -f $_CORE/managingnews/*.txt
-#   create_dirs
-# fi
-# mkdir -p $_ROOT/distro/$_THIS_CORE/managingnews
-# cd $_ROOT/distro/$_THIS_CORE/managingnews
-# create_symlinks
-# msg "STATUS: $_F_MANAGINGNEWS_DEV installation completed"
-# mrun "sleep 2"
-# else
-#   msg "STATUS: $_F_MANAGINGNEWS_DEV installation skipped"
-#   mrun "sleep 1"
-# fi
 
 
 ###---### NodeStream Make
@@ -948,46 +877,9 @@ fi
 fi
 
 
-###---## Open Scholar Make
-#
-# echo " "
-# if prompt_yes_no "$_F_OPENSCHOLAR_MAKE - http://openscholar.com" ; then
-# true
-# msg "STATUS: $_F_OPENSCHOLAR_MAKE install in progress, please wait..."
-# mrun "sleep 2"
-# _CORE_DISTRO="$_CORE/openscholar_make"
-# if [ ! -d "$_CORE_DISTRO" ] ; then
-#   cd $_CORE
-#   echo "core = \"6.x\"" > openscholar_stub.make
-#   echo "api = \"2\"" >> openscholar_stub.make
-#   echo "projects[pressflow][type] = \"core\"" >> openscholar_stub.make
-#   echo "projects[pressflow][download][type] = \"bzr\"" >> openscholar_stub.make
-#   echo "projects[pressflow][download][url] = \"lp:pressflow/6.x\"" >> openscholar_stub.make
-#   echo "projects[openscholar][type] = \"profile\"" >> openscholar_stub.make
-#   echo "projects[openscholar][download][type] = \"cvs\"" >> openscholar_stub.make
-#   echo "projects[openscholar][download][module] = \"contributions/profiles/openscholar\"" >> openscholar_stub.make
-#   echo "projects[openscholar][download][revision] = \"DRUPAL-6--1\"" >> openscholar_stub.make
-#   $_ROOT/tools/drush/drush make openscholar_stub.make openscholar_make &> /dev/null
-#   rm -f openscholar_stub.make
-#   cd $_CORE/openscholar_make
-#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar_make/
-#   rm -f $_CORE/openscholar_make/*.txt
-#   create_dirs
-# fi
-# mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar_make
-# cd $_ROOT/distro/$_THIS_CORE/openscholar_make
-# create_symlinks
-# msg "STATUS: $_F_OPENSCHOLAR_MAKE installation completed"
-# mrun "sleep 2"
-# else
-#   msg "STATUS: $_F_OPENSCHOLAR_MAKE installation skipped"
-#   mrun "sleep 1"
-# fi
-
-
 ###---### Prosepoint
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
@@ -1114,12 +1006,6 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ATRIUM_DEV" openatrium $_ROOT/distro/$_THIS_CORE/openatrium &> /dev/null
-    mrun "sleep 5"
-  fi
-fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
@@ -1162,12 +1048,6 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_MANAGINGNEWS_DEV" managingnews $_ROOT/distro/$_THIS_CORE/managingnews &> /dev/null
-    mrun "sleep 5"
-  fi
-fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_NODESTREAM" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM &> /dev/null
@@ -1189,12 +1069,6 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR &> /dev/null
-    mrun "sleep 5"
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar_make" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar_make/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENSCHOLAR_MAKE" openscholar $_ROOT/distro/$_THIS_CORE/openscholar_make &> /dev/null
     mrun "sleep 5"
   fi
 fi
