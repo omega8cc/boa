@@ -23,8 +23,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-    $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT']; 
-    $identity = 'BOND'. md5("$identity"); 
+    $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
+    $identity = 'BOND'. md5("$identity");
     $test_sess_name = 'SESS'. md5($cookie_domain);
     $anon_sess_name = 'ANON'. md5($cookie_domain);
     $lifetime = '600';
@@ -33,10 +33,10 @@ if (isset($_SERVER['HTTP_HOST'])) {
       setcookie('Octopus_Cache_IN', $_COOKIE[$test_sess_name], $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
       setcookie('Octopus_Cache_ID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
     }
-    elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[Octopus_Cache_IN])) {
+    elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[Octopus_Cache_IN]) && !isset($_COOKIE[Octopus_Cache_AN])) {
       $loggedinactive = 'YES';
     }
-    elseif (!isset($_COOKIE[Octopus_Cache_AN])) {
+    else {
       setcookie('Octopus_Cache_AN', $anon_sess_name, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
     }
   }
@@ -59,7 +59,7 @@ if (preg_match("/managingnews/", $conf['install_profile'])) {
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
-if (!preg_match("/(?:standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
+if (!preg_match("/(?:standard|minimal|testing|commerce)/", $conf['install_profile'])) { // don't use it for d7
   
   if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
