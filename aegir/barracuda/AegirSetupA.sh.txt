@@ -38,6 +38,7 @@ _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PROSEPOINT=EDIT_PROSEPOINT
 _UBERCART=EDIT_UBERCART
 _NODESTREAM=EDIT_NODESTREAM
+_COMMERCE=EDIT_COMMERCE
 
 
 ###---### main config
@@ -759,6 +760,9 @@ if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites" ] ; then
     ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites" ] ; then
     ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons

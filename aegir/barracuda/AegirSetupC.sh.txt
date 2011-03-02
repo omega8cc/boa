@@ -38,6 +38,7 @@ _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PROSEPOINT=EDIT_PROSEPOINT
 _UBERCART=EDIT_UBERCART
 _NODESTREAM=EDIT_NODESTREAM
+_COMMERCE=EDIT_COMMERCE
 
 
 ###---### main config
@@ -256,6 +257,7 @@ _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal 6.20 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal 7.0 P.$_THIS_CORE"
 _F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
+_F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
 _F_COMMONS="Drupal Commons $_COMMONS P.$_THIS_CORE"
 _F_FSERVER="Feature Server P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
@@ -627,6 +629,39 @@ msg "STATUS: $_F_DRUPAL7 installation completed"
 mrun "sleep 2"
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
+  mrun "sleep 1"
+fi
+
+
+###---### Commerce 7.x Dev Make
+#
+echo " "
+if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
+true
+msg "STATUS: $_F_COMMERCE install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/commerce-$_COMMERCE"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/commercedev.make ./
+  $_ROOT/tools/drush/drush make commercedev.make commerce-$_COMMERCE &> /dev/null
+  rm -f commercedev.make
+  cd $_CORE/commerce-$_COMMERCE
+  rm -f $_CORE/commerce-$_COMMERCE/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/commerce-$_COMMERCE/profiles/minimal
+  rm -f -r $_CORE/commerce-$_COMMERCE/profiles/standard
+  rm -f -r $_CORE/commerce-$_COMMERCE/profiles/testing
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
+cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
+create_symlinks
+create_d7_symlinks
+msg "STATUS: $_F_COMMERCE installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_COMMERCE installation skipped"
   mrun "sleep 1"
 fi
 
@@ -1136,6 +1171,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_NODESTREAM" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE &> /dev/null
     mrun "sleep 5"
   fi
 fi

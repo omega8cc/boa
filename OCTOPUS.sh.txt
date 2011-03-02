@@ -301,6 +301,7 @@ _OPENPUBLISH=2.3.441
 _OPENSCHOLAR=2.0-beta10
 _PROSEPOINT=0.37
 _UBERCART=uberdrupal
+_COMMERCE=7.x-1.x-dev
 
 ###---### Functions
 #
@@ -362,6 +363,7 @@ do
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_NODESTREAM/$_NODESTREAM/g"               $Files
+  sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
   sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
