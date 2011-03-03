@@ -26,18 +26,17 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
     $test_sess_name = 'SESS'. md5($cookie_domain);
-    $anon_sess_name = 'ANON'. md5($cookie_domain);
-    $lifetime = '60';
-    if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[Octopus_Cache_IN])) {
-      $lifetime = '0';
-      setcookie('Octopus_Cache_IN', $_COOKIE[$test_sess_name], $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
-      setcookie('Octopus_Cache_ID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+    if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
+      $lifetime = '600';
+      setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+      header('X-Accel-Expires: 0');
     }
-    elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[Octopus_Cache_IN]) && !isset($_COOKIE[Octopus_Cache_AN])) {
+    elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
       $loggedinactive = 'YES';
+      header('X-Accel-Expires: 0');
     }
     else {
-      setcookie('Octopus_Cache_AN', $anon_sess_name, $_SERVER['REQUEST_TIME'] + ($lifetime + 30), '/', $cookie_domain);
+      $loggedinactive = 'NO';
     }
   }
 }
@@ -59,7 +58,7 @@ if (preg_match("/managingnews/", $conf['install_profile'])) {
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
-if (!preg_match("/(?:standard|minimal|testing)/", $conf['install_profile'])) { // don't use it for d7
+if (!preg_match("/(?:standard|minimal|testing|commerce)/", $conf['install_profile'])) { // don't use it for d7
 
    if (preg_match("/hostmaster/", $conf['install_profile'])) {
       $conf['hosting_ignore_default_profiles'] = 1;
@@ -76,7 +75,7 @@ if (!preg_match("/(?:standard|minimal|testing)/", $conf['install_profile'])) { /
       }
       $conf['error_level'] = 0;
       $conf['statistics_enable_access_log'] = 0;
-      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/cache/", $_SERVER['HTTP_COOKIE']) && preg_match("/SESS/", $_SERVER['HTTP_COOKIE'])) {
+      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/OctopusCacheID/", $_SERVER['HTTP_COOKIE'])) {
       $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
       $conf['cache_settings'] = array(
       'engines' => array(
