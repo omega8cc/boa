@@ -322,6 +322,8 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz
@@ -343,6 +345,8 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf imageinfo_cache-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf ajaxblocks-6.x-1.2.tar.gz &> /dev/null
   tar -xzf cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
   tar -xzf module_supports-6.x-1.0.tar.gz &> /dev/null

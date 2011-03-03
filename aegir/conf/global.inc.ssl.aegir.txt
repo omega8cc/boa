@@ -26,7 +26,10 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
     $test_sess_name = 'SESS'. md5($cookie_domain);
-    if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+      header('X-Accel-Expires: 0');
+    }
+    elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
       $lifetime = '600';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
       header('X-Accel-Expires: 0');
