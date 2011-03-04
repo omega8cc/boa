@@ -26,7 +26,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
     $test_sess_name = 'SESS'. md5($cookie_domain);
-    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:uberdrupal|commerce)/", $conf['install_profile'])) {
       header('X-Accel-Expires: 0');
     }
     elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
