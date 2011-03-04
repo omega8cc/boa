@@ -109,6 +109,11 @@ _FORCE_GIT_MIRROR=""
 ### Boost at all, so it works the same with
 ### any Drupal core version: 5.x, 6.x and 7.x.
 ###
+### Even when enabled, it will not cache
+### anything if the site is using SSL mode
+### or the platform is Drupal 6 Ubercart or
+### or Drupal 7 Commerce.
+###
 ### Note: this cache will use hardcoded
 ### lifetime value, set to 10 minutes,
 ### but if you have also Boost enabled, then
@@ -125,9 +130,9 @@ _FORCE_GIT_MIRROR=""
 ### You can turn ON/OFF this feature on every
 ### upgrade by changing the value below.
 ###
-### _USE_SPEED_BOOSTER=YES
+### _USE_SPEED_BOOSTER=NO
 ###
-_USE_SPEED_BOOSTER=NO
+_USE_SPEED_BOOSTER=YES
 
 
 ###----------------------------------------###
