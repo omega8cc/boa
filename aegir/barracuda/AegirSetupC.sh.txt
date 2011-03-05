@@ -251,7 +251,7 @@ fi
 ###---### Distributions full names
 #
 _F_ACQUIA="Acquia 6.20-svn P.$_THIS_CORE"
-_F_ATRIUM="Atrium 1.0-beta9 P.$_THIS_CORE"
+_F_ATRIUM="Atrium 1.0-beta10 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal 6.20 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal 7.0 P.$_THIS_CORE"

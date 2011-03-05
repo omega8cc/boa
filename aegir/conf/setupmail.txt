@@ -56,7 +56,7 @@ Drupal distributions ready to deploy [Mini + Classic]:
  
  Drupal 7.0 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.20 ------------------ http://pressflow.org
- Open Atrium 1.0-beta9 6.20 --- http://openatrium.com
+ Open Atrium 1.0-beta10 6.20 -- http://openatrium.com
  Managing News 1.2 6.20 ------- http://managingnews.com
  Feature Server 6.20 ---------- http://bit.ly/fserver
  Acquia 6.20 ------------------ http://bit.ly/acquiadrupal

@@ -42,7 +42,7 @@ Your Aegir control panel is available as before at:
      and your old subscription will be cancelled
      plus any unused amount refunded the same day.
 
-* Open Atrium 1.0-beta9 now includes new Ideation feature.
+* Open Atrium 1.0-beta10 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
