@@ -72,6 +72,8 @@ Your Aegir control panel is available as before at:
 * Automated FTP accounts per site and per platform.
 * Speed Booster for logged in users.
 * Embedded Aegir Knowledge Base and How-To Recipes.
+* Drush upgrade.
+* Drush Make upgrade.
 * ...and more.
 
 
