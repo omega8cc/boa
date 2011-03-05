@@ -24,9 +24,21 @@ Your Aegir control panel is available as before at:
  https://aegir.dragon.ny.host8.biz
 
 
+!! Please read this e-mail in its entirety. It contains
+!! important, updated information required to properly leverage
+!! all your available Aegir features.
+
+
 ----------------------------------------
-# What is new or updated
+# What is new or updated this time
 ----------------------------------------
+
+* Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
+  This new feature adds super fast caching for anonymous visitors
+  directly on the web server level - no Drupal module required.
+  It works for all platforms, except Ubercart and Commerce.
+
+* Import your sites in 8 easy steps recipe - see further below.
 
 * New platforms [supported only in Aegir Classic]:
 
@@ -52,7 +64,17 @@ Your Aegir control panel is available as before at:
 
 
 ----------------------------------------
-# Improvements
+# What will be next
+----------------------------------------
+
+* Automated FTP accounts per site and per platform.
+* Speed Booster for logged in users.
+* Embedded Aegir Knowledge Base and How-To Recipes.
+* ...and more.
+
+
+----------------------------------------
+# Improvements since January 1st
 ----------------------------------------
 
 * All 6.x platforms now receive some performance related modules.
@@ -78,7 +100,7 @@ Your Aegir control panel is available as before at:
 
 
 ----------------------------------------
-# Fixes
+# Fixes since January 1st
 ----------------------------------------
 
 * Known issue with paths to files not rewritten is now fixed.

@@ -123,6 +123,8 @@ added to all 6.x platforms:
  boost-6.x-1.x-dev
  dbtuner-6.x-1.x-dev
  advagg-6.x-1.x-dev
+ ajaxblocks-6.x-1.2
+ imageinfo_cache-6.x-1.x-dev
  cookie_cache_bypass_adv-6.x-1.x-dev
  expire-6.x-1.x-dev
  elysia_cron-6.x-1.x-dev
