@@ -1,5 +1,9 @@
 Hello,
 
+Your Aegir Hosting System has been upgraded to version 0.4-boa-E
+
+
+                         ***
 
 We proudly sponsor Intimate Ægir Chicago Workshop
        
@@ -15,9 +19,7 @@ Bonus: Antoine Beaupré (aka @anarcat), one of the core Aegir
                          ***
                          
 
-Your Aegir Hosting System has been upgraded to version 0.4-boa-E
-
-Also your system services, kernel and libraries have been upgraded.
+Also your system services, kernel and libraries have been upgraded.                         
 
 Your Aegir control panel is available as before at:
 
