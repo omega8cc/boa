@@ -250,7 +250,8 @@ fi
 
 ###---### Distributions full names
 #
-_F_ACQUIA="Acquia 6.20-svn P.$_THIS_CORE"
+_F_ACQUIA="Acquia 6.20 P.$_THIS_CORE"
+_F_ACQUIA_SEVEN="Acquia 7.0 P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0-beta10 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal 6.20 P.$_THIS_CORE"
@@ -445,9 +446,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/acquia"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  mkdir -p $_CORE/acquia
-  cd $_CORE/acquia
-  svn co https://svn.acquia.com/drupal/branches/1.x-6.x . &> /dev/null
+  git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE/acquia &> /dev/null
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
@@ -462,6 +461,39 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_ACQUIA installation skipped"
   mrun "sleep 1"
+fi
+
+
+###---### Acquia Seven
+#
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+echo " "
+if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
+true
+msg "STATUS: $_F_ACQUIA_SEVEN install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/acquia_seven"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  git clone git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia_seven &> /dev/null
+  cd $_CORE/acquia_seven
+  rm -f $_CORE/acquia_seven/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/acquia_seven/profiles/minimal
+  rm -f -r $_CORE/acquia_seven/profiles/standard
+  rm -f -r $_CORE/acquia_seven/profiles/testing
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_seven
+cd $_ROOT/distro/$_THIS_CORE/acquia_seven
+create_symlinks
+create_d7_symlinks
+msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_ACQUIA_SEVEN installation skipped"
+  mrun "sleep 1"
+fi
 fi
 
 
@@ -634,37 +666,37 @@ fi
 
 ###---### Cocomore Drupal
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
-echo " "
-if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
-true
-msg "STATUS: $_F_COCOMORE install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/$_COCOMORE"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  #wget -q -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz
-  wget -q -U iCab http://omega8.cc/dev/$_COCOMORE.tar.gz
-  tar -xzf $_COCOMORE.tar.gz
-  rm -f $_COCOMORE.tar.gz
-  #mv CDC-6.19.0 $_COCOMORE
-  cd $_CORE/$_COCOMORE
-  ln -s $_CORE/o_contrib modules/o_contrib
-  rm -f $_CORE/$_COCOMORE/*.txt
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_COCOMORE
-cd $_ROOT/distro/$_THIS_CORE/$_COCOMORE
-create_symlinks
-msg "STATUS: $_F_COCOMORE installation completed"
-mrun "sleep 2"
-else
-  msg "STATUS: $_F_COCOMORE installation skipped"
-  mrun "sleep 1"
-fi
-fi
-fi
+# if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+# if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+# echo " "
+# if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
+# true
+# msg "STATUS: $_F_COCOMORE install in progress, please wait..."
+# mrun "sleep 2"
+# _CORE_DISTRO="$_CORE/$_COCOMORE"
+# if [ ! -d "$_CORE_DISTRO" ] ; then
+#   cd $_CORE
+#   #wget -q -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz
+#   wget -q -U iCab http://omega8.cc/dev/$_COCOMORE.tar.gz
+#   tar -xzf $_COCOMORE.tar.gz
+#   rm -f $_COCOMORE.tar.gz
+#   #mv CDC-6.19.0 $_COCOMORE
+#   cd $_CORE/$_COCOMORE
+#   ln -s $_CORE/o_contrib modules/o_contrib
+#   rm -f $_CORE/$_COCOMORE/*.txt
+#   create_dirs
+# fi
+# mkdir -p $_ROOT/distro/$_THIS_CORE/$_COCOMORE
+# cd $_ROOT/distro/$_THIS_CORE/$_COCOMORE
+# create_symlinks
+# msg "STATUS: $_F_COCOMORE installation completed"
+# mrun "sleep 2"
+# else
+#   msg "STATUS: $_F_COCOMORE installation skipped"
+#   mrun "sleep 1"
+# fi
+# fi
+# fi
 
 
 ###---### Drupal Commons
@@ -959,6 +991,7 @@ rm -f $_CORE/*.tar.gz
 cd $_CORE
 find . -name .svn -exec rm -rf {} \; &> /dev/null
 find . -name .bzr -exec rm -rf {} \; &> /dev/null
+find . -name .git -exec rm -rf {} \; &> /dev/null
 
 
 ###---### Save & verify platforms
@@ -1001,6 +1034,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_seven" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia_seven/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_ACQUIA_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/acquia_seven &> /dev/null
     mrun "sleep 5"
   fi
 fi

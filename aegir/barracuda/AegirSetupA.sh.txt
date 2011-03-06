@@ -718,56 +718,91 @@ fi
 if [ "$_DIST_INSTALL" = "YES" ] ; then
 msg "$_STATUS A: Create ftp symlinks"
 mrun "sleep 3"
-if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
-  mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
+  if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
+    mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
+  fi
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_seven/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia_seven" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia_seven/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia_seven
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal5
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal5" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal5
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/managingnews" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublish" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/fserver/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/fserver" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/nodestream" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons
+    fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites /home/$_USERFTP/platforms/$_THIS_CORE/cocomore
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cocomore" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites /home/$_USERFTP/platforms/$_THIS_CORE/cocomore
+    fi
   fi
-fi
 fi
 if [ ! -d "$_ROOT/static" ] ; then
   mkdir -p $_ROOT/static

@@ -96,14 +96,14 @@ Octopus can install the platforms listed below:
  Managing News 1.2 ------------ http://managingnews.com
  NodeStream ------------------- http://nodestream.org
  Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
- Acquia 6.20-svn (int) -------- http://bit.ly/acquiadrupal
+ Acquia 6.20 (int) ------------ http://bit.ly/acquiadrupal
+ Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
  OpenPublish 2.3.441 ---------- http://openpublishapp.com
  OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
  ProsePoint 0.37 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.20 Pressflow (int) -- http://pressflow.org
- Drupal 6.20 Cocomore --------- http://drupal.cocomore.com
  Feature Server --------------- http://bit.ly/fserver
                                 http://bit.ly/fservermore
 
