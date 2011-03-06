@@ -530,7 +530,7 @@ fi
 #
 msg "$_STATUS A: Set correct permissions"
 mrun "sleep 3"
-chmod 0711 $_AEGIR_ROOT &> /dev/null
+chmod 0755 $_AEGIR_ROOT &> /dev/null
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
 chmod 0750 $_ROOT/backups
