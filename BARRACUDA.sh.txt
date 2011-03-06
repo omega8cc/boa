@@ -1814,7 +1814,7 @@ if [ ! -e "/var/log/umask_fixed.log" ] ; then
   echo "UMASK 002" >> /etc/login.defs
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   echo "umask 002" >> /var/www/.profile
-  chown -R www-data:www-data /var/www/*
+  chown -R www-data:www-data /var/www/* &> /dev/null
   touch /var/log/umask_fixed.log
 fi
 
