@@ -475,7 +475,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/acquia_seven"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia_seven &> /dev/null
+  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia_seven &> /dev/null
   cd $_CORE/acquia_seven
   rm -f $_CORE/acquia_seven/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
