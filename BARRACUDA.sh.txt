@@ -2484,9 +2484,10 @@ EOF
 echo " "
 msg "...waiting now 30 sec before running interactive mysql_secure_installation..."
 echo " "
-echo " "
 mrun "sleep 30"
+echo " "
 mysql_secure_installation
+echo " "
 mrun "sleep 3"
 echo "[client]" >> /root/.my.cnf
 echo "user=root" >> /root/.my.cnf
@@ -2521,7 +2522,7 @@ msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
-  killall -9 nginx &> /dev/null
+  st_runner "invoke-rc.d nginx stop" &> /dev/null
   mrun "sleep 3"
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
