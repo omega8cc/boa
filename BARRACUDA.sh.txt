@@ -456,7 +456,7 @@ install_redis_src () {
   if [ -e "/var/lib/redis" ] ; then
     st_runner "invoke-rc.d redis-server stop" &> /dev/null
     mrun "sleep 5"
-    killall -9 redis-server &> /dev/null
+    killall -9 redis-server
   fi
   cd /usr/local/bin
   cp -p redis-server /usr/bin/
@@ -1736,7 +1736,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module --without-http_scgi_module  --without-http_uwsgi_module --with-debug --with-ipv6 --add-module=/var/opt/nginx-upload-progress-module/" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  killall -9 nginx &> /dev/null
+  killall -9 nginx
   mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
 fi
@@ -1863,7 +1863,7 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    killall -9 nginx php-cgi php-fpm &> /dev/null
+    killall -9 nginx php-cgi php-fpm
     mrun "sleep 3"
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
@@ -2015,7 +2015,7 @@ perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nof
 rm -f /etc/nginx/sites-available/default
 rm -f /etc/nginx/sites-enabled/default
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  killall -9 nginx &> /dev/null
+  killall -9 nginx
   mrun "sleep 3"
   st_runner "invoke-rc.d nginx start" &> /dev/null
 else
@@ -2170,11 +2170,11 @@ mrun "sleep 30"
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
     if [ "$_THIS_OS" = "Ubuntu" ] ; then
-      killall -9 nginx &> /dev/null
+      killall -9 nginx
       mrun "sleep 3"
       st_runner "invoke-rc.d nginx start" &> /dev/null
     else
-      killall -9 nginx &> /dev/null
+      killall -9 nginx
       mrun "sleep 3"
       st_runner "invoke-rc.d nginx start" &> /dev/null
     fi
@@ -2523,9 +2523,9 @@ msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   st_runner "invoke-rc.d nginx stop" &> /dev/null
-  mrun "sleep 3"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
+  killall -9 nginx
+  mrun "sleep 1"
   st_runner "invoke-rc.d nginx start" &> /dev/null
 else
   st_runner "invoke-rc.d nginx reload" &> /dev/null

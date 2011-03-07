@@ -297,7 +297,11 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 # What is new or updated
 ----------------------------------------
 
-* Open Atrium 1.0-beta9 now includes new Ideation feature.
+* Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
+  This new feature adds super fast caching for anonymous visitors
+  directly on the web server level - no Drupal module required.
+  It works for all platforms, except Ubercart and Commerce.
+* Open Atrium 1.0-beta10 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
@@ -312,7 +316,19 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 
 
 ----------------------------------------
-# Improvements
+# What will be next
+----------------------------------------
+
+* Automated FTP accounts per site and per platform.
+* Speed Booster for logged in users.
+* Embedded Aegir Knowledge Base and How-To Recipes.
+* Drush upgrade.
+* Drush Make upgrade.
+* ...and more.
+
+
+----------------------------------------
+# Improvements since January 1st
 ----------------------------------------
 
 * All 6.x platforms now receive some performance related modules.
@@ -338,7 +354,7 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 
 
 ----------------------------------------
-# Fixes
+# Fixes since January 1st
 ----------------------------------------
 
 * Known issue with paths to files not rewritten is now fixed.
