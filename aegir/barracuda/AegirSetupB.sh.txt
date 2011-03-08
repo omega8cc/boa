@@ -386,10 +386,14 @@ mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://omega8.cc/dev/aegir_custom_settings-6.x-1.5.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.5.tar.gz
+ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 -y &> /dev/null
 $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD en hosting_client -y &> /dev/null
+$_DRUSHCMD en path_alias_cache -y &> /dev/null
+$_DRUSHCMD en css_emimage -y &> /dev/null
+$_DRUSHCMD en cache -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null

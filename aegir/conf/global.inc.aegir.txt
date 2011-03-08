@@ -28,6 +28,13 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $test_sess_name = 'SESS'. md5($cookie_domain);
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile'])) {
       header('X-Accel-Expires: 0');
+      if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
+        $lifetime = '600';
+        setcookie('OctopusNoCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+      }
+      elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusNoCacheID])) {
+        $loggedinactive = 'YES';
+      }
     }
     elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
       $lifetime = '600';
@@ -78,7 +85,7 @@ if (!preg_match("/(?:standard|minimal|testing|commerce)/", $conf['install_profil
       }
       $conf['error_level'] = 0;
       $conf['statistics_enable_access_log'] = 0;
-      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/OctopusCacheID/", $_SERVER['HTTP_COOKIE'])) {
+      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
       $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
       $conf['cache_settings'] = array(
       'engines' => array(
