@@ -448,9 +448,9 @@ install_redis_src () {
   fi
   cd /var/opt
   rm -f -r /var/opt/redis*
-  wget -q -U iCab http://redis.googlecode.com/files/redis-2.2.0-rc4.tar.gz
-  tar -xzf redis-2.2.0-rc4.tar.gz
-  cd redis-2.2.0-rc4
+  wget -q -U iCab http://redis.googlecode.com/files/redis-2.0.5.tar.gz
+  tar -xzf redis-2.0.5.tar.gz
+  cd redis-2.0.5
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   if [ -e "/var/lib/redis" ] ; then
@@ -475,8 +475,9 @@ install_redis_src () {
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
   chown redis:redis /var/lib/redis
+  rm -f /var/lib/redis/*
   st_runner "invoke-rc.d redis-server start" &> /dev/null
-  touch /var/log/redis-2.2.0-rc4.log
+  touch /var/log/redis-2.0.5.log
 }
 #
 # Fix this on upgrade
@@ -1339,7 +1340,7 @@ if [ ! -e "/usr/bin/redis-server" ] ; then
     install_redis_src
   fi
 fi
-if [ ! -e "/var/log/redis-2.2.0-rc4.log" ] ; then
+if [ ! -e "/var/log/redis-2.0.5.log" ] ; then
   install_redis_src
 fi
 
