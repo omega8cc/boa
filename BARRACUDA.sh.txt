@@ -507,6 +507,8 @@ fix_on_upgrade () {
 #
 # Force advanced Nginx configuration
 force_advanced_nginx_config () {
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
