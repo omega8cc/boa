@@ -394,6 +394,7 @@ $_DRUSHCMD en hosting_client -y &> /dev/null
 $_DRUSHCMD en path_alias_cache -y &> /dev/null
 $_DRUSHCMD en css_emimage -y &> /dev/null
 $_DRUSHCMD en cache -y &> /dev/null
+$_DRUSHCMD en syslog -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
