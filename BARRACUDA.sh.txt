@@ -2522,12 +2522,12 @@ if [ $_STATUS = "INIT" ] ; then
   echo " "
   mrun "sleep 3"
 fi
+invoke-rc.d cron restart &> /dev/null
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
-msg "Final post-install cleaning, please wait..."
+msg "Final post-install cleaning, please wait a minute..."
 mrun "sleep 3"
-invoke-rc.d cron restart &> /dev/null
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
