@@ -2527,18 +2527,20 @@ mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
+invoke-rc.d cron restart &> /dev/null
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
   invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 5"
+  mrun "sleep 8"
   invoke-rc.d nginx restart &> /dev/null
-  mrun "sleep 5"
+  mrun "sleep 8"
+  invoke-rc.d nginx restart &> /dev/null
+  mrun "sleep 8"
   invoke-rc.d nginx restart &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
-invoke-rc.d cron restart &> /dev/null
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
