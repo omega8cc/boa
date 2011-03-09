@@ -2533,11 +2533,14 @@ if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
   invoke-rc.d nginx start &> /dev/null
   mrun "sleep 8"
-  invoke-rc.d nginx restart &> /dev/null
+  killall -9 nginx &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
   mrun "sleep 8"
-  invoke-rc.d nginx restart &> /dev/null
+  killall -9 nginx &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
   mrun "sleep 8"
-  invoke-rc.d nginx restart &> /dev/null
+  killall -9 nginx &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
