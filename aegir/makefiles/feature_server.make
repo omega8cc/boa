@@ -7,6 +7,10 @@
 api = 2
 core = 6.x
 
+projects[pressflow][type] = "core"
+projects[pressflow][download][type] = "bzr"
+projects[pressflow][download][url] = "lp:pressflow/6.x"
+
 projects[cck] = 2.9
 projects[context] = 3.0
 projects[ctools] = 1.8
