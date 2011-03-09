@@ -410,6 +410,7 @@ $_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
 $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
 $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
+$_DRUSHCMD vset --always-set hosting_cron_use_backend 0 &> /dev/null
 $_DRUSHCMD vset --always-set site_footer "Daily Usage Monitor (will be available next morning) | Disk <strong>*</strong> MB | Databases <strong>*</strong> MB" &> /dev/null
 sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
