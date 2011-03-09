@@ -1,23 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 0.4-boa-E
-
-
-                         ***
-
-We proudly sponsor Intimate Ægir Chicago Workshop
-       
-       by Geek Royale and Skwashd Services
-
-       http://intimateaegir.eventbrite.com
-
-Bonus: Antoine Beaupré (aka @anarcat), one of the core Aegir
-       developers, and Moshe Weitzman (@weitzman) drush lead
-       developer, will be offering an exclusive Q&A session
-       at the end of the workshop.        
-
-                         ***
-                         
+Your Aegir Hosting System has been upgraded to version 1.0-boa-T.
 
 Also your system services, kernel and libraries have been upgraded.                         
 
@@ -27,7 +10,7 @@ Your Aegir control panel is available as before at:
 
 
 !! Please read this e-mail in its entirety. It contains
-!! important, updated information required to properly leverage
+!! important, *updated* information required to properly leverage
 !! all your available Aegir features.
 
 
@@ -42,7 +25,7 @@ Your Aegir control panel is available as before at:
 
 * Import your sites in 8 easy steps recipe - see further below.
 
-* New platforms [supported only in Aegir Classic]:
+* New platforms [supported only in Aegir Classic and Tsunami]:
 
   Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
   NodeStream ------------------- http://nodestream.org
@@ -57,6 +40,13 @@ Your Aegir control panel is available as before at:
      and your old subscription will be cancelled
      plus any unused amount refunded the same day.
 
+  Q: How to upgrade from Aegir Mini or Classic to Tsunami?
+  
+  A: Tsunami is a special, very high performance option,
+     hosted on the high-end hardware in a separate custom
+     cloud, so simple upgrade is not possible. Separate
+     subscription and site migration will be required.
+
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
@@ -64,6 +54,7 @@ Your Aegir control panel is available as before at:
 * Memcache extension replaced with memcached and libmemcached.
 * Drush downgraded to version 6.x-3.3
 * Drush Make upgraded to version 2.0-beta11
+* Redis cache server upgraded to version 2.0.5
 
 
 ----------------------------------------

@@ -3,23 +3,7 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 site deployment.
 
-                         ***
-
-We proudly sponsor Intimate Ægir Chicago Workshop
-       
-       by Geek Royale and Skwashd Services
-
-       http://intimateaegir.eventbrite.com
-
-Bonus: Antoine Beaupré (aka @anarcat), one of the core Aegir
-       developers, and Moshe Weitzman (@weitzman) drush lead
-       developer, will be offering an exclusive Q&A session
-       at the end of the workshop.        
-
-                         ***
-
-
-Your Aegir control panel is available at:
+Your Aegir control panel [version 1.0-boa-T] is available at:
 
  https://aegir.dragon.ny.host8.biz
 
@@ -76,6 +60,13 @@ Some new platforms are supported by Aegir Classic only:
   A: Place a new order at http://omega8.cc/hosted-aegir
      and your old subscription will be cancelled
      plus any unused amount refunded the same day.
+
+  Q: How to upgrade from Aegir Mini or Classic to Tsunami?
+  
+  A: Tsunami is a special, very high performance option,
+     hosted on the high-end hardware in a separate custom
+     cloud, so simple upgrade is not possible. Separate
+     subscription and site migration will be required.
 
 All 6.x platforms have been enhanced using Pressflow Drupal core.
 More details about Pressflow Drupal are here:
@@ -300,7 +291,7 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
   This new feature adds super fast caching for anonymous visitors
   directly on the web server level - no Drupal module required.
-  It works for all platforms, except Ubercart and Commerce.
+  It works for all platforms, except Ubercart 6 and Commerce 7.
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
@@ -308,6 +299,7 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * Memcache extension replaced with memcached and libmemcached.
 * Drush downgraded to version 6.x-3.3
 * Drush Make upgraded to version 2.0-beta11
+* Redis cache server upgraded to version 2.0.5
 * Your Aegir control panel now runs on Pressflow core.
 * You can create and manage your own platforms.
 * You can use makefiles to create platforms.

@@ -59,7 +59,7 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=0.4-boa-C
+### _AEGIR_VERSION=1.0-boa-T
 ###
 _AEGIR_VERSION=HEAD
 
@@ -304,7 +304,7 @@ _LOCAL_NETWORK_HN=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=0.4-boa-D-dev2
+_INSTALLER_VERSION=1.0-boa-T
 _NGINX_VERSION=0.9.5
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
@@ -1430,7 +1430,7 @@ if [ ! -e "/var/log/fixed-libevent-1.4.14b-stable.log" ] ; then
   msg "INFO: Installing libevent, please wait..."
   rm -f -r /var/opt/libevent*
   cd /var/opt
-  wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libevent-1.4.14b-stable.tar.gz
   tar -xzf libevent-1.4.14b-stable.tar.gz
   cd /var/opt/libevent-1.4.14b-stable
   st_runner "sh ./configure --prefix=/usr" 2> /dev/null
@@ -1438,7 +1438,7 @@ if [ ! -e "/var/log/fixed-libevent-1.4.14b-stable.log" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   rm -f -r /var/opt/libevent*
   cd /var/opt
-  wget -q -U iCab http://omega8.cc/dev/libevent-1.4.14b-stable.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libevent-1.4.14b-stable.tar.gz
   tar -xzf libevent-1.4.14b-stable.tar.gz
   cd /var/opt/libevent-1.4.14b-stable
   st_runner "sh ./configure" 2> /dev/null
@@ -1538,7 +1538,7 @@ chmod 755 php-fpm
 msg "INFO: Installing libmemcached with memcached for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
+wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.44.tar.gz
 mrun "sleep 3"
 ldconfig &> /dev/null
 tar -xzf libmemcached-0.44.tar.gz
@@ -1551,7 +1551,7 @@ if [ -e "/var/opt/libmemcached-0.44" ] ; then
   #msg "INFO: OK libmemcached installed"
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://omega8.cc/dev/memcached-1.0.2.tgz
+  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
   tar -xzf memcached-1.0.2.tgz
   if [ -e "/var/opt/memcached-1.0.2" ] ; then
     cd /var/opt/memcached-1.0.2
@@ -1583,7 +1583,7 @@ st_runner "make --quiet install" 2> /dev/null
 msg "INFO: Installing uploadprogress for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://omega8.cc/dev/uploadprogress-1.0.1.tgz
+wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
 tar -xzf uploadprogress-1.0.1.tgz
 cd /var/opt/uploadprogress-1.0.1
 st_runner "/usr/local/bin/phpize" 2> /dev/null
@@ -1596,7 +1596,7 @@ st_runner "make --quiet install" 2> /dev/null
 msg "INFO: Installing apc for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-# wget -q -U iCab http://omega8.cc/dev/APC-3.1.4.tgz
+# wget -q -U iCab http://files.aegir.cc/dev/APC-3.1.4.tgz
 # tar -xzf APC-3.1.4.tgz
 # cd /var/opt/APC-3.1.4
 svn co http://svn.php.net/repository/pecl/apc/trunk apc-svn &> /dev/null
@@ -1612,7 +1612,7 @@ echo "apc-svn-3.1.6 $_NOW" > /var/log/apc-svn-3.1.6
 msg "INFO: Installing mailparse for php, please wait..."
 mrun "sleep 3"
 cd /var/opt
-wget -q -U iCab http://omega8.cc/dev/mailparse-2.1.5.tgz
+wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
 tar -xzf mailparse-2.1.5.tgz
 cd /var/opt/mailparse-2.1.5
 st_runner "/usr/local/bin/phpize" 2> /dev/null
@@ -1652,7 +1652,7 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://omega8.cc/dev/libmemcached-0.44.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.44.tar.gz
   mrun "sleep 3"
   tar -xzf libmemcached-0.44.tar.gz
   if [ -e "/var/opt/libmemcached-0.44" ] ; then
@@ -1664,7 +1664,7 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
     #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
-    wget -q -U iCab http://omega8.cc/dev/memcached-1.0.2.tgz
+    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
     tar -xzf memcached-1.0.2.tgz
     if [ -e "/var/opt/memcached-1.0.2" ] ; then
       cd /var/opt/memcached-1.0.2
@@ -1744,7 +1744,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
-  st_runner "invoke-rc.d nginx start" &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
@@ -2023,7 +2023,7 @@ rm -f /etc/nginx/sites-enabled/default
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
-  st_runner "invoke-rc.d nginx start" &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
@@ -2178,11 +2178,11 @@ mrun "sleep 30"
     if [ "$_THIS_OS" = "Ubuntu" ] ; then
       killall -9 nginx &> /dev/null
       mrun "sleep 3"
-      st_runner "invoke-rc.d nginx start" &> /dev/null
+      invoke-rc.d nginx start &> /dev/null
     else
       killall -9 nginx &> /dev/null
       mrun "sleep 3"
-      st_runner "invoke-rc.d nginx start" &> /dev/null
+      invoke-rc.d nginx start &> /dev/null
     fi
   fi
 fi
@@ -2199,7 +2199,7 @@ if [ ! -d "/opt/solr" ] ; then
     rm -f -r apachesolr*
     rm -f -r /opt/solr
     rm -f -r /opt/tomcat6
-    wget -q -U iCab http://omega8.cc/dev/apachesolr.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/apachesolr.tar.gz
     tar -xzf apachesolr.tar.gz
     cd apachesolr
     mv -f tomcat /etc/init.d/ &> /dev/null
@@ -2527,24 +2527,16 @@ mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
+invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
-  st_runner "invoke-rc.d nginx stop" &> /dev/null
-  mrun "sleep 1"
+  invoke-rc.d nginx stop &> /dev/null
+  mrun "sleep 3"
   killall -9 nginx &> /dev/null
-  mrun "sleep 1"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 1"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 1"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 1"
-  st_runner "invoke-rc.d nginx start" &> /dev/null
-  st_runner "invoke-rc.d nginx restart" &> /dev/null
+  invoke-rc.d nginx start &> /dev/null
 else
-  st_runner "invoke-rc.d nginx reload" &> /dev/null
+  invoke-rc.d nginx reload &> /dev/null
 fi
-st_runner "invoke-rc.d php-fpm reload" &> /dev/null
-st_runner "invoke-rc.d cron restart" &> /dev/null
+invoke-rc.d cron restart &> /dev/null
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid

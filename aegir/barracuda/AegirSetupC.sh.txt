@@ -293,7 +293,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
-wget -q -U iCab http://omega8.cc/boost_stats.php.txt
+wget -q -U iCab http://files.aegir.cc/boost_stats.php.txt
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   mkdir -p $_CORE/o_contrib_seven
@@ -319,7 +319,7 @@ fi
 if [ ! -d "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
-  wget -q -U iCab http://omega8.cc/dev/cache.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
@@ -677,7 +677,7 @@ fi
 # if [ ! -d "$_CORE_DISTRO" ] ; then
 #   cd $_CORE
 #   #wget -q -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz
-#   wget -q -U iCab http://omega8.cc/dev/$_COCOMORE.tar.gz
+#   wget -q -U iCab http://files.aegir.cc/dev/$_COCOMORE.tar.gz
 #   tar -xzf $_COCOMORE.tar.gz
 #   rm -f $_COCOMORE.tar.gz
 #   #mv CDC-6.19.0 $_COCOMORE
@@ -857,7 +857,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://omega8.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
   rm -f openpublish-$_OPENPUBLISH.tar.gz
   #mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
@@ -893,7 +893,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openscholar-$_OPENSCHOLAR"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://omega8.cc/dev/distro/scholar/openscholar-$_OPENSCHOLAR.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/distro/scholar/openscholar-$_OPENSCHOLAR.tar.gz
   tar -xzf openscholar-$_OPENSCHOLAR.tar.gz
   rm -f openscholar-$_OPENSCHOLAR.tar.gz
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
@@ -955,7 +955,7 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/uberdrupal"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://omega8.cc/dev/$_UBERCART.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/$_UBERCART.tar.gz
   tar -xzf $_UBERCART.tar.gz
   rm -f $_UBERCART.tar.gz
   cd $_CORE/$_UBERCART
