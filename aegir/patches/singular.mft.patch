@@ -1,0 +1,93 @@
+diff -urp singular/style.css singular/style.css
+--- singular/style.css    2011-03-10 20:28:50.000000000 +0100
++++ singular/style.css    2011-03-10 20:28:44.000000000 +0100
+@@ -22,13 +22,13 @@ a {
+   -moz-border-radius-bottomright:5px;
+   -webkit-border-top-right-radius:5px;
+   -webkit-border-bottom-right-radius:5px;
++   border-top-right-radius:5px;
++   border-bottom-right-radius:5px;
+ 
+   font-size:13px;
+   line-height:20px;
+-
+   background:url(images/mask.png);
+   color:#fff;
+-
+   margin:100px 0px 0px;
+   float:right;
+   width:220px;
+@@ -36,9 +36,9 @@ a {
+ 
+ #main {
+   -moz-border-radius:10px;
+-  -moz-border-radius:10px;
+-  -webkit-border-radius:10px;
+   -webkit-border-radius:10px;
++  border-radius:10px;
++  
+   background:url(images/mask.png);
+   width:740px;
+   }
+@@ -102,6 +102,8 @@ body.fluid #sidebar { width:20%; }
+   #branding div.primary ul.links a {
+     -moz-border-radius:10px;
+     -webkit-border-radius:10px;
++    border-radius:10px;
++    
+     background:url(images/mask.png);
+     padding:0px 15px;
+     }
+@@ -123,6 +125,8 @@ body.fluid #sidebar { width:20%; }
+   -moz-border-radius-topright:5px;
+   -webkit-border-top-left-radius:5px;
+   -webkit-border-top-right-radius:5px;
++   border-top-left-radius:5px;
++   border-top-right-radius:5px;
+ 
+   color:#ccc;
+   background:url(images/mask.png);
+@@ -195,6 +199,8 @@ div.left div.admin-panel { margin-right:
+   -moz-border-radius-bottomright:5px;
+   -webkit-border-bottom-left-radius:5px;
+   -webkit-border-bottom-right-radius:5px;
++   border-bottom-right-radius: 5px;
++   border-bottom-left-radius: 5px;
+   }
+ 
+ #page #content div.block {
+@@ -212,6 +218,8 @@ div.left div.admin-panel { margin-right:
+ #page #content div.block-content {
+   -moz-border-radius:10px;
+   -webkit-border-radius:10px;
++   border-radius:10px;
++  
+   background:#fff;
+   padding:10px;
+   }
+@@ -262,6 +270,7 @@ div.left div.admin-panel { margin-right:
+ #growl div.messages {
+   -moz-border-radius:5px;
+   -webkit-border-radius:5px;
++   border-radius:5px;
+ 
+   margin:5px 0px;
+   background:#eff;
+@@ -320,6 +329,8 @@ dl dd {
+   -moz-border-radius-bottomleft:5px;
+   -webkit-border-top-left-radius:5px;
+   -webkit-border-bottom-left-radius:5px;
++   border-top-left-radius: 5px;
++   border-bottom-left-radius: 5px;
+   }
+ 
+ #sidebar div.block h2.block-title {
+@@ -390,6 +401,8 @@ div.node-links ul.links {
+   margin:20px 0px 0px;
+   -moz-border-radius:5px;
+   -webkit-border-radius:5px;
++   border-radius:5px;
++
+   background:#fff;
+   float:right;
+   }

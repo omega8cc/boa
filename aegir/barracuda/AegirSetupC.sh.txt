@@ -779,6 +779,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd ./profiles/feature_server/themes
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
   patch -p0 <./singular.patch &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch ./
+  patch -p0 <./singular.mft.patch &> /dev/null
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/fserver
 cd $_ROOT/distro/$_THIS_CORE/fserver
