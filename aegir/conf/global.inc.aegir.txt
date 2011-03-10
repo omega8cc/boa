@@ -1,8 +1,15 @@
 <?php # global settings.php
 
+error_reporting(0); // disable reporting errors by default - enable later only for "dev" subdomains
+
 $conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
 $conf['cron_safe_threshold'] = 0; // disable cron in d7, since Aegir runs scheduled cron for sites
+$conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
+$conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
+$conf['cache'] = 1;               // enable hardcoded caching
+$conf['error_level'] = 0;         // disable errors on screen
+$conf['statistics_enable_access_log'] = 0; // disable access log stats
 
 ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
@@ -24,7 +31,13 @@ if (isset($_SERVER['HTTP_HOST'])) {
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
-    $test_sess_name = 'SESS'. md5($cookie_domain);
+    if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
+      $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
+      $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);      
+    }
+    else {
+      $test_sess_name = 'SESS'. md5($cookie_domain);
+    }
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
@@ -54,7 +67,10 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) &
    error_reporting(E_ALL);
    ini_set('display_errors', TRUE);
    ini_set('display_startup_errors', TRUE);
-   unset($conf['cache']); // disable hardcoded caching
+   unset($conf['cache']);          // disable hardcoded caching
+   unset($conf['preprocess_css']); // disable hardcoded css aggregation
+   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+   unset($conf['error_level']);    // disable hardcoded no errors on screen
 }
 
 // http://drupal.org/node/912682#comment-3503636
@@ -68,26 +84,19 @@ ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
 if (!preg_match("/(?:standard|minimal|testing|commerce|openpublic)/", $conf['install_profile'])) { // don't use it for d7
-
-   if (preg_match("/hostmaster/", $conf['install_profile'])) {
-      $conf['hosting_ignore_default_profiles'] = 1;
-      $conf['hosting_require_disable_before_delete'] = 0;
-      unset($conf['cache']); // disable hardcoded caching
-      ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
-   }
-
-   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
-      $conf['preprocess_css'] = 1;
-      $conf['preprocess_js'] = 1;
-      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
-      if (!preg_match("/hostmaster/", $conf['install_profile'])) {
-         $conf['cache'] = 1;
-      }
-      $conf['error_level'] = 0;
-      $conf['statistics_enable_access_log'] = 0;
-      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
-      $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
-      $conf['cache_settings'] = array(
+  
+  if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+     $conf['hosting_ignore_default_profiles'] = 1;
+     $conf['hosting_require_disable_before_delete'] = 0;
+     unset($conf['cache']); // disable hardcoded caching
+     ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
+  }
+  
+  if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+     $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
+     if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
+     $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
+     $conf['cache_settings'] = array(
       'engines' => array(
         'redis-engine' => array(
           'engine' => 'redis',
