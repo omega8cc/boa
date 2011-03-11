@@ -638,6 +638,7 @@ fi
 
 ###---### Open Public
 #
+if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
 true
@@ -666,6 +667,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_OPENPUBLIC installation skipped"
   mrun "sleep 1"
+fi
 fi
 
 
