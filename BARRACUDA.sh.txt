@@ -2532,15 +2532,8 @@ invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
   invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 8"
-  killall -9 nginx &> /dev/null
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 8"
-  killall -9 nginx &> /dev/null
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 8"
-  killall -9 nginx &> /dev/null
-  invoke-rc.d nginx start &> /dev/null
+  mrun "sleep 3"
+  invoke-rc.d nginx restart &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
