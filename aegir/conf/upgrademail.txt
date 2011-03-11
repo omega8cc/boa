@@ -27,6 +27,7 @@ Your Aegir control panel is available as before at:
 
 * New platforms [supported only in Aegir Classic and Tsunami]:
 
+  OpenPublic 7.0-beta1 --------- http://openpublicapp.com
   Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
   NodeStream ------------------- http://nodestream.org
   Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons

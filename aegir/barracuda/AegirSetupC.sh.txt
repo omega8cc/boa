@@ -266,6 +266,7 @@ _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
 _F_UBERCART="Ubercart P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
 
 
 ###---### Create directories
@@ -631,6 +632,39 @@ msg "STATUS: $_F_DRUPAL7 installation completed"
 mrun "sleep 2"
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
+  mrun "sleep 1"
+fi
+
+
+###---### Open Public
+#
+echo " "
+if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
+true
+msg "STATUS: $_F_OPENPUBLIC install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://www.openpublicapp.com/sites/default/files/releases/openpublic.$_OPENPUBLIC.tar.gz
+  tar -xzf openpublic.$_OPENPUBLIC.tar.gz
+  rm -f openpublic.$_OPENPUBLIC.tar.gz
+  mv openpublic openpublic-$_OPENPUBLIC
+  cd $_CORE/openpublic-$_OPENPUBLIC
+  rm -f $_CORE/openpublic-$_OPENPUBLIC/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/testing
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
+cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
+create_symlinks
+create_d7_symlinks
+rm -f boost_stats.php
+msg "STATUS: $_F_OPENPUBLIC installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_OPENPUBLIC installation skipped"
   mrun "sleep 1"
 fi
 
@@ -1114,6 +1148,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC &> /dev/null
     mrun "sleep 5"
   fi
 fi

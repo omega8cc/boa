@@ -307,6 +307,7 @@ _OPENSCHOLAR=2.0-beta10
 _PROSEPOINT=0.37
 _UBERCART=uberdrupal
 _COMMERCE=7.x-1.x-dev
+_OPENPUBLIC=beta1-build100
 
 ###---### Functions
 #

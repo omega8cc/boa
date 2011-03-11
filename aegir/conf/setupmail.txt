@@ -48,6 +48,7 @@ Drupal distributions ready to deploy [Mini + Classic]:
 
 Some new platforms are supported by Aegir Classic only:
 
+ OpenPublic 7.0-beta1 --------- http://openpublicapp.com
  Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
  NodeStream ------------------- http://nodestream.org
  Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons

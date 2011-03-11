@@ -773,6 +773,11 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish
     fi
   fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic
+    fi
+  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar
