@@ -458,6 +458,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/acquia/profiles/acquia/translations &> /dev/null
 fi
@@ -515,15 +517,14 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-#   wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-$_OPENATRIUM.zip
-#   unzip -qq atrium-$_OPENATRIUM.zip
-#   rm -f atrium-$_OPENATRIUM.zip
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make.txt ./
   $_ROOT/tools/drush/drush make atrium.make.txt atrium-$_OPENATRIUM &> /dev/null
   rm -f atrium.make.txt
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
+  rm -f -r ./profiles/default
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
@@ -585,6 +586,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/ &> /dev/null
   cd $_CORE/pressflow
   rm -f $_CORE/pressflow/*.txt
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow/profiles/default/translations &> /dev/null
 fi
@@ -773,6 +775,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/drupal_commons-$_COMMONS
   fi
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
+  rm -f -r ./profiles/default
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS
@@ -812,6 +816,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/fserver
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/ &> /dev/null
   rm -f $_CORE/fserver/*.txt
+  rm -f -r ./profiles/default
   create_dirs
   cd ./profiles/feature_server/themes
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
@@ -844,8 +849,17 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   unzip -qq managingnews-$_MANAGINGNEWS.zip
   rm -f managingnews-$_MANAGINGNEWS.zip
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/ &> /dev/null
-  cd $_CORE/managingnews-$_MANAGINGNEWS
+  cd $_CORE/managingnews-$_MANAGINGNEWS/profiles/managingnews/modules/contrib
+  rm -f -r views spaces
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-2.12.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/spaces-6.x-3.1.tar.gz
+  tar -xzf views-6.x-2.12.tar.gz &> /dev/null
+  tar -xzf spaces-6.x-3.1.tar.gz &> /dev/null
+  rm -f *.tar.gz
+  cd $_CORE/managingnews-$_MANAGINGNEWS/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
+  rm -f -r ./profiles/default
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS
@@ -876,6 +890,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/nodestream-$_NODESTREAM
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM/ &> /dev/null
   rm -f $_CORE/nodestream-$_NODESTREAM/*.txt
+  rm -f -r ./profiles/default
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM
@@ -909,6 +924,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
   cd $_CORE/openpublish-$_OPENPUBLISH
   rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
+  sed -i "s/'profile',/'profile', 'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
+  rm -f -r ./profiles/default
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
@@ -944,6 +961,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
+  sed -i "s/'features',/'features', 'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
+  rm -f -r ./profiles/default
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR
@@ -975,6 +994,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/prosepoint-$_PROSEPOINT
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
+  rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
 fi
@@ -1006,6 +1027,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/$_UBERCART
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/ &> /dev/null
   rm -f $_CORE/$_UBERCART/*.txt
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations
 fi

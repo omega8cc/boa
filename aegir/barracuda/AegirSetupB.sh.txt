@@ -428,10 +428,12 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
     mv -f make_client.php.txt make_client.php &> /dev/null  
   fi
-  $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
-  rm -f make_client.php
-  $DRUSHC urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null
-  $DRUSHC urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
+  if [ $_LOCAL_STATUS = "INIT" ] ; then
+    $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
+    rm -f make_client.php
+    $DRUSHC urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null
+    $DRUSHC urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
+  fi
 fi
 
 
