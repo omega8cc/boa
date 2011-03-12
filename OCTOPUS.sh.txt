@@ -292,8 +292,8 @@ _INSTALLER_VERSION=1.0-boa-T
 ## System
 _WEBG=www-data
 _USRG=users
-_DRUSH_VERSION=6.x-3.3
-_DRUSH_FAMILY=3
+_DRUSH_VERSION=6.x-3.3 ### or All-versions-4.x-dev or HEAD
+_DRUSH_FAMILY=3        ### change to 4 for Drush-4 or 5 for HEAD 
 
 ## Distributions
 _COCOMORE=cdc-6.20.12
