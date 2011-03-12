@@ -44,6 +44,7 @@ _USER=o1
 _DOMAIN=$_USER.`uname -n`
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
+_CLIENT_CORES=4
 _CLIENT_OPTION=CLASSIC
 _CLIENT_SUBSCR=M
 _PLATFORMS_ALL=YES
@@ -348,6 +349,7 @@ do
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
   sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files
   sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files
+  sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files
   sed -i "s/EDIT_USER/$_USER/g"                           $Files
   sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
   sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files
@@ -411,6 +413,9 @@ if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
 fi
 if [ ! -e "/data/disk/$_USER/log/option.txt" ] ; then
   echo $_CLIENT_OPTION > /data/disk/$_USER/log/option.txt
+fi
+if [ ! -e "/data/disk/$_USER/log/cores.txt" ] ; then
+  echo $_CLIENT_CORES > /data/disk/$_USER/log/cores.txt
 fi
 if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
   echo $_CLIENT_SUBSCR > /data/disk/$_USER/log/subscr.txt
@@ -580,6 +585,10 @@ if [ -d "$_ROOT" ] ; then
   if [ -e "/data/disk/$_USER/log/option.txt" ] ; then
    _CLIENT_OPTION=`cat /data/disk/$_USER/log/option.txt`
    _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
+  fi
+  if [ -e "/data/disk/$_USER/log/cores.txt" ] ; then
+   _CLIENT_CORES=`cat /data/disk/$_USER/log/cores.txt`
+   _CLIENT_CORES=`echo -n $_CLIENT_CORES | tr -d "\n"`
   fi
   if [ -e "/data/disk/$_USER/log/subscr.txt" ] ; then
    _CLIENT_SUBSCR=`cat /data/disk/$_USER/log/subscr.txt`

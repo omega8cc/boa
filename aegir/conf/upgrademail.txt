@@ -25,7 +25,7 @@ Your Aegir control panel is available as before at:
 
 * Import your sites in 8 easy steps recipe - see further below.
 
-* New platforms [supported only in Aegir Classic and Tsunami]:
+* New platforms [supported only in Aegir Classic and TG version]:
 
   OpenPublic 7.0-beta1 --------- http://openpublicapp.com
   Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
@@ -41,9 +41,9 @@ Your Aegir control panel is available as before at:
      and your old subscription will be cancelled
      plus any unused amount refunded the same day.
 
-  Q: How to upgrade from Aegir Mini or Classic to Tsunami?
+  Q: How to upgrade from Aegir Mini or Classic to Aegir TG?
   
-  A: Tsunami is a special, very high performance option,
+  A: Aegir TG is a special, very high performance option,
      hosted on the high-end hardware in a separate custom
      cloud, so simple upgrade is not possible. Separate
      subscription and site migration will be required.

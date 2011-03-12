@@ -36,7 +36,7 @@ using one-time login link you should receive shortly
 in a separate e-mail.
 
 Once in your control panel, you'll find a number of
-Drupal distributions ready to deploy [Mini + Classic]:
+Drupal distributions ready to deploy [Mini + Classic + TG]:
  
  Drupal 7.0 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.20 ------------------ http://pressflow.org
@@ -46,7 +46,7 @@ Drupal distributions ready to deploy [Mini + Classic]:
  Acquia 6.20 ------------------ http://bit.ly/acquiadrupal
  Ubercart 6.20 ---------------- http://ubercart.org
 
-Some new platforms are supported by Aegir Classic only:
+Some new platforms are supported by Aegir Classic and TG only:
 
  OpenPublic 7.0-beta1 --------- http://openpublicapp.com
  Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
@@ -62,9 +62,9 @@ Some new platforms are supported by Aegir Classic only:
      and your old subscription will be cancelled
      plus any unused amount refunded the same day.
 
-  Q: How to upgrade from Aegir Mini or Classic to Tsunami?
+  Q: How to upgrade from Aegir Mini or Classic to Aegir TG?
   
-  A: Tsunami is a special, very high performance option,
+  A: Aegir TG is a special, very high performance option,
      hosted on the high-end hardware in a separate custom
      cloud, so simple upgrade is not possible. Separate
      subscription and site migration will be required.

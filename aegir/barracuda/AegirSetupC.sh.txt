@@ -57,6 +57,7 @@ _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _USER=EDIT_USER
 _DOMAIN=EDIT_DOMAIN
 _CLIENT_OPTION=EDIT_CLIENT_OPTION
+_CLIENT_CORES=EDIT_CLIENT_CORES
 _DISTRO=EDIT_DISTRO
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
@@ -476,7 +477,7 @@ fi
 
 ###---### Acquia Seven
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
 true
@@ -641,7 +642,7 @@ fi
 
 ###---### Open Public
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
 true
@@ -676,7 +677,7 @@ fi
 
 ###---### Commerce 7.x Dev Make
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
@@ -712,7 +713,7 @@ fi
 ###---### Cocomore Drupal
 #
 # if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-# if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+# if [ "$_CLIENT_CORES" -ge "4" ] ; then
 # echo " "
 # if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
 # true
@@ -746,7 +747,7 @@ fi
 
 ###---### Drupal Commons
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
@@ -875,7 +876,7 @@ fi
 
 ###---### NodeStream Make
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM - http://nodestream.org" ; then
 true
@@ -908,7 +909,7 @@ fi
 ###---### OpenPublish
 #
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
@@ -946,7 +947,7 @@ fi
 
 ###---### OpenScholar
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
@@ -979,7 +980,7 @@ fi
 
 ###---### Prosepoint
 #
-if [ "$_CLIENT_OPTION" = "CLASSIC" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
