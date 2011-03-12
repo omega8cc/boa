@@ -98,7 +98,6 @@ Octopus can install the platforms listed below:
  NodeStream ------------------- http://nodestream.org
  Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
  Acquia 6.20 (int) ------------ http://bit.ly/acquiadrupal
- Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
  OpenPublish 2.3.441 ---------- http://openpublishapp.com
  OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
  ProsePoint 0.37 (int) -------- http://prosepoint.org
