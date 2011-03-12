@@ -477,35 +477,35 @@ fi
 
 ###---### Acquia Seven
 #
-# if [ "$_CLIENT_CORES" -ge "4" ] ; then
-# echo " "
-# if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
-# true
-# msg "STATUS: $_F_ACQUIA_SEVEN install in progress, please wait..."
-# mrun "sleep 2"
-# _CORE_DISTRO="$_CORE/acquia_seven"
-# if [ ! -d "$_CORE_DISTRO" ] ; then
-#   cd $_CORE
-#   git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia_seven &> /dev/null
-#   cd $_CORE/acquia_seven
-#   rm -f $_CORE/acquia_seven/*.txt
-#   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-#   rm -f -r $_CORE/acquia_seven/profiles/minimal
-#   rm -f -r $_CORE/acquia_seven/profiles/standard
-#   rm -f -r $_CORE/acquia_seven/profiles/testing
-#   create_dirs
-# fi
-# mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_seven
-# cd $_ROOT/distro/$_THIS_CORE/acquia_seven
-# create_symlinks
-# create_d7_symlinks
-# msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
-# mrun "sleep 2"
-# else
-#   msg "STATUS: $_F_ACQUIA_SEVEN installation skipped"
-#   mrun "sleep 1"
-# fi
-# fi
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
+echo " "
+if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
+true
+msg "STATUS: $_F_ACQUIA_SEVEN install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/acquia_seven"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia_seven &> /dev/null
+  cd $_CORE/acquia_seven
+  rm -f $_CORE/acquia_seven/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/acquia_seven/profiles/minimal
+  rm -f -r $_CORE/acquia_seven/profiles/standard
+  rm -f -r $_CORE/acquia_seven/profiles/testing
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_seven
+cd $_ROOT/distro/$_THIS_CORE/acquia_seven
+create_symlinks
+create_d7_symlinks
+msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_ACQUIA_SEVEN installation skipped"
+  mrun "sleep 1"
+fi
+fi
 
 
 ###---### Open Atrium
