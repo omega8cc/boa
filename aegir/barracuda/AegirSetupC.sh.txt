@@ -491,7 +491,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/acquia_seven/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/acquia_seven/profiles/minimal
-  rm -f -r $_CORE/acquia_seven/profiles/standard
   rm -f -r $_CORE/acquia_seven/profiles/testing
   create_dirs
 fi
@@ -995,7 +994,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/prosepoint-$_PROSEPOINT
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
+  #sed -i "s/'dblog',/'cache', 'css_emimage', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
