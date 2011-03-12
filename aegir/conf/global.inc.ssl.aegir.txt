@@ -14,6 +14,37 @@ $conf['statistics_enable_access_log'] = 0; // disable access log stats
 ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
 ini_set('session.gc_maxlifetime', 172800);  // set it also to 48 hours max
+// Improve sessions management if module session_expire and/or Pressflow core is not used.
+// It is already enabled in the php.ini, but we are forcing it here, just in case.
+ini_set('session.gc_probability', 1);
+ini_set('session.gc_divisor', 1000);
+
+if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+  if ($request_type != "SSL" && !preg_match("/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+  }
+  $conf['hosting_ignore_default_profiles'] = 1;
+  $conf['hosting_require_disable_before_delete'] = 0;
+  unset($conf['cache']); // disable hardcoded caching
+  ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
+}
+
+// http://drupal.org/node/912682#comment-3503636
+if (preg_match("/managingnews/", $conf['install_profile'])) { 
+   ini_set('auto_detect_line_endings', TRUE);
+}
+
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+   error_reporting(E_ALL);
+   ini_set('display_errors', TRUE);
+   ini_set('display_startup_errors', TRUE);
+   unset($conf['cache']);          // disable hardcoded caching
+   unset($conf['preprocess_css']); // disable hardcoded css aggregation
+   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+   unset($conf['error_level']);    // disable hardcoded no errors on screen
+}
 
 if (isset($_SERVER['HTTP_HOST'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
@@ -63,40 +94,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-   error_reporting(E_ALL);
-   ini_set('display_errors', TRUE);
-   ini_set('display_startup_errors', TRUE);
-   unset($conf['cache']);          // disable hardcoded caching
-   unset($conf['preprocess_css']); // disable hardcoded css aggregation
-   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
-   unset($conf['error_level']);    // disable hardcoded no errors on screen
-}
-
-// http://drupal.org/node/912682#comment-3503636
-if (preg_match("/managingnews/", $conf['install_profile'])) { 
-   ini_set('auto_detect_line_endings', TRUE);
-}
-
-// Improve sessions management if module session_expire and/or Pressflow core is not used.
-// It is already enabled in the php.ini, but we are forcing it here, just in case.
-ini_set('session.gc_probability', 1);
-ini_set('session.gc_divisor', 1000);
-
-if (!preg_match("/(?:standard|minimal|testing|commerce|openpublic)/", $conf['install_profile'])) { // don't use it for d7
-  
-  if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
-     if ($request_type != "SSL" && !preg_match("/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
-        header("HTTP/1.1 301 Moved Permanently");
-        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-     }
-     $conf['hosting_ignore_default_profiles'] = 1;
-     $conf['hosting_require_disable_before_delete'] = 0;
-     unset($conf['cache']); // disable hardcoded caching
-     ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
-  }
-  
+if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile'])) { // don't use it for d7
+    
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
