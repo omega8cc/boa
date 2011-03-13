@@ -1085,8 +1085,18 @@ fi
 
 
 ###--------------------###
-#if [ $_STATUS = "INIT" ] ; then
-if [ ! -e "/var/log/apt-fast-install-log.txt" ] ; then
+if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
+  _APT_SOURCES_REWRITE=NO
+  if [ ! -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
+    _APT_SOURCES_REWRITE=YES
+  fi
+  if [ ! -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
+    _APT_SOURCES_REWRITE=YES
+  fi
+else
+  _APT_SOURCES_REWRITE=YES
+fi
+if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
   msg "INFO: Update apt sources"
   mrun "sleep 3"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
