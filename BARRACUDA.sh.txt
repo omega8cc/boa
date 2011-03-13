@@ -1296,7 +1296,7 @@ fi
 if [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "INFO: SMTP check"
 mrun "sleep 3"
-if ! netcat -w 8 -z smtp.host8.biz 25 ; then
+if ! netcat -w 8 -z smtp.postoffice.net 25 ; then
   WE_NEED_RELAY="YES"
 cat <<EOF
 
