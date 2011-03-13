@@ -11,6 +11,18 @@ $conf['cache'] = 1;               // enable hardcoded caching
 $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0; // disable access log stats
 
+if (file_exists('./modules/o_contrib/advagg/advagg.module')) {
+  unset($conf['preprocess_css']); // disable hardcoded css aggregation
+  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+  $conf['advagg_enabled'] = 1;
+  $conf['advagg_async_generation'] = 1;
+  $conf['advagg_gzip_compression'] = 1;
+  $conf['advagg_checksum_mode'] = "md5";
+  $conf['advagg_debug'] = 0;
+  $conf['advagg_dir_htaccess'] = 0;
+  $conf['advagg_rebuild_on_flush'] = 0;
+}
+
 ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
 ini_set('session.gc_maxlifetime', 172800);  // set it also to 48 hours max
@@ -44,6 +56,13 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) &
    unset($conf['preprocess_css']); // disable hardcoded css aggregation
    unset($conf['preprocess_js']);  // disable hardcoded js aggregation
    unset($conf['error_level']);    // disable hardcoded no errors on screen
+   unset($conf['advagg_async_generation']); // disable hardcoded value
+   unset($conf['advagg_gzip_compression']); // disable hardcoded value
+   unset($conf['advagg_checksum_mode']);    // disable hardcoded value
+   unset($conf['advagg_debug']);            // disable hardcoded value
+   unset($conf['advagg_dir_htaccess']);     // disable hardcoded value
+   unset($conf['advagg_rebuild_on_flush']); // disable hardcoded value
+   unset($conf['advagg_enabled']);          // disable hardcoded value
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
@@ -96,7 +115,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 
 // don't use it for d7 profiles and for php-cli
 if (!preg_match("/(?:standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT']) &&
-    !preg_match("/cron\.php/", $_SERVER['REQUEST_URI'])) {
+    !preg_match("/(?:cron\.php)/", $_SERVER['REQUEST_URI'])) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {

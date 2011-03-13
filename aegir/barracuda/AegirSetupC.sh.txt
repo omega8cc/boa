@@ -331,7 +331,8 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
+  git clone $_BOA_REPO_GIT_URL/advagg.git &> /dev/null
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz
@@ -345,7 +346,8 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/javascript_aggregator-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
+  git clone $_BOA_REPO_GIT_URL/css_emimage.git &> /dev/null
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
@@ -354,7 +356,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf cache.tar.gz &> /dev/null
   tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
+  #tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf imageinfo_cache-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf ajaxblocks-6.x-1.2.tar.gz &> /dev/null
   tar -xzf cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz &> /dev/null
@@ -368,7 +370,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf elysia_cron-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf session_expire-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf javascript_aggregator-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
+  #tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
   tar -xzf views404-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf session443-6.x-1.x-dev.tar.gz &> /dev/null
@@ -459,7 +461,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  sed -i "s/'dblog',/'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/acquia/profiles/acquia/translations &> /dev/null
@@ -523,7 +525,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
+  sed -i "s/'dblog',/'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -586,7 +588,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/ &> /dev/null
   cd $_CORE/pressflow
   rm -f $_CORE/pressflow/*.txt
-  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'advagg', 'syslog', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow/profiles/default/translations &> /dev/null
 fi
@@ -775,7 +777,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/drupal_commons-$_COMMONS
   fi
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
+  sed -i "s/'dblog',/'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -858,7 +860,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f *.tar.gz
   cd $_CORE/managingnews-$_MANAGINGNEWS/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
+  sed -i "s/'dblog',/'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -924,7 +926,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
   cd $_CORE/openpublish-$_OPENPUBLISH
   rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
-  sed -i "s/'profile',/'profile', 'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
+  sed -i "s/'profile',/'profile', 'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -961,7 +963,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
-  sed -i "s/'features',/'features', 'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
+  sed -i "s/'features',/'features', 'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -994,7 +996,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/prosepoint-$_PROSEPOINT
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
-  #sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
+  #sed -i "s/'dblog',/'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
@@ -1027,7 +1029,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/$_UBERCART
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/ &> /dev/null
   rm -f $_CORE/$_UBERCART/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  sed -i "s/'dblog',/'cache', 'advagg', 'syslog', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations
