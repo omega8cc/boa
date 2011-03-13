@@ -543,7 +543,7 @@ fi
 
 ###---### Drupal 5 Pressflow
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+#if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
@@ -569,7 +569,7 @@ else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
   mrun "sleep 1"
 fi
-fi
+#fi
 
 
 ###---### Pressflow
