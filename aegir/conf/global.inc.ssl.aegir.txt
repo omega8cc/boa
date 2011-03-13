@@ -64,7 +64,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = 'BOND'. md5("$identity");
     if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
-      $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);      
+      $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
     }
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
@@ -94,8 +94,9 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 }
 
-if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile'])) { // don't use it for d7
-    
+// don't use it for d7 profiles and for php-cli
+if (!preg_match("/(?:standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT']) &&
+    !preg_match("/cron\.php/", $_SERVER['REQUEST_URI'])) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
      if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
