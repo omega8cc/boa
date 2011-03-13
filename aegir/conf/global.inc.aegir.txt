@@ -12,8 +12,8 @@ $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0; // disable access log stats
 
 if (file_exists('./modules/o_contrib/advagg/advagg.module')) {
-  unset($conf['preprocess_css']); // disable hardcoded css aggregation
-  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+  //unset($conf['preprocess_css']); // disable hardcoded css aggregation
+  //unset($conf['preprocess_js']);  // disable hardcoded js aggregation
   $conf['advagg_enabled'] = 1;
   $conf['advagg_async_generation'] = 1;
   $conf['advagg_gzip_compression'] = 1;

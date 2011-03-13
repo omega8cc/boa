@@ -2540,11 +2540,16 @@ mrun "sleep 3"
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
+  mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 5"
+  mrun "sleep 3"
   invoke-rc.d nginx restart &> /dev/null
-  msg "Please force Nginx restart before visiting Aegir with command:"
-  msg " service nginx restart"
+  mrun "sleep 3"
+  invoke-rc.d nginx restart &> /dev/null
+  echo " "
+  msg "Please force Nginx restart before visiting Aegir URL with command:"
+  msg "service nginx restart"
+  echo " "
   msg "Enjoy!"
 else
   invoke-rc.d nginx reload &> /dev/null

@@ -351,8 +351,7 @@ case "$1" in
         ;;
   restart|force-reload)
 	stop
-	sleep 5
-	killall -9 nginx
+	sleep 10
 	start
         ;;
   reload)
