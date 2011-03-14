@@ -307,7 +307,6 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/session443-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
@@ -318,7 +317,6 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   tar -xzf backup_migrate-7.x-2.1.tar.gz &> /dev/null
   tar -xzf openidadmin-7.x-1.0.tar.gz &> /dev/null
   tar -xzf css_emimage-7.x-1.1.tar.gz &> /dev/null
-  tar -xzf session443-7.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-7.x-1.0.tar.gz &> /dev/null
   tar -xzf core_library-7.x-1.0-beta6.tar.gz &> /dev/null
   tar -xzf agrcache-7.x-1.0-alpha2.tar.gz &> /dev/null
@@ -350,7 +348,6 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   git clone $_BOA_REPO_GIT_URL/css_emimage.git &> /dev/null
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/session443-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   tar -xzf cache.tar.gz &> /dev/null
@@ -373,7 +370,6 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   #tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
   tar -xzf views404-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf session443-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf variable_clean-6.x-1.x-dev.tar.gz &> /dev/null
   #tar -xzf data_uri_sprites-6.x-1.0-alpha1.tar.gz &> /dev/null
@@ -415,6 +411,9 @@ if [ -d "$_CORE/o_contrib/varnish" ] ; then
 fi
 if [ -d "$_CORE/o_contrib/bakery" ] ; then
   rm -f -r $_CORE/o_contrib/bakery &> /dev/null
+fi
+if [ -d "$_CORE/o_contrib/session443" ] ; then
+  rm -f -r $_CORE/o_contrib/session443 &> /dev/null
 fi
 if [ ! -d "/data/all/000/translations" ] ; then
   mkdir -p /data/all/000/translations

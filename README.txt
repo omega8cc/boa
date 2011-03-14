@@ -135,7 +135,6 @@ added to all 6.x platforms:
  views404-6.x-1.x-dev
  filefield_nginx_progress-6.x-1.4
  securesite-6.x-2.4
- session443-6.x-1.x-dev
  backup_migrate-6.x-2.x-dev
  openidadmin-6.x-1.2
  site_verify-6.x-1.x-dev
