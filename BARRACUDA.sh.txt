@@ -111,7 +111,7 @@ _LOCAL_UBUNTU_MIRROR=""
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
-_FORCE_GIT_MIRROR=""
+_FORCE_GIT_MIRROR="github"
 
 
 ###----------------------------------------###
@@ -2550,7 +2550,6 @@ if [ $_STATUS = "INIT" ] ; then
   msg "Please force Nginx restart before visiting Aegir URL with command:"
   msg "service nginx restart"
   echo " "
-  msg "Enjoy!"
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
