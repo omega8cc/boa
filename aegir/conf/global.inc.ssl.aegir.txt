@@ -70,8 +70,10 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-      ini_set('session.cookie_secure', 1);
-      $_SERVER['HTTPS'] = 'on';
+      if (!preg_match("/hostmaster/", $conf['install_profile'])) {
+        ini_set('session.cookie_secure', 1);
+        $_SERVER['HTTPS'] = 'on';
+      }
     }
     else {
       $base_url = 'http://' . $_SERVER['HTTP_HOST'];
