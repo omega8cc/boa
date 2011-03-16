@@ -309,9 +309,10 @@ _NGINX_VERSION=0.9.5
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
-_DRUSH_VERSION=6.x-3.3 ### or All-versions-4.x-dev or HEAD
-_DRUSH_FAMILY=3        ### change to 4 for Drush-4 or 5 for HEAD 
+_DRUSH_VERSION=7.x-4.4 ### or HEAD
+_DRUSH_FAMILY=4        ### change to 5 for HEAD 
 _NOW=`date +%y%m%d-%H%M`
+
 
 ###---### Avoid too many questions
 #

@@ -55,7 +55,7 @@ Your Aegir control panel is available as before at:
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
-* Drush downgraded to version 6.x-3.3
+* Drush upgraded to version 4.4
 * Drush Make upgraded to version 2.1
 * Redis cache server upgraded to version 2.0.5
 
@@ -66,8 +66,6 @@ Your Aegir control panel is available as before at:
 
 * Automated FTP accounts per site and per platform.
 * Embedded Aegir Knowledge Base and How-To Recipes.
-* Drush upgrade.
-* Drush Make upgrade.
 * ...and more.
 
 
