@@ -330,7 +330,8 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
-  git clone $_BOA_REPO_GIT_URL/advagg.git &> /dev/null
+  #git clone $_BOA_REPO_GIT_URL/advagg.git &> /dev/null
+  wget -q -U iCab http://files.aegir.cc/dev/advagg-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz
@@ -345,7 +346,8 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/javascript_aggregator-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
-  git clone $_BOA_REPO_GIT_URL/css_emimage.git &> /dev/null
+  #git clone $_BOA_REPO_GIT_URL/css_emimage.git &> /dev/null
+  wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
@@ -353,7 +355,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf cache.tar.gz &> /dev/null
   tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
-  #tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
+  tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf imageinfo_cache-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf ajaxblocks-6.x-1.2.tar.gz &> /dev/null
   tar -xzf cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz &> /dev/null
@@ -367,7 +369,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf elysia_cron-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf session_expire-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf javascript_aggregator-6.x-1.x-dev.tar.gz &> /dev/null
-  #tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
+  tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
   tar -xzf views404-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
