@@ -97,8 +97,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
         preg_match("/^\/(?:user|admin)/", $_SERVER['REQUEST_URI']) || file_exists('sites/all/modules/ubercart/README.txt')) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
-        $lifetime = '600';
-        setcookie('OctopusNoCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+        $lifetime = '0';
+        setcookie('OctopusNoCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
       }
       elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusNoCacheID])) {
         $loggedinactive = 'YES';
