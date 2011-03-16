@@ -1,0 +1,133 @@
+diff --git a/advagg.missing.inc b/advagg.missing.inc
+index 18a9608..c099750 100644
+--- a/advagg.missing.inc
++++ b/advagg.missing.inc
+@@ -90,8 +90,10 @@ function advagg_missing_regenerate() {
+     return t('In a Loop.');
+   }
+ 
+-  // Remove file from the cache.
+-  cache_clear_all($_GET['q'], 'cache_advagg');
++  // Set file(s) in cache to FALSE.
++  $arg[] = $filename;
++  cache_set(implode('/', $arg), FALSE, 'cache_advagg', TRUE);
++  advagg_missing_remove_cache($md5);
+ 
+   // Counter in database.
+   $counter_in_db = db_result(db_query("SELECT counter FROM {advagg_bundles} WHERE bundle_md5 = '%s'", $md5));
+@@ -106,7 +108,7 @@ function advagg_missing_regenerate() {
+ 
+   // Rebuild file.
+   $conf['advagg_async_generation'] = FALSE;
+-  $good = advagg_rebuild_bundle($md5, $counter);
++  $good = advagg_rebuild_bundle($md5, $counter, TRUE);
+   if (!$good) {
+     watchdog('advagg', 'This request could not generate correctly. Aggregate not generated. Request data: %info', array('%info' => $_GET['q']));
+     return t('Rebuild Failed.');
+@@ -119,3 +121,34 @@ function advagg_missing_regenerate() {
+   header('Location: ' . $uri, TRUE, 307);
+   exit;
+ }
++
++/**
++ * Set cache value to FALSE.
++ *
++ * @param $bundle_md5
++ *   Bundle's machine name.
++ */
++function advagg_missing_remove_cache($bundle_md5) {
++  $files = array();
++  $results = db_query("SELECT filename, filetype FROM {advagg_files} AS af INNER JOIN {advagg_bundles} AS ab USING ( filename_md5 ) WHERE bundle_md5 = '%s' ORDER BY porder ASC", $bundle_md5);
++  while($row = db_fetch_array($results)) {
++    $files[] = $row['filename'];
++    $type = $row['filetype'];
++  }
++
++  list($css_path, $js_path) = advagg_get_root_files_dir();
++  if ($type == 'js') {
++    $file_type_path = $js_path;
++  }
++  if ($type == 'css') {
++    $file_type_path = $css_path;
++  }
++
++  $filenames = advagg_get_filename($files, $type, '', $bundle_md5);
++  foreach ($filenames as $key => $info) {
++    $filename = $info['filename'];
++    $filepath = $file_type_path .'/'. $filename;
++
++    cache_set($filepath, FALSE, 'cache_advagg', TRUE);
++  }
++}
+diff --git a/advagg.module b/advagg.module
+index 396f0a9..537cb37 100644
+--- a/advagg.module
++++ b/advagg.module
+@@ -484,14 +484,20 @@ function advagg_jquery_updater(&$js) {
+  *   List of files in the proposed bundle.
+  * @param $filetype
+  *   css or js.
++ * @param $counter
++ *   (optional) Counter value.
++ * @param $bundle_md5
++ *   (optional) Bundle's machine name.
+  * @return
+  *   Aggregated filename.
+  */
+-function advagg_get_filename($files, $filetype, $counter = '') {
++function advagg_get_filename($files, $filetype, $counter = '', $bundle_md5 = '') {
+   $filenames = array();
+ 
+   // Create bundle md5
+-  $bundle_md5 = md5(implode('', $files));
++  if (empty($bundle_md5)) {
++    $bundle_md5 = md5(implode('', $files));
++  }
+ 
+   $filenames[] = array(
+     'filetype' => $filetype,
+@@ -913,7 +919,7 @@ function advagg_rebuild_bundle($bundle_md5, $counter = '', $force = FALSE) {
+   }
+ 
+   $conf['advagg_async_generation'] = FALSE;
+-  return advagg_css_js_file_builder($filetype, $files, $counter, $force);
++  return advagg_css_js_file_builder($filetype, $files, $counter, $force, $bundle_md5);
+ }
+ 
+ /**
+@@ -1493,13 +1499,15 @@ function advagg_js_builder($external_no_preprocess, $output_preprocess, $output_
+  * @param $files
+  *   An array of JS files to aggregate and compress into one file.
+  * @param $counter
+- *   Counter value.
++ *   (optional) Counter value.
+  * @param $force
+- *   Rebuild even if file already exists.
++ *   (optional) Rebuild even if file already exists.
++ * @param $md5
++ *   (optional) Bundle's machine name.
+  * @return
+  *   array with the filepath as the key and prefix and suffix in another array.
+  */
+-function advagg_css_js_file_builder($type, $files, $counter = '', $force = FALSE) {
++function advagg_css_js_file_builder($type, $files, $counter = '', $force = FALSE, $md5 = '') {
+   $data = '';
+   list($css_path, $js_path) = advagg_get_root_files_dir();
+   if ($type == 'js') {
+@@ -1510,7 +1518,7 @@ function advagg_css_js_file_builder($type, $files, $counter = '', $force = FALSE
+   }
+ 
+   // Send $files, get filename back
+-  $filenames = advagg_get_filename($files, $type, $counter);
++  $filenames = advagg_get_filename($files, $type, $counter, $md5);
+   $output = array();
+   $locks = array();
+   foreach ($filenames as $info) {
+@@ -1603,6 +1611,7 @@ function advagg_css_js_file_builder($type, $files, $counter = '', $force = FALSE
+       lock_wait($lock_name);
+     }
+   }
++
+   return $output;
+ }
+ 

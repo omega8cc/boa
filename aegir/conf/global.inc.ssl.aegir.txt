@@ -92,7 +92,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
-    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) || 
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce|openatrium)/", $conf['install_profile']) || 
         preg_match("/^\/user/", $_SERVER['REQUEST_URI'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {

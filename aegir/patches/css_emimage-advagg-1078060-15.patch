@@ -1,0 +1,353 @@
+diff --git a/css_emimage.install b/css_emimage.install
+index ba91abf..7c30225 100755
+--- a/css_emimage.install
++++ b/css_emimage.install
+@@ -9,6 +9,8 @@
+  * Implementation of hook_install().
+  */
+ function css_emimage_install() {
++  drupal_install_schema('css_emimage');
++
+   // Set the module's weight high so that it runs after other modules.
+   db_query("UPDATE {system} SET weight = 9999 WHERE name = 'css_emimage' AND type = 'module'");
+   cache_clear_all();
+@@ -22,4 +24,34 @@ function css_emimage_uninstall() {
+   variable_del('css_emimage_force_inline');
+   variable_del('css_emimage_duplicate_embed_limit');
+   variable_del('css_emimage_inline_datauri_limit');
++
++  drupal_uninstall_schema('css_emimage');
++}
++
++/**
++ * Implementation of hook_schema.
++ */
++function css_emimage_schema() {
++  $schema['css_emimage_advagg'] = array(
++    'description' => t('Bundle names and what they type they are.'),
++    'fields' => array(
++      'bundle_md5' => array(
++        'description' => 'MD5 hash of the bundles list of files',
++        'type' => 'varchar',
++        'length' => 32,
++        'not null' => TRUE,
++        'default' => '',
++      ),
++      'type' => array(
++        'description' => 'What type of css file this is',
++        'type' => 'varchar',
++        'length' => 32,
++        'not null' => TRUE,
++        'default' => '',
++      ),
++    ),
++    'primary key' => array('bundle_md5', 'type'),
++  );
++
++  return $schema;
+ }
+diff --git a/css_emimage.module b/css_emimage.module
+index 4c1f392..a9abc7e 100755
+--- a/css_emimage.module
++++ b/css_emimage.module
+@@ -63,13 +63,299 @@ function css_emimage_form_alter(&$form, &$form_state, $form_id) {
+ }
+ 
+ /**
++ * Implementation of hook_advagg_filenames_alter().
++ *
++ * See if any CSS file in the desired bundle contains a local image in it.
++ */
++function css_emimage_advagg_filenames_alter(&$filenames) {
++  global $base_path;
++  $output = $filenames;
++  foreach ($filenames as $key => $values) {
++    // Set values.
++    $filetype = $values['filetype'];
++    $files = $values['files'];
++    $counter = $values['counter'];
++    $bundle_md5 = $values['bundle_md5'];
++
++    // Only opperate on CSS files.
++    if ($filetype != 'css') {
++      continue;
++    }
++
++    // Load up each CSS file.
++    $has_image = FALSE;
++    foreach ($files as $filename) {
++      $filename_md5 = md5($filename);
++      $data = advagg_get_file_data($filename_md5);
++      if (!empty($data['css_emimage'])) {
++        $has_image = TRUE;
++        break;
++      }
++
++      if (!isset($data['css_emimage'])) {
++        // Search css file to see if it contains an image.
++        $css = file_get_contents($filename);
++
++        // See if CSS file contains an image.
++        $pattern = '/(background(?:-image)?|list-style(?:-image)?):[^{};)]*?((?:none|url\([\'"]?(.+?)[\'"]?\)))([^{};]*)/i';
++        if (preg_match_all($pattern, $css, $matches) > 0) {
++          $images = $matches[3];
++          foreach ($matches[3] as $imagename) {
++            if (empty($imagename)) {
++              continue;
++            }
++
++            // Strip base path from filename.
++            $imagename = preg_replace('/^' . preg_quote($base_path, '/') .'/i', '', $imagename);
++            // If not a local file, continue the search.
++            if (file_exists($filename) == FALSE) {
++              continue;
++            }
++
++            // Break on the first local image we hit.
++            $has_image = TRUE;
++            break;
++          }
++        }
++
++        if (!$has_image) {
++          $data['css_emimage'] = 0;
++          advagg_set_file_data($row['filename_md5'], $data);
++        }
++      }
++
++      // Jump out of loop if we found a local image.
++      if ($has_image) {
++        break;
++      }
++    }
++
++    if ($has_image) {
++      // See if this has already been "processed".
++      $saved = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $bundle_md5));
++      if ($saved) {
++        continue;
++      }
++
++      // Insert base css md5 into css_emimage_advagg table.
++      $values['bundle_md5'] = md5($bundle_md5 . 'base');
++      $output[$key] = $values;
++      $saved = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $values['bundle_md5']));
++      if (!$saved) {
++        db_query("INSERT INTO {css_emimage_advagg} (bundle_md5, type) VALUES ('%s', '%s')", $values['bundle_md5'], 'base');
++      }
++
++      // Insert emimage css md5 into css_emimage_advagg table.
++      $values['bundle_md5'] = md5($bundle_md5 . 'emimage');
++      $output[] = $values;
++      $saved = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $values['bundle_md5']));
++      if (!$saved) {
++        db_query("INSERT INTO {css_emimage_advagg} (bundle_md5, type) VALUES ('%s', '%s')", $values['bundle_md5'], 'emimage');
++      }
++
++      // Insert mhtml css md5 into css_emimage_advagg table.
++      $values['bundle_md5'] = md5($bundle_md5 . 'mhtml');
++      $output[] = $values;
++      $saved = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $values['bundle_md5']));
++      if (!$saved) {
++        db_query("INSERT INTO {css_emimage_advagg} (bundle_md5, type) VALUES ('%s', '%s')", $values['bundle_md5'], 'mhtml');
++      }
++    }
++    else {
++      // Insert base css md5 into css_emimage_advagg table; no processing needed.
++      $saved = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $values['bundle_md5']));
++      if (!$saved) {
++        db_query("INSERT INTO {css_emimage_advagg} (bundle_md5, type) VALUES ('%s', '%s')", $values['bundle_md5'], 'none');
++      }
++    }
++  }
++  $filenames = $output;
++}
++
++/**
++ * Implementation of hook_advagg_css_extra_alter().
++ *
++ * Set the CSS prefix and suffix.
++ */
++function css_emimage_advagg_css_extra_alter(&$values) {
++  list($filename, $bundle_md5, $prefix, $suffix) = $values;
++  $type = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $bundle_md5));
++
++  if ($type == 'base') {
++    $prefix = "<!--[if gte IE 8]><!-->\n";
++    $suffix = "\n<!--<![endif]-->";
++  }
++  elseif ($type == 'emimage') {
++    $prefix = "<!--[if gte IE 8]><!-->\n";
++    $suffix = "\n<!--<![endif]-->";
++  }
++  elseif ($type == 'mhtml') {
++    $prefix = "<!--[if lt IE 8]>\n";
++    $suffix = "\n<![endif]-->";
++  }
++  $values = array($filename, $bundle_md5, $prefix, $suffix);
++}
++
++/**
++ * Implementation of hook_advagg_css_alter().
++ *
++ * Given CSS data embed images into it.
++ */
++function css_emimage_advagg_css_alter($data, $files, $bundle_md5) {
++  $type = db_result(db_query("SELECT type FROM {css_emimage_advagg} WHERE bundle_md5 = '%s'", $bundle_md5));
++
++  if ($type == 'none') {
++    return;
++  }
++
++  // Do magic; code could be improved.
++  _css_emimage_collect_static(array(array(), array())); // Reset the processed declarations.
++  $contents = $data;
++  $datauri_css = '';
++
++  $pattern = '/([^{}]+){([^{}]*?(background(?:-image)?|list-style(?:-image)?):[^{};)]*?(?:none|url\([\'"]?.+?[\'"]?\))[^{}]*)}/i';
++  $contents = preg_replace_callback($pattern, '_css_emimage_replace', $contents);
++
++  if (!is_null($contents)) {
++    list($declarations, $file_stats) = _css_emimage_collect_static();
++
++    // Generate MHTML for IE.
++    // We do this before checking for duplicate images because MHTML can handle duplicates efficiently.
++    $mhtml_css = _css_emimage_build_mhtml_css("$base_url/$mhtml_file_path", $contents, $declarations, $file_stats);
++
++    // Check for duplicate images and exclude those exceeding our duplication limit.
++    // Sum the amount of data being embedded.
++    $datauri_total_length = 0;
++    foreach ($file_stats as $fs) {
++      if (count($fs['indices']) > 1 && $fs['total_length'] > variable_get('css_emimage_duplicate_embed_limit', CSS_EMIMAGE_DUPLICATE_EMBED_LIMIT)) {
++        foreach ($fs['indices'] as $fsi) {
++          $declarations[$fsi]['base64'] = '';
++        }
++      }
++      else {
++        $datauri_total_length += $fs['total_length'];
++      }
++    }
++
++    list($ext_contents, $ext_data) = _css_emimage_build_external($contents, $declarations);
++
++    // If the amount of data being embedded is within the inline limit, inline the data URIs;
++    // otherwise, store the data URIs in a separate CSS file.
++    if (variable_get('css_emimage_force_inline', 0) || ($datauri_total_length && $datauri_total_length <= variable_get('css_emimage_inline_datauri_limit', CSS_EMIMAGE_INLINE_DATAURI_LIMIT))) {
++      $inline = _css_emimage_build_inline($contents, $declarations);
++      if (strlen($inline) < (strlen($ext_contents) + strlen($ext_data))) {
++        $datauri_css = $inline;
++      }
++      else {
++        $datauri_css = "$ext_contents\n$ext_data";
++      }
++      $contents = '';
++    }
++    else {
++      $contents = $ext_contents;
++      $datauri_css = $ext_data;
++    }
++  }
++  else {
++    $error_code = preg_last_error();
++    $error_messages = array(PREG_NO_ERROR => 'NO_ERROR', PREG_INTERNAL_ERROR => 'INTERNAL_ERROR', PREG_BACKTRACK_LIMIT_ERROR => 'BACKTRACK_LIMIT_ERROR', PREG_RECURSION_LIMIT_ERROR => 'RECURSION_LIMIT_ERROR', PREG_BAD_UTF8_ERROR => 'BAD_UTF8_ERROR', PREG_BAD_UTF8_OFFSET_ERROR => 'BAD_UTF8_OFFSET_ERROR');
++    watchdog('css_emimage', 'Error while trying to embed images in your CSS, falling back to unmodified CSS. PCRE error was: !error.',
++      array('!error' => array_key_exists($error_code, $error_messages) ? $error_messages[$error_code] : $error_code), WATCHDOG_ERROR);
++    return;
++  }
++
++  // Send data back.
++  if ($type == 'base') {
++    $data = $contents;
++  }
++  elseif ($type == 'emimage') {
++    $data = $datauri_css;
++  }
++  elseif ($type == 'mhtml') {
++    $data = $mhtml_css;
++  }
++}
++
++/**
++ * Implementation of hook_advagg_files_table().
++ *
++ * See if any images referenced in a CSS file has changed.
++ */
++function css_emimage_advagg_files_table($row, $checksum) {
++  global $base_path;
++
++  // Only operate on CSS files.
++  if ($row['filetype'] != 'css') {
++    return;
++  }
++
++  // Load the CSS file.
++  $images = array();
++  $css = advagg_build_css_bundle(array($row['filename']));
++  $data = unserialize($row['data']);
++
++  // See if CSS file contains an image.
++  $pattern = '/(background(?:-image)?|list-style(?:-image)?):[^{};)]*?((?:none|url\([\'"]?(.+?)[\'"]?\)))([^{};]*)/i';
++  if (preg_match_all($pattern, $css, $matches) > 0) {
++    $images = $matches[3];
++  }
++
++  // In no images bail out.
++  if (empty($images)) {
++    if (isset($data['css_emimage']) && $data['css_emimage'] == 0) {
++      return;
++    }
++    $data['css_emimage'] = 0;
++    advagg_set_file_data($row['filename_md5'], $data);
++    return;
++  }
++
++
++  $out = array();
++  $rebuild = FALSE;
++  $save = FALSE;
++  foreach ($images as $filename) {
++    if (empty($filename)) {
++      continue;
++    }
++    // Strip base path from filename.
++    $filename = preg_replace('/^' . preg_quote($base_path, '/') .'/i', '', $filename);
++    if (file_exists($filename) == FALSE) {
++      continue;
++    }
++
++    // Get the checksum of each image.
++    $checksum = advagg_checksum($filename);
++    if (!empty($data['css_emimage'][$filename])) {
++      if ($data['css_emimage'][$filename] != $checksum) {
++        $rebuild = TRUE;
++        $save = TRUE;
++      }
++    }
++    else {
++      $save = TRUE;
++    }
++
++    if (!is_array($data['css_emimage'])) {
++      unset($data['css_emimage']);
++    }
++    $data['css_emimage'][$filename] = $checksum;
++  }
++
++  if ($save) {
++    advagg_set_file_data($row['filename_md5'], $data);
++  }
++  return $rebuild;
++}
++
++/**
+  * Implementation of hook_theme_registry_alter().
+  *
+  * Make css_emimage's page preprocess function run after everything else.
+  * If the css_gzip module is installed, move it's preprocess function after ours.
+  */
+ function css_emimage_theme_registry_alter(&$theme_registry) {
+-  if (isset($theme_registry['page'])) {
++  if (isset($theme_registry['page']) && module_exists('advagg') == FALSE) {
+     // Move our preprocess function after everything else.
+     if (($key = array_search('css_emimage_preprocess_page', $theme_registry['page']['preprocess functions'])) !== FALSE) {
+       unset($theme_registry['page']['preprocess functions'][$key]);
