@@ -292,7 +292,8 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
   This new feature adds super fast caching for anonymous visitors
   directly on the web server level - no Drupal module required.
-  It works for all platforms, except Ubercart 6 and Commerce 7.
+  It works for all platforms, except of Ubercart, Commerce and
+  Open Atrium.
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17

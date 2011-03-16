@@ -112,8 +112,8 @@ _FORCE_GIT_MIRROR=""
 ###
 ### Even when enabled, it will not cache
 ### anything if the site is using SSL mode
-### or the platform is Drupal 6 Ubercart or
-### Drupal 7 Commerce.
+### or the platform is Drupal 6 Ubercart,
+### Drupal 7 Commerce or Open Atrium.
 ###
 ### Note: this cache will use hardcoded
 ### lifetime value, set to 10 minutes,

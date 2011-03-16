@@ -21,7 +21,8 @@ Your Aegir control panel is available as before at:
 * Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
   This new feature adds super fast caching for anonymous visitors
   directly on the web server level - no Drupal module required.
-  It works for all platforms, except Ubercart and Commerce.
+  It works for all platforms, except of Ubercart, Commerce and
+  Open Atrium.
 
 * Import your sites in 8 easy steps recipe - see further below.
 
