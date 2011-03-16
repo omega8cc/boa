@@ -56,7 +56,7 @@ Your Aegir control panel is available as before at:
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
 * Drush upgraded to version 4.4
-* Drush Make upgraded to version 2.1
+* Drush Make upgraded to version 2.2
 * Redis cache server upgraded to version 2.0.5
 
 
