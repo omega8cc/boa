@@ -331,7 +331,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
   #git clone $_BOA_REPO_GIT_URL/advagg.git &> /dev/null
-  wget -q -U iCab http://files.aegir.cc/dev/advagg-6.x-1.x-dev.tar.gz
+  #wget -q -U iCab http://files.aegir.cc/dev/advagg-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz
@@ -352,10 +352,11 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
   tar -xzf cache.tar.gz &> /dev/null
   tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
+  #tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf imageinfo_cache-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf ajaxblocks-6.x-1.2.tar.gz &> /dev/null
   tar -xzf cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz &> /dev/null
@@ -375,6 +376,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf variable_clean-6.x-1.x-dev.tar.gz &> /dev/null
   #tar -xzf data_uri_sprites-6.x-1.0-alpha1.tar.gz &> /dev/null
+  tar -xzf drupal-nginx-fast-x-accel-redirect.tar.gz &> /dev/null
   rm -f *.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
