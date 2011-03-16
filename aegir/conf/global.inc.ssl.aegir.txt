@@ -44,7 +44,7 @@ if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP
 }
 
 // http://drupal.org/node/912682#comment-3503636
-if (preg_match("/managingnews/", $conf['install_profile'])) { 
+if (preg_match("/managingnews/", $conf['install_profile'])) {
    ini_set('auto_detect_line_endings', TRUE);
 }
 
@@ -78,7 +78,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     else {
       $base_url = 'http://' . $_SERVER['HTTP_HOST'];
     }
-  }  
+  }
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
@@ -92,8 +92,9 @@ if (isset($_SERVER['HTTP_HOST'])) {
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
-    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce|openatrium)/", $conf['install_profile']) || 
-        preg_match("/^\/user/", $_SERVER['REQUEST_URI'])) {
+
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
+        preg_match("/^\/(?:user|admin)/", $_SERVER['REQUEST_URI']) || file_exists('sites/all/modules/ubercart/README.txt')) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
         $lifetime = '600';
@@ -106,11 +107,11 @@ if (isset($_SERVER['HTTP_HOST'])) {
     elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
       $lifetime = '600';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
-      header('X-Accel-Expires: 0');
+      header('X-Accel-Expires: 300');
     }
     elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
       $loggedinactive = 'YES';
-      header('X-Accel-Expires: 0');
+      header('X-Accel-Expires: 300');
     }
     else {
       $loggedinactive = 'NO';

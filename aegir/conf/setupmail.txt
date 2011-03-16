@@ -283,6 +283,8 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * Your FTP/SSH access to platforms is limited to /sites directory.
 * If any task is running longer than 10 minutes, contact us.
 * If any task fails, send us the task log for debugging.
+* To disable Speed Booster per platform, create and empty directory
+  in sites/all/modules/ubercart/ with empty README.txt file inside.
 
 
 ----------------------------------------
@@ -290,10 +292,11 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 ----------------------------------------
 
 * Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
-  This new feature adds super fast caching for anonymous visitors
-  directly on the web server level - no Drupal module required.
-  It works for all platforms, except of Ubercart, Commerce and
-  Open Atrium.
+  This new feature adds super fast caching for anonymous visitors,
+  and yes! - also for logged in users (cache per user) directly on
+  the web server level - no Drupal module required.
+  It works for all platforms, except of Ubercart, Commerce
+  and any platform with ubercart in sites/all/modules/ubercart.
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
@@ -314,7 +317,6 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 ----------------------------------------
 
 * Automated FTP accounts per site and per platform.
-* Speed Booster for logged in users.
 * Embedded Aegir Knowledge Base and How-To Recipes.
 * Drush upgrade.
 * Drush Make upgrade.
