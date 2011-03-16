@@ -89,9 +89,9 @@ hostmaster_go_up () {
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
       rm provision-$_AEGIR_VERSION.tar.gz
     fi
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.1.tar.gz
-    tar -xzf drush_make-6.x-2.1.tar.gz
-    rm -f drush_make-6.x-2.1.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.2.tar.gz
+    tar -xzf drush_make-6.x-2.2.tar.gz
+    rm -f drush_make-6.x-2.2.tar.gz
   fi
   cd $_PREV_AEGIR_ROOT
 }
