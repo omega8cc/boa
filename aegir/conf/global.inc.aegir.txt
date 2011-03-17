@@ -89,8 +89,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
     }
 
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
-        preg_match("/^\/(?:user|admin)/", $_SERVER['REQUEST_URI']) || file_exists('sites/all/modules/ubercart/README.txt')) ||
-        preg_match("/dev/", $_SERVER['HTTP_HOST']) {
+        preg_match("/^\/(?:user|admin|logout)/", $_SERVER['REQUEST_URI']) || file_exists('sites/all/modules/ubercart/README.txt') ||
+        preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
         $lifetime = '0';
@@ -101,13 +101,18 @@ if (isset($_SERVER['HTTP_HOST'])) {
       }
     }
     elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
-      $lifetime = '600';
+      $lifetime = '172800';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
       header('X-Accel-Expires: 300');
     }
     elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
       $loggedinactive = 'YES';
       header('X-Accel-Expires: 300');
+    }
+    elseif (!isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
+      $lifetime = '0';
+      setcookie('OctopusCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+      header('X-Accel-Expires: 0');
     }
     else {
       $loggedinactive = 'NO';
