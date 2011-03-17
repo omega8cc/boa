@@ -113,7 +113,11 @@ _FORCE_GIT_MIRROR="github"
 ### Even when enabled, it will not cache
 ### anything if the site is using SSL mode
 ### or the platform is Drupal 6 Ubercart,
-### Drupal 7 Commerce or Open Atrium.
+### Drupal 7 Commerce or any platform with
+### ubercart module uploaded to sites/all.
+###
+### Also any requests to /user* or /admin*
+### are never cached for obvious reasons.
 ###
 ### Note: this cache will use hardcoded
 ### lifetime value, set to 10 minutes,
@@ -123,15 +127,24 @@ _FORCE_GIT_MIRROR="github"
 ### to use both systems for a bit better
 ### cache lifetime control.
 ###
-### It will be even possible to use this cache
+### It is now possible to use this cache
 ### system for logged in users, with pages
-### cached per user, but it is not enabled
-### by default, for now.
+### cached per user (valid for 5 minutes max).
 ###
+### To disable Speed Booster per platform,
+### create an empty directory with name
+### "ubercart" (unless you have there the
+### real ubercart module), with one empty
+### README.txt file inside, so its path will
+### be sites/all/modules/ubercart/README.txt
+### 
 ### You can turn ON/OFF this feature on every
-### upgrade by changing the value below.
+### upgrade for all platforms on this Octopus
+### instance by changing the value below,
+### to YES or NO.
 ###
 ### _USE_SPEED_BOOSTER=NO
+###
 ###
 _USE_SPEED_BOOSTER=YES
 
