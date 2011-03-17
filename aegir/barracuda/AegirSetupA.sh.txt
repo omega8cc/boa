@@ -818,6 +818,16 @@ fi
 chown $_USER:$_USRG $_ROOT/static &> /dev/null
 chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/keys
+  chown $_WEBG:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
+  chmod 770 $_ROOT/distro/$_THIS_CORE/keys
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
+  if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/keys" ] ; then
+    ln -s $_ROOT/distro/$_THIS_CORE/keys /home/$_USERFTP/platforms/$_THIS_CORE/keys
+  fi
+fi
 
 
 ###---### Prepare setupmail.txt
