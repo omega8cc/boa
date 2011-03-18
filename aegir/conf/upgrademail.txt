@@ -140,8 +140,8 @@ and logged in users.
 All three modules are by default available for all 6.x
 platforms only.
 
-There are also two extra Pressflow core modules we recommend
-to enable: *Path alias cache* and *Cookie cache bypass*.
+There is also one extra Pressflow core module we recommend
+to enable: *Path alias cache*.
 
 When creating a development version of your site, you'll
 want to work with our optimized caching systems turned off.
