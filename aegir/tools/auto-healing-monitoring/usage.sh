@@ -1,5 +1,5 @@
 #!/bin/bash
-
+  
 ###-------------SYSTEM-----------------###
 
 count()
@@ -11,6 +11,18 @@ do
     echo Dom is $Dom
     if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries}
+      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/*
+      find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
+      find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \;
+      chown -R $_THIS_HM_USER:www-data $Dir/files
+      find $Dir/files -type d -exec chmod 02770 {} \;
+      find $Dir/files -type f -exec chmod 0660 {} \;
+      Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      chown $_THIS_HM_USER:users $Plr/{modules,themes,libraries}
+      chown -R $_THIS_HM_USER.ftp:users $Plr/{modules,themes,libraries}/*
+      find $Plr/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
+      find $Plr/{modules,themes,libraries} -type f -exec chmod 0664 {} \; 
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -45,19 +57,25 @@ do
       SumDir=0
       SumDat=0
       HomSiz=0
+      HxmSiz=0
+      _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+      _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
       echo Counting User $User
       count
+      HxmSiz=`du -s /home/$User.ftp`
+      HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+      HxmSizH=`echo "scale=2; $HxmSiz/1024" | bc`;
       HomSiz=`du -s $User`
       HomSiz=`echo "$HomSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
       HomSizH=`echo "scale=2; $HomSiz/1024" | bc`;
+      HomSiz=$(($HomSiz + $HxmSiz))
+      HomSizH=$(($HomSizH + $HxmSizH))
       SumDatH=`echo "scale=2; $SumDat/1024" | bc`;
       SumDirH=`echo "scale=2; $SumDir/1024" | bc`;
       echo HomSiz is $HomSiz or $HomSizH MB
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
-      _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
-      _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       cd $_THIS_HM_SITE
       su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
       echo Done for $User
