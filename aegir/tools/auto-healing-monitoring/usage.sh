@@ -11,18 +11,18 @@ do
     echo Dom is $Dom
     if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries}
-      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/*
-      find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
-      find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \;
-      chown -R $_THIS_HM_USER:www-data $Dir/files
-      find $Dir/files -type d -exec chmod 02770 {} \;
-      find $Dir/files -type f -exec chmod 0660 {} \;
+      chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
+      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+      find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+      find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+      chown -R $_THIS_HM_USER:www-data $Dir/files &> /dev/null
+      find $Dir/files -type d -exec chmod 02770 {} \; &> /dev/null
+      find $Dir/files -type f -exec chmod 0660 {} \; &> /dev/null
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries}
-      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/*
-      find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
-      find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; 
+      chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
+      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+      find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+      find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -64,10 +64,10 @@ do
       echo Counting User $User
       count
       if [ -d "/home/$_THIS_HM_USER.ftp" ] ; then
-        HxmSiz=`du -s /home/$_THIS_HM_USER.ftp`
+        HxmSiz=`du -s /home/$_THIS_HM_USER.ftp` &> /dev/null
         HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
       fi
-      HomSiz=`du -s $User`
+      HomSiz=`du -s $User` &> /dev/null
       HomSiz=`echo "$HomSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
       HomSiz=$(($HomSiz + $HxmSiz))
       HomSizH=`echo "scale=2; $HomSiz/1024" | bc`;

@@ -78,6 +78,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _PLATFORMS_ALL=EDIT_PLATFORMS_ALL
 _USE_SPEED_BOOSTER=EDIT_USE_SPEED_BOOSTER
+_AUTOPILOT=EDIT_AUTOPILOT
 
 
 ###---### Functions
@@ -134,6 +135,9 @@ mrun () {
 #
 # Simple prompt
 prompt_yes_no () {
+if [ "$_AUTOPILOT" = "YES" ]; then
+  return 0
+else
   while true ; do
     printf "$* [Y/n] "
     read answer
@@ -151,7 +155,8 @@ prompt_yes_no () {
         echo "Please answer yes or no"
         ;;
     esac
- done 
+ done
+fi
 }
 #
 # stop on error

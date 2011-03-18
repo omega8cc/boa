@@ -36,6 +36,18 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
+### AUTOPILOT MODE                         ###
+###----------------------------------------###
+###
+### To disable all Yes/no prompts and just run
+### everything as-is, change it to YES.
+###
+### _AUTOPILOT=YES
+###
+_AUTOPILOT=NO
+
+
+###----------------------------------------###
 ### DEBUG MODE SWITCH (available)          ###
 ###----------------------------------------###
 ###
@@ -326,6 +338,9 @@ msg () {
 }
 # Simple prompt
 prompt_yes_no () {
+if [ "$_AUTOPILOT" = "YES" ]; then
+  return 0
+else
   while true ; do
     printf "$* [Y/n] "
     read answer
@@ -343,7 +358,8 @@ prompt_yes_no () {
         echo "Please answer yes or no"
         ;;
     esac
- done 
+ done
+fi
 }
 #
 # Prompt to confirm choice

@@ -52,6 +52,18 @@ _MY_OWNIP=""
 
 
 ###----------------------------------------###
+### AUTOPILOT MODE                         ###
+###----------------------------------------###
+###
+### To disable all Yes/no prompts and just run
+### everything as-is, change it to YES.
+###
+### _AUTOPILOT=YES
+###
+_AUTOPILOT=NO
+
+
+###----------------------------------------###
 ### DEBUG MODE SWITCH (available)          ###
 ###----------------------------------------###
 ###
@@ -331,6 +343,9 @@ msg () {
 }
 # Simple prompt
 prompt_yes_no () {
+if [ "$_AUTOPILOT" = "YES" ]; then
+  return 0
+else
   while true ; do
     printf "$* [Y/n] "
     read answer
@@ -348,7 +363,8 @@ prompt_yes_no () {
         echo "Please answer yes or no"
         ;;
     esac
- done 
+ done
+fi
 }
 #
 #
@@ -398,6 +414,7 @@ do
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_PLATFORMS_ALL/$_PLATFORMS_ALL/g"         $Files
   sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
+  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files  
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
@@ -407,6 +424,7 @@ do
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
+  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
 done
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf

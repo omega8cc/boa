@@ -71,6 +71,7 @@ _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _PLATFORMS_ALL=EDIT_PLATFORMS_ALL
+_AUTOPILOT=EDIT_AUTOPILOT
 
 
 ###---### Functions
@@ -82,6 +83,9 @@ msg () {
 #
 # Simple prompt
 prompt_yes_no () {
+if [ "$_AUTOPILOT" = "YES" ]; then
+  return 0
+else
   while true ; do
     printf "$* [Y/n] "
     read answer
@@ -99,7 +103,8 @@ prompt_yes_no () {
         echo "Please answer yes or no"
         ;;
     esac
- done 
+ done
+fi
 }
 #
 # Success msg
