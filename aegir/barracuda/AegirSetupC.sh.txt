@@ -316,15 +316,9 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
-  tar -xzf boost-7.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf filefield_nginx_progress-7.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf backup_migrate-7.x-2.1.tar.gz &> /dev/null
-  tar -xzf openidadmin-7.x-1.0.tar.gz &> /dev/null
-  tar -xzf css_emimage-7.x-1.1.tar.gz &> /dev/null
-  tar -xzf site_verify-7.x-1.0.tar.gz &> /dev/null
-  tar -xzf core_library-7.x-1.0-beta6.tar.gz &> /dev/null
-  tar -xzf agrcache-7.x-1.0-alpha2.tar.gz &> /dev/null
-  tar -xzf elysia_cron-7.x-1.x-dev.tar.gz &> /dev/null
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
   rm -f *.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib" ] ; then
@@ -353,27 +347,9 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
-  tar -xzf cache.tar.gz &> /dev/null
-  tar -xzf boost-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf dbtuner-6.x-1.x-dev.tar.gz &> /dev/null
-  #tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf imageinfo_cache-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf ajaxblocks-6.x-1.2.tar.gz &> /dev/null
-  tar -xzf views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
-  tar -xzf filefield_nginx_progress-6.x-1.4.tar.gz &> /dev/null
-  tar -xzf securesite-6.x-2.4.tar.gz &> /dev/null
-  tar -xzf image-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf backup_migrate-6.x-2.x-dev.tar.gz &> /dev/null
-  tar -xzf openidadmin-6.x-1.2.tar.gz &> /dev/null
-  tar -xzf elysia_cron-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf session_expire-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf javascript_aggregator-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf css_emimage-6.x-2.x-dev.tar.gz &> /dev/null
-  tar -xzf views404-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf variable_clean-6.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf drupal-nginx-fast-x-accel-redirect.tar.gz &> /dev/null
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
   rm -f *.tar.gz
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
@@ -383,17 +359,18 @@ if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha14.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-6.x-1.0-beta3.tar.gz
-  tar -xzf data-6.x-1.0-alpha14.tar.gz &> /dev/null
-  tar -xzf feeds-6.x-1.0-beta10.tar.gz &> /dev/null
-  tar -xzf job_scheduler-6.x-1.0-beta3.tar.gz &> /dev/null
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
   if ! netcat -w 8 -z features.chapterthree.com 80 ; then
     _CH3_WORKS="NO"	
   else
     wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
     wget -q -U iCab http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
     mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
-    tar -xzf atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
-    tar -xzf apachesolr-6.x-1.0.tar.gz &> /dev/null
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
     cd apachesolr
     svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient &> /dev/null
     cd $_CORE/o_contrib_atrium
