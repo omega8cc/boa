@@ -202,6 +202,33 @@ touch /var/log/feature-server-fixed-002.log
 cd
 fi
 }
+#
+# remove incompatible modules
+#
+remove_incompatible_modules_001() {
+if [ ! -e "/var/log/incompatible-modules-removed-001.log" ] ; then
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
+RMMODULES="advagg memcache varnish bakery session443 cookie_cache_bypass_adv module_supports"
+for i in $REVISIONS; do
+  if [ -d "/data/all/$i/o_contrib" ] ; then
+    for m in $RMMODULES; do
+      if [ -d "/data/all/$i/o_contrib/$m" ] ; then
+        rm -f -r /data/all/$i/o_contrib/$m
+      fi
+    done
+  fi
+  if [ -d "/data/all/$i" ] ; then
+    for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
+      if [ -d "$p/modules/cookie_cache_bypass" ] ; then
+        rm -f -r $p/modules/cookie_cache_bypass
+      fi
+    done
+  fi
+done
+touch /var/log/incompatible-modules-removed-001.log
+cd
+fi
+}
 
 
 msg "$_STATUS A: Welcome `uname -a`"
@@ -929,6 +956,7 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 3"
 else
   feature_server_fix_002
+  remove_incompatible_modules_001
 fi
 msg "BYE!"
 
