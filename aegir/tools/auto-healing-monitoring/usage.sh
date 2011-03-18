@@ -77,7 +77,8 @@ do
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
       cd $_THIS_HM_SITE
-      su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
+      su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Hourly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
+      su -s /bin/bash $_THIS_HM_USER -c "drush cc all &> /dev/null"
       echo Done for $User
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
@@ -98,4 +99,5 @@ if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   exit
 else
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
+  invoke-rc.d redis-server restart 2>&1
 fi
