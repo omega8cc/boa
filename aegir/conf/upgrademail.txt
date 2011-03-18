@@ -239,9 +239,10 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * Your FTP/SSH access to platforms is limited to /sites directory.
 * If any task is running longer than 10 minutes, contact us.
 * If any task fails, send us the task log for debugging.
-* To disable Speed Booster per platform, create and empty directory
-  in sites/all/modules/ubercart/ with empty README.txt file inside.
-
+* To disable Speed Booster per platform, create an empty directory
+  with the name "ubercart" (unless you have there the real ubercart
+  module), with one empty README.txt file inside, so its path will be
+  sites/all/modules/ubercart/README.txt
 
 
 Questions? Comments? Please contact us:

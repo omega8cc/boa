@@ -293,6 +293,7 @@ bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
 cd /data/src/$_THIS_CORE/pressflow-6/
 rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
+rm -f -r /data/src/$_THIS_CORE/pressflow-6/modules/cookie_cache_bypass
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
@@ -302,7 +303,6 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   mkdir -p $_CORE/o_contrib_seven
   cd $_CORE/o_contrib_seven
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
@@ -312,7 +312,6 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
   tar -xzf boost-7.x-1.x-dev.tar.gz &> /dev/null
-  tar -xzf cookie_cache_bypass_adv-7.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf filefield_nginx_progress-7.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf backup_migrate-7.x-2.1.tar.gz &> /dev/null
   tar -xzf openidadmin-7.x-1.0.tar.gz &> /dev/null
@@ -330,13 +329,10 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
-  #git clone $_BOA_REPO_GIT_URL/advagg.git &> /dev/null
   #wget -q -U iCab http://files.aegir.cc/dev/advagg-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/module_supports-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
@@ -346,7 +342,6 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/javascript_aggregator-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
-  #git clone $_BOA_REPO_GIT_URL/css_emimage.git &> /dev/null
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
@@ -359,9 +354,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   #tar -xzf advagg-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf imageinfo_cache-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf ajaxblocks-6.x-1.2.tar.gz &> /dev/null
-  tar -xzf cookie_cache_bypass_adv-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf views_content_cache-6.x-2.x-dev.tar.gz &> /dev/null
-  tar -xzf module_supports-6.x-1.0.tar.gz &> /dev/null
   tar -xzf filefield_nginx_progress-6.x-1.4.tar.gz &> /dev/null
   tar -xzf securesite-6.x-2.4.tar.gz &> /dev/null
   tar -xzf image-6.x-1.x-dev.tar.gz &> /dev/null
@@ -375,7 +368,6 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   tar -xzf expire-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf site_verify-6.x-1.x-dev.tar.gz &> /dev/null
   tar -xzf variable_clean-6.x-1.x-dev.tar.gz &> /dev/null
-  #tar -xzf data_uri_sprites-6.x-1.0-alpha1.tar.gz &> /dev/null
   tar -xzf drupal-nginx-fast-x-accel-redirect.tar.gz &> /dev/null
   rm -f *.tar.gz
 fi
@@ -418,6 +410,12 @@ if [ -d "$_CORE/o_contrib/bakery" ] ; then
 fi
 if [ -d "$_CORE/o_contrib/session443" ] ; then
   rm -f -r $_CORE/o_contrib/session443 &> /dev/null
+fi
+if [ -d "$_CORE/o_contrib/cookie_cache_bypass_adv" ] ; then
+  rm -f -r $_CORE/o_contrib/cookie_cache_bypass_adv &> /dev/null
+fi
+if [ -d "$_CORE/o_contrib/module_supports" ] ; then
+  rm -f -r $_CORE/o_contrib/module_supports &> /dev/null
 fi
 if [ ! -d "/data/all/000/translations" ] ; then
   mkdir -p /data/all/000/translations

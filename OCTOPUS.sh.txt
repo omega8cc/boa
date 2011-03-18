@@ -120,7 +120,7 @@ _FORCE_GIT_MIRROR="github"
 ### are never cached for obvious reasons.
 ###
 ### Note: this cache will use hardcoded
-### lifetime value, set to 10 minutes,
+### lifetime value, set to 8 minutes,
 ### but if you have also Boost enabled, then
 ### the Boost cached pages will be served
 ### first, if exist, so it is still possible
@@ -132,7 +132,7 @@ _FORCE_GIT_MIRROR="github"
 ### cached per user (valid for 5 minutes max)
 ###
 ### To disable Speed Booster per platform,
-### create an empty directory with name
+### create an empty directory with the name
 ### "ubercart" (unless you have there the
 ### real ubercart module), with one empty
 ### README.txt file inside, so its path will
