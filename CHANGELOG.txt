@@ -1,7 +1,7 @@
 
 Please see Git commits comments for details
 on changes/improvements for now, since the full
-changelog is waiting for another Edition.
+changelog is waiting for yet another Edition...
 
 
 ### Thu, 2010-09-23 17:30 - Edition 0.4-HEAD-A14.B

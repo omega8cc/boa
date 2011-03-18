@@ -19,10 +19,10 @@ do
       find $Dir/files -type d -exec chmod 02770 {} \;
       find $Dir/files -type f -exec chmod 0660 {} \;
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      chown $_THIS_HM_USER:users $Plr/{modules,themes,libraries}
-      chown -R $_THIS_HM_USER.ftp:users $Plr/{modules,themes,libraries}/*
-      find $Plr/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
-      find $Plr/{modules,themes,libraries} -type f -exec chmod 0664 {} \; 
+      chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries}
+      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/*
+      find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \;
+      find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; 
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -63,14 +63,14 @@ do
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
       echo Counting User $User
       count
-      HxmSiz=`du -s /home/$User.ftp`
-      HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
-      HxmSizH=`echo "scale=2; $HxmSiz/1024" | bc`;
+      if [ -d "/home/$_THIS_HM_USER.ftp" ] ; then
+        HxmSiz=`du -s /home/$_THIS_HM_USER.ftp`
+        HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+      fi
       HomSiz=`du -s $User`
       HomSiz=`echo "$HomSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
-      HomSizH=`echo "scale=2; $HomSiz/1024" | bc`;
       HomSiz=$(($HomSiz + $HxmSiz))
-      HomSizH=$(($HomSizH + $HxmSizH))
+      HomSizH=`echo "scale=2; $HomSiz/1024" | bc`;
       SumDatH=`echo "scale=2; $SumDat/1024" | bc`;
       SumDirH=`echo "scale=2; $SumDir/1024" | bc`;
       echo HomSiz is $HomSiz or $HomSizH MB
