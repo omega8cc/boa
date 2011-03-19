@@ -25,6 +25,11 @@ Your Aegir control panel is available as before at:
   It works for all platforms, except of Ubercart, Commerce
   and any platform with ubercart in sites/all/modules/ubercart.
 
+* To disable Speed Booster per platform, create an empty directory
+  with the name "ubercart" (unless you have there the real ubercart
+  module), with one empty README.txt file inside, so its path
+  will be: sites/all/modules/ubercart/README.txt
+
 * Import your sites in 8 easy steps recipe - see further below.
 
 * New platforms [supported only in Aegir Classic and TG version]:
@@ -51,13 +56,13 @@ Your Aegir control panel is available as before at:
      subscription and site migration will be required.
 
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
+* Drush upgraded to version 4.4
+* Drush Make upgraded to version 2.2
+* Redis cache server upgraded to version 2.0.5
 * Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
-* Drush upgraded to version 4.4
-* Drush Make upgraded to version 2.2
-* Redis cache server upgraded to version 2.0.5
 
 
 ----------------------------------------
@@ -73,6 +78,13 @@ Your Aegir control panel is available as before at:
 # Improvements since January 1st
 ----------------------------------------
 
+* Permisions on uploaded modules, themes and files are now
+  automatically fixed every hour to help with post-import issues.
+* Almost all 6.x platforms now come with performance related
+  modules already enabled and configured on site install by default.
+* Resources usage monitor now runs hourly.
+* Aegir Hostmaster control panel received extra caching and speed.
+* Better support for securepages 1.9 with forced secure cookies.
 * All 6.x platforms now receive some performance related modules.
 * Too generic D7 profile names replaced with unique Drupal 7 names.
 * A few new commands have been added to your Aegir Drush Shell (SSH).
@@ -99,6 +111,7 @@ Your Aegir control panel is available as before at:
 # Fixes since January 1st
 ----------------------------------------
 
+* Fixed issue with Nginx configuration for private files access.
 * Known issue with paths to files not rewritten is now fixed.
 * Known issue with sites cron semaphore in Aegir now resolved.
 * Known issue with PHP notices breaking some Aegir tasks resolved.
@@ -224,6 +237,10 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 
 8. Finally, re-verify the site in Aegir. Done!
 
+Note that since we allow only Pressflow core based platforms for
+5.x and 6.x Drupal versions, after initial import you should
+migrate your site to the Pressflow based platform ASAP.
+
 
 ----------------------------------------
 # Always useful hints
@@ -239,10 +256,6 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * Your FTP/SSH access to platforms is limited to /sites directory.
 * If any task is running longer than 10 minutes, contact us.
 * If any task fails, send us the task log for debugging.
-* To disable Speed Booster per platform, create an empty directory
-  with the name "ubercart" (unless you have there the real ubercart
-  module), with one empty README.txt file inside, so its path will be
-  sites/all/modules/ubercart/README.txt
 
 
 Questions? Comments? Please contact us:

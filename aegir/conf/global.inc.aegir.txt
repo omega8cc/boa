@@ -44,7 +44,7 @@ if (preg_match("/managingnews/", $conf['install_profile'])) {
 }
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-   error_reporting(E_ALL);
+   error_reporting(E_ALL & ~E_NOTICE);
    ini_set('display_errors', TRUE);
    ini_set('display_startup_errors', TRUE);
    unset($conf['cache']);          // disable hardcoded caching

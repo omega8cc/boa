@@ -85,6 +85,10 @@ version - learn more here:
 
  http://omega8.cc/apache-solr-search-order
 
+Hosted Open Atrium 1.0-beta10 now includes new Ideation feature:
+
+ http://bit.ly/oaideation
+
 
 ----------------------------------------
 #2. DEPLOYING YOUR WEB SITES
@@ -270,6 +274,10 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 
 8. Finally, re-verify the site in Aegir. Done!
 
+Note that since we allow only Pressflow core based platforms for
+5.x and 6.x Drupal versions, after initial import you should
+migrate your site to the Pressflow based platform ASAP.
+
 
 === ALWAYS USEFUL HINTS
 
@@ -285,8 +293,8 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 * If any task fails, send us the task log for debugging.
 * To disable Speed Booster per platform, create an empty directory
   with the name "ubercart" (unless you have there the real ubercart
-  module), with one empty README.txt file inside, so its path will be
-  sites/all/modules/ubercart/README.txt
+  module), with one empty README.txt file inside, so its path
+  will be: sites/all/modules/ubercart/README.txt
 
 
 ----------------------------------------
