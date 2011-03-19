@@ -193,6 +193,7 @@ create_dirs () {
 #
 # create standard symlinks
 create_symlinks () {
+if [ ! -L "includes" ] ; then
   ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
   ln -s $_CORE_DISTRO/cron.php cron.php &> /dev/null
   ln -s $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
@@ -209,12 +210,15 @@ create_symlinks () {
   ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
   cp -af $_CORE_DISTRO/cache ./
   cp -af $_CORE_DISTRO/sites ./
+fi
 }
 #
 # create d7 symlinks
 create_d7_symlinks () {
+if [ ! -L "web.config" ] ; then
   ln -s $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
   ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
+fi
 }
 
 
