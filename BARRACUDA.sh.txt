@@ -2251,9 +2251,9 @@ if [ ! -d "/var/www/chive" ] ; then
     msg "INFO: Installing Chive MariaDB Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
-    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.0.tar.gz
-    tar -xzf chive_0.4.0.tar.gz
-    rm -f chive_0.4.0.tar.gz
+    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
+    tar -xzf chive_0.4.1.tar.gz
+    rm -f chive_0.4.1.tar.gz
     chown -R www-data:www-data /var/www/chive
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     if [ -z "$_THISHTIP" ] ; then
@@ -2270,7 +2270,7 @@ if [ ! -d "/var/www/chive" ] ; then
     echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
     echo "}" >> $_CHIVE_VHOST
     echo >> $_CHIVE_VHOST
-    touch /var/log/chive_0.4.0.log
+    touch /var/log/chive_0.4.1.log
     msg "INFO: Chive MariaDB Manager installation completed"
     mrun "sleep 2"
   else
@@ -2282,16 +2282,16 @@ fi
 
 ###--------------------###
 if [ -d "/var/www/chive" ] ; then
-  if [ ! -e "/var/log/chive_0.4.0.log" ] ; then
+  if [ ! -e "/var/log/chive_0.4.1.log" ] ; then
     msg "INFO: Upgrading Chive MariaDB Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
     rm -f -r /var/www/chive
-    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.0.tar.gz
-    tar -xzf chive_0.4.0.tar.gz
-    rm -f chive_0.4.0.tar.gz
+    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
+    tar -xzf chive_0.4.1.tar.gz
+    rm -f chive_0.4.1.tar.gz
     chown -R www-data:www-data /var/www/chive
-    touch /var/log/chive_0.4.0.log
+    touch /var/log/chive_0.4.1.log
   fi
 fi
 
