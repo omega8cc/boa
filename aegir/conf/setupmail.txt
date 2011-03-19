@@ -221,6 +221,12 @@ in the "dev" mode. Simply add a *dev* domain alias and
 use it to access the site when you wish to skip all hardcoded
 caching used on the non-dev domain.
 
+You can manage your databases via Chive Manager web interface,
+using access credentials (dbhost, dbname and dbpass) available
+in every site settings.php file.
+
+Chive Manager URL: https://166.84.6.231
+
 
 === IMPORTANT PERFORMANCE INFORMATION
 

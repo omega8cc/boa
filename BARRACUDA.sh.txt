@@ -2264,7 +2264,7 @@ if [ ! -d "/var/www/chive" ] ; then
     echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
     echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
     echo "   listen       $_THISHTIP:80;" >> $_CHIVE_VHOST
-    echo "   server_name  chive.$_THIS_FRONT;" >> $_CHIVE_VHOST
+    echo "   server_name  chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
     echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
     echo "   index        index.php index.html;" >> $_CHIVE_VHOST
     echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST

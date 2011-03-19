@@ -183,6 +183,12 @@ so you browser can display warning. Please add this certificate
 as accepted in your system settings to avoid displaying it
 each time you are trying to log in.
 
+You can manage your databases via Chive Manager web interface,
+using access credentials (dbhost, dbname and dbpass) available
+in every site settings.php file.
+
+Chive Manager URL: https://166.84.6.231
+
 
 ----------------------------------------
 # FTP and SSH access
