@@ -79,6 +79,7 @@ _THIS_OS=`lsb_release -si`
 _PLATFORMS_ALL=EDIT_PLATFORMS_ALL
 _USE_SPEED_BOOSTER=EDIT_USE_SPEED_BOOSTER
 _AUTOPILOT=EDIT_AUTOPILOT
+_HM_ONLY=EDIT_HM_ONLY
 
 
 ###---### Functions
@@ -586,22 +587,26 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
   msg "$_STATUS A: Distributions install completed"
 else
-  echo " "
-  if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
-    true
-    _DIST_INSTALL=YES
-    msg "NOTE: Please choose only the platforms/distributions you want to have included"
-    mrun "sleep 3"
-    msg "$_STATUS A: Switch user and run Distros build, please wait..."
-    mrun "sleep 3"
-    invoke-rc.d cron stop &> /dev/null
-    rm -f /opt/tmp/testecho*
-    create_shared_dirs
-    su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
-    msg "$_STATUS A: Distributions install completed"
+  if [ "$_HM_ONLY" = "YES" ] ; then
+    _DIST_INSTALL=NO
   else
-    msg "$_STATUS A: No new platforms added this time"
-    mrun "sleep 3"
+    echo " "
+    if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
+      true
+      _DIST_INSTALL=YES
+      msg "NOTE: Please choose only the platforms/distributions you want to have included"
+      mrun "sleep 3"
+      msg "$_STATUS A: Switch user and run Distros build, please wait..."
+      mrun "sleep 3"
+      invoke-rc.d cron stop &> /dev/null
+      rm -f /opt/tmp/testecho*
+      create_shared_dirs
+      su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+      msg "$_STATUS A: Distributions install completed"
+    else
+      msg "$_STATUS A: No new platforms added this time"
+      mrun "sleep 3"
+    fi
   fi
 fi
 

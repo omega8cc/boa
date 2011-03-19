@@ -49,6 +49,7 @@ _CLIENT_OPTION=CLASSIC
 _CLIENT_SUBSCR=M
 _PLATFORMS_ALL=YES
 _MY_OWNIP=""
+_HM_ONLY=NO
 
 
 ###----------------------------------------###
@@ -414,7 +415,8 @@ do
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_PLATFORMS_ALL/$_PLATFORMS_ALL/g"         $Files
   sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
-  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files  
+  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
+  sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
@@ -425,6 +427,7 @@ do
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
+  sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
 done
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
