@@ -730,6 +730,9 @@ fi
 
 ###---### Read or create pass.txt
 #
+if [ "$_HM_ONLY" = "YES" ] ; then
+  true
+else
 msg "$_STATUS A: Read or create pass.txt"
 mrun "sleep 3"
 if [ -e "$_ROOT/pass.txt" ] ; then 
@@ -749,6 +752,7 @@ else
  usermod -p $ph $_USERFTP &> /dev/null
  _PASWD=`cat $_ROOT/log/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
+fi
 fi
 
 
@@ -855,20 +859,27 @@ fi
 chown $_USER:$_USRG $_ROOT/static &> /dev/null
 chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
-  mkdir -p $_ROOT/distro/$_THIS_CORE/keys
-  chown $_WEBG:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
-  chmod 770 $_ROOT/distro/$_THIS_CORE/keys
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
-  if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/keys" ] ; then
-    ln -s $_ROOT/distro/$_THIS_CORE/keys /home/$_USERFTP/platforms/$_THIS_CORE/keys
+if [ "$_HM_ONLY" = "YES" ] ; then
+  true
+else
+  if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
+    mkdir -p $_ROOT/distro/$_THIS_CORE/keys
+    chown $_WEBG:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
+    chmod 770 $_ROOT/distro/$_THIS_CORE/keys
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/keys" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/keys /home/$_USERFTP/platforms/$_THIS_CORE/keys
+    fi
   fi
 fi
 
 
 ###---### Prepare setupmail.txt
 #
+if [ "$_HM_ONLY" = "YES" ] ; then
+  true
+else
 msg "$_STATUS A: Prepare setupmail.txt"
 mrun "sleep 3"
 _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
@@ -895,6 +906,7 @@ elif [ $_STATUS = "INIT" ] ; then
  sed -i "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt
  sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt
  sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt
+fi
 fi
 
 
