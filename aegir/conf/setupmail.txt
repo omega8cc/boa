@@ -379,6 +379,7 @@ migrate your site to the Pressflow based platform ASAP.
 # Fixes since January 1st
 ----------------------------------------
 
+* Security issue #1098304 - domain aliases were not sanitized.
 * Nginx config - proper fix for broken wysiwyg pop-ups.
 * Fixed issue with Nginx configuration for private files access.
 * The authorize.php added to allowed php files - required in D7.
