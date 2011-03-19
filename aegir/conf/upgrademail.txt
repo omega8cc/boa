@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 1.0-boa-T.
+Your Aegir Hosting System has been upgraded to version 1.0-boa-T-2.
 
 Also your system services, kernel and libraries have been upgraded.                         
 
@@ -56,6 +56,7 @@ Your Aegir control panel is available as before at:
      subscription and site migration will be required.
 
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
+* The filefield_nginx_progress now also in every 7.x platform.
 * Drush upgraded to version 4.4
 * Drush Make upgraded to version 2.2
 * Redis cache server upgraded to version 2.0.5
@@ -78,13 +79,18 @@ Your Aegir control panel is available as before at:
 # Improvements since January 1st
 ----------------------------------------
 
+* Many improvements in the Nginx configuration - now it's faster.
 * Permisions on uploaded modules, themes and files are now
   automatically fixed every hour to help with post-import issues.
 * Almost all 6.x platforms now come with performance related
   modules already enabled and configured on site install by default.
+* Nginx config - now doesn't use php-fpm to serve fckeditor files.
+* Introduced possibility to add upgrade-safe custom Nginx rewrite
+  rules to support transparent migration of legacy URLs/content.
 * Resources usage monitor now runs hourly.
 * Aegir Hostmaster control panel received extra caching and speed.
 * Better support for securepages 1.9 with forced secure cookies.
+* Better support for dynamically created base_url for http/https.
 * All 6.x platforms now receive some performance related modules.
 * Too generic D7 profile names replaced with unique Drupal 7 names.
 * A few new commands have been added to your Aegir Drush Shell (SSH).
@@ -111,7 +117,9 @@ Your Aegir control panel is available as before at:
 # Fixes since January 1st
 ----------------------------------------
 
+* Nginx config - proper fix for broken wysiwyg pop-ups.
 * Fixed issue with Nginx configuration for private files access.
+* The authorize.php added to allowed php files - required in D7.
 * Known issue with paths to files not rewritten is now fixed.
 * Known issue with sites cron semaphore in Aegir now resolved.
 * Known issue with PHP notices breaking some Aegir tasks resolved.
@@ -162,8 +170,8 @@ want to work with our optimized caching systems turned off.
 There is a speed-auto-switch available for dev/prod environments.
 Any site you create/access with *dev* in the subdomain, will have
 all caching and css/js aggregation disabled automatically,
-while all PHP errors and notices enabled for easier debugging of
-issues, including those causing WSOD.
+while all PHP errors enabled for easier debugging of issues,
+including those causing WSOD.
 
 You don't need to rename the site to be able to work on it
 in the "dev" mode. Simply add a *dev* domain alias and
