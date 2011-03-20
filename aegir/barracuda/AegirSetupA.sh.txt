@@ -209,7 +209,7 @@ cd
 fi
 }
 #
-# remove incompatible modules
+# remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001() {
 if [ ! -e "/var/log/incompatible-modules-removed-001.log" ] ; then
@@ -232,6 +232,26 @@ for i in $REVISIONS; do
   fi
 done
 touch /var/log/incompatible-modules-removed-001.log
+cd
+fi
+}
+#
+# remove incompatible modules from o_contrib_seven
+#
+remove_incompatible_modules_002() {
+if [ ! -e "/var/log/incompatible-modules-removed-002.log" ] ; then
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
+RMMODULES="session443 cookie_cache_bypass_adv"
+for i in $REVISIONS; do
+  if [ -d "/data/all/$i/o_contrib_seven" ] ; then
+    for m in $RMMODULES; do
+      if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
+        rm -f -r /data/all/$i/o_contrib_seven/$m
+      fi
+    done
+  fi
+done
+touch /var/log/incompatible-modules-removed-002.log
 cd
 fi
 }
@@ -979,6 +999,7 @@ if [ $_STATUS = "INIT" ] ; then
 else
   feature_server_fix_002
   remove_incompatible_modules_001
+  remove_incompatible_modules_002
 fi
 msg "BYE!"
 

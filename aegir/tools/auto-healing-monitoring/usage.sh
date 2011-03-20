@@ -78,6 +78,7 @@ do
       echo SumDat is $SumDat or $SumDatH MB
       cd $_THIS_HM_SITE
       su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Hourly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
+      su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
       su -s /bin/bash $_THIS_HM_USER -c "drush cc all &> /dev/null"
       echo Done for $User
     else

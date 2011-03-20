@@ -2,8 +2,8 @@
 
 control()
 {
-NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-CTL_LOAD=300
+NOW_LOAD=`awk '{print $2*100}' /proc/loadavg`
+CTL_LOAD=800
 if [ $NOW_LOAD -lt $CTL_LOAD ]; then
   echo load is $NOW_LOAD while maxload is $CTL_LOAD
   echo ... now doing CTL...
@@ -11,6 +11,10 @@ if [ $NOW_LOAD -lt $CTL_LOAD ]; then
   touch /var/xdrago/log/proc_num_ctrl.done
   echo CTL done
 else
+  /etc/init.d/nginx stop
+  /etc/init.d/php-fpm stop
+  /etc/init.d/redis-server stop
+  killall memcached
   echo load is $NOW_LOAD while maxload is $CTL_LOAD
   echo ...we have to wait...
 fi
