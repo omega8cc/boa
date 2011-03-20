@@ -9,7 +9,10 @@ $conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
 $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
 $conf['cache'] = 1;               // enable hardcoded caching
 $conf['error_level'] = 0;         // disable errors on screen
-$conf['statistics_enable_access_log'] = 0; // disable access log stats
+$conf['statistics_enable_access_log'] = 0;      // disable access log stats
+$conf['javascript_aggregator_jsminplus'] = 1;   // enable jsminplus
+$conf['javascript_aggregator_no_htaccess'] = 0; // do not create .htaccess files
+$conf['javascript_aggregator_gzip'] = 1;        // enable compression for js files
 
 if (file_exists('./modules/o_contrib/advagg/advagg.module')) {
   unset($conf['preprocess_css']); // disable hardcoded css aggregation

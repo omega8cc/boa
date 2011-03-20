@@ -33,7 +33,7 @@ do
         *)  
         cd $Dir
         su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel -y &> /dev/null"
-        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage javascript_aggregator -y &> /dev/null"
         ;;
       esac
       #echo Dir is $Dir
