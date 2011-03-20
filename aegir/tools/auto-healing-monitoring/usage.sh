@@ -23,6 +23,19 @@ do
       chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+      searchStringA="-7."
+      searchStringB="-5."
+      searchStringC="openpublic"
+      case $Dir in
+        *"$searchStringA"*) ;;
+        *"$searchStringB"*) ;;
+        *"$searchStringC"*) ;;
+        *)  
+        cd $Dir
+        su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
+        ;;
+      esac
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
