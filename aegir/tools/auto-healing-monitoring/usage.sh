@@ -112,6 +112,9 @@ if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   touch /var/xdrago/log/wait-counter
   exit
 else
+  touch /var/xdrago/log/optimize_mysql_ao.pid
+  sleep 60
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
   invoke-rc.d redis-server restart 2>&1
+  rm /var/xdrago/log/optimize_mysql_ao.pid
 fi
