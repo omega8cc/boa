@@ -146,7 +146,6 @@ The Drupal 7.0 platform comes with contrib modules:
  backup_migrate-7.x-2.1
  openidadmin-7.x-1.0
  css_emimage-7.x-1.1
- session443-7.x-1.x-dev
  site_verify-7.x-1.0-rc2
  
 

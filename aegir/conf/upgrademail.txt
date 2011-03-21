@@ -81,13 +81,12 @@ Your Aegir control panel is available as before at:
 
 * Many improvements in the Nginx configuration - now it's faster.
 * Permisions on uploaded modules, themes and files are now
-  automatically fixed every hour to help with post-import issues.
+  automatically fixed every morning to help with post-import issues.
 * Almost all 6.x platforms now come with performance related
   modules already enabled and configured on site install by default.
 * Nginx config - now doesn't use php-fpm to serve fckeditor files.
 * Introduced possibility to add upgrade-safe custom Nginx rewrite
   rules to support transparent migration of legacy URLs/content.
-* Resources usage monitor now runs hourly.
 * Aegir Hostmaster control panel received extra caching and speed.
 * Better support for securepages 1.9 with forced secure cookies.
 * Better support for dynamically created base_url for http/https.

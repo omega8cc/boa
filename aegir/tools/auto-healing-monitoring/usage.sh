@@ -1,28 +1,29 @@
 #!/bin/bash
-  
+
+###----------------------------------------###
+### AUTOMATED MAINTENANCE CONFIGURATION    ###
+###----------------------------------------###
+###
+### The usage monitor script has now an option
+### to fix permissions on all sites and also
+### to enable some performance related modules
+### plus disable modules known to cause
+### performance issues or not recommended
+### to run on production sites.
+###
+### Since it is not always a good idea
+### to force it on every run, you may want
+### to change default settings below.
+###
+_MODULES=NO
+_PERMISSIONS=YES
+
+
 ###-------------SYSTEM-----------------###
 
-count()
+modules()
 {
-for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -type f | sort`
-do
-    #echo Counting Site $Site
-    Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    echo Dom is $Dom
-    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
-      Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
-      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
-      find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
-      chown -R $_THIS_HM_USER:www-data $Dir/files &> /dev/null
-      find $Dir/files -type d -exec chmod 02770 {} \; &> /dev/null
-      find $Dir/files -type f -exec chmod 0660 {} \; &> /dev/null
-      Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
-      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-      find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+if [ "$_MODULES" = "YES" ]; then
       searchStringA="-7."
       searchStringB="-5."
       searchStringC="openpublic"
@@ -36,6 +37,38 @@ do
         su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage javascript_aggregator -y &> /dev/null"
         ;;
       esac
+fi
+}
+
+permissions()
+{
+if [ "$_PERMISSIONS" = "YES" ]; then
+      chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
+      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+      find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+      find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+      chown -R $_THIS_HM_USER:www-data $Dir/files &> /dev/null
+      find $Dir/files -type d -exec chmod 02770 {} \; &> /dev/null
+      find $Dir/files -type f -exec chmod 0660 {} \; &> /dev/null
+      chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
+      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+      find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+      find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+fi
+}
+
+count()
+{
+for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -type f | sort`
+do
+    #echo Counting Site $Site
+    Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
+    echo Dom is $Dom
+    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+      Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      permissions
+      modules
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -90,7 +123,7 @@ do
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
       cd $_THIS_HM_SITE
-      su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Hourly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
+      su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
       su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
       su -s /bin/bash $_THIS_HM_USER -c "drush cc all &> /dev/null"
       echo Done for $User
