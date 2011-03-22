@@ -10,21 +10,21 @@ $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
 $conf['cache'] = 1;               // enable hardcoded caching
 $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0;      // disable access log stats
-$conf['javascript_aggregator_jsminplus'] = 1;   // enable jsminplus
-$conf['javascript_aggregator_no_htaccess'] = 0; // do not create .htaccess files
-$conf['javascript_aggregator_gzip'] = 1;        // enable compression for js files
+// $conf['javascript_aggregator_jsminplus'] = 1;   // enable jsminplus
+// $conf['javascript_aggregator_no_htaccess'] = 0; // do not create .htaccess files
+// $conf['javascript_aggregator_gzip'] = 1;        // enable compression for js files
 
-if (file_exists('./modules/o_contrib/advagg/advagg.module')) {
-  unset($conf['preprocess_css']); // disable hardcoded css aggregation
-  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
-  $conf['advagg_enabled'] = 1;
-  $conf['advagg_async_generation'] = 1;
-  $conf['advagg_gzip_compression'] = 1;
-  $conf['advagg_checksum_mode'] = "md5";
-  $conf['advagg_debug'] = 0;
-  $conf['advagg_dir_htaccess'] = 0;
-  $conf['advagg_rebuild_on_flush'] = 0;
-}
+// if (file_exists('./modules/o_contrib/advagg/advagg.module')) {
+//   unset($conf['preprocess_css']); // disable hardcoded css aggregation
+//   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+//   $conf['advagg_enabled'] = 1;
+//   $conf['advagg_async_generation'] = 1;
+//   $conf['advagg_gzip_compression'] = 1;
+//   $conf['advagg_checksum_mode'] = "md5";
+//   $conf['advagg_debug'] = 0;
+//   $conf['advagg_dir_htaccess'] = 0;
+//   $conf['advagg_rebuild_on_flush'] = 0;
+// }
 
 ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
 ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
@@ -54,13 +54,13 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) &
    unset($conf['preprocess_css']); // disable hardcoded css aggregation
    unset($conf['preprocess_js']);  // disable hardcoded js aggregation
    unset($conf['error_level']);    // disable hardcoded no errors on screen
-   unset($conf['advagg_async_generation']); // disable hardcoded value
-   unset($conf['advagg_gzip_compression']); // disable hardcoded value
-   unset($conf['advagg_checksum_mode']);    // disable hardcoded value
-   unset($conf['advagg_debug']);            // disable hardcoded value
-   unset($conf['advagg_dir_htaccess']);     // disable hardcoded value
-   unset($conf['advagg_rebuild_on_flush']); // disable hardcoded value
-   unset($conf['advagg_enabled']);          // disable hardcoded value
+//    unset($conf['advagg_async_generation']); // disable hardcoded value
+//    unset($conf['advagg_gzip_compression']); // disable hardcoded value
+//    unset($conf['advagg_checksum_mode']);    // disable hardcoded value
+//    unset($conf['advagg_debug']);            // disable hardcoded value
+//    unset($conf['advagg_dir_htaccess']);     // disable hardcoded value
+//    unset($conf['advagg_rebuild_on_flush']); // disable hardcoded value
+//    unset($conf['advagg_enabled']);          // disable hardcoded value
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
