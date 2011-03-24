@@ -68,7 +68,13 @@ do
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       permissions
-      modules
+      searchStringD="dev"
+      case $Dom in
+        *"$searchStringD"*) ;;
+        *)  
+        modules
+        ;;
+      esac
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
