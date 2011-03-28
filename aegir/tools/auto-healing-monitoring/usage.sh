@@ -48,8 +48,8 @@ if [ "$_PERMISSIONS" = "YES" ]; then
       find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
       find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
       chown -R $_THIS_HM_USER:www-data $Dir/files &> /dev/null
-      find $Dir/files -type d -exec chmod 02770 {} \; &> /dev/null
-      find $Dir/files -type f -exec chmod 0660 {} \; &> /dev/null
+      find $Dir/files -type d -exec chmod 02775 {} \; &> /dev/null
+      find $Dir/files -type f -exec chmod 0664 {} \; &> /dev/null
       chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
       chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
