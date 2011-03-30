@@ -3,7 +3,7 @@
 control()
 {
 NOW_LOAD=`awk '{print $2*100}' /proc/loadavg`
-CTL_LOAD=800
+CTL_LOAD=500
 if [ $NOW_LOAD -lt $CTL_LOAD ]; then
   echo load is $NOW_LOAD while maxload is $CTL_LOAD
   echo ... now doing CTL...
@@ -12,9 +12,10 @@ if [ $NOW_LOAD -lt $CTL_LOAD ]; then
   echo CTL done
 else
   /etc/init.d/nginx stop
+  killall -9 nginx
   /etc/init.d/php-fpm stop
   /etc/init.d/redis-server stop
-  killall memcached
+  killall -9 memcached
   echo load is $NOW_LOAD while maxload is $CTL_LOAD
   echo ...we have to wait...
 fi

@@ -2547,6 +2547,9 @@ if [ $_STATUS = "INIT" ] ; then
   echo " "
   mrun "sleep 3"
 fi
+if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
+  touch /var/log/cron_aegir_off.pid
+fi
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
