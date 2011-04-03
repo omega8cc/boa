@@ -2,15 +2,13 @@
 
 error_reporting(0); // disable reporting errors by default - enable later only for "dev" subdomains
 
-  if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
-    // Per RFC 2109, cookie domains must contain at least one dot other than the
-    // first. For hosts such as 'localhost', we don't set a cookie domain.
-    if (count(explode('.', $domain)) > 2) {
-      @ini_set('session.cookie_domain', $domain);
-      $cookie_domain = $domain;
-    }
+if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
+  $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
+  if (count(explode('.', $domain)) > 2) {
+    @ini_set('session.cookie_domain', $domain);
+    $cookie_domain = $domain;
   }
+}
 
 $conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
