@@ -1,8 +1,15 @@
 
+### Stable Edition 1.0-boa-T
+### Date: Mon, 14 Mar 2011 02:43:15 +0100
+
+### Stable Edition 0.4-boa-C
+### Date: Thu, 10 Feb 2011 04:41:57 +0100
+
+###
 Please see Git commits comments for details
 on changes/improvements for now, since the full
 changelog is waiting for yet another Edition...
-
+###
 
 ### Thu, 2010-09-23 17:30 - Edition 0.4-HEAD-A14.B
 
