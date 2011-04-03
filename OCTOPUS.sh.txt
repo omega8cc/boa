@@ -4,14 +4,26 @@
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright 2010-2011 Omega8.cc
+###
+###  Copyright (C) 2010-2011 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
-###  This script is free software licensed
-###  under the GNU GPLv3. No warranty is
-###  provided and the authors claims no
-###  responsibility for any disasters caused
-###  during the execution of this script.
+###  This program is free software. You can
+###  redistribute it and/or modify it under
+###  the terms of the GNU GPL as published by
+###  the Free Software Foundation, version 2
+###  or later.
+###
+###  This program is distributed in the hope
+###  that it will be useful, but WITHOUT ANY
+###  WARRANTY; without even the implied
+###  warranty of MERCHANTABILITY or FITNESS
+###  FOR A PARTICULAR PURPOSE. See the GNU GPL
+###  for more details.
+###
+###  You should have received a copy of the
+###  GNU GPL along with this program.
+###  If not, see http://www.gnu.org/licenses/
 ###
 ###  Code: http://code.aegir.cc/aegir
 ###
@@ -805,7 +817,7 @@ rm -f /var/run/octopus_barracuda.pid
 ###----------------------------------------###
 ###
 ###  Octopus Aegir Installer
-###  Copyright 2010-2011 Omega8.cc
+###  Copyright (C) 2010-2011 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###----------------------------------------###
