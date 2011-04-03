@@ -82,7 +82,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if (!preg_match("/hostmaster/", $conf['install_profile'])) {
-        ini_set('session.cookie_secure', 1);
+//         ini_set('session.cookie_secure', 1);
         $_SERVER['HTTPS'] = 'on';
       }
     }
