@@ -322,7 +322,7 @@ _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
-_DRUSH_FAMILY=4        ### change to 5 for HEAD 
+_DRUSH_FAMILY=4    ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 
 
@@ -342,32 +342,32 @@ if [ "$_AUTOPILOT" = "YES" ]; then
   return 0
 else
   while true ; do
-    printf "$* [Y/n] "
-    read answer
-    if [ -z "$answer" ] ; then
-      return 0
-    fi
-    case $answer in
-      [Yy]|[Yy][Ee][Ss])
-        return 0
-        ;;
-      [Nn]|[Nn][Oo])
-        return 1
-        ;;
-      *)
-        echo "Please answer yes or no"
-        ;;
-    esac
+  printf "$* [Y/n] "
+  read answer
+  if [ -z "$answer" ] ; then
+    return 0
+  fi
+  case $answer in
+    [Yy]|[Yy][Ee][Ss])
+    return 0
+    ;;
+    [Nn]|[Nn][Oo])
+    return 1
+    ;;
+    *)
+    echo "Please answer yes or no"
+    ;;
+  esac
  done
 fi
 }
 #
 # Prompt to confirm choice
 prompt_confirm_choice () {
-	read -p "$1 [$2]:" _CONFIRMED_ANSWER
-	if [ -z "$_CONFIRMED_ANSWER" ] ; then
-		_CONFIRMED_ANSWER=$2
-	fi
+  read -p "$1 [$2]:" _CONFIRMED_ANSWER
+  if [ -z "$_CONFIRMED_ANSWER" ] ; then
+    _CONFIRMED_ANSWER=$2
+  fi
 }
 #
 # Stop on error
@@ -375,85 +375,85 @@ prompt_confirm_choice () {
 #
 # Success msg
 success () {
-	msg "$1 Succeeded."
+  msg "$1 Succeeded."
 }
 #
 # Error msg
 fatal () {
-	echo " "
-	msg "Fatal Error Occurred: $1"
-	msg "Cannot continue installation."
-	exit 1
+  echo " "
+  msg "Fatal Error Occurred: $1"
+  msg "Cannot continue installation."
+  exit 1
 }
 #
 # Not supported OS
 not_supported_os () {
-    msg "== FATAL ERROR =="
-    msg "Invalid install script or OS used."
-    msg "It is not any supported Ubuntu or Debian version. Sorry."
-    msg "You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty),"
-    msg "or Jolicloud (Robby)."
-    msg "Ciao... :)"
-    exit 1
+  msg "== FATAL ERROR =="
+  msg "Invalid install script or OS used."
+  msg "It is not any supported Ubuntu or Debian version. Sorry."
+  msg "You need Debian (Lenny) or Ubuntu (Lucid or Karmic or Jaunty),"
+  msg "or Jolicloud (Robby)."
+  msg "Ciao... :)"
+  exit 1
 }
 #
 # Perform an action, log it, and run the spinner throughout
 runner () {
-	CMD="$1"
-	touch busy
-	bash $_SRCDIR/spinner busy &
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		success "$CMD:"
-		return 0
-	else
-		rm busy
-		sleep 1
-		echo "$CMD failed.  Error (if any): $?"
-		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
-		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
-		echo "command first and choose default answer, then run this installer again."
-		echo " "
-		tail -15 $_LOG
-		return 1
-	fi
+  CMD="$1"
+  touch busy
+  bash $_SRCDIR/spinner busy &
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    success "$CMD:"
+    return 0
+  else
+    rm busy
+    sleep 1
+    echo "$CMD failed.  Error (if any): $?"
+    echo " "
+    echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+    echo "If you see any error with advice to run 'dpkg --configure -a', run this"
+    echo "command first and choose default answer, then run this installer again."
+    echo " "
+    tail -15 $_LOG
+    return 1
+  fi
 }
 #
 # Small spinner
 mrun () {
-	CMD="$1"
-	touch busy
-	bash $_SRCDIR/spinner busy &
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	fi
+  CMD="$1"
+  touch busy
+  bash $_SRCDIR/spinner busy &
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  fi
 }
 #
 # Silent runner
 st_runner () {
-	CMD="$1"
-	touch busy
-	bash $_SRCDIR/spinner busy &
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	else
-		rm busy
-		sleep 1
-		echo "$CMD failed.  Error (if any): $?"
-		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
-		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
-		echo "command first and choose default answer, then run this installer again."
-		echo " "
-		tail -15 $_LOG
-		return 1
-	fi
+  CMD="$1"
+  touch busy
+  bash $_SRCDIR/spinner busy &
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  else
+    rm busy
+    sleep 1
+    echo "$CMD failed.  Error (if any): $?"
+    echo " "
+    echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+    echo "If you see any error with advice to run 'dpkg --configure -a', run this"
+    echo "command first and choose default answer, then run this installer again."
+    echo " "
+    tail -15 $_LOG
+    return 1
+  fi
 }
 #
 # Install Redis from sources
@@ -583,16 +583,16 @@ rm -f /var/run/aegir_upgrade.pid
 if [ $_STATUS = "UPGRADE" ] ; then
   if [ ! -e "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
-cat <<EOF
-  
+  cat <<EOF
+
   It appears you don't have required file with your root sql password.
   Create this file first and run this script again:
-  
-    echo "[client]" > /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=your_SQL_ROOT_password" >> /root/.my.cnf
-    chmod 0600 /root/.my.cnf
-    
+
+  echo "[client]" > /root/.my.cnf
+  echo "user=root" >> /root/.my.cnf
+  echo "password=your_SQL_ROOT_password" >> /root/.my.cnf
+  chmod 0600 /root/.my.cnf
+
 EOF
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
   echo " "
@@ -611,28 +611,28 @@ if [ $_STATUS = "INIT" ] ; then
   _LOC_TEST=`locale 2>&1`
   if [[ $_LOC_TEST =~ Cannot ]] ; then
     _LOCALE_TEST=BROKEN
-  msg "WARNING!"
-cat <<EOF
-  
+    msg "WARNING!"
+    cat <<EOF
+
   Locales on this system are broken or not installed
   and/or not configured correctly yet. This is "default"
   issue at RackSpaceCloud (and maybe others).
-  
+
   We will fix this problem for you now, so you shouldn't
   use any tricks to change system/ssh settings before
   running this Barracuda installer.
-  
+
   You can experience problems if your SSH client
   forces locales other than en_US.UTF-8 we are using by default.
-  
+
   You should log out when Barracuda will finish all its tasks
   and display last line with "BYE!" and then log in again
   to see the result (and possibly run Octopus installer).
-  
+
   We will continue in 30 seconds...
-  
+
 EOF
-sleep 30
+    sleep 30
     locale-gen en_US en_US.UTF-8 &> /dev/null
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
@@ -686,15 +686,15 @@ elif [ $_GITHUB_WORKS = "YES" ] ; then
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
 else
-cat <<EOF
+  cat <<EOF
 
   Both GitHub and Gitorious repository servers don't respond,
   so we can't continue this installation.
-  
+
   Please try again later.
-  
+
   Bye.
-    
+
 EOF
   exit 1
 fi
@@ -828,7 +828,7 @@ echo " "
 msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
 echo " "
 mrun "sleep 3"
-	
+
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
@@ -850,152 +850,152 @@ fi
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
-   _ETH_TEST=`ifconfig 2>&1`
-if [[ $_ETH_TEST =~ venet0 ]] ; then
-   _VMFAMILY="VZ"
-   _IFCONFIG="venet0:0"
-elif [ -e "/proc/bean_counters" ] ; then
-   _VMFAMILY="VZ"
-   _IFCONFIG="venet0:0"
-else
-   _VMFAMILY="XEN"
-   _IFCONFIG="eth0"
-fi
-if [ ! -z "$_MY_OWNIP" ] ; then
-   if [ ! -z "$_MY_HOSTN" ] ; then
-     _S_N=$_MY_HOSTN
-     _S_T=${_S_N#*.*}
-     _S_Q=${_S_N%%${_S_T}}
-     _S_E=${_S_Q%*.*}
-     if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-       echo "$_MY_OWNIP .$_MY_HOSTN $_S_E" >> /etc/hosts
-     else
-       _TURNED=OFF
-       #echo "$_MY_OWNIP .$_MY_HOSTN $_S_E" >> /etc/hosts
-     fi
-     hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
-     echo "$_MY_HOSTN" > /etc/hostname
-     echo "$_MY_HOSTN" > /etc/mailname
-   fi
-   _THISHTIP="$_MY_OWNIP"
-   _THISHOST="$_MY_HOSTN"
-   _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+  _ETH_TEST=`ifconfig 2>&1`
+  if [[ $_ETH_TEST =~ venet0 ]] ; then
+    _VMFAMILY="VZ"
+    _IFCONFIG="venet0:0"
+  elif [ -e "/proc/bean_counters" ] ; then
+    _VMFAMILY="VZ"
+    _IFCONFIG="venet0:0"
+  else
+    _VMFAMILY="XEN"
+    _IFCONFIG="eth0"
+  fi
+  if [ ! -z "$_MY_OWNIP" ] ; then
+    if [ ! -z "$_MY_HOSTN" ] ; then
+      _S_N=$_MY_HOSTN
+      _S_T=${_S_N#*.*}
+      _S_Q=${_S_N%%${_S_T}}
+      _S_E=${_S_Q%*.*}
+      if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
+        echo "$_MY_OWNIP .$_MY_HOSTN $_S_E" >> /etc/hosts
+      else
+        _TURNED=OFF
+        #echo "$_MY_OWNIP .$_MY_HOSTN $_S_E" >> /etc/hosts
+      fi
+      hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
+      echo "$_MY_HOSTN" > /etc/hostname
+      echo "$_MY_HOSTN" > /etc/mailname
+    fi
+    _THISHTIP="$_MY_OWNIP"
+    _THISHOST="$_MY_HOSTN"
+    _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
       _FQDNTEST="TRUE"
       _THEFRDIP=`host $_MY_FRONT | cut -d: -f2 | awk '{ print $4}'`
       if [ "$_THEFRDIP" = "$_THISHTIP" ] ; then
-         _TESTHOST=`uname -n`
-         _TESTRDIP=`host $_TESTHOST | cut -d: -f2 | awk '{ print $4}'`
-         if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
-            _FQDNTEST="TRUE"
-            hostname -v $_TESTHOST
-         else
-            _FQDNTEST="FALSE"
-         fi
-      else
+        _TESTHOST=`uname -n`
+        _TESTRDIP=`host $_TESTHOST | cut -d: -f2 | awk '{ print $4}'`
+        if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
+          _FQDNTEST="TRUE"
+          hostname -v $_TESTHOST
+        else
          _FQDNTEST="FALSE"
+        fi
+      else
+        _FQDNTEST="FALSE"
       fi
-   else
+    else
       _FQDNTEST="FALSE"
-   fi
-else
-_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-_FQDNPROB=`uname -n 2> /dev/null`
-_FQDNTEST="FALSE"
-_THISHOST=`uname -n`
-if [ ! -z "$_FQDNPROB" ] ; then
-   _THISHOST=`uname -n`
-   _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
-      _FQDNTEST="TRUE"
-      hostname -v $_THISHOST
-   else
-      _FQDNTEST="FALSE"
+    fi
+  else
+    _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+    _FQDNPROB=`uname -n 2> /dev/null`
+    _FQDNTEST="FALSE"
+    _THISHOST=`uname -n`
+    if [ ! -z "$_FQDNPROB" ] ; then
+      _THISHOST=`uname -n`
+      _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
+        _FQDNTEST="TRUE"
+        hostname -v $_THISHOST
+      else
+        _FQDNTEST="FALSE"
+        _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
+        _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
+        _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
+        if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
+          hostname -v $_REVHOSTN
+          _THISHOST="$_REVHOSTN"
+          _FQDNTEST="TRUE"
+        else
+          _FQDNTEST="FALSE"
+        fi
+      fi
+    else
       _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
       _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
       _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
       if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
-         hostname -v $_REVHOSTN
-         _THISHOST="$_REVHOSTN"
-         _FQDNTEST="TRUE"
+        hostname -v $_REVHOSTN
+        _THISHOST="$_REVHOSTN"
+        _FQDNTEST="TRUE"
       else
-         _FQDNTEST="FALSE"
+       _FQDNTEST="FALSE"
       fi
-   fi
-else
-   _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
-   _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
-   _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
-   if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
-      hostname -v $_REVHOSTN
-      _THISHOST="$_REVHOSTN"
-      _FQDNTEST="TRUE"
-   else
-      _FQDNTEST="FALSE"
-   fi
-fi
-fi
-if [ ! -z "$_MY_FRONT" ] ; then
-  _THIS_FRONT="$_MY_FRONT"
-else
-  _THIS_FRONT="$_THISHOST"
-fi
-if [ "$_DNS_SETUP_TEST" = "NO" ] ; then
-  _FQDNTEST=TRUE
-fi
-if [ $_THISHOST = "localhost" ] ; then
-  msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
-  msg "Please try something like: aegir.local"
-  exit 1
-fi
-if [ "$_FQDNTEST" = "FALSE" ] ; then
-echo " "
-msg "EXIT on error due to invalid DNS setup."
-if [ ! -z "$_MY_OWNIP" ] ; then
-cat <<EOF
-   
+    fi
+  fi
+  if [ ! -z "$_MY_FRONT" ] ; then
+    _THIS_FRONT="$_MY_FRONT"
+  else
+    _THIS_FRONT="$_THISHOST"
+  fi
+  if [ "$_DNS_SETUP_TEST" = "NO" ] ; then
+    _FQDNTEST=TRUE
+  fi
+  if [ $_THISHOST = "localhost" ] ; then
+    msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
+    msg "Please try something like: aegir.local"
+    exit 1
+  fi
+  if [ "$_FQDNTEST" = "FALSE" ] ; then
+    echo " "
+    msg "EXIT on error due to invalid DNS setup."
+    if [ ! -z "$_MY_OWNIP" ] ; then
+      cat <<EOF
+
   * Your custom _MY_OWNIP is set to "$_MY_OWNIP"
   * Your custom _MY_HOSTN is set to "$_MY_HOSTN"
   * Your custom _MY_FRONT is set to "$_MY_FRONT"
-  
+
   * Your _MY_HOSTN and/or _MY_FRONT doesn't match your _MY_OWNIP,
     or your hostname is not set properly yet.
-    
+
   * Please add/check correct line in your /etc/hosts file on the server:
-    
-    $ echo "$_MY_OWNIP *.$_MY_HOSTN $_MY_FRONT" >> /etc/hosts
+
+  $ echo "$_MY_OWNIP *.$_MY_HOSTN $_MY_FRONT" >> /etc/hosts
 
   * Please make sure that below command returns your FQDN hostname "$_MY_HOSTN":
-    
-    $ uname -n
-    
+  
+  $ uname -n
+
 EOF
-fi
-cat <<EOF
-   
+    fi
+    cat <<EOF
+
   * Your server has to have already working FQDN hostname matching your IP address.
     This means you _have to_ configure the dns for your server IP/hostname _before_
     trying to use this install script. Reverse dns is _not_ required.
-   
+
   * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
-  
+
   * Are you sure your FQDN hostname matches your IP address: $_THISHTIP?
-    
+
 EOF
-msg "EXIT on error due to invalid DNS setup."
-echo " "
-exit 1
-else
-echo "$_THISHOST" > /etc/hostname
-echo "$_THISHOST" > /etc/mailname
-hostname -v $_THISHOST
-msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
-msg "Please double check whether this is a valid result of my test."
-fi
-mrun "sleep 3"
-echo " "
-msg "INSTALL START -> checkpoint: "
-cat <<EOF
+    msg "EXIT on error due to invalid DNS setup."
+    echo " "
+    exit 1
+  else
+    echo "$_THISHOST" > /etc/hostname
+    echo "$_THISHOST" > /etc/mailname
+    hostname -v $_THISHOST
+    msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
+    msg "Please double check whether this is a valid result of my test."
+  fi
+  mrun "sleep 3"
+  echo " "
+  msg "INSTALL START -> checkpoint: "
+  cat <<EOF
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
   * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
@@ -1018,13 +1018,13 @@ cat <<EOF
         if you didn't enable wildcard DNS yet. Barracuda can install it all now, anyway.
 
 EOF
-echo " "
-if prompt_yes_no "Do you want to proceed with the install?" ; then
-  true
-else
-  echo "Installation aborted by you."
-  exit 1
-fi
+  echo " "
+  if prompt_yes_no "Do you want to proceed with the install?" ; then
+    true
+  else
+    echo "Installation aborted by you."
+    exit 1
+  fi
 else ### if [ $_STATUS = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
@@ -1041,12 +1041,12 @@ else ### if [ $_STATUS = "UPGRADE" ] ; then
   mrun "sleep 3"
   echo " "
   msg "UPGRADE START -> checkpoint: "
-cat <<EOF
+  cat <<EOF
 
-    * Your e-mail address appears to be $_MY_EMAIL - is that correct?
-    * Your server hostname is $_THISHOST.
-    * Your Aegir control panel is/will be available at http://$_THIS_FRONT.
-    
+  * Your e-mail address appears to be $_MY_EMAIL - is that correct?
+  * Your server hostname is $_THISHOST.
+  * Your Aegir control panel is/will be available at http://$_THIS_FRONT.
+
 EOF
   echo " "
   if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
@@ -1076,10 +1076,10 @@ chmod 777 /var/log/php* &> /dev/null
 _INSTALL_PDNSD=NO
 _HOSTN_TEST=`hostname -f 2>&1`
 if [[ $_HOSTN_TEST =~ "Name or service not known" ]] ; then
-   _INSTALL_PDNSD=YES
+  _INSTALL_PDNSD=YES
 fi
 if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-   _INSTALL_PDNSD=YES
+  _INSTALL_PDNSD=YES
 fi
 if [ $_INSTALL_PDNSD = "YES" ] ; then
   if [ ! -e "/usr/sbin/pdnsd" ] ; then
@@ -1166,7 +1166,7 @@ if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
       _MIRROR=$_CONFIRMED_ANSWER
     else
       _MIRROR=$_LOCAL_DEBIAN_MIRROR
-    fi    
+    fi
     if ! netcat -w 5 -z $_MIRROR 80 ; then
       msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
       _MIRROR=ftp.debian.org
@@ -1204,7 +1204,7 @@ if [ $_STATUS = "INIT" ] ; then
     cp -af lucid-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
   else
     wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
-    cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null  
+    cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
   fi
 fi
 
@@ -1256,10 +1256,10 @@ else
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask"
 fi
 # install_with_apt () {
-# 	if ! st_runner "$_INSTALL $DEBDEPS" &> /dev/null; then
-# 		fatal "Installation failed: $?"
-# 	fi
-# 	return 0
+#   if ! st_runner "$_INSTALL $DEBDEPS" &> /dev/null; then
+#     fatal "Installation failed: $?"
+#   fi
+#   return 0
 # }
 # install_with_apt
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
@@ -1315,20 +1315,20 @@ msg "INFO: SMTP check"
 mrun "sleep 3"
 if ! netcat -w 8 -z smtp.postoffice.net 25 ; then
   WE_NEED_RELAY="YES"
-cat <<EOF
+  cat <<EOF
 
   Your outgoing SMTP port 25 doesn't work
   as expected, so your server can't send out
   any e-mails directly.
-  
+
   It appears you need a SMTP relayhost added
   in your Postfix /etc/postfix/main.cf config.
-  
+
   Please enter your SMTP relay host name
   as a value for _SMTP_RELAY_HOST="smtp.your.relay.server"
-  
+
   Then run this script again.
-    
+
 EOF
   exit 1
 else
@@ -1379,32 +1379,32 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
- if [ ! -e "/usr/bin/vnstat" ] ; then
-  msg "INFO: Installing VnStat monitor, please wait..."
-  _ETH_TEST=`ifconfig 2>&1`
-  if [[ $_ETH_TEST =~ venet0 ]] ; then
-    _VMFAMILY="VZ"
-    _IFCONFIG="venet0:0"
-  elif [ -e "/proc/bean_counters" ] ; then
-    _VMFAMILY="VZ"
-    _IFCONFIG="venet0:0"
-  else
-    _VMFAMILY="XEN"
-    _IFCONFIG="eth0"
+  if [ ! -e "/usr/bin/vnstat" ] ; then
+    msg "INFO: Installing VnStat monitor, please wait..."
+    _ETH_TEST=`ifconfig 2>&1`
+    if [[ $_ETH_TEST =~ venet0 ]] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0:0"
+    elif [ -e "/proc/bean_counters" ] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0:0"
+    else
+      _VMFAMILY="XEN"
+      _IFCONFIG="eth0"
+    fi
+    cd /var/opt
+    wget -q -U iCab http://humdi.net/vnstat/vnstat-1.10.tar.gz
+    tar -xzf vnstat-1.10.tar.gz
+    cd vnstat-1.10
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
+    cd /etc/init.d
+    cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
+    chmod 755 vnstat &> /dev/null
+    st_runner "update-rc.d vnstat defaults" &> /dev/null
+    st_runner "invoke-rc.d vnstat start" &> /dev/null
   fi
-  cd /var/opt
-  wget -q -U iCab http://humdi.net/vnstat/vnstat-1.10.tar.gz
-  tar -xzf vnstat-1.10.tar.gz
-  cd vnstat-1.10
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
-  cd /etc/init.d
-  cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
-  chmod 755 vnstat &> /dev/null
-  st_runner "update-rc.d vnstat defaults" &> /dev/null
-  st_runner "invoke-rc.d vnstat start" &> /dev/null
- fi
 fi
 
 
@@ -1520,156 +1520,156 @@ if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: PHP rebuild forced"
   mrun "sleep 3"
 fi
-###
+
+
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
-###
-
-###--------------------###
-msg "INFO: Installing PHP-FPM"
-msg "NOTE: This step can take longer than 8 minutes (depending on your server speed), please wait..."
-mrun "sleep 3"
-cd /var/opt
-rm -f -r /var/opt/php*
-mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-rm -f /etc/init.d/php-fpm*
-wget -q -U iCab http://www.php.net/distributions/php-$_PHP_VERSION.tar.gz
-wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.16-0.9.7.patch.gz
-wget -q -U iCab http://php-fpm.org/downloads/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
-tar -xzf php-$_PHP_VERSION.tar.gz
-gunzip -q php-$_PHP_VERSION-fpm-0.5.14.diff.gz
-gunzip -q suhosin-patch-5.2.16-0.9.7.patch.gz
-cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
-cat suhosin-patch-5.2.16-0.9.7.patch | patch -d php-$_PHP_VERSION -p1 &> /dev/null
-msg "INFO: Installing PHP-FPM part 1/3"
-mrun "sleep 3"
-cd /var/opt/php-$_PHP_VERSION
-st_runner "sh ./buildconf --force" 2> /dev/null
-msg "INFO: Installing PHP-FPM part 2/3"
-mrun "sleep 3"
-st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt" 2> /dev/null
-msg "INFO: Installing PHP-FPM part 3/3"
-mrun "sleep 3"
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
-sed -i "s/php_fpm_CONF\"/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbin/php-fpm
-sed -i "s/\/usr\/local\/etc\/php-fpm.conf/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
-sed -i "s/\/usr\/local\/logs\/php-fpm.pid/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
-echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
-cd /usr/local/sbin
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
-chmod 755 php-fpm
 
 
 ###--------------------###
-msg "INFO: Installing libmemcached with memcached for php, please wait..."
-mrun "sleep 3"
-cd /var/opt
-wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.44.tar.gz
-mrun "sleep 3"
-ldconfig &> /dev/null
-tar -xzf libmemcached-0.44.tar.gz
-if [ -e "/var/opt/libmemcached-0.44" ] ; then
-  cd /var/opt/libmemcached-0.44
-  st_runner "sh ./configure" 2> /dev/null
+  msg "INFO: Installing PHP-FPM"
+  msg "NOTE: This step can take longer than 8 minutes (depending on your server speed), please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r /var/opt/php*
+  mv -f /etc/init.d/php-fpm /var/backups/php-fpm-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  rm -f /etc/init.d/php-fpm*
+  wget -q -U iCab http://www.php.net/distributions/php-$_PHP_VERSION.tar.gz
+  wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.16-0.9.7.patch.gz
+  wget -q -U iCab http://php-fpm.org/downloads/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
+  tar -xzf php-$_PHP_VERSION.tar.gz
+  gunzip -q php-$_PHP_VERSION-fpm-0.5.14.diff.gz
+  gunzip -q suhosin-patch-5.2.16-0.9.7.patch.gz
+  cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
+  cat suhosin-patch-5.2.16-0.9.7.patch | patch -d php-$_PHP_VERSION -p1 &> /dev/null
+  msg "INFO: Installing PHP-FPM part 1/3"
+  mrun "sleep 3"
+  cd /var/opt/php-$_PHP_VERSION
+  st_runner "sh ./buildconf --force" 2> /dev/null
+  msg "INFO: Installing PHP-FPM part 2/3"
+  mrun "sleep 3"
+  st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt" 2> /dev/null
+  msg "INFO: Installing PHP-FPM part 3/3"
+  mrun "sleep 3"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
-  #msg "INFO: OK libmemcached installed"
+  ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
+  sed -i "s/php_fpm_CONF\"/php_fpm_CONF -c \/opt\/etc\/php.ini\"/g" /usr/local/sbin/php-fpm
+  sed -i "s/\/usr\/local\/etc\/php-fpm.conf/\/opt\/etc\/php-fpm.conf/g" /usr/local/sbin/php-fpm
+  sed -i "s/\/usr\/local\/logs\/php-fpm.pid/\/var\/run\/php-fpm.pid/g" /usr/local/sbin/php-fpm
+  echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
+  cd /usr/local/sbin
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
+  chmod 755 php-fpm
+
+
+###--------------------###
+  msg "INFO: Installing libmemcached with memcached for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-  tar -xzf memcached-1.0.2.tgz
-  if [ -e "/var/opt/memcached-1.0.2" ] ; then
-    cd /var/opt/memcached-1.0.2
-    st_runner "/usr/local/bin/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.44.tar.gz
+  mrun "sleep 3"
+  ldconfig &> /dev/null
+  tar -xzf libmemcached-0.44.tar.gz
+  if [ -e "/var/opt/libmemcached-0.44" ] ; then
+    cd /var/opt/libmemcached-0.44
+    st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
-    #msg "INFO: OK memcached installed"
+    echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
+    #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
+    cd /var/opt
+    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+    tar -xzf memcached-1.0.2.tgz
+    if [ -e "/var/opt/memcached-1.0.2" ] ; then
+      cd /var/opt/memcached-1.0.2
+      st_runner "/usr/local/bin/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
+      #msg "INFO: OK memcached installed"
+      mrun "sleep 3"
+    fi
   fi
-fi
 
 
 ###--------------------###
-msg "INFO: Installing suhosin for php, please wait..."
-mrun "sleep 3"
-cd /var/opt
-wget -q -U iCab http://download.suhosin.org/suhosin-0.9.32.1.tar.gz
-tar -xzf suhosin-0.9.32.1.tar.gz
-cd /var/opt/suhosin-0.9.32.1
-st_runner "/usr/local/bin/phpize" 2> /dev/null
-st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-
-
-###--------------------###
-msg "INFO: Installing uploadprogress for php, please wait..."
-mrun "sleep 3"
-cd /var/opt
-wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
-tar -xzf uploadprogress-1.0.1.tgz
-cd /var/opt/uploadprogress-1.0.1
-st_runner "/usr/local/bin/phpize" 2> /dev/null
-st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-
-
-###--------------------###
-msg "INFO: Installing apc for php, please wait..."
-mrun "sleep 3"
-cd /var/opt
-wget -q -U iCab http://files.aegir.cc/dev/APC-3.1.7.tgz
-tar -xzf APC-3.1.7.tgz
-cd /var/opt/APC-3.1.7
-st_runner "/usr/local/bin/phpize" 2> /dev/null
-st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-echo "apc-3.1.7 $_NOW" > /var/log/apc-3.1.7.log
-
-
-###--------------------###
-msg "INFO: Installing mailparse for php, please wait..."
-mrun "sleep 3"
-cd /var/opt
-wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
-tar -xzf mailparse-2.1.5.tgz
-cd /var/opt/mailparse-2.1.5
-st_runner "/usr/local/bin/phpize" 2> /dev/null
-st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
-st_runner "make --quiet" 2> /dev/null
-st_runner "make --quiet install" 2> /dev/null
-
-
-###--------------------###
-mkdir -p /usr/local/ioncube
-_X86_64_TEST=`uname -m`
-if [ "$_X86_64_TEST" = "x86_64" ] ; then
-  SYSTEMARCH="x86_64"
-  msg "INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
+  msg "INFO: Installing suhosin for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-tar -xzf ioncube_loaders_lin_x86-64.tar.gz
-else
-  SYSTEMARCH="x86"
-  msg "INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
+  wget -q -U iCab http://download.suhosin.org/suhosin-0.9.32.1.tar.gz
+  tar -xzf suhosin-0.9.32.1.tar.gz
+  cd /var/opt/suhosin-0.9.32.1
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+
+
+###--------------------###
+  msg "INFO: Installing uploadprogress for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
-tar -xzf ioncube_loaders_lin_x86.tar.gz
-fi
-cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
+  tar -xzf uploadprogress-1.0.1.tgz
+  cd /var/opt/uploadprogress-1.0.1
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
 
-###
-invoke-rc.d php-fpm restart &> /dev/null
+
+###--------------------###
+  msg "INFO: Installing apc for php, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  wget -q -U iCab http://files.aegir.cc/dev/APC-3.1.7.tgz
+  tar -xzf APC-3.1.7.tgz
+  cd /var/opt/APC-3.1.7
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "apc-3.1.7 $_NOW" > /var/log/apc-3.1.7.log
+
+
+###--------------------###
+  msg "INFO: Installing mailparse for php, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
+  tar -xzf mailparse-2.1.5.tgz
+  cd /var/opt/mailparse-2.1.5
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+
+
+###--------------------###
+  mkdir -p /usr/local/ioncube
+  _X86_64_TEST=`uname -m`
+  if [ "$_X86_64_TEST" = "x86_64" ] ; then
+    SYSTEMARCH="x86_64"
+    msg "INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
+    mrun "sleep 3"
+    cd /var/opt
+  wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
+  tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+  else
+    SYSTEMARCH="x86"
+    msg "INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
+    mrun "sleep 3"
+    cd /var/opt
+  wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
+  tar -xzf ioncube_loaders_lin_x86.tar.gz
+  fi
+  cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+  invoke-rc.d php-fpm restart &> /dev/null
+
+
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
-###
 
 
 ###--------------------###
@@ -1710,14 +1710,14 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-      mv -f global.inc.aegir.txt global.inc &> /dev/null    
+      mv -f global.inc.aegir.txt global.inc &> /dev/null  
     fi
   fi
 fi
 
 
 ###--------------------###
-if [ "$_THIS_OS" = "Debian" ] ; then
+if [ "$_REL_VERSION" = "lenny" ] ; then
   _PATH_BZR="/usr/bin/bzr"
 else
   _PATH_BZR="/usr/local/bin/bzr"
@@ -1777,7 +1777,7 @@ fi
 
 
 ###--------------------###
-if [ "$_THIS_OS" = "Debian" ] ; then
+if [ "$_REL_VERSION" = "lenny" ] ; then
   _PATH_LSHELL="/usr/bin/lshell"
 else
   _PATH_LSHELL="/usr/local/bin/lshell"
@@ -1788,8 +1788,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   cd /var/opt
   wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
   tar -xzf lshell-$_LSHELL_VERSION.tar.gz
-  for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f`
-  do
+  for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
@@ -1805,7 +1804,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   echo "$_PATH_LSHELL" >> /etc/shells
   echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
 fi
-if [ -e "/usr/local/bin/lshell" ] ; then
+if [ -f "/usr/local/bin/lshell" ] ; then
   if [ ! -L "/usr/bin/lshell" ] ; then
     ln -s /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
   fi
@@ -1821,8 +1820,7 @@ if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] ; then
   cd /var/opt
   wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
   tar -xzf lshell-$_LSHELL_VERSION.tar.gz
-  for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f`
-  do
+  for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
@@ -1929,8 +1927,7 @@ fi
 if [ -e "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
   PASWD=`echo -n $PXSWD | tr -d "\n"`
-  for Files in `find /var/xdrago -type f`
-  do
+  for Files in `find /var/xdrago -type f` ; do
     sed -i "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files
     sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files
   done
@@ -1938,14 +1935,14 @@ if [ -e "/root/.my.pass.txt" ] ; then
   mrun "sleep 3"
 else
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
-cat <<EOF
-  
+  cat <<EOF
+
   It appears you don't have required file with your root sql password.
   Create this file first and run this script again:
-  
-    echo "your_SQL_ROOT_password" > /root/.my.pass.txt
-    chmod 0600 /root/.my.pass.txt
-    
+
+  echo "your_SQL_ROOT_password" > /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt
+
 EOF
   msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
   echo " "
@@ -1953,108 +1950,106 @@ EOF
 fi
 
 
-###
 if [ $_STATUS = "INIT" ] ; then
-###
-
-###--------------------###
-msg "INFO: Installing core Aegir Hostmaster instance, please wait..."
-mrun "sleep 3"
-st_runner "adduser --system --group --home /var/aegir aegir"
-st_runner "adduser aegir www-data"
-echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
-cd /var/aegir
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  _AEGIR_SCRIPT="aegir-head-install"
-elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
-  _AEGIR_SCRIPT="aegir-test-install"
-  _DRUSH_VERSION=All-Versions-HEAD
-  _DRUSH_FAMILY=5
-else
-  _AEGIR_SCRIPT="aegir-alpha-install"
-fi
-for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
-do
-  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files
-  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
-  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
-  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
-  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
-  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
-done
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
-msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
-mrun "sleep 3"
-if [ "$_DEBUG_MODE" = "YES" ] ; then
-  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
-else
-  su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
-fi
-mrun "sleep 3"
-msg "INFO: Running hosting-dispatch (1/3), please wait..."
-mrun "sleep 3"
-su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
-msg "INFO: Running hosting-dispatch (2/3), please wait..."
-mrun "sleep 8"
-su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
-msg "INFO: Running hosting-dispatch (3/3), please wait..."
-mrun "sleep 8"
-su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
-rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
 
 
 ###--------------------###
-msg "INFO: Simple check if core Aegir Hostmaster instance install is successful"
-mrun "sleep 3"
-if [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
-  msg "INFO: Aegir installation almost completed"
-else
-  msg "FATAL ERROR: Something is wrong, core Aegir Hostmaster instance not installed - exit now"
-  msg "FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
-  exit 1
-fi
-
-
-###--------------------###
-msg "INFO: Fix for access to global.inc for www-data user issue"
-mrun "sleep 3"
-chmod 711 /var/aegir/config/includes &> /dev/null
-chmod 711 /var/aegir/config &> /dev/null
-chmod 711 /var/aegir/.drush &> /dev/null
-mrun "sleep 3"
-
-
-###--------------------###
-msg "INFO: Fix for advanced Nginx config and Drush path"
-mrun "sleep 3"
-ln -s /var/aegir/drush/drush /usr/bin/drush
-cd /var/aegir/config/includes
-mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-mv -f global.inc.aegir.txt global.inc &> /dev/null
-force_advanced_nginx_config
-if [ $_DRUSH_FAMILY = "3" ] ; then
-  cd /var/aegir/drush
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-  patch -p0 < user.drush.inc.patch &> /dev/null
-fi
-cd /var/aegir
-sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
-perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
-perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
-rm -f /etc/nginx/sites-available/default
-rm -f /etc/nginx/sites-enabled/default
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  killall -9 nginx &> /dev/null
+  msg "INFO: Installing core Aegir Hostmaster instance, please wait..."
   mrun "sleep 3"
-  invoke-rc.d nginx start &> /dev/null
-else
-  invoke-rc.d nginx reload &> /dev/null
-fi
-mrun "sleep 3"
-msg "INFO: Core Aegir Hostmaster instance installation completed"
-mrun "sleep 3"
+  st_runner "adduser --system --group --home /var/aegir aegir"
+  st_runner "adduser aegir www-data"
+  echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+  ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+  cd /var/aegir
+  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+    _AEGIR_SCRIPT="aegir-head-install"
+  elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
+    _AEGIR_SCRIPT="aegir-test-install"
+    _DRUSH_VERSION=All-Versions-HEAD
+    _DRUSH_FAMILY=5
+  else
+    _AEGIR_SCRIPT="aegir-alpha-install"
+  fi
+  for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"    $Files
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"    $Files
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"      $Files
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"    $Files
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"      $Files
+  done
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
+  msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
+  mrun "sleep 3"
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+  else
+    su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+  fi
+  mrun "sleep 3"
+  msg "INFO: Running hosting-dispatch (1/3), please wait..."
+  mrun "sleep 3"
+  su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  msg "INFO: Running hosting-dispatch (2/3), please wait..."
+  mrun "sleep 8"
+  su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  msg "INFO: Running hosting-dispatch (3/3), please wait..."
+  mrun "sleep 8"
+  su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
+
+
+###--------------------###
+  msg "INFO: Simple check if core Aegir Hostmaster instance install is successful"
+  mrun "sleep 3"
+  if [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+    msg "INFO: Aegir installation almost completed"
+  else
+    msg "FATAL ERROR: Something is wrong, core Aegir Hostmaster instance not installed - exit now"
+    msg "FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
+    exit 1
+  fi
+
+
+###--------------------###
+  msg "INFO: Fix for access to global.inc for www-data user issue"
+  mrun "sleep 3"
+  chmod 711 /var/aegir/config/includes &> /dev/null
+  chmod 711 /var/aegir/config &> /dev/null
+  chmod 711 /var/aegir/.drush &> /dev/null
+  mrun "sleep 3"
+
+
+###--------------------###
+  msg "INFO: Fix for advanced Nginx config and Drush path"
+  mrun "sleep 3"
+  ln -s /var/aegir/drush/drush /usr/bin/drush
+  cd /var/aegir/config/includes
+  mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
+  mv -f global.inc.aegir.txt global.inc &> /dev/null
+  force_advanced_nginx_config
+  if [ $_DRUSH_FAMILY = "3" ] ; then
+    cd /var/aegir/drush
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+    patch -p0 < user.drush.inc.patch &> /dev/null
+  fi
+  cd /var/aegir
+  sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
+  perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
+  perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
+  rm -f /etc/nginx/sites-available/default
+  rm -f /etc/nginx/sites-enabled/default
+  if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    killall -9 nginx &> /dev/null
+    mrun "sleep 3"
+    invoke-rc.d nginx start &> /dev/null
+  else
+    invoke-rc.d nginx reload &> /dev/null
+  fi
+  mrun "sleep 3"
+  msg "INFO: Core Aegir Hostmaster instance installation completed"
+  mrun "sleep 3"
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade core Aegir Hostmaster instance?" ; then
@@ -2072,14 +2067,14 @@ else
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"     /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"       /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"       /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -2088,7 +2083,7 @@ else
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-      mv -f global.inc.aegir.txt global.inc &> /dev/null    
+      mv -f global.inc.aegir.txt global.inc &> /dev/null  
     fi
     force_advanced_nginx_config
     if [ $_DRUSH_FAMILY = "3" ] ; then
@@ -2097,7 +2092,7 @@ else
       patch -p0 < user.drush.inc.patch &> /dev/null
     fi
     cd /var/aegir
-    rm -f AegirUpgrade.sh.txt    
+    rm -f AegirUpgrade.sh.txt
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
       if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
         cd /var/aegir/config/server_master/nginx
@@ -2117,9 +2112,9 @@ else
     mrun "sleep 3"
   fi
   rm -f /var/aegir/*install.sh.txt
-###
+
+
 fi ### end of if [ $_STATUS = "INIT" ] ; then
-###
 
 
 ###--------------------###
@@ -2136,7 +2131,7 @@ mrun "sleep 3"
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    st_runner "invoke-rc.d nginx reload" &> /dev/null
+  st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
 
@@ -2148,22 +2143,22 @@ if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; 
   _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
   if [[ $_HTTPS_TEST =~ 443 ]] ; then
     _HTTPS_TEST=EXIST
-  msg "WARNING!"
-cat <<EOF
-  
+    msg "WARNING!"
+    cat <<EOF
+
   We can't enable Wildcard HTTPS Proxy for all your hosted sites,
   including all Hostmaster instances, because you have already
   enabled SSL on the IP address used by your core Hostmaster instance.
-  
+
   If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
   please disable the SSL you enabled, or use the built-in Aegir SSL
   feature on another IP address available and not used by the Hostmaster,
   and other hosted sites.
-  
+
   We will continue in 30 seconds...
-  
+
 EOF
-mrun "sleep 30"
+    mrun "sleep 30"
   else
     _HTTPS_TEST=FREE
     if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
@@ -2261,13 +2256,13 @@ if [ ! -d "/var/www/chive" ] ; then
     fi
     echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
-    echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
+    echo "   include    /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
     echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
-    echo "   listen       $_THISHTIP:80;" >> $_CHIVE_VHOST
+    echo "   listen     $_THISHTIP:80;" >> $_CHIVE_VHOST
     echo "   server_name  chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
-    echo "   root         /var/www/chive;" >> $_CHIVE_VHOST
-    echo "   index        index.php index.html;" >> $_CHIVE_VHOST
-    echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
+    echo "   root     /var/www/chive;" >> $_CHIVE_VHOST
+    echo "   index    index.php index.html;" >> $_CHIVE_VHOST
+    echo "   include    /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
     echo "}" >> $_CHIVE_VHOST
     echo >> $_CHIVE_VHOST
     touch /var/log/chive_0.4.1.log
@@ -2321,13 +2316,13 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     fi
     echo > $_SQLBUDDY_VHOST
     echo "server {" >> $_SQLBUDDY_VHOST
-    echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
+    echo "   include    /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
     echo "   limit_conn   gulag 10;" >> $_SQLBUDDY_VHOST
-    echo "   listen       $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
+    echo "   listen     $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
     echo "   server_name  sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
-    echo "   root         /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
-    echo "   index        index.php index.html;" >> $_SQLBUDDY_VHOST
-    echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
+    echo "   root     /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
+    echo "   index    index.php index.html;" >> $_SQLBUDDY_VHOST
+    echo "   include    /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
     echo "}" >> $_SQLBUDDY_VHOST
     echo >> $_SQLBUDDY_VHOST
     msg "INFO: SQL Buddy MariaDB Manager installation completed"
@@ -2348,39 +2343,39 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
- if [ ! -d "/var/www/cgp" ] ; then
-  echo " "
-  if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
-    true
-    msg "INFO: Installing Collectd Graph Panel, please wait..."
-    mrun "sleep 3"
-    st_runner "apt-fast -y install collectd" 2> /dev/null
-    cd /var/www
-    git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
-    sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
-    chown -R www-data:www-data /var/www/cgp
-    _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+  if [ ! -d "/var/www/cgp" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
+      true
+      msg "INFO: Installing Collectd Graph Panel, please wait..."
+      mrun "sleep 3"
+      st_runner "apt-fast -y install collectd" 2> /dev/null
+      cd /var/www
+      git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
+      sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
+      chown -R www-data:www-data /var/www/cgp
+      _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
+      if [ -z "$_THISHTIP" ] ; then
+        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      fi
+      echo > $_CGP_VHOST
+      echo "server {" >> $_CGP_VHOST
+      echo "   include    /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
+      echo "   limit_conn   gulag 10;" >> $_CGP_VHOST
+      echo "   listen     $_THISHTIP:80;" >> $_CGP_VHOST
+      echo "   server_name  cgp.$_THIS_FRONT;" >> $_CGP_VHOST
+      echo "   root     /var/www/cgp;" >> $_CGP_VHOST
+      echo "   index    index.php index.html;" >> $_CGP_VHOST
+      echo "   include    /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
+      echo "}" >> $_CGP_VHOST
+      echo >> $_CGP_VHOST
+      msg "INFO: Collectd Graph Panel installation completed"
+      mrun "sleep 2"
+      else
+      msg "INFO: Collectd Graph Panel installation skipped"
+      mrun "sleep 2"
     fi
-    echo > $_CGP_VHOST
-    echo "server {" >> $_CGP_VHOST
-    echo "   include      /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-    echo "   limit_conn   gulag 10;" >> $_CGP_VHOST
-    echo "   listen       $_THISHTIP:80;" >> $_CGP_VHOST
-    echo "   server_name  cgp.$_THIS_FRONT;" >> $_CGP_VHOST
-    echo "   root         /var/www/cgp;" >> $_CGP_VHOST
-    echo "   index        index.php index.html;" >> $_CGP_VHOST
-    echo "   include      /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
-    echo "}" >> $_CGP_VHOST
-    echo >> $_CGP_VHOST
-    msg "INFO: Collectd Graph Panel installation completed"
-    mrun "sleep 2"
-  else
-    msg "INFO: Collectd Graph Panel installation skipped"
-    mrun "sleep 2"
   fi
- fi
 fi
 
 
@@ -2437,7 +2432,7 @@ if [ ! -d "/etc/webmin" ] ; then
     st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
     msg "INFO: Webmin Control Panel installation completed"
     mrun "sleep 2"
-  else
+    else
     msg "INFO: Webmin Control Panel installation skipped"
     mrun "sleep 2"
   fi
@@ -2446,32 +2441,32 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
- if [ ! -e "/usr/sbin/csf" ] ; then
-  cd /var/opt
-  rm -f /var/xdrago/log/lastFire
-  wget -q -U iCab http://www.configserver.com/free/csf.tgz
-  tar -xzf csf.tgz
-  cd csf
-  st_runner "sh install.sh" 2> /dev/null
-  cd /etc/csf
-  mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
-  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
-  sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
-  chmod 600 /etc/csf/csf.conf &> /dev/null
-  sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
-  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
-  st_runner "invoke-rc.d ssh restart" &> /dev/null
-  st_runner "invoke-rc.d csf restart" &> /dev/null
-  st_runner "invoke-rc.d lfd restart" &> /dev/null
- fi
- if [ -e "/var/xdrago/log/lastFire" ] ; then
-  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
-  rm -f /var/xdrago/log/lastFire
-  st_runner "invoke-rc.d csf restart" &> /dev/null
-  st_runner "invoke-rc.d lfd restart" &> /dev/null
- fi
- echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
+  if [ ! -e "/usr/sbin/csf" ] ; then
+    cd /var/opt
+    rm -f /var/xdrago/log/lastFire
+    wget -q -U iCab http://www.configserver.com/free/csf.tgz
+    tar -xzf csf.tgz
+    cd csf
+    st_runner "sh install.sh" 2> /dev/null
+    cd /etc/csf
+    mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
+    sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
+    sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
+    chmod 600 /etc/csf/csf.conf &> /dev/null
+    sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
+    sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+    st_runner "invoke-rc.d ssh restart" &> /dev/null
+    st_runner "invoke-rc.d csf restart" &> /dev/null
+    st_runner "invoke-rc.d lfd restart" &> /dev/null
+  fi
+  if [ -e "/var/xdrago/log/lastFire" ] ; then
+    sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+    rm -f /var/xdrago/log/lastFire
+    st_runner "invoke-rc.d csf restart" &> /dev/null
+    st_runner "invoke-rc.d lfd restart" &> /dev/null
+  fi
+  echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
 fi
 if [ -e "/usr/sbin/csf" ] ; then
   if [ ! -e "/var/log/csf-setup-ssh-port-new.log" ] ; then
@@ -2495,43 +2490,43 @@ fi
 
 ###--------------------###
 if [ ! -e "/root/.my.cnf" ] ; then
-msg "INFO: MariaDB final setup"
-mrun "sleep 3"
-echo " "
-msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
-echo " "
-echo --------vvvvvvvv--------
-echo ------- $PASWD -------
-echo --------^^^^^^^^--------
-echo " "
-msg "Please remember, you don't have the root password for MariaDB set yet."
-cat <<EOF
+  msg "INFO: MariaDB final setup"
+  mrun "sleep 3"
+  echo " "
+  msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
+  echo " "
+  echo --------vvvvvvvv--------
+  echo ------- $PASWD -------
+  echo --------^^^^^^^^--------
+  echo " "
+  msg "Please remember, you don't have the root password for MariaDB set yet."
+  cat <<EOF
 
- * You have to hit Enter _without_ entering the password on the first question you will see.
- * On the second question say Y and then enter your root password '$PASWD' twice.
- * Then say Y on all remaining questions.
+   * You have to hit Enter _without_ entering the password on the first question you will see.
+   * On the second question say Y and then enter your root password '$PASWD' twice.
+   * Then say Y on all remaining questions.
 
 EOF
-echo " "
-msg "...waiting now 30 sec before running interactive mysql_secure_installation..."
-echo " "
-mrun "sleep 30"
-echo " "
-mysql_secure_installation
-echo " "
-mrun "sleep 3"
-echo "[client]" >> /root/.my.cnf
-echo "user=root" >> /root/.my.cnf
-echo "password=$PASWD" >> /root/.my.cnf
-chmod 0600 /root/.my.cnf &> /dev/null
-if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-  perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
-  touch /var/log/check_for_crashed_tables_disabled
-  st_runner "invoke-rc.d mysql restart" &> /dev/null
+  echo " "
+  msg "...waiting now 30 sec before running interactive mysql_secure_installation..."
+  echo " "
+  mrun "sleep 30"
+  echo " "
+  mysql_secure_installation
+  echo " "
   mrun "sleep 3"
-fi
-msg "INFO: MariaDB setup completed"
-msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
+  echo "[client]" >> /root/.my.cnf
+  echo "user=root" >> /root/.my.cnf
+  echo "password=$PASWD" >> /root/.my.cnf
+  chmod 0600 /root/.my.cnf &> /dev/null
+  if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
+    perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
+    touch /var/log/check_for_crashed_tables_disabled
+    st_runner "invoke-rc.d mysql restart" &> /dev/null
+    mrun "sleep 3"
+  fi
+  msg "INFO: MariaDB setup completed"
+  msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
 fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
 
 
