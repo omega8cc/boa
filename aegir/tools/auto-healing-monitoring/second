@@ -3,7 +3,7 @@
 control()
 {
 NOW_LOAD=`awk '{print $2*100}' /proc/loadavg`
-CTL_LOAD=500
+CTL_LOAD=300
 if [ $NOW_LOAD -lt $CTL_LOAD ]; then
   echo load is $NOW_LOAD while maxload is $CTL_LOAD
   echo ... now doing CTL...
@@ -20,5 +20,15 @@ else
   echo ...we have to wait...
 fi
 }
+control
+sleep 10
+control
+sleep 10
+control
+sleep 10
+control
+sleep 10
+control
+sleep 10
 control
 echo Done !
