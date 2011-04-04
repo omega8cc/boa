@@ -37,7 +37,7 @@ Your Aegir control panel is available as before at:
   OpenPublic 7.0-beta1 --------- http://openpublicapp.com
   Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
   NodeStream ------------------- http://nodestream.org
-  Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
+  Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
   ProsePoint 0.37 -------------- http://prosepoint.org
   Acquia 7.0 ------------------- http://bit.ly/acquiadrupal

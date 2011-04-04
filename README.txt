@@ -96,7 +96,7 @@ Octopus can install the platforms listed below:
  Atrium 1.0-beta10 ------------ http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  NodeStream ------------------- http://nodestream.org
- Drupal Commons 1.4 ----------- http://acquia.com/drupalcommons
+ Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
  Acquia 6.20 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
  OpenPublish 2.3.441 ---------- http://openpublishapp.com
