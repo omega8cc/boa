@@ -16,6 +16,7 @@ $conf['cron_safe_threshold'] = 0; // disable cron in d7, since Aegir runs schedu
 $conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
 $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
 $conf['cache'] = 1;               // enable hardcoded caching
+$conf['file_downloads'] = 1;      // force public downloads by default
 $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0;      // disable access log stats
 // $conf['javascript_aggregator_jsminplus'] = 1;   // enable jsminplus
@@ -59,6 +60,10 @@ if (preg_match("/managingnews/", $conf['install_profile'])) {
    ini_set('auto_detect_line_endings', TRUE);
 }
 
+if (preg_match("/uberdrupal/", $conf['install_profile']) || file_exists('sites/all/modules/ubercart/README.txt')) {
+  unset($conf['file_downloads']); // disable hardcoded public downloads for ubercart
+}
+
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
    error_reporting(E_ALL & ~E_NOTICE);
    ini_set('display_errors', TRUE);
@@ -99,6 +104,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
+      unset($conf['file_downloads']); // disable hardcoded public downloads for d7
     }
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
