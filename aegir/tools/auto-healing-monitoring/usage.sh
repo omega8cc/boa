@@ -21,7 +21,31 @@ _PERMISSIONS=YES
 
 ###-------------SYSTEM-----------------###
 
-modules()
+fix_boost_cache()
+{
+if [ ! -d "$Plr/cache/normal" ] ; then
+  mkdir -p $Plr/cache/{normal,perm}
+  chown -R $_THIS_HM_USER:www-data $Plr/cache
+  chmod -R 775 $Plr/cache
+fi
+}
+
+fix_o_contrib_symlink()
+{
+if [ "$_O_CONTRIB" != "NO" ] ; then
+  if [ -e "$Plr/web.config" ] ; then
+    if [ ! -e "$Plr/modules/o_contrib_seven" ] ; then
+      ln -s $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven
+    fi
+  else
+    if [ ! -e "$Plr/modules/o_contrib" ] ; then
+      ln -s $_O_CONTRIB $Plr/modules/o_contrib
+    fi  
+  fi
+fi
+}
+
+fix_modules()
 {
 if [ "$_MODULES" = "YES" ]; then
       searchStringA="-7."
@@ -40,7 +64,7 @@ if [ "$_MODULES" = "YES" ]; then
 fi
 }
 
-permissions()
+fix_permissions()
 {
 if [ "$_PERMISSIONS" = "YES" ]; then
       chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
@@ -67,12 +91,14 @@ do
     if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      permissions
+      fix_o_contrib_symlink
+      fix_boost_cache
+      fix_permissions
       searchStringD="dev"
       case $Dom in
         *"$searchStringD"*) ;;
         *)  
-        modules
+        fix_modules
         ;;
       esac
       #echo Dir is $Dir
@@ -146,6 +172,20 @@ done
 ###-------------SYSTEM-----------------###
 
 _NOW=`date +%y%m%d-%H%M`
+#
+# Check for last all nr
+if [ -d "/data/all" ] ; then
+  cd /data/all
+  listl=([0-9]*)
+  _LAST_ALL=${listl[@]: -1}
+  _O_CONTRIB="/data/all/$_LAST_ALL/o_contrib"
+  _O_CONTRIB_SEVEN="/data/all/$_LAST_ALL/o_contrib_seven"
+else
+  _O_CONTRIB=NO
+  _O_CONTRIB_SEVEN=NO
+fi
+#
+#
 mkdir -p /var/xdrago/log/usage
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   touch /var/xdrago/log/wait-counter
