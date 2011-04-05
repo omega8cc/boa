@@ -255,10 +255,6 @@ to enable: *Path alias cache*.
 
 === IMPORT YOUR EXISTING SITES TO AEGIR IN 8 EASY STEPS
 
-Hint: Replace USER with your Aegir Octopus system (not ftp) username.
-      Your Aegir system username is the same as your ftp username,
-      minus .ftp.
-
 1. Upload or rsync full drupal root of your site to static/custom/name
 
 2. Chmod everything with: chmod -R 775 static/custom/name
@@ -275,7 +271,7 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 
 6. Import your uploaded database (or use backup_migrate module) with:
    cd static/custom/name/sites/domain
-   drush sql-connect < /data/disk/USER/static/domain.sql
+   drush sqlc < /data/disk/USER/static/domain.sql
    drush cc (choose 1 to clear all)
 
 7. Rename the site (using Migrate task) to your final domain.
@@ -285,6 +281,11 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 Note that since we allow only Pressflow core based platforms for
 5.x and 6.x Drupal versions, after initial import you should
 migrate your site to the Pressflow based platform ASAP.
+
+Hint: Replace USER with your Aegir Octopus system (not ftp) username.
+      Your Aegir system username is the same as your ftp username,
+      minus .ftp. NOTE: you don't have an access to your Aegir system
+      user, it is mentioned above only to help you using correct path.
 
 
 === ALWAYS USEFUL HINTS
@@ -309,6 +310,8 @@ migrate your site to the Pressflow based platform ASAP.
 # What is new or updated
 ----------------------------------------
 
+* Nginx Fast Private File Transfer for Drupal using X-Accel-Redirect.
+* Support for secure ubercart keys location to use ../keys path.
 * Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
   This new feature adds super fast caching for anonymous visitors,
   and yes! - also for logged in users (cache per user) directly on
@@ -320,6 +323,7 @@ migrate your site to the Pressflow based platform ASAP.
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
+* Chive database manager upgraded to version 0.4.1
 * Drush upgraded to version 4.4
 * Drush Make upgraded to version 2.2
 * Redis cache server upgraded to version 2.0.5
@@ -334,7 +338,7 @@ migrate your site to the Pressflow based platform ASAP.
 # What will be next
 ----------------------------------------
 
-* Automated FTP accounts per site and per platform.
+* Automated FTP/SSH accounts per site and per platform.
 * Embedded Aegir Knowledge Base and How-To Recipes.
 * ...and more.
 
@@ -343,6 +347,12 @@ migrate your site to the Pressflow based platform ASAP.
 # Improvements since January 1st
 ----------------------------------------
 
+* Many improvements in the Speed Booster cache configuration.
+* Improved memcached/redis cache bins configuration.
+* The o_contrib modules now symlinked also in custom platforms.
+* Boost directories created automatically also in custom platforms.
+* Improved web server self-healing monitor.
+* PHP notices no longer displayed for dev subdomains, only errors.
 * Many improvements in the Nginx configuration - now it's faster.
 * Permisions on uploaded modules, themes and files are now
   automatically fixed every morning to help with post-import issues.
@@ -380,6 +390,9 @@ migrate your site to the Pressflow based platform ASAP.
 # Fixes since January 1st
 ----------------------------------------
 
+* Fix for critical bug causing sessions issues on older sites without
+  $cookie_domain set in settings.php when speed booster is enabled.
+* The session.cookie_secure is no longer forced in D6 platforms.
 * Security issue #1098304 - domain aliases were not sanitized.
 * Nginx config - proper fix for broken wysiwyg pop-ups.
 * Fixed issue with Nginx configuration for private files access.
@@ -398,6 +411,7 @@ migrate your site to the Pressflow based platform ASAP.
 # Other changes
 ----------------------------------------
 
+* Forced public downloads for all 6.x platforms, except of ubercart.
 * Boost crawler option is now denied for performance reasons.
 * Forced log-out on browser quit only for Aegir control panel. 
 * The auto-cron in D7 now disabled, since Aegir runs scheduled cron
