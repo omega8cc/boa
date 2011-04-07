@@ -238,6 +238,7 @@ fi
 themes_for_d6 () {
 cd /data/src/$_THIS_CORE/pressflow-6/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta2.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.2.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -249,6 +250,7 @@ cd /data/src/$_THIS_CORE
 themes_for_d7 () {
 cd $_CORE_DISTRO/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta5.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta3.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -258,8 +260,9 @@ cd $_CORE_DISTRO
 #
 # download_textile
 download_textile () {
-  cd textile/include
+  cd textile
   svn export http://textpattern.googlecode.com/svn/releases/4.4.0/source/textpattern/lib/classTextile.php &> /dev/null
+  cp classTextile.php include/ &> /dev/null
 }
 
 
@@ -374,6 +377,7 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha4.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -519,7 +523,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/acquia/profiles/acquia/translations &> /dev/null
@@ -583,8 +587,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f atrium.make.txt
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
+  rm -f -r $_CORE/atrium-$_OPENATRIUM/modules/cookie_cache_bypass
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -647,7 +652,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/ &> /dev/null
   cd $_CORE/pressflow
   rm -f $_CORE/pressflow/*.txt
-  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow/profiles/default/translations &> /dev/null
 fi
@@ -829,6 +834,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/drupal_commons-$_COMMONS/ &> /dev/null
   cd $_CORE/drupal_commons-$_COMMONS
   rm -f $_CORE/drupal_commons-$_COMMONS/*.txt
+  rm -f -r $_CORE/drupal_commons-$_COMMONS/modules/cookie_cache_bypass
   if [ $_COMMONS = "6.x-1.3" ] ; then
     cd $_CORE/drupal_commons-$_COMMONS/profiles/drupal_commons
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1045778-fix-aegir-installs.patch ./
@@ -838,7 +844,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/drupal_commons-$_COMMONS
   fi
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -880,6 +886,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/ &> /dev/null
   rm -f $_CORE/fserver/*.txt
   rm -f -r ./profiles/default
+  rm -f -r $_CORE/fserver/modules/cookie_cache_bypass
   create_dirs
   cd ./profiles/feature_server/themes
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
@@ -921,7 +928,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f *.tar.gz
   cd $_CORE/managingnews-$_MANAGINGNEWS/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -954,6 +961,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM/ &> /dev/null
   rm -f $_CORE/nodestream-$_NODESTREAM/*.txt
   rm -f -r ./profiles/default
+  rm -f -r $_CORE/nodestream-$_NODESTREAM/modules/cookie_cache_bypass
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM
@@ -1024,7 +1032,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
-  sed -i "s/'features',/'features', 'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
+  sed -i "s/'features',/'features', 'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1057,7 +1065,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/prosepoint-$_PROSEPOINT
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
-  #sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
+  #sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
@@ -1090,7 +1098,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/$_UBERCART
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/ &> /dev/null
   rm -f $_CORE/$_UBERCART/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'hierarchical_select', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'admin', 'content_type_overview', 'login_security', 'compact_forms', 'config_perms', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations

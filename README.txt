@@ -63,7 +63,7 @@ standard production settings.
 * Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
 * Jolicloud Robby for netbooks fresh or existing install.
 * The Git standard port 9418 must be open.
-* Minimum 1 GB of RAM or minimum 2 GB of RAM for OpenPublish.
+* Minimum 1 GB of RAM or minimum 2 GB of RAM with Solr/Tomcat enabled.
 * Basic sysadmin skills and experience.
 
 
