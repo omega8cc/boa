@@ -436,14 +436,15 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mv -f make_home.php.txt make_home.php &> /dev/null
   $DRUSHC php-script make_home &> /dev/null
   rm -f make_home.php
-  if [ $_DRUSH_FAMILY = "3" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client_3.php.txt ./
-    mv -f make_client_3.php.txt make_client.php &> /dev/null
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
-    mv -f make_client.php.txt make_client.php &> /dev/null  
-  fi
   if [ $_LOCAL_STATUS = "INIT" ] ; then
+    if [ $_DRUSH_FAMILY = "3" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client_3.php.txt ./
+      mv -f make_client_3.php.txt make_client.php &> /dev/null
+    else
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
+      mv -f make_client.php.txt make_client.php &> /dev/null  
+    fi
+    $DRUSHC sqlq "UPDATE {hosting_platform} SET status=-1 WHERE nid=5" &> /dev/null
     $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null
     rm -f make_client.php
     $DRUSHC urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null
