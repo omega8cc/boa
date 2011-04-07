@@ -432,11 +432,11 @@ sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
-  mv -f make_home.php.txt make_home.php &> /dev/null
-  $DRUSHC php-script make_home &> /dev/null
-  rm -f make_home.php
   if [ $_LOCAL_STATUS = "INIT" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
+    mv -f make_home.php.txt make_home.php &> /dev/null
+    $DRUSHC php-script make_home &> /dev/null
+    rm -f make_home.php
     if [ $_DRUSH_FAMILY = "3" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client_3.php.txt ./
       mv -f make_client_3.php.txt make_client.php &> /dev/null
