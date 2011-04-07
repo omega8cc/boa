@@ -38,9 +38,15 @@ if [ "$_O_CONTRIB" != "NO" ] ; then
       ln -s $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven
     fi
   else
-    if [ ! -e "$Plr/modules/o_contrib" ] ; then
-      ln -s $_O_CONTRIB $Plr/modules/o_contrib
-    fi  
+    if [ -e "$Plr/modules/watchdog" ] ; then
+      if [ -e "$Plr/modules/o_contrib" ] ; then
+        rm -f $Plr/modules/o_contrib
+      fi
+    else
+      if [ ! -e "$Plr/modules/o_contrib" ] ; then
+        ln -s $_O_CONTRIB $Plr/modules/o_contrib
+      fi
+    fi
   fi
 fi
 }

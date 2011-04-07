@@ -21,6 +21,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\tGLOBAL";
 print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
@@ -31,6 +32,7 @@ print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
 print "\n $memcachesumar Cache procs\tGLOBAL" if ($memcachelives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
 print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
+print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
 if (-e "/usr/sbin/pdnsd") {
   `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
 }

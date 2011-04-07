@@ -233,6 +233,35 @@ if [ ! -L "web.config" ] ; then
   ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
 fi
 }
+#
+# themes_for_d6
+themes_for_d6 () {
+cd /data/src/$_THIS_CORE/pressflow-6/themes
+wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta2.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+cd /data/src/$_THIS_CORE
+}
+#
+# themes_for_d7
+themes_for_d7 () {
+cd $_CORE_DISTRO/themes
+wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta5.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+cd $_CORE_DISTRO
+}
+#
+# download_textile
+download_textile () {
+  cd textile/include
+  svn export http://textpattern.googlecode.com/svn/releases/4.4.0/source/textpattern/lib/classTextile.php
+}
+
 
 
 ###---### User check
@@ -317,6 +346,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
 rm -f -r /data/src/$_THIS_CORE/pressflow-6/modules/cookie_cache_bypass
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
+themes_for_d6
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
 wget -q -U iCab http://files.aegir.cc/boost_stats.php.txt
@@ -326,17 +356,30 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   cd $_CORE/o_contrib_seven
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-7.x-3.0-alpha1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-7.x-1.0-beta2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  download_textile
+  cd $_CORE/o_contrib_seven
 fi
 if [ ! -d "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
@@ -347,7 +390,7 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   #wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://files.aegir.cc/dev/advagg-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
@@ -361,13 +404,28 @@ if [ ! -d "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-6.x-3.7.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  download_textile
+  cd $_CORE/o_contrib
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   mkdir -p $_CORE/o_contrib_atrium
@@ -500,6 +558,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_seven
 cd $_ROOT/distro/$_THIS_CORE/acquia_seven
 create_symlinks
 create_d7_symlinks
+themes_for_d7
 msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
 mrun "sleep 2"
 else
@@ -632,6 +691,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
 create_symlinks
 create_d7_symlinks
+themes_for_d7
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7 installation completed"
 mrun "sleep 2"
@@ -702,6 +762,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
 cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
 create_symlinks
 create_d7_symlinks
+themes_for_d7
 msg "STATUS: $_F_COMMERCE installation completed"
 mrun "sleep 2"
 else
@@ -909,41 +970,41 @@ fi
 
 ###---### OpenPublish
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
-true
-msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
-  tar -xzf openpublish-$_OPENPUBLISH.tar.gz
-  rm -f openpublish-$_OPENPUBLISH.tar.gz
-  #mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
-  cd $_CORE/openpublish-$_OPENPUBLISH
-  rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
-  sed -i "s/'profile',/'profile', 'cache', 'syslog', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
-  rm -f -r ./profiles/default
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
-cd $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
-create_symlinks
-if [ ! -L "./sites/all/themes/openpublish_theme" ] ; then
-  ln -s $_CORE_DISTRO/profiles/openpublish/themes/openpublish_theme ./sites/all/themes/openpublish_theme
-fi
-msg "STATUS: $_F_OPENPUBLISH installation completed"
-mrun "sleep 2"
-else
-  msg "STATUS: $_F_OPENPUBLISH installation skipped"
-  mrun "sleep 1"
-fi
-fi
-fi
+# if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+# if [ "$_CLIENT_CORES" -ge "4" ] ; then
+# echo " "
+# if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
+# true
+# msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
+# mrun "sleep 2"
+# _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
+# if [ ! -d "$_CORE_DISTRO" ] ; then
+#   cd $_CORE
+#   wget -q -U iCab http://files.aegir.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
+#   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
+#   rm -f openpublish-$_OPENPUBLISH.tar.gz
+#   #mv $_CORE/openpublish $_CORE/openpublish-$_OPENPUBLISH
+#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
+#   cd $_CORE/openpublish-$_OPENPUBLISH
+#   rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
+#   sed -i "s/'profile',/'profile', 'cache', 'syslog', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
+#   rm -f -r ./profiles/default
+#   create_dirs
+# fi
+# mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
+# cd $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH
+# create_symlinks
+# if [ ! -L "./sites/all/themes/openpublish_theme" ] ; then
+#   ln -s $_CORE_DISTRO/profiles/openpublish/themes/openpublish_theme ./sites/all/themes/openpublish_theme
+# fi
+# msg "STATUS: $_F_OPENPUBLISH installation completed"
+# mrun "sleep 2"
+# else
+#   msg "STATUS: $_F_OPENPUBLISH installation skipped"
+#   mrun "sleep 1"
+# fi
+# fi
+# fi
 
 
 ###---### OpenScholar

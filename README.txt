@@ -99,7 +99,6 @@ Octopus can install the platforms listed below:
  Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
  Acquia 6.20 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
- OpenPublish 2.3.441 ---------- http://openpublishapp.com
  OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
  ProsePoint 0.37 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
@@ -120,34 +119,62 @@ require far more than just core translation, so we don't touch them.
 There are also some useful and/or performance related modules
 added to all 6.x platforms:
 
- cache-6.x-1.x-dev
+ admin-6.x-2.0
+ ajaxblocks-6.x-1.4
+ backup_migrate-6.x-2.x-dev
+ better_formats-6.x-2.x-dev
+ blockcache_alter-6.x-1.x-dev
  boost-6.x-1.x-dev
- dbtuner-6.x-1.x-dev
- ajaxblocks-6.x-1.2
- imageinfo_cache-6.x-1.x-dev
- expire-6.x-1.x-dev
- elysia_cron-6.x-1.x-dev
- session_expire-6.x-1.x-dev
- javascript_aggregator-6.x-1.x-dev
+ cache-6.x-1.x-dev
+ compact_forms-6.x-1.x-dev
+ config_perms-6.x-2.x-dev
+ content_type_overview-6.x-1.5
  css_emimage-6.x-2.x-dev
+ dbtuner-6.x-1.x-dev
+ drupal-nginx-fast-x-accel-redirect
+ elysia_cron-6.x-1.x-dev
+ expire-6.x-1.x-dev
+ filefield_nginx_progress-6.x-1.4
+ fpa-6.x-2.3
+ hierarchical_select-6.x-3.7
+ imageinfo_cache-6.x-1.x-dev
+ javascript_aggregator-6.x-1.x-dev
+ login_security-6.x-1.x-dev
+ node_clone-6.x-1.x-dev
+ openidadmin-6.x-1.2
+ readonlymode-6.x-1.x-dev
+ securesite-6.x-2.4
+ session_expire-6.x-1.x-dev
+ site_verify-6.x-1.0
+ variable_clean-6.x-1.x-dev
+ vertical_tabs-6.x-1.x-dev
  views_content_cache-6.x-2.x-dev
  views404-6.x-1.x-dev
- filefield_nginx_progress-6.x-1.4
- securesite-6.x-2.4
- backup_migrate-6.x-2.x-dev
- openidadmin-6.x-1.2
- site_verify-6.x-1.x-dev
-
-The Drupal 7.0 platform comes with contrib modules:
-
- agrcache-7.x-1.0-alpha2
- core_library-7.x-1.0-beta6
- filefield_nginx_progress-7.x-1.x-dev
- backup_migrate-7.x-2.1
- openidadmin-7.x-1.0
- css_emimage-7.x-1.1
- site_verify-7.x-1.0-rc2
+ + theme rubik-6.x-3.0-beta2
  
+The Drupal 7.x platforms come with contrib modules:
+
+ admin-7.x-2.0-beta3
+ agrcache-7.x-1.0-alpha2
+ backup_migrate-7.x-2.x-dev
+ better_formats-7.x-1.x-dev
+ blockcache_alter-7.x-1.x-dev
+ boost-7.x-1.x-dev
+ compact_forms-7.x-1.x-dev
+ content_type_overview-7.x-1.0-beta2
+ core_library-7.x-1.0-beta6
+ css_emimage-7.x-1.1
+ elysia_cron-7.x-1.x-dev
+ filefield_nginx_progress-7.x-1.x-dev
+ flood_control-7.x-1.x-dev
+ fpa-7.x-2.0
+ hierarchical_select-7.x-3.0-alpha1
+ node_clone-7.x-1.x-dev
+ openidadmin-7.x-1.0
+ site_verify-7.x-1.0
+ variable_clean-7.x-1.x-dev
+ + theme rubik-7.x-4.0-beta5
+
 
 ### BUG SUBMISSION
 
