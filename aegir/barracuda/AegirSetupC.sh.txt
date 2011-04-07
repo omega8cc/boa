@@ -259,7 +259,7 @@ cd $_CORE_DISTRO
 # download_textile
 download_textile () {
   cd textile/include
-  svn export http://textpattern.googlecode.com/svn/releases/4.4.0/source/textpattern/lib/classTextile.php
+  svn export http://textpattern.googlecode.com/svn/releases/4.4.0/source/textpattern/lib/classTextile.php &> /dev/null
 }
 
 
