@@ -7,7 +7,7 @@
   $node->uid = 1;
   $node->type = 'client';
   $node->email = $_SERVER[argv][4];
-  $node->title = 'Aegir.Passport.' . $number . '-' . $_SERVER[argv][4];
+  $node->title = 'Aegir.Passport.' . $number;
   $node->status = 1;
   node_save($node);
   $this_client_id = $node->nid;
