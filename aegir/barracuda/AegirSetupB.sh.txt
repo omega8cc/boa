@@ -400,8 +400,8 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./
 patch -p1 <./eldir.diff &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.5.tar.gz
-tar -xzf aegir_custom_settings-6.x-1.5.tar.gz
+wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz
+tar -xzf aegir_custom_settings-6.x-1.6.tar.gz
 ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 -y &> /dev/null
