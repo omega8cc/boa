@@ -402,37 +402,49 @@ mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.6.tar.gz
-ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
+#
+# Check for last all nr
+if [ -d "/data/all" ] ; then
+  cd /data/all
+  listl=([0-9]*)
+  _LAST_ALL=${listl[@]: -1}
+  _O_CONTRIB="/data/all/$_LAST_ALL/o_contrib"
+else
+  _O_CONTRIB=NO
+fi
+#
+if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
+  ln -s $_O_CONTRIB $_AEGIR_ROOT/modules/o_contrib &> /dev/null
+fi
 cd $_AEGIR_ROOT/sites/$_DOMAIN
-$_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 -y &> /dev/null
-$_DRUSHCMD en aegir_custom_settings -y &> /dev/null
-$_DRUSHCMD en hosting_client -y &> /dev/null
-$_DRUSHCMD en path_alias_cache -y &> /dev/null
-$_DRUSHCMD en css_emimage -y &> /dev/null
-$_DRUSHCMD en syslog -y &> /dev/null
-$_DRUSHCMD en cache -y &> /dev/null
-$_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
-$_DRUSHCMD vset --always-set client 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_feature_client 1 &> /dev/null
-$_DRUSHCMD vset --always-set clone 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
-$_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
-$_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
-$_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
-$_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
-$_DRUSHCMD vset --always-set hosting_cron_use_backend 1 &> /dev/null
-$_DRUSHCMD vset --always-set site_footer "Daily Usage Monitor (scheduled) | Disk <strong>*</strong> MB | Databases <strong>*</strong> MB" &> /dev/null
-sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  cd $_AEGIR_ROOT/sites/$_DOMAIN
   DRUSHC="$_ROOT/tools/drush/drush"
+  $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 -y &> /dev/null
+  $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD en hosting_client -y &> /dev/null
+  $_DRUSHCMD en path_alias_cache -y &> /dev/null
+  $_DRUSHCMD en css_emimage -y &> /dev/null
+  $_DRUSHCMD en syslog -y &> /dev/null
+  $_DRUSHCMD en cache -y &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
+  $_DRUSHCMD vset --always-set client 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_feature_client 1 &> /dev/null
+  $_DRUSHCMD vset --always-set clone 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
+  $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_cron_use_backend 1 &> /dev/null
+  sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
   if [ $_LOCAL_STATUS = "INIT" ] ; then
+    $_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
+    $_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
+    $_DRUSHCMD vset --always-set site_footer "Daily Usage Monitor (scheduled) | Disk <strong>*</strong> MB | Databases <strong>*</strong> MB" &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
     mv -f make_home.php.txt make_home.php &> /dev/null
     $DRUSHC php-script make_home &> /dev/null
