@@ -402,19 +402,8 @@ mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.6.tar.gz
-#
-# Check for last all nr
-if [ -d "/data/all" ] ; then
-  cd /data/all
-  listl=([0-9]*)
-  _LAST_ALL=${listl[@]: -1}
-  _O_CONTRIB="/data/all/$_LAST_ALL/o_contrib"
-else
-  _O_CONTRIB=NO
-fi
-#
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
-  ln -s $_O_CONTRIB $_AEGIR_ROOT/modules/o_contrib &> /dev/null
+  ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 fi
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
