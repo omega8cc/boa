@@ -21,6 +21,14 @@ _PERMISSIONS=YES
 
 ###-------------SYSTEM-----------------###
 
+fix_clear_cache()
+{
+if [ -d "$Plr/profiles/hostmaster" ] ; then
+  cd $Dir
+  su -s /bin/bash $_THIS_HM_USER -c "drush cc all &> /dev/null"
+fi
+}
+
 fix_boost_cache()
 {
 if [ ! -d "$Plr/cache/normal" ] ; then
@@ -100,6 +108,7 @@ do
       fix_o_contrib_symlink
       fix_boost_cache
       fix_permissions
+      fix_clear_cache
       searchStringD="dev"
       case $Dom in
         *"$searchStringD"*) ;;
