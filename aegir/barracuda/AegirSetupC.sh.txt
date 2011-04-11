@@ -344,6 +344,9 @@ chmod 0700 /data/src/$_THIS_CORE &> /dev/null
 cd /data/src/$_THIS_CORE
 rm -f -r /data/src/$_THIS_CORE/pressflow-6
 bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
+cd /data/src/$_THIS_CORE/pressflow-6/includes
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/file.patch ./
+patch -p1 < file.patch &> /dev/null
 cd /data/src/$_THIS_CORE/pressflow-6/
 rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
 rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
