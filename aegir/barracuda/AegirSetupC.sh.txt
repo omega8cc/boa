@@ -731,6 +731,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/testing
   create_dirs
+  cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/themes
+  wget -q -U http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
+  tar -xzf openpublic_eu-7.x-1.0.tar.gz &> /dev/null
+  rm -f openpublic_eu-7.x-1.0.tar.gz
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
 cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
