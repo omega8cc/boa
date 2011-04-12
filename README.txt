@@ -143,6 +143,7 @@ added to all 6.x platforms:
  node_clone-6.x-1.x-dev
  openidadmin-6.x-1.2
  readonlymode-6.x-1.x-dev
+ robotstxt-6.x-1.x-dev
  securesite-6.x-2.4
  session_expire-6.x-1.x-dev
  site_verify-6.x-1.0
@@ -171,6 +172,7 @@ The Drupal 7.x platforms come with contrib modules:
  hierarchical_select-7.x-3.0-alpha1
  node_clone-7.x-1.x-dev
  openidadmin-7.x-1.0
+ robotstxt-7.x-1.x-dev
  site_verify-7.x-1.0
  variable_clean-7.x-1.x-dev
  + theme rubik-7.x-4.0-beta5

@@ -15,7 +15,7 @@
 ### to force it on every run, you may want
 ### to change default settings below.
 ###
-_MODULES=NO
+_MODULES=YES
 _PERMISSIONS=YES
 
 ###-------------SYSTEM-----------------###
@@ -90,7 +90,7 @@ if [ "$_MODULES" = "YES" ]; then
         *)  
         cd $Dir
         su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel search404 cookie_cache_bypass advagg javascript_aggregator -y &> /dev/null"
-        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage robotstxt -y &> /dev/null"
         ;;
       esac
 fi
