@@ -18,8 +18,26 @@
 _MODULES=NO
 _PERMISSIONS=YES
 
-
 ###-------------SYSTEM-----------------###
+
+fix_pressflow_core_one()
+{
+if [ "$_FIX_CORE_ONE" != "NO" ] ; then
+  if [ -e "$Plr/modules/o_contrib" ] ; then
+    searchStringE="/distro/$_LAST_ALL/"
+    case $Plr in
+    *"$searchStringE"*)
+    if [ ! -e "$Plr/includes/fix_pressflow_core_one.txt" ] ; then
+      cp -af /var/opt/pressflow-6-fix/includes/file.inc   $Plr/includes/
+      cp -af /var/opt/pressflow-6-fix/includes/common.inc $Plr/includes/
+      echo fixed > $Plr/includes/fix_pressflow_core_one.txt
+    fi
+    ;;
+    *) ;;
+    esac
+  fi
+fi
+}
 
 fix_clear_cache()
 {
@@ -109,6 +127,7 @@ do
       fix_boost_cache
       fix_permissions
       fix_clear_cache
+      fix_pressflow_core_one
       searchStringD="dev"
       case $Dom in
         *"$searchStringD"*) ;;
@@ -200,6 +219,10 @@ else
   _O_CONTRIB_SEVEN=NO
 fi
 #
+# Fix one for Pressflow core
+_FIX_CORE_ONE=YES
+rm -f -r /var/opt/pressflow-6-fix
+bzr branch lp:pressflow/6.x /var/opt/pressflow-6-fix &> /dev/null
 #
 mkdir -p /var/xdrago/log/usage
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
@@ -207,8 +230,10 @@ if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   exit
 else
   touch /var/xdrago/log/optimize_mysql_ao.pid
+  touch /var/run/octopus_barracuda.pid
   sleep 60
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
   invoke-rc.d redis-server restart 2>&1
-  rm /var/xdrago/log/optimize_mysql_ao.pid
+  rm -f /var/xdrago/log/optimize_mysql_ao.pid
+  rm -f /var/run/octopus_barracuda.pid
 fi

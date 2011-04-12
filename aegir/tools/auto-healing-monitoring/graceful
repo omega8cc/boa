@@ -13,6 +13,7 @@ action()
   rm -f /opt/tmp/sess*
   rm -f /tmp/*error*
   rm -f /tmp/sess*
+  rm -f -r /tmp/*
   rm -f /opt/tmp/*error*
   touch /var/xdrago/log/graceful.done
   rm -f /var/xdrago/log/wait-for-octopus-barracuda-running
