@@ -138,7 +138,6 @@ added to all 6.x platforms:
  fpa-6.x-2.3
  hierarchical_select-6.x-3.7
  imageinfo_cache-6.x-1.x-dev
- javascript_aggregator-6.x-1.x-dev
  login_security-6.x-1.x-dev
  node_clone-6.x-1.x-dev
  openidadmin-6.x-1.2
