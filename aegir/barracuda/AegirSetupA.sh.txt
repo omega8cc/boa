@@ -226,7 +226,7 @@ fi
 remove_incompatible_modules_001() {
 if [ ! -e "/var/log/incompatible-modules-removed-001.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
-RMMODULES="advagg memcache varnish bakery session443 cookie_cache_bypass_adv module_supports"
+RMMODULES="memcache varnish bakery session443 cookie_cache_bypass_adv module_supports"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
