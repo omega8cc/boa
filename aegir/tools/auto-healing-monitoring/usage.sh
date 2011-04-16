@@ -90,7 +90,7 @@ if [ "$_MODULES" = "YES" ]; then
         *)  
         cd $Dir
         su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel search404 cookie_cache_bypass javascript_aggregator -y &> /dev/null"
-        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage robotstxt -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage robotstxt advagg filefield_nginx_progress -y &> /dev/null"
         ;;
       esac
 fi
