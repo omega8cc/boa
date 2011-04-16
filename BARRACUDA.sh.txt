@@ -2601,6 +2601,14 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
   mrun "sleep 3"
+  killall -9 nginx &> /dev/null
+  mrun "sleep 3"
+  invoke-rc.d nginx start &> /dev/null
+  mrun "sleep 3"
+  killall -9 nginx &> /dev/null
+  mrun "sleep 3"
+  invoke-rc.d nginx start &> /dev/null
+  mrun "sleep 3"
   invoke-rc.d nginx restart &> /dev/null
   mrun "sleep 3"
   invoke-rc.d nginx restart &> /dev/null
