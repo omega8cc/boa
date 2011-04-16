@@ -161,6 +161,7 @@ _FORCE_GIT_MIRROR=""
 
 _INSTALLER_VERSION=1.0-boa
 _NOW=`date +%y%m%d-%H%M`
+_RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 
 ###---### Functions
 #

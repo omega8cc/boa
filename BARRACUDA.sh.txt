@@ -556,6 +556,28 @@ force_advanced_nginx_config () {
   cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   chown aegir:aegir *
 }
+#
+# Tune memory limits for PHP-FPM, Nginx and MariaDB
+tune_memory_limits () {
+  _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
+  let "_USE = (($_RAM / 2))"
+  if [ "$_USE" -ge "512" ]
+    _USE_PHP=512
+  else
+    _USE_PHP="$_USE"
+  fi
+  if [ "$_USE" -ge "1024" ]
+    _USE_APC=1024
+    sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
+    sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+  else
+    _USE_APC="$_USE"
+  fi
+  sed -i "s/256/$_USE_PHP/g" /opt/etc/php.ini
+  sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
+  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
+  sed -i "s/888/$_USE/g"     /etc/mysql/my.cnf
+}
 
 
 ###--------------------###
@@ -1903,6 +1925,11 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
+  cd /etc/mysql
+  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
+  mv -f my.cnf.txt my.cnf &> /dev/null
+  tune_memory_limits
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
     mrun "sleep 3"
@@ -1913,15 +1940,12 @@ if [ $_STATUS = "INIT" ] ; then
     st_runner "invoke-rc.d php-fpm start" &> /dev/null
     st_runner "invoke-rc.d nginx start" &> /dev/null
   fi
-  cd /etc/mysql
-  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf &> /dev/null
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting php-fpm and Nginx"
     mrun "sleep 3"
+    tune_memory_limits
     st_runner "invoke-rc.d php-fpm reload" &> /dev/null
     st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
@@ -2562,8 +2586,17 @@ mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
+tune_memory_limits
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
+  killall -9 nginx &> /dev/null
+  mrun "sleep 3"
+  invoke-rc.d nginx start &> /dev/null
+  mrun "sleep 3"
+  killall -9 nginx &> /dev/null
+  mrun "sleep 3"
+  invoke-rc.d nginx start &> /dev/null
+  mrun "sleep 3"
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
