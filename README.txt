@@ -121,7 +121,6 @@ added to all 6.x platforms:
 
  admin-6.x-2.0
  ajaxblocks-6.x-1.4
- advagg-6.x-1.0-rc3
  backup_migrate-6.x-2.x-dev
  better_formats-6.x-2.x-dev
  blockcache_alter-6.x-1.x-dev
