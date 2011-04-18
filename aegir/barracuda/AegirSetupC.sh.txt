@@ -581,6 +581,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_seven
 cd $_ROOT/distro/$_THIS_CORE/acquia_seven
 create_symlinks
 create_d7_symlinks
+rm -f boost_stats.php
 themes_for_d7
 msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
 mrun "sleep 2"
@@ -771,8 +772,8 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 create_symlinks
 create_d7_symlinks
-themes_for_d7
 rm -f boost_stats.php
+themes_for_d7
 msg "STATUS: $_F_DRUPAL7_D installation completed"
 mrun "sleep 1"
 
@@ -802,8 +803,8 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
 create_symlinks
 create_d7_symlinks
-themes_for_d7
 rm -f boost_stats.php
+themes_for_d7
 msg "STATUS: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
 
@@ -839,8 +840,8 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
 create_symlinks
 create_d7_symlinks
-themes_for_d7
 rm -f boost_stats.php
+themes_for_d7
 msg "STATUS: $_F_DRUPAL7_P installation completed"
 mrun "sleep 1"
 fi
@@ -916,6 +917,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
 cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
 create_symlinks
 create_d7_symlinks
+rm -f boost_stats.php
 themes_for_d7
 msg "STATUS: $_F_COMMERCE installation completed"
 mrun "sleep 2"
