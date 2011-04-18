@@ -1113,6 +1113,9 @@ _HOSTN_TEST=`hostname -f 2>&1`
 if [[ $_HOSTN_TEST =~ "Name or service not known" ]] ; then
   _INSTALL_PDNSD=YES
 fi
+if [[ $_HOSTN_TEST =~ "Temporary failure in name resolution" ]] ; then
+  _INSTALL_PDNSD=YES
+fi
 if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
   _INSTALL_PDNSD=YES
 fi
