@@ -12,7 +12,7 @@ if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
 
 $conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
-$conf['cron_safe_threshold'] = 0; // disable cron in d7, since Aegir runs scheduled cron for sites
+$conf['cron_safe_threshold'] = 0; // disable poormanscron in d5 and d6
 $conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
 $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
 $conf['cache'] = 1;               // enable hardcoded caching
@@ -98,20 +98,30 @@ if (isset($_SERVER['HTTP_HOST'])) {
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
-  if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+
+  if (preg_match("/\/(?:files\/advagg_|files\/styles|files\/imagecache)/", $_SERVER['REQUEST_URI'])) {
+    header('X-Accel-Expires: 0'); // do not cache it on the Nginx level
+  }
+
+  if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
+      !preg_match("/\/(?:files\/advagg_|files\/styles|files\/imagecache)/", $_SERVER['REQUEST_URI'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
+    
     if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
-      unset($conf['file_downloads']); // disable hardcoded public downloads for d7
+      unset($conf['file_downloads']);      // disable hardcoded public downloads in d7
+      unset($conf['cron_safe_threshold']); // allow poormanscron in d7
     }
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
-
+    
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
-        preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) || preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|files\/advagg_)/", $_SERVER['REQUEST_URI']) || file_exists('sites/all/modules/ubercart/README.txt') ||
+        preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) ||
+        preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users)/", $_SERVER['REQUEST_URI']) ||
+        file_exists('sites/all/modules/ubercart/README.txt') ||
         preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
@@ -140,14 +150,15 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 }
 
-// don't use it for d7 profiles and for php-cli
+// don't use chained memcached and redis caching for d7 profiles, for sites cron and for php-cli
 if (!preg_match("/(?:standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT']) &&
     !preg_match("/(?:cron\.php)/", $_SERVER['REQUEST_URI'])) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
-     if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) && preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
-     $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
-     $conf['cache_settings'] = array(
+     if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) &&
+         preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
+      $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
+      $conf['cache_settings'] = array(
       'engines' => array(
         'redis-engine' => array(
           'engine' => 'redis',
@@ -334,4 +345,3 @@ if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
 if (file_exists('sites/all/modules/domain/settings.inc')) {
   require_once "sites/all/modules/domain/settings.inc";
 }
-
