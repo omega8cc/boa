@@ -47,18 +47,18 @@ Drupal distributions ready to deploy [Mini + Classic + TG]:
  Feature Server 6.20 ---------- http://bit.ly/fserver
  Acquia 6.20 ------------------ http://bit.ly/acquiadrupal
  Ubercart 6.20 ---------------- http://ubercart.org
+ ProsePoint 0.37 -------------- http://prosepoint.org
+ Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta2 ---- http://leveltendesign.com/enterprise
-
+ Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
+ 
 Some new platforms are supported by Aegir Classic and TG only:
 
  OpenPublic 7.0-beta1 --------- http://openpublicapp.com
- Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
  NodeStream ------------------- http://nodestream.org
  Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
  OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
- ProsePoint 0.37 -------------- http://prosepoint.org
- Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
 
   Q: How to upgrade from Aegir Mini to Classic?
   

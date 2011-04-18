@@ -560,7 +560,7 @@ fi
 
 ###---### Acquia Seven
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
 true
@@ -893,7 +893,7 @@ fi
 
 ###---### Commerce 7.x Dev Make
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
@@ -1282,7 +1282,7 @@ fi
 
 ###---### Prosepoint
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
