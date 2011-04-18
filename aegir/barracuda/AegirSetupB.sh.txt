@@ -422,13 +422,13 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD vset --always-set hosting_feature_client 1 &> /dev/null
   $_DRUSHCMD vset --always-set clone 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
-  $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 900 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 3600 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
   $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
-  $_DRUSHCMD vset --always-set hosting_cron_use_backend 1 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_cron_use_backend 0 &> /dev/null
   sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
   if [ $_LOCAL_STATUS = "INIT" ] ; then
     $_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null

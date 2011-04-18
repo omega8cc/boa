@@ -12,7 +12,7 @@ if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
 
 $conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
-$conf['cron_safe_threshold'] = 0; // disable cron in d7, since Aegir runs scheduled cron for sites
+$conf['cron_safe_threshold'] = 0; // disable poormanscron in d5 and d6
 $conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
 $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
 $conf['cache'] = 1;               // enable hardcoded caching
@@ -99,7 +99,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
-      unset($conf['file_downloads']); // disable hardcoded public downloads for d7
+      unset($conf['file_downloads']);      // disable hardcoded public downloads in d7
+      unset($conf['cron_safe_threshold']); // allow poormanscron in d7
     }
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
