@@ -23,7 +23,7 @@ $conf['statistics_enable_access_log'] = 0;      // disable access log stats
 // $conf['javascript_aggregator_no_htaccess'] = 0; // do not create .htaccess files
 // $conf['javascript_aggregator_gzip'] = 1;        // enable compression for js files
 
-if (file_exists('./modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module')) {
+if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
   unset($conf['preprocess_css']); // disable hardcoded css aggregation
   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
   $conf['advagg_enabled'] = 1;
