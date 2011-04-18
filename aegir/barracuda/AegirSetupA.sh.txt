@@ -842,9 +842,11 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/pressflow-stage/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-stage
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-prod/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod
+  if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
+    if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod/sites" ] ; then
+      if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod" ] ; then
+        ln -s $_ROOT/distro/$_THIS_CORE/pressflow-prod/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod
+      fi
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal/sites" ] ; then
@@ -862,9 +864,11 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7-stage
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7-prod" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7-prod
+  if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
+    if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites" ] ; then
+      if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7-prod" ] ; then
+        ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7-prod
+      fi
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites" ] ; then

@@ -371,7 +371,7 @@ rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
 #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
 wget -q -U iCab http://files.aegir.cc/boost_stats.php.txt
 mv -f boost_stats.php.txt boost_stats.php &> /dev/null
-if [ ! -d "$_CORE/o_contrib_seven" ] ; then
+if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   mkdir -p $_CORE/o_contrib_seven
   cd $_CORE/o_contrib_seven
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
@@ -403,7 +403,7 @@ if [ ! -d "$_CORE/o_contrib_seven" ] ; then
   download_textile
   cd $_CORE/o_contrib_seven
 fi
-if [ ! -d "$_CORE/o_contrib" ] ; then
+if [ ! -e "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
   wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
@@ -708,6 +708,7 @@ mrun "sleep 1"
 
 ###---### Drupal 6 Pressflow Production
 #
+if [ ! -d "$_CORE/pressflow" ] ; then
 echo " "
 msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
 mrun "sleep 1"
@@ -727,6 +728,7 @@ cd $_ROOT/distro/$_THIS_CORE/pressflow-prod
 create_symlinks
 msg "STATUS: $_F_DRUPAL6 installation completed"
 mrun "sleep 2"
+fi
 
 else
   msg "STATUS: $_F_DRUPAL6 installation skipped"
@@ -805,8 +807,13 @@ rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
 
+if [ -d "$_CORE/drupal-seven-old" ] ; then
+  mv $_CORE/drupal-seven-old $_CORE/$_DRUPAL7
+fi
+
 ###---### Drupal 7 Production
 #
+if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
 echo " "
 msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
 mrun "sleep 2"
@@ -816,9 +823,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
   mv $_DRUPAL7 $_DRUPAL7P
-  if [ -d "$_CORE/drupal-seven-old" ] ; then
-    mv $_CORE/drupal-seven-old $_CORE/$_DRUPAL7
-  fi
   cd $_CORE/$_DRUPAL7P
   rm -f $_CORE/$_DRUPAL7P/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
@@ -839,6 +843,7 @@ themes_for_d7
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7_P installation completed"
 mrun "sleep 1"
+fi
 
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
@@ -1425,10 +1430,12 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-stage" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-prod/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-prod &> /dev/null
-    mrun "sleep 5"
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-prod/drushrc.php" ] ; then
+      $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-prod &> /dev/null
+      mrun "sleep 5"
+    fi
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
@@ -1443,10 +1450,12 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
-    mrun "sleep 5"
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
+      $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
+      mrun "sleep 5"
+    fi
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
