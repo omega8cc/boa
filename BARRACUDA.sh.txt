@@ -2594,28 +2594,8 @@ tune_memory_limits
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 5"
   killall -9 nginx &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 3"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 3"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 3"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx start &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx restart &> /dev/null
-  mrun "sleep 3"
-  invoke-rc.d nginx restart &> /dev/null
   echo " "
   msg "Please force Nginx restart before visiting Aegir URL with command:"
   msg "service nginx restart"
