@@ -665,7 +665,6 @@ true
 
 ###---### Drupal 6 Pressflow Development
 #
-echo " "
 msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-dev"
@@ -748,6 +747,9 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7D"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
+  if [ -d "$_CORE/$_DRUPAL7" ] ; then
+    mv $_CORE/$_DRUPAL7 $_CORE/drupal-seven-old
+  fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   mv $_DRUPAL7 $_DRUPAL7D
@@ -814,6 +816,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
   mv $_DRUPAL7 $_DRUPAL7P
+  if [ -d "$_CORE/drupal-seven-old" ] ; then
+    mv $_CORE/drupal-seven-old $_CORE/$_DRUPAL7
+  fi
   cd $_CORE/$_DRUPAL7P
   rm -f $_CORE/$_DRUPAL7P/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
