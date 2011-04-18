@@ -43,6 +43,9 @@ _COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
+_DRUPAL7D="EDIT_DRUPAL7-dev"
+_DRUPAL7S="EDIT_DRUPAL7-stage"
+_DRUPAL7P="EDIT_DRUPAL7-prod"
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _OPENATRIUM=EDIT_OPENATRIUM
 _OPENPUBLISH=EDIT_OPENPUBLISH
@@ -52,6 +55,8 @@ _UBERCART=EDIT_UBERCART
 _NODESTREAM=EDIT_NODESTREAM
 _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
+_COD=EDIT_COD
+_OPENENTERPRISE=EDIT_OPENENTERPRISE
 
 
 ###---### main config
@@ -323,6 +328,15 @@ _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
 _F_UBERCART="Ubercart P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
+_F_COD="Conference $_COD P.$_THIS_CORE"
+_F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
+#
+_F_DRUPAL6_D="Drupal 6.20 D.$_THIS_CORE"
+_F_DRUPAL6_S="Drupal 6.20 S.$_THIS_CORE"
+_F_DRUPAL6_P="Drupal 6.20 P.$_THIS_CORE"
+_F_DRUPAL7_D="Drupal 7.0 D.$_THIS_CORE"
+_F_DRUPAL7_S="Drupal 7.0 S.$_THIS_CORE"
+_F_DRUPAL7_P="Drupal 7.0 P.$_THIS_CORE"
 
 
 ###---### Create directories
@@ -643,29 +657,78 @@ fi
 #fi
 
 
-###---### Pressflow
+###---### Drupal 6 Pressflow
 #
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
-msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/pressflow"
+
+###---### Drupal 6 Pressflow Development
+#
+echo " "
+msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
+mrun "sleep 1"
+_CORE_DISTRO="$_CORE/pressflow-dev"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  mkdir -p $_CORE/pressflow
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow/ &> /dev/null
-  cd $_CORE/pressflow
-  rm -f $_CORE/pressflow/*.txt
+  mkdir -p $_CORE/pressflow-dev
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-dev/ &> /dev/null
+  cd $_CORE/pressflow-dev
+  rm -f $_CORE/pressflow-dev/*.txt
   sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
-  ln -s /data/all/000/translations $_CORE/pressflow/profiles/default/translations &> /dev/null
+  ln -s /data/all/000/translations $_CORE/pressflow-dev/profiles/default/translations &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow
-cd $_ROOT/distro/$_THIS_CORE/pressflow
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-dev
+cd $_ROOT/distro/$_THIS_CORE/pressflow-dev
+create_symlinks
+msg "STATUS: $_F_DRUPAL6_D installation completed"
+mrun "sleep 1"
+
+###---### Drupal 6 Pressflow Staging
+#
+echo " "
+msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
+mrun "sleep 1"
+_CORE_DISTRO="$_CORE/pressflow-stage"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  mkdir -p $_CORE/pressflow-stage
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-stage/ &> /dev/null
+  cd $_CORE/pressflow-stage
+  rm -f $_CORE/pressflow-stage/*.txt
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
+  create_dirs
+  ln -s /data/all/000/translations $_CORE/pressflow-stage/profiles/default/translations &> /dev/null
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-stage
+cd $_ROOT/distro/$_THIS_CORE/pressflow-stage
+create_symlinks
+msg "STATUS: $_F_DRUPAL6_S installation completed"
+mrun "sleep 1"
+
+###---### Drupal 6 Pressflow Production
+#
+echo " "
+msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
+mrun "sleep 1"
+_CORE_DISTRO="$_CORE/pressflow-prod"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  mkdir -p $_CORE/pressflow-prod
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-prod/ &> /dev/null
+  cd $_CORE/pressflow-prod
+  rm -f $_CORE/pressflow-prod/*.txt
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
+  create_dirs
+  ln -s /data/all/000/translations $_CORE/pressflow-prod/profiles/default/translations &> /dev/null
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-prod
+cd $_ROOT/distro/$_THIS_CORE/pressflow-prod
 create_symlinks
 msg "STATUS: $_F_DRUPAL6 installation completed"
 mrun "sleep 2"
+
 else
   msg "STATUS: $_F_DRUPAL6 installation skipped"
   mrun "sleep 1"
@@ -677,19 +740,22 @@ fi
 echo " "
 if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.0" ; then
 true
-msg "STATUS: $_F_DRUPAL7 install in progress, please wait..."
+
+###---### Drupal 7 Development
+#
+msg "STATUS: $_F_DRUPAL7_D install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/$_DRUPAL7"
+_CORE_DISTRO="$_CORE/$_DRUPAL7D"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cd $_CORE/$_DRUPAL7
-  rm -f $_CORE/$_DRUPAL7/*.txt
+  mv $_DRUPAL7 $_DRUPAL7D
+  cd $_CORE/$_DRUPAL7D
+  rm -f $_CORE/$_DRUPAL7D/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/$_DRUPAL7/profiles/testing
-  for Files in `find $_CORE/$_DRUPAL7/profiles -type f`
+  rm -f -r $_CORE/$_DRUPAL7D/profiles/testing
+  for Files in `find $_CORE/$_DRUPAL7D/profiles -type f`
   do
     sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
     sed -i "s/Standard/Drupal 7 Standard/g" $Files
@@ -697,14 +763,78 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   done
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
-cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
+cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 create_symlinks
 create_d7_symlinks
 themes_for_d7
 rm -f boost_stats.php
-msg "STATUS: $_F_DRUPAL7 installation completed"
+msg "STATUS: $_F_DRUPAL7_D installation completed"
+mrun "sleep 1"
+
+###---### Drupal 7 Staging
+#
+echo " "
+msg "STATUS: $_F_DRUPAL7_S install in progress, please wait..."
 mrun "sleep 2"
+_CORE_DISTRO="$_CORE/$_DRUPAL7S"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  tar -xzf $_DRUPAL7.tar.gz
+  mv $_DRUPAL7 $_DRUPAL7S
+  cd $_CORE/$_DRUPAL7S
+  rm -f $_CORE/$_DRUPAL7S/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/$_DRUPAL7S/profiles/testing
+  for Files in `find $_CORE/$_DRUPAL7S/profiles -type f`
+  do
+    sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+    sed -i "s/Testing/Drupal 7 Testing/g" $Files
+  done
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
+cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
+create_symlinks
+create_d7_symlinks
+themes_for_d7
+rm -f boost_stats.php
+msg "STATUS: $_F_DRUPAL7_S installation completed"
+mrun "sleep 1"
+
+###---### Drupal 7 Production
+#
+echo " "
+msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/$_DRUPAL7P"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  mv $_DRUPAL7 $_DRUPAL7P
+  cd $_CORE/$_DRUPAL7P
+  rm -f $_CORE/$_DRUPAL7P/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/$_DRUPAL7P/profiles/testing
+  for Files in `find $_CORE/$_DRUPAL7P/profiles -type f`
+  do
+    sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+    sed -i "s/Testing/Drupal 7 Testing/g" $Files
+  done
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
+cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
+create_symlinks
+create_d7_symlinks
+themes_for_d7
+rm -f boost_stats.php
+msg "STATUS: $_F_DRUPAL7_P installation completed"
+mrun "sleep 1"
+
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
   mrun "sleep 1"
@@ -870,6 +1000,49 @@ else
   msg "STATUS: $_F_COMMONS installation skipped"
   mrun "sleep 1"
 fi
+fi
+
+
+###---### Open Enterprise
+#
+echo " "
+if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
+true
+msg "STATUS: $_F_OPENENTERPRISE install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/openenterprise-$_OPENENTERPRISE"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://files.aegir.cc/dev/distro/openenterprise-$_OPENENTERPRISE.tar.gz
+  tar -xzf openenterprise-$_OPENENTERPRISE.tar.gz
+  rm -f openenterprise-$_OPENENTERPRISE.tar.gz
+  if [ -d "$_CORE/openenterprise" ] ; then
+    mv $_CORE/openenterprise $_CORE/openenterprise-$_OPENENTERPRISE
+  else
+    mv $_CORE/commons $_CORE/openenterprise-$_OPENENTERPRISE
+  fi
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openenterprise-$_OPENENTERPRISE/ &> /dev/null
+  cd $_CORE/openenterprise-$_OPENENTERPRISE
+  rm -f $_CORE/openenterprise-$_OPENENTERPRISE/*.txt
+  rm -f -r $_CORE/openenterprise-$_OPENENTERPRISE/modules/cookie_cache_bypass
+  if [ $_OPENENTERPRISE = "6.x-1.0-beta2" ] ; then
+    cd $_CORE/openenterprise-$_OPENENTERPRISE/profiles/openenterprise
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openenterprise.patch ./
+    patch -p1 < openenterprise.patch &> /dev/null
+    cd $_CORE/openenterprise-$_OPENENTERPRISE
+  fi
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
+  rm -f -r ./profiles/default
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE
+cd $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE
+create_symlinks
+msg "STATUS: $_F_OPENENTERPRISE installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_OPENENTERPRISE installation skipped"
+  mrun "sleep 1"
 fi
 
 
@@ -1057,6 +1230,44 @@ fi
 fi
 
 
+###---### Conference Organizing Distribution
+#
+echo " "
+if prompt_yes_no "$_F_COD - http://usecod.com" ; then
+true
+msg "STATUS: $_F_COD install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/cod-$_COD"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://files.aegir.cc/dev/distro/cod-$_COD.tar.gz
+  tar -xzf cod-$_COD.tar.gz
+  rm -f cod-$_COD.tar.gz
+  if [ -d "$_CORE/codx" ] ; then
+    mv $_CORE/codx $_CORE/cod-$_COD
+  else
+    mv $_CORE/cod $_CORE/cod-$_COD
+  fi
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/cod-$_COD/ &> /dev/null
+  cd $_CORE/cod-$_COD
+  rm -f $_CORE/cod-$_COD/*.txt
+  rm -f -r $_CORE/cod-$_COD/modules/cookie_cache_bypass
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/cod/cod.profile
+  sed -i "s/Conference Organizing Distribution/Conference/g" ./profiles/cod/cod.profile
+  rm -f -r ./profiles/default
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/cod-$_COD
+cd $_ROOT/distro/$_THIS_CORE/cod-$_COD
+create_symlinks
+msg "STATUS: $_F_COD installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_COD installation skipped"
+  mrun "sleep 1"
+fi
+
+
 ###---### Prosepoint
 #
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
@@ -1197,15 +1408,39 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL6" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-dev/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-dev &> /dev/null
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL7" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-stage" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-stage/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-stage &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-prod/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-prod &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
     mrun "sleep 5"
   fi
 fi
@@ -1260,6 +1495,18 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_OPENENTERPRISE" openenterprise $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD &> /dev/null
     mrun "sleep 5"
   fi
 fi

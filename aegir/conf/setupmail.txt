@@ -47,6 +47,8 @@ Drupal distributions ready to deploy [Mini + Classic + TG]:
  Feature Server 6.20 ---------- http://bit.ly/fserver
  Acquia 6.20 ------------------ http://bit.ly/acquiadrupal
  Ubercart 6.20 ---------------- http://ubercart.org
+ Conference 1.0-alpha3 -------- http://usecod.com
+ Open Enterprise 1.0-beta2 ---- http://leveltendesign.com/enterprise
 
 Some new platforms are supported by Aegir Classic and TG only:
 
@@ -255,26 +257,31 @@ to enable: *Path alias cache*.
 
 === IMPORT YOUR EXISTING SITES TO AEGIR IN 8 EASY STEPS
 
+
 1. Upload or rsync full drupal root of your site to static/custom/name
 
-2. Chmod everything with: chmod -R 775 static/custom/name
-   Chmod files with: chmod -R 777 static/custom/name/sites/default/files
+2. Chmod everything with command:
+   $ chmod -R 775 static/custom/name
+   and files only with:
+   $ chmod -R 777 static/custom/name/sites/default/files/*
 
 3. Add platform in Aegir using full system path of static/custom/name
    so it will be (in this case) /data/disk/USER/static/custom/name
 
-4. Create an empty site in the new platform with temporary subdomain
-   like custom-name.your-domain.com
+4. Create an empty site in the new platform with your final domain
+   like your-domain.com
 
 5. Move all files from sites/default/files to sites/domain/files
    with: cp -af sites/default/files/* sites/domain/files/
 
 6. Import your uploaded database (or use backup_migrate module) with:
-   cd static/custom/name/sites/domain
-   drush sqlc < /data/disk/USER/static/domain.sql
-   drush cc (choose 1 to clear all)
+   $ cd static/custom/name/sites/domain
+   $ drush sqlc < /data/disk/USER/static/domain.sql
+   $ drush cc all
 
-7. Rename the site (using Migrate task) to your final domain.
+7. Rename the site (using Migrate task) twice - first to some
+   temporary subdomain like custom-name.your-domain.com and then
+   back to your final domain your-domain.com
 
 8. Finally, re-verify the site in Aegir. Done!
 
@@ -282,10 +289,18 @@ Note that since we allow only Pressflow core based platforms for
 5.x and 6.x Drupal versions, after initial import you should
 migrate your site to the Pressflow based platform ASAP.
 
-Hint: Replace USER with your Aegir Octopus system (not ftp) username.
-      Your Aegir system username is the same as your ftp username,
-      minus .ftp. NOTE: you don't have an access to your Aegir system
-      user, it is mentioned above only to help you using correct path.
+Hint1: Replace USER with your Aegir Octopus system (not ftp) username.
+       Your Aegir system username is the same as your ftp username,
+       minus .ftp. NOTE: you don't have an access to your Aegir system
+       user, it is mentioned above only to help you using correct path.
+
+Hint2: If your site have been installed as Drupal multisite on your
+       previous server (so not in the sites/default), then you have to
+       upload its files (and optionally themes and modules existing
+       in the sites/your-domain.com *after* you created an empty site
+       in the step #4 above. Please don't upload sites/your-domain.com
+       directory in step #1, you need to upload it in step #5 and then:
+       $ chmod -R 777 static/custom/name/sites/your-domain.com/files/*
 
 
 === ALWAYS USEFUL HINTS
@@ -310,6 +325,11 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 # What is new or updated
 ----------------------------------------
 
+* Nginx server upgraded to version Barracuda/1.0.0
+* Basic Drupal 6 and Drupal 7 platforms now come in three instances,
+  to make your standard workflow easier for: -dev, -stage and -prod,
+  with correct suffix: D.00x, S.00x and P.00x in the platform name.
+* Added support for robotstxt module in all new 6.x based platforms. 
 * Nginx Fast Private File Transfer for Drupal using X-Accel-Redirect.
 * Support for secure ubercart keys location to use ../keys path.
 * Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
@@ -319,7 +339,6 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
   It works for all platforms, except of Ubercart, Commerce
   and any platform with ubercart in sites/all/modules/ubercart.
 * Open Atrium 1.0-beta10 now includes new Ideation feature.
-* Nginx server upgraded to version Barracuda/0.9.5
 * PHP-FPM server upgraded to version 5.2.17
 * MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
@@ -347,6 +366,8 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 # Improvements since January 1st
 ----------------------------------------
 
+* Aegir runs cron for D5 and D6 sites using Wget instead of Drush
+  to leverage APC cache, while D7 can use built-in poormanscron.
 * Many improvements in the Speed Booster cache configuration.
 * Improved memcached/redis cache bins configuration.
 * The o_contrib modules now symlinked also in custom platforms.
@@ -390,6 +411,13 @@ Hint: Replace USER with your Aegir Octopus system (not ftp) username.
 # Fixes since January 1st
 ----------------------------------------
 
+* Fixed double slash in the images paths issue in the Pressflow core.
+* Speed Boster cookies shouldn't be sent for imagecache/styles
+  and AdvAgg module dynamic requests.
+* Speed Boster shouldn't cache imagecache/styles and AdvAgg module
+  dynamic requests on the Nginx level.
+* Nginx upgrade to 1.0.0 fixes known issue with random but very high
+  CPU load on Nginx server configuration reload/restart.
 * Fix for critical bug causing sessions issues on older sites without
   $cookie_domain set in settings.php when speed booster is enabled.
 * The session.cookie_secure is no longer forced in D6 platforms.

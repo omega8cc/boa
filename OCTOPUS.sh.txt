@@ -50,7 +50,7 @@
 ###
 ### NOTE: if this is an upgrade, it's enough
 ### to define the _USER value only, since
-### _DOMAIN will be auto-discovered.
+### _DOMAIN etc. will be auto-discovered.
 ###
 _USER=o1
 _DOMAIN=$_USER.`uname -n`
@@ -60,8 +60,6 @@ _CLIENT_CORES=4
 _CLIENT_OPTION=CLASSIC
 _CLIENT_SUBSCR=M
 _PLATFORMS_ALL=YES
-_MY_OWNIP=""
-_HM_ONLY=NO
 
 
 ###----------------------------------------###
@@ -69,7 +67,7 @@ _HM_ONLY=NO
 ###----------------------------------------###
 ###
 ### To disable all Yes/no prompts and just run
-### everything as-is, change it to YES.
+### everything as-is, change this to YES.
 ###
 ### _AUTOPILOT=YES
 ###
@@ -77,7 +75,21 @@ _AUTOPILOT=NO
 
 
 ###----------------------------------------###
-### DEBUG MODE SWITCH (available)          ###
+### UPGRADE MODE                           ###
+###----------------------------------------###
+###
+### To upgrade Hostmaster without installing
+### new platforms, change this to YES.
+###
+### Don't use this option for initial install.
+###
+### _HM_ONLY=YES
+###
+_HM_ONLY=NO
+
+
+###----------------------------------------###
+### DEBUG MODE                             ###
 ###----------------------------------------###
 ###
 ### Use this when you experience silent hangs
@@ -87,6 +99,21 @@ _AUTOPILOT=NO
 ### _DEBUG_MODE=YES
 ###
 _DEBUG_MODE=NO
+
+
+###----------------------------------------###
+### FORCED IP MODE                         ###
+###----------------------------------------###
+###
+### To install or upgrade Hostmaster instance
+### on any extra (non-default) IP address
+### available on your server/machine, please
+### define it below. For default, main IP
+### based install, leave default empty value.
+###
+### _MY_OWNIP=123.45.67.89
+###
+_MY_OWNIP=""
 
 
 ###----------------------------------------###
@@ -347,6 +374,8 @@ _PROSEPOINT=0.37
 _UBERCART=uberdrupal
 _COMMERCE=7.x-1.x-dev
 _OPENPUBLIC=beta1-build100
+_COD=6.x-1.0-alpha3
+_OPENENTERPRISE=6.x-1.0-beta2
 
 ###---### Functions
 #
@@ -417,6 +446,8 @@ do
   sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
   sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
+  sed -i "s/EDIT_COD/$_COD/g"                             $Files
+  sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files

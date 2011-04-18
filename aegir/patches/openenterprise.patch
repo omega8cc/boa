@@ -1,0 +1,23 @@
+diff -urp a/openenterprise.profile b/openenterprise.profile
+--- a/openenterprise.profile	2011-02-11 15:47:05.000000000 +0000
++++ b/openenterprise.profile	2011-04-18 04:55:30.000000000 +0000
+@@ -11,9 +11,10 @@ define('OPENENTERPRISE_FILTERED_HTML', '
+  * Implementation of hook_profile_details().
+  */
+ function openenterprise_profile_details() {
++  $description = st('Open Enterprise by LevelTen Interactive.');
+   return array(
+-    'name' => t('Open Enterprise'),
+-    'description' => t('Open Enterprise by LevelTen Interactive.'),
++    'name' => 'Open Enterprise',
++    'description' => $description,
+     'old_short_name' => 'enterprise_installer',
+   );
+ }
+@@ -657,4 +658,4 @@ function openenterprise_config_date_form
+ 
+   variable_set('date_format_date_only', 'l, F j, Y');
+   variable_set('date_format_time_only', 'g:i a');
+-}
+\ No newline at end of file
++}

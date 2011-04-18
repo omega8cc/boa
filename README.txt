@@ -100,6 +100,8 @@ Octopus can install the platforms listed below:
  Acquia 6.20 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
+ Conference 1.0-alpha3 -------- http://usecod.com
+ Open Enterprise 1.0-beta2 ---- http://leveltendesign.com/enterprise
  ProsePoint 0.37 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
  Drupal 5.23 Pressflow -------- http://pressflow.org

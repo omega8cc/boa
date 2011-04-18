@@ -42,7 +42,9 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 _COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
-_DRUPAL7=EDIT_DRUPAL7
+_DRUPAL7D="EDIT_DRUPAL7-dev"
+_DRUPAL7S="EDIT_DRUPAL7-stage"
+_DRUPAL7P="EDIT_DRUPAL7-prod"
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _OPENATRIUM=EDIT_OPENATRIUM
 _OPENPUBLISH=EDIT_OPENPUBLISH
@@ -52,6 +54,8 @@ _UBERCART=EDIT_UBERCART
 _NODESTREAM=EDIT_NODESTREAM
 _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
+_COD=EDIT_COD
+_OPENENTERPRISE=EDIT_OPENENTERPRISE
 
 
 ###---### main config
@@ -828,9 +832,19 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-dev" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-dev/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-dev
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-stage/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-stage" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-stage/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-stage
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-prod/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal/sites" ] ; then
@@ -838,9 +852,19 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7-dev" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7-dev
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7-stage" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7-stage
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal7-prod" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal7-prod
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/sites" ] ; then
@@ -851,6 +875,16 @@ mrun "sleep 3"
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
