@@ -89,9 +89,7 @@ if [ "$_MODULES" = "YES" ]; then
         *"$searchStringC"*) ;;
         *)  
         cd $Dir
-        #su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel search404 cookie_cache_bypass -y &> /dev/null"
-        #su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage robotstxt filefield_nginx_progress -y &> /dev/null"
-        su -s /bin/bash $_THIS_HM_USER -c "drush dis cookie_cache_bypass -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel cookie_cache_bypass -y &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache robotstxt filefield_nginx_progress -y &> /dev/null"
         ;;
       esac
@@ -235,7 +233,11 @@ else
   touch /var/run/octopus_barracuda.pid
   sleep 60
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
-  invoke-rc.d redis-server restart 2>&1
+  killall memcached
+  bash /var/xdrago/memcache.sh
+  invoke-rc.d redis-server stop 2>&1
+  rm -f /var/lib/redis/*
+  invoke-rc.d redis-server start 2>&1
   rm -f /var/xdrago/log/optimize_mysql_ao.pid
   rm -f /var/run/octopus_barracuda.pid
 fi

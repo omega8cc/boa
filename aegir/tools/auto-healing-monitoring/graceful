@@ -2,11 +2,6 @@
 
 action()
 {
-  killall memcached
-  bash /var/xdrago/memcache.sh
-  invoke-rc.d redis-server stop
-  rm -f /var/lib/redis/*
-  invoke-rc.d redis-server start
   rm -f -r /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
