@@ -3,7 +3,7 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 site deployment.
 
-Your Aegir control panel [version 1.0-boa-T-8] is available at:
+Your Aegir control panel [version 1.0-boa-T-8.1] is available at:
 
  https://aegir.dragon.ny.host8.biz
 
@@ -411,6 +411,9 @@ Hint2: If your site have been installed as Drupal multisite on your
 # Fixes since January 1st
 ----------------------------------------
 
+* Fixed issue with broken site when non-lowercase domain was used
+  on Migrate or Clone task.
+* Fixed upgrade path for Drupal 5
 * Fixed double slash in the images paths issue in the Pressflow core.
 * Speed Boster cookies shouldn't be sent for imagecache/styles
   and AdvAgg module dynamic requests.
