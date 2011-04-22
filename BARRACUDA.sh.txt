@@ -2589,8 +2589,8 @@ if [ $_STATUS = "INIT" ] ; then
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
   touch installer_version.txt
   echo " "
-  _AEGIR__LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
-  msg "ACCESS -> $_AEGIR__LOGIN_URL"
+  _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
+  msg "ACCESS -> $_AEGIR_LOGIN_URL"
   echo " "
   mrun "sleep 3"
 fi
@@ -2600,6 +2600,7 @@ fi
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 3"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
+mrun "sleep 3"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
 tune_memory_limits

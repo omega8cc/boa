@@ -56,9 +56,9 @@ Drupal distributions ready to deploy [Mini + Classic + TG]:
 Some new platforms are supported by Aegir Classic and TG only:
 
  OpenPublic 7.0-beta1 --------- http://openpublicapp.com
- NodeStream ------------------- http://nodestream.org
+ NodeStream 1.0 --------------- http://nodestream.org
  Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
- OpenScholar 2.0-beta10 ------- http://openscholar.harvard.edu
+ OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
 
   Q: How to upgrade from Aegir Mini to Classic?
   

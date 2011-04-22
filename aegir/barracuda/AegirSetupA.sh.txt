@@ -1042,8 +1042,8 @@ mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   echo " "
-  _AEGIR__LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
-  msg "ACCESS -> $_AEGIR__LOGIN_URL"
+  _AEGIR_LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
+  msg "ACCESS -> $_AEGIR_LOGIN_URL"
   echo " "
   mrun "sleep 3"
 else
