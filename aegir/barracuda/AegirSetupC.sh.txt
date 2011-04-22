@@ -377,21 +377,21 @@ if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-7.x-3.0-alpha1.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-7.x-3.0-alpha1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-7.x-1.0-beta2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-7.x-1.x-dev.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha4.tar.gz
@@ -418,7 +418,7 @@ if [ ! -e "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-6.x-1.2.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
   #wget -q -U iCab http://ftp.drupal.org/files/projects/javascript_aggregator-6.x-1.x-dev.tar.gz
@@ -431,14 +431,14 @@ if [ ! -e "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-6.x-3.7.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-6.x-3.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-6.x-1.x-dev.tar.gz
+  #wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz

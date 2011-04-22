@@ -128,7 +128,6 @@ added to all 6.x platforms:
  blockcache_alter-6.x-1.x-dev
  boost-6.x-1.x-dev
  cache-6.x-1.x-dev
- compact_forms-6.x-1.x-dev
  config_perms-6.x-2.x-dev
  content_type_overview-6.x-1.5
  css_emimage-6.x-2.x-dev
@@ -138,11 +137,9 @@ added to all 6.x platforms:
  expire-6.x-1.x-dev
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
- hierarchical_select-6.x-3.7
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
  node_clone-6.x-1.x-dev
- openidadmin-6.x-1.2
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  securesite-6.x-2.4
@@ -162,7 +159,6 @@ The Drupal 7.x platforms come with contrib modules:
  better_formats-7.x-1.x-dev
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
- compact_forms-7.x-1.x-dev
  content_type_overview-7.x-1.0-beta2
  core_library-7.x-1.0-beta6
  css_emimage-7.x-1.1
@@ -170,9 +166,7 @@ The Drupal 7.x platforms come with contrib modules:
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev
  fpa-7.x-2.0
- hierarchical_select-7.x-3.0-alpha1
  node_clone-7.x-1.x-dev
- openidadmin-7.x-1.0
  robotstxt-7.x-1.x-dev
  site_verify-7.x-1.0
  variable_clean-7.x-1.x-dev
