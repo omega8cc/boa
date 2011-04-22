@@ -35,7 +35,7 @@ foreach $VISITOR (sort keys %li_cnt) {
    local($thissumar) = $li_cnt{$VISITOR};
    $maxnumber = 10;    ### default: 10
    $critnumber = 300;  ### default: 300
-   $critnumber = 888 if ($VISITOR =~ /^(88.88.88.88)/); ### default: server IP
+   $critnumber = 888 if ($VISITOR =~ /^(88.88.88.88)$/); ### default for server IP
    local($blocked) = 0;
    &check_ip($VISITOR);
    if ($thissumar > $maxnumber && $thissumar <= $critnumber) {
