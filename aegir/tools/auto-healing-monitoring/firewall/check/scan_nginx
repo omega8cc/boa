@@ -33,9 +33,9 @@ $li_cnt{$VISITOR} = "2222" if ($line =~ /(HTTrack)/);
 foreach $VISITOR (sort keys %li_cnt) {
    $sumar = $sumar + $li_cnt{$VISITOR};
    local($thissumar) = $li_cnt{$VISITOR};
-   $maxnumber = 10;    ### 200
-   $critnumber = 150;  ### 300
-   $critnumber = 300 if ($VISITOR =~ /^(66.249.)/); ### 800
+   $maxnumber = 10;    ### default: 10
+   $critnumber = 300;  ### default: 300
+   $critnumber = 888 if ($VISITOR =~ /^(88.88.88.88)/); ### default: server IP
    local($blocked) = 0;
    &check_ip($VISITOR);
    if ($thissumar > $maxnumber && $thissumar <= $critnumber) {
