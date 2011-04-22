@@ -190,10 +190,11 @@ do
       echo HomSiz is $HomSiz or $HomSizH MB
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
-      cd $_THIS_HM_SITE
-      su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
-      su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
-      su -s /bin/bash $_THIS_HM_USER -c "drush cc all &> /dev/null"
+      if [ -d "$_THIS_HM_SITE" ] ; then
+        cd $_THIS_HM_SITE
+        su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
+      fi
       echo Done for $User
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
