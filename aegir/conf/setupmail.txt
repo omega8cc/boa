@@ -385,7 +385,6 @@ Hint2: If your site have been installed as Drupal multisite on your
 * Aegir Hostmaster control panel received extra caching and speed.
 * Better support for securepages 1.9 with forced secure cookies.
 * Better support for dynamically created base_url for http/https.
-* All 6.x platforms now receive some performance related modules.
 * Too generic D7 profile names replaced with unique Drupal 7 names.
 * A few new commands have been added to your Aegir Drush Shell (SSH).
 * You can use git to manage the code and rsync to manage backups.
@@ -393,7 +392,7 @@ Hint2: If your site have been installed as Drupal multisite on your
 * Now it is possible to delete old sites backups created in Aegir.
 * You can access Aegir backups also via SSH or SFTP/FTPS.
 * You can cancel queued task in Aegir before it is started.
-* The "dev" anywhere in the subdomain enables all PHP errors/notices.
+* The "dev" anywhere in the subdomain enables all PHP errors.
 * You can use "dev" type alias for live site for easier debugging.
 * Added support for imagecache_external module.
 * It is possible to safely delete any not used platforms on request.
@@ -415,9 +414,9 @@ Hint2: If your site have been installed as Drupal multisite on your
   on Migrate or Clone task.
 * Fixed upgrade path for Drupal 5
 * Fixed double slash in the images paths issue in the Pressflow core.
-* Speed Boster cookies shouldn't be sent for imagecache/styles
+* Speed Booster cookies shouldn't be sent for imagecache/styles
   and AdvAgg module dynamic requests.
-* Speed Boster shouldn't cache imagecache/styles and AdvAgg module
+* Speed Booster shouldn't cache imagecache/styles and AdvAgg module
   dynamic requests on the Nginx level.
 * Nginx upgrade to 1.0.0 fixes known issue with random but very high
   CPU load on Nginx server configuration reload/restart.
@@ -444,9 +443,7 @@ Hint2: If your site have been installed as Drupal multisite on your
 
 * Forced public downloads for all 6.x platforms, except of ubercart.
 * Boost crawler option is now denied for performance reasons.
-* Forced log-out on browser quit only for Aegir control panel. 
-* The auto-cron in D7 now disabled, since Aegir runs scheduled cron
-  for all sites.
+* Forced log-out on browser quit only for Aegir control panel.
 
 
 
