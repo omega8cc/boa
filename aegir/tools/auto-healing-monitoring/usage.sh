@@ -87,10 +87,12 @@ if [ "$_MODULES" = "YES" ]; then
         *"$searchStringA"*) ;;
         *"$searchStringB"*) ;;
         *"$searchStringC"*) ;;
-        *)  
-        cd $Dir
-        su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel cookie_cache_bypass -y &> /dev/null"
-        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache robotstxt filefield_nginx_progress -y &> /dev/null"
+        *)
+        if [ -e "$Dir/drushrc.php" ] ; then
+          cd $Dir
+          su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel cookie_cache_bypass -y &> /dev/null"
+          su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache robotstxt filefield_nginx_progress -y &> /dev/null"
+        fi
         ;;
       esac
 fi
