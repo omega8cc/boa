@@ -1080,7 +1080,7 @@ else ### if [ $_STATUS = "UPGRADE" ] ; then
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
   * Your server hostname is $_THISHOST.
-  * Your Aegir control panel is/will be available at http://$_THIS_FRONT.
+  * Your Aegir control panel is/will be available at https://$_THIS_FRONT.
 
 EOF
   echo " "
@@ -2314,13 +2314,13 @@ if [ ! -d "/var/www/chive" ] ; then
     fi
     echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
-    echo "   include    /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
-    echo "   limit_conn   gulag 10;" >> $_CHIVE_VHOST
-    echo "   listen     $_THISHTIP:80;" >> $_CHIVE_VHOST
-    echo "   server_name  chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
-    echo "   root     /var/www/chive;" >> $_CHIVE_VHOST
-    echo "   index    index.php index.html;" >> $_CHIVE_VHOST
-    echo "   include    /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
+    echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
+    echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
+    echo "   listen      $_THISHTIP:80;" >> $_CHIVE_VHOST
+    echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
+    echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
+    echo "   index       index.php index.html;" >> $_CHIVE_VHOST
+    echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
     echo "}" >> $_CHIVE_VHOST
     echo >> $_CHIVE_VHOST
     touch /var/log/chive_0.4.1.log
@@ -2345,6 +2345,24 @@ if [ -d "/var/www/chive" ] ; then
     rm -f chive_0.4.1.tar.gz
     chown -R www-data:www-data /var/www/chive
     touch /var/log/chive_0.4.1.log
+  fi
+  if [ ! -e "/var/log/chive_0.4.1.vhost.log" ] ; then
+    _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
+    if [ -z "$_THISHTIP" ] ; then
+      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    fi
+    echo > $_CHIVE_VHOST
+    echo "server {" >> $_CHIVE_VHOST
+    echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
+    echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
+    echo "   listen      $_THISHTIP:80;" >> $_CHIVE_VHOST
+    echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
+    echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
+    echo "   index       index.php index.html;" >> $_CHIVE_VHOST
+    echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
+    echo "}" >> $_CHIVE_VHOST
+    echo >> $_CHIVE_VHOST
+    touch /var/log/chive_0.4.1.vhost.log
   fi
 fi
 
@@ -2374,13 +2392,13 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     fi
     echo > $_SQLBUDDY_VHOST
     echo "server {" >> $_SQLBUDDY_VHOST
-    echo "   include    /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
-    echo "   limit_conn   gulag 10;" >> $_SQLBUDDY_VHOST
-    echo "   listen     $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
-    echo "   server_name  sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
-    echo "   root     /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
-    echo "   index    index.php index.html;" >> $_SQLBUDDY_VHOST
-    echo "   include    /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
+    echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
+    echo "   limit_conn  gulag 10;" >> $_SQLBUDDY_VHOST
+    echo "   listen      $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
+    echo "   server_name sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
+    echo "   root        /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
+    echo "   index       index.php index.html;" >> $_SQLBUDDY_VHOST
+    echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
     echo "}" >> $_SQLBUDDY_VHOST
     echo >> $_SQLBUDDY_VHOST
     msg "INFO: SQL Buddy MariaDB Manager installation completed"
@@ -2418,13 +2436,13 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
       fi
       echo > $_CGP_VHOST
       echo "server {" >> $_CGP_VHOST
-      echo "   include    /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-      echo "   limit_conn   gulag 10;" >> $_CGP_VHOST
-      echo "   listen     $_THISHTIP:80;" >> $_CGP_VHOST
-      echo "   server_name  cgp.$_THIS_FRONT;" >> $_CGP_VHOST
-      echo "   root     /var/www/cgp;" >> $_CGP_VHOST
-      echo "   index    index.php index.html;" >> $_CGP_VHOST
-      echo "   include    /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
+      echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
+      echo "   limit_conn  gulag 10;" >> $_CGP_VHOST
+      echo "   listen      $_THISHTIP:80;" >> $_CGP_VHOST
+      echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
+      echo "   root        /var/www/cgp;" >> $_CGP_VHOST
+      echo "   index       index.php index.html;" >> $_CGP_VHOST
+      echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
       echo "}" >> $_CGP_VHOST
       echo >> $_CGP_VHOST
       msg "INFO: Collectd Graph Panel installation completed"
@@ -2566,9 +2584,9 @@ if [ ! -e "/root/.my.cnf" ] ; then
 
 EOF
   echo " "
-  msg "...waiting now 30 sec before running interactive mysql_secure_installation..."
+  msg "...waiting now 15 sec before running interactive mysql_secure_installation..."
   echo " "
-  mrun "sleep 30"
+  mrun "sleep 15"
   echo " "
   mysql_secure_installation
   echo " "
@@ -2616,7 +2634,7 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 5"
   killall -9 nginx &> /dev/null
   echo " "
-  msg "Please force Nginx restart before visiting Aegir URL with command:"
+  msg "Please force Nginx restart (twice) before visiting Aegir URL with command:"
   msg "service nginx restart"
   echo " "
 else
