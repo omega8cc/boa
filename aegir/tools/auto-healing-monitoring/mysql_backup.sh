@@ -17,9 +17,9 @@ mysql -u $DATABASEUSER -p$DATABASEPASS -e "show databases" -s > .databasesToBack
 
 #Parese list of databases and then backup using mysqldump
 cat .databasesToBackup | while read line; do
-mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
-TRUNCATE sessions;
-EOFMYSQL
+# mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
+# TRUNCATE sessions;
+# EOFMYSQL
 mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
 TRUNCATE cache;
 EOFMYSQL
@@ -59,7 +59,6 @@ EOFMYSQL
 mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
 TRUNCATE boost_cache_relationships;
 EOFMYSQL
-
 # mysqlcheck --port=3306 -h localhost -r -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
 # mysqlcheck --port=3306 -h localhost -o -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
 mysqldump -u $DATABASEUSER -p$DATABASEPASS --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $line | gzip  > $SAVELOCATION/$line.sql.gz
