@@ -398,8 +398,8 @@ fi
 msg "$_STATUS B: Enhance Aegir UI"
 mrun "sleep 3"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/eldir.diff ./
-patch -p1 <./eldir.diff &> /dev/null
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/eldir.patch ./
+patch -p1 <./eldir.patch &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz

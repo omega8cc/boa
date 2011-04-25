@@ -8,6 +8,8 @@
 
 ### In progress
 
+* Automated FTP/SSH accounts per site and per platform.
+* Embedded Aegir Knowledge Base and How-To Recipes.
 * Clone Nginx integration for Cherokee web server.
 
 

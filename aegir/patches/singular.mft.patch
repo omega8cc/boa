@@ -7,7 +7,7 @@ diff -urp singular/style.css singular/style.css
    -webkit-border-bottom-right-radius:5px;
 +   border-top-right-radius:5px;
 +   border-bottom-right-radius:5px;
- 
+
    font-size:13px;
    line-height:20px;
 -
@@ -18,14 +18,14 @@ diff -urp singular/style.css singular/style.css
    float:right;
    width:220px;
 @@ -36,9 +36,9 @@ a {
- 
+
  #main {
    -moz-border-radius:10px;
 -  -moz-border-radius:10px;
 -  -webkit-border-radius:10px;
    -webkit-border-radius:10px;
 +  border-radius:10px;
-+  
++
    background:url(images/mask.png);
    width:740px;
    }
@@ -34,7 +34,7 @@ diff -urp singular/style.css singular/style.css
      -moz-border-radius:10px;
      -webkit-border-radius:10px;
 +    border-radius:10px;
-+    
++
      background:url(images/mask.png);
      padding:0px 15px;
      }
@@ -44,7 +44,7 @@ diff -urp singular/style.css singular/style.css
    -webkit-border-top-right-radius:5px;
 +   border-top-left-radius:5px;
 +   border-top-right-radius:5px;
- 
+
    color:#ccc;
    background:url(images/mask.png);
 @@ -195,6 +199,8 @@ div.left div.admin-panel { margin-right:
@@ -54,14 +54,14 @@ diff -urp singular/style.css singular/style.css
 +   border-bottom-right-radius: 5px;
 +   border-bottom-left-radius: 5px;
    }
- 
+
  #page #content div.block {
 @@ -212,6 +218,8 @@ div.left div.admin-panel { margin-right:
  #page #content div.block-content {
    -moz-border-radius:10px;
    -webkit-border-radius:10px;
 +   border-radius:10px;
-+  
++
    background:#fff;
    padding:10px;
    }
@@ -70,7 +70,7 @@ diff -urp singular/style.css singular/style.css
    -moz-border-radius:5px;
    -webkit-border-radius:5px;
 +   border-radius:5px;
- 
+
    margin:5px 0px;
    background:#eff;
 @@ -320,6 +329,8 @@ dl dd {
@@ -80,7 +80,7 @@ diff -urp singular/style.css singular/style.css
 +   border-top-left-radius: 5px;
 +   border-bottom-left-radius: 5px;
    }
- 
+
  #sidebar div.block h2.block-title {
 @@ -390,6 +401,8 @@ div.node-links ul.links {
    margin:20px 0px 0px;

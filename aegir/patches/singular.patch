@@ -7,7 +7,7 @@ diff -urp singular/style.css singular/style.css
    -moz-border-radius-bottomright:5px;
 +  -webkit-border-top-right-radius:5px;
 +  -webkit-border-bottom-right-radius:5px;
- 
+
    font-size:13px;
    line-height:20px;
 @@ -35,6 +37,8 @@ a {
@@ -29,10 +29,10 @@ diff -urp singular/style.css singular/style.css
 +  -webkit-border-bottom-left-radius:5px;
 +  -webkit-border-bottom-right-radius:5px;
    }
- 
+
  #page #content div.block {
 @@ -206,6 +211,7 @@ div.left div.admin-panel { margin-right:
- 
+
  #page #content div.block-content {
    -moz-border-radius:10px;
 +  -webkit-border-radius:10px;

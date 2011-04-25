@@ -7,8 +7,8 @@
 # Should-Stop:		$local_fs
 # Default-Start:	2 3 4 5
 # Default-Stop:		0 1 6
-# Short-Description:	redis-server - Persistent key-value db
-# Description:		redis-server - Persistent key-value db
+# Short-Description:    redis-server - Persistent key-value db
+# Description:          redis-server - Persistent key-value db
 ### END INIT INFO
 
 

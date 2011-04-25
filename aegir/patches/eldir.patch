@@ -4,21 +4,21 @@ diff -urp a/style.css b/style.css
 @@ -261,7 +261,7 @@ div#header-region h2.page-title {
      padding:0px 10px;
      line-height:30px;
- 
+
 -    background:#666;
 +    background:#369;
      color:#fff;
      }
- 
+
 @@ -277,7 +277,7 @@ div#header-region ul.tabs { clear:both; 
      }
- 
+
    div#header-region ul.tabs li a:hover {
 -    background:#666;
 +    background:#369;
      color:#fff;
      }
- 
+
 @@ -444,7 +444,7 @@ div.krumo-root, div.krumo-root a {
   * FOOTER =============================================================
   */
@@ -41,7 +41,7 @@ diff -urp a/style.css b/style.css
    -moz-border-radius:3px;
    -webkit-border-radius: 3px;
    }
- 
+
 +.form-submit {
 +  width: 25%;
 +  text-align:center;
@@ -50,7 +50,7 @@ diff -urp a/style.css b/style.css
 +  margin-left:auto;
 +  margin-right:auto;
 +}
- 
+
  input.form-submit[disabled] {
    color:#ddd;
 @@ -572,7 +579,7 @@ div.form-item div.description {
@@ -60,17 +60,17 @@ diff -urp a/style.css b/style.css
 -  color:#666;
 +  color:#369;
    }
- 
+
  /* Fieldsets... what a nightmare */
 @@ -673,7 +680,7 @@ div.node h2 {
      margin:5px 10px 0px 0px;
      padding:0px 5px;
- 
+
 -    background:#666;
 +    background:#369;
      color:#fff;
      }
- 
+
 @@ -746,7 +753,7 @@ table.hosting-table td {
  table th,
  table.hosting-table th {
@@ -78,5 +78,5 @@ diff -urp a/style.css b/style.css
 -  background:#666 !important;
 +  background:#369 !important;
    }
- 
+
   table th.active,
