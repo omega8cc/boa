@@ -17,9 +17,9 @@ mysql -u $DATABASEUSER -p$DATABASEPASS -e "show databases" -s > .databasesToBack
 
 #Parese list of databases and then backup using mysqldump
 cat .databasesToBackup | while read line; do
-# mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
-# TRUNCATE sessions;
-# EOFMYSQL
+mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
+TRUNCATE sessions;
+EOFMYSQL
 mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
 TRUNCATE cache;
 EOFMYSQL

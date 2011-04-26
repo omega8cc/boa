@@ -35,9 +35,9 @@ if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')
   $conf['advagg_rebuild_on_flush'] = 0;
 }
 
-ini_set('session.cookie_lifetime', 172800); // set it to 48 hours max
-ini_set('session.cache_expire', 172800);    // set it also to 48 hours max
-ini_set('session.gc_maxlifetime', 172800);  // set it also to 48 hours max
+ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
+ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
+ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
 // Improve sessions management if module session_expire and/or Pressflow core is not used.
 // It is already enabled in the php.ini, but we are forcing it here, just in case.
 ini_set('session.gc_probability', 1);
@@ -129,7 +129,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
       }
     }
     elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
-      $lifetime = '172800';
+      $lifetime = '86400';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
       header('X-Accel-Expires: 300');
     }
