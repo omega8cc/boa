@@ -1459,7 +1459,10 @@ if [ -d "/var/xdrago" ] ; then
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
   rm -f -r /var/xdrago/log/init.d-pre*
   rm -f -r /var/backups/dragon/z/init.d-pre-*
+  rm -f /var/xdrago/log/cron-root-pre*
   cp -af /var/xdrago /var/backups/dragon/x/xdrago-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  rm -f /var/xdrago/log/VISITOR_ABUSE_ONE.log
+  rm -f /var/xdrago/log/blackIP.log
   cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* /var/xdrago/ &> /dev/null
   if [ -z "$_THISHTIP" ] ; then
@@ -1473,7 +1476,6 @@ if [ -d "/var/xdrago" ] ; then
     sed -i "s/critnumber = 300/critnumber = 150/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
-  touch /var/xdrago/log/cron-root-pre-$_INSTALLER_VERSION-$_NOW
 fi
 if [ $_STATUS = "INIT" ] ; then
   mkdir -p ./xdrago
@@ -1503,7 +1505,7 @@ if [ $_STATUS = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
-  cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run* /var/xdrago/ &> /dev/null
+  cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run-* /var/xdrago/ &> /dev/null
 fi
 chmod 700 /var/xdrago/* &> /dev/null
 chmod 700 /var/xdrago &> /dev/null
@@ -1982,7 +1984,7 @@ fi
 if [ -e "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
   PASWD=`echo -n $PXSWD | tr -d "\n"`
-  for Files in `find /var/xdrago -type f` ; do
+  for Files in `find /var/xdrago -maxdepth 1 -type f` ; do
     sed -i "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files
     sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files
   done
