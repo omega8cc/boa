@@ -59,7 +59,7 @@ if (!$mysqlsumar || $mysqlsumar > 150) {
 $host=`hostname`;
 chomp($host);
 $thispid = $host . ".pid";
-`/var/xdrago/move_sql` if (!-f "/var/run/mysqld/mysqld.pid");
+`bash /var/xdrago/move_sql.sh` if (!-f "/var/run/mysqld/mysqld.pid");
 if ($mysqlsumar > 0) {
   $resultmysql5 = `/usr/bin/mysqladmin -u root --password=NdKBu34erty325r6mUHxWy -h localhost --port=3306 flush-hosts 2>&1`;
   print "\n MySQL hosts flushed...\n";
@@ -76,7 +76,7 @@ sub global_action
          $li_cnt{$USER}++ if ($PID ne "PID");
 	 if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
 	 {
-	 $li_cnt{$COMMAND}++;
+	   $li_cnt{$COMMAND}++;
 	 }
    }
 }

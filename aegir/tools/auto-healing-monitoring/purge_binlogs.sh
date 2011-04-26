@@ -20,9 +20,9 @@ fi
 }
 
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
-touch /var/xdrago/log/wait-purge
-exit
+  touch /var/xdrago/log/wait-purge
+  exit
 else
-action
-touch /var/xdrago/log/last-run-purge
+  action
+  touch /var/xdrago/log/last-run-purge
 fi
