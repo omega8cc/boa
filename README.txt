@@ -207,6 +207,7 @@ The Drupal 7.x platforms come with contrib modules:
 
 * Grace  - http://omega8.cc
 * Albert - http://omega8.cc
+* Robert - http://omega8.cc
 
 
 ### CREDITS
