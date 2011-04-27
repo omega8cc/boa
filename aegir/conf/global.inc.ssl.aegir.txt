@@ -150,7 +150,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 }
 
-$use_cache = YES;
+$use_cache = 'YES';
 
 /**
  * Optional extra settings/overrides
