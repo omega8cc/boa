@@ -290,7 +290,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
   _THIS_CORE="$_LAST_ALL"
   if [ "$_USE_CURRENT" = "YES" ] ; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ -d "$_ROOT/distro/$_THIS_CORE/o_contrib/cache" ] ; then
+  elif [ -e "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
