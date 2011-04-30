@@ -400,7 +400,8 @@ if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   download_textile
   cd $_CORE/o_contrib_seven
 fi
-if [ ! -e "/data/all/$_LAST_ALL/o_contrib/robotstxt" ] ; then
+if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
+ if [ ! -d "/data/all/$_LAST_ALL/o_contrib/robotstxt" ] ; then
   cd /data/all/$_LAST_ALL/o_contrib
   rm -f -r *
   wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
@@ -439,6 +440,7 @@ if [ ! -e "/data/all/$_LAST_ALL/o_contrib/robotstxt" ] ; then
   rm -f *.tar.gz
   download_textile
   cd /data/all/$_LAST_ALL/o_contrib
+ fi
 fi
 if [ ! -e "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
