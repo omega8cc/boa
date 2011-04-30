@@ -377,21 +377,18 @@ if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-7.x-3.0-alpha1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-7.x-1.0-beta2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha4.tar.gz
@@ -409,8 +406,6 @@ if [ ! -e "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.0-rc3.tar.gz
-  #wget -q -U iCab http://files.aegir.cc/dev/advagg-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
@@ -418,11 +413,8 @@ if [ ! -e "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/openidadmin-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/javascript_aggregator-6.x-1.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
@@ -431,14 +423,12 @@ if [ ! -e "$_CORE/o_contrib" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/hierarchical_select-6.x-3.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/compact_forms-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
@@ -542,7 +532,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
   cd $_CORE/acquia
   rm -f $_CORE/acquia/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/acquia/profiles/acquia/translations &> /dev/null
@@ -609,7 +599,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f -r $_CORE/atrium-$_OPENATRIUM/modules/cookie_cache_bypass
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -675,7 +665,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-dev/ &> /dev/null
   cd $_CORE/pressflow-dev
   rm -f $_CORE/pressflow-dev/*.txt
-  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-dev/profiles/default/translations &> /dev/null
 fi
@@ -697,7 +687,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-stage/ &> /dev/null
   cd $_CORE/pressflow-stage
   rm -f $_CORE/pressflow-stage/*.txt
-  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-stage/profiles/default/translations &> /dev/null
 fi
@@ -720,7 +710,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-prod/ &> /dev/null
   cd $_CORE/pressflow-prod
   rm -f $_CORE/pressflow-prod/*.txt
-  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'vertical_tabs', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-prod/profiles/default/translations &> /dev/null
 fi
@@ -995,7 +985,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/drupal_commons-$_COMMONS
   fi
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1043,7 +1033,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < openenterprise.patch &> /dev/null
     cd $_CORE/openenterprise-$_OPENENTERPRISE
   fi
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1122,7 +1112,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f *.tar.gz
   cd $_CORE/managingnews-$_MANAGINGNEWS/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1226,7 +1216,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
-  sed -i "s/'features',/'features', 'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
+  sed -i "s/'features',/'features', 'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1264,7 +1254,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/cod-$_COD
   rm -f $_CORE/cod-$_COD/*.txt
   rm -f -r $_CORE/cod-$_COD/modules/cookie_cache_bypass
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/cod/cod.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile
   sed -i "s/Conference Organizing Distribution/Conference/g" ./profiles/cod/cod.profile
   rm -f -r ./profiles/default
   create_dirs
@@ -1330,7 +1320,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/$_UBERCART
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/ &> /dev/null
   rm -f $_CORE/$_UBERCART/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations
