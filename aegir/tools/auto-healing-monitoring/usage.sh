@@ -58,6 +58,9 @@ if [ ! -d "$Plr/cache/normal" ] ; then
   chown -R $_THIS_HM_USER:www-data $Plr/cache
   chmod -R 775 $Plr/cache
 fi
+if [ -e "$Plr/robots.txt" ] ; then
+  rm -f $Plr/robots.txt
+fi
 }
 
 fix_o_contrib_symlink()
