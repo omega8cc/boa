@@ -611,13 +611,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE/acquia_seven/profiles/minimal
   rm -f -r $_CORE/acquia_seven/profiles/testing
   create_dirs
+  themes_for_d7
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_seven
 cd $_ROOT/distro/$_THIS_CORE/acquia_seven
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
-themes_for_d7
 msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
 mrun "sleep 2"
 else
@@ -745,25 +745,35 @@ mrun "sleep 1"
 ###---### Drupal 6 Pressflow Production
 #
 if [ ! -d "$_CORE/pressflow" ] ; then
-echo " "
-msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
-mrun "sleep 1"
-_CORE_DISTRO="$_CORE/pressflow-prod"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  mkdir -p $_CORE/pressflow-prod
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-prod/ &> /dev/null
-  cd $_CORE/pressflow-prod
-  rm -f $_CORE/pressflow-prod/*.txt
-  sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
-  create_dirs
-  ln -s /data/all/000/translations $_CORE/pressflow-prod/profiles/default/translations &> /dev/null
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-prod
-cd $_ROOT/distro/$_THIS_CORE/pressflow-prod
-create_symlinks
-msg "STATUS: $_F_DRUPAL6 installation completed"
-mrun "sleep 2"
+  echo " "
+  msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
+  mrun "sleep 1"
+  _CORE_DISTRO="$_CORE/pressflow-prod"
+  if [ ! -d "$_CORE_DISTRO" ] ; then
+    cd $_CORE
+    mkdir -p $_CORE/pressflow-prod
+    cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-prod/ &> /dev/null
+    cd $_CORE/pressflow-prod
+    rm -f $_CORE/pressflow-prod/*.txt
+    sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+    create_dirs
+    ln -s /data/all/000/translations $_CORE/pressflow-prod/profiles/default/translations &> /dev/null
+  fi
+  mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-prod
+  cd $_ROOT/distro/$_THIS_CORE/pressflow-prod
+  create_symlinks
+  msg "STATUS: $_F_DRUPAL6 installation completed"
+  mrun "sleep 2"
+elif [ -d "$_CORE/pressflow" ] ; then
+  echo " "
+  msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
+  mrun "sleep 1"
+  _CORE_DISTRO="$_CORE/pressflow"
+  mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow
+  cd $_ROOT/distro/$_THIS_CORE/pressflow
+  create_symlinks
+  msg "STATUS: $_F_DRUPAL6 installation completed"
+  mrun "sleep 2"
 fi
 
 else
@@ -802,13 +812,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     sed -i "s/Testing/Drupal 7 Testing/g" $Files
   done
   create_dirs
+  themes_for_d7
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
-themes_for_d7
 msg "STATUS: $_F_DRUPAL7_D installation completed"
 mrun "sleep 1"
 
@@ -833,13 +843,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     sed -i "s/Testing/Drupal 7 Testing/g" $Files
   done
   create_dirs
+  themes_for_d7
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
-themes_for_d7
 msg "STATUS: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
 
@@ -850,35 +860,47 @@ fi
 ###---### Drupal 7 Production
 #
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
-echo " "
-msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/$_DRUPAL7P"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  mv $_DRUPAL7 $_DRUPAL7P
-  cd $_CORE/$_DRUPAL7P
-  rm -f $_CORE/$_DRUPAL7P/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/$_DRUPAL7P/profiles/testing
-  for Files in `find $_CORE/$_DRUPAL7P/profiles -type f`
-  do
-    sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
-    sed -i "s/Standard/Drupal 7 Standard/g" $Files
-    sed -i "s/Testing/Drupal 7 Testing/g" $Files
-  done
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
-cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
-create_symlinks
-create_d7_symlinks
-rm -f boost_stats.php
-themes_for_d7
-msg "STATUS: $_F_DRUPAL7_P installation completed"
-mrun "sleep 1"
+  echo " "
+  msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
+  mrun "sleep 2"
+  _CORE_DISTRO="$_CORE/$_DRUPAL7P"
+  if [ ! -d "$_CORE_DISTRO" ] ; then
+    cd $_CORE
+    tar -xzf $_DRUPAL7.tar.gz
+    rm -f $_DRUPAL7.tar.gz
+    mv $_DRUPAL7 $_DRUPAL7P
+    cd $_CORE/$_DRUPAL7P
+    rm -f $_CORE/$_DRUPAL7P/*.txt
+    ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+    rm -f -r $_CORE/$_DRUPAL7P/profiles/testing
+    for Files in `find $_CORE/$_DRUPAL7P/profiles -type f`
+    do
+      sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+      sed -i "s/Standard/Drupal 7 Standard/g" $Files
+      sed -i "s/Testing/Drupal 7 Testing/g" $Files
+    done
+    create_dirs
+    themes_for_d7
+  fi
+  mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
+  cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
+  create_symlinks
+  create_d7_symlinks
+  rm -f boost_stats.php
+  msg "STATUS: $_F_DRUPAL7_P installation completed"
+  mrun "sleep 1"
+elif [ -d "$_CORE/$_DRUPAL7" ] ; then
+  echo " "
+  msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
+  mrun "sleep 2"
+  _CORE_DISTRO="$_CORE/$_DRUPAL7"
+  mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
+  cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
+  create_symlinks
+  create_d7_symlinks
+  rm -f boost_stats.php
+  msg "STATUS: $_F_DRUPAL7_P installation completed"
+  mrun "sleep 1"
 fi
 
 else
@@ -947,13 +969,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE/commerce-$_COMMERCE/profiles/standard
   rm -f -r $_CORE/commerce-$_COMMERCE/profiles/testing
   create_dirs
+  themes_for_d7
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
 cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
-themes_for_d7
 msg "STATUS: $_F_COMMERCE installation completed"
 mrun "sleep 2"
 else
@@ -1474,6 +1496,13 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
       mrun "sleep 5"
     fi
   fi
+elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
+      $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
+      mrun "sleep 5"
+    fi
+  fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/drushrc.php" ] ; then
@@ -1491,6 +1520,13 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
     if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
       $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
+      mrun "sleep 5"
+    fi
+  fi
+elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/drushrc.php" ] ; then
+      $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
       mrun "sleep 5"
     fi
   fi
