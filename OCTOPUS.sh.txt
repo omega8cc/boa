@@ -278,16 +278,32 @@ _HOT_SAUCE=NO
 ### DISTRO USING EXISTING VERSION NR       ###
 ###----------------------------------------###
 ###
-### Use this to avoid creating new shared
-### set of platforms with increased version
-### number. It will allow you to add some
-### newer platforms to the existing shared
-### code. If not sure what it does, avoid
-### using this option and leave the default
-### value. It will not work at all if you
-### are using _HOT_SAUCE=YES above.
+### We changed the default to YES to avoid
+### creating many duplicated platforms on
+### every Octopus instance upgrade, when
+### there is no new core, thus no reason
+### to create newer platforms for the same
+### distributions versions.
 ###
-_USE_CURRENT=NO
+### It will also allow you to add some newer
+### platforms to the existing shared code,
+### which helps to keep your APC memory usage
+### as low as possible without fragmentation.
+###
+### When set to _USE_CURRENT=NO it will force
+### creating new set (with increased serial
+### number) of *all* platforms on upgrade,
+### so it is useful *only* when there is
+### a newer Drupal core version released, or
+### when newer Pressflow head includes some
+### important fixes.
+###
+### Note: it will not work at all if you are
+### using _HOT_SAUCE=YES above, because
+### _HOT_SAUCE=YES forces new serial number
+### both on install and upgrade.
+###
+_USE_CURRENT=YES
 
 
 ###----------------------------------------###
