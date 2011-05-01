@@ -91,8 +91,8 @@ standard production settings.
 Octopus can install the platforms listed below:
 
  Drupal 7.0 ------------------- http://drupal.org/drupal-7.0
- OpenPublic 7.0-beta1 --------- http://openpublicapp.com
- Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
+ OpenPublic 1.0-beta1 --------- http://openpublicapp.com
+ Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
  Atrium 1.0-beta10 ------------ http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  NodeStream 1.0 --------------- http://nodestream.org

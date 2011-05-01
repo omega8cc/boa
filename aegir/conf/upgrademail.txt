@@ -24,7 +24,7 @@ Your Aegir control panel is available as before at:
   Open Enterprise 1.0-beta2 ---- http://leveltendesign.com/enterprise
   Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
   ProsePoint 0.37 -------------- http://prosepoint.org
-  Drupal Commerce 7.0-dev ------ http://drupalcommerce.org
+  Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
  
 * Basic Drupal 6 and Drupal 7 platforms now come in three instances,
   to make your standard workflow easier for: -dev, -stage and -prod,
@@ -48,7 +48,7 @@ Your Aegir control panel is available as before at:
 
 * New platforms [supported only in Aegir Classic and TG version]:
 
-  OpenPublic 7.0-beta1 --------- http://openpublicapp.com
+  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
   NodeStream 1.0 --------------- http://nodestream.org
   Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
