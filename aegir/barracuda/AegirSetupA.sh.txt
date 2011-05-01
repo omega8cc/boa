@@ -802,6 +802,7 @@ mrun "sleep 3"
   fi
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
+  rm -f /home/$_USERFTP/platforms/$_THIS_CORE/{cod,commerce,commons,managingnews,nodestream,openatrium,openenterprise,openpublic,openscholar,prosepoint,drupal6,drupal7}
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
@@ -818,18 +819,18 @@ mrun "sleep 3"
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/managingnews" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/managingnews-1.2" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-1.2
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-1.0-beta10" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-1.0-beta10
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.37" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.37
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev/sites" ] ; then
@@ -877,23 +878,23 @@ mrun "sleep 3"
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic-1.0-beta1" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic-1.0-beta1
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod-1.0-alpha3" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-1.0-alpha3
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-1.0-beta2" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-1.0-beta2
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar-2.0-beta10-1" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar-2.0-beta10-1
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/fserver/sites" ] ; then
@@ -902,18 +903,18 @@ mrun "sleep 3"
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/nodestream" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/nodestream-1.0" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream-1.0
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-1.0-beta3" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-1.0-beta3
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-1.5" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-1.5
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites" ] ; then
