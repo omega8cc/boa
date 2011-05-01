@@ -131,9 +131,9 @@ _TUNE_PHP_TIMEOUT=3600
 ###----------------------------------------###
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=1.0-boa-T-8.3
+### _AEGIR_VERSION=1.0-boa-T-8.4
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=1.0-boa-T-8.4
 
 
 ###----------------------------------------###
