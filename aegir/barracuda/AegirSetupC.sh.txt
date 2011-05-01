@@ -222,7 +222,6 @@ if [ ! -L "includes" ] ; then
   ln -s $_CORE_DISTRO/misc misc &> /dev/null
   ln -s $_CORE_DISTRO/modules modules &> /dev/null
   ln -s $_CORE_DISTRO/profiles profiles &> /dev/null
-  #ln -s $_CORE_DISTRO/robots.txt robots.txt
   ln -s $_CORE_DISTRO/themes themes &> /dev/null
   ln -s $_CORE_DISTRO/update.php update.php &> /dev/null
   ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
@@ -269,7 +268,65 @@ download_textile () {
   svn export http://textpattern.googlecode.com/svn/releases/4.4.0/source/textpattern/lib/classTextile.php &> /dev/null
   cp classTextile.php include/ &> /dev/null
 }
-
+#
+# download_o_contrib_six
+download_o_contrib_six () {
+  wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  download_textile
+}
+#
+# upgrade_o_contrib
+upgrade_o_contrib () {
+if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
+ if [ ! -d "/data/all/$_LAST_ALL/o_contrib/robotstxt" ] ; then
+  cd /data/all/$_LAST_ALL/o_contrib
+  rm -f -r *
+  download_o_contrib_six
+  cd /data/all/$_LAST_ALL/o_contrib
+ fi
+fi
+if [ -d "$_CORE/o_contrib" ] ; then
+ if [ ! -d "$_CORE/o_contrib/robotstxt" ] ; then
+  cd $_CORE/o_contrib
+  rm -f -r *
+  download_o_contrib_six
+  cd $_CORE/o_contrib
+ fi
+fi
+}
 
 
 ###---### User check
@@ -400,129 +457,11 @@ if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   download_textile
   cd $_CORE/o_contrib_seven
 fi
-if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
- if [ ! -d "/data/all/$_LAST_ALL/o_contrib/robotstxt" ] ; then
-  cd /data/all/$_LAST_ALL/o_contrib
-  rm -f -r *
-  wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-  download_textile
-  cd /data/all/$_LAST_ALL/o_contrib
- fi
-fi
 if [ ! -e "$_CORE/o_contrib" ] ; then
   mkdir -p $_CORE/o_contrib
   cd $_CORE/o_contrib
-  wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-  download_textile
+  download_o_contrib_six
   cd $_CORE/o_contrib
-fi
-if [ -d "$_CORE/o_contrib" ] ; then
- if [ ! -d "$_CORE/o_contrib/robotstxt" ] ; then
-  cd $_CORE/o_contrib
-  rm -f -r *
-  wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-  download_textile
-  cd $_CORE/o_contrib
- fi
 fi
 if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
   mkdir -p $_CORE/o_contrib_atrium
@@ -600,6 +539,7 @@ if [ ! -d "/data/all/000/translations" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.lt.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ru.po
 fi
+upgrade_o_contrib
 
 
 ###---### Acquia
