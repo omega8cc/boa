@@ -269,6 +269,34 @@ download_textile () {
   cp classTextile.php include/ &> /dev/null
 }
 #
+# download_o_contrib_seven
+download_o_contrib_seven () {
+  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-7.x-1.0-beta2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  download_textile
+}
+#
 # download_o_contrib_six
 download_o_contrib_six () {
   wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
@@ -324,6 +352,22 @@ if [ -d "$_CORE/o_contrib" ] ; then
   rm -f -r *
   download_o_contrib_six
   cd $_CORE/o_contrib
+ fi
+fi
+if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
+ if [ ! -d "/data/all/$_LAST_ALL/o_contrib_seven/robotstxt" ] ; then
+  cd /data/all/$_LAST_ALL/o_contrib_seven
+  rm -f -r *
+  download_o_contrib_seven
+  cd /data/all/$_LAST_ALL/o_contrib_seven
+ fi
+fi
+if [ -d "$_CORE/o_contrib_seven" ] ; then
+ if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] ; then
+  cd $_CORE/o_contrib_seven
+  rm -f -r *
+  download_o_contrib_seven
+  cd $_CORE/o_contrib_seven
  fi
 fi
 }
@@ -431,30 +475,7 @@ mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   mkdir -p $_CORE/o_contrib_seven
   cd $_CORE/o_contrib_seven
-  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-7.x-1.0-beta2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-  download_textile
+  download_o_contrib_seven
   cd $_CORE/o_contrib_seven
 fi
 if [ ! -e "$_CORE/o_contrib" ] ; then
