@@ -942,6 +942,7 @@ else
       ln -s $_ROOT/distro/$_THIS_CORE/keys /home/$_USERFTP/platforms/$_THIS_CORE/keys
     fi
   fi
+  rm -f $_ROOT/distro/$_THIS_CORE/*/robots.txt &> /dev/null
 fi
 
 
