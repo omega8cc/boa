@@ -12,8 +12,8 @@ do
     echo load is $NOW_LOAD while maxload is $CTL_LOAD
     echo running $Runner
     bash $Runner
-    echo waiting 2 sec
-    sleep 2
+    echo waiting 5 sec
+    sleep 5
     echo CTL done
   else
     echo load is $NOW_LOAD while maxload is $CTL_LOAD
