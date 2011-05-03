@@ -565,6 +565,7 @@ upgrade_o_contrib
 
 ###---### Acquia
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
@@ -591,10 +592,12 @@ else
   msg "STATUS: $_F_ACQUIA installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Acquia Seven
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia_seven" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
@@ -625,10 +628,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Open Atrium
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
 echo " "
 if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
 true
@@ -660,11 +665,12 @@ else
   msg "STATUS: $_F_ATRIUM installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Drupal 5 Pressflow
 #
-#if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
@@ -690,11 +696,12 @@ else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
   mrun "sleep 1"
 fi
-#fi
+fi
 
 
 ###---### Drupal 6 Pressflow
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
@@ -780,10 +787,12 @@ else
   msg "STATUS: $_F_DRUPAL6 installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Drupal 7
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.0" ; then
 true
@@ -907,10 +916,12 @@ else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Open Public
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
@@ -946,10 +957,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Commerce 7.x Dev Make
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
@@ -981,6 +994,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_COMMERCE installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 
@@ -1022,6 +1036,7 @@ fi
 
 ###---### Drupal Commons
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
@@ -1070,10 +1085,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Open Enterprise
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
 true
@@ -1113,10 +1130,12 @@ else
   msg "STATUS: $_F_OPENENTERPRISE installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Feature Server Make
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
@@ -1154,10 +1173,12 @@ else
   msg "STATUS: $_F_FSERVER installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### ManagingNews
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
 echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
@@ -1192,10 +1213,12 @@ else
   msg "STATUS: $_F_MANAGINGNEWS installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### NodeStream Make
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM - http://nodestream.org" ; then
@@ -1223,6 +1246,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_NODESTREAM installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 
@@ -1268,6 +1292,7 @@ fi
 
 ###---### OpenScholar
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
@@ -1297,10 +1322,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Conference Organizing Distribution
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD" ] ; then
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
 true
@@ -1335,10 +1362,12 @@ else
   msg "STATUS: $_F_COD installation skipped"
   mrun "sleep 1"
 fi
+fi
 
 
 ###---### Prosepoint
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
@@ -1369,10 +1398,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Ubercart
 #
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
@@ -1400,6 +1431,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_UBERCART installation skipped"
   mrun "sleep 1"
+fi
 fi
 
 
