@@ -325,7 +325,7 @@ Hint2: If your site have been installed as Drupal multisite on your
 # What is new or updated
 ----------------------------------------
 
-* Nginx server upgraded to version Barracuda/1.0.0
+* Nginx server upgraded to version Barracuda/1.0.1
 * Basic Drupal 6 and Drupal 7 platforms now come in three instances,
   to make your standard workflow easier for: -dev, -stage and -prod,
   with correct suffix: D.00x, S.00x and P.00x in the platform name.
