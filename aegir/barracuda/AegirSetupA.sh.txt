@@ -957,6 +957,14 @@ else
     fi
   fi
   rm -f $_ROOT/distro/$_THIS_CORE/*/robots.txt &> /dev/null
+  if [ ! -e "/data/all/$_LAST_ALL/javascript_aggregator.out.txt" ] ; then
+    sed -i "s/, 'javascript_aggregator'//g" /data/all/$_LAST_ALL/*/profiles/*/*.profile &> /dev/null
+    touch /data/all/$_LAST_ALL/javascript_aggregator.out.txt
+  fi
+  if [ ! -e "$_CORE/javascript_aggregator.out.txt" ] ; then
+    sed -i "s/, 'javascript_aggregator'//g" $_CORE/*/profiles/*/*.profile &> /dev/null
+    touch $_CORE/javascript_aggregator.out.txt
+  fi
 fi
 
 
