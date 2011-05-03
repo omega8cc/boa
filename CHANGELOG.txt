@@ -1,4 +1,8 @@
 
+### Stable Edition 1.0-boa-T-8.5
+### Date: Tue, 3 May 2011 14:30:00 +0200
+### Installs Aegir stable 1.1
+
 ### Stable Edition 1.0-boa-T-8.4
 ### Date: Sun, 1 May 2011 23:30:00 +0200
 ### Installs Aegir stable 1.1
