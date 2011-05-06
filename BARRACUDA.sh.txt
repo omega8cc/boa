@@ -89,6 +89,30 @@ _AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
+### DB SERVER                              ###
+###----------------------------------------###
+###
+### You can choose MariaDB 5.1.49 (default)
+### or Percona latest release 5.5.11 which is
+### available only for Squeeze, Lenny, Lucid,
+### Maverick and Natty.
+###
+### Note 1: You can choose the DB server only
+### on Barracuda install. We don't offer it
+### on upgrade - it is left for your sysadmin
+### to manage possible upgrade/switch manually
+### if interested.
+###
+### Note 2: For Ubuntu Natty we force Percona
+### Server install, since MariaDB is not yet
+### compatible with Natty.
+###
+### _DB_SERVER=Percona
+###
+_DB_SERVER=MariaDB
+
+
+###----------------------------------------###
 ### SSH CUSTOM PORT                        ###
 ###----------------------------------------###
 ###
@@ -212,19 +236,19 @@ _MY_FRONT=""
 ### address.
 ###
 ### This feature allows you to "revert" to the
-### old Aegir behaviuor, when it was using by
-### default localhost for database connection.
+### old Aegir behavior, when localhost was
+### used by default for database connections.
 ###
 ### You could also use this feature to connect
 ### to the remote database server by default,
 ### since it allows to "override" the new
-### behaviuor, designed for Aegir multiserver
+### behavior, designed for Aegir multiserver
 ### compatibility.
 ###
 ### If not sure, please don't change the
-### default, which is here still FQDN setup.
+### default FQDN config keyword.
 ###
-### Possible usage:
+### Available options:
 ###
 ### _THIS_DB_HOST=localhost
 ### _THIS_DB_HOST=some.remote.host.name
@@ -333,6 +357,7 @@ _NGINX_VERSION=1.0.1
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
+_PURE_FTPD_VERSION=1.0.32
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
@@ -525,11 +550,20 @@ fix_on_upgrade () {
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
+  if [ "$_DB_SERVER" = "Percona" ]; then
+    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
+  fi
   if [ ! -e "/var/log/nginx_config_fixed" ] ; then
     cd /var/aegir
     sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
+    if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+      if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ]; then
+        mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
+      fi
+    fi
     touch /var/log/nginx_config_fixed
   fi
 }
@@ -557,7 +591,7 @@ force_advanced_nginx_config () {
   chown aegir:aegir *
 }
 #
-# Tune memory limits for PHP-FPM, Nginx and MariaDB
+# Tune memory limits for PHP-FPM, Nginx and $_DB_SERVER
 tune_memory_limits () {
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 3))"
@@ -617,7 +651,7 @@ rm -f /var/run/aegir_upgrade.pid
 ###--------------------###
 if [ $_STATUS = "UPGRADE" ] ; then
   if [ ! -e "/root/.my.cnf" ] ; then
-  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   cat <<EOF
 
   It appears you don't have required file with your root sql password.
@@ -629,7 +663,7 @@ if [ $_STATUS = "UPGRADE" ] ; then
   chmod 0600 /root/.my.cnf
 
 EOF
-  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   echo " "
   exit 1
   fi
@@ -738,7 +772,7 @@ _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 
 ###--------------------###
 if [ -d "/usr/share/git-core" ] ; then
-  msg "INFO: Fix for possibly broken git-core after upgrade to version: 1:1.5.6.5-3+lenny3.1"
+  msg "INFO: Fix for possibly broken git-core"
   sleep 3
   chmod 644 /usr/share/git-core/templates/description &> /dev/null
   chmod 644 /usr/share/git-core/templates/hooks/* &> /dev/null
@@ -828,7 +862,10 @@ mrun "sleep 3"
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ $_THIS_OS = "Ubuntu" ] ; then
-  if [ $_THIS_RV = "maverick" ] ; then
+  if [ $_THIS_RV = "natty" ] ; then
+    _REL_VERSION="natty"
+    _DB_SERVER=Percona
+  elif [ $_THIS_RV = "maverick" ] ; then
     _REL_VERSION="maverick"
   elif [ $_THIS_RV = "lucid" ] ; then
     _REL_VERSION="lucid"
@@ -1042,8 +1079,8 @@ EOF
   * Your (optional) fast DNS cache server (pdnsd) will listen on 127.0.0.1:53.
   * Your (optional) Bind9 DNS Server will listen on $_THISHTIP:53.
   * Your (optional) MultiCore Apache Solr Tomcat will listen on 127.0.0.1:8080.
-  * Your (optional) Chive MariaDB Manager will be available at https://chive.$_THIS_FRONT.
-  * Your (optional) SQL Buddy MariaDB Manager will be available at https://sqlbuddy.$_THIS_FRONT.
+  * Your (optional) Chive $_DB_SERVER Manager will be available at https://chive.$_THIS_FRONT.
+  * Your (optional) SQL Buddy $_DB_SERVER Manager will be available at https://sqlbuddy.$_THIS_FRONT.
   * Your (optional) Collectd Graph Panel will be available at https://cgp.$_THIS_FRONT.
   * Your (optional) Webmin Control Panel will be available at https://$_THISHOST:10000.
   
@@ -1187,10 +1224,6 @@ if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "" >> /etc/apt/sources.list
-    echo "## BACKPORTS REPOSITORY" >> /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
     if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
       msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
@@ -1224,26 +1257,6 @@ if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
   cd /var/log
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Mirror $_MIRROR / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./apt-fast-install-log.txt
   cd /var/opt
-fi
-
-
-###--------------------###
-if [ $_STATUS = "INIT" ] ; then
-  msg "INFO: Add apt sources for MariaDB"
-  mrun "sleep 3"
-  cd /var/opt
-  wget -q -U iCab http://ourdelta.org/deb/ourdelta.gpg
-  apt-key add ourdelta.gpg &> /dev/null
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
-    wget -q -U iCab http://ourdelta.org/deb/sources/lenny-mariadb-ourdelta.list
-    cp -af lenny-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
-  elif [ "$_REL_VERSION" = "maverick" ] ; then
-    wget -q -U iCab http://ourdelta.org/deb/sources/lucid-mariadb-ourdelta.list
-    cp -af lucid-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
-  else
-    wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
-    cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
-  fi
 fi
 
 
@@ -1283,24 +1296,79 @@ fi
 msg "INFO: Install/upgrade required libraries and tools"
 msg "NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
-elif [ "$_REL_VERSION" = "squeeze" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
-elif [ "$_REL_VERSION" = "maverick" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
-elif [ "$_REL_VERSION" = "lucid" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
+elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
 else
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libdbd-mysql-perl libdbi-perl libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmariadbclient-dev libmariadbclient16 libmariadbd-dev libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mariadb-client-5.1 mariadb-common mariadb-server-5.1 mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev python-mysqldb re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
 fi
-# install_with_apt () {
-#   if ! st_runner "$_INSTALL $DEBDEPS" &> /dev/null; then
-#     fatal "Installation failed: $?"
-#   fi
-#   return 0
-# }
-# install_with_apt
+if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+  _INSTALL="aptitude -y install"
+fi
+install_with_apt_deps () {
+  if ! st_runner "$_INSTALL $DEBDEPS" &> /dev/null; then
+    fatal "Installation failed: $?"
+  fi
+  return 0
+}
+install_percona_sql () {
+  cd /var/opt
+  gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A &> /dev/null
+  gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
+  if [ "$_REL_VERSION" = "natty" ] ; then
+    _THIS_REL_VERSION=maverick
+  else
+    _THIS_REL_VERSION="$_REL_VERSION"
+  fi
+  echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
+  echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
+  echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
+  st_runner "apt-get autoremove -y" 2> /dev/null
+  st_runner "apt-get remove mysql-common -y" 2> /dev/null
+  st_runner "apt-get purge mysql-common -y" 2> /dev/null
+  st_runner "apt-get update -y" 2> /dev/null
+  SQLDEB="percona-server-server"
+  SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
+}
+install_mariadb_sql () {
+  cd /var/opt
+  wget -q -U iCab http://ourdelta.org/deb/ourdelta.gpg
+  apt-key add ourdelta.gpg &> /dev/null
+  if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "maverick" ]; then
+    wget -q -U iCab http://ourdelta.org/deb/sources/lucid-mariadb-ourdelta.list
+    cp -af lucid-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
+  elif [ "$_REL_VERSION" = "squeeze" ] ; then
+    wget -q -U iCab http://ourdelta.org/deb/sources/lenny-mariadb-ourdelta.list
+    cp -af lenny-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
+  else
+    wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
+    cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
+  fi
+  st_runner "apt-get autoremove -y" 2> /dev/null
+  st_runner "apt-get update -y" 2> /dev/null
+  SQLDEB="mariadb-server-5.1 mariadb-client-5.1 mariadb-common"
+  SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
+}
+install_with_apt_sql () {
+  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+    _PERCONA_READY=YES
+  else
+    _PERCONA_READY=NO
+  fi
+  if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ]; then
+    install_percona_sql
+  elif [ "$_REL_VERSION" = "natty" ]; then
+    install_percona_sql
+  else
+    install_mariadb_sql
+  fi
+  st_runner "$_INSTALL $SQLDEB" 2> /dev/null
+  st_runner "$_INSTALL $SQLADD" 2> /dev/null
+}
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
+if [ $_STATUS = "INIT" ] ; then
+  install_with_apt_sql
+fi
 
 
 ###--------------------###
@@ -1326,6 +1394,24 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   st_runner "apt-fast autoclean -y --force-yes" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
+fi
+
+
+###--------------------###
+if [ $_REL_VERSION = "natty" ] ; then
+  if [ ! -L "/usr/lib/libpng.so" ] ; then
+    msg "INFO: Fix for libs in Ubuntu Natty, please wait..."
+    _X86_64_TEST=`uname -m`
+    if [ "$_X86_64_TEST" = "x86_64" ] ; then
+      ln -s /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -s /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -s /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+    else
+      ln -s /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -s /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -s /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so    
+    fi
+  fi
 fi
 
 
@@ -1513,44 +1599,47 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
-if [ ! -e "/var/log/fixed-libevent-1.4.14b-stable.log" ] ; then
+if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] ; then
   msg "INFO: Installing libevent, please wait..."
   rm -f -r /var/opt/libevent*
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libevent-1.4.14b-stable.tar.gz
-  tar -xzf libevent-1.4.14b-stable.tar.gz
-  cd /var/opt/libevent-1.4.14b-stable
+  wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
+  tar -xzf libevent-2.0.11-stable.tar.gz
+  cd /var/opt/libevent-2.0.11-stable
   st_runner "sh ./configure --prefix=/usr" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   rm -f -r /var/opt/libevent*
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libevent-1.4.14b-stable.tar.gz
-  tar -xzf libevent-1.4.14b-stable.tar.gz
-  cd /var/opt/libevent-1.4.14b-stable
+  wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
+  tar -xzf libevent-2.0.11-stable.tar.gz
+  cd /var/opt/libevent-2.0.11-stable
   st_runner "sh ./configure" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   st_runner "ldconfig" 2> /dev/null
-  echo "libevent-1.4.14b-stable" > /var/log/fixed-libevent-1.4.14b-stable.log
+  _PHP_FORCE_REINSTALL=YES
+  msg "INFO: PHP rebuild required to include newer libevent and memcached"
+  echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
 fi
 
 
 ###--------------------###
-if [ ! -e "/usr/local/bin/memcached" ] ; then
-  msg "INFO: Installing Memcached, please wait..."
+if [ ! -e "/var/log/memcached-1.6.0_beta1.log" ] ; then
+  msg "INFO: Installing Memcached server, please wait..."
   mrun "sleep 3"
   cd /var/opt
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
   rm -f /usr/local/bin/memcached
-  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.4.5.tar.gz
-  tar -xzf memcached-1.4.5.tar.gz
-  cd /var/opt/memcached-1.4.5
+  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.6.0_beta1.tar.gz
+  tar -xzf memcached-1.6.0_beta1.tar.gz
+  cd /var/opt/memcached-1.6.0_beta1
   st_runner "sh ./configure" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   ln -s /usr/local/bin/memcached /usr/bin/memcached
+  echo "memcached-1.6.0_beta1" > /var/log/memcached-1.6.0_beta1.log
 fi
 
 
@@ -1622,16 +1711,16 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   msg "INFO: Installing libmemcached with memcached for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.44.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.49.tar.gz
   mrun "sleep 3"
   ldconfig &> /dev/null
-  tar -xzf libmemcached-0.44.tar.gz
-  if [ -e "/var/opt/libmemcached-0.44" ] ; then
-    cd /var/opt/libmemcached-0.44
+  tar -xzf libmemcached-0.49.tar.gz
+  if [ -e "/var/opt/libmemcached-0.49" ] ; then
+    cd /var/opt/libmemcached-0.49
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
+    echo "libmemcached-0.49" > /var/log/fixed-libmemcached-0.49.log
     #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
@@ -1729,19 +1818,19 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-if [ ! -e "/var/log/fixed-memcached-1.0.2.log" ] ; then
+if [ ! -e "/var/log/fixed-libmemcached-0.49.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.44.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.49.tar.gz
   mrun "sleep 3"
-  tar -xzf libmemcached-0.44.tar.gz
-  if [ -e "/var/opt/libmemcached-0.44" ] ; then
-    cd /var/opt/libmemcached-0.44
+  tar -xzf libmemcached-0.49.tar.gz
+  if [ -e "/var/opt/libmemcached-0.49" ] ; then
+    cd /var/opt/libmemcached-0.49
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "libmemcached-0.44" > /var/log/fixed-libmemcached-0.44.log
+    echo "libmemcached-0.49" > /var/log/fixed-libmemcached-0.49.log
     #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
@@ -1778,14 +1867,15 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_BZR="/usr/local/bin/bzr"
 fi
-if [ ! -e "$_PATH_BZR" ] ; then
+if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-2.4b2.log" ]; then
   msg "INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://launchpad.net/bzr/2.3/2.3b4/+download/bzr-2.3b4.tar.gz
-  tar -xzf bzr-2.3b4.tar.gz
-  cd /var/opt/bzr-2.3b4
+  wget -q -U iCab http://launchpad.net/bzr/2.4/2.4b2/+download/bzr-2.4b2.tar.gz
+  tar -xzf bzr-2.4b2.tar.gz
+  cd /var/opt/bzr-2.4b2
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
+  echo "bzr-2.4b2" > /var/log/bzr-2.4b2.log
 fi
 
 
@@ -1905,11 +1995,13 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
-  msg "INFO: Installing Pure-FTPd, please wait..."
+if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] ; then
+  msg "INFO: Installing latest Pure-FTPd server, please wait..."
   mrun "sleep 3"
-  echo "/bin/false" >> /etc/shells
-  echo "/bin/true" >> /etc/shells
+  if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
+    echo "/bin/false" >> /etc/shells
+    echo "/bin/true" >> /etc/shells
+  fi
   mkdir -p /etc/ssl/private/
   rm -f /etc/ssl/private/pure-ftpd.pem
   rm -f /usr/local/sbin/pure-ftpd
@@ -1918,22 +2010,24 @@ if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
   cd /var/opt
   mkdir -p /usr/local/etc
   rm -f -r pure-ftpd*
-  wget -q -U iCab http://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-1.0.29.tar.gz
-  tar -xzf pure-ftpd-1.0.29.tar.gz
-  cd pure-ftpd-1.0.29
+  wget -q -U iCab http://download.pureftpd.org/pub/pure-ftpd/releases/pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
+  tar -xzf pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
+  cd pure-ftpd-$_PURE_FTPD_VERSION
   st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
   st_runner "make install-strip" 2> /dev/null
   cd /usr/local/sbin/
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./
   mv -f pure-config.pl.txt pure-config.pl &> /dev/null
   chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
-  cp -f /var/opt/pure-ftpd-1.0.29/pam/pure-ftpd /etc/pam.d/
+  cp -af /var/opt/pure-ftpd-$_PURE_FTPD_VERSION/pam/pure-ftpd /etc/pam.d/
   cd /usr/local/etc
   rm -f pure-ftpd.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
+  killall -9 pure-ftpd &> /dev/null
   mrun "sleep 3"
   st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
   cd /var/opt
+  echo "pure-ftpd-$_PURE_FTPD_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION.log
 fi
 
 
@@ -1951,6 +2045,9 @@ if [ $_STATUS = "INIT" ] ; then
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
+  if [ "$_DB_SERVER" = "Percona" ]; then
+    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
+  fi
   tune_memory_limits
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
@@ -1976,7 +2073,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/root/.my.pass.txt" ] ; then
-  msg "INFO: Generate random password for MariaDB"
+  msg "INFO: Generate random password for $_DB_SERVER"
   mrun "sleep 3"
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
@@ -1992,7 +2089,7 @@ if [ -e "/root/.my.pass.txt" ] ; then
   msg "INFO: OS and services installation/upgrade completed"
   mrun "sleep 3"
 else
-  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   cat <<EOF
 
   It appears you don't have required file with your root sql password.
@@ -2002,7 +2099,7 @@ else
   chmod 0600 /root/.my.pass.txt
 
 EOF
-  msg "EXIT on error due to not found file with your MySQL/MariaDB root password."
+  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   echo " "
   exit 1
 fi
@@ -2012,7 +2109,7 @@ if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing core Aegir Hostmaster instance, please wait..."
+  msg "INFO: Installing Aegir Master Instance instance, please wait..."
   mrun "sleep 3"
   st_runner "adduser --system --group --home /var/aegir aegir"
   st_runner "adduser aegir www-data"
@@ -2029,12 +2126,12 @@ if [ $_STATUS = "INIT" ] ; then
     _AEGIR_SCRIPT="aegir-alpha-install"
   fi
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"    $Files
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"    $Files
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"      $Files
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"    $Files
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"      $Files
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
   msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
@@ -2058,12 +2155,12 @@ if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Simple check if core Aegir Hostmaster instance install is successful"
+  msg "INFO: Simple check if Aegir Master Instance instance install is successful"
   mrun "sleep 3"
   if [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
     msg "INFO: Aegir installation almost completed"
   else
-    msg "FATAL ERROR: Something is wrong, core Aegir Hostmaster instance not installed - exit now"
+    msg "FATAL ERROR: Something is wrong, Aegir Master Instance instance not installed - exit now"
     msg "FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
     exit 1
   fi
@@ -2098,6 +2195,12 @@ if [ $_STATUS = "INIT" ] ; then
   perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default
+  if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ]; then
+      mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
+    fi
+  fi
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
     killall -9 nginx &> /dev/null
     mrun "sleep 3"
@@ -2106,14 +2209,14 @@ if [ $_STATUS = "INIT" ] ; then
     invoke-rc.d nginx reload &> /dev/null
   fi
   mrun "sleep 3"
-  msg "INFO: Core Aegir Hostmaster instance installation completed"
+  msg "INFO: Aegir Master Instance instance installation completed"
   mrun "sleep 3"
 else
   echo " "
-  if prompt_yes_no "Do you want to upgrade core Aegir Hostmaster instance?" ; then
+  if prompt_yes_no "Do you want to upgrade Aegir Master Instance instance?" ; then
     true
     mrun "sleep 3"
-    msg "INFO: Running core Aegir Hostmaster instance upgrade"
+    msg "INFO: Running Aegir Master Instance instance upgrade"
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
@@ -2125,14 +2228,14 @@ else
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"       /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"       /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -2164,9 +2267,9 @@ else
     cd /var/aegir/config/includes
     echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
     touch installer_version.txt
-    msg "INFO: core Aegir Hostmaster instance upgrade completed"
+    msg "INFO: Aegir Master Instance instance upgrade completed"
   else
-    msg "INFO: core Aegir Hostmaster instance not upgraded this time"
+    msg "INFO: Aegir Master Instance instance not upgraded this time"
     mrun "sleep 3"
   fi
   rm -f /var/aegir/*install.sh.txt
@@ -2299,9 +2402,9 @@ fi
 ###--------------------###
 if [ ! -d "/var/www/chive" ] ; then
   echo " "
-  if prompt_yes_no "Do you want to install Chive MariaDB Manager?" ; then
+  if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
     true
-    msg "INFO: Installing Chive MariaDB Manager, please wait..."
+    msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
     wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
@@ -2324,10 +2427,10 @@ if [ ! -d "/var/www/chive" ] ; then
     echo "}" >> $_CHIVE_VHOST
     echo >> $_CHIVE_VHOST
     touch /var/log/chive_0.4.1.log
-    msg "INFO: Chive MariaDB Manager installation completed"
+    msg "INFO: Chive $_DB_SERVER Manager installation completed"
     mrun "sleep 2"
   else
-    msg "INFO: Chive MariaDB Manager installation skipped"
+    msg "INFO: Chive $_DB_SERVER Manager installation skipped"
     mrun "sleep 2"
   fi
 fi
@@ -2336,7 +2439,7 @@ fi
 ###--------------------###
 if [ -d "/var/www/chive" ] ; then
   if [ ! -e "/var/log/chive_0.4.1.log" ] ; then
-    msg "INFO: Upgrading Chive MariaDB Manager, please wait..."
+    msg "INFO: Upgrading Chive $_DB_SERVER Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
     rm -f -r /var/www/chive
@@ -2377,14 +2480,14 @@ fi
 ###--------------------###
 if [ ! -d "/var/www/sqlbuddy" ] ; then
   echo " "
-  if prompt_yes_no "Do you want to install SQL Buddy MariaDB Manager?" ; then
+  if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
     true
-    msg "INFO: Installing SQL Buddy MariaDB Manager, please wait..."
+    msg "INFO: Installing SQL Buddy $_DB_SERVER Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
-    wget -q -U iCab http://www.sqlbuddy.com/download/dl.php -O sqlbuddy_1_3_2.zip
-    unzip -qq sqlbuddy_1_3_2.zip
-    rm -f sqlbuddy_1_3_2.zip
+    wget -q -U iCab http://www.sqlbuddy.com/download/dl.php -O sqlbuddy_1_3_3.zip
+    unzip -qq sqlbuddy_1_3_3.zip
+    rm -f sqlbuddy_1_3_3.zip
     chown -R www-data:www-data /var/www/sqlbuddy
     _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
     if [ -z "$_THISHTIP" ] ; then
@@ -2401,10 +2504,10 @@ if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
     echo "}" >> $_SQLBUDDY_VHOST
     echo >> $_SQLBUDDY_VHOST
-    msg "INFO: SQL Buddy MariaDB Manager installation completed"
+    msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
     mrun "sleep 2"
   else
-    msg "INFO: SQL Buddy MariaDB Manager installation skipped"
+    msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
     mrun "sleep 2"
   fi
 fi
@@ -2566,16 +2669,16 @@ fi
 
 ###--------------------###
 if [ ! -e "/root/.my.cnf" ] ; then
-  msg "INFO: MariaDB final setup"
+  msg "INFO: $_DB_SERVER final setup"
   mrun "sleep 3"
   echo " "
-  msg "Please COPY it NOW and set it as your MariaDB root password during mysql_secure_installation"
+  msg "Please COPY it NOW and set it as your $_DB_SERVER root password during mysql_secure_installation"
   echo " "
   echo --------vvvvvvvv--------
   echo ------- $PASWD -------
   echo --------^^^^^^^^--------
   echo " "
-  msg "Please remember, you don't have the root password for MariaDB set yet."
+  msg "Please remember, you don't have the root password for $_DB_SERVER set yet."
   cat <<EOF
 
    * You have to hit Enter _without_ entering the password on the first question you will see.
@@ -2601,7 +2704,7 @@ EOF
     st_runner "invoke-rc.d mysql restart" &> /dev/null
     mrun "sleep 3"
   fi
-  msg "INFO: MariaDB setup completed"
+  msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
 fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
 
@@ -2631,12 +2734,13 @@ tune_memory_limits
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   killall -9 nginx &> /dev/null
-  mrun "sleep 5"
+  mrun "sleep 3"
   killall -9 nginx &> /dev/null
   echo " "
   msg "Please force Nginx restart (twice) before visiting Aegir URL with command:"
   msg "service nginx restart"
   echo " "
+  mrun "sleep 8"
 else
   invoke-rc.d nginx reload &> /dev/null
 fi

@@ -20,7 +20,6 @@ ftp.hu.debian.org
 ftp.ie.debian.org
 ftp.it.debian.org
 ftp.jp.debian.org
-ftp.kr.debian.org
 ftp.lt.debian.org
 ftp.mx.debian.org
 ftp.nl.debian.org

@@ -155,8 +155,8 @@ if (file_exists('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
 }
 
-// don't use chained memcached and redis caching for d7 profiles, for sites cron and for php-cli
-if (!preg_match("/(?:standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT']) &&
+// don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
+if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT']) &&
     !preg_match("/(?:cron\.php)/", $_SERVER['REQUEST_URI']) && $use_cache == "YES") {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy

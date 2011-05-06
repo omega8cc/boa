@@ -15,8 +15,11 @@
 ### to force it on every run, you may want
 ### to change default settings below.
 ###
-_MODULES=YES
 _PERMISSIONS=YES
+_MODULES=YES
+_MODULES_ON="syslog cache path_alias_cache robotstxt filefield_nginx_progress"
+_MODULES_OFF="dblog update devel cookie_cache_bypass"
+
 
 ###-------------SYSTEM-----------------###
 
@@ -90,15 +93,17 @@ if [ "$_MODULES" = "YES" ]; then
       searchStringA="-7."
       searchStringB="-5."
       searchStringC="openpublic"
+      searchStringF="aegir"
       case $Dir in
         *"$searchStringA"*) ;;
         *"$searchStringB"*) ;;
         *"$searchStringC"*) ;;
+        *"$searchStringF"*) ;;
         *)
         if [ -e "$Dir/drushrc.php" ] ; then
           cd $Dir
-          su -s /bin/bash $_THIS_HM_USER -c "drush dis dblog devel cookie_cache_bypass -y &> /dev/null"
-          su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache robotstxt filefield_nginx_progress -y &> /dev/null"
+          su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF -y &> /dev/null"
+          su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON -y &> /dev/null"
         fi
         ;;
       esac

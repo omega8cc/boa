@@ -24,7 +24,6 @@ hu.archive.ubuntu.com
 ie.archive.ubuntu.com
 it.archive.ubuntu.com
 jp.archive.ubuntu.com
-kr.archive.ubuntu.com
 lt.archive.ubuntu.com
 lu.archive.ubuntu.com
 lv.archive.ubuntu.com

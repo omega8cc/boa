@@ -416,7 +416,7 @@ msg "$_STATUS A: pre-install completed"
 mrun "sleep 3"
 
 
-###---### Install or upgrade Aegir Hostmaster instance [Y/n]
+###---### Install or upgrade Aegir Satellite Instance [Y/n]
 #
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
@@ -428,10 +428,10 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   rm -f /opt/tmp/testecho*
   #invoke-rc.d cron stop &> /dev/null
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
-  msg "$_STATUS A: Aegir Hostmaster instance install completed"
+  msg "$_STATUS A: Aegir Satellite Instance install completed"
 else
   echo " "
-  if prompt_yes_no "Do you want to upgrade this Aegir Hostmaster instance?" ; then
+  if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
     mrun "sleep 3"
     msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
@@ -444,9 +444,9 @@ else
     chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
     chmod -R 777 $_THIS_HM_SITE/files
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
-    msg "$_STATUS A: Aegir Hostmaster instance upgrade completed"
+    msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
   else
-    msg "$_STATUS A: Aegir Hostmaster instance not upgraded this time"
+    msg "$_STATUS A: Aegir Satellite Instance not upgraded this time"
     mrun "sleep 3"
   fi
 fi
