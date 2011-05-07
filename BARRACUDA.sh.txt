@@ -2109,7 +2109,7 @@ if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing Aegir Master Instance instance, please wait..."
+  msg "INFO: Installing Aegir Master Instance, please wait..."
   mrun "sleep 3"
   st_runner "adduser --system --group --home /var/aegir aegir"
   st_runner "adduser aegir www-data"
@@ -2155,12 +2155,12 @@ if [ $_STATUS = "INIT" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Simple check if Aegir Master Instance instance install is successful"
+  msg "INFO: Simple check if Aegir Master Instance install is successful"
   mrun "sleep 3"
   if [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
     msg "INFO: Aegir installation almost completed"
   else
-    msg "FATAL ERROR: Something is wrong, Aegir Master Instance instance not installed - exit now"
+    msg "FATAL ERROR: Something is wrong, Aegir Master Instance not installed - exit now"
     msg "FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
     exit 1
   fi
@@ -2209,14 +2209,14 @@ if [ $_STATUS = "INIT" ] ; then
     invoke-rc.d nginx reload &> /dev/null
   fi
   mrun "sleep 3"
-  msg "INFO: Aegir Master Instance instance installation completed"
+  msg "INFO: Aegir Master Instance installation completed"
   mrun "sleep 3"
 else
   echo " "
-  if prompt_yes_no "Do you want to upgrade Aegir Master Instance instance?" ; then
+  if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
     mrun "sleep 3"
-    msg "INFO: Running Aegir Master Instance instance upgrade"
+    msg "INFO: Running Aegir Master Instance upgrade"
     mrun "sleep 3"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
@@ -2267,9 +2267,9 @@ else
     cd /var/aegir/config/includes
     echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
     touch installer_version.txt
-    msg "INFO: Aegir Master Instance instance upgrade completed"
+    msg "INFO: Aegir Master Instance upgrade completed"
   else
-    msg "INFO: Aegir Master Instance instance not upgraded this time"
+    msg "INFO: Aegir Master Instance not upgraded this time"
     mrun "sleep 3"
   fi
   rm -f /var/aegir/*install.sh.txt
