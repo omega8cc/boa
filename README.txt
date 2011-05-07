@@ -191,8 +191,10 @@ The Drupal 7.x platforms come with contrib modules:
     /data/disk/user/log/octopus_log.txt
     /var/aegir/install.log (remove the password)  
   
-* Issue queue:
-  http://github.com/omega8cc/nginx-for-drupal/issues
+* Issue queues:
+  http://drupal.org/project/issues/barracuda (active)
+  http://drupal.org/project/issues/octopus (active)
+  http://github.com/omega8cc/nginx-for-drupal/issues (deprecated)
   
   Please don't post your server logs here. Instead use
   http://gist.github.com and post the link in your submission.
@@ -209,6 +211,14 @@ The Drupal 7.x platforms come with contrib modules:
 * Grace  - http://omega8.cc
 * Albert - http://omega8.cc
 * Robert - http://omega8.cc
+
+
+### REPOSITORIES
+
+* http://drupal.org/project/barracuda (main)
+* http://drupal.org/project/octopus (main)
+* http://code.aegir.cc/aegir (mirror)
+* http://github.com/omega8cc/nginx-for-drupal/ (mirror)
 
 
 ### CREDITS

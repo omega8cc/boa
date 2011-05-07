@@ -1,4 +1,9 @@
 
+### Project and issue queue moved to Drupal.org    
+### Date: Sat, 7 May 2011 14:00:00 +0200
+### http://drupal.org/project/barracuda
+### http://drupal.org/project/octopus
+
 ### Stable Edition 1.0-boa-T-8.5
 ### Date: Tue, 3 May 2011 14:30:00 +0200
 ### Installs Aegir stable 1.1
