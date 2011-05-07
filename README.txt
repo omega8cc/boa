@@ -71,7 +71,7 @@ standard production settings.
 ### PROVIDES
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest version of MariaDB database server.
+* Latest version of MariaDB or Percona database server.
 * Latest version of Nginx web server with upload progress and Boost support.
 * PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
