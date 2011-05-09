@@ -389,9 +389,9 @@ mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-6.20.pl.po" ]; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ -e "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.20.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
@@ -531,8 +531,12 @@ fi
 if [ -d "$_CORE/o_contrib/module_supports" ] ; then
   rm -f -r $_CORE/o_contrib/module_supports &> /dev/null
 fi
-if [ ! -d "/data/all/000/translations" ] ; then
-  mkdir -p /data/all/000/translations
+if [ ! -e "/data/all/000/translations/drupal-6.20.pl.po" ] ; then
+  if [ ! -d "/data/all/000/translations" ] ; then
+    mkdir -p /data/all/000/translations
+  else
+    rm -f /data/all/000/translations/* &> /dev/null
+  fi
   cd /data/all/000/translations
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.zh-hant.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.zh-hans.po
