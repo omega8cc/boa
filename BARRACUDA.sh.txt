@@ -672,7 +672,7 @@ fi
 
 ###--------------------###
 if [ $_STATUS = "INIT" ] ; then
-  msg "INFO: We need to install wget, axel, netcat & git first, please wait..."
+  msg "INFO: We need to install wget, axel, aptitude, netcat & git first, please wait..."
   sleep 3
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
@@ -716,7 +716,7 @@ EOF
     _LOCALE_TEST=OK
     locale-gen en_US en_US.UTF-8 &> /dev/null
   fi
-  $_INITINS wget git-core axel netcat &> /dev/null
+  $_INITINS wget git-core axel netcat aptitude &> /dev/null
 fi
 
 
