@@ -1,17 +1,15 @@
 #!/usr/bin/perl
 
 $| = 1;
-if (-f "/var/xdrago/log/optimize_mysql_ao.pid") {
-exit;
-}
+if (-f "/var/xdrago/log/optimize_mysql_ao.pid") {exit;}
 $status="CLEAN";
 &makeactions;
 if ($status ne "CLEAN") {
-`perl /var/xdrago/checksql.cgi`;
-`touch /var/xdrago/log/last-sqlcheck-found-problem`;
+  `perl /var/xdrago/checksql.cgi`;
+  `touch /var/xdrago/log/last-sqlcheck-found-problem`;
 }
 else {
-`touch /var/xdrago/log/last-sqlcheck-clean`;
+  `touch /var/xdrago/log/last-sqlcheck-clean`;
 }
 
 exit;
@@ -21,9 +19,8 @@ sub makeactions
 local(@SYTUACJA) = `tail --lines=200 /var/log/syslog 2>&1`;
   foreach $line (@SYTUACJA) {
     if ($line =~ /(Checking table)/i) {
-        $status="ERROR";
+      $status="ERROR";
     }
   }
 }
 ###EOF###
-

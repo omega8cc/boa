@@ -18,7 +18,7 @@ sub makeactions
       @banetable = <NOT>;
       close (NOT);
 
-local(@SYTUACJA) = `tail --lines=9999 /var/log/messages 2>&1`;
+local(@SYTUACJA) = `tail --lines=999 /var/log/messages 2>&1`;
 
 local($maxnumber,$critnumber,$alert);
 local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
