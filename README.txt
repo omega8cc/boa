@@ -81,6 +81,7 @@ standard production settings.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
 * Webmin Control Panel (optional).
+* Firewall csf/lfd integrated with Nginx abuse guard (optional).
 * Chive database manager in "chive." subdomain (optional).
 * SQL Buddy database manager in "sqlbuddy." subdomain (optional).
 * Collectd server monitor in "cgp." subdomain (optional).
