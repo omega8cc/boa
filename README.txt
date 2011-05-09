@@ -58,7 +58,7 @@ standard production settings.
 
 * Debian 6.0 Squeeze (recommended) minimal OS 32/64bit fresh install, or
 * Debian 5.0 Lenny minimal OS 32/64bit fresh install, or
-* Ubuntu Natty 11.04 minimal OS 32/64bit fresh install, or
+* Ubuntu Natty 11.04 (supported now only in HEAD) minimal OS 32/64bit fresh install, or
 * Ubuntu Maverick 10.10 minimal OS 32/64bit fresh install, or
 * Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
 * Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
