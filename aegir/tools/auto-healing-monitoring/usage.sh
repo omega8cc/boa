@@ -55,6 +55,8 @@ fix_boost_cache()
 if [ -d "$Plr/cache/normal" ] ; then
   rm -f -r $Plr/cache/normal/*
   rm -f -r $Plr/cache/perm/*
+  chown -R $_THIS_HM_USER:www-data $Plr/cache
+  chmod -R 775 $Plr/cache
 fi
 if [ ! -d "$Plr/cache/normal" ] ; then
   mkdir -p $Plr/cache/{normal,perm}
