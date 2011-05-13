@@ -1917,6 +1917,8 @@ if [ -e "/usr/sbin/nginx" ] ; then
     msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
   fi
   mrun "sleep 3"
+else
+  _NGINX_INSTALL_REQUIRED=YES
 fi
 
 
