@@ -148,9 +148,10 @@ _LOCAL_UBUNTU_MIRROR=""
 ###----------------------------------------###
 ###
 ### Use this when you are experiencing issues
-### trying to connect to the default gitorious
+### trying to connect to the default drupal
 ### repository. Valid options:
 ###
+### _FORCE_GIT_MIRROR=drupal
 ### _FORCE_GIT_MIRROR=github
 ### _FORCE_GIT_MIRROR=gitorious
 ###
@@ -721,46 +722,63 @@ fi
 
 
 ###--------------------###
+_DRUPAL_WORKS=NO
 _GITORIOUS_WORKS=NO
 _GITHUB_WORKS=NO
-if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
+  msg "INFO: We will use forced Drupal repository without testing connection"
+  _DRUPAL_WORKS=YES
+  _GITORIOUS_WORKS=NO
+  _GITHUB_WORKS=NO
+  sleep 3
+elif [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
   msg "INFO: We will use forced GitHub mirror without testing connection"
-  _GITORIOUS_WORKS="NO"
-  _GITHUB_WORKS="YES"
+  _DRUPAL_WORKS=NO
+  _GITORIOUS_WORKS=NO
+  _GITHUB_WORKS=YES
   sleep 3
 elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   msg "INFO: We will use forced Gitorious mirror without testing connection"
-  _GITORIOUS_WORKS="YES"
-  _GITHUB_WORKS="NO"
+  _DRUPAL_WORKS=NO
+  _GITORIOUS_WORKS=YES
+  _GITHUB_WORKS=NO
   sleep 3
 else
-  msg "INFO: Testing Gitorious and GitHub servers availability, please wait..."
+  msg "INFO: Testing Drupal, GitHub and Gitorious servers availability, please wait..."
   sleep 3
+  _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=YES
-  if ! netcat -w 8 -z code.aegir.cc 9418 ; then
-    _GITORIOUS_WORKS="NO"
-    msg "WARN: The Gitorious master repository server doesn't respond..."
+  if ! netcat -w 8 -z git.drupal.org 80 ; then
+    _DRUPAL_WORKS=NO
+    msg "WARN: The Drupal master repository server doesn't respond..."
   elif ! netcat -w 8 -z github.com 9418 ; then
-    _GITHUB_WORKS="NO"
+    _GITHUB_WORKS=NO
     msg "WARN: The GitHub mirror repository server doesn't respond..."
+  elif ! netcat -w 8 -z code.aegir.cc 9418 ; then
+    _GITORIOUS_WORKS=NO
+    msg "WARN: The Gitorious mirror repository server doesn't respond..."
   fi
 fi
-if [ $_GITORIOUS_WORKS = "YES" ] ; then
-  _BOA_REPO_NAME="barracuda-octopus"
-  _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
-  msg "INFO: Gitorious master repository will be used for this install"
+if [ $_DRUPAL_WORKS = "YES" ] ; then
+  _BOA_REPO_NAME="barracuda"
+  _BOA_REPO_GIT_URL="http://git.drupal.org/project"
+  msg "INFO: Drupal master repository will be used for this install"
 elif [ $_GITHUB_WORKS = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
+elif [ $_GITORIOUS_WORKS = "YES" ] ; then
+  _BOA_REPO_NAME="barracuda-octopus"
+  _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
+  msg "INFO: Gitorious mirror repository will be used for this install"
 else
   cat <<EOF
 
-  Both GitHub and Gitorious repository servers don't respond,
+  None of repository servers respond in 8 seconds,
   so we can't continue this installation.
 
-  Please try again later.
+  Please try again later or check if your firewall has port 9418 open.
 
   Bye.
 
@@ -1303,7 +1321,7 @@ elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_RE
 else
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate"
 fi
-if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
   _INSTALL="aptitude -y install"
 fi
 install_with_apt_deps () {
@@ -2647,7 +2665,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
       st_runner "invoke-rc.d csf restart" &> /dev/null
       st_runner "invoke-rc.d lfd restart" &> /dev/null
       echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
-      msg "INFO: CSF/LFD firewall installation completed"
+      msg "INFO: csf/lfd firewall installation completed"
       mrun "sleep 2"
     else
       msg "INFO: csf/lfd firewall installation skipped"

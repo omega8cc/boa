@@ -93,13 +93,22 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ]; then
-      git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
-      _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
+      if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
+        _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
+        git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
+        _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
+        sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make
+      else
+        git clone $_BOA_REPO_GIT_URL/provision.git $_ROOT/.drush/provision &> /dev/null
+        _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
+      fi
     else
+      cd $_ROOT/.drush
       wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
-      rm provision-$_AEGIR_VERSION.tar.gz
+      rm -f provision-$_AEGIR_VERSION.tar.gz
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.2.tar.gz
     tar -xzf drush_make-6.x-2.2.tar.gz

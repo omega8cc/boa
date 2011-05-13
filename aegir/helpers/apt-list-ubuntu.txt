@@ -33,7 +33,6 @@ nz.archive.ubuntu.com
 pl.archive.ubuntu.com
 pt.archive.ubuntu.com
 ro.archive.ubuntu.com
-ru.archive.ubuntu.com
 se.archive.ubuntu.com
 sk.archive.ubuntu.com
 sl.archive.ubuntu.com
