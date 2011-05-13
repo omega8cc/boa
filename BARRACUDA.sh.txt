@@ -594,6 +594,14 @@ force_advanced_nginx_config () {
 #
 # Tune memory limits for PHP-FPM, Nginx and $_DB_SERVER
 tune_memory_limits () {
+  _ETH_TEST=`ifconfig 2>&1`
+  if [[ $_ETH_TEST =~ venet0 ]] ; then
+    _VMFAMILY="VZ"
+  elif [ -e "/proc/bean_counters" ] ; then
+    _VMFAMILY="VZ"
+  else
+    _VMFAMILY="XEN"
+  fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 3))"
   let "_USE_SQL = (($_RAM / 2))"
@@ -609,7 +617,7 @@ tune_memory_limits () {
     _USE_PHP="$_USE"
     _USE_APC="$_USE"
   fi
-  if [ $_VMFAMILY = "VZ" ] ; then
+  if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_APC=256
   fi
   sed -i "s/256/$_USE_PHP/g" /opt/etc/php.ini
