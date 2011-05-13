@@ -95,17 +95,22 @@ if [ "$_MODULES" = "YES" ]; then
       searchStringA="-7."
       searchStringB="-5."
       searchStringC="openpublic"
-      searchStringF="aegir"
       case $Dir in
         *"$searchStringA"*) ;;
         *"$searchStringB"*) ;;
         *"$searchStringC"*) ;;
-        *"$searchStringF"*) ;;
         *)
         if [ -e "$Dir/drushrc.php" ] ; then
           cd $Dir
-          su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF -y &> /dev/null"
-          su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON -y &> /dev/null"
+          if [ -d "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fixed.txt" ] ; then
+            su -s /bin/bash $_THIS_HM_USER -c "drush dis cache -y &> /dev/null"
+            su -s /bin/bash $_THIS_HM_USER -c "drush en syslog path_alias_cache -y &> /dev/null"
+            echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fixed.txt
+            chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fixed.txt
+          else
+            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF -y &> /dev/null"
+            su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON -y &> /dev/null"
+          fi
         fi
         ;;
       esac
