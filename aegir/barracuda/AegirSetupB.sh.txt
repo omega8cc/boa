@@ -293,10 +293,12 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
     _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
     sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
     sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make
+    rm -f -r $_ROOT/.drush/provision/.git
   else
     git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
     _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
     sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
+    rm -f -r $_ROOT/.drush/provision/.git
   fi
   if [ $_STATUS = "UPGRADE" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.2.tar.gz
