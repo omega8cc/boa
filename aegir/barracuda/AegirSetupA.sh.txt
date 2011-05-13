@@ -332,7 +332,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
   elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.20.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
-    msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
+    msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
   else
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   fi

@@ -394,7 +394,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
   elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.20.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
-    msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce on upgrade"
+    msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
   else
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   fi
@@ -1147,13 +1147,18 @@ msg "STATUS: $_F_FSERVER install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/fserver"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
+    _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
+  else
+    _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
+  fi
   cd $_CORE
   echo "api = 2" > fserver.make
   echo "core = 6.x" >> fserver.make
   echo "projects[drupal][type] = \"core\"" >> fserver.make
   echo "projects[feature_server][type] = \"profile\"" >> fserver.make
   echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
-  echo "projects[feature_server][download][url] = \"$_BOA_REPO_GIT_URL/feature_server.git\"" >> fserver.make
+  echo "projects[feature_server][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/feature_server.git\"" >> fserver.make
   $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver
