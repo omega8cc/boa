@@ -1005,28 +1005,41 @@ fi
 
 ###---### Send setup e-mail
 #
+_MAILX_TEST=`mail -V 2>&1`
 if [ $_STATUS = "INIT" ] ; then
- msg "$_STATUS A: Send setup e-mail on init, please wait..."
- mrun "sleep 3"
- TIME=`date`
- echo $TIME > $_ROOT/log/date-init.txt
- if [ -e "$_ROOT/log/setupmail.txt" ] ; then
-   cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
- fi
+  msg "$_STATUS A: Send setup e-mail on init, please wait..."
+  mrun "sleep 3"
+  TIME=`date`
+  echo $TIME > $_ROOT/log/date-init.txt
+  if [ -e "$_ROOT/log/setupmail.txt" ] ; then
+    if [[ $_MAILX_TEST =~ invalid ]] ; then
+      cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL 
+    else
+      cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL 
+    fi
+  fi
 else
- if [ "$_DIST_INSTALL" = "YES" ] ; then
-   msg "$_STATUS A: Resend setup e-mail on upgrade, please wait..."
-   mrun "sleep 3"
-   TIME=`date`
-   echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
-   if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
-     cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
-   else
-     cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
-   fi
- else
-   _SEND_UPGRADE_EMAIL=NO
- fi
+  if [ "$_DIST_INSTALL" = "YES" ] ; then
+    msg "$_STATUS A: Resend setup e-mail on upgrade, please wait..."
+    mrun "sleep 3"
+    TIME=`date`
+    echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
+    if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
+      if [[ $_MAILX_TEST =~ invalid ]] ; then
+        cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      else
+        cat $_ROOT/log/upgrademail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      fi
+    else
+      if [[ $_MAILX_TEST =~ invalid ]] ; then
+        cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      else
+        cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      fi
+    fi
+  else
+    _SEND_UPGRADE_EMAIL=NO
+  fi
 fi
 
 

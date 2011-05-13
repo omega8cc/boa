@@ -2,14 +2,17 @@
 
 $| = 1;
 if (-f "/var/xdrago/log/optimize_mysql_ao.pid") {
-exit;
+  exit;
 }
+$mailx_test = `mail -V 2>&1`;
 $status="CLEAN";
 $thisserver = "acrashsql.sh";
 $IP_log = "/var/xdrago/$thisserver";
 `rm -f $IP_log`;
 $server=`hostname`;
+chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
+chomp($timedate);
 $logfile="/var/xdrago/log/mysqlcheck.log";
 `touch /var/xdrago/log/optimize_mysql_ao.pid`;
 sleep(90);
@@ -17,12 +20,23 @@ sleep(90);
 &makeactions;
 `rm -f /var/xdrago/log/optimize_mysql_ao.pid`;
 `touch /var/xdrago/log/last-run-acrashsql`;
-if ($status ne "CLEAN") {
-`cat $logfile | mail -a "From: help\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
-`sh $IP_log | mail -a "From: help\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+if ($mailx_test =~ /(invalid)/i) {
+  if ($status ne "CLEAN") {
+    `cat $logfile | mail -a "From: help\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
+    `sh $IP_log | mail -a "From: help\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+  }
+  if ($status ne "ERROR") {
+    `cat $logfile | mail -e -a "From: help\@omega8.cc" -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
+  }
 }
-if ($status ne "ERROR") {
-`cat $logfile | mail -e -a "From: help\@omega8.cc" -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
+else {
+  if ($status ne "CLEAN") {
+    `cat $logfile | mail -r help\@omega8.cc -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
+    `sh $IP_log | mail -r help\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+  }
+  if ($status ne "ERROR") {
+    `cat $logfile | mail -e -r help\@omega8.cc -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
+  }
 }
 exit;
 #############################################################################
