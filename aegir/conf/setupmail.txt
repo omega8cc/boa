@@ -48,7 +48,7 @@ Drupal distributions ready to deploy [Mini + Classic + TG]:
  Acquia 6.20 ------------------ http://bit.ly/acquiadrupal
  Acquia 7.0 ------------------- http://bit.ly/acquiadrupal
  Ubercart 6.20 ---------------- http://ubercart.org
- ProsePoint 0.37 -------------- http://prosepoint.org
+ ProsePoint 0.38 -------------- http://prosepoint.org
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta2 ---- http://leveltendesign.com/enterprise
  Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org

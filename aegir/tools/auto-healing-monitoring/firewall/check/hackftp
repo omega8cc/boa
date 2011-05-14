@@ -96,4 +96,4 @@ sub check_ip
       }
 }
 
-###EOF### /sbin/iptables -A INPUT -s 213.209.160.37 -j DROP
+###EOF###
