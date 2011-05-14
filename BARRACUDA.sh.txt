@@ -1179,7 +1179,7 @@ chmod 777 /var/log/php* &> /dev/null
 
 ###--------------------###
 install_pdnsd_cache () {
-  msg "INFO: Installing DNS cache pdnsd, please wait..."
+  msg "INFO: Installing DNS cache pdnsd server, please wait..."
   mrun "sleep 3"
   cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
   st_runner "$_INSTALL pdnsd resolvconf";
@@ -1207,13 +1207,14 @@ if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ $_INSTALL_PDNSD = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if prompt_yes_no "Do you want to install DNS cache pdnsd?" ; then
+    echo " "
+    if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
       true
       install_pdnsd_cache
-      msg "INFO: DNS cache pdnsd installation completed"
+      msg "INFO: DNS cache pdnsd server installation completed"
       mrun "sleep 2"
     else
-      msg "INFO: DNS cache pdnsd installation skipped"
+      msg "INFO: DNS cache pdnsd server installation skipped"
       mrun "sleep 2"
     fi
   elif [ $_INSTALL_PDNSD = "YES" ] ; then
@@ -2623,7 +2624,7 @@ fi
 ###--------------------###
 if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   echo " "
-  if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only)" ; then
+  if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
     true
     msg "INFO: Installing Bind9 DNS Server, please wait..."
     mrun "sleep 3"
