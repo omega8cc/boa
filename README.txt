@@ -29,6 +29,11 @@ You can install one Aegir Master Instance on your server using
 Barracuda and any number of Aegir Satellite Instances using
 Octopus installer.
 
+Note: the 'Master' and 'Satellite' names in the Barracuda/Octopus
+context are not related to the multi-server Aegir features.
+It is related to the multi-Aegir-instances environment, with
+virtual chroot/jail for every Aegir instance.
+
 Barracuda is the main script for the base/core Aegir Hosting System
 install and upgrades, including OS env, main Aegir instance,
 but no platforms will be added there to keep it compatible
