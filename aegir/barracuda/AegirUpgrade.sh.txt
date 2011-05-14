@@ -99,10 +99,12 @@ hostmaster_go_up () {
         _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
         sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
         sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make
+        rm -f -r $_ROOT/.drush/provision/.git
       else
         git clone $_BOA_REPO_GIT_URL/provision.git $_ROOT/.drush/provision &> /dev/null
         _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
         sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
+        rm -f -r $_ROOT/.drush/provision/.git
       fi
     else
       cd $_ROOT/.drush
