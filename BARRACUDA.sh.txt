@@ -1178,6 +1178,22 @@ chmod 777 /var/log/php* &> /dev/null
 
 
 ###--------------------###
+install_pdnsd_cache () {
+  msg "INFO: Installing DNS cache pdnsd, please wait..."
+  mrun "sleep 3"
+  cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
+  st_runner "$_INSTALL pdnsd resolvconf";
+  sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
+  cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+  st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+  rm -f /var/cache/pdnsd/pdnsd.cache
+  st_runner "invoke-rc.d pdnsd start" &> /dev/null
+  mrun "sleep 3"
+  st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+  mrun "sleep 3"
+  rm -f /var/cache/pdnsd/pdnsd.cache
+  st_runner "invoke-rc.d pdnsd start" &> /dev/null
+}
 _INSTALL_PDNSD=NO
 _HOSTN_TEST=`hostname -f 2>&1`
 if [[ $_HOSTN_TEST =~ "Name or service not known" ]] ; then
@@ -1189,22 +1205,19 @@ fi
 if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
   _INSTALL_PDNSD=YES
 fi
-if [ $_INSTALL_PDNSD = "YES" ] ; then
-  if [ ! -e "/usr/sbin/pdnsd" ] ; then
-    msg "INFO: Installing DNS cache pdnsd, please wait..."
-    mrun "sleep 3"
-    cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
-    st_runner "$_INSTALL pdnsd resolvconf";
-    sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
-    cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
-    rm -f /var/cache/pdnsd/pdnsd.cache
-    st_runner "invoke-rc.d pdnsd start" &> /dev/null
-    mrun "sleep 3"
-    st_runner "invoke-rc.d pdnsd stop" &> /dev/null
-    mrun "sleep 3"
-    rm -f /var/cache/pdnsd/pdnsd.cache
-    st_runner "invoke-rc.d pdnsd start" &> /dev/null
+if [ ! -e "/usr/sbin/pdnsd" ] ; then
+  if [ $_INSTALL_PDNSD = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+    if prompt_yes_no "Do you want to install DNS cache pdnsd?" ; then
+      true
+      install_pdnsd_cache
+      msg "INFO: DNS cache pdnsd installation completed"
+      mrun "sleep 2"
+    else
+      msg "INFO: DNS cache pdnsd installation skipped"
+      mrun "sleep 2"
+    fi
+  elif [ $_INSTALL_PDNSD = "YES" ] ; then
+    install_pdnsd_cache
   fi
 fi
 
@@ -2608,9 +2621,9 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/sbin/named" ] ; then
+if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   echo " "
-  if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
+  if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only)" ; then
     true
     msg "INFO: Installing Bind9 DNS Server, please wait..."
     mrun "sleep 3"
@@ -2638,7 +2651,7 @@ fi
 
 
 ###--------------------###
-if [ ! -d "/etc/webmin" ] ; then
+if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   echo " "
   if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
     true

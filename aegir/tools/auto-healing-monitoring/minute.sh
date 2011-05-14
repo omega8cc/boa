@@ -24,4 +24,11 @@ done
 }
 
 action
+sleep 15
+action
+sleep 15
+action
+sleep 15
+action
+
 echo DONE!
