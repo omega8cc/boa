@@ -7,7 +7,7 @@
   $node->uid = 1;
   $node->type = 'client';
   $node->email = $_SERVER[argv][3];
-  $node->title = 'Octopus.' . $number;
+  $node->title = 'Octopus' . $number;
   $node->status = 1;
   node_save($node);
   $this_client_id = $node->nid;

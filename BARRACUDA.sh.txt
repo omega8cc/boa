@@ -1205,6 +1205,11 @@ fi
 if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
   _INSTALL_PDNSD=YES
 fi
+if [ -f "/etc/default/dhcpcd" ] ; then
+  _INSTALL_PDNSD=YES
+  sed -i "s/SET_DNS/\#SET_DNS/g" /etc/default/dhcpcd
+  sed -i "s/SET_HOSTNAME/\#SET_HOSTNAME/g" /etc/default/dhcpcd
+fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ $_INSTALL_PDNSD = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
