@@ -1478,7 +1478,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+if [ ! -e "/var/run/cloud_vhost.pid" ] && [ ! -e "/sbin/udevd" ] ; then
   msg "INFO: Install udev, just in case it is missing, please wait..."
   mrun "sleep 3"
   st_runner "apt-fast -y install udev" 2> /dev/null
