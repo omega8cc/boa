@@ -52,7 +52,7 @@ if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP
 
 // http://drupal.org/node/912682#comment-3503636
 if (preg_match("/managingnews/", $conf['install_profile'])) {
-   ini_set('auto_detect_line_endings', TRUE);
+  ini_set('auto_detect_line_endings', TRUE);
 }
 
 if (preg_match("/uberdrupal/", $conf['install_profile']) || file_exists('sites/all/modules/ubercart/README.txt')) {
@@ -60,20 +60,25 @@ if (preg_match("/uberdrupal/", $conf['install_profile']) || file_exists('sites/a
 }
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-   error_reporting(E_ALL & ~E_NOTICE);
-   ini_set('display_errors', TRUE);
-   ini_set('display_startup_errors', TRUE);
-   unset($conf['cache']);          // disable hardcoded caching
-   unset($conf['preprocess_css']); // disable hardcoded css aggregation
-   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
-   unset($conf['error_level']);    // disable hardcoded no errors on screen
-   unset($conf['advagg_async_generation']); // disable hardcoded value
-   unset($conf['advagg_gzip_compression']); // disable hardcoded value
-   unset($conf['advagg_checksum_mode']);    // disable hardcoded value
-   unset($conf['advagg_debug']);            // disable hardcoded value
-   unset($conf['advagg_dir_htaccess']);     // disable hardcoded value
-   unset($conf['advagg_rebuild_on_flush']); // disable hardcoded value
-   unset($conf['advagg_enabled']);          // disable hardcoded value
+  // deny known search bots on dev subdomains
+  if (preg_match("/(?:crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+  }
+  error_reporting(E_ALL & ~E_NOTICE);
+  ini_set('display_errors', TRUE);
+  ini_set('display_startup_errors', TRUE);
+  unset($conf['cache']);          // disable hardcoded caching
+  unset($conf['preprocess_css']); // disable hardcoded css aggregation
+  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+  unset($conf['error_level']);    // disable hardcoded no errors on screen
+  unset($conf['advagg_async_generation']); // disable hardcoded value
+  unset($conf['advagg_gzip_compression']); // disable hardcoded value
+  unset($conf['advagg_checksum_mode']);    // disable hardcoded value
+  unset($conf['advagg_debug']);            // disable hardcoded value
+  unset($conf['advagg_dir_htaccess']);     // disable hardcoded value
+  unset($conf['advagg_rebuild_on_flush']); // disable hardcoded value
+  unset($conf['advagg_enabled']);          // disable hardcoded value
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
