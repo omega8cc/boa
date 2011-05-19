@@ -16,8 +16,8 @@ control()
 {
 ONEX_LOAD=`awk '{print $1*100}' /proc/loadavg`
 FIVX_LOAD=`awk '{print $2*100}' /proc/loadavg`
-CTL_ONEX_LOAD=999
-CTL_FIVX_LOAD=777
+CTL_ONEX_LOAD=888
+CTL_FIVX_LOAD=555
 if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD ]; then
   hold
 elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD ]; then
