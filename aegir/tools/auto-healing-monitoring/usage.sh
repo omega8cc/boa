@@ -102,11 +102,11 @@ if [ "$_MODULES" = "YES" ]; then
         *)
         if [ -e "$Dir/drushrc.php" ] ; then
           cd $Dir
-          if [ -d "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fixed.txt" ] ; then
+          if [ -d "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis cache -y &> /dev/null"
             su -s /bin/bash $_THIS_HM_USER -c "drush en syslog path_alias_cache -y &> /dev/null"
-            echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fixed.txt
-            chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fixed.txt
+            echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
+            chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
           else
             su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF -y &> /dev/null"
             su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON -y &> /dev/null"
@@ -212,7 +212,8 @@ do
       if [ -d "$_THIS_HM_SITE" ] ; then
         cd $_THIS_HM_SITE
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
-        su -s /bin/bash $_THIS_HM_USER -c "drush en syslog cache path_alias_cache css_emimage -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_queue_cron_frequency 3600 &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_cron_use_backend 0 &> /dev/null"
       fi
       echo Done for $User
     else
