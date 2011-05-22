@@ -1,7 +1,7 @@
 #!/bin/bash
 
 touch /var/xdrago/log/optimize_mysql_ao.pid
-sleep 120
+sleep 130
 DATABASEUSER=root
 DATABASEPASS=NdKBu34erty325r6mUHxWy
 BACKUPDIR=/data/disk/arch/sql

@@ -4,7 +4,7 @@ hold()
 {
   /etc/init.d/nginx stop
   killall -9 nginx
-  sleep 2
+  sleep 1
   killall -9 nginx
   /etc/init.d/php-fpm stop
   /etc/init.d/redis-server stop

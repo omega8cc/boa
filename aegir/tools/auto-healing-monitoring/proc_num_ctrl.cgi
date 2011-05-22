@@ -36,8 +36,8 @@ print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
 if (-e "/usr/sbin/pdnsd") {
   `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
 }
-if (-f "/usr/local/sbin/pure-config.pl") {
-  `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
+if (!$mysqlsumar || $mysqlsumar > 150) {
+  `bash /var/xdrago/move_sql.sh`;
 }
 if (-f "/var/xdrago/memcache.sh") {
   `/var/xdrago/memcache.sh` if (!$memcachesumar || $memcachesumar < 8);
@@ -46,20 +46,12 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
-if (!$mysqlsumar || $mysqlsumar > 150) {
-  `touch /var/xdrago/log/optimize_mysql_ao.pid`;
-  `touch /var/xdrago/log/mysql_restart_running.pid`;
-  `/etc/init.d/mysql restart`;
-  `rm -f /var/xdrago/log/optimize_mysql_ao.pid`;
-  `rm -f /var/xdrago/log/mysql_restart_running.pid`;
-}
 `/etc/init.d/nginx restart` if (!$nginxsumar && -f "/etc/init.d/nginx");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
-$host=`hostname`;
-chomp($host);
-$thispid = $host . ".pid";
-`bash /var/xdrago/move_sql.sh` if (!-f "/var/run/mysqld/mysqld.pid");
+if (-f "/usr/local/sbin/pure-config.pl") {
+  `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
+}
 if ($mysqlsumar > 0) {
   $resultmysql5 = `/usr/bin/mysqladmin -u root --password=NdKBu34erty325r6mUHxWy -h localhost --port=3306 flush-hosts 2>&1`;
   print "\n MySQL hosts flushed...\n";
