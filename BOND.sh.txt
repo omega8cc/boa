@@ -298,8 +298,8 @@ tune_memory_limits () {
     _VMFAMILY="XEN"
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
-  let "_USE = (($_RAM / 3))"
-  let "_USE_SQL = (($_RAM / 2))"
+  let "_USE = (($_RAM / 4))"
+  let "_USE_SQL = (($_RAM / 3))"
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_APC=512
