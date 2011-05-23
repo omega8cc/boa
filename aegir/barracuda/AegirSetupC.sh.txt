@@ -1115,7 +1115,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openenterprise-$_OPENENTERPRISE
   rm -f $_CORE/openenterprise-$_OPENENTERPRISE/*.txt
   rm -f -r $_CORE/openenterprise-$_OPENENTERPRISE/modules/cookie_cache_bypass
-  if [ $_OPENENTERPRISE = "6.x-1.0-beta2" ] ; then
+  if [ $_OPENENTERPRISE = "6.x-1.0-beta3" ] ; then
     cd $_CORE/openenterprise-$_OPENENTERPRISE/profiles/openenterprise
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openenterprise.patch ./
     patch -p1 < openenterprise.patch &> /dev/null

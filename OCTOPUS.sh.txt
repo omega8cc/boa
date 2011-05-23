@@ -392,7 +392,7 @@ _UBERCART=uberdrupal
 _COMMERCE=7.x-1.x-dev
 _OPENPUBLIC=beta1-build100
 _COD=6.x-1.0-alpha3
-_OPENENTERPRISE=6.x-1.0-beta2
+_OPENENTERPRISE=6.x-1.0-beta3
 
 ###---### Functions
 #

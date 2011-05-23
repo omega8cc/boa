@@ -901,8 +901,8 @@ mrun "sleep 3"
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-1.0-beta2" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-1.0-beta2
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-1.0-beta3" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-1.0-beta3
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
