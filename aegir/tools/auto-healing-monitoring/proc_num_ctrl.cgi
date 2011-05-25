@@ -22,6 +22,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\tGLOBAL";
 print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
@@ -33,6 +34,7 @@ print "\n $memcachesumar Cache procs\tGLOBAL" if ($memcachelives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
 print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
 print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
+print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
 if (-e "/usr/sbin/pdnsd") {
   `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
 }
@@ -55,6 +57,9 @@ if (-f "/usr/local/sbin/pure-config.pl") {
 if ($mysqlsumar > 0) {
   $resultmysql5 = `/usr/bin/mysqladmin -u root --password=NdKBu34erty325r6mUHxWy -h localhost --port=3306 flush-hosts 2>&1`;
   print "\n MySQL hosts flushed...\n";
+}
+if ($dhcpcdlives) {
+  `hostname -v $thishostname`;
 }
 
 exit;
