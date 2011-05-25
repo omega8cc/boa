@@ -245,6 +245,16 @@ restore_default_sql () {
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
+  _DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ $_DB_SERVER_TEST =~ MariaDB ]] ; then
+    _DB_SERVER=MariaDB
+  else
+    _DB_SERVER=Percona
+  fi
+  if [ "$_DB_SERVER" = "Percona" ]; then
+    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
+    sed -i "s/language/\#language/g" /etc/mysql/my.cnf
+  fi
 }
 #
 tune_sql () {
