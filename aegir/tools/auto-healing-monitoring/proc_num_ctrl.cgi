@@ -59,6 +59,8 @@ if ($mysqlsumar > 0) {
   print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives) {
+   $thishostname = `cat /etc/hostname`;
+   chomp($thishostname);
   `hostname -v $thishostname`;
 }
 
