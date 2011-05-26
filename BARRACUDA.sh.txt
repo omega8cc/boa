@@ -1431,11 +1431,7 @@ install_with_apt_sql () {
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_REL_VERSION" = "lucid" ] ; then
-    _LOCAL_INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
-  else
-    _LOCAL_INSTALL="aptitude -y install"
-  fi
+  _LOCAL_INSTALL="aptitude -y install"
   install_with_apt_sql
 else
   _DB_SERVER_TEST=`mysql -V 2>&1`
@@ -1459,11 +1455,7 @@ else
     install_with_apt_sql
     _PHP_FORCE_REINSTALL=YES
   else
-    if [ "$_REL_VERSION" = "lucid" ] ; then
-      _LOCAL_INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
-    else
-      _LOCAL_INSTALL="aptitude -y install"
-    fi
+   _LOCAL_INSTALL="aptitude -y install"
   fi
 fi
 
