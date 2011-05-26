@@ -1389,10 +1389,10 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
-  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get autoremove -y"          &> /dev/null
   st_runner "apt-get remove mysql-common -y" &> /dev/null
-  st_runner "apt-get purge mysql-common -y" &> /dev/null
-  st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get purge mysql-common -y"  &> /dev/null
+  st_runner "apt-get update -y"              &> /dev/null
   SQLDEB="percona-server-server-5.5"
   SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
@@ -1455,9 +1455,9 @@ else
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     invoke-rc.d cron stop &> /dev/null
-    invoke-rc.d lfd stop &> /dev/null
-    invoke-rc.d csf stop &> /dev/null
-    invoke-rc.d csf stop &> /dev/null
+    invoke-rc.d lfd stop  &> /dev/null
+    invoke-rc.d csf stop  &> /dev/null
+    invoke-rc.d csf stop  &> /dev/null
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
     mrun "sleep 60"
     if [ "$_DB_SERVER" = "Percona" ] ; then
