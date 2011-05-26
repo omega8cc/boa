@@ -911,10 +911,13 @@ if [ $_THIS_OS = "Ubuntu" ] ; then
     _REL_VERSION="lucid"
   elif [ $_THIS_RV = "karmic" ] ; then
     _REL_VERSION="karmic"
+    _DB_SERVER=MariaDB
   elif [ $_THIS_RV = "jaunty" ] ; then
     _REL_VERSION="jaunty"
+    _DB_SERVER=MariaDB
   elif [ $_THIS_RV = "hardy" ] ; then
     _REL_VERSION="hardy"
+    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -1420,11 +1423,19 @@ install_with_apt_sql () {
   else
     install_mariadb_sql
   fi
-  st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
-  st_runner "apt-get autoremove -y" 2> /dev/null
-  st_runner "apt-get update -y" 2> /dev/null
-  st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
-  st_runner "$_LOCAL_INSTALL $SQLADD" 2> /dev/null
+  if [ "$_REL_VERSION" = "natty" ] ; then
+    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
+    st_runner "apt-get autoremove -y" &> /dev/null
+    st_runner "apt-get update -y" &> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
+  else
+    st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
+    st_runner "apt-get autoremove -y" 2> /dev/null
+    st_runner "apt-get update -y" 2> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLDEB"2> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLADD" 2> /dev/null
+  fi
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
