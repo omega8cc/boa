@@ -103,18 +103,14 @@ _AEGIR_VERSION=HEAD
 ### MariaDB to Percona - it will also force
 ### PHP-FPM rebuild automatically.
 ###
-### Note 1: Since Percona 5.5.11 is currently
+### Note: Since Percona 5.5.11 is currently
 ### broken on Lenny, and 5.5.12 is not yet
 ### available in the apt repository, we force
 ### installation of MariaDB 5.2 on Lenny.
 ###
-### Note 2: For Ubuntu Natty we force Percona
-### Server install, since MariaDB is not yet
-### compatible with Natty.
-###
 ### _DB_SERVER=Percona
 ###
-_DB_SERVER=MariaDB
+_DB_SERVER=Percona
 
 
 ###----------------------------------------###
@@ -910,7 +906,6 @@ _THIS_RV=`lsb_release -sc`
 if [ $_THIS_OS = "Ubuntu" ] ; then
   if [ $_THIS_RV = "natty" ] ; then
     _REL_VERSION="natty"
-    _DB_SERVER=Percona
   elif [ $_THIS_RV = "maverick" ] ; then
     _REL_VERSION="maverick"
   elif [ $_THIS_RV = "lucid" ] ; then
@@ -1454,7 +1449,7 @@ else
     install_with_apt_sql
     _PHP_FORCE_REINSTALL=YES
   else
-   _LOCAL_INSTALL="aptitude -y install"
+    _LOCAL_INSTALL="aptitude -y install"
   fi
 fi
 
