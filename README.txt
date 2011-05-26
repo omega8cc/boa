@@ -109,7 +109,7 @@ Octopus can install the platforms listed below:
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- ProsePoint 0.38 (int) -------- http://prosepoint.org
+ ProsePoint 0.39 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.20 Pressflow (int) -- http://pressflow.org

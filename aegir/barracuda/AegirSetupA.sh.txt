@@ -830,8 +830,8 @@ mrun "sleep 3"
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.38" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.38
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.39" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.39
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev/sites" ] ; then
