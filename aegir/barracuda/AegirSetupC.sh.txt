@@ -389,9 +389,9 @@ mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-6.20.pl.po" ]; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-6.22.pl.po" ]; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.20.pl.po" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.22.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
@@ -412,11 +412,11 @@ fi
 
 ###---### Distributions full names
 #
-_F_ACQUIA="Acquia 6.20 P.$_THIS_CORE"
+_F_ACQUIA="Acquia 6.22 P.$_THIS_CORE"
 _F_ACQUIA_SEVEN="Acquia 7.0.1 P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0-beta10 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
-_F_DRUPAL6="Drupal 6.20 P.$_THIS_CORE"
+_F_DRUPAL6="Drupal 6.22 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal 7.2 P.$_THIS_CORE"
 _F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
 _F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
@@ -432,9 +432,9 @@ _F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
 _F_COD="Conference $_COD P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
 #
-_F_DRUPAL6_D="Drupal 6.20 D.$_THIS_CORE"
-_F_DRUPAL6_S="Drupal 6.20 S.$_THIS_CORE"
-_F_DRUPAL6_P="Drupal 6.20 P.$_THIS_CORE"
+_F_DRUPAL6_D="Drupal 6.22 D.$_THIS_CORE"
+_F_DRUPAL6_S="Drupal 6.22 S.$_THIS_CORE"
+_F_DRUPAL6_P="Drupal 6.22 P.$_THIS_CORE"
 _F_DRUPAL7_D="Drupal 7.2 D.$_THIS_CORE"
 _F_DRUPAL7_S="Drupal 7.2 S.$_THIS_CORE"
 _F_DRUPAL7_P="Drupal 7.2 P.$_THIS_CORE"
@@ -531,38 +531,38 @@ fi
 if [ -d "$_CORE/o_contrib/module_supports" ] ; then
   rm -f -r $_CORE/o_contrib/module_supports &> /dev/null
 fi
-if [ ! -e "/data/all/000/translations/drupal-6.20.pl.po" ] ; then
+if [ ! -e "/data/all/000/translations/drupal-6.22.pl.po" ] ; then
   if [ ! -d "/data/all/000/translations" ] ; then
     mkdir -p /data/all/000/translations
   else
     rm -f /data/all/000/translations/* &> /dev/null
   fi
   cd /data/all/000/translations
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.zh-hant.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.zh-hans.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ca.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.da.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.nl.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.fr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.de.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.hu.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ja.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.nb.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pl.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-pt.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.pt-br.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.es.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.sv.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.el.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.et.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.it.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.uk.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.sk.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.fi.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.tr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.cs.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.lt.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.20.ru.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.zh-hant.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.zh-hans.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.ca.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.da.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.nl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.fr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.de.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.hu.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.ja.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.nb.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.pl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.pt-pt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.pt-br.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.es.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.sv.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.el.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.et.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.it.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.uk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.sk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.fi.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.tr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.cs.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.lt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.ru.po
 fi
 upgrade_o_contrib
 

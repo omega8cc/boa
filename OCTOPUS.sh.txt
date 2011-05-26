@@ -378,7 +378,7 @@ _DRUSH_VERSION=7.x-4.4 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD 
 
 ## Distributions
-_COCOMORE=cdc-6.20.12
+_COCOMORE=cdc-6.22.12
 _COMMONS=6.x-1.6
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.2
