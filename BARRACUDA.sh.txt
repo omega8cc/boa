@@ -56,7 +56,7 @@ _MY_EMAIL="notify@omega8.cc"
 ###
 ### _AUTOPILOT=YES
 ###
-_AUTOPILOT=YES
+_AUTOPILOT=NO
 
 
 ###----------------------------------------###
@@ -222,9 +222,9 @@ _FORCE_GIT_MIRROR=""
 ### will disable the DNS test completely
 ### below in _DNS_SETUP_TEST).
 ###
-_MY_OWNIP="69.164.222.168"
-_MY_HOSTN="linode.us.host8.biz"
-_MY_FRONT="m.linode.us.host8.biz"
+_MY_OWNIP=""
+_MY_HOSTN=""
+_MY_FRONT=""
 
 
 ###----------------------------------------###
