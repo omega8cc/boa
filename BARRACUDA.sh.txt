@@ -56,7 +56,7 @@ _MY_EMAIL="notify@omega8.cc"
 ###
 ### _AUTOPILOT=YES
 ###
-_AUTOPILOT=NO
+_AUTOPILOT=YES
 
 
 ###----------------------------------------###
@@ -222,9 +222,9 @@ _FORCE_GIT_MIRROR=""
 ### will disable the DNS test completely
 ### below in _DNS_SETUP_TEST).
 ###
-_MY_OWNIP=""
-_MY_HOSTN=""
-_MY_FRONT=""
+_MY_OWNIP="69.164.222.168"
+_MY_HOSTN="linode.us.host8.biz"
+_MY_FRONT="m.linode.us.host8.biz"
 
 
 ###----------------------------------------###
@@ -664,7 +664,7 @@ else
   msg "INFO: INIT..."
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
-_INSTALL="/usr/bin/apt-fast -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
+_INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
@@ -1336,20 +1336,20 @@ fi
 
 ###--------------------###
 msg "INFO: Run apt update, please wait..."
-st_runner "apt-fast update -y --force-yes" 2> /dev/null
+st_runner "apt-get update -y --force-yes" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "apt-fast upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast update -y --force-yes" 2> /dev/null
-  st_runner "apt-fast clean -y --force-yes" 2> /dev/null
-  st_runner "apt-fast dist-upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast autoclean -y --force-yes" 2> /dev/null
+  st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get update -y --force-yes" 2> /dev/null
+  st_runner "apt-get clean -y --force-yes" 2> /dev/null
+  st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  st_runner "apt-fast upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast update -y --force-yes" 2> /dev/null
-  st_runner "apt-fast clean -y --force-yes" 2> /dev/null
-  st_runner "apt-fast dist-upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get update -y --force-yes" 2> /dev/null
+  st_runner "apt-get clean -y --force-yes" 2> /dev/null
+  st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
-  st_runner "apt-fast autoclean -y --force-yes" 2> /dev/null
+  st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
 fi
 st_runner "dpkg --configure --force-all -a" 2> /dev/null
 
@@ -1431,7 +1431,7 @@ install_with_apt_sql () {
   else
     st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
   fi
-  st_runner "$_INSTALL $SQLADD" 2> /dev/null
+  st_runner "$_LOCAL_INSTALL $SQLADD" 2> /dev/null
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
@@ -1464,12 +1464,12 @@ fi
 ###--------------------###
 msg "INFO: Run apt update again, please wait..."
 st_runner "dpkg --configure --force-all -a" 2> /dev/null
-st_runner "apt-fast update -y --force-yes" 2> /dev/null
-st_runner "apt-fast clean -y --force-yes" 2> /dev/null
+st_runner "apt-get update -y --force-yes" 2> /dev/null
+st_runner "apt-get clean -y --force-yes" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "apt-fast upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast dist-upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast autoclean -y --force-yes" 2> /dev/null
+  st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 fi
@@ -1477,12 +1477,12 @@ fi
 
 ###--------------------###
 msg "INFO: Run apt update again, please wait..."
-st_runner "apt-fast update -y --force-yes" 2> /dev/null
-st_runner "apt-fast clean -y --force-yes" 2> /dev/null
+st_runner "apt-get update -y --force-yes" 2> /dev/null
+st_runner "apt-get clean -y --force-yes" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "apt-fast upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast dist-upgrade -y --force-yes" 2> /dev/null
-  st_runner "apt-fast autoclean -y --force-yes" 2> /dev/null
+  st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
+  st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 fi
@@ -1520,7 +1520,7 @@ fi
 if [ ! -e "/var/run/cloud_vhost.pid" ] && [ ! -e "/sbin/udevd" ] ; then
   msg "INFO: Install udev, just in case it is missing, please wait..."
   mrun "sleep 3"
-  st_runner "apt-fast -y install udev" 2> /dev/null
+  st_runner "apt-get -y install udev" 2> /dev/null
 fi
 
 
@@ -2629,7 +2629,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
       true
       msg "INFO: Installing Collectd Graph Panel, please wait..."
       mrun "sleep 3"
-      st_runner "apt-fast -y install collectd" 2> /dev/null
+      st_runner "apt-get -y install collectd" 2> /dev/null
       cd /var/www
       git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
       sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
@@ -2708,7 +2708,7 @@ if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     wget -q -U iCab http://www.webmin.com/jcameron-key.asc
     apt-key add jcameron-key.asc &> /dev/null
     touch /var/log/webmin_new_apt.log
-    st_runner "apt-fast update -y --force-yes" 2> /dev/null
+    st_runner "apt-get update -y --force-yes" 2> /dev/null
     st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
     msg "INFO: Webmin Control Panel installation completed"
     mrun "sleep 2"
