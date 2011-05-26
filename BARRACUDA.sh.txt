@@ -92,8 +92,8 @@ _AEGIR_VERSION=HEAD
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.1.49 (default)
-### or Percona latest release 5.5.11 which is
+### You can choose MariaDB 5.2 (default)
+### or Percona latest release 5.5 which is
 ### available now only for Squeeze, Lucid,
 ### Maverick and Natty.
 ###
@@ -106,7 +106,7 @@ _AEGIR_VERSION=HEAD
 ### Note 1: Since Percona 5.5.11 is currently
 ### broken on Lenny, and 5.5.12 is not yet
 ### available in the apt repository, we force
-### installation of MariaDB 5.1.49 on Lenny.
+### installation of MariaDB 5.2 on Lenny.
 ###
 ### Note 2: For Ubuntu Natty we force Percona
 ### Server install, since MariaDB is not yet
@@ -1399,21 +1399,18 @@ install_percona_sql () {
 }
 install_mariadb_sql () {
   cd /var/opt
-  wget -q -U iCab http://ourdelta.org/deb/ourdelta.gpg
-  apt-key add ourdelta.gpg &> /dev/null
-  if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "maverick" ] ; then
-    wget -q -U iCab http://ourdelta.org/deb/sources/lucid-mariadb-ourdelta.list
-    cp -af lucid-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
-  elif [ "$_REL_VERSION" = "squeeze" ] ; then
-    wget -q -U iCab http://ourdelta.org/deb/sources/lenny-mariadb-ourdelta.list
-    cp -af lenny-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
-  else
-    wget -q -U iCab http://ourdelta.org/deb/sources/$_REL_VERSION-mariadb-ourdelta.list
-    cp -af $_REL_VERSION-mariadb-ourdelta.list /etc/apt/sources.list.d/ourdelta.list &> /dev/null
+  apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 1BB943DB &> /dev/null
+  if [ $_THIS_OS = "Debian" ] ; then
+    _THIS_OS_NAME=debian
+  elif [ $_THIS_OS = "Ubuntu" ] ; then
+    _THIS_OS_NAME=ubuntu
   fi
+  echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "apt-get autoremove -y" 2> /dev/null
   st_runner "apt-get update -y" 2> /dev/null
-  SQLDEB="mariadb-server-5.1 mariadb-client-5.1 mariadb-common"
+  SQLDEB="mariadb-server-5.2 mariadb-client-5.2 mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_apt_sql () {
@@ -1448,9 +1445,12 @@ else
   elif [[ $_DB_SERVER_TEST =~ MariaDB ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES  
   fi
+  elif [[ $_DB_SERVER_TEST =~ "5.1.49-MariaDB" ]] ; then
+    _SQL_UPGRADE=YES  
+  fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     invoke-rc.d cron stop &> /dev/null
-    msg "INFO: Running MariaDB to Percona upgrade and then PHP-FPM forced rebuild, please wait..."
+    msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
     mrun "sleep 60"
     _LOCAL_INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
