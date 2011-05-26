@@ -1429,12 +1429,13 @@ install_with_apt_sql () {
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
   else
-    st_runner "$_INSTALL $SQLDEB" 2> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
   fi
   st_runner "$_INSTALL $SQLADD" 2> /dev/null
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
+  _LOCAL_INSTALL="aptitude -y install"
   install_with_apt_sql
 else
   _DB_SERVER_TEST=`mysql -V 2>&1`
@@ -1454,6 +1455,8 @@ else
     sed -i "s/language/\#language/g" /etc/mysql/my.cnf
     install_with_apt_sql
     _PHP_FORCE_REINSTALL=YES
+  else
+    _LOCAL_INSTALL="aptitude -y install"
   fi
 fi
 
