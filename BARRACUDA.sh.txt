@@ -97,13 +97,13 @@ _AEGIR_VERSION=HEAD
 ### available only for Squeeze, Lenny, Lucid,
 ### Maverick and Natty.
 ###
-### Note 1: You can choose the DB server only
-### on Barracuda install. We don't offer it
-### on upgrade - it is left for your sysadmin
-### to manage possible upgrade/switch manually
-### if interested.
+### You can choose/change the DB server both
+### on Barracuda install and upgrade, but
+### the only upgrade path available is from
+### MariaDB to Percona - it will also force
+### PHP-FPM rebuild automatically.
 ###
-### Note 2: For Ubuntu Natty we force Percona
+### Note: For Ubuntu Natty we force Percona
 ### Server install, since MariaDB is not yet
 ### compatible with Natty.
 ###
@@ -357,6 +357,7 @@ _INSTALLER_VERSION=1.0-boa-T-8.5
 _NGINX_VERSION=1.0.2
 _PHP_VERSION=5.2.17
 _PHP_FORCE_REINSTALL=NO
+_SQL_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
 _PURE_FTPD_VERSION=1.0.32
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
@@ -1350,6 +1351,7 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
   st_runner "apt-fast autoclean -y --force-yes" 2> /dev/null
 fi
+st_runner "dpkg --configure --force-all -a" 2> /dev/null
 
 
 ###--------------------###
@@ -1410,29 +1412,55 @@ install_mariadb_sql () {
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_apt_sql () {
-  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
     _PERCONA_READY=YES
   else
     _PERCONA_READY=NO
   fi
-  if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ]; then
+  if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
     install_percona_sql
-  elif [ "$_REL_VERSION" = "natty" ]; then
+  elif [ "$_REL_VERSION" = "natty" ] ; then
+    install_percona_sql
+  elif [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
     install_percona_sql
   else
     install_mariadb_sql
   fi
-  st_runner "$_INSTALL $SQLDEB" 2> /dev/null
+  if [ "$_SQL_UPGRADE" = "YES" ] ; then
+    st_runner "$_LOCAL_INSTALL $SQLDEB" 2> /dev/null
+  else
+    st_runner "$_INSTALL $SQLDEB" 2> /dev/null
+  fi
   st_runner "$_INSTALL $SQLADD" 2> /dev/null
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   install_with_apt_sql
+else
+  _DB_SERVER_TEST=`mysql -V 2>&1`
+  _SQL_UPGRADE=NO
+  if [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
+    _SQL_UPGRADE=YES
+  elif [[ $_DB_SERVER_TEST =~ MariaDB ]] && [ "$_DB_SERVER" = "Percona" ] ; then
+    _SQL_UPGRADE=YES  
+  fi
+  if [ "$_SQL_UPGRADE" = "YES" ] ; then
+    invoke-rc.d cron stop &> /dev/null
+    msg "INFO: Running MariaDB to Percona upgrade and then PHP-FPM forced rebuild, please wait..."
+    mrun "sleep 60"
+    _LOCAL_INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
+    cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
+    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
+    sed -i "s/language/\#language/g" /etc/mysql/my.cnf
+    install_with_apt_sql
+    _PHP_FORCE_REINSTALL=YES
+  fi
 fi
 
 
 ###--------------------###
 msg "INFO: Run apt update again, please wait..."
+st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "apt-fast update -y --force-yes" 2> /dev/null
 st_runner "apt-fast clean -y --force-yes" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
