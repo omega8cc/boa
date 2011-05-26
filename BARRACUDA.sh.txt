@@ -1406,8 +1406,8 @@ install_mariadb_sql () {
     _THIS_OS_NAME=ubuntu
   fi
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "apt-get autoremove -y" 2> /dev/null
   st_runner "apt-get update -y" 2> /dev/null
   SQLDEB="mariadb-server-5.2 mariadb-client-5.2 mariadb-common"
@@ -1439,10 +1439,9 @@ else
   if [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
     _SQL_UPGRADE=YES
   elif [[ $_DB_SERVER_TEST =~ MariaDB ]] && [ "$_DB_SERVER" = "Percona" ] ; then
-    _SQL_UPGRADE=YES  
-  fi
-  elif [[ $_DB_SERVER_TEST =~ "5.1.49-MariaDB" ]] ; then
-    _SQL_UPGRADE=YES  
+    _SQL_UPGRADE=YES
+  elif [[ $_DB_SERVER_TEST =~ 5.1.49-MariaDB ]] ; then
+    _SQL_UPGRADE=YES
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     invoke-rc.d cron stop &> /dev/null
