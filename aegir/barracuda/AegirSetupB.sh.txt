@@ -420,9 +420,10 @@ fi
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   DRUSHC="$_ROOT/tools/drush/drush"
-  $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 -y &> /dev/null
+  $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 hosting_upload-6.x-1.x -y &> /dev/null
   $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD en hosting_client -y &> /dev/null
+  $_DRUSHCMD en hosting_upload -y &> /dev/null
   $_DRUSHCMD en path_alias_cache -y &> /dev/null
   $_DRUSHCMD en css_emimage -y &> /dev/null
   $_DRUSHCMD en syslog -y &> /dev/null
@@ -441,6 +442,8 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_cron_use_backend 0 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_upload_platform_path "/data/disk/$_USER/static" &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_upload_upload_path "sites/$_DOMAIN/files/deployment" &> /dev/null
   sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
   if [ $_LOCAL_STATUS = "INIT" ] ; then
     $_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
