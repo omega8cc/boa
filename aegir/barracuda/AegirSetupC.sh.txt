@@ -469,9 +469,6 @@ rm -f -r /data/src/$_THIS_CORE/pressflow-6/modules/cookie_cache_bypass
 rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
 themes_for_d6
 rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
-#cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
-wget -q -U iCab http://files.aegir.cc/boost_stats.php.txt
-mv -f boost_stats.php.txt boost_stats.php &> /dev/null
 if [ ! -e "$_CORE/o_contrib_seven" ] ; then
   mkdir -p $_CORE/o_contrib_seven
   cd $_CORE/o_contrib_seven
@@ -484,32 +481,8 @@ if [ ! -e "$_CORE/o_contrib" ] ; then
   download_o_contrib_six
   cd $_CORE/o_contrib
 fi
-if [ ! -d "$_CORE/o_contrib_atrium" ] ; then
-  mkdir -p $_CORE/o_contrib_atrium
-  cd $_CORE/o_contrib_atrium
-  git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
-  wget -q -U iCab http://ftp.drupal.org/files/projects/data-6.x-1.0-alpha14.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-6.x-1.0-beta10.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-6.x-1.0-beta3.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  if ! netcat -w 8 -z features.chapterthree.com 80 ; then
-    _CH3_WORKS="NO"	
-  else
-    wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.0.tar.gz
-    wget -q -U iCab http://features.chapterthree.com/sites/default/files/fserver/atrium_apachesolr_search-6.x-1.0.tar_.gz
-    mv -f atrium_apachesolr_search-6.x-1.0.tar_.gz atrium_apachesolr_search-6.x-1.0.tar.gz &> /dev/null
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    cd apachesolr
-    svn checkout -r22 http://solr-php-client.googlecode.com/svn/trunk/ SolrPhpClient &> /dev/null
-    cd $_CORE/o_contrib_atrium
-  fi
-  rm -f *.tar.gz
-fi
 cd /data/src/$_THIS_CORE/pressflow-6/
+cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
 ln -s $_CORE/o_contrib modules/o_contrib
 cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
 fi
@@ -655,14 +628,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
   sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
+  cd ./profiles/openatrium/modules/atrium_features/
+  git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
+  git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
+  cd $_CORE/atrium-$_OPENATRIUM
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
 cd $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM
 create_symlinks
-if [ ! -L "$_CORE_DISTRO/modules/o_contrib_atrium" ] ; then
-  ln -s $_CORE/o_contrib_atrium $_CORE_DISTRO/modules/o_contrib_atrium &> /dev/null
-fi
 msg "STATUS: $_F_ATRIUM installation completed"
 mrun "sleep 2"
 else
