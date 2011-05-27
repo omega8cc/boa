@@ -34,8 +34,8 @@ context are not related to the multi-server Aegir features.
 It is related to the multi-Aegir-instances environment, with
 virtual chroot/jail for every Aegir instance.
 
-Barracuda is the main script for the base/core Aegir Hosting System
-install and upgrades, including OS env, main Aegir instance,
+Barracuda is the main script for the Aegir Master Instance system
+install and upgrades, including OS env and main Aegir instance,
 but no platforms will be added there to keep it compatible
 with all existing and future installs, when you don't need
 any ready to use platforms and instead you are using the system
@@ -95,7 +95,7 @@ standard production settings.
 
 ### OCTOPUS PLATFORMS
 
-Octopus can install the platforms listed below:
+Octopus (HEAD) can install the platforms listed below:
 
  Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
@@ -103,7 +103,7 @@ Octopus can install the platforms listed below:
  Atrium 1.0-beta10 ------------ http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  NodeStream 1.0 --------------- http://nodestream.org
- Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
+ Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.0.1 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu

@@ -312,8 +312,8 @@ _SMTP_RELAY_HOST=""
 ### In this case "aegir.local" will be used
 ### as your hostname and all connections and
 ### grants will use "aegir.local" instead of
-### FQDN. Also your core Hostmaster will be
-### available at http://aegir.local
+### FQDN. Also your Aegir Master Instance
+### will be available at http://aegir.local
 ###
 ### This option is useful when your server is
 ### available only in your local network
@@ -1120,7 +1120,7 @@ EOF
 
   NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
 
-  * Your core Aegir instance control panel will be available at https://$_THIS_FRONT.
+  * Your Aegir Master Instance control panel will be available at https://$_THIS_FRONT.
   * Your (optional) fast DNS cache server (pdnsd) will listen on 127.0.0.1:53.
   * Your (optional) Bind9 DNS Server will listen on $_THISHTIP:53.
   * Your (optional) MultiCore Apache Solr Tomcat will listen on 127.0.0.1:8080.
@@ -2441,8 +2441,8 @@ if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; 
     cat <<EOF
 
   We can't enable Wildcard HTTPS Proxy for all your hosted sites,
-  including all Hostmaster instances, because you have already
-  enabled SSL on the IP address used by your core Hostmaster instance.
+  including all Aegir Satellite Instances, because you have already
+  enabled SSL on the IP address used by your Aegir Master Instance.
 
   If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
   please disable the SSL you enabled, or use the built-in Aegir SSL

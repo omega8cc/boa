@@ -43,8 +43,8 @@
 ###----------------------------------------###
 ###
 ### Enter below your valid e-mail address and
-### the (sub)domain for this Aegir instance
-### which is already pointed to your server.
+### the (sub)domain for this Aegir Satellite
+### Instance, already pointing to your server.
 ### Define also your *new* Aegir user for this
 ### instance or existing if this is an upgrade
 ###
@@ -105,8 +105,8 @@ _DEBUG_MODE=NO
 ### FORCED IP MODE                         ###
 ###----------------------------------------###
 ###
-### To install or upgrade Hostmaster instance
-### on any extra (non-default) IP address
+### To install or upgrade Aegir Satellite
+### Instance on any non-default IP address
 ### available on your server/machine, please
 ### define it below. For default, main IP
 ### based install, leave default empty value.
@@ -192,9 +192,9 @@ _FORCE_GIT_MIRROR=""
 ### be sites/all/modules/ubercart/README.txt
 ### 
 ### You can turn ON/OFF this feature on every
-### upgrade for all platforms on this Octopus
-### instance by changing the value below,
-### to YES or NO.
+### upgrade for all platforms on this Aegir
+### Satellite Instance by changing the value
+### below to YES or NO.
 ###
 ### _USE_SPEED_BOOSTER=NO
 ###
@@ -253,11 +253,12 @@ _DNS_SETUP_TEST=YES
 ### DISTRO INITIAL VERSION NR              ###
 ###----------------------------------------###
 ###
-### By default every new Octopus instance
-### will use shared code for platforms
-### created during previous Octopus install
-### or upgrade, resulting with new 00x number
-### in the /data/all directory.
+### By default every new Aegir Satellite
+### Instance will use shared code for its
+### platforms, created during previous Aegir
+### Satellite Instance install or upgrade,
+### resulting with new 00x number in the
+### /data/all directory.
 ###
 ### It is not always good, since you want
 ### to keep the code shared between instances,
@@ -266,9 +267,10 @@ _DNS_SETUP_TEST=YES
 ### install/upgrade was performed a few months
 ### ago.
 ###
-### If you don't want to build a new Octopus
-### instance with latest code, then leave it
-### at default value. Otherwise change it to:
+### If you don't want to build a new Aegir
+### Satellite Instance with latest code, then
+### leave it at default value. Otherwise
+### change it to:
 ###
 ### _HOT_SAUCE=YES
 ###
@@ -281,8 +283,8 @@ _HOT_SAUCE=NO
 ###
 ### We changed the default to YES to avoid
 ### creating many duplicated platforms on
-### every Octopus instance upgrade, when
-### there is no new core, thus no reason
+### every Aegir Satellite Instance upgrade,
+### when there is no new core, thus no reason
 ### to create newer platforms for the same
 ### distributions versions.
 ###
@@ -312,8 +314,8 @@ _USE_CURRENT=YES
 ###----------------------------------------###
 ###
 ### Use this option only when you want to
-### switch ALL your Octopus instances from
-### local Redis and Memcache servers
+### switch ALL your Aegir Satellite Instances
+### from local Redis and Memcache servers
 ### to the remote caches in your network.
 ### It will also permanently disable your
 ### local instances of Redis and Memcache.
@@ -806,7 +808,7 @@ fi
 if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
   true
 else
-  msg "ERROR: Your defined domain: $_DOMAIN is already used on the core Hostmaster instance."
+  msg "ERROR: Your defined domain: $_DOMAIN is already used on the Aegir Master Instance."
   msg "Please change the value for _DOMAIN to make it unique."
   msg "Bye."
   exit 1

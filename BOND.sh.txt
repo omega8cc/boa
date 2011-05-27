@@ -59,7 +59,7 @@
 ###       are server-vide, while some, like
 ###       mod_evasive settings will affect
 ###       only sites hosted on the Aegir
-###       Hostmaster instance defined below.
+###       Satellite Instance defined below.
 ###
 _TUNE_HOSTMASTER=/data/disk/o1
 
@@ -85,7 +85,7 @@ _TUNE_NGINX_CONNECT=OFF
 ###       by Barracuda (not Octopus!)
 ###       will restore default value
 ###       for the server and all existing
-###       Hostmaster instances.
+###       Aegir Satellite Instances.
 ###
 _TUNE_NGINX_TIMEOUT=3600
 
@@ -466,7 +466,7 @@ echo " "
 msg "TUNER START -> checkpoint: "
 cat <<EOF
 
-  * Hostmaster instance to tune: $_TUNE_HOSTMASTER
+  * Aegir Satellite Instance to tune: $_TUNE_HOSTMASTER
   * Nginx server mod_evasive will be set to $_TUNE_NGINX_CONNECT
   * Nginx server fastcgi timeout will be set to $_TUNE_NGINX_TIMEOUT seconds
   * Nginx firewall limit of allowed requests will be set to $_TUNE_NGINX_FIREWALL/300

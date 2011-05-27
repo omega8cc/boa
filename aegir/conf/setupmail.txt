@@ -57,7 +57,7 @@ Some new platforms are supported by Aegir Classic and TG only:
 
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
  NodeStream 1.0 --------------- http://nodestream.org
- Drupal Commons 1.5 ----------- http://acquia.com/drupalcommons
+ Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
 
   Q: How to upgrade from Aegir Mini to Classic?

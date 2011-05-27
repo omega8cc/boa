@@ -134,7 +134,7 @@ Added/Fixed: (upgrade required)
 Added/Fixed: (upgrade recommended)
 
 1.  Octopus now creates SSH/FTPS separate, non-aegir
-    account for every non-core Hostmaster instance,
+    account for every Aegir Satellite Instance,
     with limited shell to avoid using commands
     like "drush up" since they should never be used
     on sites managed in the Aegir system.
@@ -144,21 +144,21 @@ Added/Fixed: (upgrade recommended)
     details to the address defined as _CLIENT_EMAIL.
 
 3.  When Octopus is used the first time to create
-    a non-core Hostmaster instance, it doesn't allow
+    an Aegir Satellite Instance, it doesn't allow
     to skip installing all platforms, since it is
     recommended to add all available platforms with
     initial install, for easier re-using the code
-    by next non-core Hostmaster instances.
+    by next Aegir Satellite Instances.
 
 4.  The second and all future non-core Hostmaster
     installs allow to choose one or more platforms
     or to skip adding platforms at all.
 
 5.  Octopus by default honors initial domain used
-    for the non-core Hostmaster instance on every
+    for the Aegir Satellite Instance on every
     upgrade to avoid mistakes with using different
-    copies of the script for different non-core
-    Hostmaster instances upgrades.
+    copies of the script for different Aegir
+    Satellite Instances upgrades.
 
 6.  Also Barracuda will always honor initial
     domain used for the core Hostmaster to avoid
@@ -215,17 +215,17 @@ Added/Fixed: (upgrade recommended)
 
 Added/Fixed: (upgrade recommended because it works!)
 
-1. Upgrade of core Hostmaster instance by Barracuda
-   and upgrade of Hostmaster instances by Octopus
+1. Upgrade of Aegir Master Instance by Barracuda
+   and upgrade of Aegir Satellite Instances by Octopus
    finally works as expected.
 
 2. It is now possible to use Barracuda to install
-   environment and core Hostmaster instance, to
-   upgrade only environment, to upgrade only core
-   Hostmaster instance, or both at the same time.
+   environment and Aegir Master Instance, to
+   upgrade only environment, to upgrade only Aegir
+   Master Instance, or both at the same time.
    
 3. Octopus now can separately install and/or upgrade
-   any non-core Hostmaster instance or any platform
+   any Aegir Satellite Instance or any platform
    on any instance, separately, using detailed prompt
    with version numbers and links to distributions
    home pages.
@@ -263,7 +263,7 @@ Added/Fixed: (upgrade recommended)
 Added/Fixed: (upgrade optional)
 
 1. Octopus now allows to install or upgrade only Aegir
-   hostmaster instance without any platforms added.
+   Satellite Instance without any platforms added.
 
 2. Enabled again early exit on the first error to avoid
    confusing cascade of errors if something went wrong.
@@ -279,12 +279,12 @@ Added/Fixed: (upgrade from previous versions recommended)
    Redis and Memcache.
 
 2. Barracuda now can upgrade packages selectively.
-   Just run it again to upgrade the system and the main
-   Aegir instance.
+   Just run it again to upgrade the system and the
+   Aegir Master Instance.
    
-3. Octopus can create many sub-instances on the same
-   server, each with different set of platforms, but
-   with ability to share the code between instances,
+3. Octopus can create many Aegir Satellite Instances
+   on the same server, each with different set of platforms,
+   but with ability to share the code between instances,
    so you can use this system even on the low end VPS.
    
 4. Chive database manager added by default with db.
