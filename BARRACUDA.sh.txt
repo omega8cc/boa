@@ -1466,8 +1466,8 @@ install_mariadb_sql () {
     _THIS_OS_NAME=ubuntu
   fi
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://www.percona.com/downloads/MariaDB/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "apt-get autoremove -y"          &> /dev/null
   st_runner "apt-get remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y"  &> /dev/null
