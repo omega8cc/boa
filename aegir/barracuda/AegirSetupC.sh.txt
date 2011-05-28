@@ -1135,7 +1135,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   echo "projects[feature_server][type] = \"profile\"" >> fserver.make
   echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
   echo "projects[feature_server][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/feature_server.git\"" >> fserver.make
-  $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
+  $_ROOT/tools/drush/drush make fserver.make fserver-$_SMALLCORE6 &> /dev/null
   rm -f fserver.make
   cd $_CORE/fserver-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver-$_SMALLCORE6/ &> /dev/null
@@ -1397,9 +1397,16 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_UBERCART-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
+  if [ -d "$_CORE/$_UBERCART" ] ; then
+    mv $_CORE/$_UBERCART $_CORE/$_UBERCART-old
+  fi
   wget -q -U iCab http://files.aegir.cc/dev/$_UBERCART.tar.gz
   tar -xzf $_UBERCART.tar.gz
   rm -f $_UBERCART.tar.gz
+  mv $_UBERCART $_UBERCART-$_SMALLCORE6
+  if [ -d "$_CORE/$_UBERCART-old" ] ; then
+    mv $_CORE/$_UBERCART-old $_CORE/$_UBERCART
+  fi
   cd $_CORE/$_UBERCART-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART-$_SMALLCORE6/ &> /dev/null
   rm -f $_CORE/$_UBERCART-$_SMALLCORE6/*.txt

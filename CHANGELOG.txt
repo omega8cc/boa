@@ -55,6 +55,7 @@
 # Improvements since January 2011
 ----------------------------------------
 
+* Speed Booster now works also in the Aegir Master Instance.
 * Full Barracuda install takes only 30 minutes (tested on Linode).
 * Nginx abuse guard is now integrated with csf firewall.
 * Bots/crawlers are now denied on any "dev" type subdomain.
