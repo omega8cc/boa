@@ -425,7 +425,6 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 hosting_upload-6.x-1.x -y &> /dev/null
   $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD en hosting_client -y &> /dev/null
-  $_DRUSHCMD en hosting_upload -y &> /dev/null
   $_DRUSHCMD en path_alias_cache -y &> /dev/null
   $_DRUSHCMD en css_emimage -y &> /dev/null
   $_DRUSHCMD en syslog -y &> /dev/null
