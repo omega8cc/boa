@@ -173,10 +173,10 @@ _FORCE_GIT_MIRROR=""
 ### are never cached for obvious reasons.
 ###
 ### Note: this cache will use hardcoded
-### lifetime value, set to 8 minutes,
+### lifetime value, set to 60 minutes,
 ### but if you have also Boost enabled, then
 ### the Boost cached pages will be served
-### first, if exist, so it is still possible
+### first, if exists, so it is still possible
 ### to use both systems for a bit better
 ### cache lifetime control.
 ###
