@@ -228,6 +228,56 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
+### SPEED BOOSTER                          ###
+###----------------------------------------###
+###
+### It is an experimental feature allowing you
+### to use Nginx built-in cache system, using
+### static copies of full pages, similar to
+### those created by Boost module, but without
+### Boost at all, so it works the same with
+### any Drupal core version: 5.x, 6.x and 7.x.
+###
+### Even when enabled, it will not cache
+### anything if the site is using SSL mode
+### or the platform is Drupal 6 Ubercart,
+### Drupal 7 Commerce or any platform with
+### ubercart module uploaded to sites/all.
+###
+### Also any requests to /user* or /admin*
+### are never cached for obvious reasons.
+###
+### Note: this cache will use hardcoded
+### lifetime value, set to 8 minutes,
+### but if you have also Boost enabled, then
+### the Boost cached pages will be served
+### first, if exist, so it is still possible
+### to use both systems for a bit better
+### cache lifetime control.
+###
+### It is now possible to use this cache
+### system for logged in users, with pages
+### cached per user (valid for 5 minutes max)
+###
+### To disable Speed Booster per platform,
+### create an empty directory with the name
+### "ubercart" (unless you have there the
+### real ubercart module), with one empty
+### README.txt file inside, so its path will
+### be sites/all/modules/ubercart/README.txt
+### 
+### You can turn ON/OFF this feature on every
+### upgrade for all platforms on this Aegir
+### Satellite Instance by changing the value
+### below to YES or NO.
+###
+### _USE_SPEED_BOOSTER=NO
+###
+###
+_USE_SPEED_BOOSTER=YES
+
+
+###----------------------------------------###
 ### DATABASE CUSTOM HOST                   ###
 ###----------------------------------------###
 ###
@@ -592,20 +642,30 @@ force_advanced_nginx_config () {
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
-  mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW &> /dev/null
-  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf ./
+    cp -af nginx_octopus_include.conf nginx_simple_include.conf &> /dev/null
+    cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+  fi
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-  cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf ./
+    cp -af nginx_octopus_include.conf nginx_simple_include.conf &> /dev/null
+    cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+  fi
   chown aegir:aegir *
 }
 #
-# Tune memory limits for PHP-FPM, Nginx and $_DB_SERVER
+# Tune memory limits for PHP-FPM-FPM, Nginx and $_DB_SERVER
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   if [[ $_ETH_TEST =~ venet0 ]] ; then
@@ -1834,7 +1894,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing libmemcached with memcached for php, please wait..."
+  msg "INFO: Installing libmemcached with memcached for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.49.tar.gz
@@ -1866,7 +1926,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing suhosin for php, please wait..."
+  msg "INFO: Installing Suhosin for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://download.suhosin.org/suhosin-0.9.32.1.tar.gz
@@ -1879,7 +1939,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing uploadprogress for php, please wait..."
+  msg "INFO: Installing UploadProgress for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
@@ -1892,7 +1952,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing apc for php, please wait..."
+  msg "INFO: Installing APC for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
@@ -1906,7 +1966,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Installing mailparse for php, please wait..."
+  msg "INFO: Installing MailParse for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
@@ -1923,14 +1983,14 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   _X86_64_TEST=`uname -m`
   if [ "$_X86_64_TEST" = "x86_64" ] ; then
     SYSTEMARCH="x86_64"
-    msg "INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
+    msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
     mrun "sleep 3"
     cd /var/opt
   wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
   tar -xzf ioncube_loaders_lin_x86-64.tar.gz
   else
     SYSTEMARCH="x86"
-    msg "INFO: Installing ioncube $SYSTEMARCH version for php, please wait..."
+    msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
     mrun "sleep 3"
     cd /var/opt
   wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
@@ -1945,7 +2005,7 @@ fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 ###--------------------###
 if [ ! -e "/var/log/apc-$_APC_VERSION.log" ] ; then
-  msg "INFO: Installing apc upgrade for php, please wait..."
+  msg "INFO: Installing APC upgrade for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
@@ -1961,7 +2021,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/log/fixed-libmemcached-0.49.log" ] ; then
-  msg "INFO: Installing libmemcached with memcached upgrade for php, please wait..."
+  msg "INFO: Installing libmemcached with memcached upgrade for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.49.tar.gz
@@ -2212,7 +2272,7 @@ if [ $_STATUS = "INIT" ] ; then
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    msg "INFO: Restarting php-fpm and Nginx"
+    msg "INFO: Restarting PHP-FPM and Nginx"
     mrun "sleep 3"
     tune_memory_limits
     st_runner "invoke-rc.d php-fpm reload" &> /dev/null
