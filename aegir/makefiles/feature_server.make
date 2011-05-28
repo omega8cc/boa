@@ -20,6 +20,10 @@ projects[install_profile_api] = 2.1
 projects[strongarm] = 2.0
 projects[views] = 2.12
 
-projects[fserver][location] = "http://code.developmentseed.org/fserver"
+projects[fserver][download][type] = "git"
+projects[fserver][download][url] = "git://github.com/omega8cc/FeatureServer.git"
+projects[fserver][directory_name] = "fserver"
+projects[fserver][destination] = "modules"
+
 projects[singular][location] = "http://code.developmentseed.org/fserver"
 projects[tao][location] = "http://code.developmentseed.org/fserver"

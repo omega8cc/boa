@@ -376,6 +376,8 @@ _INSTALLER_VERSION=1.0-boa-T-8.5
 ## System
 _WEBG=www-data
 _USRG=users
+_SMALLCORE6=6.22
+_SMALLCORE7=7.2
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD 
 
@@ -384,7 +386,6 @@ _COCOMORE=cdc-6.20.12
 _COMMONS=6.x-1.6
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.2
-_ACQUIA7=acquia-7.2.2
 _MANAGINGNEWS=1.2
 _OPENATRIUM=1-0-beta10
 _NODESTREAM=6.x-1.x
@@ -467,7 +468,6 @@ do
   sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_COD/$_COD/g"                             $Files
-  sed -i "s/EDIT_ACQUIA7/$_ACQUIA7/g"                     $Files
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
@@ -481,6 +481,8 @@ do
   sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
+  sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
+  sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do

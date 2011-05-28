@@ -66,16 +66,15 @@ Your Aegir control panel is available as before at:
      cloud, so simple upgrade is not possible. Separate
      subscription and site migration will be required.
 
-* Nginx server upgraded to version Barracuda/1.0.1
-* Nginx Fast Private File Transfer for Drupal using X-Accel-Redirect.
+* Open Atrium 1.0-beta10 includes Ideation and Folders features.
+* MariaDB server upgraded to version 5.2.6.
+* Nginx server upgraded to version Barracuda/1.0.2
 * Support for secure ubercart keys location to use ../keys path.
-* Open Atrium 1.0-beta10 now includes new Ideation feature.
 * The filefield_nginx_progress now also in every 7.x platform.
 * Drush upgraded to version 4.4
 * Drush Make upgraded to version 2.2
 * Redis cache server upgraded to version 2.0.5
 * PHP-FPM server upgraded to version 5.2.17
-* MariaDB server configuration improved.
 * Memcache extension replaced with memcached and libmemcached.
 * Chive database manager upgraded to version 0.4.1
 

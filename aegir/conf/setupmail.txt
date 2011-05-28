@@ -48,16 +48,16 @@ Drupal distributions ready to deploy [Mini + Classic + TG]:
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
  Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
  Ubercart 6.22 ---------------- http://ubercart.org
- ProsePoint 0.39 -------------- http://prosepoint.org
- Conference 1.0-alpha3 -------- http://usecod.com
+ ProsePoint 0.39 6.22 --------- http://prosepoint.org
+ Conference 1.0-alpha3 6.22 --- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
  
 Some new platforms are supported by Aegir Classic and TG only:
 
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
- NodeStream 1.0 --------------- http://nodestream.org
- Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
+ NodeStream 1.0 6.22 ---------- http://nodestream.org
+ Drupal Commons 1.6 6.22 ------ http://acquia.com/drupalcommons
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
 
   Q: How to upgrade from Aegir Mini to Classic?
@@ -78,20 +78,10 @@ More details about Pressflow Drupal are here:
 
  http://pressflow.org
 
-Every Open Atrium platform comes with a ready-to-use bonus
-feature - Atrium Reader - a mini version of Managing News.
-You can see it in action here: http://bit.ly/atriumreader
+Hosted Open Atrium 1.0-beta10 now includes extra features:
 
-Another great Open Atrium feature is the default
-Apache Solr Search integration. You can use it with any
-remotely hosted Solr service, including our own hosted
-version - learn more here:
-
- http://omega8.cc/apache-solr-search-order
-
-Hosted Open Atrium 1.0-beta10 now includes new Ideation feature:
-
- http://bit.ly/oaideation
+ Atrium Folders:  http://bit.ly/oafolders
+ Ideation:        http://bit.ly/oaideation
 
 
 ----------------------------------------

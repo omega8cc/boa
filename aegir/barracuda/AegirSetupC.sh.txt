@@ -39,6 +39,8 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 ###---### distro config
 #
+_SMALLCORE6=EDIT_SMALLCORE6
+_SMALLCORE7=EDIT_SMALLCORE7
 _COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
@@ -57,7 +59,6 @@ _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
 _COD=EDIT_COD
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
-_ACQUIA7=EDIT_ACQUIA7
 
 
 ###---### main config
@@ -390,9 +391,9 @@ mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-6.22.pl.po" ]; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6.pl.po" ]; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.22.pl.po" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
@@ -413,32 +414,32 @@ fi
 
 ###---### Distributions full names
 #
-_F_ACQUIA="Acquia 6.22 P.$_THIS_CORE"
-_F_ACQUIA_SEVEN="Acquia 7.2.2 P.$_THIS_CORE"
+_F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
+_F_ACQUIA_SEVEN="Acquia $_SMALLCORE7.2 P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0-beta10 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
-_F_DRUPAL6="Drupal 6.22 P.$_THIS_CORE"
-_F_DRUPAL7="Drupal 7.2 P.$_THIS_CORE"
+_F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
+_F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
 _F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
 _F_COMMONS="Drupal Commons $_COMMONS P.$_THIS_CORE"
-_F_FSERVER="Feature Server P.$_THIS_CORE"
+_F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
 _F_NODESTREAM="NodeStream $_NODESTREAM P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
-_F_UBERCART="Ubercart P.$_THIS_CORE"
+_F_UBERCART="Ubercart $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
 _F_COD="Conference $_COD P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
 #
-_F_DRUPAL6_D="Drupal 6.22 D.$_THIS_CORE"
-_F_DRUPAL6_S="Drupal 6.22 S.$_THIS_CORE"
-_F_DRUPAL6_P="Drupal 6.22 P.$_THIS_CORE"
-_F_DRUPAL7_D="Drupal 7.2 D.$_THIS_CORE"
-_F_DRUPAL7_S="Drupal 7.2 S.$_THIS_CORE"
-_F_DRUPAL7_P="Drupal 7.2 P.$_THIS_CORE"
+_F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
+_F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
+_F_DRUPAL6_P="Drupal $_SMALLCORE6 P.$_THIS_CORE"
+_F_DRUPAL7_D="Drupal $_SMALLCORE7 D.$_THIS_CORE"
+_F_DRUPAL7_S="Drupal $_SMALLCORE7 S.$_THIS_CORE"
+_F_DRUPAL7_P="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 
 
 ###---### Create directories
@@ -505,64 +506,64 @@ fi
 if [ -d "$_CORE/o_contrib/module_supports" ] ; then
   rm -f -r $_CORE/o_contrib/module_supports &> /dev/null
 fi
-if [ ! -e "/data/all/000/translations/drupal-6.22.pl.po" ] ; then
+if [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6.pl.po" ] ; then
   if [ ! -d "/data/all/000/translations" ] ; then
     mkdir -p /data/all/000/translations
   else
     rm -f /data/all/000/translations/* &> /dev/null
   fi
   cd /data/all/000/translations
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.zh-hant.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.zh-hans.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.ca.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.da.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.nl.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.fr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.de.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.hu.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.ja.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.nb.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.pl.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.pt-pt.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.pt-br.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.es.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.sv.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.el.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.et.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.it.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.uk.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.sk.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.fi.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.tr.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.cs.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.lt.po
-  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-6.22.ru.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.zh-hant.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.zh-hans.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.ca.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.da.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.nl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.fr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.de.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.hu.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.ja.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.nb.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.pl.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.pt-pt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.pt-br.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.es.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.sv.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.el.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.et.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.it.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.uk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.sk.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.fi.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.tr.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.cs.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.lt.po
+  wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.ru.po
 fi
 upgrade_o_contrib
 
 
 ###---### Acquia
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/acquia"
+_CORE_DISTRO="$_CORE/acquia-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE/acquia &> /dev/null
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia/ &> /dev/null
-  cd $_CORE/acquia
-  rm -f $_CORE/acquia/*.txt
+  git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE/acquia-$_SMALLCORE6 &> /dev/null
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia-$_SMALLCORE6/ &> /dev/null
+  cd $_CORE/acquia-$_SMALLCORE6
+  rm -f $_CORE/acquia-$_SMALLCORE6/*.txt
   sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
-  ln -s /data/all/000/translations $_CORE/acquia/profiles/acquia/translations &> /dev/null
+  ln -s /data/all/000/translations $_CORE/acquia-$_SMALLCORE6/profiles/acquia/translations &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/acquia
-cd $_ROOT/distro/$_THIS_CORE/acquia
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6
+cd $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_ACQUIA installation completed"
 mrun "sleep 2"
@@ -575,27 +576,27 @@ fi
 
 ###---### Acquia Seven
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_ACQUIA7" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA_SEVEN install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/$_ACQUIA7"
+_CORE_DISTRO="$_CORE/acquia-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/$_ACQUIA7 &> /dev/null
-  cd $_CORE/$_ACQUIA7
-  rm -f $_CORE/$_ACQUIA7/*.txt
+  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia-$_SMALLCORE7 &> /dev/null
+  cd $_CORE/acquia-$_SMALLCORE7
+  rm -f $_CORE/acquia-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/$_ACQUIA7/profiles/minimal
-  rm -f -r $_CORE/$_ACQUIA7/profiles/testing
+  rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/minimal
+  rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/testing
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_ACQUIA7
-cd $_ROOT/distro/$_THIS_CORE/$_ACQUIA7
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
@@ -680,7 +681,7 @@ fi
 
 ###---### Drupal 6 Pressflow
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
@@ -689,19 +690,19 @@ true
 #
 msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
-_CORE_DISTRO="$_CORE/pressflow-dev"
+_CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-dev"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  mkdir -p $_CORE/pressflow-dev
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-dev/ &> /dev/null
-  cd $_CORE/pressflow-dev
-  rm -f $_CORE/pressflow-dev/*.txt
+  mkdir -p $_CORE/pressflow-$_SMALLCORE6-dev
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-dev/ &> /dev/null
+  cd $_CORE/pressflow-$_SMALLCORE6-dev
+  rm -f $_CORE/pressflow-$_SMALLCORE6-dev/*.txt
   sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
-  ln -s /data/all/000/translations $_CORE/pressflow-dev/profiles/default/translations &> /dev/null
+  ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-dev/profiles/default/translations &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-dev
-cd $_ROOT/distro/$_THIS_CORE/pressflow-dev
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev
+cd $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev
 create_symlinks
 msg "STATUS: $_F_DRUPAL6_D installation completed"
 mrun "sleep 1"
@@ -711,19 +712,19 @@ mrun "sleep 1"
 echo " "
 msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
-_CORE_DISTRO="$_CORE/pressflow-stage"
+_CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-stage"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  mkdir -p $_CORE/pressflow-stage
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-stage/ &> /dev/null
-  cd $_CORE/pressflow-stage
-  rm -f $_CORE/pressflow-stage/*.txt
+  mkdir -p $_CORE/pressflow-$_SMALLCORE6-stage
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-stage/ &> /dev/null
+  cd $_CORE/pressflow-$_SMALLCORE6-stage
+  rm -f $_CORE/pressflow-$_SMALLCORE6-stage/*.txt
   sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   create_dirs
-  ln -s /data/all/000/translations $_CORE/pressflow-stage/profiles/default/translations &> /dev/null
+  ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-stage/profiles/default/translations &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-stage
-cd $_ROOT/distro/$_THIS_CORE/pressflow-stage
+mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage
+cd $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage
 create_symlinks
 msg "STATUS: $_F_DRUPAL6_S installation completed"
 mrun "sleep 1"
@@ -734,19 +735,19 @@ if [ ! -d "$_CORE/pressflow" ] ; then
   echo " "
   msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
   mrun "sleep 1"
-  _CORE_DISTRO="$_CORE/pressflow-prod"
+  _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-prod"
   if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_CORE
-    mkdir -p $_CORE/pressflow-prod
-    cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-prod/ &> /dev/null
-    cd $_CORE/pressflow-prod
-    rm -f $_CORE/pressflow-prod/*.txt
+    mkdir -p $_CORE/pressflow-$_SMALLCORE6-prod
+    cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-prod/ &> /dev/null
+    cd $_CORE/pressflow-$_SMALLCORE6-prod
+    rm -f $_CORE/pressflow-$_SMALLCORE6-prod/*.txt
     sed -i "s/'dblog'/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
     create_dirs
-    ln -s /data/all/000/translations $_CORE/pressflow-prod/profiles/default/translations &> /dev/null
+    ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-prod/profiles/default/translations &> /dev/null
   fi
-  mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-prod
-  cd $_ROOT/distro/$_THIS_CORE/pressflow-prod
+  mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod
+  cd $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod
   create_symlinks
   msg "STATUS: $_F_DRUPAL6 installation completed"
   mrun "sleep 2"
@@ -1114,13 +1115,13 @@ fi
 
 ###---### Feature Server Make
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
 msg "STATUS: $_F_FSERVER install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/fserver"
+_CORE_DISTRO="$_CORE/fserver-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
     _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
@@ -1136,11 +1137,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   echo "projects[feature_server][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/feature_server.git\"" >> fserver.make
   $_ROOT/tools/drush/drush make fserver.make fserver &> /dev/null
   rm -f fserver.make
-  cd $_CORE/fserver
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver/ &> /dev/null
-  rm -f $_CORE/fserver/*.txt
+  cd $_CORE/fserver-$_SMALLCORE6
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/fserver-$_SMALLCORE6/ &> /dev/null
+  rm -f $_CORE/fserver-$_SMALLCORE6/*.txt
   rm -f -r ./profiles/default
-  rm -f -r $_CORE/fserver/modules/cookie_cache_bypass
+  rm -f -r $_CORE/fserver-$_SMALLCORE6/modules/cookie_cache_bypass
   create_dirs
   cd ./profiles/feature_server/themes
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
@@ -1148,8 +1149,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch ./
   patch -p0 <./singular.mft.patch &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/fserver
-cd $_ROOT/distro/$_THIS_CORE/fserver
+mkdir -p $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6
+cd $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_FSERVER installation completed"
 mrun "sleep 2"
@@ -1387,28 +1388,28 @@ fi
 
 ###---### Ubercart
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBERCART install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/uberdrupal"
+_CORE_DISTRO="$_CORE/$_UBERCART-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -q -U iCab http://files.aegir.cc/dev/$_UBERCART.tar.gz
   tar -xzf $_UBERCART.tar.gz
   rm -f $_UBERCART.tar.gz
-  cd $_CORE/$_UBERCART
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART/ &> /dev/null
-  rm -f $_CORE/$_UBERCART/*.txt
-  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  cd $_CORE/$_UBERCART-$_SMALLCORE6
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/$_UBERCART-$_SMALLCORE6/ &> /dev/null
+  rm -f $_CORE/$_UBERCART-$_SMALLCORE6/*.txt
+  sed -i "s/'dblog',/'cache', 'css_emimage', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/$_UBERCART/$_UBERCART.profile
   rm -f -r ./profiles/default
   create_dirs
-  ln -s /data/all/000/translations $_CORE/$_UBERCART/profiles/uberdrupal/translations
+  ln -s /data/all/000/translations $_CORE/$_UBERCART-$_SMALLCORE6/profiles/$_UBERCART/translations
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/uberdrupal
-cd $_ROOT/distro/$_THIS_CORE/uberdrupal
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6
+cd $_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_UBERCART installation completed"
 mrun "sleep 2"
@@ -1475,15 +1476,15 @@ else
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
   mv -f make_platform.php.txt make_platform.php &> /dev/null
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/acquia" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_ACQUIA7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_ACQUIA7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ACQUIA_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/$_ACQUIA7 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_ACQUIA_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
@@ -1493,26 +1494,26 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-dev/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-dev &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-stage" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-stage/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-stage &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-prod/drushrc.php" ] ; then
-      $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-prod &> /dev/null
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/drushrc.php" ] ; then
+      $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
       mrun "sleep 5"
     fi
   fi
-elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
+elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
     if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
       $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
@@ -1565,9 +1566,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/fserver" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
@@ -1625,9 +1626,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/uberdrupal/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/uberdrupal &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_UBERCART" $_UBERCART $_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi

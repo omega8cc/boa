@@ -39,6 +39,8 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 ###---### distro config
 #
+_SMALLCORE6=EDIT_SMALLCORE6
+_SMALLCORE7=EDIT_SMALLCORE7
 _COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
@@ -57,7 +59,6 @@ _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
 _COD=EDIT_COD
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
-_ACQUIA7=EDIT_ACQUIA7
 
 
 ###---### main config
@@ -328,9 +329,9 @@ mrun "sleep 3"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-6.22.pl.po" ]; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6.pl.po" ]; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-6.22.pl.po" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
@@ -805,14 +806,14 @@ mrun "sleep 3"
   chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
   rm -f /home/$_USERFTP/platforms/$_THIS_CORE/{cod,commerce,commons,managingnews,nodestream,openatrium,openenterprise,openpublic,openscholar,prosepoint,drupal6,drupal7}
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_ACQUIA7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_ACQUIA7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/$_ACQUIA7/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_ACQUIA7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then
@@ -835,32 +836,32 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-0.39
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-dev/sites" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-dev" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-dev/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-dev
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-dev
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-stage/sites" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-stage" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-stage/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-stage
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-stage
     fi
   fi
   if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-    if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod/sites" ] ; then
+    if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/sites" ] ; then
       if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod" ] ; then
-        ln -s $_ROOT/distro/$_THIS_CORE/pressflow-prod/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod
+        ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod
       fi
     fi
-  elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-prod" ] ; then
+  elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
     if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow/sites" ] ; then
       if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod" ] ; then
         ln -s $_ROOT/distro/$_THIS_CORE/pressflow/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal6-prod
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/uberdrupal/sites" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/uberdrupal/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
+      ln -s $_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites" ] ; then
@@ -911,9 +912,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar-2.0-beta10-1
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/fserver/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/fserver" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/fserver/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver
+  if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites" ] ; then
