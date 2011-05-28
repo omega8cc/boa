@@ -1,4 +1,153 @@
 
+----------------------------------------
+# Added or upgraded since January 2011
+----------------------------------------
+
+* Added support for install and upgrade to Percona Server 5.5
+* MariaDB server upgraded to version 5.2.6.
+* Nginx server upgraded to version Barracuda/1.0.2
+* Added support for Debian Squeeze and Ubunty Natty.
+* Open Atrium includes extra features:
+  Atrium Folders:  http://bit.ly/oafolders
+  Ideation:        http://bit.ly/oaideation
+
+* Hostmaster platform comes with ready to enable extra modules:
+  http://drupal.org/project/hosting_backup_queue
+  http://drupal.org/project/hosting_backup_gc
+  http://drupal.org/project/hosting_upload
+
+* New Octopus platforms:
+
+  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
+  NodeStream 1.0 --------------- http://nodestream.org
+  Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
+  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
+  Conference 1.0-alpha3 -------- http://usecod.com
+  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
+  Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
+  Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
+ 
+* Basic Drupal 6 and Drupal 7 platforms now come in three instances,
+  to make your standard workflow easier for: -dev, -stage and -prod,
+  with correct suffix: D.00x, S.00x and P.00x in the platform name.
+
+* Speed Booster cache for 5.x, 6.x and 7.x Drupal platforms.
+  This new feature adds super fast caching for anonymous visitors,
+  and yes! - also for logged in users (cache per user) directly on
+  the web server level - no Drupal module required.
+  It works for all platforms, except of Ubercart, Commerce
+  and any platform with ubercart in sites/all/modules/ubercart.
+
+* Support for secure ubercart keys location to use ../keys path.
+* The filefield_nginx_progress now also in every 7.x platform.
+* Drush upgraded to version 4.4
+* Drush Make upgraded to version 2.2
+* Redis cache server upgraded to version 2.0.5
+* PHP-FPM server upgraded to version 5.2.17
+* APC upgraded to version 3.1.9
+* Memcache extension replaced with memcached and libmemcached.
+* Chive database manager upgraded to version 0.4.1
+* Added support for robotstxt module in all new 6.x based platforms. 
+* Drush gm / generate-makefile command added as allowed to lshell.
+* Git over ssh added as allowed to lshell.
+
+----------------------------------------
+# Improvements since January 2011
+----------------------------------------
+
+* Full Barracuda install takes only 30 minutes (tested on Linode).
+* Nginx abuse guard is now integrated with csf firewall.
+* Bots/crawlers are now denied on any "dev" type subdomain.
+* The pdnsd server install is now optional.
+* The csf/lfd firewall install is now optional.
+* Limited shell configuration is now updated on every upgrade.
+* Auto-tuning in Barracuda leaves more memory for MyISAM etc.
+* Aegir runs cron for D5 and D6 sites using Wget instead of Drush
+  to leverage APC cache, while D7 can use built-in poormanscron.
+* Many improvements in the Speed Booster cache configuration.
+* Improved memcached/redis cache bins configuration.
+* The o_contrib modules now symlinked also in custom platforms.
+* Boost directories created automatically also in custom platforms.
+* Improved web server self-healing monitor.
+* PHP notices no longer displayed for dev subdomains, only errors.
+* Many improvements in the Nginx configuration - now it's faster.
+* Permisions on uploaded modules, themes and files are now
+  automatically fixed every morning to help with post-import issues.
+* Almost all 6.x platforms now come with performance related
+  modules already enabled and configured on site install by default.
+* Nginx config - now doesn't use php-fpm to serve fckeditor files.
+* Introduced possibility to add upgrade-safe custom Nginx rewrite
+  rules to support transparent migration of legacy URLs/content.
+* Aegir Hostmaster control panel received extra caching and speed.
+* Better support for securepages 1.9 with forced secure cookies.
+* Better support for dynamically created base_url for http/https.
+* Too generic D7 profile names replaced with unique Drupal 7 names.
+* A few new commands have been added to your Aegir Drush Shell (SSH).
+* You can use git to manage the code and rsync to manage backups.
+* Useful new commands from Drush v.4 are now available.
+* Now it is possible to delete old sites backups created in Aegir.
+* You can access Aegir backups also via SSH or SFTP/FTPS.
+* You can cancel queued task in Aegir before it is started.
+* The "dev" anywhere in the subdomain enables all PHP errors.
+* You can use "dev" type alias for live site for easier debugging.
+* Added support for imagecache_external module.
+* It is possible to safely delete any not used platforms on request.
+* Access to static files allowed only for currently used domain.
+* Added crossdomain.xml in the root of every new platform.
+* New rewrite introduced to map /files to /sites/domain/files,
+  /images to /sites/domain/files/images and
+  /downloads to /sites/domain/files/downloads.
+* The standard /update.php works again, however using "drush dbup"
+  command is recommended.
+* The "drush mup" command allows now to upgrade contributed modules.
+
+
+----------------------------------------
+# Fixes since January 2011
+----------------------------------------
+
+* Auto-healing no longer starts concurrent servers when InnoDB start
+  takes more time on servers with big or many databases.
+* Hostname is no longer reverted to default on Linode and similar.
+* Barracuda supports now both old and new Mailx behavior.
+* All platforms paths and symlinks include core version numbers.
+* Fixed some memory issues with Virtuozzo family systems.
+* Fixed issue with broken site when non-lowercase domain was used
+  on Migrate or Clone task.
+* Fixed upgrade path for Drupal 5
+* Fixed double slash in the images paths issue in the Pressflow core.
+* Speed Booster cookies shouldn't be sent for imagecache/styles
+  and AdvAgg module dynamic requests.
+* Speed Booster shouldn't cache imagecache/styles and AdvAgg module
+  dynamic requests on the Nginx level.
+* Nginx upgrade to 1.0.0 fixes known issue with random but very high
+  CPU load on Nginx server configuration reload/restart.
+* Fix for critical bug causing sessions issues on older sites without
+  $cookie_domain set in settings.php when speed booster is enabled.
+* The session.cookie_secure is no longer forced in D6 platforms.
+* Security issue #1098304 - domain aliases were not sanitized.
+* Nginx config - proper fix for broken wysiwyg pop-ups.
+* Fixed issue with Nginx configuration for private files access.
+* The authorize.php added to allowed php files - required in D7.
+* Known issue with paths to files not rewritten is now fixed.
+* Known issue with sites cron semaphore in Aegir now resolved.
+* Known issue with PHP notices breaking some Aegir tasks resolved.
+* Fixed web server rewrites to support "ad" module.
+* Fixed Aegir issue with .info and .pl domains extensions.
+* Drush make via SSH now works as expected.
+* Fixed Nginx issue with /system/ paths and static files or images.
+* Fixed issue with broken site when non-lowercase domain was used.
+
+
+----------------------------------------
+# Other changes
+----------------------------------------
+
+* Forced public downloads for all 6.x platforms, except of ubercart.
+* Boost crawler option is now denied for performance reasons.
+* Forced log-out on browser quit only for Aegir control panel. 
+
+
 ### Project and issue queue moved to Drupal.org    
 ### Date: Sat, 7 May 2011 14:00:00 +0200
 ### http://drupal.org/project/barracuda
@@ -43,9 +192,8 @@
 ### Date: Thu, 10 Feb 2011 04:41:57 +0100
 
 ###
-Please see Git commits comments for details
-on changes/improvements for now, since the full
-changelog is waiting for yet another Edition...
+For changes/improvements between 2010-09-24 and
+2010-12-31 please see comments in the commits history.
 ###
 
 ### Thu, 2010-09-23 17:30 - Edition 0.4-HEAD-A14.B
