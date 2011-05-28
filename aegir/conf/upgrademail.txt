@@ -22,7 +22,7 @@ Your Aegir control panel is available as before at:
 
   Conference 1.0-alpha3 -------- http://usecod.com
   Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
-  Acquia 7.0.1 ----------------- http://bit.ly/acquiadrupal
+  Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
   ProsePoint 0.39 -------------- http://prosepoint.org
   Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
  

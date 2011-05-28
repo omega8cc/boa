@@ -57,6 +57,7 @@ _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
 _COD=EDIT_COD
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
+_ACQUIA7=EDIT_ACQUIA7
 
 
 ###---### main config
@@ -809,9 +810,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/acquia/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_seven/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia_seven" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/acquia_seven/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia_seven
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_ACQUIA7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_ACQUIA7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/$_ACQUIA7/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_ACQUIA7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then

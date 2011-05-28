@@ -105,7 +105,7 @@ Octopus (HEAD) can install the platforms listed below:
  NodeStream 1.0 --------------- http://nodestream.org
  Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
- Acquia 7.0.1 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise

@@ -46,7 +46,7 @@ Drupal distributions ready to deploy [Mini + Classic + TG]:
  Managing News 1.2 6.22 ------- http://managingnews.com
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
- Acquia 7.0.1 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
  Ubercart 6.22 ---------------- http://ubercart.org
  ProsePoint 0.39 -------------- http://prosepoint.org
  Conference 1.0-alpha3 -------- http://usecod.com

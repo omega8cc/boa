@@ -384,6 +384,7 @@ _COCOMORE=cdc-6.20.12
 _COMMONS=6.x-1.6
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.2
+_ACQUIA7=acquia-7.2.2
 _MANAGINGNEWS=1.2
 _OPENATRIUM=1-0-beta10
 _NODESTREAM=6.x-1.x
@@ -466,6 +467,7 @@ do
   sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_COD/$_COD/g"                             $Files
+  sed -i "s/EDIT_ACQUIA7/$_ACQUIA7/g"                     $Files
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
