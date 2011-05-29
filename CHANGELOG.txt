@@ -1,4 +1,8 @@
 
+### Stable Edition 1.0-boa-T-8.6
+### Date: Sun, 29 May 2011 13:30:00 +0200
+### Installs Aegir HEAD 1.1.2
+
 ----------------------------------------
 # Added or upgraded since January 2011
 ----------------------------------------

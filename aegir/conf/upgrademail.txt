@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.5.
+Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.6.
 
 Also your system services, kernel and libraries have been upgraded.                         
 
