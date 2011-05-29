@@ -2505,7 +2505,7 @@ mrun "sleep 3"
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-  st_runner "invoke-rc.d nginx reload" &> /dev/null
+    st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
 
@@ -2957,14 +2957,16 @@ mrun "sleep 3"
 tune_memory_limits
 invoke-rc.d php-fpm reload &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
-  killall -9 nginx &> /dev/null
-  mrun "sleep 3"
-  killall -9 nginx &> /dev/null
+  invoke-rc.d cron restart &> /dev/null
   echo " "
-  msg "Please force Nginx restart (twice) before visiting Aegir URL with command:"
-  msg "service nginx restart"
+  msg "Now waiting 2 minutes before restarting Nginx..."
   echo " "
-  mrun "sleep 8"
+  msg "Note: you may need to restart Nginx again with command: "
+  msg "  service nginx restart"
+  msg "before you will be able to visit Aegir URL the first time."
+  echo " "
+  mrun "sleep 99"
+  invoke-rc.d nginx restart &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
