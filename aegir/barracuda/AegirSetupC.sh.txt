@@ -1123,7 +1123,7 @@ msg "STATUS: $_F_FSERVER install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/fserver-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
+  if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
     _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
