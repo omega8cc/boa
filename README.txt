@@ -76,7 +76,7 @@ standard production settings.
 ### PROVIDES
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest version of MariaDB or Percona (only in HEAD) database server.
+* Latest release of MariaDB 5.2 or Percona 5.5 database server.
 * Latest version of Nginx web server with upload progress and Boost support.
 * PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
@@ -95,7 +95,7 @@ standard production settings.
 
 ### OCTOPUS PLATFORMS
 
-Octopus (HEAD) can install the platforms listed below:
+Octopus can install the platforms listed below:
 
  Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com

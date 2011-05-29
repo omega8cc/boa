@@ -844,15 +844,15 @@ else
     msg "WARN: The Gitorious mirror repository server doesn't respond..."
   fi
 fi
-if [ $_DRUPAL_WORKS = "YES" ] ; then
+if [ "$_DRUPAL_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda"
   _BOA_REPO_GIT_URL="http://git.drupal.org/project"
   msg "INFO: Drupal master repository will be used for this install"
-elif [ $_GITHUB_WORKS = "YES" ] ; then
+elif [ "$_GITHUB_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
-elif [ $_GITORIOUS_WORKS = "YES" ] ; then
+elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
   _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
   msg "INFO: Gitorious mirror repository will be used for this install"
@@ -2113,11 +2113,14 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   msg "INFO: Install/upgrade Nginx, please wait..."
   mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
-  if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
-    _BOA_REPO_GIT_URL_LOCAL="git://code.aegir.cc/aegir"
+  if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
+    _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
   fi
+  #echo _BOA_REPO_NAME is $_BOA_REPO_NAME
+  #echo _BOA_REPO_GIT_URL is $_BOA_REPO_GIT_URL
+  #echo _BOA_REPO_GIT_URL_LOCAL is $_BOA_REPO_GIT_URL_LOCAL
   git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
   cd /var/opt
   wget -q -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz
