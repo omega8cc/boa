@@ -2114,7 +2114,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
   if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
-    _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
+    _BOA_REPO_GIT_URL_LOCAL="git://code.aegir.cc/aegir"
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
   fi
