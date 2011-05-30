@@ -1769,13 +1769,6 @@ if [ $_STATUS = "INIT" ] ; then
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
-if [ $_STATUS = "INIT" ] ; then
-  APTEMAIL=${_MY_EMAIL//\@/\\\@}
-  sed -i "s/root/$APTEMAIL/g" /etc/apticron/apticron.conf  
-  XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
-  sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi
-  st_runner "sh /usr/sbin/apticron"
-fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
   cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run-* /var/xdrago/ &> /dev/null
 fi
@@ -2940,7 +2933,15 @@ fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
 
 ###--------------------###
 mrun "sleep 3"
+APTEMAIL=${_MY_EMAIL//\@/\\\@}
+XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
+sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"  /etc/csf/csf.conf &> /dev/null
+sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"  /etc/apticron/apticron.conf &> /dev/null
+sed -i "s/root/$_MY_EMAIL/g"               /etc/apticron/apticron.conf &> /dev/null
+sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g"   /var/xdrago/checksql.cgi &> /dev/null
+sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
+  st_runner "sh /usr/sbin/apticron"
   cd /var/aegir/config/includes
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION" >> ./barracuda_log.txt
   touch installer_version.txt

@@ -272,3 +272,32 @@ else
   rm -f /var/xdrago/log/optimize_mysql_ao.pid
   rm -f /var/run/octopus_barracuda.pid
 fi
+
+###--------------------###
+echo "INFO: Checking BARRACUDA version, please wait..."
+cd /opt/tmp
+wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/version.txt
+if [ -e "/opt/tmp/version.txt" ] ; then
+  _INSTALLER_VERSION=`cat /opt/tmp/version.txt`
+  _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
+  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+    _VERSIONS_TEST_RESULT=OK
+    echo "INFO: Version test result: OK"
+  else
+    cat <<EOF | mail -e -s "New Barracuda $_INSTALLER_VERSION Edition available" notify\@omega8.cc
+  
+  There is new $_INSTALLER_VERSION Edition of Barracuda and Octopus available.
+  
+  Please review the changelog and upgrade as soon as possible
+  to receive all security updates and new features.
+  
+  Changelog: http://bit.ly/newboa
+  
+  --
+  This e-mail has been sent by your Barracuda server upgrade monitor.
+  
+EOF
+  echo "INFO: Update notice sent: OK"
+  fi
+fi
+
