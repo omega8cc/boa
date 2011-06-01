@@ -30,10 +30,10 @@ if [ "$_FIX_CORE_ONE" != "NO" ] ; then
     searchStringE="/distro/$_LAST_ALL/"
     case $Plr in
     *"$searchStringE"*)
-    if [ ! -e "$Plr/includes/fix_pressflow_core_one.txt" ] ; then
+    if [ ! -e "$Plr/includes/fix_pressflow_core_two.txt" ] ; then
       cp -af /var/opt/pressflow-6-fix/includes/file.inc   $Plr/includes/
       cp -af /var/opt/pressflow-6-fix/includes/common.inc $Plr/includes/
-      echo fixed > $Plr/includes/fix_pressflow_core_one.txt
+      echo fixed > $Plr/includes/fix_pressflow_core_two.txt
     fi
     ;;
     *) ;;
