@@ -149,6 +149,7 @@ added to all 6.x platforms:
  node_clone-6.x-1.x-dev
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
+ seckit-6.x-1.0
  securesite-6.x-2.4
  session_expire-6.x-1.x-dev
  site_verify-6.x-1.0
@@ -175,6 +176,7 @@ The Drupal 7.x platforms come with contrib modules:
  fpa-7.x-2.0
  node_clone-7.x-1.x-dev
  robotstxt-7.x-1.x-dev
+ seckit-7.x-1.0
  site_verify-7.x-1.0
  variable_clean-7.x-1.x-dev
  + theme rubik-7.x-4.0-beta5
