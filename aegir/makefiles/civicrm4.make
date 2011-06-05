@@ -1,0 +1,19 @@
+; CiviCRM 4 master makefile
+;
+
+api = 2
+core = 7.x
+
+projects[drupal][type] = core
+
+projects[civicrm][directory_name] = "civicrm" 
+projects[civicrm][download][type] = "get" 
+projects[civicrm][download][url] = "http://downloads.sourceforge.net/project/civicrm/civicrm-stable/4.0.2/civicrm-4.0.2-drupal.tar.gz" 
+
+projects[civicrml10n][type] = "module" 
+projects[civicrml10n][directory_name] = "civicrm" 
+projects[civicrml10n][download][type] = "get" 
+projects[civicrml10n][download][url] = "http://downloads.sourceforge.net/project/civicrm/civicrm-stable/4.0.2/civicrm-4.0.2-l10n.tar.gz" 
+
+projects[admin_menu][subdir] = "contrib" 
+projects[admin_menu][version] = "3.0-rc1"
