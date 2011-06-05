@@ -89,6 +89,22 @@ _HM_ONLY=NO
 
 
 ###----------------------------------------###
+### O_CONTRIB UPGRADE                      ###
+###----------------------------------------###
+###
+### To upgrade o_contrib modules in the latest
+### and one previous platforms series 00x
+### change this to YES.
+###
+### This option is available only on Aegir
+### Satellite Instance upgrade.
+###
+### _O_CONTRIB_UP=YES
+###
+_O_CONTRIB_UP=NO
+
+
+###----------------------------------------###
 ### DEBUG MODE                             ###
 ###----------------------------------------###
 ###
@@ -483,6 +499,7 @@ do
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
+  sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
