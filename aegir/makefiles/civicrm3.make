@@ -8,6 +8,7 @@ projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "bzr"
 projects[pressflow][download][url] = "lp:pressflow/6.x"
 
+projects[civicrm][type] = "module"
 projects[civicrm][directory_name] = "civicrm"
 projects[civicrm][download][type] = "get"
 projects[civicrm][download][url] = "http://voxel.dl.sourceforge.net/project/civicrm/civicrm-stable/3.4.2/civicrm-3.4.2-drupal.tar.gz"
