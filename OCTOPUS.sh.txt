@@ -56,9 +56,29 @@ _USER=o1
 _DOMAIN=$_USER.`uname -n`
 _MY_EMAIL="noc@omega8.cc"
 _CLIENT_EMAIL="notify@omega8.cc"
-_CLIENT_CORES=4
 _CLIENT_OPTION=CLASSIC
 _CLIENT_SUBSCR=M
+_CLIENT_CORES=4
+
+
+###----------------------------------------###
+### PLATFORMS INSTALL MODE                 ###
+###----------------------------------------###
+###
+### The default setting will limit the number
+### of installed platforms - it will not even
+### prompt you to install CiviCRM or -dev and
+### -stage instances of D6 and D7 platforms.
+### It will also skip Pressflow 5 platform.
+###
+### If you wan to install all available
+### platforms, change this to YES below.
+###
+### Note: to install CiviCRM you also need to
+### raise _CLIENT_CORES value to 8 above.
+###
+### _PLATFORMS_ALL=YES
+###
 _PLATFORMS_ALL=NO
 
 

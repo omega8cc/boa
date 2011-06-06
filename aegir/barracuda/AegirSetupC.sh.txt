@@ -281,18 +281,14 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-2.0-alpha6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-7.x-1.0-beta2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.0.tar.gz
@@ -309,31 +305,24 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ajaxblocks-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/elysia_cron-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/session_expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/drupal-nginx-fast-x-accel-redirect.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/better_formats-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vertical_tabs-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/content_type_overview-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/node_clone-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.0.tar.gz
   for archive in ./*.tar.gz; do
@@ -659,6 +648,7 @@ fi
 
 ###---### Drupal 5 Pressflow
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
@@ -686,17 +676,19 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Drupal 6 Pressflow
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
 
 ###---### Drupal 6 Pressflow Development
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-dev"
@@ -715,10 +707,12 @@ cd $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev
 create_symlinks
 msg "STATUS: $_F_DRUPAL6_D installation completed"
 mrun "sleep 1"
+echo " "
+fi
 
 ###---### Drupal 6 Pressflow Staging
 #
-echo " "
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-stage"
@@ -737,11 +731,12 @@ cd $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage
 create_symlinks
 msg "STATUS: $_F_DRUPAL6_S installation completed"
 mrun "sleep 1"
+echo " "
+fi
 
 ###---### Drupal 6 Pressflow Production
 #
 if [ ! -d "$_CORE/pressflow" ] ; then
-  echo " "
   msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
   mrun "sleep 1"
   _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-prod"
@@ -781,13 +776,14 @@ fi
 
 ###---### Drupal 7
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.0" ; then
 true
 
 ###---### Drupal 7 Development
 #
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 msg "STATUS: $_F_DRUPAL7_D install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7D"
@@ -805,9 +801,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE/$_DRUPAL7D/profiles/testing
   for Files in `find $_CORE/$_DRUPAL7D/profiles -type f`
   do
-    sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+    sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
     sed -i "s/Standard/Drupal 7 Standard/g" $Files
-    sed -i "s/Testing/Drupal 7 Testing/g" $Files
   done
   create_dirs
   themes_for_d7
@@ -819,10 +814,12 @@ create_d7_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7_D installation completed"
 mrun "sleep 1"
+echo " "
+fi
 
 ###---### Drupal 7 Staging
 #
-echo " "
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
 msg "STATUS: $_F_DRUPAL7_S install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7S"
@@ -836,9 +833,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE/$_DRUPAL7S/profiles/testing
   for Files in `find $_CORE/$_DRUPAL7S/profiles -type f`
   do
-    sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+    sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
     sed -i "s/Standard/Drupal 7 Standard/g" $Files
-    sed -i "s/Testing/Drupal 7 Testing/g" $Files
   done
   create_dirs
   themes_for_d7
@@ -850,6 +846,8 @@ create_d7_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
+echo " "
+fi
 
 if [ -d "$_CORE/drupal-seven-old" ] ; then
   mv $_CORE/drupal-seven-old $_CORE/$_DRUPAL7
@@ -858,7 +856,6 @@ fi
 ###---### Drupal 7 Production
 #
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
-  echo " "
   msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
   mrun "sleep 2"
   _CORE_DISTRO="$_CORE/$_DRUPAL7P"
@@ -873,9 +870,8 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
     rm -f -r $_CORE/$_DRUPAL7P/profiles/testing
     for Files in `find $_CORE/$_DRUPAL7P/profiles -type f`
     do
-      sed -i "s/Minimal/Drupal 7 Minimal/g" $Files
+      sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
       sed -i "s/Standard/Drupal 7 Standard/g" $Files
-      sed -i "s/Testing/Drupal 7 Testing/g" $Files
     done
     create_dirs
     themes_for_d7
@@ -1361,8 +1357,8 @@ fi
 
 ###---### CiviCRM 3
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_CLIENT_CORES" -ge "8" ] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
@@ -1399,8 +1395,8 @@ fi
 
 ###---### CiviCRM 4
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_CLIENT_CORES" -ge "8" ] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
@@ -1459,7 +1455,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/prosepoint-$_PROSEPOINT
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
   rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
-  #sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'fpa', 'better_formats', 'admin', 'content_type_overview', 'login_security', 'config_perms', 'path_alias_cache',/g" ./profiles/prosepoint/prosepoint.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null

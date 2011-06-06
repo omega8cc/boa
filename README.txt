@@ -97,7 +97,7 @@ standard production settings.
 
 Octopus can install the platforms listed below:
 
- Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
+ Drupal 7.2 (*) --------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
  Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
  Atrium 1.0-beta10 ------------ http://openatrium.com
@@ -109,14 +109,23 @@ Octopus can install the platforms listed below:
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
+ CiviCRM 3.4.2 (**) ----------- http://civicrm.org
+ CiviCRM 4.0.2 (**) ----------- http://civicrm.org
  ProsePoint 0.39 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
- Drupal 5.23 Pressflow -------- http://pressflow.org
- Drupal 6.22 Pressflow (int) -- http://pressflow.org
+ Drupal 5.23 Pressflow (*) ---- http://pressflow.org
+ Drupal 6.22 Pressflow (int*) - http://pressflow.org
  Feature Server --------------- http://bit.ly/fserver
                                 http://bit.ly/fservermore
 
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
+
+(*)  To install Drupal 5.23 Pressflow, -dev and -stage instances
+     of Drupal 6.22 Pressflow and Drupal 7.2 you need to set
+     _PLATFORMS_ALL to YES.
+
+(**) To install CiviCRM platforms you need to set _PLATFORMS_ALL to YES
+     and _CLIENT_CORES to 8.
 
 Platforms marked with (int) comes also with ready to use translations
 of Drupal core in 25 languages. Only languages with at least 10 maintainers
@@ -129,24 +138,18 @@ There are also some useful and/or performance related modules
 added to all 6.x platforms:
 
  admin-6.x-2.0
- ajaxblocks-6.x-1.4
  backup_migrate-6.x-2.x-dev
- better_formats-6.x-2.x-dev
  blockcache_alter-6.x-1.x-dev
  boost-6.x-1.x-dev
  cache-6.x-1.x-dev
  config_perms-6.x-2.x-dev
- content_type_overview-6.x-1.5
  css_emimage-6.x-2.x-dev
  dbtuner-6.x-1.x-dev
  drupal-nginx-fast-x-accel-redirect
- elysia_cron-6.x-1.x-dev
- expire-6.x-1.x-dev
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
- node_clone-6.x-1.x-dev
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.0
@@ -154,7 +157,6 @@ added to all 6.x platforms:
  session_expire-6.x-1.x-dev
  site_verify-6.x-1.0
  variable_clean-6.x-1.x-dev
- vertical_tabs-6.x-1.x-dev
  views_content_cache-6.x-2.x-dev
  views404-6.x-1.x-dev
  + theme rubik-6.x-3.0-beta2
@@ -164,11 +166,9 @@ The Drupal 7.x platforms come with contrib modules:
  admin-7.x-2.0-beta3
  agrcache-7.x-1.0-alpha2
  backup_migrate-7.x-2.x-dev
- better_formats-7.x-1.x-dev
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
- content_type_overview-7.x-1.0-beta2
- core_library-7.x-1.0-beta6
+ core_library-7.x-2.0-alpha6
  css_emimage-7.x-1.1
  elysia_cron-7.x-1.x-dev
  filefield_nginx_progress-7.x-1.x-dev
