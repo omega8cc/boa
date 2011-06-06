@@ -75,7 +75,11 @@ _CLIENT_CORES=4
 ### platforms, change this to YES below.
 ###
 ### Note: to install CiviCRM you also need to
-### raise _CLIENT_CORES value to 8 above.
+### raise _CLIENT_CORES value to 8 above, and
+### if this is an upgrade, you need to edit
+### the /data/disk/USER/log/cores.txt file
+### and replace 4 with 8 there before trying
+### the upgrade with CiviCRM included.
 ###
 ### _PLATFORMS_ALL=YES
 ###

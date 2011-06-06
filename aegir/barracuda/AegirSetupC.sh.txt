@@ -556,6 +556,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/acquia-$_SMALLCORE6
   rm -f $_CORE/acquia-$_SMALLCORE6/*.txt
   sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  sed -i "s/'name' => 'Acquia Drupal',/'name' => 'Acquia Drupal',\n    'old_short_name' => 'default',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/acquia-$_SMALLCORE6/profiles/acquia/translations &> /dev/null
@@ -699,6 +700,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/pressflow-$_SMALLCORE6-dev
   rm -f $_CORE/pressflow-$_SMALLCORE6-dev/*.txt
   sed -i "s/'dblog'/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'drupalcenter',/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-dev/profiles/default/translations &> /dev/null
 fi
@@ -723,6 +725,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/pressflow-$_SMALLCORE6-stage
   rm -f $_CORE/pressflow-$_SMALLCORE6-stage/*.txt
   sed -i "s/'dblog'/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-stage/profiles/default/translations &> /dev/null
 fi
@@ -747,6 +750,7 @@ if [ ! -d "$_CORE/pressflow" ] ; then
     cd $_CORE/pressflow-$_SMALLCORE6-prod
     rm -f $_CORE/pressflow-$_SMALLCORE6-prod/*.txt
     sed -i "s/'dblog'/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+    sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
     create_dirs
     ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-prod/profiles/default/translations &> /dev/null
   fi
@@ -1376,6 +1380,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE/civicrm-$_CIVICRM6/modules/cookie_cache_bypass
   rm -f $_CORE/civicrm-$_CIVICRM6/*.txt
   sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile
+  sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
   cd $_CORE/civicrm-$_CIVICRM6
   create_dirs
 fi
