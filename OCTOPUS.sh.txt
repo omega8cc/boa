@@ -59,7 +59,7 @@ _CLIENT_EMAIL="notify@omega8.cc"
 _CLIENT_CORES=4
 _CLIENT_OPTION=CLASSIC
 _CLIENT_SUBSCR=M
-_PLATFORMS_ALL=YES
+_PLATFORMS_ALL=NO
 
 
 ###----------------------------------------###
@@ -413,6 +413,8 @@ _COMMERCE=7.x-1.x-dev
 _OPENPUBLIC=beta1-build100
 _COD=6.x-1.0-alpha3
 _OPENENTERPRISE=6.x-1.0-beta3
+_CIVICRM6=3.4.2
+_CIVICRM7=4.0.2
 
 ###---### Functions
 #
@@ -485,6 +487,8 @@ do
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_COD/$_COD/g"                             $Files
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
+  sed -i "s/EDIT_CIVICRM6/$_CIVICRM6/g"                   $Files
+  sed -i "s/EDIT_CIVICRM7/$_CIVICRM7/g"                   $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files

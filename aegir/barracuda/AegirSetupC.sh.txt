@@ -59,6 +59,8 @@ _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
 _COD=EDIT_COD
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
+_CIVICRM6=EDIT_CIVICRM6
+_CIVICRM7=EDIT_CIVICRM7
 
 
 ###---### main config
@@ -436,6 +438,8 @@ _F_UBERCART="Ubercart $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
 _F_COD="Conference $_COD P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
+_F_CIVICRM6="CiviCRM $_CIVICRM6 P.$_THIS_CORE"
+_F_CIVICRM7="CiviCRM $_CIVICRM7 P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -626,9 +630,9 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make.txt ./
-  $_ROOT/tools/drush/drush make atrium.make.txt atrium-$_OPENATRIUM &> /dev/null
-  rm -f atrium.make.txt
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make ./
+  $_ROOT/tools/drush/drush make atrium.make atrium-$_OPENATRIUM &> /dev/null
+  rm -f atrium.make
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f -r $_CORE/atrium-$_OPENATRIUM/modules/cookie_cache_bypass
@@ -1218,9 +1222,9 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream.make.txt ./
-  $_ROOT/tools/drush/drush make nodestream.make.txt nodestream-$_NODESTREAM &> /dev/null
-  rm -f nodestream.make.txt
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream.make ./
+  $_ROOT/tools/drush/drush make nodestream.make nodestream-$_NODESTREAM &> /dev/null
+  rm -f nodestream.make
   cd $_CORE/nodestream-$_NODESTREAM
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM/ &> /dev/null
   rm -f $_CORE/nodestream-$_NODESTREAM/*.txt
@@ -1351,6 +1355,88 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_COD installation skipped"
   mrun "sleep 1"
+fi
+fi
+
+
+###---### CiviCRM 3
+#
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
+echo " "
+if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
+true
+msg "STATUS: $_F_CIVICRM6 install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/civicrm-$_CIVICRM6"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm3.make ./
+  $_ROOT/tools/drush/drush make civicrm3.make civicrm-$_CIVICRM6 &> /dev/null
+  rm -f civicrm3.make
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/civicrm-$_CIVICRM6/ &> /dev/null
+  cd $_CORE/civicrm-$_CIVICRM6
+  rm -f -r $_CORE/civicrm-$_CIVICRM6/modules/cookie_cache_bypass
+  rm -f $_CORE/civicrm-$_CIVICRM6/*.txt
+  sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile
+  cd $_CORE/civicrm-$_CIVICRM6
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6
+cd $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6
+create_symlinks
+msg "STATUS: $_F_CIVICRM6 installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_CIVICRM6 installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+
+
+###---### CiviCRM 4
+#
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
+echo " "
+if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
+true
+msg "STATUS: $_F_CIVICRM7 install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/civicrm-$_CIVICRM7"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm4.make ./
+  $_ROOT/tools/drush/drush make civicrm4.make civicrm-$_CIVICRM7 &> /dev/null
+  rm -f civicrm4.make
+  cd $_CORE/civicrm-$_CIVICRM7
+  rm -f $_CORE/civicrm-$_CIVICRM7/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/civicrm-$_CIVICRM7/profiles/testing
+  for Files in `find $_CORE/civicrm-$_CIVICRM7/profiles -type f`
+  do
+    sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
+    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+  done
+  create_dirs
+  themes_for_d7
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7
+cd $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7
+create_symlinks
+create_d7_symlinks
+rm -f boost_stats.php
+msg "STATUS: $_F_CIVICRM7 installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_CIVICRM7 installation skipped"
+  mrun "sleep 1"
+fi
+fi
 fi
 fi
 

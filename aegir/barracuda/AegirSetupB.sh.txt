@@ -56,6 +56,8 @@ _COMMERCE=EDIT_COMMERCE
 _OPENPUBLIC=EDIT_OPENPUBLIC
 _COD=EDIT_COD
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
+_CIVICRM6=EDIT_CIVICRM6
+_CIVICRM7=EDIT_CIVICRM7
 
 
 ###---### main config
@@ -284,6 +286,9 @@ if [ $_STATUS = "UPGRADE" ] ; then
   if [ -e "$_ROOT/.drush/provision_boost" ] ; then
     mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
   fi
+  if [ -e "$_ROOT/.drush/provision_civicrm" ] ; then
+    mv -f $_ROOT/.drush/provision_civicrm $_ROOT/backups/system/provision_civicrm-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
 fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
@@ -307,6 +312,8 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
+  git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+  rm -f -r $_ROOT/.drush/provision_civicrm/.git
 else
   wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
   tar -xzf provision-$_AEGIR_VERSION.tar.gz
@@ -316,6 +323,8 @@ else
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
+  git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+  rm -f -r $_ROOT/.drush/provision_civicrm/.git
 fi
 
 
