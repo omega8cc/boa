@@ -1707,6 +1707,18 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD" ] ; then
     mrun "sleep 5"
   fi
 fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_CIVICRM6" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_CIVICRM7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR &> /dev/null

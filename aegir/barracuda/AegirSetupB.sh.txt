@@ -312,8 +312,10 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
-  git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
-  rm -f -r $_ROOT/.drush/provision_civicrm/.git
+  if [ "$_PLATFORMS_ALL" = "YES" ] && [ "$_CLIENT_CORES" -ge "8" ] ; then
+    git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+    rm -f -r $_ROOT/.drush/provision_civicrm/.git
+  fi
 else
   wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
   tar -xzf provision-$_AEGIR_VERSION.tar.gz
@@ -323,8 +325,10 @@ else
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
-  git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
-  rm -f -r $_ROOT/.drush/provision_civicrm/.git
+  if [ "$_PLATFORMS_ALL" = "YES" ] && [ "$_CLIENT_CORES" -ge "8" ] ; then
+    git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+    rm -f -r $_ROOT/.drush/provision_civicrm/.git
+  fi
 fi
 
 

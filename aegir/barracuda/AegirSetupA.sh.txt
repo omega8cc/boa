@@ -904,6 +904,16 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD
     fi
   fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7
+    fi
+  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE
