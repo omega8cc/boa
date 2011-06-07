@@ -1,0 +1,41 @@
+#!/bin/bash
+
+
+###----------------------------###
+##  Add ftps/ssh master user    ##
+###----------------------------###
+
+### Config
+_ADMIN=admin
+_USER=user
+_SITE=domain
+_SITE_DIR="/path/to/platform/sites/$_SITE"
+
+### Create user
+_USERFTP="$_USER.ftp"
+_USERFTP_ROOT="/home/$_USERFTP"
+_TMP="/var/tmp"
+_WEBG=www-data
+_USRG=users
+if [ ! -d $_USERFTP_ROOT ] ; then
+  useradd -d /home/$_USERFTP -s /usr/bin/lshell -m -N -r $_USERFTP
+  adduser $_USERFTP $_WEBG
+  cd $_TMP
+  touch $_TMP/$_USERFTP.txt
+  chmod 0600 $_TMP/$_USERFTP.txt
+  pwgen -c -y -s > $_TMP/$_USERFTP.txt
+  ph=$(makepasswd --clearfrom=$_TMP/$_USERFTP.txt --crypt-md5 |awk '{print $2}')
+  usermod -p $ph $_USERFTP
+  passwd -w 7 -x 90 $_USERFTP
+  usermod -aG lshellg $_USERFTP
+fi
+PXSWD=`cat $_TMP/$_USERFTP.txt`
+PASWD=`echo -n $PXSWD | tr -d "\n"`
+chsh -s /usr/bin/lshell $_USERFTP
+echo " " >> /etc/lshell.conf
+echo "[$_USERFTP]" >> /etc/lshell.conf
+echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static', '/data/disk/$_USER/backups']" >> /etc/lshell.conf
+cd /home/$_USERFTP; ln -s $_SITE_DIR $_SITE
+cd
+mkdir -p /home/$_ADMIN/ftp.users
+echo "$_USERFTP:$PASWD" >> /home/$_ADMIN/ftp.users/$_SITE
