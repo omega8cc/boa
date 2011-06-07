@@ -837,6 +837,9 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7S"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
+  if [ ! -e "$_CORE/$_DRUPAL7.tar.gz" ] ; then
+    wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+  fi
   tar -xzf $_DRUPAL7.tar.gz
   mv $_DRUPAL7 $_DRUPAL7S
   cd $_CORE/$_DRUPAL7S
@@ -874,6 +877,9 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   _CORE_DISTRO="$_CORE/$_DRUPAL7P"
   if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_CORE
+    if [ ! -e "$_CORE/$_DRUPAL7.tar.gz" ] ; then
+      wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+    fi
     tar -xzf $_DRUPAL7.tar.gz
     rm -f $_DRUPAL7.tar.gz
     mv $_DRUPAL7 $_DRUPAL7P
