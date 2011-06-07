@@ -86,7 +86,7 @@ _NOW=`date +%y%m%d-%H%M`
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_PLATFORMS_ALL=EDIT_PLATFORMS_ALL
+_PLATFORMS_LIST=EDIT_PLATFORMS_LIST
 _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
 
@@ -312,7 +312,7 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
-  if [ "$_PLATFORMS_ALL" = "YES" ] && [ "$_CLIENT_CORES" -ge "8" ] ; then
+  if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC ]] ; then
     git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
@@ -325,7 +325,7 @@ else
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
-  if [ "$_PLATFORMS_ALL" = "YES" ] && [ "$_CLIENT_CORES" -ge "8" ] ; then
+  if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC ]] ; then
     git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi

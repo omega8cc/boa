@@ -97,7 +97,7 @@ standard production settings.
 
 Octopus can install the platforms listed below:
 
- Drupal 7.2 (*) --------------- http://drupal.org/drupal-7.0
+ Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
  Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
  Atrium 1.0-beta10 ------------ http://openatrium.com
@@ -109,23 +109,16 @@ Octopus can install the platforms listed below:
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- CiviCRM 3.4.2 (**) ----------- http://civicrm.org
- CiviCRM 4.0.2 (**) ----------- http://civicrm.org
+ CiviCRM 3.4.2 ---------------- http://civicrm.org
+ CiviCRM 4.0.2 ---------------- http://civicrm.org
  ProsePoint 0.39 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
- Drupal 5.23 Pressflow (*) ---- http://pressflow.org
- Drupal 6.22 Pressflow (int*) - http://pressflow.org
+ Drupal 5.23 Pressflow -------- http://pressflow.org
+ Drupal 6.22 Pressflow (int) -- http://pressflow.org
  Feature Server --------------- http://bit.ly/fserver
                                 http://bit.ly/fservermore
 
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
-
-(*)  To install Drupal 5.23 Pressflow, -dev and -stage instances
-     of Drupal 6.22 Pressflow and Drupal 7.2 you need to set
-     _PLATFORMS_ALL to YES.
-
-(**) To install CiviCRM platforms you need to set _PLATFORMS_ALL to YES
-     and _CLIENT_CORES to 8.
 
 Platforms marked with (int) comes also with ready to use translations
 of Drupal core in 25 languages. Only languages with at least 10 maintainers

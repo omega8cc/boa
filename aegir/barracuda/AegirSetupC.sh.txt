@@ -91,7 +91,7 @@ _DEBUG_MODE=EDIT_DEBUG_MODE
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_PLATFORMS_ALL=EDIT_PLATFORMS_ALL
+_PLATFORMS_LIST=EDIT_PLATFORMS_LIST
 _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
 _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
@@ -542,6 +542,7 @@ fi
 
 ###---### Acquia
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
@@ -571,10 +572,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Acquia Seven
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
@@ -607,10 +610,12 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### Open Atrium
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
 echo " "
 if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
@@ -645,11 +650,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Drupal 5 Pressflow
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D5P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
@@ -678,6 +684,7 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### Drupal 6 Pressflow
@@ -689,7 +696,7 @@ true
 
 ###---### Drupal 6 Pressflow Development
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
 msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-dev"
@@ -714,7 +721,7 @@ fi
 
 ###---### Drupal 6 Pressflow Staging
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
 msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-stage"
@@ -739,6 +746,7 @@ fi
 
 ###---### Drupal 6 Pressflow Production
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
 if [ ! -d "$_CORE/pressflow" ] ; then
   msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
   mrun "sleep 1"
@@ -770,6 +778,7 @@ elif [ -d "$_CORE/pressflow" ] ; then
   msg "STATUS: $_F_DRUPAL6 installation completed"
   mrun "sleep 2"
 fi
+fi
 
 else
   msg "STATUS: $_F_DRUPAL6 installation skipped"
@@ -787,7 +796,7 @@ true
 
 ###---### Drupal 7 Development
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
 msg "STATUS: $_F_DRUPAL7_D install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7D"
@@ -823,7 +832,7 @@ fi
 
 ###---### Drupal 7 Staging
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
 msg "STATUS: $_F_DRUPAL7_S install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7S"
@@ -859,6 +868,7 @@ fi
 
 ###---### Drupal 7 Production
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
   mrun "sleep 2"
@@ -900,6 +910,7 @@ elif [ -d "$_CORE/$_DRUPAL7" ] ; then
   msg "STATUS: $_F_DRUPAL7_P installation completed"
   mrun "sleep 1"
 fi
+fi
 
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
@@ -910,8 +921,9 @@ fi
 
 ###---### Open Public
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
 true
@@ -947,12 +959,14 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### Commerce 7.x Dev Make
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
@@ -986,47 +1000,14 @@ else
 fi
 fi
 fi
-
-
-###---### Cocomore Drupal
-#
-# if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-# if [ "$_CLIENT_CORES" -ge "4" ] ; then
-# echo " "
-# if prompt_yes_no "$_F_COCOMORE - http://drupal.cocomore.com" ; then
-# true
-# msg "STATUS: $_F_COCOMORE install in progress, please wait..."
-# mrun "sleep 2"
-# _CORE_DISTRO="$_CORE/$_COCOMORE"
-# if [ ! -d "$_CORE_DISTRO" ] ; then
-#   cd $_CORE
-#   #wget -q -U iCab http://drupal.cocomore.com/system/files/$_COCOMORE.tar.gz
-#   wget -q -U iCab http://files.aegir.cc/dev/$_COCOMORE.tar.gz
-#   tar -xzf $_COCOMORE.tar.gz
-#   rm -f $_COCOMORE.tar.gz
-#   #mv CDC-6.19.0 $_COCOMORE
-#   cd $_CORE/$_COCOMORE
-#   ln -s $_CORE/o_contrib modules/o_contrib
-#   rm -f $_CORE/$_COCOMORE/*.txt
-#   create_dirs
-# fi
-# mkdir -p $_ROOT/distro/$_THIS_CORE/$_COCOMORE
-# cd $_ROOT/distro/$_THIS_CORE/$_COCOMORE
-# create_symlinks
-# msg "STATUS: $_F_COCOMORE installation completed"
-# mrun "sleep 2"
-# else
-#   msg "STATUS: $_F_COCOMORE installation skipped"
-#   mrun "sleep 1"
-# fi
-# fi
-# fi
+fi
 
 
 ###---### Drupal Commons
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
@@ -1075,10 +1056,12 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### Open Enterprise
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
@@ -1120,10 +1103,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### Feature Server Make
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
@@ -1168,10 +1153,12 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### ManagingNews
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MNS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
 echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
@@ -1208,12 +1195,14 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### NodeStream Make
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM - http://nodestream.org" ; then
 true
@@ -1243,11 +1232,12 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### OpenPublish
 #
-# if [ "$_PLATFORMS_ALL" = "YES" ] ; then
+# if [ "$_PLATFORMS_LIST" = "ALL" ] ; then
 # if [ "$_CLIENT_CORES" -ge "4" ] ; then
 # echo " "
 # if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
@@ -1286,8 +1276,9 @@ fi
 
 ###---### OpenScholar
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
@@ -1317,10 +1308,12 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### Conference Organizing Distribution
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD" ] ; then
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
@@ -1357,12 +1350,13 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 
 
 ###---### CiviCRM 3
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-if [ "$_CLIENT_CORES" -ge "8" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC3 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
@@ -1400,8 +1394,8 @@ fi
 
 ###---### CiviCRM 4
 #
-if [ "$_PLATFORMS_ALL" = "YES" ] ; then
-if [ "$_CLIENT_CORES" -ge "8" ] ; then
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC4 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
@@ -1444,8 +1438,9 @@ fi
 
 ###---### Prosepoint
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
@@ -1475,10 +1470,12 @@ else
 fi
 fi
 fi
+fi
 
 
 ###---### Ubercart
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UCT ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
@@ -1514,6 +1511,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_UBERCART installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 

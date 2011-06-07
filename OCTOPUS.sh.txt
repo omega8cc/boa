@@ -65,25 +65,40 @@ _CLIENT_CORES=4
 ### PLATFORMS INSTALL MODE                 ###
 ###----------------------------------------###
 ###
-### The default setting will limit the number
-### of installed platforms - it will not even
-### prompt you to install CiviCRM or -dev and
-### -stage instances of D6 and D7 platforms.
-### It will also skip Pressflow 5 platform.
+### You can use default (ALL) or configure
+### the list of platforms to install.
 ###
-### If you wan to install all available
-### platforms, change this to YES below.
+### When combined with _AUTOPILOT=YES option
+### you can speed up the process and still
+### control which platforms will be installed,
+### using the symbols listed below instead
+### of the wildcard, default keyword "ALL".
 ###
-### Note: to install CiviCRM you also need to
-### raise _CLIENT_CORES value to 8 above, and
-### if this is an upgrade, you need to edit
-### the /data/disk/USER/log/cores.txt file
-### and replace 4 with 8 there before trying
-### the upgrade with CiviCRM included.
+### D7P D7S D7D --- Drupal 7.2 prod/stage/dev
+### D6P D6S D6D --- Pressflow 6.22 p/s/d
+### D5P ----------- Pressflow 5.23
+### OAM ----------- Open Atrium 1.0-beta10
+### MNS ----------- Managing News 1.2
+### NSM ----------- NodeStream 1.0
+### OPC ----------- OpenPublic 1.0-beta1
+### DCS ----------- Drupal Commons 1.6
+### AQ6 ----------- Acquia 6.22
+### AQ7 ----------- Acquia 7.2.2
+### OSR ----------- OpenScholar 2.0-beta10-1
+### COD ----------- Conference 1.0-alpha3
+### OEE ----------- Open Enterprise 1.0-beta3
+### DCE ----------- Drupal Commerce 1.0-beta3
+### PPT ----------- ProsePoint 0.39
+### UCT ----------- Ubercart
+### CC3 ----------- CiviCRM 3.4.2
+### CC4 ----------- CiviCRM 4.0.2
+### FSR ----------- Feature Server
 ###
-### _PLATFORMS_ALL=YES
+### Example:
 ###
-_PLATFORMS_ALL=NO
+### _PLATFORMS_LIST="D7P D6P OAM MNS NSM FSR"
+###
+_PLATFORMS_LIST=ALL
 
 
 ###----------------------------------------###
@@ -521,7 +536,7 @@ do
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
-  sed -i "s/EDIT_PLATFORMS_ALL/$_PLATFORMS_ALL/g"         $Files
+  sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
   sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files

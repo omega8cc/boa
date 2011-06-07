@@ -1745,7 +1745,7 @@ if [ -d "/var/xdrago" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/300/188/g" /var/xdrago/minute.sh
-    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
+    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/5 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
 if [ $_STATUS = "INIT" ] ; then
@@ -1766,7 +1766,7 @@ if [ $_STATUS = "INIT" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/300/188/g" /var/xdrago/minute.sh
-    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
+    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/5 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
