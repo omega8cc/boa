@@ -65,14 +65,17 @@ _CLIENT_CORES=4
 ### PLATFORMS INSTALL MODE                 ###
 ###----------------------------------------###
 ###
-### You can use default (ALL) or configure
-### the list of platforms to install.
+### You can use wildcard "ALL" to install all
+### available platforms or configure the list
+### of platforms to be installed as explained
+### below.
+###
+### Note: the "ALL" wildcard is not default!
 ###
 ### When combined with _AUTOPILOT=YES option
 ### you can speed up the process and still
 ### control which platforms will be installed,
-### using the symbols listed below instead
-### of the wildcard, default keyword "ALL".
+### using the symbols listed below.
 ###
 ### D7P D7S D7D --- Drupal 7.2 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6.22 p/s/d
@@ -94,11 +97,12 @@ _CLIENT_CORES=4
 ### CC4 ----------- CiviCRM 4.0.2
 ### FSR ----------- Feature Server
 ###
-### Example:
+### Examples:
 ###
+### _PLATFORMS_LIST=ALL
 ### _PLATFORMS_LIST="D7P D6P OAM MNS NSM FSR"
 ###
-_PLATFORMS_LIST=ALL
+_PLATFORMS_LIST="D7P D6P OAM MNS NSM"
 
 
 ###----------------------------------------###

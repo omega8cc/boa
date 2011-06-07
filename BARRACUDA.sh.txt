@@ -48,6 +48,40 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
+### XTRAS INSTALL MODE                     ###
+###----------------------------------------###
+###
+### You can use wildcard "ALL" to install all
+### available xtras or configure the list
+### of xtras to be installed as explained
+### below.
+###
+### Note: the "ALL" wildcard is not default!
+###
+### When combined with _AUTOPILOT=YES option
+### you can speed up the process and still
+### control which xtras will be installed,
+### using the symbols listed below.
+###
+### PDS --- fast DNS cache server (pdnsd)
+### BND --- Bind9 DNS Server
+### SLR --- MultiCore Apache Solr Tomcat
+### CHV --- Chive DB Manager
+### BDD --- SQL Buddy DB Manager
+### CGP --- Collectd Graph Panel
+### WMN --- Webmin Control Panel
+### CSF --- csf/lfd Firewall
+###
+### Examples:
+###
+### _XTRAS_LIST=""
+### _XTRAS_LIST=ALL
+### _XTRAS_LIST="CHV CGP CSF"
+###
+_XTRAS_LIST="CHV CSF"
+
+
+###----------------------------------------###
 ### AUTOPILOT MODE                         ###
 ###----------------------------------------###
 ###
@@ -1286,15 +1320,17 @@ if [ -f "/etc/default/dhcpcd" ] ; then
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ $_INSTALL_PDNSD = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    echo " "
-    if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
-      true
-      install_pdnsd_cache
-      msg "INFO: DNS cache pdnsd server installation completed"
-      mrun "sleep 2"
-    else
-      msg "INFO: DNS cache pdnsd server installation skipped"
-      mrun "sleep 2"
+    if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ PDS ]] ; then
+      echo " "
+      if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
+        true
+        install_pdnsd_cache
+        msg "INFO: DNS cache pdnsd server installation completed"
+        mrun "sleep 2"
+      else
+        msg "INFO: DNS cache pdnsd server installation skipped"
+        mrun "sleep 2"
+      fi
     fi
   elif [ $_INSTALL_PDNSD = "YES" ] ; then
     install_pdnsd_cache
@@ -2581,71 +2617,74 @@ fi
 
 
 ###--------------------###
-if [ ! -d "/opt/solr" ] ; then
-  echo " "
-  if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
-    true
-    msg "INFO: Installing MultiCore Apache Solr Tomcat, please wait..."
-    mrun "sleep 3"
-    cd /var/opt
-    rm -f -r apachesolr*
-    rm -f -r /opt/solr
-    rm -f -r /opt/tomcat6
-    wget -q -U iCab http://files.aegir.cc/dev/apachesolr.tar.gz
-    tar -xzf apachesolr.tar.gz
-    cd apachesolr
-    mv -f tomcat /etc/init.d/ &> /dev/null
-    mv -f solr /opt/ &> /dev/null
-    mv -f tomcat6 /opt/ &> /dev/null
-    echo "ENABLED=1" > /etc/default/tomcat
-    sed -i "s/\/usr\/lib\/jvm\/java-6-sun\/jre/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
-    st_runner "update-rc.d tomcat defaults" &> /dev/null
-    st_runner "invoke-rc.d tomcat start" &> /dev/null
-    msg "INFO: MultiCore Apache Solr Tomcat installation completed"
-    mrun "sleep 2"
-  else
-    msg "INFO: MultiCore Apache Solr Tomcat installation skipped"
-    mrun "sleep 2"
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
+  if [ ! -d "/opt/solr" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
+      true
+      msg "INFO: Installing MultiCore Apache Solr Tomcat, please wait..."
+      mrun "sleep 3"
+      cd /var/opt
+      rm -f -r apachesolr*
+      rm -f -r /opt/solr
+      rm -f -r /opt/tomcat6
+      wget -q -U iCab http://files.aegir.cc/dev/apachesolr.tar.gz
+      tar -xzf apachesolr.tar.gz
+      cd apachesolr
+      mv -f tomcat /etc/init.d/ &> /dev/null
+      mv -f solr /opt/ &> /dev/null
+      mv -f tomcat6 /opt/ &> /dev/null
+      echo "ENABLED=1" > /etc/default/tomcat
+      sed -i "s/\/usr\/lib\/jvm\/java-6-sun\/jre/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
+      st_runner "update-rc.d tomcat defaults" &> /dev/null
+      st_runner "invoke-rc.d tomcat start" &> /dev/null
+      msg "INFO: MultiCore Apache Solr Tomcat installation completed"
+      mrun "sleep 2"
+    else
+      msg "INFO: MultiCore Apache Solr Tomcat installation skipped"
+      mrun "sleep 2"
+    fi
   fi
 fi
 
 
 ###--------------------###
-if [ ! -d "/var/www/chive" ] ; then
-  echo " "
-  if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
-    true
-    msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
-    mrun "sleep 3"
-    cd /var/www
-    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
-    tar -xzf chive_0.4.1.tar.gz
-    rm -f chive_0.4.1.tar.gz
-    chown -R www-data:www-data /var/www/chive
-    _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
+  if [ ! -d "/var/www/chive" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
+      true
+      msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
+      mrun "sleep 3"
+      cd /var/www
+      wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
+      tar -xzf chive_0.4.1.tar.gz
+      rm -f chive_0.4.1.tar.gz
+      chown -R www-data:www-data /var/www/chive
+      _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
+      if [ -z "$_THISHTIP" ] ; then
+        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      fi
+      echo > $_CHIVE_VHOST
+      echo "server {" >> $_CHIVE_VHOST
+      echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
+      echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
+      echo "   listen      $_THISHTIP:80;" >> $_CHIVE_VHOST
+      echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
+      echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
+      echo "   index       index.php index.html;" >> $_CHIVE_VHOST
+      echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
+      echo "}" >> $_CHIVE_VHOST
+      echo >> $_CHIVE_VHOST
+      touch /var/log/chive_0.4.1.log
+      msg "INFO: Chive $_DB_SERVER Manager installation completed"
+      mrun "sleep 2"
+    else
+      msg "INFO: Chive $_DB_SERVER Manager installation skipped"
+      mrun "sleep 2"
     fi
-    echo > $_CHIVE_VHOST
-    echo "server {" >> $_CHIVE_VHOST
-    echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
-    echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
-    echo "   listen      $_THISHTIP:80;" >> $_CHIVE_VHOST
-    echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
-    echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
-    echo "   index       index.php index.html;" >> $_CHIVE_VHOST
-    echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
-    echo "}" >> $_CHIVE_VHOST
-    echo >> $_CHIVE_VHOST
-    touch /var/log/chive_0.4.1.log
-    msg "INFO: Chive $_DB_SERVER Manager installation completed"
-    mrun "sleep 2"
-  else
-    msg "INFO: Chive $_DB_SERVER Manager installation skipped"
-    mrun "sleep 2"
   fi
 fi
-
 
 ###--------------------###
 if [ -d "/var/www/chive" ] ; then
@@ -2689,37 +2728,39 @@ fi
 
 
 ###--------------------###
-if [ ! -d "/var/www/sqlbuddy" ] ; then
-  echo " "
-  if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
-    true
-    msg "INFO: Installing SQL Buddy $_DB_SERVER Manager, please wait..."
-    mrun "sleep 3"
-    cd /var/www
-    wget -q -U iCab http://www.sqlbuddy.com/download/dl.php -O sqlbuddy_1_3_3.zip
-    unzip -qq sqlbuddy_1_3_3.zip
-    rm -f sqlbuddy_1_3_3.zip
-    chown -R www-data:www-data /var/www/sqlbuddy
-    _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BDD ]] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
+      true
+      msg "INFO: Installing SQL Buddy $_DB_SERVER Manager, please wait..."
+      mrun "sleep 3"
+      cd /var/www
+      wget -q -U iCab http://www.sqlbuddy.com/download/dl.php -O sqlbuddy_1_3_3.zip
+      unzip -qq sqlbuddy_1_3_3.zip
+      rm -f sqlbuddy_1_3_3.zip
+      chown -R www-data:www-data /var/www/sqlbuddy
+      _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
+      if [ -z "$_THISHTIP" ] ; then
+        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      fi
+      echo > $_SQLBUDDY_VHOST
+      echo "server {" >> $_SQLBUDDY_VHOST
+      echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
+      echo "   limit_conn  gulag 10;" >> $_SQLBUDDY_VHOST
+      echo "   listen      $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
+      echo "   server_name sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
+      echo "   root        /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
+      echo "   index       index.php index.html;" >> $_SQLBUDDY_VHOST
+      echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
+      echo "}" >> $_SQLBUDDY_VHOST
+      echo >> $_SQLBUDDY_VHOST
+      msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
+      mrun "sleep 2"
+    else
+      msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
+      mrun "sleep 2"
     fi
-    echo > $_SQLBUDDY_VHOST
-    echo "server {" >> $_SQLBUDDY_VHOST
-    echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
-    echo "   limit_conn  gulag 10;" >> $_SQLBUDDY_VHOST
-    echo "   listen      $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
-    echo "   server_name sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
-    echo "   root        /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
-    echo "   index       index.php index.html;" >> $_SQLBUDDY_VHOST
-    echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_SQLBUDDY_VHOST
-    echo "}" >> $_SQLBUDDY_VHOST
-    echo >> $_SQLBUDDY_VHOST
-    msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
-    mrun "sleep 2"
-  else
-    msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
-    mrun "sleep 2"
   fi
 fi
 
@@ -2732,38 +2773,40 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  if [ ! -d "/var/www/cgp" ] ; then
-    echo " "
-    if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
-      true
-      msg "INFO: Installing Collectd Graph Panel, please wait..."
-      mrun "sleep 3"
-      st_runner "apt-get -y install collectd" 2> /dev/null
-      cd /var/www
-      git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
-      sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
-      chown -R www-data:www-data /var/www/cgp
-      _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
-      if [ -z "$_THISHTIP" ] ; then
-        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
+  if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+    if [ ! -d "/var/www/cgp" ] ; then
+      echo " "
+      if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
+        true
+        msg "INFO: Installing Collectd Graph Panel, please wait..."
+        mrun "sleep 3"
+        st_runner "apt-get -y install collectd" 2> /dev/null
+        cd /var/www
+        git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
+        sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
+        chown -R www-data:www-data /var/www/cgp
+        _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
+        if [ -z "$_THISHTIP" ] ; then
+          _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+        fi
+        echo > $_CGP_VHOST
+        echo "server {" >> $_CGP_VHOST
+        echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
+        echo "   limit_conn  gulag 10;" >> $_CGP_VHOST
+        echo "   listen      $_THISHTIP:80;" >> $_CGP_VHOST
+        echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
+        echo "   root        /var/www/cgp;" >> $_CGP_VHOST
+        echo "   index       index.php index.html;" >> $_CGP_VHOST
+        echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
+        echo "}" >> $_CGP_VHOST
+        echo >> $_CGP_VHOST
+        msg "INFO: Collectd Graph Panel installation completed"
+        mrun "sleep 2"
+        else
+        msg "INFO: Collectd Graph Panel installation skipped"
+        mrun "sleep 2"
       fi
-      echo > $_CGP_VHOST
-      echo "server {" >> $_CGP_VHOST
-      echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-      echo "   limit_conn  gulag 10;" >> $_CGP_VHOST
-      echo "   listen      $_THISHTIP:80;" >> $_CGP_VHOST
-      echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
-      echo "   root        /var/www/cgp;" >> $_CGP_VHOST
-      echo "   index       index.php index.html;" >> $_CGP_VHOST
-      echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
-      echo "}" >> $_CGP_VHOST
-      echo >> $_CGP_VHOST
-      msg "INFO: Collectd Graph Panel installation completed"
-      mrun "sleep 2"
-      else
-      msg "INFO: Collectd Graph Panel installation skipped"
-      mrun "sleep 2"
     fi
   fi
 fi
@@ -2777,89 +2820,95 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  echo " "
-  if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
-    true
-    msg "INFO: Installing Bind9 DNS Server, please wait..."
-    mrun "sleep 3"
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-    fi
-    st_runner "$_INSTALL bind9" 2> /dev/null
-    cd /etc/bind
-    rm -f named.conf.options
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
-    sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options
-    st_runner "invoke-rc.d bind9 restart" &> /dev/null
-    if [ ! -e "/etc/init.d/bind" ] ; then
-      ln -s /etc/init.d/bind9 /etc/init.d/bind
-    fi
-    echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
-    echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
-    msg "INFO: Bind9 DNS Server installation completed"
-    mrun "sleep 2"
-  else
-    msg "INFO: Bind9 DNS Server installation skipped"
-    mrun "sleep 2"
-  fi
-fi
-
-
-###--------------------###
-if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  echo " "
-  if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
-    true
-    msg "INFO: Installing Webmin Control Panel, please wait..."
-    mrun "sleep 3"
-    cd /var/opt
-    echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
-    wget -q -U iCab http://www.webmin.com/jcameron-key.asc
-    apt-key add jcameron-key.asc &> /dev/null
-    touch /var/log/webmin_new_apt.log
-    st_runner "apt-get update -y --force-yes" 2> /dev/null
-    st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
-    msg "INFO: Webmin Control Panel installation completed"
-    mrun "sleep 2"
-    else
-    msg "INFO: Webmin Control Panel installation skipped"
-    mrun "sleep 2"
-  fi
-fi
-
-
-###--------------------###
-if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  if [ ! -e "/usr/sbin/csf" ] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
+  if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
-    if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
+    if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
       true
-      msg "INFO: Installing csf/lfd firewall, please wait..."
+      msg "INFO: Installing Bind9 DNS Server, please wait..."
+      mrun "sleep 3"
+      if [ -z "$_THISHTIP" ] ; then
+        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      fi
+      st_runner "$_INSTALL bind9" 2> /dev/null
+      cd /etc/bind
+      rm -f named.conf.options
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
+      sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options
+      st_runner "invoke-rc.d bind9 restart" &> /dev/null
+      if [ ! -e "/etc/init.d/bind" ] ; then
+        ln -s /etc/init.d/bind9 /etc/init.d/bind
+      fi
+      echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
+      echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+      msg "INFO: Bind9 DNS Server installation completed"
+      mrun "sleep 2"
+    else
+      msg "INFO: Bind9 DNS Server installation skipped"
+      mrun "sleep 2"
+    fi
+  fi
+fi
+
+
+###--------------------###
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ WMN ]] ; then
+  if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
+      true
+      msg "INFO: Installing Webmin Control Panel, please wait..."
       mrun "sleep 3"
       cd /var/opt
-      rm -f /var/xdrago/log/lastFire
-      wget -q -U iCab http://www.configserver.com/free/csf.tgz
-      tar -xzf csf.tgz
-      cd csf
-      st_runner "sh install.sh" 2> /dev/null
-      cd /etc/csf
-      mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
-      sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
-      sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
-      chmod 600 /etc/csf/csf.conf &> /dev/null
-      sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
-      sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
-      st_runner "invoke-rc.d ssh restart" &> /dev/null
-      st_runner "invoke-rc.d csf restart" &> /dev/null
-      st_runner "invoke-rc.d lfd restart" &> /dev/null
-      echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
-      msg "INFO: csf/lfd firewall installation completed"
+      echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
+      wget -q -U iCab http://www.webmin.com/jcameron-key.asc
+      apt-key add jcameron-key.asc &> /dev/null
+      touch /var/log/webmin_new_apt.log
+      st_runner "apt-get update -y --force-yes" 2> /dev/null
+      st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
+      msg "INFO: Webmin Control Panel installation completed"
       mrun "sleep 2"
-    else
-      msg "INFO: csf/lfd firewall installation skipped"
+      else
+      msg "INFO: Webmin Control Panel installation skipped"
       mrun "sleep 2"
+    fi
+  fi
+fi
+
+
+###--------------------###
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CSF ]] ; then
+  if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+    if [ ! -e "/usr/sbin/csf" ] ; then
+      echo " "
+      if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
+        true
+        msg "INFO: Installing csf/lfd firewall, please wait..."
+        mrun "sleep 3"
+        cd /var/opt
+        rm -f /var/xdrago/log/lastFire
+        wget -q -U iCab http://www.configserver.com/free/csf.tgz
+        tar -xzf csf.tgz
+        cd csf
+        st_runner "sh install.sh" 2> /dev/null
+        cd /etc/csf
+        mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
+        sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
+        sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
+        chmod 600 /etc/csf/csf.conf &> /dev/null
+        sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
+        sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+        st_runner "invoke-rc.d ssh restart" &> /dev/null
+        st_runner "invoke-rc.d csf restart" &> /dev/null
+        st_runner "invoke-rc.d lfd restart" &> /dev/null
+        echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
+        msg "INFO: csf/lfd firewall installation completed"
+        mrun "sleep 2"
+      else
+        msg "INFO: csf/lfd firewall installation skipped"
+        mrun "sleep 2"
+      fi
     fi
   fi
 fi
