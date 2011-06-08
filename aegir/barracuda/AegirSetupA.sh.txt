@@ -243,6 +243,10 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib/$m
       fi
     done
+    cd /data/all/$i/o_contrib
+    wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
+    tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
+    rm -f backup_migrate-6.x-2.4.tar.gz
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
@@ -251,10 +255,6 @@ for i in $REVISIONS; do
       fi
     done
   fi
-cd /data/all/$i/o_contrib
-wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
-tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
-rm -f backup_migrate-6.x-2.4.tar.gz
 done
 touch /var/log/incompatible-modules-removed-001c.log
 cd
