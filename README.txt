@@ -131,7 +131,7 @@ There are also some useful and/or performance related modules
 added to all 6.x platforms:
 
  admin-6.x-2.0
- backup_migrate-6.x-2.x-dev
+ backup_migrate-6.x-2.4
  blockcache_alter-6.x-1.x-dev
  boost-6.x-1.x-dev
  cache-6.x-1.x-dev

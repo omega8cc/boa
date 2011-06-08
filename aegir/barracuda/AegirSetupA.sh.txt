@@ -233,9 +233,9 @@ fi
 # remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001() {
-if [ ! -e "/var/log/incompatible-modules-removed-001b.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-001c.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
-RMMODULES="advagg memcache varnish bakery session443 cookie_cache_bypass_adv module_supports"
+RMMODULES="advagg memcache varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
@@ -251,8 +251,12 @@ for i in $REVISIONS; do
       fi
     done
   fi
+cd /data/all/$i/o_contrib
+wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
+tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
+rm -f backup_migrate-6.x-2.4.tar.gz
 done
-touch /var/log/incompatible-modules-removed-001b.log
+touch /var/log/incompatible-modules-removed-001c.log
 cd
 fi
 }
