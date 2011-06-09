@@ -89,6 +89,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
+_HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 
 
 ###---### Functions
@@ -329,6 +330,9 @@ else
     git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
+fi
+if [ $_HTTP_WILDCARD = "YES" ] ; then
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php
 fi
 
 

@@ -82,6 +82,25 @@ _XTRAS_LIST="CHV CSF"
 
 
 ###----------------------------------------###
+### HTTP LISTENING MODE                    ###
+###----------------------------------------###
+###
+### By default Nginx will listen on defined
+### or discovered IP address, but you can
+### change this to wildcard, so it will listen
+### on all available IPs. This may be useful
+### in some environments like Amazon EC2
+### with dynamic local IP and separate public
+### IP not available on the local interface.
+###
+### To enable wildcard mode, change this to:
+###
+### _HTTP_WILDCARD=YES
+###
+_HTTP_WILDCARD=NO
+
+
+###----------------------------------------###
 ### AUTOPILOT MODE                         ###
 ###----------------------------------------###
 ###
@@ -2404,6 +2423,9 @@ if [ $_STATUS = "INIT" ] ; then
     su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   mrun "sleep 3"
+  if [ $_HTTP_WILDCARD = "YES" ] ; then
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
+  fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."
   mrun "sleep 3"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"

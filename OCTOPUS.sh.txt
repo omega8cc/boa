@@ -106,6 +106,25 @@ _PLATFORMS_LIST="D7P D6P OAM MNS NSM"
 
 
 ###----------------------------------------###
+### HTTP LISTENING MODE                    ###
+###----------------------------------------###
+###
+### By default Nginx will listen on defined
+### or discovered IP address, but you can
+### change this to wildcard, so it will listen
+### on all available IPs. This may be useful
+### in some environments like Amazon EC2
+### with dynamic local IP and separate public
+### IP not available on the local interface.
+###
+### To enable wildcard mode, change this to:
+###
+### _HTTP_WILDCARD=YES
+###
+_HTTP_WILDCARD=NO
+
+
+###----------------------------------------###
 ### AUTOPILOT MODE                         ###
 ###----------------------------------------###
 ###
@@ -547,6 +566,7 @@ do
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
+  sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
