@@ -668,11 +668,26 @@ fix_on_upgrade () {
 #
 # Force advanced Nginx configuration
 force_advanced_nginx_config () {
-  if [ -z "$_THISHTIP" ] ; then
-    _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+  if [ -e "/usr/bin/sipcalc" ] ; then
+    _IP_TEST=`sipcalc $_THISHTIP 2>&1`
+    if [[ $_IP_TEST =~ ERR ]] ; then
+      _IP_TEST_RESULT=FAIL
+      _LOCAL_THISHTIP=all
+    else
+      _IP_TEST_RESULT=OK
+      _LOCAL_THISHTIP="$_THISHTIP"
+    fi
+  else
+    _LOCAL_THISHTIP="$_THISHTIP"
   fi
-  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
-  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+  if [ -z "$_LOCAL_THISHTIP" ] ; then
+    _LOCAL_THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+  fi
+  if [ -z "$_LOCAL_THISHTIP" ] ; then
+    _LOCAL_THISHTIP=all
+  fi
+  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
+  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
@@ -1459,11 +1474,11 @@ st_runner "dpkg --configure --force-all -a" 2> /dev/null
 msg "INFO: Install/upgrade required libraries and tools"
 msg "NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc"
 elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc"
 else
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc"
 fi
 if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
   _INSTALL="aptitude -y install"

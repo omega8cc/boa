@@ -561,8 +561,28 @@ do
 done
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
-sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
-sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+_THISHOST=`cat /etc/hostname`
+_THISHOST=`echo -n $_THISHOST | tr -d "\n"`
+if [ -e "/usr/bin/sipcalc" ] ; then
+  _IP_TEST=`sipcalc $_THISHTIP 2>&1`
+  if [[ $_IP_TEST =~ ERR ]] ; then
+    _IP_TEST_RESULT=FAIL
+    _LOCAL_THISHTIP=all
+  else
+    _IP_TEST_RESULT=OK
+    _LOCAL_THISHTIP="$_THISHTIP"
+  fi
+else
+  _LOCAL_THISHTIP="$_THISHTIP"
+fi
+if [ -z "$_LOCAL_THISHTIP" ] ; then
+  _LOCAL_THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+fi
+if [ -z "$_LOCAL_THISHTIP" ] ; then
+  _LOCAL_THISHTIP=all
+fi
+sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
+sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
 if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
