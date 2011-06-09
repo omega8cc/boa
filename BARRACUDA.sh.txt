@@ -831,6 +831,8 @@ if [ -d "/var/aegir" ] ; then
   msg "INFO: UPGRADE..."
   if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
     _HTTP_WILDCARD=YES
+  else
+    _HTTP_WILDCARD=NO
   fi
 else
   _STATUS=INIT
