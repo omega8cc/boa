@@ -117,6 +117,10 @@ _PLATFORMS_LIST="D7P D6P OAM MNS NSM"
 ### with dynamic local IP and separate public
 ### IP not available on the local interface.
 ###
+### Note: this option works only on initial
+### install and requires Barracuda installed
+### also with the same option.
+###
 ### To enable wildcard mode, change this to:
 ###
 ### _HTTP_WILDCARD=YES
@@ -983,6 +987,9 @@ _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 ###--------------------###
 if [ $_THIS_DB_HOST = "FQDN" ] ; then
   _THIS_DB_HOST=`uname -n`
+fi
+if [ ! -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
+  _HTTP_WILDCARD=NO
 fi
 
 echo "8s before we will continue..."

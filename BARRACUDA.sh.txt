@@ -93,6 +93,10 @@ _XTRAS_LIST="CHV CSF"
 ### with dynamic local IP and separate public
 ### IP not available on the local interface.
 ###
+### Note: this option works only on initial
+### install. You can't change this on upgrade
+### because it could cause serious issues.
+###
 ### To enable wildcard mode, change this to:
 ###
 ### _HTTP_WILDCARD=YES
@@ -2462,6 +2466,7 @@ if [ $_STATUS = "INIT" ] ; then
   mrun "sleep 3"
   if [ $_HTTP_WILDCARD = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
+    echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."
   mrun "sleep 3"
