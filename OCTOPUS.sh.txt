@@ -584,6 +584,9 @@ sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_
 _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
 if [ -e "/usr/bin/sipcalc" ] ; then
+  if [ -z "$_THISHTIP" ] ; then
+    _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+  fi
   _IP_TEST=`sipcalc $_THISHTIP 2>&1`
   if [[ $_IP_TEST =~ ERR ]] ; then
     _IP_TEST_RESULT=FAIL

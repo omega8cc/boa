@@ -685,9 +685,41 @@ fix_on_upgrade () {
   fi
 }
 #
-# Force advanced Nginx configuration
-force_advanced_nginx_config () {
+# Validate server IP for xtras
+validate_xtras_ip {
+  if [ $_HTTP_WILDCARD = "YES" ] && [ $_STATUS = "INIT" ] ; then
+    _XTRAS_THISHTIP="*"
+  else
+    if [ -e "/usr/bin/sipcalc" ] ; then
+      if [ -z "$_THISHTIP" ] ; then
+        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      fi
+      _IP_TEST=`sipcalc $_THISHTIP 2>&1`
+      if [[ $_IP_TEST =~ ERR ]] ; then
+        _IP_TEST_RESULT=FAIL
+        _XTRAS_THISHTIP="*"
+      else
+        _IP_TEST_RESULT=OK
+        _XTRAS_THISHTIP="$_THISHTIP"
+      fi
+    else
+      _XTRAS_THISHTIP="$_THISHTIP"
+    fi
+    if [ -z "$_XTRAS_THISHTIP" ] ; then
+      _XTRAS_THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    fi
+    if [ -z "$_XTRAS_THISHTIP" ] ; then
+      _XTRAS_THISHTIP="*"
+    fi
+  fi
+}
+#
+# Validate local server IP
+validate_local_ip {
   if [ -e "/usr/bin/sipcalc" ] ; then
+    if [ -z "$_THISHTIP" ] ; then
+      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    fi
     _IP_TEST=`sipcalc $_THISHTIP 2>&1`
     if [[ $_IP_TEST =~ ERR ]] ; then
       _IP_TEST_RESULT=FAIL
@@ -705,6 +737,11 @@ force_advanced_nginx_config () {
   if [ -z "$_LOCAL_THISHTIP" ] ; then
     _LOCAL_THISHTIP=all
   fi
+}
+#
+# Force advanced Nginx configuration
+force_advanced_nginx_config () {
+  validate_local_ip
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
   cd /var/aegir/config/includes
@@ -2700,14 +2737,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       rm -f chive_0.4.1.tar.gz
       chown -R www-data:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-      if [ -z "$_THISHTIP" ] ; then
-        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-      fi
+      validate_xtras_ip
       echo > $_CHIVE_VHOST
       echo "server {" >> $_CHIVE_VHOST
       echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
       echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
-      echo "   listen      $_THISHTIP:80;" >> $_CHIVE_VHOST
+      echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CHIVE_VHOST
       echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
       echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
       echo "   index       index.php index.html;" >> $_CHIVE_VHOST
@@ -2739,14 +2774,12 @@ if [ -d "/var/www/chive" ] ; then
   fi
   if [ ! -e "/var/log/chive_0.4.1.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-    fi
+    validate_xtras_ip
     echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
     echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
     echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
-    echo "   listen      $_THISHTIP:80;" >> $_CHIVE_VHOST
+    echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CHIVE_VHOST
     echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
     echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
     echo "   index       index.php index.html;" >> $_CHIVE_VHOST
@@ -2779,14 +2812,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BDD ]] ; then
       rm -f sqlbuddy_1_3_3.zip
       chown -R www-data:www-data /var/www/sqlbuddy
       _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-      if [ -z "$_THISHTIP" ] ; then
-        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-      fi
+      validate_xtras_ip
       echo > $_SQLBUDDY_VHOST
       echo "server {" >> $_SQLBUDDY_VHOST
       echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
       echo "   limit_conn  gulag 10;" >> $_SQLBUDDY_VHOST
-      echo "   listen      $_THISHTIP:80;" >> $_SQLBUDDY_VHOST
+      echo "   listen      $_XTRAS_THISHTIP:80;" >> $_SQLBUDDY_VHOST
       echo "   server_name sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
       echo "   root        /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
       echo "   index       index.php index.html;" >> $_SQLBUDDY_VHOST
@@ -2825,14 +2856,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
         chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
-        if [ -z "$_THISHTIP" ] ; then
-          _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-        fi
+        validate_xtras_ip
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
         echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
         echo "   limit_conn  gulag 10;" >> $_CGP_VHOST
-        echo "   listen      $_THISHTIP:80;" >> $_CGP_VHOST
+        echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
         echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
         echo "   root        /var/www/cgp;" >> $_CGP_VHOST
         echo "   index       index.php index.html;" >> $_CGP_VHOST
