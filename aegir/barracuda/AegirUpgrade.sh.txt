@@ -43,6 +43,7 @@ _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
+_HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 
 ###---### Functions
 #
@@ -115,6 +116,9 @@ hostmaster_go_up () {
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.2.tar.gz
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
+  fi
+  if [ $_HTTP_WILDCARD = "YES" ] ; then
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
   fi
   cd $_PREV_AEGIR_ROOT
 }

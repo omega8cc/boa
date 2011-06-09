@@ -2520,6 +2520,7 @@ else
     sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     cd /var/aegir/config/includes
     mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
