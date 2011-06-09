@@ -60,6 +60,12 @@ Some new platforms are supported by Aegir Classic and TG only:
  Drupal Commons 1.6 6.22 ------ http://acquia.com/drupalcommons
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
 
+Note about platforms naming convention:
+
+  Basic Drupal 6 and Drupal 7 platforms  come in three instances,
+  to make your standard workflow easier for: -dev, -stage and -prod,
+  with correct suffix: D.00x, S.00x and P.00x in the platform name.
+
   Q: How to upgrade from Aegir Mini to Classic?
   
   A: Place a new order at http://omega8.cc/hosted-aegir
