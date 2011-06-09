@@ -331,7 +331,7 @@ else
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 fi
-if [ $_HTTP_WILDCARD = "YES" ] && [ $_STATUS = "INIT" ] ; then
+if [ $_HTTP_WILDCARD = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/server.tpl.php &> /dev/null
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost_disabled.tpl.php &> /dev/null

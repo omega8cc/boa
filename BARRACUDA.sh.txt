@@ -691,7 +691,7 @@ fix_on_upgrade () {
 #
 # Validate server IP for xtras
 validate_xtras_ip () {
-  if [ $_HTTP_WILDCARD = "YES" ] && [ $_STATUS = "INIT" ] ; then
+  if [ $_HTTP_WILDCARD = "YES" ] ; then
     _XTRAS_THISHTIP="*"
   else
     if [ -e "/usr/bin/sipcalc" ] ; then
