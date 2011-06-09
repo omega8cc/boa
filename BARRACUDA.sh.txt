@@ -690,7 +690,7 @@ fix_on_upgrade () {
 }
 #
 # Validate server IP for xtras
-validate_xtras_ip {
+validate_xtras_ip () {
   if [ $_HTTP_WILDCARD = "YES" ] && [ $_STATUS = "INIT" ] ; then
     _XTRAS_THISHTIP="*"
   else
@@ -719,7 +719,7 @@ validate_xtras_ip {
 }
 #
 # Validate local server IP
-validate_local_ip {
+validate_local_ip () {
   if [ -e "/usr/bin/sipcalc" ] ; then
     if [ -z "$_THISHTIP" ] ; then
       _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
