@@ -2465,7 +2465,9 @@ if [ $_STATUS = "INIT" ] ; then
   fi
   mrun "sleep 3"
   if [ $_HTTP_WILDCARD = "YES" ] ; then
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/nginx/server.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/nginx/vhost_disabled.tpl.php &> /dev/null
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."

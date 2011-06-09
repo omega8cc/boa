@@ -332,7 +332,9 @@ else
   fi
 fi
 if [ $_HTTP_WILDCARD = "YES" ] && [ $_STATUS = "INIT" ] ; then
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/server.tpl.php &> /dev/null
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost_disabled.tpl.php &> /dev/null
 fi
 
 

@@ -118,7 +118,9 @@ hostmaster_go_up () {
     rm -f drush_make-6.x-2.2.tar.gz
   fi
   if [ $_HTTP_WILDCARD = "TEST" ] ; then
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/server.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost_disabled.tpl.php &> /dev/null
   fi
   cd $_PREV_AEGIR_ROOT
 }
