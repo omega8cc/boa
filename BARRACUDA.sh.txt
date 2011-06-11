@@ -774,7 +774,7 @@ force_advanced_nginx_config () {
   chown aegir:aegir *
 }
 #
-# Tune memory limits for PHP-FPM-FPM, Nginx and $_DB_SERVER
+# Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   if [[ $_ETH_TEST =~ venet0 ]] ; then
@@ -1517,12 +1517,16 @@ fi
 
 ###--------------------###
 msg "INFO: Run apt update, please wait..."
+if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
+  rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
+fi
 st_runner "apt-get update -y --force-yes" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
   st_runner "apt-get update -y --force-yes" 2> /dev/null
   st_runner "apt-get clean -y --force-yes" 2> /dev/null
   st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
+  st_runner "aptitude full-upgrade -y" 2> /dev/null
   st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
@@ -1566,9 +1570,11 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
-  st_runner "apt-get autoremove -y"          &> /dev/null
-  st_runner "apt-get remove mysql-common -y" &> /dev/null
-  st_runner "apt-get purge mysql-common -y"  &> /dev/null
+  if [ "$_SQL_UPGRADE" = "YES" ] ; then
+    st_runner "apt-get autoremove -y"          &> /dev/null
+    st_runner "apt-get remove mysql-common -y" &> /dev/null
+    st_runner "apt-get purge mysql-common -y"  &> /dev/null
+  fi
   st_runner "apt-get update -y"              &> /dev/null
   SQLDEB="percona-server-server-5.5"
   SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
@@ -1678,6 +1684,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
   st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
   st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
+  st_runner "aptitude full-upgrade -y" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 fi
@@ -1691,6 +1698,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
   st_runner "apt-get upgrade -y --force-yes" 2> /dev/null
   st_runner "apt-get dist-upgrade -y --force-yes" 2> /dev/null
   st_runner "apt-get autoclean -y --force-yes" 2> /dev/null
+  st_runner "aptitude full-upgrade -y" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 fi
@@ -1861,7 +1869,7 @@ if [ -d "/var/xdrago" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/300/188/g" /var/xdrago/minute.sh
-    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/5 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
+    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
 if [ $_STATUS = "INIT" ] ; then
@@ -1882,7 +1890,7 @@ if [ $_STATUS = "INIT" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/300/188/g" /var/xdrago/minute.sh
-    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/5 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
+    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
