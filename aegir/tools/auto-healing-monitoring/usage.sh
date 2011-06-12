@@ -15,6 +15,11 @@
 ### to force it on every run, you may want
 ### to change default settings below.
 ###
+### Note: the modules on/off switch will
+### affect only sites without "dev" in the
+### *main* domain name (the "dev" in the
+### domain alias is not checked here).
+###
 _PERMISSIONS=YES
 _MODULES=YES
 _MODULES_ON="syslog cache path_alias_cache robotstxt filefield_nginx_progress"

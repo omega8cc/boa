@@ -228,5 +228,5 @@ The Drupal 7.x platforms come with contrib modules:
   Initial work: http://drupal.org/node/244072#comment-1747170
 
 * Nice people who are submitting bugs and problems in the
-  GitHub issue queue.
+  Barracuda/Octopus issue queues.
 
