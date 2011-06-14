@@ -166,12 +166,11 @@ if (file_exists('/data/conf/override.global.inc')) {
 }
 
 // don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
-if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT']) &&
-    !preg_match("/(?:cron\.php)/", $_SERVER['REQUEST_URI']) && $use_cache == "YES") {
+if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) &&
+  isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES") {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
-     if (file_exists('./modules/o_contrib/cache/cache.inc') && isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) &&
-         preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
+     if (file_exists('./modules/o_contrib/cache/cache.inc')) {
       $conf['cache_inc'] = './modules/o_contrib/cache/cache.inc';
       $conf['cache_settings'] = array(
       'engines' => array(
