@@ -430,7 +430,7 @@ _LOCAL_NETWORK_IP=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=1.0-boa-T-8.7
+_INSTALLER_VERSION=1.0-boa-T-8.8
 
 ## System
 _WEBG=www-data
