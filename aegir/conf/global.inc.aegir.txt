@@ -122,7 +122,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
         preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users)/", $_SERVER['REQUEST_URI']) ||
-        file_exists('sites/all/modules/ubercart/README.txt') || file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt')
+        file_exists('sites/all/modules/ubercart/README.txt') ||
+        file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt') ||
         preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
