@@ -23,18 +23,6 @@ $conf['statistics_enable_access_log'] = 0;      // disable access log stats
 // $conf['javascript_aggregator_no_htaccess'] = 0; // do not create .htaccess files
 // $conf['javascript_aggregator_gzip'] = 1;        // enable compression for js files
 
-if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
-  unset($conf['preprocess_css']); // disable hardcoded css aggregation
-  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
-  $conf['advagg_enabled'] = 1;
-  $conf['advagg_async_generation'] = 1;
-  $conf['advagg_gzip_compression'] = 1;
-  $conf['advagg_checksum_mode'] = "md5";
-  $conf['advagg_debug'] = 0;
-  $conf['advagg_dir_htaccess'] = 0;
-  $conf['advagg_rebuild_on_flush'] = 0;
-}
-
 ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
 ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
@@ -87,12 +75,25 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) &
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
+  
+  if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module')) {
+    unset($conf['preprocess_css']); // disable hardcoded css aggregation
+    unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+    $conf['advagg_enabled'] = 1;
+    $conf['advagg_async_generation'] = 1;
+    $conf['advagg_gzip_compression'] = 1;
+    $conf['advagg_checksum_mode'] = "md5";
+    $conf['advagg_debug'] = 0;
+    $conf['advagg_dir_htaccess'] = 0;
+    $conf['advagg_rebuild_on_flush'] = 0;
+  }
+
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if (!preg_match("/hostmaster/", $conf['install_profile'])) {
-//         ini_set('session.cookie_secure', 1);
         $_SERVER['HTTPS'] = 'on';
       }
     }
@@ -126,7 +127,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
         preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users)/", $_SERVER['REQUEST_URI']) ||
-        file_exists('sites/all/modules/ubercart/README.txt') ||
+        file_exists('sites/all/modules/ubercart/README.txt') || file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt')
         preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
@@ -156,6 +157,11 @@ if (isset($_SERVER['HTTP_HOST'])) {
 }
 
 $use_cache = 'YES';
+
+if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
+    file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt'))) {
+  $use_cache = 'NO';
+}
 
 /**
  * Optional extra settings/overrides
