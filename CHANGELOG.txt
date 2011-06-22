@@ -34,7 +34,7 @@
 
   OpenPublic 1.0-beta1 --------- http://openpublicapp.com
   NodeStream 1.0 --------------- http://nodestream.org
-  Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
+  Drupal Commons 1.7 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
   Conference 1.0-alpha3 -------- http://usecod.com
   Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise

@@ -786,7 +786,11 @@ tune_memory_limits () {
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
-  let "_USE_SQL = (($_RAM / 3))"
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    let "_USE_SQL = (($_RAM / 4))"
+  else
+    let "_USE_SQL = (($_RAM / 3))"
+  fi
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_APC=512
@@ -1868,7 +1872,7 @@ if [ -d "/var/xdrago" ] ; then
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
-    sed -i "s/300/188/g" /var/xdrago/minute.sh
+    sed -i "s/300/288/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
@@ -1889,7 +1893,7 @@ if [ $_STATUS = "INIT" ] ; then
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
-    sed -i "s/300/188/g" /var/xdrago/minute.sh
+    sed -i "s/300/288/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi

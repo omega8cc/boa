@@ -99,11 +99,11 @@ Octopus can install the platforms listed below:
 
  Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
- Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
+ Drupal Commerce 1.0-beta4 ---- http://drupalcommerce.org
  Atrium 1.0-beta10 ------------ http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  NodeStream 1.0 --------------- http://nodestream.org
- Drupal Commons 1.6 ----------- http://acquia.com/drupalcommons
+ Drupal Commons 1.7 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu

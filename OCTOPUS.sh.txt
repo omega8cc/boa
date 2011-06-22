@@ -84,13 +84,13 @@ _CLIENT_CORES=4
 ### MNS ----------- Managing News 1.2
 ### NSM ----------- NodeStream 1.0
 ### OPC ----------- OpenPublic 1.0-beta1
-### DCS ----------- Drupal Commons 1.6
+### DCS ----------- Drupal Commons 1.7
 ### AQ6 ----------- Acquia 6.22
 ### AQ7 ----------- Acquia 7.2.2
 ### OSR ----------- OpenScholar 2.0-beta10-1
 ### COD ----------- Conference 1.0-alpha3
 ### OEE ----------- Open Enterprise 1.0-beta3
-### DCE ----------- Drupal Commerce 1.0-beta3
+### DCE ----------- Drupal Commerce 1.0-beta4
 ### PPT ----------- ProsePoint 0.39
 ### UCT ----------- Ubercart
 ### CC3 ----------- CiviCRM 3.4.2
@@ -442,7 +442,7 @@ _DRUSH_FAMILY=4        ### change to 5 for HEAD
 
 ## Distributions
 _COCOMORE=cdc-6.20.12
-_COMMONS=6.x-1.6
+_COMMONS=6.x-1.7
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.2
 _MANAGINGNEWS=1.2
