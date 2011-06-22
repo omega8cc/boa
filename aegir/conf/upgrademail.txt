@@ -26,8 +26,8 @@ Your Aegir control panel is available as before at:
   to make your standard workflow easier for: -dev, -stage and -prod,
   with correct suffix: D.00x, S.00x and P.00x in the platform name.
   
-* MariaDB server upgraded to version 5.2.6
-* Nginx server upgraded to version Barracuda/1.0.2
+* MariaDB server upgraded to version 5.2.7
+* Nginx server upgraded to version Barracuda/1.0.4
 
 * New platforms [supported in all Aegir hosted versions]:
 
@@ -53,22 +53,22 @@ Your Aegir control panel is available as before at:
 
 * Import your sites in 8 easy steps recipe - see further below.
 
-* New platforms [supported only in Aegir Classic and TG version]:
+* New platforms [supported only with 4+ Aegir Hosted Cores]:
 
   OpenPublic 1.0-beta1 --------- http://openpublicapp.com
   NodeStream 1.0 --------------- http://nodestream.org
   Drupal Commons 1.7 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
 
-  Q: How to upgrade from Aegir Mini to Classic?
+  Q: How to upgrade/add more Cores?
   
-  A: Place a new order at http://omega8.cc/hosted-aegir
-     and your old subscription will be cancelled
-     plus any unused amount refunded the same day.
+  A: To add more Standard Cores, use the order form at:
+     http://omega8.cc/buy#standard. To add more SSD Cores,
+     use the order form at http://omega8.cc/buy#ssd 
 
-  Q: How to upgrade from Aegir Mini or Classic to Aegir TG?
+  Q: How to upgrade from Aegir Mini or Classic to Aegir SSD?
   
-  A: Aegir TG is a special, very high performance option,
+  A: Aegir SSD is a special, very high performance option,
      hosted on the high-end hardware in a separate custom
      cloud, so simple upgrade is not possible. Separate
      subscription and site migration will be required.
