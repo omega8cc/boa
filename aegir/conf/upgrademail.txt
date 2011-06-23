@@ -80,7 +80,7 @@ Your Aegir control panel is available as before at:
 * Redis cache server upgraded to version 2.0.5
 * PHP-FPM server upgraded to version 5.2.17
 * Memcache extension replaced with memcached and libmemcached.
-* Chive database manager upgraded to version 0.4.1
+* Chive database manager upgraded to version 0.4.2
 
 
 ----------------------------------------

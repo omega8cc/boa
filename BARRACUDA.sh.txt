@@ -464,6 +464,7 @@ _INSTALLER_VERSION=1.0-boa-T-8.8
 _NGINX_VERSION=1.0.4
 _PHP_VERSION=5.2.17
 _APC_VERSION=3.1.9
+_CHIVE_VERSION=0.4.2
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
@@ -2765,9 +2766,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
       mrun "sleep 3"
       cd /var/www
-      wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
-      tar -xzf chive_0.4.1.tar.gz
-      rm -f chive_0.4.1.tar.gz
+      wget -q -U iCab http://launchpad.net/chive/0.4/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
+      tar -xzf chive_$_CHIVE_VERSION.tar.gz
+      rm -f chive_$_CHIVE_VERSION.tar.gz
       chown -R www-data:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
       validate_xtras_ip
@@ -2782,7 +2783,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
       echo "}" >> $_CHIVE_VHOST
       echo >> $_CHIVE_VHOST
-      touch /var/log/chive_0.4.1.log
+      touch /var/log/chive_$_CHIVE_VERSION.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
       mrun "sleep 2"
     else
@@ -2794,18 +2795,18 @@ fi
 
 ###--------------------###
 if [ -d "/var/www/chive" ] ; then
-  if [ ! -e "/var/log/chive_0.4.1.log" ] ; then
+  if [ ! -e "/var/log/chive_$_CHIVE_VERSION.log" ] ; then
     msg "INFO: Upgrading Chive $_DB_SERVER Manager, please wait..."
     mrun "sleep 3"
     cd /var/www
     rm -f -r /var/www/chive
-    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_0.4.1.tar.gz
-    tar -xzf chive_0.4.1.tar.gz
-    rm -f chive_0.4.1.tar.gz
+    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_$_CHIVE_VERSION.tar.gz
+    tar -xzf chive_$_CHIVE_VERSION.tar.gz
+    rm -f chive_$_CHIVE_VERSION.tar.gz
     chown -R www-data:www-data /var/www/chive
-    touch /var/log/chive_0.4.1.log
+    touch /var/log/chive_$_CHIVE_VERSION.log
   fi
-  if [ ! -e "/var/log/chive_0.4.1.vhost.log" ] ; then
+  if [ ! -e "/var/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     validate_xtras_ip
     echo > $_CHIVE_VHOST
@@ -2819,7 +2820,7 @@ if [ -d "/var/www/chive" ] ; then
     echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CHIVE_VHOST
     echo "}" >> $_CHIVE_VHOST
     echo >> $_CHIVE_VHOST
-    touch /var/log/chive_0.4.1.vhost.log
+    touch /var/log/chive_$_CHIVE_VERSION.vhost.log
   fi
 fi
 
