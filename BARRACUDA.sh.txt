@@ -1873,7 +1873,7 @@ if [ -d "/var/xdrago" ] ; then
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
-    sed -i "s/300/288/g" /var/xdrago/minute.sh
+    sed -i "s/600/399/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi
@@ -1894,7 +1894,7 @@ if [ $_STATUS = "INIT" ] ; then
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
-    sed -i "s/300/288/g" /var/xdrago/minute.sh
+    sed -i "s/600/399/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
   fi
 fi

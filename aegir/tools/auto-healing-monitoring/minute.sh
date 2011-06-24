@@ -8,7 +8,7 @@ perl /var/xdrago/firewall/check/sqlcheck
 
 action()
 {
-limit=300
+limit=600
 xkill=null
 for each in `mysqladmin proc | awk '{print $2, $4, $8, $12}' | awk '{print $1}'`;
 do
