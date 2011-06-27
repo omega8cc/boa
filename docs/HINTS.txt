@@ -12,3 +12,46 @@ $ cd /path/to/site
 $ drush dl filefield filefield_nginx_progress
 $ drush en filefield filefield_nginx_progress -y
 
+
+### How to customize standard rewrites and locations in Nginx
+#
+# You can include your custom rewrites configuration file
+# to modify or add some custom settings taking precedence
+# over other rules in the main Nginx configuration below.
+#
+# Your custom include file should have filename: nginx_vhost_include.conf
+# and Nginx will look for this file in the include directory
+# specified below:
+#
+# include /data/disk/EDIT_USER/config/server_master/nginx/post.d/nginx_vhost_include*;
+#
+# This file will be included if exist and will never be modified
+# or touched by Aegir provision backend system.
+#
+# You could use this feature to map some legacy static files
+# like images, downloads and other static htm/html content
+# to the drupal sites/domain/files directory, to avoid
+# using drupal root directory and make your site compatible
+# with drupal multisite setup used in Aegir to migrate sites
+# between platforms (different drupal root directories).
+# See commented out example of config lines below.
+#
+# Note: your custom rewrite rules will apply to *all* sites
+# on the same Aegir Satellite Instance.
+#
+# Custom configuration in the nginx_vhost_include.conf file - includes
+# example custom rewrite rules to map legacy content to the drupal multisite.
+#    
+location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
+  access_log off;
+  expires    30d;
+  rewrite    ^/files/(.*)$     /sites/$host/files/$1 last;
+  rewrite    ^/images/(.*)$    /sites/$host/files/images/$1 last;
+  rewrite    ^/downloads/(.*)$ /sites/$host/files/downloads/$1 last;
+  rewrite    ^/download/(.*)$  /sites/$host/files/download/$1 last;
+  rewrite    ^/docs/(.*)$      /sites/$host/files/docs/$1 last;
+  rewrite    ^/documents/(.*)$ /sites/$host/files/documents/$1 last;
+  rewrite    ^/legacy/(.*)$    /sites/$host/files/legacy/$1 last;
+  try_files  $uri =404;
+}
+
