@@ -109,8 +109,8 @@ Octopus can install the platforms listed below:
  OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- CiviCRM 3.4.2 ---------------- http://civicrm.org
- CiviCRM 4.0.2 ---------------- http://civicrm.org
+ CiviCRM 3.4.4 ---------------- http://civicrm.org
+ CiviCRM 4.0.4 ---------------- http://civicrm.org
  ProsePoint 0.39 (int) -------- http://prosepoint.org
  Ubercart (int) --------------- http://ubercart.org
  Drupal 5.23 Pressflow -------- http://pressflow.org

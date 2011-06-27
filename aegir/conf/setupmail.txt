@@ -117,8 +117,8 @@ test sites, for example: http://atrium.aegir.dragon.ny.host8.biz etc.
 #3. SETTING UP SEARCH WITH SOLR
 ----------------------------------------
 
-One Apache Solr Core is available free with every hosted
-Aegir server, when paid yearly.
+One Apache Solr Core is available free with 4+ Aegir Hosted Cores,
+when paid yearly.
 
 Contact our support department to associate the Solr search
 with your desired site.
