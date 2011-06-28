@@ -973,7 +973,9 @@ fi
 
 echo "8s before we will continue..."
 sleep 8
+rm -f /tmp/cache.inc
 action
+rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid

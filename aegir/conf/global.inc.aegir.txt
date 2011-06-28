@@ -60,13 +60,6 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) &
   unset($conf['preprocess_css']); // disable hardcoded css aggregation
   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
   unset($conf['error_level']);    // disable hardcoded no errors on screen
-  unset($conf['advagg_async_generation']); // disable hardcoded value
-  unset($conf['advagg_gzip_compression']); // disable hardcoded value
-  unset($conf['advagg_checksum_mode']);    // disable hardcoded value
-  unset($conf['advagg_debug']);            // disable hardcoded value
-  unset($conf['advagg_dir_htaccess']);     // disable hardcoded value
-  unset($conf['advagg_rebuild_on_flush']); // disable hardcoded value
-  unset($conf['advagg_enabled']);          // disable hardcoded value
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {

@@ -819,6 +819,7 @@ if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
   msg "STATUS: Stop the cron and wait 5 sec."
   rm -f -r /opt/tmp/*
+  rm -f /tmp/cache.inc
   invoke-rc.d cron stop &> /dev/null
   touch /var/run/octopus_barracuda.pid
   sleep 5
@@ -3126,6 +3127,7 @@ if [ $_STATUS = "INIT" ] ; then
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
+rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
