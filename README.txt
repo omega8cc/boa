@@ -106,7 +106,7 @@ Octopus can install the platforms listed below:
  Drupal Commons 1.7 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
- OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
+ OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  CiviCRM 3.4.4 ---------------- http://civicrm.org

@@ -58,7 +58,7 @@ Some new platforms are supported with 4+ Aegir Hosted Cores only:
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
  NodeStream 1.0 6.22 ---------- http://nodestream.org
  Drupal Commons 1.7 6.22 ------ http://acquia.com/drupalcommons
- OpenScholar 2.0-beta10-1 ----- http://openscholar.harvard.edu
+ OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
 
 Note about platforms naming convention:
 
