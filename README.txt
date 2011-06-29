@@ -138,11 +138,11 @@ added to all 6.x platforms:
  config_perms-6.x-2.x-dev
  css_emimage-6.x-2.x-dev
  dbtuner-6.x-1.x-dev
- drupal-nginx-fast-x-accel-redirect
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
+ nginx_accel_redirect-6.x-1.3
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.0
@@ -158,7 +158,7 @@ The Drupal 7.x platforms come with contrib modules:
 
  admin-7.x-2.0-beta3
  agrcache-7.x-1.0-alpha2
- backup_migrate-7.x-2.x-dev
+ backup_migrate-7.x-2.1
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
  core_library-7.x-2.0-alpha6
