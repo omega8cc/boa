@@ -143,6 +143,7 @@ added to all 6.x platforms:
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
  nginx_accel_redirect-6.x-1.3
+ private_upload-6.x-1.x-dev
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.0
