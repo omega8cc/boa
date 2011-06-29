@@ -94,7 +94,7 @@ _CLIENT_CORES=4
 ### PPT ----------- ProsePoint 0.39
 ### UCT ----------- Ubercart
 ### CC3 ----------- CiviCRM 3.4.4
-### CC4 ----------- CiviCRM 4.0.2
+### CC4 ----------- CiviCRM 4.0.4
 ### FSR ----------- Feature Server
 ###
 ### Examples:
@@ -457,7 +457,7 @@ _OPENPUBLIC=beta1-build100
 _COD=6.x-1.0-alpha3
 _OPENENTERPRISE=6.x-1.0-beta3
 _CIVICRM6=3.4.4
-_CIVICRM7=4.0.2
+_CIVICRM7=4.0.4
 
 ###---### Functions
 #
