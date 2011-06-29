@@ -13,7 +13,9 @@ action()
   rm -f /opt/tomcat6/logs/*
   rm -f -r /var/lib/nginx/speed/*
   /etc/init.d/nginx stop
-  killall -9 nginx
+  /etc/init.d/php-fpm stop
+  killall -9 php-fpm php-cgi nginx php
+  /etc/init.d/php-fpm start
   /etc/init.d/nginx start
   rm -f /var/xdrago/log/wait-for-octopus-barracuda-running
   touch /var/xdrago/log/graceful.done
@@ -24,7 +26,7 @@ if test -f /var/run/octopus_barracuda.pid ; then
   exit
 else
   touch /var/xdrago/log/optimize_mysql_ao.pid
-  sleep 60
+  sleep 8
   action
   rm -f /var/xdrago/log/optimize_mysql_ao.pid
 fi
