@@ -97,7 +97,7 @@ standard production settings.
 
 Octopus can install the platforms listed below:
 
- Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
+ Drupal 7.4 ------------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
  Drupal Commerce 1.0-beta4 ---- http://drupalcommerce.org
  Atrium 1.0-beta10 ------------ http://openatrium.com
@@ -105,7 +105,7 @@ Octopus can install the platforms listed below:
  NodeStream 1.0 --------------- http://nodestream.org
  Drupal Commons 1.7 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
- Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.2.3 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  Conference 1.0-alpha3 -------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
@@ -150,6 +150,7 @@ added to all 6.x platforms:
  securesite-6.x-2.4
  session_expire-6.x-1.x-dev
  site_verify-6.x-1.0
+ textile-6.x-2.4
  variable_clean-6.x-1.x-dev
  views_content_cache-6.x-2.x-dev
  views404-6.x-1.x-dev
@@ -164,14 +165,13 @@ The Drupal 7.x platforms come with contrib modules:
  boost-7.x-1.x-dev
  core_library-7.x-2.0-alpha6
  css_emimage-7.x-1.1
- elysia_cron-7.x-1.x-dev
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev
  fpa-7.x-2.0
- node_clone-7.x-1.x-dev
  robotstxt-7.x-1.x-dev
  seckit-7.x-1.0
  site_verify-7.x-1.0
+ textile-7.x-2.0-rc9
  variable_clean-7.x-1.x-dev
  + theme rubik-7.x-4.0-beta5
 

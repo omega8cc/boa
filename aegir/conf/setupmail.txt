@@ -40,13 +40,13 @@ in a separate e-mail.
 Once in your control panel, you'll find a number of
 Drupal distributions ready to deploy [available in all options]:
  
- Drupal 7.2 ------------------- http://drupal.org/drupal-7.0
+ Drupal 7.4 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.22 ------------------ http://pressflow.org
  Open Atrium 1.0-beta10 6.22 -- http://openatrium.com
  Managing News 1.2 6.22 ------- http://managingnews.com
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
- Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.2.3 ----------------- http://bit.ly/acquiadrupal
  Ubercart 6.22 ---------------- http://ubercart.org
  ProsePoint 0.39 6.22 --------- http://prosepoint.org
  Conference 1.0-alpha3 6.22 --- http://usecod.com
