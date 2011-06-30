@@ -86,7 +86,7 @@ _CLIENT_CORES=4
 ### OPC ----------- OpenPublic 1.0-beta1
 ### DCS ----------- Drupal Commons 1.7
 ### AQ6 ----------- Acquia 6.22
-### AQ7 ----------- Acquia 7.2.3
+### AQ7 ----------- Acquia 7.4.4
 ### OSR ----------- OpenScholar 2.0-beta11
 ### COD ----------- Conference 1.0-alpha3
 ### OEE ----------- Open Enterprise 1.0-beta3

@@ -409,7 +409,7 @@ fi
 ###---### Distributions full names
 #
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
-_F_ACQUIA_SEVEN="Acquia 7.2.3 P.$_THIS_CORE"
+_F_ACQUIA_SEVEN="Acquia 7.4.4 P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0-beta10 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"

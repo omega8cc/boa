@@ -46,7 +46,7 @@ Drupal distributions ready to deploy [available in all options]:
  Managing News 1.2 6.22 ------- http://managingnews.com
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
- Acquia 7.2.3 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
  Ubercart 6.22 ---------------- http://ubercart.org
  ProsePoint 0.39 6.22 --------- http://prosepoint.org
  Conference 1.0-alpha3 6.22 --- http://usecod.com
