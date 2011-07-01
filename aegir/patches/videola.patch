@@ -1,0 +1,59 @@
+diff -urp a/videola.info b/videola.info
+--- a/videola.info	2011-06-15 10:17:14.000000000 +0000
++++ b/videola.info	2011-07-01 13:15:48.000000000 +0000
+@@ -119,7 +119,7 @@ dependencies[] = jquery_ui
+ dependencies[] = jquery_update
+ dependencies[] = vertical_tabs
+ dependencies[] = better_formats
+-dependencies[] = bueditor
++;dependencies[] = bueditor
+ 
+ 
+ ; Other
+@@ -132,7 +132,7 @@ dependencies[] = commentmail
+ dependencies[] = context
+ dependencies[] = context_ui
+ dependencies[] = date
+-dependencies[] = devel
++;dependencies[] = devel
+ dependencies[] = diff
+ dependencies[] = features
+ dependencies[] = flag
+@@ -154,6 +154,11 @@ dependencies[] = strongarm
+ dependencies[] = term_node_count
+ dependencies[] = token
+ 
++; o_contrib
++dependencies[] = cache
++dependencies[] = path_alias_cache
++dependencies[] = filefield_nginx_progress
++
+ ; Videola
+ dependencies[] = videola_core
+ dependencies[] = videola_video
+@@ -197,6 +202,8 @@ users[superduper][status] = 1
+ variables[site_name] = Videola
+ variables[site_mail] = testing@testing.com
+ variables[site_frontpage] = videola-front
++variables[admin_theme] = rubik
++variables[node_admin_theme] = 1
+ 
+ variables[pathauto_node_pattern] = 0
+ variables[pathauto_node_videola_video_pattern] = videos/[title-raw]
+diff -urp a/videola.profile b/videola.profile
+--- a/videola.profile	2011-06-15 10:17:14.000000000 +0000
++++ b/videola.profile	2011-07-01 12:47:56.000000000 +0000
+@@ -67,7 +67,12 @@ function videola_profile_tasks(&$task, $
+     profiler_profile_tasks(profiler_v2_load_config('videola'), $task, $url);
+     // Profiler stets the $task to 'profile-finished', in order to add our own
+     // tasks we need to override that and set it to our task.
+-    $task = 'videola';
++    if (defined('DRUSH_BASE_PATH')) {
++      $task = 'profile-finished'; // Required to support Aegir.
++    }
++    else {
++      $task = 'videola';
++    }
+   }
+ 
+   if ($task == 'videola') {

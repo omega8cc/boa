@@ -61,6 +61,7 @@ _COD=EDIT_COD
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
+_VIDEOLA=EDIT_VIDEOLA
 
 
 ###---### main config
@@ -429,6 +430,7 @@ _F_COD="Conference $_COD P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 P.$_THIS_CORE"
 _F_CIVICRM7="CiviCRM $_CIVICRM7 P.$_THIS_CORE"
+_F_VIDEOLA="Videola $_VIDEOLA P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -1111,6 +1113,47 @@ fi
 fi
 
 
+###---### Videola Make
+#
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA" ] ; then
+echo " "
+if prompt_yes_no "$_F_VIDEOLA - http://videola.tv" ; then
+true
+msg "STATUS: $_F_VIDEOLA install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/videola-$_VIDEOLA"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/videola.make ./
+  $_ROOT/tools/drush/drush make videola.make videola-$_VIDEOLA &> /dev/null
+  rm -f videola.make
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/videola-$_VIDEOLA/ &> /dev/null
+  cd $_CORE/videola-$_VIDEOLA
+  rm -f $_CORE/videola-$_VIDEOLA/*.txt
+  rm -f -r $_CORE/videola-$_VIDEOLA/modules/cookie_cache_bypass
+  if [ $_VIDEOLA = "6.x-1.0-alpha1" ] ; then
+    cd $_CORE/videola-$_VIDEOLA/profiles/videola
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/videola.patch ./
+    patch -p1 < videola.patch &> /dev/null
+    cd $_CORE/videola-$_VIDEOLA
+  fi
+  rm -f -r ./profiles/default
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA
+cd $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA
+create_symlinks
+msg "STATUS: $_F_VIDEOLA installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_VIDEOLA installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+
+
 ###---### Feature Server Make
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
@@ -1724,6 +1767,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_CIVICRM7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_VIDEOLA" videola $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA &> /dev/null
     mrun "sleep 5"
   fi
 fi
