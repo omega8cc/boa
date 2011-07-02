@@ -417,7 +417,7 @@ _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
 _F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
-_F_COMMONS="Drupal Commons $_COMMONS P.$_THIS_CORE"
+_F_COMMONS="Acquia Commons $_COMMONS P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
 _F_NODESTREAM="NodeStream $_NODESTREAM P.$_THIS_CORE"
@@ -1010,7 +1010,7 @@ fi
 fi
 
 
-###---### Drupal Commons
+###---### Acquia Commons
 #
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then

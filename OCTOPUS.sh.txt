@@ -84,7 +84,7 @@ _CLIENT_CORES=4
 ### MNS ----------- Managing News 1.2
 ### NSM ----------- NodeStream 1.0
 ### OPC ----------- OpenPublic 1.0-beta1
-### DCS ----------- Drupal Commons 1.7
+### DCS ----------- Acquia Commons 1.7
 ### AQ6 ----------- Acquia 6.22
 ### AQ7 ----------- Acquia 7.4.4
 ### OSR ----------- OpenScholar 2.0-beta11

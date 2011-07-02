@@ -57,7 +57,7 @@ Your Aegir control panel is available as before at:
 
   OpenPublic 1.0-beta1 --------- http://openpublicapp.com
   NodeStream 1.0 --------------- http://nodestream.org
-  Drupal Commons 1.7 ----------- http://acquia.com/drupalcommons
+  Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
   OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
 
   Q: How to upgrade/add more Cores?
