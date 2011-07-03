@@ -186,9 +186,9 @@ create_dirs () {
   mkdir -p ./sites/default/files
   mkdir -p ./cache/perm
   mkdir -p ./cache/normal
-  chmod 777 -R ./cache &> /dev/null
+  chmod 2777 -R ./cache &> /dev/null
   #mkdir -p ./backup/modules
-  #chmod 777 -R ./backup &> /dev/null
+  #chmod 2777 -R ./backup &> /dev/null
   if [ -e "./sites/default/default.settings.php" ] ; then
     cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
   fi

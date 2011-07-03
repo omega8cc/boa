@@ -61,12 +61,12 @@ if [ -d "$Plr/cache/normal" ] ; then
   rm -f -r $Plr/cache/normal/*
   rm -f -r $Plr/cache/perm/*
   chown -R $_THIS_HM_USER:www-data $Plr/cache
-  chmod -R 777 $Plr/cache
+  chmod -R 2777 $Plr/cache
 fi
 if [ ! -d "$Plr/cache/normal" ] ; then
   mkdir -p $Plr/cache/{normal,perm}
   chown -R $_THIS_HM_USER:www-data $Plr/cache
-  chmod -R 777 $Plr/cache
+  chmod -R 2777 $Plr/cache
 fi
 if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ]; then
   rm -f $Plr/robots.txt

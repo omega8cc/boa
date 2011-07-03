@@ -454,7 +454,7 @@ else
     _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     chown -R $_USER $_THIS_HM_ROOT
     chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
-    chmod -R 777 $_THIS_HM_SITE/files
+    chmod -R 2770 $_THIS_HM_SITE/files
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
     msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
   else
@@ -669,7 +669,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 	  _FOUND_HM=YES
     else
       chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
-      chmod -R 777 $_PLATF/sites/*/files &> /dev/null
+      chmod -R 2770 $_PLATF/sites/*/files &> /dev/null
     fi
   done
 fi

@@ -2580,7 +2580,7 @@ else
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     chown -R aegir $_THIS_HM_ROOT
     chown -R aegir:www-data $_THIS_HM_SITE/files
-    chmod -R 777 $_THIS_HM_SITE/files
+    chmod -R 2770 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
