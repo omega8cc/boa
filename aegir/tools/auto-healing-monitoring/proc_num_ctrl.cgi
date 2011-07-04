@@ -3,8 +3,6 @@
 ###
 ### this is a monitor for this server
 ###
-`/etc/init.d/nginx start` if (!-f "/var/run/nginx.pid");
-`/etc/init.d/php-fpm start` if (!-f "/var/run/php-fpm.pid");
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
 &global_action;
 foreach $USER (sort keys %li_cnt) {
