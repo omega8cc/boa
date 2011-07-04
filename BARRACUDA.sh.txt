@@ -2978,6 +2978,33 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ WMN ]] ; then
 fi
 
 
+csf_install () {
+  msg "INFO: Installing csf/lfd firewall, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f /var/xdrago/log/lastFire
+  wget -q -U iCab http://www.configserver.com/free/csf.tgz
+  tar -xzf csf.tgz
+  cd csf
+  st_runner "sh install.sh" 2> /dev/null
+  cd /etc/csf
+  mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
+  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
+  sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
+  chmod 600 /etc/csf/csf.conf &> /dev/null
+  sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
+  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+  st_runner "invoke-rc.d ssh restart" &> /dev/null
+  st_runner "invoke-rc.d csf restart" &> /dev/null
+  st_runner "invoke-rc.d lfd restart" &> /dev/null
+  echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
+  msg "INFO: csf/lfd firewall installation completed"
+  mrun "sleep 2"
+  touch /var/log/csf_$_INSTALLER_VERSION.log
+}
+
+
 ###--------------------###
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CSF ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
@@ -2985,28 +3012,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CSF ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
         true
-        msg "INFO: Installing csf/lfd firewall, please wait..."
-        mrun "sleep 3"
-        cd /var/opt
-        rm -f /var/xdrago/log/lastFire
-        wget -q -U iCab http://www.configserver.com/free/csf.tgz
-        tar -xzf csf.tgz
-        cd csf
-        st_runner "sh install.sh" 2> /dev/null
-        cd /etc/csf
-        mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
-        sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
-        sed -i "s/,22,/,$_SSH_PORT,/g" /etc/csf/csf.conf
-        chmod 600 /etc/csf/csf.conf &> /dev/null
-        sed -i "s/Port 22/Port $_SSH_PORT/g" /etc/ssh/sshd_config
-        sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
-        st_runner "invoke-rc.d ssh restart" &> /dev/null
-        st_runner "invoke-rc.d csf restart" &> /dev/null
-        st_runner "invoke-rc.d lfd restart" &> /dev/null
-        echo $_SSH_PORT > /var/log/csf-setup-ssh-port-new.log
-        msg "INFO: csf/lfd firewall installation completed"
-        mrun "sleep 2"
+        csf_install
       else
         msg "INFO: csf/lfd firewall installation skipped"
         mrun "sleep 2"
@@ -3015,6 +3021,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CSF ]] ; then
   fi
 fi
 if [ -e "/usr/sbin/csf" ] ; then
+  if [ ! -e "/var/log/csf_$_INSTALLER_VERSION.log" ] ; then
+    csf_install
+  fi
   if [ ! -e "/var/log/csf-setup-ssh-port-new.log" ] ; then
     cd /etc/csf
     mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
