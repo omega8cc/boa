@@ -38,7 +38,7 @@
 ###
 ### Note: to restore default values it is
 ###       enough to start this script with
-###       any vaules defined below and answer
+###       any values defined below and answer
 ###       NO when it prompts for confirmation
 ###       "Are you ready to tune your Aegir".
 ###       
@@ -55,7 +55,7 @@
 ###----------------------------------------###
 ### Hostmaster root directory - /var/aegir
 ###
-### Note: most of vaules tuned by this script
+### Note: most of values tuned by this script
 ###       are server-vide, while some, like
 ###       mod_evasive settings will affect
 ###       only sites hosted on the Aegir
