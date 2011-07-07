@@ -936,8 +936,13 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
     exit 1
   fi
 else
-  _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
-  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  if [ -z "$_MY_OWNIP" ] ; then
+    _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+    _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  else
+    _THISHTIP="$_MY_OWNIP"
+    _THISRDIP="$_MY_OWNIP"
+  fi
 fi
 #
 #
