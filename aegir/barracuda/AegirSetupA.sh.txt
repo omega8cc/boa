@@ -198,7 +198,7 @@ create_shared_dirs () {
   chown $_USER:$_USRG /data/src &> /dev/null
   chown -R $_USER:$_USRG /opt/tmp &> /dev/null
   chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chmod 777 $_CORE /data/all /data/src /data /data/conf &> /dev/null
+  chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 }
 #
 # fix for FServer broken due to required now strongarm
@@ -362,10 +362,10 @@ mkdir -p /data/conf
 chown root:root /data &> /dev/null
 chown root:root /data/disk &> /dev/null
 chown root:$_USRG /data/u &> /dev/null
-chmod 0711 /data &> /dev/null
 chmod 0771 /data/u &> /dev/null
-chmod 0711 /data/disk &> /dev/null
-chmod 0711 /data/conf &> /dev/null
+# chmod 0711 /data &> /dev/null
+# chmod 0711 /data/disk &> /dev/null
+# chmod 0711 /data/conf &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
   msg "$_STATUS A: Add user, please wait..."
   mrun "sleep 3"
@@ -1095,7 +1095,7 @@ chown -R root:root /data/src &> /dev/null
 chown -R root:root /data/conf &> /dev/null
 chown -R root:root $_CORE &> /dev/null
 chown root:root /opt/tmp &> /dev/null
-chmod 0711 $_CORE /data/all /data/src /data /data/conf &> /dev/null
+chmod 0711 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
