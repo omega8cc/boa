@@ -198,7 +198,7 @@ create_shared_dirs () {
   chown $_USER:$_USRG /data/src &> /dev/null
   chown -R $_USER:$_USRG /opt/tmp &> /dev/null
   chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chmod 755 $_CORE /data/all /data/src /data /data/conf &> /dev/null
+  chmod 777 $_CORE /data/all /data/src /data /data/conf &> /dev/null
 }
 #
 # fix for FServer broken due to required now strongarm
