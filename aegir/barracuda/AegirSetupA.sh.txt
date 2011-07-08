@@ -1094,6 +1094,7 @@ chown root:root /data/all &> /dev/null
 chown -R root:root /data/src &> /dev/null
 chown -R root:root /data/conf &> /dev/null
 chown -R root:root $_CORE &> /dev/null
+chown -R root:root /data/all/000 &> /dev/null
 chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
