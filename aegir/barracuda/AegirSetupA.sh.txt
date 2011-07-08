@@ -195,7 +195,7 @@ create_shared_dirs () {
     mkdir -p /data/src
   fi
   chown $_USER:$_USRG /data/all &> /dev/null
-  chown $_USER:$_USRG /data/src &> /dev/null
+  chown -R $_USER:$_USRG /data/src &> /dev/null
   chown -R $_USER:$_USRG /opt/tmp &> /dev/null
   chown -R $_USER:$_USRG /data/conf &> /dev/null
   chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
