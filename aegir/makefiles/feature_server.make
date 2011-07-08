@@ -19,6 +19,7 @@ projects[filefield] = 3.9
 projects[install_profile_api] = 2.1
 projects[strongarm] = 2.0
 projects[views] = 2.12
+projects[nodereference_url] = 1.11
 
 projects[fserver][download][type] = "git"
 projects[fserver][download][url] = "git://github.com/omega8cc/FeatureServer.git"
