@@ -368,6 +368,38 @@ if [ -d "$_CORE/o_contrib_seven" ] ; then
  fi
 fi
 }
+#
+# prepare_pressflow_core
+prepare_pressflow_core () {
+  mkdir -p /data/src/$_THIS_CORE
+  chmod 0700 /data/src/$_THIS_CORE &> /dev/null
+  cd /data/src/$_THIS_CORE
+  rm -f -r /data/src/$_THIS_CORE/pressflow-6
+  bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
+  cd /data/src/$_THIS_CORE/pressflow-6/
+  rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
+  rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
+  rm -f -r /data/src/$_THIS_CORE/pressflow-6/modules/cookie_cache_bypass
+  rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
+  themes_for_d6
+  rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
+  if [ ! -e "$_CORE/o_contrib_seven" ] ; then
+    mkdir -p $_CORE/o_contrib_seven
+    cd $_CORE/o_contrib_seven
+    download_o_contrib_seven
+    cd $_CORE/o_contrib_seven
+  fi
+  if [ ! -e "$_CORE/o_contrib" ] ; then
+    mkdir -p $_CORE/o_contrib
+    cd $_CORE/o_contrib
+    download_o_contrib_six
+    cd $_CORE/o_contrib
+  fi
+  cd /data/src/$_THIS_CORE/pressflow-6/
+  cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
+  ln -s $_CORE/o_contrib modules/o_contrib
+  cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
+}
 
 
 ###---### User check
@@ -451,40 +483,10 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 ###---### Prepare Pressflow core
 #
-if [ $_STATUS = "INIT" ] ; then
-msg "$_STATUS C: Preparing Pressflow core, please wait.."
-mrun "sleep 2"
-mkdir -p /data/src/$_THIS_CORE
-chmod 0700 /data/src/$_THIS_CORE &> /dev/null
-cd /data/src/$_THIS_CORE
-rm -f -r /data/src/$_THIS_CORE/pressflow-6
-bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
-# cd /data/src/$_THIS_CORE/pressflow-6/includes
-# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/file.patch ./
-# patch -p1 < file.patch &> /dev/null
-cd /data/src/$_THIS_CORE/pressflow-6/
-rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
-rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
-rm -f -r /data/src/$_THIS_CORE/pressflow-6/modules/cookie_cache_bypass
-rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
-themes_for_d6
-rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
-if [ ! -e "$_CORE/o_contrib_seven" ] ; then
-  mkdir -p $_CORE/o_contrib_seven
-  cd $_CORE/o_contrib_seven
-  download_o_contrib_seven
-  cd $_CORE/o_contrib_seven
-fi
-if [ ! -e "$_CORE/o_contrib" ] ; then
-  mkdir -p $_CORE/o_contrib
-  cd $_CORE/o_contrib
-  download_o_contrib_six
-  cd $_CORE/o_contrib
-fi
-cd /data/src/$_THIS_CORE/pressflow-6/
-cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
-ln -s $_CORE/o_contrib modules/o_contrib
-cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
+if [ $_STATUS = "INIT" ] || [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  msg "$_STATUS C: Preparing Pressflow core, please wait.."
+  mrun "sleep 2"
+  prepare_pressflow_core
 fi
 if [ -d "$_CORE/o_contrib/memcache" ] ; then
   rm -f -r $_CORE/o_contrib/memcache &> /dev/null
@@ -545,7 +547,7 @@ fi
 ###---### Acquia
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
@@ -553,6 +555,9 @@ msg "STATUS: $_F_ACQUIA install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/acquia-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE/acquia-$_SMALLCORE6 &> /dev/null
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia-$_SMALLCORE6/ &> /dev/null
@@ -618,7 +623,7 @@ fi
 ###---### Open Atrium
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
 true
@@ -626,6 +631,9 @@ msg "STATUS: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make ./
   $_ROOT/tools/drush/drush make atrium.make atrium-$_OPENATRIUM &> /dev/null
@@ -690,7 +698,7 @@ fi
 
 ###---### Drupal 6 Pressflow
 #
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
 true
@@ -702,6 +710,9 @@ msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-dev"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   mkdir -p $_CORE/pressflow-$_SMALLCORE6-dev
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-dev/ &> /dev/null
@@ -727,6 +738,9 @@ msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-stage"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   mkdir -p $_CORE/pressflow-$_SMALLCORE6-stage
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-stage/ &> /dev/null
@@ -753,6 +767,9 @@ if [ ! -d "$_CORE/pressflow" ] ; then
   mrun "sleep 1"
   _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-prod"
   if [ ! -d "$_CORE_DISTRO" ] ; then
+    if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+      prepare_pressflow_core
+    fi
     cd $_CORE
     mkdir -p $_CORE/pressflow-$_SMALLCORE6-prod
     cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-prod/ &> /dev/null
@@ -1014,7 +1031,7 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
@@ -1022,6 +1039,9 @@ msg "STATUS: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/drupal_commons-$_COMMONS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   wget -q -U iCab http://network.acquia.com/files/marketing/commons/drupal_commons-$_COMMONS.tar.gz
   tar -xzf drupal_commons-$_COMMONS.tar.gz
@@ -1069,7 +1089,7 @@ fi
 ###---### Open Enterprise
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
 true
@@ -1077,6 +1097,9 @@ msg "STATUS: $_F_OPENENTERPRISE install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openenterprise-$_OPENENTERPRISE"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   wget -q -U iCab http://files.aegir.cc/dev/distro/openenterprise-$_OPENENTERPRISE.tar.gz
   tar -xzf openenterprise-$_OPENENTERPRISE.tar.gz
@@ -1116,7 +1139,7 @@ fi
 ###---### Videola Make
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_VIDEOLA - http://videola.tv" ; then
 true
@@ -1124,6 +1147,9 @@ msg "STATUS: $_F_VIDEOLA install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/videola-$_VIDEOLA"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/videola.make ./
   $_ROOT/tools/drush/drush make videola.make videola-$_VIDEOLA &> /dev/null
@@ -1157,7 +1183,7 @@ fi
 ###---### Feature Server Make
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
@@ -1169,6 +1195,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
+  fi
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
   fi
   cd $_CORE
   echo "api = 2" > fserver.make
@@ -1207,7 +1236,7 @@ fi
 ###---### ManagingNews
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MNS ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
@@ -1215,6 +1244,9 @@ msg "STATUS: $_F_MANAGINGNEWS install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip
   unzip -qq managingnews-$_MANAGINGNEWS.zip
@@ -1250,7 +1282,7 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM - http://nodestream.org" ; then
 true
@@ -1258,6 +1290,9 @@ msg "STATUS: $_F_NODESTREAM install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream.make ./
   $_ROOT/tools/drush/drush make nodestream.make nodestream-$_NODESTREAM &> /dev/null
@@ -1294,6 +1329,9 @@ fi
 # mrun "sleep 2"
 # _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
 # if [ ! -d "$_CORE_DISTRO" ] ; then
+#   if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+#     prepare_pressflow_core
+#   fi
 #   cd $_CORE
 #   wget -q -U iCab http://files.aegir.cc/dev/openpublish-$_OPENPUBLISH.tar.gz
 #   tar -xzf openpublish-$_OPENPUBLISH.tar.gz
@@ -1334,6 +1372,9 @@ msg "STATUS: $_F_OPENSCHOLAR install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openscholar-$_OPENSCHOLAR"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   wget -q -U iCab http://files.aegir.cc/dev/distro/scholar/openscholar-$_OPENSCHOLAR.tar.gz
   tar -xzf openscholar-$_OPENSCHOLAR.tar.gz
@@ -1368,7 +1409,7 @@ fi
 ###---### Conference Organizing Distribution
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
 true
@@ -1376,6 +1417,9 @@ msg "STATUS: $_F_COD install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/cod-$_COD"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   wget -q -U iCab http://files.aegir.cc/dev/distro/cod-$_COD.tar.gz
   tar -xzf cod-$_COD.tar.gz
@@ -1411,7 +1455,7 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC3 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
 true
@@ -1419,6 +1463,9 @@ msg "STATUS: $_F_CIVICRM6 install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/civicrm-$_CIVICRM6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm3.make ./
   $_ROOT/tools/drush/drush make civicrm3.make civicrm-$_CIVICRM6 &> /dev/null
@@ -1494,7 +1541,7 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
@@ -1502,6 +1549,9 @@ msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   wget -q -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz
   tar -xzf prosepoint-$_PROSEPOINT.tar.gz
@@ -1530,7 +1580,7 @@ fi
 ###---### Ubercart
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UCT ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
@@ -1538,6 +1588,9 @@ msg "STATUS: $_F_UBERCART install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_UBERCART-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
   cd $_CORE
   if [ -d "$_CORE/$_UBERCART" ] ; then
     mv $_CORE/$_UBERCART $_CORE/$_UBERCART-old
