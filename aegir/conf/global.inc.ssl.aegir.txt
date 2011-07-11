@@ -18,10 +18,7 @@ $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
 $conf['cache'] = 1;               // enable hardcoded caching
 $conf['file_downloads'] = 1;      // force public downloads by default
 $conf['error_level'] = 0;         // disable errors on screen
-$conf['statistics_enable_access_log'] = 0;      // disable access log stats
-// $conf['javascript_aggregator_jsminplus'] = 1;   // enable jsminplus
-// $conf['javascript_aggregator_no_htaccess'] = 0; // do not create .htaccess files
-// $conf['javascript_aggregator_gzip'] = 1;        // enable compression for js files
+$conf['statistics_enable_access_log'] = 0; // disable access log stats
 
 ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
@@ -158,7 +155,7 @@ if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt
 }
 
 // Fix for Mollom and others running via Proxy.
-if ($_SERVER[HTTP_X_FORWARDED_FOR]) {
+if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && isset($_SERVER['REMOTE_ADDR'])) {
   $_SERVER[REMOTE_ADDR] = $_SERVER[HTTP_X_FORWARDED_FOR];
 }
 

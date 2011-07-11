@@ -153,7 +153,7 @@ if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt
 }
 
 // Fix for Mollom and others running via Proxy.
-if ($_SERVER[HTTP_X_FORWARDED_FOR]) {
+if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && isset($_SERVER['REMOTE_ADDR'])) {
   $_SERVER[REMOTE_ADDR] = $_SERVER[HTTP_X_FORWARDED_FOR];
 }
 

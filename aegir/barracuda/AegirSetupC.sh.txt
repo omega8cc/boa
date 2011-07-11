@@ -1326,7 +1326,7 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR" ] ; then
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites/all/libraries/shadowbox" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
@@ -1348,6 +1348,12 @@ fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR
 cd $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR
 create_symlinks
+if [ ! -L "./sites/all/libraries/shadowbox" ] ; then
+  ln -s $_CORE_DISTRO/profiles/openscholar/libraries/shadowbox ./sites/all/libraries/shadowbox
+fi
+if [ ! -L "./sites/all/libraries/tinymce" ] ; then
+  ln -s $_CORE_DISTRO/profiles/openscholar/libraries/tinymce ./sites/all/libraries/tinymce
+fi
 msg "STATUS: $_F_OPENSCHOLAR installation completed"
 mrun "sleep 2"
 else
