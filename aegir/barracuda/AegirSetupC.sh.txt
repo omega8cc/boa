@@ -1001,7 +1001,7 @@ fi
 fi
 
 
-###---### Commerce 7.x Dev Make
+###---### Commerce 7.x
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
@@ -1014,15 +1014,25 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/commerce-$_COMMERCE"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/commercedev.make ./
-  $_ROOT/tools/drush/drush make commercedev.make commerce-$_COMMERCE &> /dev/null
-  rm -f commercedev.make
+  wget -q -U iCab http://ftp.drupal.org/files/projects/commerce_kickstart-$_COMMERCE-core.tar.gz
+  tar -xzf commerce_kickstart-$_COMMERCE-core.tar.gz
+  rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
+  mv drupal-7.2 commerce-$_COMMERCE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
+  rm -f -r $_DRUPAL7
   cd $_CORE/commerce-$_COMMERCE
   rm -f $_CORE/commerce-$_COMMERCE/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/commerce-$_COMMERCE/profiles/minimal
   rm -f -r $_CORE/commerce-$_COMMERCE/profiles/standard
   rm -f -r $_CORE/commerce-$_COMMERCE/profiles/testing
+  cd $_CORE/commerce-$_COMMERCE/profiles/commerce_kickstart
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commerce_kickstart.patch ./
+  patch -p1 < commerce_kickstart.patch &> /dev/null
+  cd $_CORE/commerce-$_COMMERCE
   create_dirs
   themes_for_d7
 fi
