@@ -2801,7 +2801,7 @@ if [ -d "/var/www/chive" ] ; then
     mrun "sleep 3"
     cd /var/www
     rm -f -r /var/www/chive
-    wget -q -U iCab http://launchpad.net/chive/0.4/0.4.0/+download/chive_$_CHIVE_VERSION.tar.gz
+    wget -q -U iCab http://launchpad.net/chive/0.4/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
     tar -xzf chive_$_CHIVE_VERSION.tar.gz
     rm -f chive_$_CHIVE_VERSION.tar.gz
     chown -R www-data:www-data /var/www/chive
