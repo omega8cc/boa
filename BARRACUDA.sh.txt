@@ -1151,10 +1151,10 @@ if [ $_STATUS = "INIT" ] ; then
   _ETH_TEST=`ifconfig 2>&1`
   if [[ $_ETH_TEST =~ venet0 ]] ; then
     _VMFAMILY="VZ"
-    _IFCONFIG="venet0:0"
+    _IFCONFIG="venet0"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
-    _IFCONFIG="venet0:0"
+    _IFCONFIG="venet0"
   else
     _VMFAMILY="XEN"
     _IFCONFIG="eth0"
@@ -1822,10 +1822,10 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     _ETH_TEST=`ifconfig 2>&1`
     if [[ $_ETH_TEST =~ venet0 ]] ; then
       _VMFAMILY="VZ"
-      _IFCONFIG="venet0:0"
+      _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
       _VMFAMILY="VZ"
-      _IFCONFIG="venet0:0"
+      _IFCONFIG="venet0"
     else
       _VMFAMILY="XEN"
       _IFCONFIG="eth0"
@@ -2693,10 +2693,10 @@ EOF
       _ETH_TEST=`ifconfig 2>&1`
       if [[ $_ETH_TEST =~ venet0 ]] ; then
         _VMFAMILY="VZ"
-        _IFCONFIG="venet0:0"
+        _IFCONFIG="venet0"
       elif [ -e "/proc/bean_counters" ] ; then
         _VMFAMILY="VZ"
-        _IFCONFIG="venet0:0"
+        _IFCONFIG="venet0"
       else
         _VMFAMILY="XEN"
         _IFCONFIG="eth0"
