@@ -1104,6 +1104,8 @@ mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
+mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
+mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   echo " "
   _AEGIR_LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
