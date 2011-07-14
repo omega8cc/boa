@@ -465,6 +465,7 @@ _NGINX_VERSION=1.0.4
 _PHP_VERSION=5.2.17
 _APC_VERSION=3.1.9
 _CHIVE_VERSION=0.4.2
+_BZR_VERSION=2.4b5
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
@@ -778,19 +779,26 @@ force_advanced_nginx_config () {
 # Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
+  _VM_TEST=`uname -a 2>&1`
   if [[ $_ETH_TEST =~ venet0 ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
+  elif [[ $_VM_TEST =~ beng ]] ; then
+    _VMFAMILY="VS"
   else
     _VMFAMILY="XEN"
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    let "_USE_SQL = (($_RAM / 4))"
+    if [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+      let "_USE_SQL = (($_RAM / 32))"
+    else
+      let "_USE_SQL = (($_RAM / 6))"
+    fi
   else
-    let "_USE_SQL = (($_RAM / 3))"
+    let "_USE_SQL = (($_RAM / 4))"
   fi
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
@@ -806,8 +814,12 @@ tune_memory_limits () {
   fi
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_APC=128
+  elif [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+    _USE_APC=256
+    _USE_PHP=512
   fi
-  sed -i "s/256/$_USE_PHP/g" /opt/etc/php.ini
+  let "_USE_FPM = (($_USE_PHP / 2))"
+  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini
   sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
@@ -822,6 +834,11 @@ if [ `whoami` = "root" ] ; then
   rm -f /tmp/cache.inc
   invoke-rc.d cron stop &> /dev/null
   touch /var/run/octopus_barracuda.pid
+  _VM_TEST=`uname -a 2>&1`
+  if [[ $_VM_TEST =~ beng ]] ; then
+    _VMFAMILY="VS"
+    touch /var/run/cloud_vhost.pid
+  fi
   sleep 5
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
@@ -1844,6 +1861,13 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     st_runner "invoke-rc.d vnstat start" &> /dev/null
   fi
 fi
+if [ -e "/etc/init.d/vnstat" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+  invoke-rc.d vnstat stop &> /dev/null
+  update-rc.d -f vnstat remove &> /dev/null
+  rm -f /etc/init.d/vnstat
+  rm -f /usr/bin/vnstat
+  rm -f -r /var/lib/vnstat
+fi
 
 
 ###--------------------###
@@ -2206,15 +2230,15 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_BZR="/usr/local/bin/bzr"
 fi
-if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-2.4b2.log" ]; then
+if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ]; then
   msg "INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://launchpad.net/bzr/2.4/2.4b2/+download/bzr-2.4b2.tar.gz
-  tar -xzf bzr-2.4b2.tar.gz
-  cd /var/opt/bzr-2.4b2
+  wget -q -U iCab http://launchpad.net/bzr/2.4/$_BZR_VERSION/+download/bzr-$_BZR_VERSION.tar.gz
+  tar -xzf bzr-$_BZR_VERSION.tar.gz
+  cd /var/opt/bzr-$_BZR_VERSION
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
-  echo "bzr-2.4b2" > /var/log/bzr-2.4b2.log
+  echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
 fi
 
 
@@ -2915,6 +2939,12 @@ fi
 
 
 ###--------------------###
+if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+  rm -f /var/aegir/config/server_master/nginx/vhost.d/cgp*
+  st_runner "apt-get -y remove collectd" 2> /dev/null
+  st_runner "apt-get -y purge collectd" 2> /dev/null
+  rm -f -r /var/www/cgp
+fi
 _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
 if [ -e "$_CGP_VHOST" ] ; then
   sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CGP_VHOST
@@ -3019,6 +3049,17 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CSF ]] ; then
       fi
     fi
   fi
+fi
+if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+  invoke-rc.d lfd stop &> /dev/null
+  invoke-rc.d csf stop &> /dev/null
+  invoke-rc.d csf stop &> /dev/null
+  update-rc.d -f csf remove &> /dev/null
+  update-rc.d -f lfd remove &> /dev/null
+  rm -f /etc/cron.d/{csf,lfd}*
+  rm -f /usr/sbin/{csf,lfd}
+  rm -f /etc/init.d/{csf,lfd}
+  rm -f -r /etc/csf
 fi
 if [ -e "/usr/sbin/csf" ] ; then
   if [ ! -e "/var/log/csf_$_INSTALLER_VERSION.log" ] ; then

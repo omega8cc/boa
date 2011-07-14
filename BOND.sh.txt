@@ -300,16 +300,27 @@ restart_services () {
 #
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
+  _VM_TEST=`uname -a 2>&1`
   if [[ $_ETH_TEST =~ venet0 ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
+  elif [[ $_VM_TEST =~ beng ]] ; then
+    _VMFAMILY="VS"
   else
     _VMFAMILY="XEN"
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
-  let "_USE_SQL = (($_RAM / 3))"
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    if [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+      let "_USE_SQL = (($_RAM / 32))"
+    else
+      let "_USE_SQL = (($_RAM / 6))"
+    fi
+  else
+    let "_USE_SQL = (($_RAM / 4))"
+  fi
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_APC=512
@@ -322,10 +333,14 @@ tune_memory_limits () {
     _USE_PHP="$_USE"
     _USE_APC="$_USE"
   fi
-  if [ $_VMFAMILY = "VZ" ] ; then
+  if [ "$_VMFAMILY" = "VZ" ] ; then
+    _USE_APC=128
+  elif [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
     _USE_APC=256
+    _USE_PHP=512
   fi
-  sed -i "s/256/$_USE_PHP/g" /opt/etc/php.ini
+  let "_USE_FPM = (($_USE_PHP / 2))"
+  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini
   sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf

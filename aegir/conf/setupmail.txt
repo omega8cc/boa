@@ -38,7 +38,7 @@ using one-time login link you should receive shortly
 in a separate e-mail.
 
 Once in your control panel, you'll find a number of
-Drupal platforms ready to deploy available in all hosted options,
+Drupal platforms ready to deploy, available in all hosted options,
 starting with 1+ Aegir Standard or SSD Core:
  
  Drupal 7.4 ------------------- http://drupal.org/drupal-7.0
