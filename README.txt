@@ -143,11 +143,11 @@ added to all 6.x platforms:
  fpa-6.x-2.3
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
- nginx_accel_redirect-6.x-1.3
+ nginx_accel_redirect-6.x-1.5
  private_upload-6.x-1.x-dev
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
- seckit-6.x-1.0
+ seckit-6.x-1.1
  securesite-6.x-2.4
  session_expire-6.x-1.x-dev
  site_verify-6.x-1.0
@@ -161,20 +161,22 @@ The Drupal 7.x platforms come with contrib modules:
 
  admin-7.x-2.0-beta3
  agrcache-7.x-1.0-alpha2
- backup_migrate-7.x-2.1
+ backup_migrate-7.x-2.2
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
+ config_perms-7.x-2.x-dev
  core_library-7.x-2.0-alpha6
- css_emimage-7.x-1.1
+ css_emimage-7.x-1.2
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev
  fpa-7.x-2.0
+ nginx_accel_redirect-7.x-1.0
  robotstxt-7.x-1.x-dev
- seckit-7.x-1.0
+ seckit-7.x-1.1
  site_verify-7.x-1.0
  textile-7.x-2.0-rc9
  variable_clean-7.x-1.x-dev
- + theme rubik-7.x-4.0-beta5
+ + theme rubik-7.x-4.0-beta6
 
 
 ### BUG SUBMISSION
