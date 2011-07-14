@@ -1,245 +1,28 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.7.
+Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.8
 
-Also your system services, kernel and libraries have been upgraded.                         
+Please read about all new features, enhancements and promotions at:
 
-Your Aegir control panel is available as before at:
+  http://omega8.cc/updates
+  http://omega8.cc/news
 
- https://aegir.dragon.ny.host8.biz
+  Special SSD promotion will expire soon!
+  "Free SSD Migration with Unique Bonus in July"
+  http://omega8.cc/free-ssd-migration-with-unique-bonus-in-july-133
 
+There are also new articles added in our library at:
 
-!! Please read this e-mail in its entirety. It contains
-!! important, *updated* information required to properly leverage
-!! all your available Aegir features.
-
-
-----------------------------------------
-# What is new or updated this time
-----------------------------------------
-
-* Open Atrium includes extra features:
-  Atrium Folders:  http://bit.ly/oafolders
-  Ideation:        http://bit.ly/oaideation
-
-* Basic Drupal 6 and Drupal 7 platforms now come in three instances,
-  to make your standard workflow easier for: -dev, -stage and -prod,
-  with correct suffix: D.00x, S.00x and P.00x in the platform name.
+  http://omega8.cc/library/good-to-know
+  http://omega8.cc/library/performance
+  http://omega8.cc/library/development
+  http://omega8.cc/library/tips-and-tricks
+  http://omega8.cc/library/problems-solutions
   
-* MariaDB server upgraded to version 5.2.7
-* Nginx server upgraded to version Barracuda/1.0.4
+When you need our assistance please use our support request form at:
 
-* New platforms [supported in all Aegir hosted versions]:
+  http://omega8.cc/support
 
-  Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
-  ProsePoint 0.39 -------------- http://prosepoint.org
-  Drupal Commerce 1.0-beta4 ---- http://drupalcommerce.org
-  Conference 1.0-alpha3 -------- http://usecod.com
-  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- 
-* Added support for robotstxt module in all new 6.x based platforms. 
-
-* Speed Booster for 5.x, 6.x and 7.x Drupal platforms.
-  This new feature adds super fast caching for anonymous visitors,
-  and yes! - also for logged in users (cache per user) directly on
-  the web server level - no Drupal module required.
-  It works for all platforms, except of Ubercart, Commerce
-  and any platform with ubercart in sites/all/modules/ubercart.
-
-* To disable Speed Booster per platform, create an empty directory
-  with the name "ubercart" (unless you have there the real ubercart
-  module), with one empty README.txt file inside, so its path
-  will be: sites/all/modules/ubercart/README.txt
-
-* Import your sites in 8 easy steps recipe - see further below.
-
-* New platforms [supported only with 4+ Aegir Hosted Cores]:
-
-  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
-  NodeStream 1.0 --------------- http://nodestream.org
-  Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
-  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
-
-  Q: How to upgrade/add more Cores?
-  
-  A: To add more Standard Cores, use the order form at:
-     http://omega8.cc/buy#standard. To add more SSD Cores,
-     use the order form at http://omega8.cc/buy#ssd 
-
-  Q: How to upgrade from Aegir Mini or Classic to Aegir SSD?
-  
-  A: Aegir SSD is a special, very high performance option,
-     hosted on the high-end hardware in a separate custom
-     cloud, so simple upgrade is not possible. Separate
-     subscription and site migration will be required.
-
-* Support for secure ubercart keys location to use ../keys path.
-* The filefield_nginx_progress now also in every 7.x platform.
-* Drush upgraded to version 4.4
-* Drush Make upgraded to version 2.2
-* Redis cache server upgraded to version 2.0.5
-* PHP-FPM server upgraded to version 5.2.17
-* Memcache extension replaced with memcached and libmemcached.
-* Chive database manager upgraded to version 0.4.2
-
-
-----------------------------------------
-# What will be next
-----------------------------------------
-
-* Automated FTP/SSH accounts per site and per platform.
-* Embedded Aegir Knowledge Base and How-To Recipes.
-* ...and more.
-
-
-----------------------------------------
-# Also worth to note
-----------------------------------------
-
-To realize the full speed from our servers, you simply need
-to enable the module *cache* (it's like cacherouter, but
-with chained cache - memcache/redis/db with auto-failover)
-for every site you wish to accelerate. This module will
-accelerate the site only for logged in users.
-
-We also highly recommend to enable the *Boost* and *DB Tuner*
-modules. After enabling *DB Tuner* please add all standard and
-extra indexes recommended by the module.
-
-The *Boost* module will accelerate your site for anonymous
-visitors, while *DB Tuner* will do that both for anonymous
-and logged in users.
-
-All three modules are by default available for all 6.x
-platforms only.
-
-There is also one extra Pressflow core module we recommend
-to enable: *Path alias cache*.
-
-When creating a development version of your site, you'll
-want to work with our optimized caching systems turned off.
-
-There is a speed-auto-switch available for dev/prod environments.
-Any site you create/access with *dev* in the subdomain, will have
-all caching and css/js aggregation disabled automatically,
-while all PHP errors enabled for easier debugging of issues,
-including those causing WSOD.
-
-You don't need to rename the site to be able to work on it
-in the "dev" mode. Simply add a *dev* domain alias and
-use it to access the site when you wish to skip all hardcoded
-caching used on the non-dev domain.
-
-Your Aegir control panel is using self-signed SSL certificate,
-so you browser can display warning. Please add this certificate
-as accepted in your system settings to avoid displaying it
-each time you are trying to log in.
-
-You can manage your databases via Chive Manager web interface,
-using access credentials (dbhost, dbname and dbpass) available
-in every site settings.php file.
-
-Chive Manager URL: https://166.84.6.231
-
-
-----------------------------------------
-# FTP and SSH access
-----------------------------------------
-
-Your FTP/SSH username and password didn't change (unless you
-changed it already).
-
-Please change your password via SSH with "passwd" command
-at least every 3 months. Otherwise the password will expire in 90 days
-and you will have to log in via SSH to restore your FTP access.
-
-  host: aegir.dragon.ny.host8.biz
-  user: dragon.ftp
-  pass: FN8rXcQn (initial)
-
-We recommend using SSH keys instead of password.
-
-It is highly recommended you use only SSL/TLS connections for FTPS.
-Compatible FTP-SSL/TLS clients are listed here:
-
- http://omega8.cc/dev/ftp-tls.txt
-
-Make sure you are adding modules and themes to your expected
-platform. If you experience issues, you can contact our
-support department.
-
-To see all available shell commands please type "help" when
-logged in via SSH.
-
-
-----------------------------------------
-# Import your sites in 8 easy steps
-----------------------------------------
-
-1. Upload or rsync full drupal root of your site to static/custom/name
-
-2. Chmod everything with command:
-   $ chmod -R 775 static/custom/name
-   and files only with:
-   $ chmod -R 777 static/custom/name/sites/default/files/*
-
-3. Add platform in Aegir using full system path of static/custom/name
-   so it will be (in this case) /data/disk/USER/static/custom/name
-
-4. Create an empty site in the new platform with your final domain
-   like your-domain.com
-
-5. Move all files from sites/default/files to sites/domain/files
-   with: cp -af sites/default/files/* sites/domain/files/
-
-6. Import your uploaded database (or use backup_migrate module) with:
-   $ cd static/custom/name/sites/domain
-   $ drush sqlc < /data/disk/USER/static/domain.sql
-   $ drush cc all
-
-7. Rename the site (using Migrate task) twice - first to some
-   temporary subdomain like custom-name.your-domain.com and then
-   back to your final domain your-domain.com
-
-8. Finally, re-verify the site in Aegir. Done!
-
-Note that since we allow only Pressflow core based platforms for
-5.x and 6.x Drupal versions, after initial import you should
-migrate your site to the Pressflow based platform ASAP.
-
-Hint1: Replace USER with your Aegir Octopus system (not ftp) username.
-       Your Aegir system username is the same as your ftp username,
-       minus .ftp. NOTE: you don't have an access to your Aegir system
-       user, it is mentioned above only to help you using correct path.
-
-Hint2: If your site have been installed as Drupal multisite on your
-       previous server (so not in the sites/default), then you have to
-       upload its files and optionally themes and modules existing
-       in the sites/your-domain.com *after* you created an empty site
-       in the step #4 above. Please don't upload sites/your-domain.com
-       directory in step #1, you need to upload it in step #5 and then:
-       $ chmod -R 777 static/custom/name/sites/your-domain.com/files/*
-
-
-----------------------------------------
-# Always useful hints
-----------------------------------------
-
-* Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
-* Chmod -R 777 all files uploaded to the sites/domain/files.
-* Re-verify the site in Aegir after uploading your modules and themes.
-* Run verify task on every site and platform after modules updates.
-* Run verify task on site and its platform before running clone.
-* Run verify task on site and both platforms before running migrate.
-* Use migrate task to rename the site (domain).
-* Your FTP/SSH access to platforms is limited to /sites directory.
-* If any task is running longer than 10 minutes, contact us.
-* If any task fails, send us the task log for debugging.
-
-
-Questions? Comments? Please contact us:
-
- http://omega8.cc/contact
 
 Thank you,
 Omega8.cc Team

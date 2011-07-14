@@ -456,7 +456,7 @@ _F_NODESTREAM="NodeStream $_NODESTREAM P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT P.$_THIS_CORE"
-_F_UBERCART="Ubercart $_SMALLCORE6 P.$_THIS_CORE"
+_F_UBERCART="Ubercart 2.4 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
 _F_COD="Conference $_COD P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
@@ -1449,9 +1449,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/distro/cod-$_COD.tar.gz
   tar -xzf cod-$_COD.tar.gz
   rm -f cod-$_COD.tar.gz
-  if [ -d "$_CORE/codx" ] ; then
-    mv $_CORE/codx $_CORE/cod-$_COD
-  else
+  if [ -d "$_CORE/cod" ] ; then
     mv $_CORE/cod $_CORE/cod-$_COD
   fi
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/cod-$_COD/ &> /dev/null

@@ -3,7 +3,7 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 site deployment.
 
-Your Aegir control panel [version 1.0-boa-T-8.7] is available at:
+Your Aegir control panel [version 1.0-boa-T-8.8] is available at:
 
  https://aegir.dragon.ny.host8.biz
 
@@ -38,7 +38,8 @@ using one-time login link you should receive shortly
 in a separate e-mail.
 
 Once in your control panel, you'll find a number of
-Drupal distributions ready to deploy [available in all options]:
+Drupal platforms ready to deploy available in all hosted options,
+starting with 1+ Aegir Standard or SSD Core:
  
  Drupal 7.4 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.22 ------------------ http://pressflow.org
@@ -47,18 +48,24 @@ Drupal distributions ready to deploy [available in all options]:
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
  Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
- Ubercart 6.22 ---------------- http://ubercart.org
+ Ubercart 2.4 6.22 ------------ http://ubercart.org
  ProsePoint 0.39 6.22 --------- http://prosepoint.org
- Conference 1.0-alpha3 6.22 --- http://usecod.com
+ Conference 1.0-beta1 6.22 ---- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Drupal Commerce 1.0-beta4 ---- http://drupalcommerce.org
  
-Some new platforms are supported with 4+ Aegir Hosted Cores only:
+Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
- OpenPublic 1.0-beta1 --------- http://openpublicapp.com
+ OpenPublic 1.0-beta1 7.4 ----- http://openpublicapp.com
  NodeStream 1.0 6.22 ---------- http://nodestream.org
  Acquia Commons 1.7 6.22 ------ http://acquia.com/drupalcommons
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
+ Videola 1.0-alpha1 ----------- http://videola.tv
+
+Both CiviCRM 3 and 4 are available with 2+ Aegir SSD Cores only:
+
+ CiviCRM 3.4.4 ---------------- http://civicrm.org
+ CiviCRM 4.0.4 ---------------- http://civicrm.org
 
 Note about platforms naming convention:
 
@@ -153,6 +160,12 @@ Make sure you are adding modules and themes to your expected
 platform. If you experience issues, you can contact our
 support department.
 
+You can manage your databases via Chive Manager web interface,
+using access credentials (dbhost, dbname and dbpass) available
+in every site settings.php file.
+
+Chive Manager URL: https://166.84.6.231
+
 
 ----------------------------------------
 #5. ADVANCED USER INFORMATION
@@ -207,118 +220,25 @@ find more details on our website:
 
 === IMPORTANT DEVELOPMENT SITE INFORMATION
 
-When creating a development version of your site, you'll
-want to work with our optimized caching systems turned off.
-
-There is a speed-auto-switch available for dev/prod environments.
-Any site you create/access with *dev* in the subdomain, will have
-all caching and css/js aggregation disabled automatically,
-while all PHP errors enabled for easier debugging of issues,
-including those causing WSOD.
-
-You don't need to rename the site to be able to work on it
-in the "dev" mode. Simply add a *dev* domain alias and
-use it to access the site when you wish to skip all hardcoded
-caching used on the non-dev domain.
-
-You can manage your databases via Chive Manager web interface,
-using access credentials (dbhost, dbname and dbpass) available
-in every site settings.php file.
-
-Chive Manager URL: https://166.84.6.231
+http://omega8.cc/library/development
+http://omega8.cc/library/good-to-know
 
 
 === IMPORTANT PERFORMANCE INFORMATION
 
-To realize the full speed from our servers, you simply need
-to enable the module *cache* (it's like cacherouter, but
-with chained cache - memcache/redis/db with auto-failover)
-for every site you wish to accelerate. This module will
-accelerate the site only for logged in users.
-
-We also highly recommend to enable the *Boost* and *DB Tuner*
-modules. After enabling *DB Tuner* please add all standard and
-extra indexes recommended by the module.
-
-The *Boost* module will accelerate your site for anonymous
-visitors, while *DB Tuner* will do that both for anonymous
-and logged in users.
-
-All three modules are by default available for all 6.x
-platforms only.
-
-There is also one extra Pressflow core module we recommend
-to enable: *Path alias cache*.
-
-
-=== IMPORT YOUR EXISTING SITES TO AEGIR IN 8 EASY STEPS
-
-1. Upload or rsync full drupal root of your site to static/custom/name
-
-2. Chmod everything with command:
-   $ chmod -R 775 static/custom/name
-   and files only with:
-   $ chmod -R 777 static/custom/name/sites/default/files/*
-
-3. Add platform in Aegir using full system path of static/custom/name
-   so it will be (in this case) /data/disk/USER/static/custom/name
-
-4. Create an empty site in the new platform with your final domain
-   like your-domain.com
-
-5. Move all files from sites/default/files to sites/domain/files
-   with: cp -af sites/default/files/* sites/domain/files/
-
-6. Import your uploaded database (or use backup_migrate module) with:
-   $ cd static/custom/name/sites/domain
-   $ drush sqlc < /data/disk/USER/static/domain.sql
-   $ drush cc all
-
-7. Rename the site (using Migrate task) twice - first to some
-   temporary subdomain like custom-name.your-domain.com and then
-   back to your final domain your-domain.com
-
-8. Finally, re-verify the site in Aegir. Done!
-
-Note that since we allow only Pressflow core based platforms for
-5.x and 6.x Drupal versions, after initial import you should
-migrate your site to the Pressflow based platform ASAP.
-
-Hint1: Replace USER with your Aegir Octopus system (not ftp) username.
-       Your Aegir system username is the same as your ftp username,
-       minus .ftp. NOTE: you don't have an access to your Aegir system
-       user, it is mentioned above only to help you using correct path.
-
-Hint2: If your site have been installed as Drupal multisite on your
-       previous server (so not in the sites/default), then you have to
-       upload its files and optionally themes and modules existing
-       in the sites/your-domain.com *after* you created an empty site
-       in the step #4 above. Please don't upload sites/your-domain.com
-       directory in step #1, you need to upload it in step #5 and then:
-       $ chmod -R 777 static/custom/name/sites/your-domain.com/files/*
+http://omega8.cc/library/performance
+http://omega8.cc/library/tips-and-tricks
 
 
 === ALWAYS USEFUL HINTS
 
-* Chmod -R 775 all modules and themes when uploaded via SSH or Drush.
-* Chmod -R 777 all files uploaded to the sites/domain/files.
-* Re-verify the site in Aegir after uploading your modules and themes.
-* Run verify task on every site and platform after modules updates.
-* Run verify task on site and its platform before running clone.
-* Run verify task on site and both platforms before running migrate.
-* Use migrate task to rename the site (domain).
-* Your FTP/SSH access to platforms is limited to /sites directory.
-* If any task is running longer than 10 minutes, contact us.
-* If any task fails, send us the task log for debugging.
-* To disable Speed Booster per platform, create an empty directory
-  with the name "ubercart" (unless you have there the real ubercart
-  module), with one empty README.txt file inside, so its path
-  will be: sites/all/modules/ubercart/README.txt
+http://omega8.cc/library/problems-solutions
+http://omega8.cc/faq
 
 
 Questions? Comments? Please contact us:
 
- http://omega8.cc/contact
+ http://omega8.cc/support
 
 Thank you,
 Omega8.cc Team

@@ -107,13 +107,13 @@ Octopus can install the platforms listed below:
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
- Conference 1.0-alpha3 -------- http://usecod.com
+ Conference 1.0-beta1 --------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  CiviCRM 3.4.4 ---------------- http://civicrm.org
  CiviCRM 4.0.4 ---------------- http://civicrm.org
  Videola 1.0-alpha1 ----------- http://videola.tv
  ProsePoint 0.39 (int) -------- http://prosepoint.org
- Ubercart (int) --------------- http://ubercart.org
+ Ubercart 6.x-2.4 (int) ------- http://ubercart.org
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.22 Pressflow (int) -- http://pressflow.org
  Feature Server --------------- http://bit.ly/fserver
