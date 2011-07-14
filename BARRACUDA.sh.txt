@@ -3177,6 +3177,8 @@ if [ $_STATUS = "INIT" ] ; then
 else
   invoke-rc.d nginx reload &> /dev/null
 fi
+mkdir -p /data/conf/arch
+mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
