@@ -26,7 +26,7 @@
   * Redis/Memcached chained cache enabled also for anonymous visitors.
   * Support for private_upload module added.
   * Support for static sites/domain/files/robots.txt file per site #1173954.
-  * New _HTTP_WILDCARD Barracuda option for Nginx configuration.
+  * New _HTTP_WILDCARD Barracuda option for Nginx configuration #1152316.
   * New _XTRAS_LIST Barracuda option to define extras to be used.
   * Scripts to add extra ftp or lshell standard or lshell master users.
   * New _PLATFORMS_LIST Octopus option to configure the list of platforms.
@@ -62,7 +62,7 @@
   * Security Issue #1197172 - bypass access restrictions to protected files fixed.
   * Issue #1182680 - fixed support for backup_migrate module.
   * Issue #1182582 - fixed search paths for node.js, image.jpg etc.
-  * Critical Issue #1183500 - fall back to the wildcard * in Nginx.
+  * Critical Issue #1183500 #1182660 - fall back to the wildcard * in Nginx.
   * Issue #962188 - Nginx version check in vhost.tpl.php now works.
   * Issue #1170498 - Extra config variable was missing in Nginx config templates.
   * Percona upgrade path fixed.
