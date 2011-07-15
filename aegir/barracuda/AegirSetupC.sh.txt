@@ -1026,7 +1026,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/commerce_kickstart-$_COMMERCE-core.tar.gz
   tar -xzf commerce_kickstart-$_COMMERCE-core.tar.gz
   rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
-  mv drupal-7.2 commerce-$_COMMERCE
+  mv drupal-7.4 commerce-$_COMMERCE
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
