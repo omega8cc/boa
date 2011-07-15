@@ -77,24 +77,24 @@ _CLIENT_CORES=4
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D7P D7S D7D --- Drupal 7.4 prod/stage/dev
-### D6P D6S D6D --- Pressflow 6.22 p/s/d
-### D5P ----------- Pressflow 5.23
-### OAM ----------- Open Atrium 1.0-beta10
-### MNS ----------- Managing News 1.2
-### NSM ----------- NodeStream 1.0
-### OPC ----------- OpenPublic 1.0-beta1
-### DCS ----------- Acquia Commons 1.7
-### AQ6 ----------- Acquia 6.22
-### AQ7 ----------- Acquia 7.4.4
-### OSR ----------- OpenScholar 2.0-beta11
-### COD ----------- Conference 1.0-alpha3
-### OEE ----------- Open Enterprise 1.0-beta3
-### DCE ----------- Drupal Commerce 1.0-beta4
-### PPT ----------- ProsePoint 0.39
+### D7P D7S D7D --- Drupal 7 prod/stage/dev
+### D6P D6S D6D --- Pressflow 6 p/s/d
+### D5P ----------- Pressflow 5
+### OAM ----------- Open Atrium
+### MNS ----------- Managing News
+### NSM ----------- NodeStream
+### OPC ----------- OpenPublic
+### DCS ----------- Acquia Commons
+### AQ6 ----------- Acquia 6
+### AQ7 ----------- Acquia 7
+### OSR ----------- OpenScholar
+### COD ----------- Conference
+### OEE ----------- Open Enterprise
+### DCE ----------- Drupal Commerce
+### PPT ----------- ProsePoint
 ### UCT ----------- Ubercart
-### CC3 ----------- CiviCRM 3.4.4
-### CC4 ----------- CiviCRM 4.0.4
+### CC3 ----------- CiviCRM 3
+### CC4 ----------- CiviCRM 4
 ### FSR ----------- Feature Server
 ### VOA ----------- Videola
 ###
