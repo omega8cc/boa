@@ -1,6 +1,6 @@
 
 ### Stable Edition 1.0-boa-T-8.8
-### Date: Thu, 15 July 2011 01:55:00 +0200
+### Date: Thu, 15 July 2011 08:00:00 +0200
 ### Installs Aegir stable 1.2
 
 # New Octopus platforms:
