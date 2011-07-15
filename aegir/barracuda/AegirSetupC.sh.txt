@@ -1172,6 +1172,7 @@ fi
 
 ###---### Videola Make
 #
+if [ "$_CLIENT_CORES" -ge "4" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/modules/path_alias_cache" ] ; then
 echo " "
@@ -1209,6 +1210,7 @@ mrun "sleep 2"
 else
   msg "STATUS: $_F_VIDEOLA installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 fi
