@@ -189,7 +189,7 @@ _MY_OWNIP=""
 ### _AEGIR_VERSION=HEAD
 ### _AEGIR_VERSION=1.0-boa-T-8.8
 ###
-_AEGIR_VERSION=1.0-boa-T-8.8
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
