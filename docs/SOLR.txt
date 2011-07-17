@@ -59,4 +59,5 @@
 
     $ invoke-rc.d tomcat stop
     $ update-rc.d -f tomcat remove
+    $ mv /etc/init.d/tomcat /etc/init.d/offtomcat
 
