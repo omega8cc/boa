@@ -325,21 +325,40 @@ tune_memory_limits () {
     _USE_PHP=512
     _USE_APC=512
   elif [ "$_USE" -ge "1024" ] ; then
-    _USE_PHP=512
-    _USE_APC=1024
-    sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
-    sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+    if [ "$_VMFAMILY" = "XEN" ] ; then
+      _USE_PHP=512
+      _USE_APC=1024
+      sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
+      sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+    elif [ "$_VMFAMILY" = "VS" ] ; then
+      _USE_PHP=512
+      if [ -d "/boot/grub" ] ; then
+        _USE_APC=1024
+        sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
+        sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+      else
+        _USE_APC=256
+        sed -i "s/max_children\">4/max_children\"\>2/g" /opt/etc/php-fpm.conf
+      fi
+    fi
+    else
+      _USE_PHP=256
+      _USE_APC=128
+    fi
   else
     _USE_PHP="$_USE"
     _USE_APC="$_USE"
   fi
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_APC=128
-  elif [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
-    _USE_APC=256
-    _USE_PHP=512
   fi
   let "_USE_FPM = (($_USE_PHP / 2))"
+  if [ "$_USE_FPM" -lt "128" ] ; then
+    _USE_FPM=128
+  fi
+  if [ "$_USE_PHP" -lt "256" ] ; then
+    _USE_PHP=256
+  fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini
   sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
