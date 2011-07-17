@@ -821,7 +821,6 @@ tune_memory_limits () {
         sed -i "s/max_children\">8/max_children\"\>2/g" /opt/etc/php-fpm.conf
         sed -i "s/worker_processes  8/worker_processes  4/g" /etc/nginx/nginx.conf
       fi
-    fi
     else
       _USE_PHP=256
       _USE_APC=128
