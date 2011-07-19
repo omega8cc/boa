@@ -647,7 +647,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   cd ./profiles/openatrium/modules/atrium_features/
-  git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
+  #git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   create_dirs
