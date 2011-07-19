@@ -462,7 +462,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_alias_automatic_www 1 &> /dev/null
-  $_DRUSHCMD vset --always-set hosting_cron_use_backend 0 &> /dev/null
+  $_DRUSHCMD vset --always-set hosting_cron_use_backend 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_upload_platform_path "/data/disk/$_USER/static" &> /dev/null
   $_DRUSHCMD vset --always-set hosting_upload_upload_path "sites/$_DOMAIN/files/deployment" &> /dev/null
   sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
