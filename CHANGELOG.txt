@@ -6,6 +6,7 @@
 # Updated Octopus platforms:
 
   Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
+  Open Atrium 1.0 6.22 --------- http://openatrium.com
   
 
 ### Stable Edition 1.0-boa-T-8.8

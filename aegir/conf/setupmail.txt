@@ -43,7 +43,7 @@ starting with 1+ Aegir Standard or SSD Core:
  
  Drupal 7.4 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.22 ------------------ http://pressflow.org
- Open Atrium 1.0-beta10 6.22 -- http://openatrium.com
+ Open Atrium 1.0 6.22 --------- http://openatrium.com
  Managing News 1.2 6.22 ------- http://managingnews.com
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
