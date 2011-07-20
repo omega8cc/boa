@@ -786,6 +786,8 @@ tune_memory_limits () {
     _VMFAMILY="VZ"
   elif [[ $_VM_TEST =~ beng ]] ; then
     _VMFAMILY="VS"
+  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -d "/boot/grub" ] ; then
+    _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
@@ -809,7 +811,7 @@ tune_memory_limits () {
       _USE_APC=1024
       sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
       sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
-    elif [ "$_VMFAMILY" = "VS" ] ; then
+    elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       _USE_PHP=512
       if [ -d "/boot/grub" ] ; then
         _USE_APC=1024
