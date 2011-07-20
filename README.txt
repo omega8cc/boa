@@ -207,7 +207,8 @@ The Drupal 7.x platforms come with contrib modules:
 
 ### HELP
 
-* Join us at: http://community.aegirproject.org
+* Join us at: http://groups.drupal.org/boa
+              http://community.aegirproject.org
               http://groups.drupal.org/nginx
 
 
