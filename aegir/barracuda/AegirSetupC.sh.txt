@@ -1445,7 +1445,7 @@ fi
 ###---### Conference Organizing Distribution
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD/modules/path_alias_cache" ] ; then
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries/jquery.ui" ] ; then
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
 true
@@ -1467,10 +1467,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/cod-$_COD
   rm -f $_CORE/cod-$_COD/*.txt
   rm -f -r $_CORE/cod-$_COD/modules/cookie_cache_bypass
-  if [ ! -L "$_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries/jquery.ui" ] ; then
-    mkdir -p $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries
-    ln -s $_CORE_DISTRO/profiles/cod/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries/jquery.ui
-  fi
   sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile
   sed -i "s/Conference Organizing Distribution/Conference/g" ./profiles/cod/cod.profile
   rm -f -r ./profiles/default
@@ -1479,6 +1475,10 @@ fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/cod-$_COD
 cd $_ROOT/distro/$_THIS_CORE/cod-$_COD
 create_symlinks
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries/jquery.ui" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/cod/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites/all/libraries/jquery.ui
+fi
 msg "STATUS: $_F_COD installation completed"
 mrun "sleep 2"
 else
