@@ -2,6 +2,8 @@ Hello,
 
 Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.8
 
+  https://aegir.dragon.ny.host8.biz
+
 Please read about all new features, enhancements and promotions at:
 
   http://omega8.cc/updates
