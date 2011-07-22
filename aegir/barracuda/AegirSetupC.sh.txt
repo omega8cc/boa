@@ -1495,8 +1495,12 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _ALLOW_CIVICRM=YES
-elif [ "$_CLIENT_CORES" -ge "4" ] && [[ "$_DOMAIN" !~ ".host8." ]] ; then
-  _ALLOW_CIVICRM=YES
+elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
+  if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    _ALLOW_CIVICRM=NO
+  else
+    _ALLOW_CIVICRM=YES
+  fi
 else
   _ALLOW_CIVICRM=NO
 fi
@@ -1544,8 +1548,12 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _ALLOW_CIVICRM=YES
-elif [ "$_CLIENT_CORES" -ge "4" ] && [[ "$_DOMAIN" !~ ".host8." ]] ; then
-  _ALLOW_CIVICRM=YES
+elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
+  if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    _ALLOW_CIVICRM=NO
+  else
+    _ALLOW_CIVICRM=YES
+  fi
 else
   _ALLOW_CIVICRM=NO
 fi
