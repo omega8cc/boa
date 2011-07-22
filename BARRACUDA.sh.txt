@@ -2273,12 +2273,12 @@ fi
 if [ -e "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
   _NGINX_F_VERSION="Barracuda/$_NGINX_VERSION"
-  if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
-    _NGINX_INSTALL_REQUIRED=NO
-    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
-  elif [ ! -e "/var/log/ngx-cache-purge.log" ] ; then
+  if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "/var/log/ngx-cache-purge.log" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED w/o ngx-cache-purge, forced rebuild"
+  elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "/var/log/ngx-cache-purge.log" ] ; then
+    _NGINX_INSTALL_REQUIRED=NO
+    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
   else
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
@@ -2315,6 +2315,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
+  touch /var/log/ngx-cache-purge.log
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
