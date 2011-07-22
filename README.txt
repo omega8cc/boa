@@ -139,12 +139,14 @@ added to all 6.x platforms:
  config_perms-6.x-2.x-dev
  css_emimage-6.x-2.x-dev
  dbtuner-6.x-1.x-dev
+ expire-6.x-1.x-dev
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
  nginx_accel_redirect-6.x-1.5
  private_upload-6.x-1.x-dev
+ purge-6.x-1.2
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.1
