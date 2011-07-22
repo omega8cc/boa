@@ -1,16 +1,22 @@
 
-### Known issues
-
-* Only dedicated servers and Xen based VPS systems
-  supported without issues. Details for Virtuozzo/OpenVZ:
-  http://github.com/omega8cc/nginx-for-drupal/issues#issue/13
+### Barracuda requested features:
+    http://drupal.org/project/issues/search/barracuda?issue_tags=BOA-todo
 
 
-### In progress
+### Octopus requested features:
+    http://drupal.org/project/issues/search/octopus?issue_tags=BOA-todo 
+
+
+### In the Labs
 
 * Automated FTP/SSH accounts per site and per platform.
-* Embedded Aegir Knowledge Base and How-To Recipes.
-* Clone Nginx integration for Cherokee web server.
+* Cherokee web server support.
+* RedHat/CentOS support.
+* VirtualBox Squeeze Image.
+* Multiserver support.
+* Site and Platform migration between Octopus instances.
+* Octopus theme for Hostmaster interface.
+* Speed Booster Control module for D6 and D7 sites.
 
 
 ### DONE on Aegir Day at CPH DrupalCon
