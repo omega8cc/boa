@@ -15,6 +15,8 @@ action()
   /etc/init.d/nginx stop
   /etc/init.d/php-fpm stop
   killall -9 php-fpm php-cgi nginx php wget
+  sleep 2
+  killall -9 php-fpm php-cgi nginx php wget
   /etc/init.d/php-fpm start
   /etc/init.d/nginx start
   rm -f /var/xdrago/log/wait-for-octopus-barracuda-running
