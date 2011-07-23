@@ -2311,13 +2311,18 @@ mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 fi
+if [ "$_TEST_MODE" = "ON" ] ; then
+  _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-on.log"
+else
+  _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-off.log"
+fi
 if [ -e "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
   _NGINX_F_VERSION="Barracuda/$_NGINX_VERSION"
-  if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "/var/log/ngx-cache-purge.log" ] ; then
+  if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
-    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED w/o ngx-cache-purge, forced rebuild"
-  elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "/var/log/ngx-cache-purge.log" ] ; then
+    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild"
+  elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
     msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
   else
@@ -2351,13 +2356,18 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   sed -i "s/nginx/Barracuda/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
   perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c
   cd /var/opt/nginx-$_NGINX_VERSION
-  st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module --without-http_scgi_module  --without-http_uwsgi_module --with-debug --with-ipv6 --add-module=/var/opt/nginx-upload-progress-module/ --add-module=/var/opt/ngx_cache_purge/" 2> /dev/null
+  if [ "$_TEST_MODE" = "ON" ] ; then
+     _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
+  else
+    _NGINX_EXTRA=""
+  fi
+  st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module --without-http_scgi_module  --without-http_uwsgi_module --with-debug --with-ipv6 --add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
-  touch /var/log/ngx-cache-purge.log
+  touch $_NGINX_EXTRA_CTRL
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
