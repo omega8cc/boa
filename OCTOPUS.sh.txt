@@ -440,6 +440,7 @@ _SMALLCORE6=6.22
 _SMALLCORE7=7.4
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD 
+_TEST_MODE=OFF
 
 ## Distributions
 _COCOMORE=cdc-6.20.12
@@ -551,6 +552,7 @@ do
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
   sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files
+  sed -i "s/EDIT_TEST_MODE/$_TEST_MODE/g"                 $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do

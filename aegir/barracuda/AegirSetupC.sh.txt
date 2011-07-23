@@ -66,6 +66,7 @@ _VIDEOLA=EDIT_VIDEOLA
 
 ###---### main config
 #
+_TEST_MODE=EDIT_TEST_MODE
 _STATUS=INIT
 _WEBG=EDIT_WEBG
 _HM_DISTRO=EDIT_HM_DISTRO
@@ -311,7 +312,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
@@ -319,7 +319,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.1.tar.gz
@@ -330,6 +329,10 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
+  if [ "$_TEST_MODE" = "ON" ] ; then
+    wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.2.tar.gz
+  fi
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -339,8 +342,13 @@ download_o_contrib_six () {
 #
 # upgrade_o_contrib
 upgrade_o_contrib () {
+if [ "$_TEST_MODE" = "ON" ] ; then
+  _TEST_MODULE=purge
+else
+  _TEST_MODULE=robotstxt
+fi
 if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
- if [ ! -d "/data/all/$_LAST_ALL/o_contrib/purge" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
+ if [ ! -d "/data/all/$_LAST_ALL/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
   cd /data/all/$_LAST_ALL/o_contrib
   rm -f -r *
   download_o_contrib_six
@@ -348,7 +356,7 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
  fi
 fi
 if [ -d "$_CORE/o_contrib" ] ; then
- if [ ! -d "$_CORE/o_contrib/purge" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
+ if [ ! -d "$_CORE/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
   cd $_CORE/o_contrib
   rm -f -r *
   download_o_contrib_six

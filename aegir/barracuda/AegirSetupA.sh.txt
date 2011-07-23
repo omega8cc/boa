@@ -66,6 +66,7 @@ _VIDEOLA=EDIT_VIDEOLA
 
 ###---### main config
 #
+_TEST_MODE=EDIT_TEST_MODE
 _STATUS=INIT
 _USER=EDIT_USER
 _DOMAIN=EDIT_DOMAIN
@@ -246,9 +247,9 @@ for i in $REVISIONS; do
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
     tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
     rm -f backup_migrate-6.x-2.4.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-6.x-1.3.tar.gz
-    tar -xzf nginx_accel_redirect-6.x-1.3.tar.gz &> /dev/null
-    rm -f nginx_accel_redirect-6.x-1.3.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-6.x-1.5.tar.gz
+    tar -xzf nginx_accel_redirect-6.x-1.5.tar.gz &> /dev/null
+    rm -f nginx_accel_redirect-6.x-1.5.tar.gz
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
