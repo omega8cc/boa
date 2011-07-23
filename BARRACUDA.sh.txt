@@ -691,6 +691,46 @@ fix_on_upgrade () {
   fi
 }
 #
+# Validate server public IP
+validate_public_ip () {
+  if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
+    if [ -z "$_LOCAL_NETWORK_HN" ] ; then
+      msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
+      exit 1
+    else
+      _MY_OWNIP="$_LOCAL_NETWORK_IP"
+      _MY_HOSTN="$_LOCAL_NETWORK_HN"
+      _MY_FRONT="$_LOCAL_NETWORK_HN"
+      _THISHTIP="$_LOCAL_NETWORK_IP"
+    fi
+  else
+    _ETH_TEST=`ifconfig 2>&1`
+    if [[ $_ETH_TEST =~ venet0 ]] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0"
+    elif [ -e "/proc/bean_counters" ] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0"
+    else
+      _VMFAMILY="XEN"
+      _IFCONFIG="eth0"
+    fi
+    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
+      if [ -z "$_MY_OWNIP" ] ; then
+        _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+      else
+        _THISHTIP="$_MY_OWNIP"
+      fi
+    else
+      if [ -z "$_MY_OWNIP" ] ; then
+        _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+      else
+        _THISHTIP="$_MY_OWNIP"
+      fi
+    fi
+  fi
+}
+#
 # Validate server IP for xtras
 validate_xtras_ip () {
   if [ $_HTTP_WILDCARD = "YES" ] ; then
@@ -2731,30 +2771,7 @@ EOF
     mrun "sleep 30"
   else
     _HTTPS_TEST=FREE
-    if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
-      if [ -z "$_LOCAL_NETWORK_HN" ] ; then
-        msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
-        exit 1
-      else
-        _MY_OWNIP="$_LOCAL_NETWORK_IP"
-        _MY_HOSTN="$_LOCAL_NETWORK_HN"
-        _MY_FRONT="$_LOCAL_NETWORK_HN"
-        _THISHTIP="$_LOCAL_NETWORK_IP"
-      fi
-    else
-      _ETH_TEST=`ifconfig 2>&1`
-      if [[ $_ETH_TEST =~ venet0 ]] ; then
-        _VMFAMILY="VZ"
-        _IFCONFIG="venet0"
-      elif [ -e "/proc/bean_counters" ] ; then
-        _VMFAMILY="VZ"
-        _IFCONFIG="venet0"
-      else
-        _VMFAMILY="XEN"
-        _IFCONFIG="eth0"
-      fi
-      _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-    fi
+    validate_public_ip
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
     cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
@@ -2775,6 +2792,17 @@ EOF
       invoke-rc.d nginx start &> /dev/null
     fi
   fi
+fi
+
+
+###--------------------###
+if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/speed_purge.conf" ] ; then
+  msg "INFO: Installing Speed Booster Purge Server, please wait..."
+  mrun "sleep 3"
+  validate_public_ip
+  cd /var/aegir/config/server_master/nginx/pre.d
+  cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/speed_purge.conf ./
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/speed_purge.conf &> /dev/null
 fi
 
 
@@ -2824,6 +2852,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       rm -f chive_$_CHIVE_VERSION.tar.gz
       chown -R www-data:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
+      validate_public_ip
       validate_xtras_ip
       echo > $_CHIVE_VHOST
       echo "server {" >> $_CHIVE_VHOST
@@ -2861,6 +2890,7 @@ if [ -d "/var/www/chive" ] ; then
   fi
   if [ ! -e "/var/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
+    validate_public_ip
     validate_xtras_ip
     echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
@@ -2899,6 +2929,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BDD ]] ; then
       rm -f sqlbuddy_1_3_3.zip
       chown -R www-data:www-data /var/www/sqlbuddy
       _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
+      validate_public_ip
       validate_xtras_ip
       echo > $_SQLBUDDY_VHOST
       echo "server {" >> $_SQLBUDDY_VHOST
@@ -2943,6 +2974,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
         chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
+        validate_public_ip
         validate_xtras_ip
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
