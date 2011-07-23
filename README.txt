@@ -112,7 +112,7 @@ Octopus can install the platforms listed below:
  CiviCRM 3.4.4 ---------------- http://civicrm.org
  CiviCRM 4.0.4 ---------------- http://civicrm.org
  Videola 1.0-alpha1 ----------- http://videola.tv
- ProsePoint 0.39 (int) -------- http://prosepoint.org
+ ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Ubercart 6.x-2.4 (int) ------- http://ubercart.org
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.22 Pressflow (int) -- http://pressflow.org
