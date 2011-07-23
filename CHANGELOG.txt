@@ -8,17 +8,19 @@
   Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
   Open Atrium 1.0 6.22 --------- http://openatrium.com
   ProsePoint 0.40 6.22 --------- http://prosepoint.org
-  
+
+# Fixes:
+
+  * Two critical cache related bugs fixed in Nginx 1.0.5.
+  * Critical Issue #1222208 - broken web-based cron for sites.
+  * Issue #1223506 - cloning a site looses client site ownership.
+  * Missing jquery.ui symlink in Conference COD breaks install.
+
 # Changes:
 
   * Nginx upgrade to 1.0.5.
   * Chive upgrade to 0.5.1.
   * Web-based method set by default for sites cron in Aegir.
-
-# Fixes:
-
-  * Two critical cache related bugs fixed in Nginx 1.0.5.
-  * Missing jquery.ui symlink in Conference COD breaks install.
 
 # New features:
 
