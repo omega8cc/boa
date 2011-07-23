@@ -74,7 +74,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $conf['advagg_rebuild_on_flush'] = 0;
   }
   
-  $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge?purge_method=get";
+  $conf['purge_proxy_urls'] = 'http://'. $_SERVER['HTTP_HOST'] .'/purge?purge_method=get';
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
