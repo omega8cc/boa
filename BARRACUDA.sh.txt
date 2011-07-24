@@ -2807,6 +2807,18 @@ fi
 
 
 ###--------------------###
+if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
+  msg "INFO: Installing Speed Booster Purge Server, please wait..."
+  mrun "sleep 3"
+  validate_public_ip
+  cd /var/aegir/config/server_master/nginx/pre.d
+  rm -f speed_purge.conf
+  cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf ./
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
+fi
+
+
+###--------------------###
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
   if [ ! -d "/opt/solr" ] ; then
     echo " "
