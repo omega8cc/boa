@@ -22,11 +22,6 @@
   * Chive upgrade to 0.5.1.
   * Web-based method set by default for sites cron in Aegir.
 
-# New features:
-
-  * Speed Booster Purge experimental backend installed by default,
-    but not used in production yet - see _TEST_MODE flag.
-
 
 ### Stable Edition 1.0-boa-T-8.8
 ### Date: Thu, 15 July 2011 08:00:00 +0200
