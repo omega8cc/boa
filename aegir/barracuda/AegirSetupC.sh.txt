@@ -559,6 +559,19 @@ if [ $_STATUS != "INIT" ] ; then
 fi
 
 
+if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+  _ALLOW_FOUR=YES
+elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
+  if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    _ALLOW_FOUR=YES
+  else
+    _ALLOW_FOUR=YES
+  fi
+else
+  _ALLOW_FOUR=NO
+fi
+
+
 ###---### Acquia
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
@@ -995,7 +1008,7 @@ if [ -d "$_CORE_DISTRO" ] && [ ! -d "$_CORE_DISTRO/fixed_1.log" ] ; then
   build_openpublic
 fi
 
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
 echo " "
@@ -1076,7 +1089,7 @@ fi
 
 ###---### Acquia Commons
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/modules/path_alias_cache" ] ; then
 echo " "
@@ -1185,7 +1198,7 @@ fi
 
 ###---### Videola Make
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/modules/path_alias_cache" ] ; then
 echo " "
@@ -1329,7 +1342,7 @@ fi
 
 ###---### NodeStream Make
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/modules/path_alias_cache" ] ; then
 echo " "
@@ -1370,7 +1383,7 @@ fi
 ###---### OpenPublish
 #
 # if [ "$_PLATFORMS_LIST" = "ALL" ] ; then
-# if [ "$_CLIENT_CORES" -ge "4" ] ; then
+# if [ "$_ALLOW_FOUR" = "YES" ] ; then
 # echo " "
 # if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 # true
@@ -1411,7 +1424,7 @@ fi
 
 ###---### OpenScholar
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites/all/libraries/shadowbox" ] ; then
 echo " "

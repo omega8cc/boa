@@ -2368,6 +2368,8 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "make --quiet install" 2> /dev/null
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
+  killall -9 nginx &> /dev/null
+  mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
   touch $_NGINX_EXTRA_CTRL
 fi
