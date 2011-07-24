@@ -2313,8 +2313,10 @@ if [ $_STATUS = "INIT" ] ; then
 fi
 if [ "$_TEST_MODE" = "ON" ] ; then
   _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-on.log"
+  rm -f /var/log/ngx-cache-purge-off.log
 else
   _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-off.log"
+  rm -f /var/log/ngx-cache-purge-on.log
 fi
 if [ -e "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
@@ -2807,7 +2809,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
+if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_TEST_MODE" = "ON" ] ; then
   msg "INFO: Installing Speed Booster Purge Server, please wait..."
   mrun "sleep 3"
   validate_public_ip
@@ -2815,6 +2817,8 @@ if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]
   rm -f speed_purge.conf
   cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf ./
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
+else
+  rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
 fi
 
 

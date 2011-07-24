@@ -332,6 +332,9 @@ download_o_contrib_six () {
   if [ "$_TEST_MODE" = "ON" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.2.tar.gz
+  else
+    rm -f -r expire*
+    rm -f -r purge*
   fi
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
