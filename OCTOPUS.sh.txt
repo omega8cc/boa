@@ -440,7 +440,6 @@ _SMALLCORE6=6.22
 _SMALLCORE7=7.4
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD 
-_TEST_MODE=OFF
 
 ## Distributions
 _COCOMORE=cdc-6.20.12
@@ -979,6 +978,11 @@ if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
   _HTTP_WILDCARD=YES
 else
   _HTTP_WILDCARD=NO
+fi
+if [ -f "/var/log/ngx-cache-purge-on.log" ] ; then
+  _TEST_MODE=ON
+else
+  _TEST_MODE=OFF
 fi
 
 echo "8s before we will continue..."
