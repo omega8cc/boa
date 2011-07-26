@@ -18,9 +18,9 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT']) &&
 }
 
 // Disable Memcached + Redis cache for anonymous visitors if this causes wsod
-// for listed domains, as it is now enabled by default
+// for listed domains, as it is now enabled by default.
 // The code below will make it working for logged in users only, as before.
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com)/", $_SERVER['HTTP_HOST'])) {
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.com)/", $_SERVER['HTTP_HOST'])) {
   if (isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) &&
       preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
     $use_cache = 'YES';
