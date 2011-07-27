@@ -465,7 +465,7 @@ _NGINX_VERSION=1.0.5
 _PHP_VERSION=5.2.17
 _APC_VERSION=3.1.9
 _CHIVE_VERSION=0.5.1
-_BZR_VERSION=2.4b5
+_BZR_VERSION=2.3.4
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
@@ -2311,7 +2311,7 @@ if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ]; then
   msg "INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://launchpad.net/bzr/2.4/$_BZR_VERSION/+download/bzr-$_BZR_VERSION.tar.gz
+  wget -q -U iCab http://launchpad.net/bzr/2.3/$_BZR_VERSION/+download/bzr-$_BZR_VERSION.tar.gz
   tar -xzf bzr-$_BZR_VERSION.tar.gz
   cd /var/opt/bzr-$_BZR_VERSION
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
