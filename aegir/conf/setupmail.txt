@@ -41,7 +41,7 @@ Once in your control panel, you'll find a number of
 Drupal platforms ready to deploy, available in all hosted options,
 starting with 1+ Aegir Standard or SSD Core:
  
- Drupal 7.4 ------------------- http://drupal.org/drupal-7.0
+ Drupal 7.6 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.22 ------------------ http://pressflow.org
  Open Atrium 1.0 6.22 --------- http://openatrium.com
  Managing News 1.2 6.22 ------- http://managingnews.com
@@ -56,7 +56,7 @@ starting with 1+ Aegir Standard or SSD Core:
  
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
- OpenPublic 1.0-beta1 7.4 ----- http://openpublicapp.com
+ OpenPublic 1.0-beta1 7.6 ----- http://openpublicapp.com
  NodeStream 1.0 6.22 ---------- http://nodestream.org
  Acquia Commons 1.7 6.22 ------ http://acquia.com/drupalcommons
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu

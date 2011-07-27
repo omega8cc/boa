@@ -998,11 +998,11 @@ build_openpublic () {
     patch -p1 < openpublic.patch &> /dev/null
     cd $_CORE/openpublic-$_OPENPUBLIC
   fi
-  touch $_CORE_DISTRO/fixed_1.log
+  touch $_CORE_DISTRO/core_$_SMALLCORE7.log
 }
 
 _CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC"
-if [ -d "$_CORE_DISTRO" ] && [ ! -d "$_CORE_DISTRO/fixed_1.log" ] ; then
+if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/core_$_SMALLCORE7.log" ] ; then
   rm -f -r $_CORE_DISTRO
   cd $_CORE
   build_openpublic
@@ -1052,7 +1052,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/commerce_kickstart-$_COMMERCE-core.tar.gz
   tar -xzf commerce_kickstart-$_COMMERCE-core.tar.gz
   rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
-  mv drupal-7.4 commerce-$_COMMERCE
+  if [ -d "$_CORE/drupal-7.4" ] ; then
+    mv drupal-7.4 commerce-$_COMMERCE
+  elif [ -d "$_CORE/drupal-7.6" ] ; then
+    mv drupal-7.6 commerce-$_COMMERCE
+  elif [ -d "$_CORE/drupal-7.8" ] ; then
+    mv drupal-7.8 commerce-$_COMMERCE
+  fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
@@ -1673,7 +1679,7 @@ true
 msg "STATUS: $_F_UBERCART install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_UBERCART-$_SMALLCORE6"
-if [ -d "$_CORE_DISTRO" ] && [ ! -d "$_CORE_DISTRO/fixed_1.log" ] ; then
+if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/fixed_1.log" ] ; then
   rm -f -r $_CORE_DISTRO
 fi
 if [ ! -d "$_CORE_DISTRO" ] ; then

@@ -5,6 +5,8 @@
 
 # Updated Octopus platforms:
 
+  Drupal 7.6 ------------------- http://drupal.org/drupal-7.0
+  OpenPublic 1.0-beta1 7.6 ----- http://openpublicapp.com
   Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
   Open Atrium 1.0 6.22 --------- http://openatrium.com
   ProsePoint 0.40 6.22 --------- http://prosepoint.org
