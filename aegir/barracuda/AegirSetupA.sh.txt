@@ -262,6 +262,7 @@ for i in $REVISIONS; do
     done
   fi
 done
+sed -i "s/, 'expire', 'purge', '/, '/g" /data/all/*/*/profiles/*/*.profile &> /dev/null
 touch /var/log/incompatible-modules-removed-001e.log
 cd
 fi
@@ -517,7 +518,7 @@ fi
     cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   fi
   chown $_USER:$_USRG * &> /dev/null
   cd $_ROOT/.drush/provision/http/nginx
@@ -529,7 +530,7 @@ fi
     cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   fi
   chown $_USER:$_USRG * &> /dev/null
   echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
@@ -545,7 +546,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
   mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
 else
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc &> /dev/null    
+  mv -f global.inc.aegir.txt global.inc &> /dev/null
 fi
 
 
@@ -572,7 +573,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
         invoke-rc.d nginx reload &> /dev/null
       fi
     fi
-  fi  
+  fi
 fi
 cd $_ROOT
 
@@ -748,7 +749,7 @@ fi
 
 ###---### Add access to backups for older installs
 #
-if [ ! -e "$_ROOT/log/backups.access.open" ] ; then 
+if [ ! -e "$_ROOT/log/backups.access.open" ] ; then
   sed -i "s/\/$_USER\/static\'\]/\/$_USER\/static\', \'\/data\/disk\/$_USER\/backups\'\]/g" /etc/lshell.conf
   chmod 0750 $_ROOT/backups
 fi
@@ -786,7 +787,7 @@ if [ "$_HM_ONLY" = "YES" ] ; then
 else
 msg "$_STATUS A: Read or create pass.txt"
 mrun "sleep 3"
-if [ -e "$_ROOT/pass.txt" ] ; then 
+if [ -e "$_ROOT/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
  mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
@@ -1042,9 +1043,9 @@ if [ $_STATUS = "INIT" ] ; then
   echo $TIME > $_ROOT/log/date-init.txt
   if [ -e "$_ROOT/log/setupmail.txt" ] ; then
     if [[ $_MAILX_TEST =~ invalid ]] ; then
-      cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL 
+      cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
     else
-      cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL 
+      cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
     fi
   fi
 else
