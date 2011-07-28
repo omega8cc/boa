@@ -322,7 +322,7 @@ _MY_FRONT=""
 ### real ubercart module), with one empty
 ### README.txt file inside, so its path will
 ### be sites/all/modules/ubercart/README.txt
-### 
+###
 ### You can turn ON/OFF this feature on every
 ### upgrade for all platforms on this Aegir
 ### Master Instance by changing the value
@@ -800,7 +800,7 @@ force_advanced_nginx_config () {
     cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   fi
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/nginx
@@ -812,7 +812,7 @@ force_advanced_nginx_config () {
     cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null  
+    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
   fi
   chown aegir:aegir *
 }
@@ -1344,7 +1344,7 @@ if [ $_STATUS = "INIT" ] ; then
   $ echo "$_MY_OWNIP *.$_MY_HOSTN $_MY_FRONT" >> /etc/hosts
 
   * Please make sure that below command returns your FQDN hostname "$_MY_HOSTN":
-  
+
   $ uname -n
 
 EOF
@@ -1390,7 +1390,7 @@ EOF
   * Your (optional) Collectd Graph Panel will be available at https://cgp.$_THIS_FRONT.
   * Your (optional) Webmin Control Panel will be available at https://$_THISHOST:10000.
   * Your (optional) csf/lfd Firewall will support integrated Nginx abuse guard.
-  
+
   NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
         subdomains point to your IP (we recommend using wildcard DNS to simplify it).
         But don't worry, you can add proper DNS entries for those subdomains later,
@@ -1802,7 +1802,7 @@ if [ $_REL_VERSION = "natty" ] ; then
     else
       ln -s /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
       ln -s /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-      ln -s /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so    
+      ln -s /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
     fi
   fi
 fi
@@ -2067,7 +2067,7 @@ if [ -e "/usr/local/bin/php" ] ; then
     msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
   fi
   mrun "sleep 3"
-else  
+else
   _PHP_INSTALL_REQUIRED=YES
 fi
 if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
@@ -2295,7 +2295,7 @@ if [ ! -e "/var/log/fixed-libmemcached-0.49.log" ] ; then
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-      mv -f global.inc.aegir.txt global.inc &> /dev/null  
+      mv -f global.inc.aegir.txt global.inc &> /dev/null
     fi
   fi
 fi
@@ -2722,7 +2722,7 @@ else
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-      mv -f global.inc.aegir.txt global.inc &> /dev/null  
+      mv -f global.inc.aegir.txt global.inc &> /dev/null
     fi
     force_advanced_nginx_config
     if [ $_DRUSH_FAMILY = "3" ] ; then
