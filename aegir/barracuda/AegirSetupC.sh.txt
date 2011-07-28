@@ -1054,8 +1054,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
   if [ -d "$_CORE/drupal-7.4" ] ; then
     mv drupal-7.4 commerce-$_COMMERCE
-  elif [ -d "$_CORE/drupal-7.6" ] ; then
-    mv drupal-7.6 commerce-$_COMMERCE
+  elif [ -d "$_CORE/drupal-7.7" ] ; then
+    mv drupal-7.7 commerce-$_COMMERCE
   elif [ -d "$_CORE/drupal-7.8" ] ; then
     mv drupal-7.8 commerce-$_COMMERCE
   fi
