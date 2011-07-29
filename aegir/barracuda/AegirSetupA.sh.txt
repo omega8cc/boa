@@ -233,7 +233,7 @@ fi
 # remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001() {
-if [ ! -e "/var/log/incompatible-modules-removed-001e.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-001f.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
 RMMODULES="drupal-nginx-fast-x-accel-redirect advagg memcache varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate"
 for i in $REVISIONS; do
@@ -246,6 +246,7 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib
     if [ -d "/data/all/$i/o_contrib/boost" ] ; then
       sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install
+      sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
     tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
@@ -263,7 +264,7 @@ for i in $REVISIONS; do
   fi
 done
 sed -i "s/, 'expire', 'purge', '/, '/g" /data/all/*/*/profiles/*/*.profile &> /dev/null
-touch /var/log/incompatible-modules-removed-001e.log
+touch /var/log/incompatible-modules-removed-001f.log
 cd
 fi
 }
