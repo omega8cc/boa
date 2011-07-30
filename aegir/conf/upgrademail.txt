@@ -1,26 +1,29 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.8
+Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.9
 
   https://aegir.dragon.ny.host8.biz
+
+  Did you notice that you can host CiviCRM and all other
+  platforms available normally with 4+ Aegir Standard Cores
+  with just 2+ Aegir SSD Cores?
+
+  Make your sites running 10x faster!
+  http://omega8.cc/buy#ssd
 
 Please read about all new features, enhancements and promotions at:
 
   http://omega8.cc/updates
   http://omega8.cc/news
 
-  Special SSD promotion will expire soon!
-  "Free SSD Migration with Unique Bonus in July"
-  http://omega8.cc/free-ssd-migration-with-unique-bonus-in-july-133
-
-There are also new articles added to our library at:
+There are also helpful articles available in our library at:
 
   http://omega8.cc/library/good-to-know
   http://omega8.cc/library/performance
   http://omega8.cc/library/development
   http://omega8.cc/library/tips-and-tricks
   http://omega8.cc/library/problems-solutions
-  
+
 When you need our assistance, please use our support request form at:
 
   http://omega8.cc/support
