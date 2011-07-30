@@ -6,6 +6,7 @@
 # Updated Octopus platforms:
 
   Drupal 7.7 ------------------- http://drupal.org/drupal-7.0
+  Acquia 7.7.5 ----------------- http://bit.ly/acquiadrupal
   OpenPublic 1.0-beta1 7.7 ----- http://openpublicapp.com
   Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
   Open Atrium 1.0 6.22 --------- http://openatrium.com
@@ -143,7 +144,7 @@
   Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
   Acquia 7.2.2 ----------------- http://bit.ly/acquiadrupal
   Drupal Commerce 1.0-beta3 ---- http://drupalcommerce.org
- 
+
 * Basic Drupal 6 and Drupal 7 platforms now come in three instances,
   to make your standard workflow easier for: -dev, -stage and -prod,
   with correct suffix: D.00x, S.00x and P.00x in the platform name.
@@ -164,7 +165,7 @@
 * APC upgraded to version 3.1.9
 * Memcache extension replaced with memcached and libmemcached.
 * Chive database manager upgraded to version 0.4.1
-* Added support for robotstxt module in all new 6.x based platforms. 
+* Added support for robotstxt module in all new 6.x based platforms.
 * Drush gm / generate-makefile command added as allowed to lshell.
 * Git over ssh added as allowed to lshell.
 
@@ -263,10 +264,10 @@
 
 * Forced public downloads for all 6.x platforms, except of ubercart.
 * Boost crawler option is now denied for performance reasons.
-* Forced log-out on browser quit only for Aegir control panel. 
+* Forced log-out on browser quit only for Aegir control panel.
 
 
-### Project and issue queue moved to Drupal.org    
+### Project and issue queue moved to Drupal.org
 ### Date: Sat, 7 May 2011 14:00:00 +0200
 ### http://drupal.org/project/barracuda
 ### http://drupal.org/project/octopus
@@ -324,40 +325,40 @@ Added/Fixed: (upgrade for all pre-A14.A required)
     encrypted connections to Chive and Collectd.
     Doesn't interfere even with SSL enabled sites
     on the same IP (with separate certs).
-   
+
 2.  The redirects are now back and enhanced.
     Fully compatible with Nginx in any combination
     with aliases and SSL settings/modes.
-   
+
 3.  Barracuda and Octopus by default installs still
     Aegir HEAD, but the latest alpha14 also works.
 
 4.  Octopus can define its separate IP address
     if available.
-   
+
 5.  Fixed issue with too aggresive Hot Sauce check,
     causing creating not shared copies of code
     for platforms on every install or upgrade.
-   
+
 6.  Barracuda and Octopus now allows to skip DNS
     test, to make it possible to install on any
     virtualbox with dynamic DNS/IP etc. There is
     no guarantee it will work, but another switch
     is now available, if someone needs it.
-   
+
 7.  Octopus can now turn off local Memcache and Redis
     caches and switch all sites to use defined remote
     caches.
-   
+
 8.  Forced /etc/apt/sources.list rewrite also before
     the Barracuda system upgrade.
 
 9.  Fix for the already installed and possibly broken
-    git-core. 
+    git-core.
 
 10. Fix for Aegir sites with .info domains, the path
     alias should now work without 403 error.
-   
+
 
 ### Fri, 2010-09-17 11:00 - Edition 0.4-HEAD-A14.A
 
@@ -367,34 +368,34 @@ Added/Fixed: (upgrade required)
    Aegir HEAD to use the fix for critical issue
    on sites import. It will be included in alpha14,
    please don't use alpha13.
-   
+
 2. Debian Lenny on 32bit systems works again.
    Fix for broken git-core after upgrade
    to version: 1:1.5.6.5-3+lenny3.1 on Lenny 32bit.
 
 3. Fix and better inline warnings/info about
    missing locales at Linode and RackSpaceCloud.
-   
+
 4. More details in the installer log for better
-   debugging and version tracking. 
+   debugging and version tracking.
 
 5. E-mail address for alerts on database repair
-   started by auto-healing now correctly replaced. 
+   started by auto-healing now correctly replaced.
 
 6. Redis for Lenny now built from sources due to
    apt version moved already to Squeeze.
 
 7. Critical bugfix for failed platforms install
    when hostmaster is not upgraded.
-   
+
 8. Introducing simple edition archive:
-   http://omega8.cc/dev/bo-a14a.tar.gz 
+   http://omega8.cc/dev/bo-a14a.tar.gz
 
 9. Octopus now better supports using newer shared
    code for platforms and introduces new setting:
    _HOT_SAUCE to allow forced fresh/hot code.
-   
-   
+
+
 ### Tue, 2010-09-12 21:50 - Edition 0.4-HEAD-A13.A
 
 Added/Fixed: (upgrade recommended)
@@ -404,7 +405,7 @@ Added/Fixed: (upgrade recommended)
     with limited shell to avoid using commands
     like "drush up" since they should never be used
     on sites managed in the Aegir system.
-   
+
 2.  Octopus now by default sends a welcome e-mail
     with some useful intro information and access
     details to the address defined as _CLIENT_EMAIL.
@@ -442,7 +443,7 @@ Added/Fixed: (upgrade recommended)
 11. By defult Aegir 0.4-HEAD instead of alpha13
     is now installed to fix critical issues with
     importing sites.
-    
+
     See also: http://drupal.org/node/907248
 
 12. Solr and Chive are now optional (Yes/no).
@@ -453,7 +454,7 @@ Added/Fixed: (upgrade recommended)
 
 15. Better compatibility for upgrades from
     pre-Barracuda Nginx installs.
-   
+
 16. Now it doesn't start cron before completing all
     install tasks to avoid breaking spinner.
 
@@ -462,12 +463,12 @@ Added/Fixed: (upgrade recommended)
 
 18. Octopus now refuses to run if defined domain
     doesn't resolve yet to the server IP address.
-    
+
 19. Octopus now refuses to run on system not
     created initially by Barracuda installer.
-    
+
 20. Custom FQDN hostname is now forced (if defined)
-    in Barracuda before running DNS checks. 
+    in Barracuda before running DNS checks.
 
 21. Fix for some missing mime types in vanilla Nginx.
 
@@ -489,7 +490,7 @@ Added/Fixed: (upgrade recommended because it works!)
    environment and Aegir Master Instance, to
    upgrade only environment, to upgrade only Aegir
    Master Instance, or both at the same time.
-   
+
 3. Octopus now can separately install and/or upgrade
    any Aegir Satellite Instance or any platform
    on any instance, separately, using detailed prompt
@@ -497,7 +498,7 @@ Added/Fixed: (upgrade recommended because it works!)
    home pages.
 
 4. New platform Cocomore Drupal added in Octopus:
-   http://drupal.cocomore.com  
+   http://drupal.cocomore.com
 
 
 ### Sat, 2010-08-28 20:15 - Edition 0.4-HEAD-A12.C
@@ -515,10 +516,10 @@ Added/Fixed: (upgrade recommended)
 
 3. Added versions numbers and links to all platforms
    Yes/no prompts.
-   
+
 4. /tmp directory no longer used to avoid problems
    due to secure noexec mount.
-   
+
 5. Improved readme and docs (in progress).
 
 6. Removed old, no longer supported installer.
@@ -547,12 +548,12 @@ Added/Fixed: (upgrade from previous versions recommended)
 2. Barracuda now can upgrade packages selectively.
    Just run it again to upgrade the system and the
    Aegir Master Instance.
-   
+
 3. Octopus can create many Aegir Satellite Instances
    on the same server, each with different set of platforms,
    but with ability to share the code between instances,
    so you can use this system even on the low end VPS.
-   
+
 4. Chive database manager added by default with db.
    subdomain (may require dns entry or wildcard).
 
@@ -567,7 +568,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 2. Introduced new Octopus and Barracuda installers.
    See README.txt for more information.
    Both are in pre-alpha debugging phase.
-   
+
 3. All installers code and helpers now hosted on GitHub.
 
 
@@ -601,7 +602,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 ### Thu, 2010-08-12 06:10 - Edition 0.4-alpha10-A10.A
 
 Added/Fixed: (upgrade from previous versions recommended)
-   
+
 1. By defult Aegir 0.4-alpha10 with Drush 3.3
    is now installed.
 
@@ -618,7 +619,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 ### Thu, 2010-08-07 06:10 - Edition 0.4-alpha9-A9.F
 
 Added/Fixed: (upgrade of existing installs not required)
-   
+
 1. By defult latest HEAD from git.aegirproject.org
    is now installed, due to critical bug found,
    see this for details: http://drupal.org/node/874716
@@ -642,14 +643,14 @@ Added/Fixed: (upgrade of existing installs not required)
 1. Fixed critical problem with Drush broken due to
    change of URL to the required php library:
    http://drupal.org/node/875196
-   
+
 2. Aegir version is now configurable. By defult latest
    0.4-alpha9 will be installed, but it is also possible
    to install latest HEAD from git.aegirproject.org.
-   
+
 3. Aegir front-end (sub)domain is now configurable and
    can be different than machine FQDN hostname.
-  
+
 4. Machine FQDN hostname and IP is now configurable.
 
 5. Nginx version updated to 0.8.48.
@@ -708,7 +709,7 @@ Added/Fixed:
 
 2. Debian specific stuff added in php-fpm-install.txt to allow
    easy install on vanilla vps.
-   
+
 3. Xcache replaced with APC and Memcache install added.
 
 
@@ -732,10 +733,10 @@ Added/Fixed:
 
 1. Added custom fix required only when using purl, spaces & og
    for modules: ajax_comments, watcher and fasttoggle.
-   
+
 2. Simplified rewrite rules for location @drupal
    resolves also some problems with imagecache.
-   
+
 3. Changed order of try_files for Boost
    to match newer version of dirs structure first.
 

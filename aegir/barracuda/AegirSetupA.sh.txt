@@ -41,7 +41,6 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 #
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
-_COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
@@ -959,11 +958,6 @@ mrun "sleep 3"
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal_commons-$_COMMONS" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal_commons-$_COMMONS
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_COCOMORE" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/$_COCOMORE/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_COCOMORE
     fi
   fi
 fi

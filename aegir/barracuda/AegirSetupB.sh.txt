@@ -41,7 +41,6 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 #
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
-_COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
@@ -296,7 +295,7 @@ fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
-if [ $_AEGIR_VERSION = "HEAD" ]; then  
+if [ $_AEGIR_VERSION = "HEAD" ]; then
   if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
     _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
     git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
@@ -480,7 +479,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       mv -f make_client_3.php.txt make_client.php &> /dev/null
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
-      mv -f make_client.php.txt make_client.php &> /dev/null  
+      mv -f make_client.php.txt make_client.php &> /dev/null
     fi
     $DRUSHC sqlq "UPDATE {hosting_platform} SET status=-1 WHERE nid=5" &> /dev/null
     $DRUSHC php-script make_client $_CLIENT_EMAIL &> /dev/null

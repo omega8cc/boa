@@ -41,7 +41,6 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 #
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
-_COCOMORE=EDIT_COCOMORE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
@@ -457,12 +456,11 @@ fi
 ###---### Distributions full names
 #
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
-_F_ACQUIA_SEVEN="Acquia 7.4.4 P.$_THIS_CORE"
+_F_ACQUIA_SEVEN="Acquia 7.7.5 P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
-_F_COCOMORE="Cocomore Drupal $_COCOMORE P.$_THIS_CORE"
 _F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
 _F_COMMONS="Acquia Commons $_COMMONS P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
@@ -1850,12 +1848,6 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 &> /dev/null
-    mrun "sleep 5"
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_COCOMORE" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_COCOMORE/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_COCOMORE" drupalcenter $_ROOT/distro/$_THIS_CORE/$_COCOMORE &> /dev/null
     mrun "sleep 5"
   fi
 fi

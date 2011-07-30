@@ -250,7 +250,7 @@ _FORCE_GIT_MIRROR=""
 ### real ubercart module), with one empty
 ### README.txt file inside, so its path will
 ### be sites/all/modules/ubercart/README.txt
-### 
+###
 ### You can turn ON/OFF this feature on every
 ### upgrade for all platforms on this Aegir
 ### Satellite Instance by changing the value
@@ -439,10 +439,9 @@ _USRG=users
 _SMALLCORE6=6.22
 _SMALLCORE7=7.7
 _DRUSH_VERSION=7.x-4.4 ### or HEAD
-_DRUSH_FAMILY=4        ### change to 5 for HEAD 
+_DRUSH_FAMILY=4        ### change to 5 for HEAD
 
 ## Distributions
-_COCOMORE=cdc-6.20.12
 _COMMONS=6.x-1.7
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.7
@@ -528,7 +527,6 @@ do
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_NODESTREAM/$_NODESTREAM/g"               $Files
   sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
-  sed -i "s/EDIT_COCOMORE/$_COCOMORE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_COD/$_COD/g"                             $Files
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
@@ -887,10 +885,10 @@ else
  echo RAW _DOMAIN is $_DOMAIN
   if [ "$_USER" = "admin" ] ; then
     echo ERROR: $_USER is a restricted username, please choose different _USER.
-    exit 1  
+    exit 1
   elif [ "$_USER" = "hostmaster" ] ; then
     echo ERROR: $_USER is a restricted username, please choose different _USER.
-    exit 1  
+    exit 1
   fi
   _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
   if [ ! -z "$_FREEID" ]; then
@@ -956,7 +954,7 @@ cat <<EOF
   * This server options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR
   * Your Aegir control panel for this instance will be available at https://$_DOMAIN.
   * Your Aegir user for this instance will be $_USER.
-    
+
 EOF
 echo " "
 if prompt_yes_no "Do you want to proceed with the setup?" ; then

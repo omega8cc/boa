@@ -105,7 +105,7 @@ Octopus can install the platforms listed below:
  NodeStream 1.0 --------------- http://nodestream.org
  Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
- Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.7.5 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  Conference 1.0-beta1 --------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
@@ -158,7 +158,7 @@ added to all 6.x platforms:
  views_content_cache-6.x-2.x-dev
  views404-6.x-1.x-dev
  + theme rubik-6.x-3.0-beta2
- 
+
 The Drupal 7.x platforms come with contrib modules:
 
  admin-7.x-2.0-beta3
@@ -184,7 +184,7 @@ The Drupal 7.x platforms come with contrib modules:
 ### BUG SUBMISSION
 
 * Please follow bug submission guidelines:
-  
+
   Before you submit a bug, make sure you have diagnosed your
   configuration as documented in this guide:
   http://groups.drupal.org/node/21890. It is Aegir specific,
@@ -193,19 +193,19 @@ The Drupal 7.x platforms come with contrib modules:
   information about your context as possible, especially
   please include, using http://gist.github.com, the contents
   of files:
-  
+
     /var/aegir/config/includes/barracuda_log.txt
     /data/disk/user/log/octopus_log.txt
-    /var/aegir/install.log (remove the password)  
-  
+    /var/aegir/install.log (remove the password)
+
 * Issue queues:
   http://drupal.org/project/issues/barracuda (active)
   http://drupal.org/project/issues/octopus (active)
   http://github.com/omega8cc/nginx-for-drupal/issues (deprecated)
-  
+
   Please don't post your server logs here. Instead use
   http://gist.github.com and post the link in your submission.
-  
+
 
 ### HELP
 

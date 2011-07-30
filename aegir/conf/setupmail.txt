@@ -40,20 +40,20 @@ in a separate e-mail.
 Once in your control panel, you'll find a number of
 Drupal platforms ready to deploy, available in all hosted options,
 starting with 1+ Aegir Standard or SSD Core:
- 
+
  Drupal 7.7 ------------------- http://drupal.org/drupal-7.0
  Drupal 6.22 ------------------ http://pressflow.org
  Open Atrium 1.0 6.22 --------- http://openatrium.com
  Managing News 1.2 6.22 ------- http://managingnews.com
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
- Acquia 7.4.4 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.7.5 ----------------- http://bit.ly/acquiadrupal
  Ubercart 2.4 6.22 ------------ http://ubercart.org
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Conference 1.0-beta1 6.22 ---- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
- 
+
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
  OpenPublic 1.0-beta1 7.7 ----- http://openpublicapp.com
@@ -74,13 +74,13 @@ Note about platforms naming convention:
   with correct suffix: D.00x, S.00x and P.00x in the platform name.
 
   Q: How to upgrade/add more Cores?
-  
+
   A: To add more Standard Cores, use the order form at:
      http://omega8.cc/buy#standard. To add more SSD Cores,
-     use the order form at http://omega8.cc/buy#ssd 
+     use the order form at http://omega8.cc/buy#ssd
 
   Q: How to upgrade from Aegir Mini or Classic to Aegir SSD?
-  
+
   A: Aegir SSD is a special, very high performance option,
      hosted on the high-end hardware in a separate custom
      cloud, so simple upgrade is not possible. Separate
