@@ -1,6 +1,6 @@
 
 ### Stable Edition 1.0-boa-T-8.9
-### Date: in head, not yet released.
+### Date: Sat, 30 July 2011 23:50:00 +0200.
 ### Installs Aegir HEAD 1.2.1
 
 # Updated Octopus platforms:
@@ -18,6 +18,10 @@
   * Critical Issue #1222208 - broken web-based cron for sites.
   * Issue #1223506 - cloning a site looses client site ownership.
   * Missing jquery.ui symlink in Conference COD breaks install.
+  * Issue #1230420 - do not purge /tmp too aggressively.
+  * Issue #1234470 - SSL proxy didn't respect HTTP wildcard.
+  * Boost's false alarm about permissions silenced.
+  * Permissions for sites/domain/private/* also fixed daily.
 
 # Changes:
 

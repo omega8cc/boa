@@ -41,7 +41,7 @@
 ###       any values defined below and answer
 ###       NO when it prompts for confirmation
 ###       "Are you ready to tune your Aegir".
-###       
+###
 
 
 ###----------------------------------------###
@@ -49,7 +49,7 @@
 ###----------------------------------------###
 ###
 ### Enter below the settings you wish to use.
-### 
+###
 
 
 ###----------------------------------------###
@@ -131,9 +131,9 @@ _TUNE_PHP_TIMEOUT=3600
 ###----------------------------------------###
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=1.0-boa-T-8.8
+### _AEGIR_VERSION=1.0-boa-T-8.9
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=1.0-boa-T-8.9
 
 
 ###----------------------------------------###
@@ -189,7 +189,7 @@ prompt_yes_no () {
         echo "Please answer yes or no"
         ;;
     esac
- done 
+ done
 }
 #
 # Silent runner
@@ -286,7 +286,7 @@ tune_nginx () {
       do
         sed -i "s/limit_conn/#limit_conn/g" $Files
       done
-    fi  
+    fi
   fi
 }
 #
