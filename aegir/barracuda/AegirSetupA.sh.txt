@@ -920,9 +920,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/sites" ] ; then
@@ -950,9 +950,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream-$_NODESTREAM
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal_commons-$_COMMONS/sites" ] ; then

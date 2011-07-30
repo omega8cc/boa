@@ -461,7 +461,7 @@ _F_ATRIUM="Atrium 1.0 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE="Commerce $_COMMERCE P.$_THIS_CORE"
+_F_COMMERCE="Commerce $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS="Acquia Commons $_COMMONS P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
@@ -474,7 +474,7 @@ _F_OPENPUBLIC="OpenPublic beta1 P.$_THIS_CORE"
 _F_COD="Conference $_COD P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 P.$_THIS_CORE"
-_F_CIVICRM7="CiviCRM $_CIVICRM7 P.$_THIS_CORE"
+_F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_VIDEOLA="Videola $_VIDEOLA P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
@@ -1038,45 +1038,45 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
 msg "STATUS: $_F_COMMERCE install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/commerce-$_COMMERCE"
+_CORE_DISTRO="$_CORE/commerce-$_COMMERCE-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -q -U iCab http://ftp.drupal.org/files/projects/commerce_kickstart-$_COMMERCE-core.tar.gz
   tar -xzf commerce_kickstart-$_COMMERCE-core.tar.gz
   rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
   if [ -d "$_CORE/drupal-7.4" ] ; then
-    mv drupal-7.4 commerce-$_COMMERCE
+    mv drupal-7.4 commerce-$_COMMERCE-$_SMALLCORE7
   elif [ -d "$_CORE/drupal-7.7" ] ; then
-    mv drupal-7.7 commerce-$_COMMERCE
+    mv drupal-7.7 commerce-$_COMMERCE-$_SMALLCORE7
   elif [ -d "$_CORE/drupal-7.8" ] ; then
-    mv drupal-7.8 commerce-$_COMMERCE
+    mv drupal-7.8 commerce-$_COMMERCE-$_SMALLCORE7
   fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
   cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
   rm -f -r $_DRUPAL7
-  cd $_CORE/commerce-$_COMMERCE
-  rm -f $_CORE/commerce-$_COMMERCE/*.txt
+  cd $_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+  rm -f $_CORE/commerce-$_COMMERCE-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/commerce-$_COMMERCE/profiles/minimal
-  rm -f -r $_CORE/commerce-$_COMMERCE/profiles/standard
-  rm -f -r $_CORE/commerce-$_COMMERCE/profiles/testing
-  cd $_CORE/commerce-$_COMMERCE/profiles/commerce_kickstart
+  rm -f -r $_CORE/commerce-$_COMMERCE-$_SMALLCORE7/profiles/minimal
+  rm -f -r $_CORE/commerce-$_COMMERCE-$_SMALLCORE7/profiles/standard
+  rm -f -r $_CORE/commerce-$_COMMERCE-$_SMALLCORE7/profiles/testing
+  cd $_CORE/commerce-$_COMMERCE-$_SMALLCORE7/profiles/commerce_kickstart
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commerce_kickstart.patch ./
   patch -p1 < commerce_kickstart.patch &> /dev/null
-  cd $_CORE/commerce-$_COMMERCE
+  cd $_CORE/commerce-$_COMMERCE-$_SMALLCORE7
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
-cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE
+mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
@@ -1587,23 +1587,23 @@ else
 fi
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC4 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
 true
 msg "STATUS: $_F_CIVICRM7 install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/civicrm-$_CIVICRM7"
+_CORE_DISTRO="$_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm4.make ./
-  $_ROOT/tools/drush/drush make civicrm4.make civicrm-$_CIVICRM7 &> /dev/null
+  $_ROOT/tools/drush/drush make civicrm4.make civicrm-$_CIVICRM7-$_SMALLCORE7 &> /dev/null
   rm -f civicrm4.make
-  cd $_CORE/civicrm-$_CIVICRM7
-  rm -f $_CORE/civicrm-$_CIVICRM7/*.txt
+  cd $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
+  rm -f $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/civicrm-$_CIVICRM7/profiles/testing
-  for Files in `find $_CORE/civicrm-$_CIVICRM7/profiles -type f`
+  rm -f -r $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/profiles/testing
+  for Files in `find $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/profiles -type f`
   do
     sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
     sed -i "s/Standard/Drupal 7 Standard/g" $Files
@@ -1611,8 +1611,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7
-cd $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7
+mkdir -p $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
@@ -1875,9 +1875,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
@@ -1911,9 +1911,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_CIVICRM7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_CIVICRM7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
