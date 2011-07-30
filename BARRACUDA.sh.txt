@@ -737,23 +737,43 @@ validate_xtras_ip () {
   if [ $_HTTP_WILDCARD = "YES" ] ; then
     _XTRAS_THISHTIP="*"
   else
-    if [ -e "/usr/bin/sipcalc" ] ; then
-      if [ -z "$_THISHTIP" ] ; then
-        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-      fi
-      _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-      if [[ $_IP_TEST =~ ERR ]] ; then
-        _IP_TEST_RESULT=FAIL
-        _XTRAS_THISHTIP="*"
+    _ETH_TEST=`ifconfig 2>&1`
+    if [[ $_ETH_TEST =~ venet0 ]] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0"
+    elif [ -e "/proc/bean_counters" ] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0"
+    else
+      _VMFAMILY="XEN"
+      _IFCONFIG="eth0"
+    fi
+    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
+      if [ -z "$_MY_OWNIP" ] ; then
+        _XTRAS_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
       else
-        _IP_TEST_RESULT=OK
-        _XTRAS_THISHTIP="$_THISHTIP"
+        _XTRAS_THISHTIP="$_MY_OWNIP"
       fi
     else
-      _XTRAS_THISHTIP="$_THISHTIP"
-    fi
-    if [ -z "$_XTRAS_THISHTIP" ] ; then
-      _XTRAS_THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      if [ -z "$_MY_OWNIP" ] ; then
+        if [ -e "/usr/bin/sipcalc" ] ; then
+          if [ -z "$_THISHTIP" ] ; then
+            _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+          fi
+          _IP_TEST=`sipcalc $_THISHTIP 2>&1`
+          if [[ $_IP_TEST =~ ERR ]] ; then
+            _IP_TEST_RESULT=FAIL
+            _XTRAS_THISHTIP="*"
+          else
+            _IP_TEST_RESULT=OK
+            _XTRAS_THISHTIP="$_THISHTIP"
+          fi
+        else
+          _XTRAS_THISHTIP="$_THISHTIP"
+        fi
+      else
+        _XTRAS_THISHTIP="$_MY_OWNIP"
+      fi
     fi
     if [ -z "$_XTRAS_THISHTIP" ] ; then
       _XTRAS_THISHTIP="*"
@@ -763,26 +783,50 @@ validate_xtras_ip () {
 #
 # Validate local server IP
 validate_local_ip () {
-  if [ -e "/usr/bin/sipcalc" ] ; then
-    if [ -z "$_THISHTIP" ] ; then
-      _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-    fi
-    _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-    if [[ $_IP_TEST =~ ERR ]] ; then
-      _IP_TEST_RESULT=FAIL
-      _LOCAL_THISHTIP=all
-    else
-      _IP_TEST_RESULT=OK
-      _LOCAL_THISHTIP="$_THISHTIP"
-    fi
-  else
-    _LOCAL_THISHTIP="$_THISHTIP"
-  fi
-  if [ -z "$_LOCAL_THISHTIP" ] ; then
-    _LOCAL_THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
-  fi
-  if [ -z "$_LOCAL_THISHTIP" ] ; then
+  if [ $_HTTP_WILDCARD = "YES" ] ; then
     _LOCAL_THISHTIP=all
+  else
+    _ETH_TEST=`ifconfig 2>&1`
+    if [[ $_ETH_TEST =~ venet0 ]] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0"
+    elif [ -e "/proc/bean_counters" ] ; then
+      _VMFAMILY="VZ"
+      _IFCONFIG="venet0"
+    else
+      _VMFAMILY="XEN"
+      _IFCONFIG="eth0"
+    fi
+    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
+      if [ -z "$_MY_OWNIP" ] ; then
+        _LOCAL_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+      else
+        _LOCAL_THISHTIP="$_MY_OWNIP"
+      fi
+    else
+      if [ -z "$_MY_OWNIP" ] ; then
+        if [ -e "/usr/bin/sipcalc" ] ; then
+          if [ -z "$_THISHTIP" ] ; then
+            _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+          fi
+          _IP_TEST=`sipcalc $_THISHTIP 2>&1`
+          if [[ $_IP_TEST =~ ERR ]] ; then
+            _IP_TEST_RESULT=FAIL
+            _LOCAL_THISHTIP=all
+          else
+            _IP_TEST_RESULT=OK
+            _LOCAL_THISHTIP="$_THISHTIP"
+          fi
+        else
+          _LOCAL_THISHTIP="$_THISHTIP"
+        fi
+      else
+        _LOCAL_THISHTIP="$_MY_OWNIP"
+      fi
+    fi
+    if [ -z "$_LOCAL_THISHTIP" ] ; then
+      _LOCAL_THISHTIP=all
+    fi
   fi
 }
 #
@@ -2801,10 +2845,16 @@ EOF
   else
     _HTTPS_TEST=FREE
     validate_public_ip
+    validate_xtras_ip
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
     cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
-    sed -i "s/127.0.0.1/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    if [ $_HTTP_WILDCARD = "YES" ] ; then
+      sed -i "s/127.0.0.1:80/localhost:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    else
+      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    fi
+    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cd /var/aegir/config/includes
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
