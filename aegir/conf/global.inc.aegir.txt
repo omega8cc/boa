@@ -60,7 +60,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/", $_SERVER['HTTP_HOST']) &
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
-  
+
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module')) {
     unset($conf['preprocess_css']); // disable hardcoded css aggregation
@@ -102,7 +102,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
       !preg_match("/\/(?:files\/advagg_|files\/styles|files\/imagecache)/", $_SERVER['REQUEST_URI'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
-    
+
     if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
@@ -112,7 +112,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
-    
+
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
         preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users)/", $_SERVER['REQUEST_URI']) ||

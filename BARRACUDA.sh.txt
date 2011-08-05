@@ -2013,7 +2013,7 @@ if [ -d "/var/xdrago" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
   else
-    sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell
+    sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
     sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh
     sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
   fi
@@ -2043,7 +2043,6 @@ if [ $_STATUS = "INIT" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
   else
-    sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell
     sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh
     sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
   fi
@@ -2467,6 +2466,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   mv -f lshell.conf.txt lshell.conf &> /dev/null
   echo "$_PATH_LSHELL" >> /etc/shells
   echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
+  sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
 fi
 if [ -f "/usr/local/bin/lshell" ] ; then
   if [ ! -L "/usr/bin/lshell" ] ; then
