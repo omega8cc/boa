@@ -4,23 +4,23 @@
 
 
 ### Octopus requested features:
-    http://drupal.org/project/issues/search/octopus?issue_tags=BOA-todo 
+    http://drupal.org/project/issues/search/octopus?issue_tags=BOA-todo
 
 
 ### In the Labs
 
-* Automated FTP/SSH accounts per site and per platform.
-* Cherokee web server support.
-* RedHat/CentOS support.
-* VirtualBox Squeeze Image.
+* VirtualBox Debian and Ubuntu BOA Images.
+* Automated FTP accounts per site and per platform.
 * Multiserver support.
 * Site and Platform migration between Octopus instances.
-* Octopus theme for Hostmaster interface.
 * Speed Booster Control module for D6 and D7 sites.
+* Cherokee web server support.
+* RedHat/CentOS support.
+* Octopus theme for Hostmaster interface.
 
 
 ### DONE on Aegir Day at CPH DrupalCon
- 
+
 * Aegir Nginx installer should come with ready to use platforms:
 
   1. Open Atrium
@@ -29,7 +29,7 @@
   4. Vanilla Pressflow 6.x
   5. Vanilla Drupal 7.x
   6. Drupal Commons
-  
+
 * All 6.x platforms should:
 
   1. Use Pressflow 6.x core

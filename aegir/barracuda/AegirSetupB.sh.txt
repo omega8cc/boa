@@ -314,7 +314,18 @@ if [ $_AEGIR_VERSION = "HEAD" ]; then
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
-  if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC ]] ; then
+  if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    _ALLOW_CIVICRM=YES
+  elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
+    if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+      _ALLOW_CIVICRM=NO
+    else
+      _ALLOW_CIVICRM=YES
+    fi
+  else
+    _ALLOW_CIVICRM=NO
+  fi
+  if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
@@ -327,7 +338,18 @@ else
     tar -xzf drush_make-6.x-2.2.tar.gz
     rm -f drush_make-6.x-2.2.tar.gz
   fi
-  if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC ]] ; then
+  if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    _ALLOW_CIVICRM=YES
+  elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
+    if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+      _ALLOW_CIVICRM=NO
+    else
+      _ALLOW_CIVICRM=YES
+    fi
+  else
+    _ALLOW_CIVICRM=NO
+  fi
+  if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     git clone http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
