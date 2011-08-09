@@ -73,6 +73,80 @@ if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ]; then
 fi
 }
 
+read_account_data () {
+  if [ -e "/data/disk/$_THIS_HM_USER/log/email.txt" ] ; then
+    _CLIENT_EMAIL=`cat /data/disk/$_THIS_HM_USER/log/email.txt`
+    _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
+  fi
+  if [ -e "/data/disk/$_THIS_HM_USER/log/cores.txt" ] ; then
+    _CLIENT_CORES=`cat /data/disk/$_THIS_HM_USER/log/cores.txt`
+    _CLIENT_CORES=`echo -n $_CLIENT_CORES | tr -d "\n"`
+  fi
+}
+
+send_notice_core () {
+  _ADM_EMAIL="support@omega8.cc"
+  _BCC_EMAIL="notify@omega8.cc"
+  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _MAILX_TEST=`mail -V 2>&1`
+  if [[ $_MAILX_TEST =~ invalid ]] ; then
+  cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: Please migrate $Dom site to Pressflow" $_CLIENT_EMAIL
+Hello,
+
+Our system detected that you are using vanilla Drupal core
+for site $Dom.
+
+The platform root directory for this site is:
+$Plr
+
+Using non-Pressflow 6.x core is not allowed on our servers,
+unless it is a temporary result of your site import, but
+every imported site should be migrated to Pressflow based
+platform as soon as possible.
+
+If the site is not migrated to Pressflow based platform
+in seven (7) days, it may cause service interruption.
+
+We are working hard to deliver top performance hosting
+for your Drupal sites and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc.
+
+--
+This e-mail has been sent by your Aegir platform core monitor.
+
+EOF
+  else
+  cat <<EOF | mail -r $_ADM_EMAIL -e -b $_BCC_EMAIL -s "URGENT: Please migrate $Dom site to Pressflow" $_CLIENT_EMAIL
+Hello,
+
+Our system detected that you are using vanilla Drupal core
+for site $Dom.
+
+The platform root directory for this site is:
+$Plr
+
+Using non-Pressflow 6.x core is not allowed on our servers,
+unless it is a temporary result of your site import, but
+every imported site should be migrated to Pressflow based
+platform as soon as possible.
+
+If the site is not migrated to Pressflow based platform
+in seven (7) days, it may cause service interruption.
+
+We are working hard to deliver top performance hosting
+for your Drupal sites and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc.
+
+--
+This e-mail has been sent by your Aegir platform core monitor.
+
+EOF
+  fi
+  echo "INFO: Pressflow notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+}
+
 fix_o_contrib_symlink()
 {
 if [ "$_O_CONTRIB" != "NO" ] ; then
@@ -85,9 +159,17 @@ if [ "$_O_CONTRIB" != "NO" ] ; then
       if [ -e "$Plr/modules/o_contrib" ] ; then
         rm -f $Plr/modules/o_contrib
       fi
+      echo Drupal 5.x Platform detected in $Plr
     else
       if [ ! -e "$Plr/modules/o_contrib" ] ; then
         ln -s $_O_CONTRIB $Plr/modules/o_contrib
+      fi
+      if [ ! -e "$Plr/modules/path_alias_cache" ] ; then
+        echo Vanilla Drupal 6.x Platform detected in $Plr
+        if [[ $_VM_TEST =~ ".host8." ]] ; then
+          read_account_data
+          send_notice_core
+        fi
       fi
     fi
   fi
@@ -160,7 +242,7 @@ do
       searchStringD="dev"
       case $Dom in
         *"$searchStringD"*) ;;
-        *)  
+        *)
         fix_modules
         ;;
       esac
@@ -292,15 +374,7 @@ EOF
 }
 
 check_limits () {
-  if [ -e "/data/disk/$_THIS_HM_USER/log/email.txt" ] ; then
-    _CLIENT_EMAIL=`cat /data/disk/$_THIS_HM_USER/log/email.txt`
-    _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
-  fi
-  if [ -e "/data/disk/$_THIS_HM_USER/log/cores.txt" ] ; then
-    _CLIENT_CORES=`cat /data/disk/$_THIS_HM_USER/log/cores.txt`
-    _CLIENT_CORES=`echo -n $_CLIENT_CORES | tr -d "\n"`
-  fi
-  _VM_TEST=`uname -a 2>&1`
+  read_account_data
   _CLIENT_SQL_LIMIT=256
   _CLIENT_DSK_LIMIT=2560
   let "_CLIENT_SQL_LIMIT *= $_CLIENT_CORES"
@@ -308,21 +382,17 @@ check_limits () {
   echo _CLIENT_CORES is $_CLIENT_CORES
   echo _CLIENT_SQL_LIMIT is $_CLIENT_SQL_LIMIT
   echo _CLIENT_DSK_LIMIT is $_CLIENT_DSK_LIMIT
-  if [[ $_VM_TEST =~ ".host8." ]] ; then
-    if [ "$SumDatH" -gt "$_CLIENT_SQL_LIMIT" ] ; then
-      send_notice_sql
-      echo SQL Usage for $_THIS_HM_USER above limits
-    else
-      echo SQL Usage for $_THIS_HM_USER below limits
-    fi
-    if [ "$HomSizH" -gt "$_CLIENT_DSK_LIMIT" ] ; then
-      send_notice_disk
-      echo Disk Usage for $_THIS_HM_USER above limits
-    else
-      echo Disk Usage for $_THIS_HM_USER below limits
-    fi
+  if [ "$SumDatH" -gt "$_CLIENT_SQL_LIMIT" ] ; then
+    send_notice_sql
+    echo SQL Usage for $_THIS_HM_USER above limits
   else
-    echo No limits detected
+    echo SQL Usage for $_THIS_HM_USER below limits
+  fi
+  if [ "$HomSizH" -gt "$_CLIENT_DSK_LIMIT" ] ; then
+    send_notice_disk
+    echo Disk Usage for $_THIS_HM_USER above limits
+  else
+    echo Disk Usage for $_THIS_HM_USER below limits
   fi
 }
 
@@ -356,7 +426,9 @@ do
       echo HomSiz is $HomSiz or $HomSizH MB
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
-      check_limits
+      if [[ $_VM_TEST =~ ".host8." ]] ; then
+        check_limits
+      fi
       if [ -d "$_THIS_HM_SITE" ] ; then
         cd $_THIS_HM_SITE
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB' &> /dev/null"
@@ -369,7 +441,7 @@ do
       echo ...we have to wait...
     fi
     echo
-    echo 
+    echo
   fi
 done
 }
@@ -378,6 +450,7 @@ done
 ###-------------SYSTEM-----------------###
 
 _NOW=`date +%y%m%d-%H%M`
+_VM_TEST=`uname -a 2>&1`
 #
 # Check for last all nr
 if [ -d "/data/all" ] ; then
@@ -434,17 +507,17 @@ if [ -e "/opt/tmp/version.txt" ] ; then
     echo "INFO: Version test result: OK"
   else
     cat <<EOF | mail -e -s "New Barracuda $_INSTALLER_VERSION Edition available" notify\@omega8.cc
-  
+
   There is new $_INSTALLER_VERSION Edition of Barracuda and Octopus available.
-  
+
   Please review the changelog and upgrade as soon as possible
   to receive all security updates and new features.
-  
+
   Changelog: http://bit.ly/newboa
-  
+
   --
   This e-mail has been sent by your Barracuda server upgrade monitor.
-  
+
 EOF
   echo "INFO: Update notice sent: OK"
   fi
