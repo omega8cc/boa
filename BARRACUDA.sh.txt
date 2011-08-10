@@ -3144,7 +3144,6 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ WMN ]] ; then
       touch /var/log/webmin_new_apt.log
       st_runner "apt-get update -y --force-yes" 2> /dev/null
       st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
-      update-rc.d webmin defaults &> /dev/null
       msg "INFO: Webmin Control Panel installation completed"
       mrun "sleep 2"
       else
