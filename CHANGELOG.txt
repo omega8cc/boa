@@ -1,4 +1,13 @@
 
+### Stable Edition 1.0-boa-T-8.10
+### Date: in HEAD, not yet released.
+### Installs Aegir HEAD 1.2.1
+
+# Updated Octopus platforms:
+
+  Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
+
+
 ### Stable Edition 1.0-boa-T-8.9
 ### Date: Sat, 30 July 2011 23:50:00 +0200.
 ### Installs Aegir HEAD 1.2.1

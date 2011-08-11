@@ -52,7 +52,7 @@ starting with 1+ Aegir Standard or SSD Core:
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Conference 1.0-beta1 6.22 ---- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
+ Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 

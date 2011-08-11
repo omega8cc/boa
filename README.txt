@@ -99,7 +99,7 @@ Octopus can install the platforms listed below:
 
  Drupal 7.7 ------------------- http://drupal.org/drupal-7.0
  OpenPublic 1.0-beta1 --------- http://openpublicapp.com
- Drupal Commerce 1.0-rc1 ------ http://drupalcommerce.org
+ Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
  Open Atrium 1.0 -------------- http://openatrium.com
  Managing News 1.2 ------------ http://managingnews.com
  NodeStream 1.0 --------------- http://nodestream.org
