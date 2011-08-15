@@ -12,6 +12,10 @@
   CiviCRM 4.0.5 ---------------- http://civicrm.org
   Ubercart 2.6 6.22 ------------ http://ubercart.org
 
+# Changes:
+
+  * Drush Make upgrade to 2.3.
+
 
 ### Stable Edition 1.0-boa-T-8.9
 ### Date: Sat, 30 July 2011 23:50:00 +0200.

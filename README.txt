@@ -97,27 +97,26 @@ standard production settings.
 
 Octopus can install the platforms listed below:
 
- Drupal 7.7 ------------------- http://drupal.org/drupal-7.0
- OpenPublic 1.0-beta1 --------- http://openpublicapp.com
- Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
- Open Atrium 1.0 -------------- http://openatrium.com
- Managing News 1.2 ------------ http://managingnews.com
- NodeStream 1.0 --------------- http://nodestream.org
- Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.7.6 ----------------- http://bit.ly/acquiadrupal
- OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
- Conference 1.0-beta1 --------- http://usecod.com
- Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
+ Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
  CiviCRM 3.4.5 ---------------- http://civicrm.org
  CiviCRM 4.0.5 ---------------- http://civicrm.org
- Videola 1.0-alpha1 ----------- http://videola.tv
- ProsePoint 0.40 6.22 --------- http://prosepoint.org
- Ubercart 6.x-2.4 (int) ------- http://ubercart.org
+ Conference 1.0-beta1 --------- http://usecod.com
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.22 Pressflow (int) -- http://pressflow.org
+ Drupal 7.7 ------------------- http://drupal.org/drupal-7.0
+ Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
  Feature Server --------------- http://bit.ly/fserver
-                                http://bit.ly/fservermore
+ Managing News 1.2 ------------ http://managingnews.com
+ NodeStream 1.0 --------------- http://nodestream.org
+ Open Atrium 1.0 -------------- http://openatrium.com
+ Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
+ OpenPublic 1.0-beta1 --------- http://openpublicapp.com
+ OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
+ ProsePoint 0.40 6.22 --------- http://prosepoint.org
+ Ubercart 6.x-2.4 (int) ------- http://ubercart.org
+ Videola 1.0-alpha1 ----------- http://videola.tv
 
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
 
