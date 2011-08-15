@@ -2675,7 +2675,7 @@ if [ $_STATUS = "INIT" ] ; then
   msg "INFO: Running hosting-dispatch (3/3), please wait..."
   mrun "sleep 8"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
-  if [ $_HTTP_WILDCARD = "YES" ] ; then
+  if [ $_HTTP_WILDCARD = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
   fi
   rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
