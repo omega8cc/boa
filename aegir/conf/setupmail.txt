@@ -47,7 +47,7 @@ starting with 1+ Aegir Standard or SSD Core:
  Managing News 1.2 6.22 ------- http://managingnews.com
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Acquia 6.22 ------------------ http://bit.ly/acquiadrupal
- Acquia 7.7.5 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.7.6 ----------------- http://bit.ly/acquiadrupal
  Ubercart 2.4 6.22 ------------ http://ubercart.org
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Conference 1.0-beta1 6.22 ---- http://usecod.com

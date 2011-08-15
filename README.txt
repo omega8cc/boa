@@ -105,7 +105,7 @@ Octopus can install the platforms listed below:
  NodeStream 1.0 --------------- http://nodestream.org
  Acquia Commons 1.7 ----------- http://acquia.com/drupalcommons
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
- Acquia 7.7.5 ----------------- http://bit.ly/acquiadrupal
+ Acquia 7.7.6 ----------------- http://bit.ly/acquiadrupal
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  Conference 1.0-beta1 --------- http://usecod.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
