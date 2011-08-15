@@ -8,6 +8,8 @@
   Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
   Conference 1.0-beta2 --------- http://usecod.com
   Acquia 7.7.6 ----------------- http://bit.ly/acquiadrupal
+  CiviCRM 3.4.5 ---------------- http://civicrm.org
+  CiviCRM 4.0.5 ---------------- http://civicrm.org
 
 # Changes:
 

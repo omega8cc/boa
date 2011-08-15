@@ -456,8 +456,8 @@ _COMMERCE=7.x-1.0-beta6
 _OPENPUBLIC=beta1-build100
 _COD=6.x-1.0-beta2
 _OPENENTERPRISE=6.x-1.0-beta3
-_CIVICRM6=3.4.4
-_CIVICRM7=4.0.4
+_CIVICRM6=3.4.5
+_CIVICRM7=4.0.5
 _VIDEOLA=6.x-1.0-alpha1
 
 ###---### Functions
