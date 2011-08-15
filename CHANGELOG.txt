@@ -10,6 +10,7 @@
   Acquia 7.7.6 ----------------- http://bit.ly/acquiadrupal
   CiviCRM 3.4.5 ---------------- http://civicrm.org
   CiviCRM 4.0.5 ---------------- http://civicrm.org
+  Ubercart 2.6 6.22 ------------ http://ubercart.org
 
 # Changes:
 

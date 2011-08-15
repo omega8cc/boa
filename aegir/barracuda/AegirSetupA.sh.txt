@@ -872,9 +872,9 @@ mrun "sleep 3"
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/$_UBERCART-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_SMALLCORE6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites" ] ; then
