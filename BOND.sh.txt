@@ -259,7 +259,7 @@ restore_default_sql () {
 #
 tune_sql () {
   sed -i "s/300/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf
-  sed -i "s/300/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh
+  sed -i "s/600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh
 }
 #
 restore_default_nginx () {
