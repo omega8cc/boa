@@ -66,7 +66,7 @@ exit;
 
 #############################################################################
 sub global_action
-{               
+{
    local(@SYTUACJA) = `ps auxf 2>&1`;
    foreach $line (@SYTUACJA) {
    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND) = split(/\s+/,$line);
