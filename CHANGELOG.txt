@@ -7,6 +7,11 @@
 
   Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
 
+# Changes:
+
+  * Drush upgrade to 4.5.
+  * Drush Make upgrade to 2.3.
+
 
 ### Stable Edition 1.0-boa-T-8.9
 ### Date: Sat, 30 July 2011 23:50:00 +0200.
