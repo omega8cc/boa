@@ -2005,7 +2005,7 @@ if [ -d "/var/xdrago" ] ; then
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
-    sed -i "s/600/399/g" /var/xdrago/minute.sh
+    sed -i "s/600/900/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
     sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
     rm -f /etc/logrotate.d/lshell
@@ -2013,6 +2013,7 @@ if [ -d "/var/xdrago" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
   else
+    sed -i "s/600/900/g" /var/xdrago/minute.sh
     sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
     sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh
     sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
@@ -2035,7 +2036,7 @@ if [ $_STATUS = "INIT" ] ; then
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 188/g" /var/xdrago/firewall/check/scan_nginx
-    sed -i "s/600/399/g" /var/xdrago/minute.sh
+    sed -i "s/600/900/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
     sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
     rm -f /etc/logrotate.d/lshell
@@ -2043,6 +2044,7 @@ if [ $_STATUS = "INIT" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
   else
+    sed -i "s/600/900/g" /var/xdrago/minute.sh
     sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh
     sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
   fi
@@ -2719,8 +2721,10 @@ if [ $_STATUS = "INIT" ] ; then
   fi
   if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
     cd /var/aegir/drush
-    wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-    patch -R -p1 < alias-name-drush4.patch &> /dev/null
+    wget -q -U iCab http://drupal.org/files/issues/name-for-aegir_0.patch
+    patch -p1 < name-for-aegir_0.patch &> /dev/null
+    #wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+    #patch -R -p1 < alias-name-drush4.patch &> /dev/null
     chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
   cd /var/aegir

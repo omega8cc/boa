@@ -15,7 +15,7 @@ language                = /usr/share/mysql/english
 character_set_server    = utf8
 collation_server        = utf8_general_ci
 skip-external-locking
-connect_timeout         = 300
+connect_timeout         = 900
 join_buffer_size        = 1M
 key_buffer              = 1M
 key_buffer_size         = 32M
@@ -37,7 +37,7 @@ table_definition_cache  = 512
 thread_stack            = 256K
 thread_cache_size       = 128
 thread_concurrency      = 8
-wait_timeout            = 300
+wait_timeout            = 900
 tmp_table_size          = 32M
 max_heap_table_size     = 128M
 low_priority_updates    = 1

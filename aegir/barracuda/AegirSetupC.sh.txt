@@ -294,6 +294,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-1.0-rc10.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done

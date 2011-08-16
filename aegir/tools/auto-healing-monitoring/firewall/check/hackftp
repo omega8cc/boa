@@ -31,13 +31,13 @@ $VISITOR =~ s/[^0-9\.]//g;
       if ($VISITOR =~ /^[0-9]/) {
           chomp($line);
           $li_cnt{$VISITOR}++;
-      }   
+      }
 }
 }
 foreach $VISITOR (sort keys %li_cnt) {
    $sumar = $sumar + $li_cnt{$VISITOR};
    local($thissumar) = $li_cnt{$VISITOR};
-   $maxnumber = 5; ### 11
+   $maxnumber = 10;
    local($blocked) = 0;
    &check_ip($VISITOR);
 
@@ -53,7 +53,7 @@ undef (%li_cnt);
 
 #############################################################################
 sub trash_it_action
-{               
+{
    local($ABUSER,$ILE) = @_;
    local($proxy_host) = 0;
    local($REMOTE_HOST) = $ABUSER;
@@ -67,7 +67,7 @@ sub trash_it_action
    }
    else {
        $REMOTE_HOST = "$name";
-   }   
+   }
    if ($REMOTE_HOST !~ /(my-white-listed-host)/)
    {
       $nowis = `date +%y%m%d-%H%M%S`;
