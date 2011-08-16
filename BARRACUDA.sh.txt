@@ -2715,6 +2715,13 @@ if [ $_STATUS = "INIT" ] ; then
     cd /var/aegir/drush
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
     patch -p0 < user.drush.inc.patch &> /dev/null
+    chown -R aegir:aegir /var/aegir/drush &> /dev/null
+  fi
+  if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+    cd /var/aegir/drush
+    wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+    patch -R -p1 < alias-name-drush4.patch &> /dev/null
+    chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
   cd /var/aegir
   sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
@@ -2779,6 +2786,13 @@ else
       cd /var/aegir/drush
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
       patch -p0 < user.drush.inc.patch &> /dev/null
+      chown -R aegir:aegir /var/aegir/drush &> /dev/null
+    fi
+    if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+      cd /var/aegir/drush
+      wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+      patch -R -p1 < alias-name-drush4.patch &> /dev/null
+      chown -R aegir:aegir /var/aegir/drush &> /dev/null
     fi
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt

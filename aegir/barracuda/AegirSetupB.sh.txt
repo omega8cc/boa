@@ -270,6 +270,11 @@ if [ $_DRUSH_FAMILY = "3" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
   patch -p0 < user.drush.inc.patch &> /dev/null
 fi
+if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+  cd $_ROOT/tools/drush
+  wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+  patch -R -p1 < alias-name-drush4.patch &> /dev/null
+fi
 if $_DRUSHCMD help > /dev/null ; then
   msg "$_STATUS B: Drush seems to be functioning properly"
 else
