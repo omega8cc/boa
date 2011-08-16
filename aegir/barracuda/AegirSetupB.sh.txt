@@ -272,10 +272,10 @@ if [ $_DRUSH_FAMILY = "3" ] ; then
 fi
 if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
   cd $_ROOT/tools/drush
-  wget -q -U iCab http://drupal.org/files/issues/name-for-aegir_0.patch
-  patch -p1 < name-for-aegir_0.patch &> /dev/null
-  #wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-  #patch -R -p1 < alias-name-drush4.patch &> /dev/null
+  #wget -q -U iCab http://drupal.org/files/issues/name-for-aegir_0.patch
+  #patch -p1 < name-for-aegir_0.patch &> /dev/null
+  wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+  patch -R -p1 < alias-name-drush4.patch &> /dev/null
 fi
 if $_DRUSHCMD help > /dev/null ; then
   msg "$_STATUS B: Drush seems to be functioning properly"
