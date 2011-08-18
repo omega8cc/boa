@@ -1657,6 +1657,7 @@ msg "INFO: Run apt update, please wait..."
 if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
   rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
 fi
+apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
 st_runner "dpkg --configure --force-all -a" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -1721,7 +1722,7 @@ install_percona_sql () {
 }
 install_mariadb_sql () {
   cd /var/opt
-  apt-key adv --recv-keys --keyserver keyserver.ubuntu.com 1BB943DB &> /dev/null
+  apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
   if [ $_THIS_OS = "Debian" ] ; then
     _THIS_OS_NAME=debian
   elif [ $_THIS_OS = "Ubuntu" ] ; then
