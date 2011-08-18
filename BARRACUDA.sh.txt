@@ -1656,6 +1656,7 @@ fi
 msg "INFO: Run apt update, please wait..."
 st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
+_DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude safe-upgrade -y" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
@@ -1760,13 +1761,12 @@ if [ "$_STATUS" = "INIT" ] ; then
   _LOCAL_INSTALL="aptitude -y install"
   install_with_apt_sql
 else
-  _DB_SERVER_TEST=`mysql -V 2>&1`
   _SQL_UPGRADE=NO
   if [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
     _SQL_UPGRADE=YES
   elif [[ $_DB_SERVER_TEST =~ MariaDB ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ $_DB_SERVER_TEST =~ 5.1.49-MariaDB ]] ; then
+  elif [[ $_DB_SERVER_TEST =~ 5.1.49-MariaDB ]] || [[ $_DB_SERVER_TEST =~ 5.2.7-MariaDB ]] ; then
     _SQL_UPGRADE=YES
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
