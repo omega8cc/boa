@@ -1654,30 +1654,20 @@ fi
 
 ###--------------------###
 msg "INFO: Run apt update, please wait..."
-if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
-  rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
-fi
-apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
+st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
-st_runner "dpkg --configure --force-all -a" 2> /dev/null
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude safe-upgrade -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude autoclean -y" 2> /dev/null
-elif [ "$_THIS_OS" = "Debian" ] ; then
-  st_runner "aptitude safe-upgrade -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude update -y" 2> /dev/null
-  st_runner "aptitude clean -y" 2> /dev/null
-  st_runner "aptitude full-upgrade -y" 2> /dev/null
-  st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude autoclean -y" 2> /dev/null
+else
+  if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
+    rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
+  fi
+  apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
 fi
-st_runner "dpkg --configure --force-all -a" 2> /dev/null
 
 
 ###--------------------###
@@ -1776,7 +1766,7 @@ else
     _SQL_UPGRADE=YES
   elif [[ $_DB_SERVER_TEST =~ MariaDB ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ $_DB_SERVER_TEST =~ 5.1.49-MariaDB ]] || [[ $_DB_SERVER_TEST =~ 5.2.7-MariaDB ]] || [[ $_DB_SERVER_TEST =~ 5.2.8-MariaDB ]] ; then
+  elif [[ $_DB_SERVER_TEST =~ 5.1.49-MariaDB ]] ; then
     _SQL_UPGRADE=YES
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
