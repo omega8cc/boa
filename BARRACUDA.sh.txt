@@ -1652,13 +1652,13 @@ if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
 fi
 st_runner "aptitude update -y" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "aptitude upgrade -y" 2> /dev/null
+  st_runner "aptitude safe-upgrade -y" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
   st_runner "aptitude autoclean -y" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
-  st_runner "aptitude upgrade -y" 2> /dev/null
+  st_runner "aptitude safe-upgrade -y" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
@@ -1809,7 +1809,7 @@ st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
 st_runner "aptitude clean -y" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "aptitude upgrade -y" 2> /dev/null
+  st_runner "aptitude safe-upgrade -y" 2> /dev/null
   st_runner "aptitude autoclean -y" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
@@ -1822,7 +1822,7 @@ msg "INFO: Run apt update again, please wait..."
 st_runner "aptitude update -y" 2> /dev/null
 st_runner "aptitude clean -y" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "aptitude upgrade -y" 2> /dev/null
+  st_runner "aptitude safe-upgrade -y" 2> /dev/null
   st_runner "aptitude autoclean -y" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 elif [ "$_THIS_OS" = "Debian" ] ; then
