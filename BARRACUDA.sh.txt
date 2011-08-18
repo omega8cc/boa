@@ -2128,10 +2128,10 @@ if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] && [ ! -e "/var/log/5.2.7-MariaDB.log" ] ; then
+  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] && [ ! -e "/var/log/5.2.8-MariaDB.log" ] ; then
     _PHP_INSTALL_REQUIRED=YES
-    touch /var/log/5.2.7-MariaDB.log
-    msg "INFO: PHP rebuild required to include MariaDB 5.2.7 libs"
+    touch /var/log/5.2.8-MariaDB.log
+    msg "INFO: PHP rebuild required to include MariaDB 5.2.8 libs"
     mrun "sleep 3"
   fi
 fi
