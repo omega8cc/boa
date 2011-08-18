@@ -931,6 +931,49 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
+#
+# Fix locales
+fix_locales () {
+  _LOC_TEST=`locale 2>&1`
+  if [[ $_LOC_TEST =~ Cannot ]] ; then
+    _LOCALE_TEST=BROKEN
+    msg "WARNING!"
+    cat <<EOF
+
+  Locales on this system are broken or not installed
+  and/or not configured correctly yet. This is "default"
+  issue at RackSpaceCloud (and maybe others).
+
+  We will fix this problem for you now, so you shouldn't
+  use any tricks to change system/ssh settings before
+  running this Barracuda installer.
+
+  You can experience problems if your SSH client
+  forces locales other than en_US.UTF-8 we are using by default.
+
+  You should log out when Barracuda will finish all its tasks
+  and display last line with "BYE!" and then log in again
+  to see the result (and possibly run Octopus installer).
+
+  We will continue in 30 seconds...
+
+EOF
+    sleep 30
+    locale-gen en_US en_US.UTF-8 &> /dev/null
+    update-locale &> /dev/null
+    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
+    echo "LANG=en_US.UTF-8" > /etc/default/locale
+    export LANG=en_US.UTF-8
+    export LC_ALL=en_US.UTF-8
+    export LANGUAGE=en_US.UTF-8
+    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
+    echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
+  else
+    _LOCALE_TEST=OK
+    locale-gen en_US en_US.UTF-8 &> /dev/null
+  fi
+}
 
 
 ###--------------------###
@@ -1006,46 +1049,10 @@ if [ $_STATUS = "INIT" ] ; then
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
   sleep 5
-  _LOC_TEST=`locale 2>&1`
-  if [[ $_LOC_TEST =~ Cannot ]] ; then
-    _LOCALE_TEST=BROKEN
-    msg "WARNING!"
-    cat <<EOF
-
-  Locales on this system are broken or not installed
-  and/or not configured correctly yet. This is "default"
-  issue at RackSpaceCloud (and maybe others).
-
-  We will fix this problem for you now, so you shouldn't
-  use any tricks to change system/ssh settings before
-  running this Barracuda installer.
-
-  You can experience problems if your SSH client
-  forces locales other than en_US.UTF-8 we are using by default.
-
-  You should log out when Barracuda will finish all its tasks
-  and display last line with "BYE!" and then log in again
-  to see the result (and possibly run Octopus installer).
-
-  We will continue in 30 seconds...
-
-EOF
-    sleep 30
-    locale-gen en_US en_US.UTF-8 &> /dev/null
-    update-locale &> /dev/null
-    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
-    echo "LANG=en_US.UTF-8" > /etc/default/locale
-    export LANG=en_US.UTF-8
-    export LC_ALL=en_US.UTF-8
-    export LANGUAGE=en_US.UTF-8
-    echo "export LANG=en_US.UTF-8" >> /root/.bashrc
-    echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
-    echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
-  else
-    _LOCALE_TEST=OK
-    locale-gen en_US en_US.UTF-8 &> /dev/null
-  fi
+  fix_locales
   $_INITINS wget git-core axel netcat aptitude &> /dev/null
+else
+  fix_locales
 fi
 
 
