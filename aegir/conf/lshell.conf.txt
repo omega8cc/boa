@@ -16,7 +16,7 @@ allowed         : ['drush','drush dbup','drush mup','drush make','drush help','d
 ##  a list of forbidden character or commands
 forbidden       : [';', '&', '|','`', '$(', '${', 'drush up', 'drush pm-update', 'drush upc', 'drush pm-updatecode', 'drush si', 'drush site-install', 'drush sup', 'drush site-upgrade', 'drush cli', 'drush core-cli', 'drush core-rsync', 'drush rsync', 'drush php-eval', 'drush scr', 'drush php-script']
 
-##  number of warnings when user enters a forbidden value before getting 
+##  number of warnings when user enters a forbidden value before getting
 ##  exited from lshell
 warning_counter : 3
 

@@ -3352,6 +3352,7 @@ rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
+chmod 700 /root
 invoke-rc.d cron restart &> /dev/null
 msg "BYE!"
 exit 0

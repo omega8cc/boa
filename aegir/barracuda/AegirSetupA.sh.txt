@@ -1089,6 +1089,7 @@ msg "$_STATUS A: All done!"
 mrun "sleep 3"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
+chmod 700 root &> /dev/null
 mv -f /etc/motd /etc/motd-pre-$_THIS_CORE &> /dev/null
 echo "Barracuda Aegir Hosting System" > /etc/motd
 chown root:root /data/all &> /dev/null
