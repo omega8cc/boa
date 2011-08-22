@@ -2719,7 +2719,7 @@ if [ $_STATUS = "INIT" ] ; then
     patch -p0 < user.drush.inc.patch &> /dev/null
     chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
-  if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+  if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
     cd /var/aegir/drush
     #wget -q -U iCab http://drupal.org/files/issues/name-for-aegir_0.patch
     #patch -p1 < name-for-aegir_0.patch &> /dev/null
@@ -2792,7 +2792,7 @@ else
       patch -p0 < user.drush.inc.patch &> /dev/null
       chown -R aegir:aegir /var/aegir/drush &> /dev/null
     fi
-    if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+    if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
       cd /var/aegir/drush
       wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
       patch -R -p1 < alias-name-drush4.patch &> /dev/null

@@ -270,7 +270,7 @@ if [ $_DRUSH_FAMILY = "3" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
   patch -p0 < user.drush.inc.patch &> /dev/null
 fi
-if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
   cd $_ROOT/tools/drush
   #wget -q -U iCab http://drupal.org/files/issues/name-for-aegir_0.patch
   #patch -p1 < name-for-aegir_0.patch &> /dev/null
