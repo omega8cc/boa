@@ -470,7 +470,7 @@ _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
 _PURE_FTPD_VERSION=1.0.32
-_DRUSH_VERSION=7.x-4.4 ### or HEAD
+_DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 _TEST_MODE=OFF
@@ -2719,14 +2719,12 @@ if [ $_STATUS = "INIT" ] ; then
     patch -p0 < user.drush.inc.patch &> /dev/null
     chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
-  if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
-    cd /var/aegir/drush
-    #wget -q -U iCab http://drupal.org/files/issues/name-for-aegir_0.patch
-    #patch -p1 < name-for-aegir_0.patch &> /dev/null
-    wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-    patch -R -p1 < alias-name-drush4.patch &> /dev/null
-    chown -R aegir:aegir /var/aegir/drush &> /dev/null
-  fi
+#   if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
+#     cd /var/aegir/drush
+#     wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+#     patch -R -p1 < alias-name-drush4.patch &> /dev/null
+#     chown -R aegir:aegir /var/aegir/drush &> /dev/null
+#   fi
   cd /var/aegir
   sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
   perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
@@ -2792,12 +2790,12 @@ else
       patch -p0 < user.drush.inc.patch &> /dev/null
       chown -R aegir:aegir /var/aegir/drush &> /dev/null
     fi
-    if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
-      cd /var/aegir/drush
-      wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-      patch -R -p1 < alias-name-drush4.patch &> /dev/null
-      chown -R aegir:aegir /var/aegir/drush &> /dev/null
-    fi
+#     if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
+#       cd /var/aegir/drush
+#       wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
+#       patch -R -p1 < alias-name-drush4.patch &> /dev/null
+#       chown -R aegir:aegir /var/aegir/drush &> /dev/null
+#     fi
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
