@@ -84,6 +84,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+    $conf['https'] = TRUE;
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
@@ -109,6 +110,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = 'BOND'. md5("$identity");
 
     if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
+      $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
       unset($conf['file_downloads']);      // disable hardcoded public downloads in d7
