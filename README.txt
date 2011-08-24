@@ -112,7 +112,7 @@ Octopus can install the platforms listed below:
  NodeStream 1.0 --------------- http://nodestream.org
  Open Atrium 1.0 -------------- http://openatrium.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- OpenPublic 1.0-beta1 --------- http://openpublicapp.com
+ OpenPublic 1.0-beta2 --------- http://openpublicapp.com
  OpenScholar 2.0-beta12 ------- http://openscholar.harvard.edu
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Ubercart 6.x-2.6 (int) ------- http://ubercart.org
