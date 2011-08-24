@@ -9,7 +9,7 @@
   CiviCRM 3.4.5 ---------------- http://civicrm.org
   CiviCRM 4.0.5 ---------------- http://civicrm.org
   Conference 1.0-beta2 --------- http://usecod.com
-  Drupal Commerce 1.0-rc3 ------ http://drupalcommerce.org
+  Drupal Commerce 1.0 ---------- http://drupalcommerce.org
   OpenScholar 2.0-beta12 ------- http://openscholar.harvard.edu
   Ubercart 2.6 6.22 ------------ http://ubercart.org
 
