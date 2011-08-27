@@ -16,4 +16,4 @@ diff -aburN --exclude='CVS*' drupal_commons.orig/profiles/drupal_commons/drupal_
 -  drupal_commons_config_vars();
    drupal_commons_cleanup();
  }
- 
+

@@ -3,7 +3,7 @@ index 57b5089..ae0ffbd 100644
 --- a/drupal_commons.profile
 +++ b/drupal_commons.profile
 @@ -116,7 +116,33 @@ function drupal_commons_profile_tasks(&$task, $url) {
-   
+
    // Provide a form to choose features
    if ($task == 'configure-commons') {
 -    $output = drupal_get_form('drupal_commons_features_form', $url);
@@ -26,7 +26,7 @@ index 57b5089..ae0ffbd 100644
 +        'commons_seo'
 +      );
 +      variable_set('commons_selected_features', $features);
-+  
++
 +      // Initiate the next installation step
 +      $task = 'install-commons';
 +      variable_set('install_task', $task);
@@ -35,5 +35,5 @@ index 57b5089..ae0ffbd 100644
 +      $output = drupal_get_form('drupal_commons_features_form', $url);
 +    }
    }
-   
+
    // Installation batch process
