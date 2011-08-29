@@ -19,6 +19,7 @@
 
   * Drush Make upgrade to 2.3.
   * Drush upgrade to 4.5.
+  * Nginx upgrade to 1.0.6.
 
 
 ### Stable Edition 1.0-boa-T-8.9
