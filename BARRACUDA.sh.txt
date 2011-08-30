@@ -988,6 +988,7 @@ EOF
   else
     _LOCALE_TEST=OK
     locale-gen en_US en_US.UTF-8 &> /dev/null
+    localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
   fi
 }
 
