@@ -492,6 +492,16 @@ else
 fi
 }
 #
+# Find correct IP
+find_correct_ip () {
+  _FQDN_TEST=$(host $_LOC_DOM)
+  if [[ $_FQDN_TEST =~ "is an alias for" ]] ; then
+    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
+  else
+    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
+  fi
+}
+#
 #
 ###---### action
 #
@@ -568,7 +578,9 @@ _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
 if [ -e "/usr/bin/sipcalc" ] ; then
   if [ -z "$_THISHTIP" ] ; then
-    _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
   fi
   _IP_TEST=`sipcalc $_THISHTIP 2>&1`
   if [[ $_IP_TEST =~ ERR ]] ; then
@@ -582,7 +594,9 @@ else
   _LOCAL_THISHTIP="$_THISHTIP"
 fi
 if [ -z "$_LOCAL_THISHTIP" ] ; then
-  _LOCAL_THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+  _LOC_DOM="$_THISHOST"
+  find_correct_ip
+  _LOCAL_THISHTIP="$_LOC_IP"
 fi
 if [ -z "$_LOCAL_THISHTIP" ] ; then
   _LOCAL_THISHTIP=all
@@ -924,7 +938,9 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
   else
     _THISHTIP="$_MY_OWNIP"
   fi
-  _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+  _LOC_DOM="$_DOMAIN"
+  find_correct_ip
+  _THISRDIP="$_LOC_IP"
   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
     true
   else
@@ -936,8 +952,10 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
   fi
 else
   if [ -z "$_MY_OWNIP" ] ; then
-    _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
-    _THISRDIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+    _LOC_DOM="$_DOMAIN"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
+    _THISRDIP="$_LOC_IP"
   else
     _THISHTIP="$_MY_OWNIP"
     _THISRDIP="$_MY_OWNIP"

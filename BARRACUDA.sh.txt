@@ -606,6 +606,16 @@ st_runner () {
   fi
 }
 #
+# Find correct IP
+find_correct_ip () {
+  _FQDN_TEST=$(host $_LOC_DOM)
+  if [[ $_FQDN_TEST =~ "is an alias for" ]] ; then
+    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
+  else
+    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
+  fi
+}
+#
 # Install Redis from sources
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
@@ -724,7 +734,9 @@ validate_public_ip () {
       fi
     else
       if [ -z "$_MY_OWNIP" ] ; then
-        _THISHTIP=`host $_DOMAIN | cut -d: -f2 | awk '{ print $4}'`
+        _LOC_DOM="$_DOMAIN"
+        find_correct_ip
+        _THISHTIP="$_LOC_IP"
       else
         _THISHTIP="$_MY_OWNIP"
       fi
@@ -758,7 +770,9 @@ validate_xtras_ip () {
       if [ -z "$_MY_OWNIP" ] ; then
         if [ -e "/usr/bin/sipcalc" ] ; then
           if [ -z "$_THISHTIP" ] ; then
-            _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+            _LOC_DOM="$_THISHOST"
+            find_correct_ip
+            _THISHTIP="$_LOC_IP"
           fi
           _IP_TEST=`sipcalc $_THISHTIP 2>&1`
           if [[ $_IP_TEST =~ ERR ]] ; then
@@ -807,7 +821,9 @@ validate_local_ip () {
       if [ -z "$_MY_OWNIP" ] ; then
         if [ -e "/usr/bin/sipcalc" ] ; then
           if [ -z "$_THISHTIP" ] ; then
-            _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+            _LOC_DOM="$_THISHOST"
+            find_correct_ip
+            _THISHTIP="$_LOC_IP"
           fi
           _IP_TEST=`sipcalc $_THISHTIP 2>&1`
           if [[ $_IP_TEST =~ ERR ]] ; then
@@ -1306,13 +1322,19 @@ if [ $_STATUS = "INIT" ] ; then
     fi
     _THISHTIP="$_MY_OWNIP"
     _THISHOST="$_MY_HOSTN"
-    _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISRDIP="$_LOC_IP"
     if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
       _FQDNTEST="TRUE"
-      _THEFRDIP=`host $_MY_FRONT | cut -d: -f2 | awk '{ print $4}'`
+      _LOC_DOM="$_MY_FRONT"
+      find_correct_ip
+      _THEFRDIP="$_LOC_IP"
       if [ "$_THEFRDIP" = "$_THISHTIP" ] ; then
         _TESTHOST=`uname -n`
-        _TESTRDIP=`host $_TESTHOST | cut -d: -f2 | awk '{ print $4}'`
+        _LOC_DOM="$_TESTHOST"
+        find_correct_ip
+        _TESTRDIP="$_LOC_IP"
         if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
           _FQDNTEST="TRUE"
           hostname -v $_TESTHOST
@@ -1332,7 +1354,9 @@ if [ $_STATUS = "INIT" ] ; then
     _THISHOST=`uname -n`
     if [ ! -z "$_FQDNPROB" ] ; then
       _THISHOST=`uname -n`
-      _THISRDIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+      _LOC_DOM="$_THISHOST"
+      find_correct_ip
+      _THISRDIP="$_LOC_IP"
       if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
         _FQDNTEST="TRUE"
         hostname -v $_THISHOST
@@ -1340,7 +1364,9 @@ if [ $_STATUS = "INIT" ] ; then
         _FQDNTEST="FALSE"
         _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
         _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
-        _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
+        _LOC_DOM="$_REVHOSTN"
+        find_correct_ip
+        _REVHSTIP="$_LOC_IP"
         if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
           hostname -v $_REVHOSTN
           _THISHOST="$_REVHOSTN"
@@ -1352,7 +1378,9 @@ if [ $_STATUS = "INIT" ] ; then
     else
       _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
       _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
-      _REVHSTIP=`host $_REVHOSTN | cut -d: -f2 | awk '{ print $4}'`
+      _LOC_DOM="$_REVHOSTN"
+      find_correct_ip
+      _REVHSTIP="$_LOC_IP"
       if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
         hostname -v $_REVHOSTN
         _THISHOST="$_REVHOSTN"
@@ -1999,7 +2027,9 @@ if [ -d "/var/xdrago" ] ; then
   cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* /var/xdrago/ &> /dev/null
   if [ -z "$_THISHTIP" ] ; then
-    _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
@@ -2033,7 +2063,9 @@ if [ $_STATUS = "INIT" ] ; then
   sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
   sed -i "s/max_children\">1/max_children\"\>4/g" /opt/etc/php-fpm.conf
   if [ -z "$_THISHTIP" ] ; then
-    _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
@@ -3126,7 +3158,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
       msg "INFO: Installing Bind9 DNS Server, please wait..."
       mrun "sleep 3"
       if [ -z "$_THISHTIP" ] ; then
-        _THISHTIP=`host $_THISHOST | cut -d: -f2 | awk '{ print $4}'`
+        _LOC_DOM="$_THISHOST"
+        find_correct_ip
+        _THISHTIP="$_LOC_IP"
       fi
       st_runner "$_INSTALL bind9" 2> /dev/null
       cd /etc/bind
