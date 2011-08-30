@@ -2416,7 +2416,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
   git clone git://github.com/FRiCKLE/ngx_cache_purge.git &> /dev/null
   cd /var/opt
-  wget -q -U iCab http://sysoev.ru/nginx/nginx-$_NGINX_VERSION.tar.gz
+  wget -q -U iCab http://nginx.org/download/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
   sed -i "s/nginx/Barracuda/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
   perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c
