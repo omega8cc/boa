@@ -1051,8 +1051,6 @@ if [ $_STATUS = "INIT" ] ; then
   sleep 5
   fix_locales
   $_INITINS wget git-core axel netcat aptitude &> /dev/null
-else
-  fix_locales
 fi
 
 
@@ -1757,6 +1755,7 @@ install_with_apt_sql () {
   fi
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
+fix_locales
 if [ "$_STATUS" = "INIT" ] ; then
   _LOCAL_INSTALL="aptitude -y install"
   install_with_apt_sql
@@ -1813,10 +1812,13 @@ st_runner "aptitude update -y" 2> /dev/null
 st_runner "aptitude clean -y" 2> /dev/null
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   st_runner "aptitude safe-upgrade -y" 2> /dev/null
+  fix_locales
   st_runner "aptitude autoclean -y" 2> /dev/null
   st_runner "aptitude full-upgrade -y" 2> /dev/null
+  fix_locales
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
+  fix_locales
 fi
 
 
