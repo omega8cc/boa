@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.9
+Your Aegir Hosting System has been upgraded to version 1.0-boa-T-8.10
 
   https://aegir.dragon.ny.host8.biz
 
