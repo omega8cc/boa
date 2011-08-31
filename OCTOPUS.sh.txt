@@ -442,7 +442,7 @@ _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 
 ## Distributions
-_COMMONS=6.x-2.0-rc1
+_COMMONS=6.x-2.0
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.7
 _MANAGINGNEWS=1.2
