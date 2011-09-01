@@ -295,7 +295,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-1.0-rc10.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha6.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -369,7 +369,7 @@ fi
 if [ "$_TEST_MODE" = "ON" ] ; then
   _TEST_MODULE=purge
 else
-  _TEST_MODULE=robotstxt
+  _TEST_MODULE=textile
 fi
 if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
  if [ ! -d "/data/all/$_LAST_ALL/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then

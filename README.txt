@@ -178,6 +178,7 @@ The Drupal 7.x platforms come with contrib modules:
  site_verify-7.x-1.0
  textile-7.x-2.0-rc9
  variable_clean-7.x-1.x-dev
+ vars-7.x-2.0-alpha6
  + theme rubik-7.x-4.0-beta6
 
 
