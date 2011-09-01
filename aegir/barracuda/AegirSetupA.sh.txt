@@ -61,6 +61,7 @@ _OPENENTERPRISE=EDIT_OPENENTERPRISE
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
+_OPENCHURCH=EDIT_OPENCHURCH
 
 
 ###---### main config
@@ -913,6 +914,11 @@ mrun "sleep 3"
   if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites" ] ; then

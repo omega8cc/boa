@@ -61,6 +61,7 @@ _OPENENTERPRISE=EDIT_OPENENTERPRISE
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
+_OPENCHURCH=EDIT_OPENCHURCH
 
 
 ###---### main config
@@ -345,6 +346,26 @@ download_o_contrib_six () {
 #
 # upgrade_o_contrib
 upgrade_o_contrib () {
+if [ -d "$_CORE/o_contrib" ] ; then
+  if [ ! -e "$_CORE/o_contrib/textile/include/classTextile.php" ] ; then
+    _O_CONTRIB_UP=YES
+  fi
+fi
+if [ -d "$_CORE/o_contrib_seven" ] ; then
+  if [ ! -e "$_CORE/o_contrib_seven/textile/include/classTextile.php" ] ; then
+    _O_CONTRIB_UP=YES
+  fi
+fi
+if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
+  if [ ! -e "/data/all/$_LAST_ALL/o_contrib/textile/include/classTextile.php" ] ; then
+    _O_CONTRIB_UP=YES
+  fi
+fi
+if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
+  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/textile/include/classTextile.php" ] ; then
+    _O_CONTRIB_UP=YES
+  fi
+fi
 if [ "$_TEST_MODE" = "ON" ] ; then
   _TEST_MODULE=purge
 else
@@ -477,6 +498,7 @@ _F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 P.$_THIS_CORE"
 _F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_VIDEOLA="Videola $_VIDEOLA P.$_THIS_CORE"
+_F_OPENCHURCH="OpenChurch $_OPENCHURCH P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -1520,6 +1542,52 @@ fi
 fi
 
 
+###---### Open Church
+#
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/modules/path_alias_cache" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENCHURCH - http://openchurchsite.com" ; then
+true
+msg "STATUS: $_F_OPENCHURCH install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/openchurch-$_OPENCHURCH"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
+  cd $_CORE
+  wget -q -U iCab http://files.aegir.cc/dev/distro/openchurch-$_OPENCHURCH.tar.gz
+  tar -xzf openchurch-$_OPENCHURCH.tar.gz
+  rm -f openchurch-$_OPENCHURCH.tar.gz
+  if [ -d "$_CORE/openchurch" ] ; then
+    mv $_CORE/openchurch $_CORE/openchurch-$_OPENCHURCH
+  fi
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openchurch-$_OPENCHURCH/ &> /dev/null
+  cd $_CORE/openchurch-$_OPENCHURCH
+  rm -f $_CORE/openchurch-$_OPENCHURCH/*.txt
+  rm -f -r $_CORE/openchurch-$_OPENCHURCH/modules/cookie_cache_bypass
+  sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openchurch/openchurch.profile
+  rm -f -r ./profiles/default
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH
+cd $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH
+create_symlinks
+# if [ ! -L "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites/all/libraries/jquery.ui" ] ; then
+#   mkdir -p $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites/all/libraries
+#   ln -s $_CORE_DISTRO/profiles/cod/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites/all/libraries/jquery.ui
+# fi
+msg "STATUS: $_F_OPENCHURCH installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_OPENCHURCH installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+
+
 ###---### CiviCRM 3
 #
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
@@ -1897,6 +1965,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_OPENCHURCH" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH &> /dev/null
     mrun "sleep 5"
   fi
 fi
