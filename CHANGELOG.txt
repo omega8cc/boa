@@ -17,9 +17,10 @@
 
 # Changes:
 
-  * Drush Make upgrade to 2.3.
-  * Drush upgrade to 4.5.
-  * Nginx upgrade to 1.0.6.
+  * Drush Make upgrade to 2.3
+  * Drush upgrade to 4.5
+  * Nginx upgrade to 1.0.6
+  * MariaDB upgrade to 5.2.8
 
 
 ### Stable Edition 1.0-boa-T-8.9
@@ -48,8 +49,8 @@
 
 # Changes:
 
-  * Nginx upgrade to 1.0.5.
-  * Chive upgrade to 0.5.1.
+  * Nginx upgrade to 1.0.5
+  * Chive upgrade to 0.5.1
   * Web-based method set by default for sites cron in Aegir.
 
 # New features:
@@ -103,8 +104,8 @@
   * More system info stored in BOA logs to help with debugging.
   * Nginx config - deny access to /hosting/c/server_master.
   * Better how-to in the override.global.inc template.
-  * Chive upgrade to 0.4.2.
-  * Nginx upgrade to 1.0.4.
+  * Chive upgrade to 0.4.2
+  * Nginx upgrade to 1.0.4
 
 # Fixes:
 
