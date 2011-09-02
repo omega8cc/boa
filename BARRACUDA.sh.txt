@@ -2965,6 +2965,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       mv -f tomcat6 /opt/ &> /dev/null
       echo "ENABLED=1" > /etc/default/tomcat
       sed -i "s/\/usr\/lib\/jvm\/java-6-sun\/jre/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
+      sed -i "s/sh \/opt\/tomcat6/su -s \/bin\/bash tomcat -c \"sh \/opt\/tomcat6/g" /etc/init.d/tomcat
+      sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
+      adduser --system --group --home /opt/solr tomcat &> /dev/null
+      touch /opt/solr/fixed.log
+      chown -R tomcat:tomcat /opt/solr
+      chown -R tomcat:tomcat /opt/tomcat6
       st_runner "update-rc.d tomcat defaults" &> /dev/null
       st_runner "invoke-rc.d tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
@@ -2973,6 +2979,18 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       msg "INFO: MultiCore Apache Solr Tomcat installation skipped"
       mrun "sleep 2"
     fi
+  fi
+fi
+if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
+  if [ ! -e "/opt/solr/fixed.log" ] ; then
+    adduser --system --group --home /opt/solr tomcat &> /dev/null
+    touch /opt/solr/fixed.log
+    chown -R tomcat:tomcat /opt/solr
+    chown -R tomcat:tomcat /opt/tomcat6
+    sed -i "s/sh \/opt\/tomcat6/su -s \/bin\/bash tomcat -c \"sh \/opt\/tomcat6/g" /etc/init.d/tomcat
+    sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
+    killall -9 java &> /dev/null
+    st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
 fi
 
