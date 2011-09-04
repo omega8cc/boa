@@ -1785,7 +1785,6 @@ install_with_apt_sql () {
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 fix_locales
-apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   _LOCAL_INSTALL="aptitude -y install"
   install_with_apt_sql
@@ -1814,6 +1813,7 @@ else
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/ourdelta.list
+      apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
       st_runner "apt-get update -y" 2> /dev/null
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     fi
