@@ -25,7 +25,20 @@
   * Drush upgrade to 4.5
   * Nginx upgrade to 1.0.6
   * MariaDB upgrade to 5.2.8
+  * Higher limit_conn for AdvAgg to support high async connections rate.
 
+# Fixes:
+
+  * Tomcat runs as a separate 'tomcat' user instead of root.
+  * Issue #1250448 - Textile 7 requires Vars module.
+  * Issue #1248432 - support for CNAME records in the DNS check.
+
+# New features:
+
+  * HTTP/HTTPS redirects example in the override.global.inc file.
+  * Enabled by default HTTPS and HTTP sessions/cookies for D7.
+  * Issue #1243068 - Allow to override $cache_module_path.
+  
 
 ### Stable Edition 1.0-boa-T-8.9
 ### Date: Sat, 30 July 2011 23:50:00 +0200.
