@@ -1864,6 +1864,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
 elif [ "$_THIS_OS" = "Debian" ] ; then
   st_runner "aptitude full-upgrade -y" 2> /dev/null
 fi
+st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 
 
 ###--------------------###

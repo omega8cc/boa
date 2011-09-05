@@ -151,7 +151,6 @@ added to all 6.x platforms:
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.1
  securesite-6.x-2.4
- session_expire-6.x-1.x-dev
  site_verify-6.x-1.0
  textile-6.x-2.4
  variable_clean-6.x-1.x-dev
@@ -174,11 +173,11 @@ The Drupal 7.x platforms come with contrib modules:
  fpa-7.x-2.0
  nginx_accel_redirect-7.x-1.0
  robotstxt-7.x-1.x-dev
- seckit-7.x-1.1
+ seckit-7.x-1.2
  site_verify-7.x-1.0
  textile-7.x-2.0-rc9
  variable_clean-7.x-1.x-dev
- vars-7.x-2.0-alpha6
+ vars-7.x-2.0-alpha7
  + theme rubik-7.x-4.0-beta6
 
 
