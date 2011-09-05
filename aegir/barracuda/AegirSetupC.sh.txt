@@ -1049,7 +1049,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
 cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries/colorbox" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/colorbox $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries/colorbox
+  ln -s $_CORE_DISTRO/profiles/openpublic/libraries/colorbox $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries/colorbox
 fi
 create_symlinks
 create_d7_symlinks
