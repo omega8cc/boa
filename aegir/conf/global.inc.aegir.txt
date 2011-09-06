@@ -44,7 +44,7 @@ if (preg_match("/uberdrupal/", $conf['install_profile']) || file_exists('sites/a
   unset($conf['file_downloads']); // disable hardcoded public downloads for ubercart
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev|host8)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // deny known search bots on dev subdomains
   if (preg_match("/(?:crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
     header("HTTP/1.1 301 Moved Permanently");
@@ -57,6 +57,14 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev|host8)/i", $_SERVER['HTT
   unset($conf['preprocess_css']); // disable hardcoded css aggregation
   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
   unset($conf['error_level']);    // disable hardcoded no errors on screen
+}
+
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // deny known search bots on host8 subdomains
+  if (preg_match("/(?:crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://omega8.cc/");
+  }
 }
 
 if (isset($_SERVER['HTTP_HOST'])) {
