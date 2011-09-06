@@ -2756,12 +2756,9 @@ if [ $_STATUS = "INIT" ] ; then
     patch -p0 < user.drush.inc.patch &> /dev/null
     chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
-#   if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
-#     cd /var/aegir/drush
-#     wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-#     patch -R -p1 < alias-name-drush4.patch &> /dev/null
-#     chown -R aegir:aegir /var/aegir/drush &> /dev/null
-#   fi
+  if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+    sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
+  fi
   cd /var/aegir
   sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
   perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
@@ -2827,12 +2824,9 @@ else
       patch -p0 < user.drush.inc.patch &> /dev/null
       chown -R aegir:aegir /var/aegir/drush &> /dev/null
     fi
-#     if [ $_DRUSH_VERSION = "7.x-4.6" ] ; then
-#       cd /var/aegir/drush
-#       wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-#       patch -R -p1 < alias-name-drush4.patch &> /dev/null
-#       chown -R aegir:aegir /var/aegir/drush &> /dev/null
-#     fi
+    if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+      sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
+    fi
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
