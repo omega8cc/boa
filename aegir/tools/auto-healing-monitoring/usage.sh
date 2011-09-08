@@ -191,7 +191,7 @@ if [ "$_MODULES" = "YES" ]; then
           cd $Dir
           if [ -d "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis cache -y &> /dev/null"
-            su -s /bin/bash $_THIS_HM_USER -c "drush en syslog path_alias_cache -y &> /dev/null"
+            su -s /bin/bash $_THIS_HM_USER -c "drush en syslog -y &> /dev/null"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
             chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
           else

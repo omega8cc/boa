@@ -462,8 +462,8 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/eldir.patch ./
 patch -p1 <./eldir.patch &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.6.tar.gz
-tar -xzf aegir_custom_settings-6.x-1.6.tar.gz
+wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.7.tar.gz
+tar -xzf aegir_custom_settings-6.x-1.7.tar.gz
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
   ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 fi
@@ -473,10 +473,10 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 hosting_upload-6.x-1.x -y &> /dev/null
   $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD en hosting_client -y &> /dev/null
-  $_DRUSHCMD en path_alias_cache -y &> /dev/null
   $_DRUSHCMD en css_emimage -y &> /dev/null
   $_DRUSHCMD en syslog -y &> /dev/null
   $_DRUSHCMD dis cache -y &> /dev/null
+  $_DRUSHCMD dis path_alias_cache -y &> /dev/null
   $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_client_send_welcome 1 &> /dev/null
