@@ -462,15 +462,16 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/eldir.patch ./
 patch -p1 <./eldir.patch &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.7.tar.gz
-tar -xzf aegir_custom_settings-6.x-1.7.tar.gz
+wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.8.tar.gz
+tar -xzf aegir_custom_settings-6.x-1.8.tar.gz
+rm -f aegir_custom_settings-6.x-1.8.tar.gz
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
   ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 fi
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   DRUSHC="$_ROOT/tools/drush/drush"
-  $_DRUSHCMD dl features-6.x-1.0 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 hosting_upload-6.x-1.x -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules features-6.x-1.0 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.0 hosting_backup_queue-6.x-1.0-beta4 hosting_upload-6.x-1.x -y &> /dev/null
   $_DRUSHCMD en hosting_client -y &> /dev/null
   $_DRUSHCMD en css_emimage -y &> /dev/null
   $_DRUSHCMD en syslog -y &> /dev/null
