@@ -289,7 +289,7 @@ or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/buy
+  http://omega8.cc/upgrade
 
 --
 This e-mail has been sent by your Aegir resources usage monitor.
@@ -310,7 +310,7 @@ or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/buy
+  http://omega8.cc/upgrade
 
 --
 This e-mail has been sent by your Aegir resources usage monitor.
@@ -341,7 +341,7 @@ to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/buy
+  http://omega8.cc/upgrade
 
 --
 This e-mail has been sent by your Aegir resources usage monitor.
@@ -363,7 +363,7 @@ to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/buy
+  http://omega8.cc/upgrade
 
 --
 This e-mail has been sent by your Aegir resources usage monitor.
