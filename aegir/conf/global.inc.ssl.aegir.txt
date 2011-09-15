@@ -34,7 +34,6 @@ if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
   }
-  $conf['hosting_ignore_default_profiles'] = 1;
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
   ini_set('session.cookie_lifetime', 0); // force log-out on browser quit

@@ -29,7 +29,6 @@ ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
 if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  $conf['hosting_ignore_default_profiles'] = 1;
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
   ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
