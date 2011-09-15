@@ -654,6 +654,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/minimal
   rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/testing
+  rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/standard
   create_dirs
   themes_for_d7
 fi
@@ -1012,6 +1013,8 @@ build_openpublic () {
   rm -f $_CORE/openpublic-$_OPENPUBLIC/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/testing
+  rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/standard
+  rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/minimal
   create_dirs
   cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/themes
   wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
