@@ -112,4 +112,7 @@ types {
     video/x-ms-asf                        asx asf;
     video/x-ms-wmv                        wmv;
     video/x-msvideo                       avi;
+    video/ogg                             ogv;
+    video/webm                            webm;
+    video/mp4                             mp4;
 }
