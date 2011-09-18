@@ -1,5 +1,5 @@
 
-### Non-Aegir Drupal configuration for Nginx - coming in summer 2011.
+### Non-Aegir Drupal configuration for Nginx - coming in winter 2011.
 
 
 
