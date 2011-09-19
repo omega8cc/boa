@@ -185,8 +185,7 @@ mrun () {
 create_dirs () {
   #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   mkdir -p ./sites/default/files
-  mkdir -p ./cache/perm
-  mkdir -p ./cache/normal
+  mkdir -p ./cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
   chmod 2777 -R ./cache &> /dev/null
   #mkdir -p ./backup/modules
   #chmod 2777 -R ./backup &> /dev/null
