@@ -73,6 +73,27 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
 
 if (isset($_SERVER['HTTP_HOST'])) {
 
+  if (isset($_SERVER['HTTP_USER_AGENT'])) {
+    if (preg_match("/(?:Nokia|BlackBerry.+MIDP|240x|320x|Palm|NetFront|Symbian|SonyEricsson)/i", $_SERVER['HTTP_USER_AGENT'])) {
+      $this_device = 'mobile-other';
+    }
+    elseif (preg_match("/(?:iPhone|iPod|Android|BlackBerry.+AppleWebKit)/i", $_SERVER['HTTP_USER_AGENT'])) {
+      $this_device = 'mobile-smart';
+    }
+    elseif (preg_match("/(?:iPad|Tablet)/i", $_SERVER['HTTP_USER_AGENT'])) {
+      $this_device = 'mobile-tablet';
+    }
+    else {
+      $this_device = 'normal';
+    }  
+  }
+  else {
+    $this_device = 'normal';
+  }
+  $conf['boost_normal_dir'] = $this_device;
+  $conf['boost_gzip_dir'] = $this_device;
+  $this_prefix = $_SERVER['HTTP_HOST'] . '.' . $this_device;
+
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module')) {
     $conf['preprocess_css'] = 0; // disable hardcoded css aggregation
@@ -215,61 +236,61 @@ if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/",
           'engine' => 'redis',
           'server' => array('127.0.0.1:6379'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-a' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11211'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-b' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11212'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-c' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11213'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-d' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11214'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-e' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11215'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-f' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11216'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-g' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11217'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'memcache-engine-h' => array(
           'engine' => 'memcached',
           'server' => array('127.0.0.1:11218'),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
         'db-engine' => array(
           'engine' => 'database',
           'server' => array(),
           'shared' => TRUE,
-          'prefix' => $_SERVER['HTTP_HOST'],
+          'prefix' => $this_prefix,
         ),
       ),
       'schemas' => array(
