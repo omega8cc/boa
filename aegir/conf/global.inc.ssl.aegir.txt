@@ -195,8 +195,21 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 }
 
-$use_cache = 'YES';
-$cache_module_path = './modules/o_contrib/cache/cache.inc';
+$use_cache = 'YES';   // Standard Redis/Memcached integration for 6.x core is enabled by default.
+                      
+$cache_module_path = './modules/o_contrib/cache/cache.inc'; // It is possible to define custom path.
+
+$custom_cache = 'NO'; // When set to YES it will disable default Redis/Memcached configuration,
+                      // so you can define your own, custom configuration in the included below
+                      // /data/conf/override.global.inc file.
+
+$custom_fb = 'NO';    // When set to YES it will disable default Drupal for Facebook (fb) configuration,
+                      // so you can define your own, custom configuration in the included below
+                      // /data/conf/override.global.inc file.
+
+$custom_da = 'NO';    // When set to YES it will disable default Domain Access configuration,
+                      // so you can define your own, custom configuration in the included below
+                      // /data/conf/override.global.inc file.
 
 if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
     file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt'))) {
@@ -225,7 +238,7 @@ if (file_exists('/data/conf/override.global.inc')) {
 
 // don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
 if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) &&
-  isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES") {
+  isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES" && $custom_cache == "NO" ) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
      if (file_exists($cache_module_path)) {
@@ -404,7 +417,7 @@ if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/",
  * The default value is &amp;. Change this in settings.php. Make the value "&"
  * http://drupal.org/node/205476
  */
-if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
+if (file_exists('sites/all/modules/fb/fb_settings.inc') && $custom_fb == "NO" ) {
   ini_set('arg_separator.output',     '&');
   require_once "sites/all/modules/fb/fb_settings.inc";
   $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
@@ -414,6 +427,6 @@ if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
  * Domain module
  *
  */
-if (file_exists('sites/all/modules/domain/settings.inc')) {
+if (file_exists('sites/all/modules/domain/settings.inc') && $custom_da == "NO" ) {
   require_once "sites/all/modules/domain/settings.inc";
 }
