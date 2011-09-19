@@ -54,4 +54,21 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   rewrite    ^/legacy/(.*)$    /sites/$host/files/legacy/$1 last;
   try_files  $uri =404;
 }
+#
+### How to save/force real $uri before it is rewritten to index.php
+### so it will be possible to force $args free keys
+### for Speed Booster in fastcgi_cache_key if required.
+#
+# This helps when you are receiving many requests
+# with random/unique $args for the same $uri, which is
+# a common issue with campaign tracking, effectively
+# disabling Speed Booster because of always unique $args
+# if $request_uri is used as a $key_uri.
+#
+# FYI: $request_uri is always $uri + $args.
+#
+# If you wish to force $args free keys, add in your nginx_vhost_include.conf
+# file one extra line:
+#
+set $key_uri $uri;
 
