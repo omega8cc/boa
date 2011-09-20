@@ -25,7 +25,7 @@ $ drush en filefield filefield_nginx_progress -y
 #
 # include /data/disk/EDIT_USER/config/server_master/nginx/post.d/nginx_vhost_include*;
 #
-# This file will be included if exist and will never be modified
+# This file will be included if exists and will never be modified
 # or touched by Aegir provision backend system.
 #
 # You could use this feature to map some legacy static files
@@ -34,7 +34,7 @@ $ drush en filefield filefield_nginx_progress -y
 # using drupal root directory and make your site compatible
 # with drupal multisite setup used in Aegir to migrate sites
 # between platforms (different drupal root directories).
-# See commented out example of config lines below.
+# See the example of config lines below.
 #
 # Note: your custom rewrite rules will apply to *all* sites
 # on the same Aegir Satellite Instance.
@@ -71,4 +71,19 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
 # file one extra line:
 #
 set $key_uri $uri;
+
+### Another option to set the cache key dynamically
+#
+# The trick is to use the full $request_uri which includes $args
+# only when $args doesn't include random values for "utm_source",
+# and use raw $uri as a cache key when "utm_source" is present.
+#
+# This method is required to avoid caching all pages in the
+# pager chain ?page=0 ?page=1 ?page=2 etc. as a one ?page=0 only.
+#
+set $key_uri $request_uri;
+if ( $args ~ "utm_source" ) {
+  set $key_uri $uri;
+}
+
 
