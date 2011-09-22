@@ -2165,11 +2165,20 @@ if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
 fi
 if [ $_STATUS = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] && [ ! -e "/var/log/5.2.8-MariaDB.log" ] ; then
-    _PHP_INSTALL_REQUIRED=YES
-    touch /var/log/5.2.8-MariaDB.log
-    msg "INFO: PHP rebuild required to include MariaDB 5.2.8 libs"
-    mrun "sleep 3"
+  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
+    if [ ! -e "/var/log/5.2.9-MariaDB.log" ] ; then
+      _PHP_INSTALL_REQUIRED=YES
+      touch /var/log/5.2.9-MariaDB.log
+      msg "INFO: PHP rebuild required to include MariaDB 5.2.9 libs"
+      mrun "sleep 3"
+    fi
+  else
+    if [ ! -e "/var/log/5.5.15-Percona.log" ] ; then
+      _PHP_INSTALL_REQUIRED=YES
+      touch /var/log/5.5.15-Percona.log
+      msg "INFO: PHP rebuild required to include Percona 5.5.15 libs"
+      mrun "sleep 3"
+    fi
   fi
 fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
