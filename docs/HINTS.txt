@@ -82,8 +82,15 @@ set $key_uri $uri;
 # pager chain ?page=0 ?page=1 ?page=2 etc. as a one ?page=0 only.
 #
 set $key_uri $request_uri;
-if ( $args ~ "utm_source" ) {
+if ( $args ~ "utm_" ) {
   set $key_uri $uri;
 }
+if ( $args ~ "__utm" ) {
+  set $key_uri $uri;
+}
+if ( $args ~ "_campaign" ) {
+  set $key_uri $uri;
+}
+
 
 

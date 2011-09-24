@@ -139,14 +139,11 @@ added to all 6.x platforms:
  config_perms-6.x-2.x-dev
  css_emimage-6.x-2.x-dev
  dbtuner-6.x-1.x-dev
- expire-6.x-1.x-dev (exp. not included by default)
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
  imageinfo_cache-6.x-1.x-dev
  login_security-6.x-1.x-dev
- nginx_accel_redirect-6.x-1.5
  private_upload-6.x-1.x-dev
- purge-6.x-1.2 (exp. not included by default)
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.1
@@ -171,7 +168,6 @@ The Drupal 7.x platforms come with contrib modules:
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev
  fpa-7.x-2.0
- nginx_accel_redirect-7.x-1.0
  robotstxt-7.x-1.x-dev
  seckit-7.x-1.2
  site_verify-7.x-1.0
