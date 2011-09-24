@@ -1,11 +1,14 @@
 
  To enable Apache Solr Search for any site on your server,
- please download and enable Apache Solr Search Integration module.
+ please download and enable Apache Solr Search Integration module
+ with required third party library, as explained in its readme.
  
- Your server is configured for version 6.x-1.5, so you have to use
- this file:
+ http://drupal.org/project/apachesolr
  
- http://ftp.drupal.org/files/projects/apachesolr-6.x-1.5.tar.gz
+ Your server is configured by default for version 6.x-1.5,
+ but you can configure each core separately to use 7.x-1.0 version
+ by uploading required solrconfig.xml, schema.xml and protwords.txt
+ files to the solr/site_00*/conf directory.
  
  In your Solr configuration there are ready to use 8 separate
  cores, since you need to use one core per site to avoid
