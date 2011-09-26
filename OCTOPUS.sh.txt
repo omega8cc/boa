@@ -554,9 +554,10 @@ octopus_cnf () {
     sleep 3
     msg "NOTE: Please review all config options displayed below."
     sleep 5
-    _OCTOPUS_CNF=`cat /root/.octopus.cnf`
     echo " "
-    echo $_OCTOPUS_CNF
+    while read line ; do
+      echo "$line"
+    done < /root/.octopus.cnf
     echo " "
     if [ $_STATUS = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -567,7 +568,7 @@ octopus_cnf () {
         exit 1
       fi
     else
-       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
         source /root/.octopus.cnf
       else

@@ -1008,9 +1008,26 @@ barracuda_cnf () {
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
+    echo "### NOTE: the group of settings displayed bellow will *not* be overriden" >> /root/.barracuda.cnf
+    echo "### on upgrade by the Barracuda script nor by this configuration file." >> /root/.barracuda.cnf
+    echo "### They can be defined only on initial Barracuda install." >> /root/.barracuda.cnf
+    echo "###" >> /root/.barracuda.cnf
+    echo "_HTTP_WILDCARD=$_HTTP_WILDCARD" >> /root/.barracuda.cnf
+    echo "_MY_OWNIP=\"$_MY_OWNIP\"" >> /root/.barracuda.cnf
+    echo "_MY_HOSTN=\"$_MY_HOSTN\"" >> /root/.barracuda.cnf
+    echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
+    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.barracuda.cnf
+    echo "_SMTP_RELAY_TEST=$_SMTP_RELAY_TEST" >> /root/.barracuda.cnf
+    echo "_SMTP_RELAY_HOST=\"$_SMTP_RELAY_HOST\"" >> /root/.barracuda.cnf
+    echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
+    echo "_LOCAL_NETWORK_HN=\"$_LOCAL_NETWORK_HN\"" >> /root/.barracuda.cnf
+    echo "###" >> /root/.barracuda.cnf
+    echo "### NOTE: the group of settings displayed bellow" >> /root/.barracuda.cnf
+    echo "### will *override* all listed settings in the Barracuda script," >> /root/.barracuda.cnf
+    echo "### both on initial install and upgrade." >> /root/.barracuda.cnf
+    echo "###" >> /root/.barracuda.cnf
     echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.barracuda.cnf
     echo "_XTRAS_LIST=\"$_XTRAS_LIST\"" >> /root/.barracuda.cnf
-    echo "_HTTP_WILDCARD=$_HTTP_WILDCARD" >> /root/.barracuda.cnf
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
     echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
@@ -1018,16 +1035,8 @@ barracuda_cnf () {
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
     echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
-    echo "_MY_OWNIP=\"$_MY_OWNIP\"" >> /root/.barracuda.cnf
-    echo "_MY_HOSTN=\"$_MY_HOSTN\"" >> /root/.barracuda.cnf
-    echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
     echo "_USE_SPEED_BOOSTER=$_USE_SPEED_BOOSTER" >> /root/.barracuda.cnf
-    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.barracuda.cnf
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
-    echo "_SMTP_RELAY_TEST=$_SMTP_RELAY_TEST" >> /root/.barracuda.cnf
-    echo "_SMTP_RELAY_HOST=\"$_SMTP_RELAY_HOST\"" >> /root/.barracuda.cnf
-    echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
-    echo "_LOCAL_NETWORK_HN=\"$_LOCAL_NETWORK_HN\"" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FORCE_REINSTALL=$_PHP_FORCE_REINSTALL" >> /root/.barracuda.cnf
     echo "_SQL_FORCE_REINSTALL=$_SQL_FORCE_REINSTALL" >> /root/.barracuda.cnf
@@ -1041,9 +1050,10 @@ barracuda_cnf () {
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
     sleep 5
-    _BARRACUDA_CNF=`cat /root/.barracuda.cnf`
     echo " "
-    echo $_BARRACUDA_CNF
+    while read line ; do
+      echo "$line"
+    done < /root/.barracuda.cnf
     echo " "
     if [ $_STATUS = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -1054,7 +1064,7 @@ barracuda_cnf () {
         exit 1
       fi
     else
-       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+      if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
         source /root/.barracuda.cnf
       else
