@@ -457,6 +457,15 @@ _LOCAL_NETWORK_HN=""
 
 
 ###----------------------------------------###
+### ADVANCED CONFIGURATION OPTIONS         ###
+###----------------------------------------###
+
+_NGINX_EXTRA_CONF=""
+_PHP_FORCE_REINSTALL=NO
+_SQL_FORCE_REINSTALL=NO
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -466,8 +475,6 @@ _PHP_VERSION=5.2.17
 _APC_VERSION=3.1.9
 _CHIVE_VERSION=0.5.1
 _BZR_VERSION=2.3.4
-_PHP_FORCE_REINSTALL=NO
-_SQL_FORCE_REINSTALL=NO
 _LSHELL_VERSION=0.9.14
 _PURE_FTPD_VERSION=1.0.32
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
@@ -482,11 +489,11 @@ export DEBIAN_FRONTEND=noninteractive
 #
 ###---### Functions
 #
-# Noticeable messages
+# Noticeable messages.
 msg () {
   echo "Barracuda [`date`] ==> $*"
 }
-# Simple prompt
+# Simple prompt.
 prompt_yes_no () {
 if [ "$_AUTOPILOT" = "YES" ]; then
   return 0
@@ -512,7 +519,7 @@ else
 fi
 }
 #
-# Prompt to confirm choice
+# Prompt to confirm choice.
 prompt_confirm_choice () {
   read -p "$1 [$2]:" _CONFIRMED_ANSWER
   if [ -z "$_CONFIRMED_ANSWER" ] ; then
@@ -520,15 +527,15 @@ prompt_confirm_choice () {
   fi
 }
 #
-# Stop on error
+# Stop on error.
 # set -e ### disable this for debugging
 #
-# Success msg
+# Success msg.
 success () {
   msg "$1 Succeeded."
 }
 #
-# Error msg
+# Error msg.
 fatal () {
   echo " "
   msg "Fatal Error Occurred: $1"
@@ -536,7 +543,7 @@ fatal () {
   exit 1
 }
 #
-# Not supported OS
+# Not supported OS.
 not_supported_os () {
   msg "== FATAL ERROR =="
   msg "Invalid install script or OS used."
@@ -547,7 +554,7 @@ not_supported_os () {
   exit 1
 }
 #
-# Perform an action, log it, and run the spinner throughout
+# Perform an action, log it, and run the spinner throughout.
 runner () {
   CMD="$1"
   touch busy
@@ -571,7 +578,7 @@ runner () {
   fi
 }
 #
-# Small spinner
+# Small spinner.
 mrun () {
   CMD="$1"
   touch busy
@@ -583,7 +590,7 @@ mrun () {
   fi
 }
 #
-# Silent runner
+# Silent runner.
 st_runner () {
   CMD="$1"
   touch busy
@@ -606,7 +613,7 @@ st_runner () {
   fi
 }
 #
-# Find correct IP
+# Find correct IP.
 find_correct_ip () {
   _FQDN_TEST=$(host $_LOC_DOM)
   if [[ $_FQDN_TEST =~ "is an alias for" ]] ; then
@@ -616,7 +623,7 @@ find_correct_ip () {
   fi
 }
 #
-# Install Redis from sources
+# Install Redis from sources.
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
   mrun "sleep 3"
@@ -657,7 +664,7 @@ install_redis_src () {
   touch /var/log/redis-2.0.5.log
 }
 #
-# Fix this on upgrade
+# Fix this on upgrade.
 fix_on_upgrade () {
   sed -i "s/apc.include_once_override = 1/apc.include_once_override = 0/g" /opt/etc/php.ini
   perl -p -i -e "s/allowed\s+:.*\]/allowed         : \['drush','drush dbup','drush mup','drush make','drush help','drush dl','drush cc','drush en','drush dis','drush st','drush cron','drush dd','drush pml','drush pmi','drush sa','drush sql-conf','drush sqlq','drush sql-connect','drush sqlc','drush sql-dump','drush uinf','drush ublk','drush uublk','drush urol','drush urrol','drush ucrt','drush uli','drush ucan','drush upwd','drush vget','drush vset','drush vdel','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','ls','echo','cd','ll','mysql','git','svn','cvs','rsync','less','nano','cp','wget','bzr','vi','cat','lftp','sed','grep','mkdir','tar','gzip','unzip','passwd','scp','rm','mv','pwd','chmod','patch','touch','ssh-keygen','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump','drush gm'\]/g" /etc/lshell.conf
@@ -702,7 +709,7 @@ fix_on_upgrade () {
   fi
 }
 #
-# Validate server public IP
+# Validate server public IP.
 validate_public_ip () {
   if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
     if [ -z "$_LOCAL_NETWORK_HN" ] ; then
@@ -744,7 +751,7 @@ validate_public_ip () {
   fi
 }
 #
-# Validate server IP for xtras
+# Validate server IP for xtras.
 validate_xtras_ip () {
   if [ $_HTTP_WILDCARD = "YES" ] ; then
     _XTRAS_THISHTIP="*"
@@ -795,7 +802,7 @@ validate_xtras_ip () {
   fi
 }
 #
-# Validate local server IP
+# Validate local server IP.
 validate_local_ip () {
   if [ $_HTTP_WILDCARD = "YES" ] ; then
     _LOCAL_THISHTIP=all
@@ -846,7 +853,7 @@ validate_local_ip () {
   fi
 }
 #
-# Force advanced Nginx configuration
+# Force advanced Nginx configuration.
 force_advanced_nginx_config () {
   validate_local_ip
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
@@ -877,7 +884,7 @@ force_advanced_nginx_config () {
   chown aegir:aegir *
 }
 #
-# Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona
+# Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona.
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
@@ -948,7 +955,7 @@ tune_memory_limits () {
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
 #
-# Fix locales
+# Fix locales.
 fix_locales () {
   _LOC_TEST=`locale 2>&1`
   if [[ $_LOC_TEST =~ Cannot ]] ; then
@@ -991,6 +998,72 @@ EOF
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
   fi
 }
+#
+# Read or create Barracuda cnf file.
+barracuda_cnf () {
+  if [ ! -e "/root/.barracuda.cnf" ] ; then
+    msg "INFO: Creating your /root/.barracuda.cnf config file"
+    sleep 3
+    echo "###" > /root/.barracuda.cnf
+    echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
+    echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
+    echo "###" >> /root/.barracuda.cnf
+    echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.barracuda.cnf
+    echo "_XTRAS_LIST=\"$_XTRAS_LIST\"" >> /root/.barracuda.cnf
+    echo "_HTTP_WILDCARD=$_HTTP_WILDCARD" >> /root/.barracuda.cnf
+    echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
+    echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
+    echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
+    echo "_SSH_PORT=$_SSH_PORT" >> /root/.barracuda.cnf
+    echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
+    echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
+    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
+    echo "_MY_OWNIP=\"$_MY_OWNIP\"" >> /root/.barracuda.cnf
+    echo "_MY_HOSTN=\"$_MY_HOSTN\"" >> /root/.barracuda.cnf
+    echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
+    echo "_USE_SPEED_BOOSTER=$_USE_SPEED_BOOSTER" >> /root/.barracuda.cnf
+    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.barracuda.cnf
+    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
+    echo "_SMTP_RELAY_TEST=$_SMTP_RELAY_TEST" >> /root/.barracuda.cnf
+    echo "_SMTP_RELAY_HOST=\"$_SMTP_RELAY_HOST\"" >> /root/.barracuda.cnf
+    echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
+    echo "_LOCAL_NETWORK_HN=\"$_LOCAL_NETWORK_HN\"" >> /root/.barracuda.cnf
+    echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    echo "_PHP_FORCE_REINSTALL=$_PHP_FORCE_REINSTALL" >> /root/.barracuda.cnf
+    echo "_SQL_FORCE_REINSTALL=$_SQL_FORCE_REINSTALL" >> /root/.barracuda.cnf
+    echo "###" >> /root/.barracuda.cnf
+    echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
+    echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
+    echo "###" >> /root/.barracuda.cnf
+  else
+    msg "INFO: Reading your /root/.barracuda.cnf config file."
+    sleep 3
+    msg "NOTE: Please review all config options displayed below."
+    msg "NOTE: It will *override* all settings in the Barracuda script."
+    sleep 5
+    _BARRACUDA_CNF=`cat /root/.barracuda.cnf`
+    echo " "
+    echo $_BARRACUDA_CNF
+    echo " "
+    if [ $_STATUS = "INIT" ] ; then
+      if prompt_yes_no "Do you want to proceed with the install?" ; then
+        true
+        source /root/.barracuda.cnf
+      else
+        echo "Installation aborted by you."
+        exit 1
+      fi
+    else
+       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+        true
+        source /root/.barracuda.cnf
+      else
+        echo "Upgrade aborted by you."
+        exit 1
+      fi 
+    fi
+  fi
+}
 
 
 ###--------------------###
@@ -1019,6 +1092,7 @@ sleep 3
 if [ -d "/var/aegir" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE..."
+  barracuda_cnf
   if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
     _HTTP_WILDCARD=YES
   else
@@ -1027,6 +1101,7 @@ if [ -d "/var/aegir" ] ; then
 else
   _STATUS=INIT
   msg "INFO: INIT..."
+  barracuda_cnf
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
@@ -2467,8 +2542,12 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   sed -i "s/nginx/Barracuda/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
   perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c
   cd /var/opt/nginx-$_NGINX_VERSION
-  if [ "$_TEST_MODE" = "ON" ] ; then
+  if [ "$_TEST_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
      _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
+  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_TEST_MODE" = "OFF" ] ; then
+    _NGINX_EXTRA="$_NGINX_EXTRA_CONF"
+  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_TEST_MODE" = "ON" ] ; then
+    _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/ $_NGINX_EXTRA_CONF"
   else
     _NGINX_EXTRA=""
   fi

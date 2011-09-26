@@ -50,7 +50,9 @@
 ###
 ### NOTE: if this is an upgrade, it's enough
 ### to define the _USER value only, since
-### _DOMAIN etc. will be auto-discovered.
+### _DOMAIN etc. will be auto-discovered
+### and you can't override it here nor even
+### in the /root/.octopus.cnf file.
 ###
 _USER=o1
 _DOMAIN=$_USER.`uname -n`
@@ -441,6 +443,7 @@ _SMALLCORE6=6.22
 _SMALLCORE7=7.8
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
+_NOW=`date +%y%m%d-%H%M`
 
 ## Distributions
 _COMMONS=6.x-2.0
@@ -464,11 +467,11 @@ _OPENCHURCH=1.21
 
 ###---### Functions
 #
-# Noticeable messages
+# Noticeable messages.
 msg () {
   echo "Octopus [`date`] ==> $*"
 }
-# Simple prompt
+# Simple prompt.
 prompt_yes_no () {
 if [ "$_AUTOPILOT" = "YES" ]; then
   return 0
@@ -494,13 +497,84 @@ else
 fi
 }
 #
-# Find correct IP
+# Find correct IP.
 find_correct_ip () {
   _FQDN_TEST=$(host $_LOC_DOM)
   if [[ $_FQDN_TEST =~ "is an alias for" ]] ; then
     _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
   else
     _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
+  fi
+}
+#
+# Read or create Octopus cnf file.
+octopus_cnf () {
+  if [ ! -e "/root/.octopus.cnf" ] ; then
+    msg "INFO: Creating your /root/.octopus.cnf config file"
+    sleep 3
+    echo "###" > /root/.octopus.cnf
+    echo "### Configuration created on $_NOW with" >> /root/.octopus.cnf
+    echo "### Octopus version $_INSTALLER_VERSION" >> /root/.octopus.cnf
+    echo "###" >> /root/.octopus.cnf
+    echo "### NOTE: the group of settings displayed bellow" >> /root/.octopus.cnf
+    echo "### will *override* all listed settings in the Octopus script." >> /root/.octopus.cnf
+    echo "###" >> /root/.octopus.cnf
+    echo "_USER=\"$_USER\"" >> /root/.octopus.cnf
+    echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.octopus.cnf
+    echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\"" >> /root/.octopus.cnf
+    echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.octopus.cnf
+    echo "_HM_ONLY=$_HM_ONLY" >> /root/.octopus.cnf
+    echo "_O_CONTRIB_UP=$_O_CONTRIB_UP" >> /root/.octopus.cnf
+    echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.octopus.cnf
+    echo "_MY_OWNIP=$_MY_OWNIP" >> /root/.octopus.cnf
+    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.octopus.cnf
+    echo "_USE_SPEED_BOOSTER=$_USE_SPEED_BOOSTER" >> /root/.octopus.cnf
+    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.octopus.cnf
+    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.octopus.cnf
+    echo "_HOT_SAUCE=$_HOT_SAUCE" >> /root/.octopus.cnf
+    echo "_USE_CURRENT=$_USE_CURRENT" >> /root/.octopus.cnf
+    echo "_REMOTE_CACHE_IP=$_REMOTE_CACHE_IP" >> /root/.octopus.cnf
+    echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.octopus.cnf
+    echo "###" >> /root/.octopus.cnf
+    echo "### NOTE: the group of settings displayed bellow will be *overriden*" >> /root/.octopus.cnf
+    echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.octopus.cnf
+    echo "### but only on upgrade." >> /root/.octopus.cnf
+    echo "###" >> /root/.octopus.cnf
+    echo "_DOMAIN=\"$_DOMAIN\"" >> /root/.octopus.cnf
+    echo "_CLIENT_EMAIL=\"$_CLIENT_EMAIL\"" >> /root/.octopus.cnf
+    echo "_CLIENT_OPTION=\"$_CLIENT_OPTION\"" >> /root/.octopus.cnf
+    echo "_CLIENT_SUBSCR=\"$_CLIENT_SUBSCR\"" >> /root/.octopus.cnf
+    echo "_CLIENT_CORES=\"$_CLIENT_CORES\"" >> /root/.octopus.cnf
+    echo "###" >> /root/.octopus.cnf
+    echo "### Configuration created on $_NOW with" >> /root/.octopus.cnf
+    echo "### octopus version $_INSTALLER_VERSION" >> /root/.octopus.cnf
+    echo "###" >> /root/.octopus.cnf
+  else
+    msg "INFO: Reading your /root/.octopus.cnf config file."
+    sleep 3
+    msg "NOTE: Please review all config options displayed below."
+    sleep 5
+    _OCTOPUS_CNF=`cat /root/.octopus.cnf`
+    echo " "
+    echo $_OCTOPUS_CNF
+    echo " "
+    if [ $_STATUS = "INIT" ] ; then
+      if prompt_yes_no "Do you want to proceed with the install?" ; then
+        true
+        source /root/.octopus.cnf
+      else
+        echo "Installation aborted by you."
+        exit 1
+      fi
+    else
+       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
+        true
+        source /root/.octopus.cnf
+      else
+        echo "Upgrade aborted by you."
+        exit 1
+      fi 
+    fi
   fi
 }
 #
@@ -983,6 +1057,12 @@ if prompt_yes_no "Do you want to proceed with the setup?" ; then
 else
   echo "Installation/upgrade aborted by you."
   exit 1
+fi
+
+if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+  true
+else
+  octopus_cnf
 fi
 
 _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
