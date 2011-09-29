@@ -698,7 +698,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/'dblog',/'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   cd ./profiles/openatrium/modules/atrium_features/
-  #git clone git://github.com/developmentseed/atrium_reader.git &> /dev/null
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM
   create_dirs
@@ -888,6 +887,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
     sed -i "s/Standard/Drupal 7 Standard/g" $Files
   done
+  sed -i "s/7 Minimal/7 Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+  sed -i "s/7 Standard/7 Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
   create_dirs
   themes_for_d7
 fi
@@ -923,6 +924,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
     sed -i "s/Standard/Drupal 7 Standard/g" $Files
   done
+  sed -i "s/7 Minimal/7 Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+  sed -i "s/7 Standard/7 Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
   create_dirs
   themes_for_d7
 fi
@@ -964,6 +967,8 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
       sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
       sed -i "s/Standard/Drupal 7 Standard/g" $Files
     done
+    sed -i "s/7 Minimal/7 Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+    sed -i "s/7 Standard/7 Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
     create_dirs
     themes_for_d7
   fi
