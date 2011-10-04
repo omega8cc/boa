@@ -19,10 +19,6 @@ projects[civicrm_l10n][download][type] = "get"
 projects[civicrm_l10n][download][url] = "http://voxel.dl.sourceforge.net/project/civicrm/civicrm-stable/3.4.5/civicrm-3.4.5-l10n.tar.gz"
 projects[civicrm_l10n][overwrite] = TRUE
 
-projects[simplycivi][download][type] = "git"
-projects[simplycivi][download][url] = "https://github.com/kylejaster/SimplyCivi.git"
-projects[simplycivi][type] = "theme"
-
 projects[civicrm_theme][subdir] = "contrib"
 projects[civicrm_theme][version] = "1.4"
 
