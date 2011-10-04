@@ -1150,6 +1150,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f commons-$_COMMONS.tar.gz
   if [ -d "$_CORE/acquia_commons" ] ; then
     mv $_CORE/acquia_commons $_CORE/acquia_commons-$_COMMONS
+  elif [ -d "$_CORE/commons-$_COMMONS" ] ; then
+    mv $_CORE/commons-$_COMMONS $_CORE/acquia_commons-$_COMMONS
   else
     mv $_CORE/commons $_CORE/acquia_commons-$_COMMONS
   fi
@@ -1812,6 +1814,7 @@ cd $_CORE
 find . -name .svn -exec rm -rf {} \; &> /dev/null
 find . -name .bzr -exec rm -rf {} \; &> /dev/null
 find . -name .git -exec rm -rf {} \; &> /dev/null
+find . -name "._*" -type f | xargs rm -rf
 
 
 ###---### Save & verify platforms
