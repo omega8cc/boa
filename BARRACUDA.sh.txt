@@ -3256,6 +3256,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
         echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
         echo "}" >> $_CGP_VHOST
         echo >> $_CGP_VHOST
+        st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 2"
         else
