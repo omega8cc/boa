@@ -190,7 +190,7 @@ fi
 
 _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_AEGIR_ROOT" ] ; then
-  msg "UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
+  msg "UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exists! Exiting.."
   exit 1
 fi
 
