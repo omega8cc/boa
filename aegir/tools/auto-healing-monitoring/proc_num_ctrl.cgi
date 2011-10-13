@@ -21,6 +21,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\tGLOBAL";
 print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
@@ -33,6 +34,7 @@ print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
 print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
 print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
 print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
+print "\n $collectdsumar collectd procs\tGLOBAL" if ($collectdlives);
 if (-e "/usr/sbin/pdnsd") {
   `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
 }
@@ -50,6 +52,7 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
 `/etc/init.d/nginx restart` if (!$nginxsumar && -f "/etc/init.d/nginx");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
+`/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd");
 if (-f "/usr/local/sbin/pure-config.pl") {
   `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
 }
