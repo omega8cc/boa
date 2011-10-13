@@ -1077,6 +1077,17 @@ barracuda_cnf () {
 
 
 ###--------------------###
+if ! netcat -w 8 -z ftp.drupal.org 80 ; then
+  echo " "
+  msg "EXIT on error due to ftp.drupal.org downtime."
+  msg "Please try to run this script again in a few minutes"
+  msg "or better yet, hours. Bye."
+  echo " "
+  exit 1
+fi
+
+
+###--------------------###
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
   msg "STATUS: Stop the cron and wait 5 sec."
@@ -1120,6 +1131,35 @@ rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 rm -f /var/run/aegir_upgrade.pid
+
+
+###--------------------###
+if [ $_STATUS = "UPGRADE" ] ; then
+  _DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ $_DB_SERVER_TEST =~ MariaDB ]] ; then
+    if [ "$_DB_SERVER" = "Percona" ] ; then
+      _DB_SERVER_SRC=repo.percona.com
+    else
+      _DB_SERVER_SRC=ftp.osuosl.org
+    fi
+  else
+    _DB_SERVER_SRC=repo.percona.com
+  fi
+else
+  if [ "$_DB_SERVER" = "Percona" ] ; then
+    _DB_SERVER_SRC=repo.percona.com
+  else
+    _DB_SERVER_SRC=ftp.osuosl.org
+  fi
+fi
+if ! netcat -w 8 -z $_DB_SERVER_SRC 80 ; then
+  echo " "
+  msg "EXIT on error due to $_DB_SERVER_SRC downtime."
+  msg "Please try to run this script again in a few minutes"
+  msg "or better yet, hours. Bye."
+  echo " "
+  exit 1
+fi
 
 
 ###--------------------###

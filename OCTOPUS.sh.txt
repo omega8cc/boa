@@ -706,6 +706,17 @@ rm -f -r /opt/tmp/$_BOA_REPO_NAME
 }
 
 
+###--------------------###
+if ! netcat -w 8 -z ftp.drupal.org 80 ; then
+  echo " "
+  msg "EXIT on error due to ftp.drupal.org downtime."
+  msg "Please try to run this script again in a few minutes"
+  msg "or better yet, hours. Bye."
+  echo " "
+  exit 1
+fi
+
+
 ###---### init
 #
 touch /var/run/octopus_barracuda.pid
