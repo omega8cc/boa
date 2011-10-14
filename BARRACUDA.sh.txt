@@ -672,18 +672,21 @@ fix_on_upgrade () {
   perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls', 'rsync', 'scp', 'git', 'git-receive-pack', 'git-upload-pack', 'git-upload-archive', 'mysqldump'\]/g" /etc/lshell.conf
   perl -p -i -e "s/,'drush mup':'drush upc'\}/,'drush mup':'drush upc','drush gm':'drush generate-makefile'\}/g" /etc/lshell.conf
   mkdir -p /var/backups/dragon/t
-  cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-  cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+  if [ ! -e "/opt/etc/custom.php.ini" ] ; then
+    cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+    cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+  fi
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
-  cd /etc/mysql
-  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf &> /dev/null
+  if [ ! -e "/etc/mysql/custom.my.cnf" ] ; then
+    cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
+  fi
+  mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
   _DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ $_DB_SERVER_TEST =~ MariaDB ]] ; then
     _DB_SERVER=MariaDB
@@ -2736,10 +2739,9 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
-  cd /etc/mysql
-  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf &> /dev/null
+  mkdir -p /var/backups/dragon/t
+  cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
   if [ "$_DB_SERVER" = "Percona" ]; then
     sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/language/\#language/g" /etc/mysql/my.cnf
