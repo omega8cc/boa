@@ -39,7 +39,10 @@ if (preg_match("/managingnews/", $conf['install_profile'])) {
   ini_set('auto_detect_line_endings', TRUE);
 }
 
-if (preg_match("/uberdrupal/", $conf['install_profile']) || file_exists('sites/all/modules/ubercart/README.txt')) {
+if (preg_match("/uberdrupal/", $conf['install_profile']) ||
+    file_exists('sites/all/modules/ubercart/README.txt') ||
+    file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
+    file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt')) {
   unset($conf['file_downloads']); // disable hardcoded public downloads for ubercart
 }
 
@@ -90,7 +93,9 @@ if (isset($_SERVER['HTTP_HOST'])) {
   $this_prefix = $_SERVER['HTTP_HOST'] . '.' . $this_device;
 
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module')) {
+      file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists('profiles/' . $conf['install_profile'] . '/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/advagg/advagg_bundler/advagg_bundler.module')) {
     $conf['preprocess_css'] = 0; // disable hardcoded css aggregation
     $conf['preprocess_js'] = 0;  // disable hardcoded js aggregation
     $conf['advagg_aggregate_mode'] = 2;
@@ -161,6 +166,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
         preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users)/", $_SERVER['REQUEST_URI']) ||
         file_exists('sites/all/modules/ubercart/README.txt') ||
+        file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
+        file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
         file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt') ||
         preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
       header('X-Accel-Expires: 0');
@@ -204,7 +211,10 @@ $custom_fb = 'NO';    // When set to YES it will disable default Drupal for Face
 
 $custom_da = 'NO';    // When set to YES it will disable default Domain Access configuration,
                       // so you can define your own, custom configuration in the included below
-                      // /data/conf/override.global.inc file.
+                      // /data/conf/override.global.inc file. NOTE: if set to YES, then you
+                      // must set to YES also $custom_cache above and copy all its logic in your
+                      // /data/conf/override.global.inc file, because Domain Access must be included
+                      // *after* any cache-related settings to work properly.
 
 if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
     file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt'))) {
@@ -412,16 +422,36 @@ if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/",
  * The default value is &amp;. Change this in settings.php. Make the value "&"
  * http://drupal.org/node/205476
  */
-if (file_exists('sites/all/modules/fb/fb_settings.inc') && $custom_fb == "NO" ) {
-  ini_set('arg_separator.output',     '&');
-  require_once "sites/all/modules/fb/fb_settings.inc";
-  $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
+if ($custom_fb == "NO" ) {
+  if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
+    ini_set('arg_separator.output', '&');
+    require_once "sites/all/modules/fb/fb_settings.inc";
+    $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
+  }
+  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc')) {
+    ini_set('arg_separator.output', '&');
+    require_once 'profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc';
+    $conf['fb_api_file'] = 'profiles/' . $conf['install_profile'] . '/modules/fb/facebook-platform/php/facebook.php';
+  }
+  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc')) {
+    ini_set('arg_separator.output', '&');
+    require_once 'profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc';
+    $conf['fb_api_file'] = 'profiles/' . $conf['install_profile'] . '/modules/contrib/fb/facebook-platform/php/facebook.php';
+  }
 }
 
 /**
  * Domain module
  *
  */
-if (file_exists('sites/all/modules/domain/settings.inc') && $custom_da == "NO" ) {
-  require_once "sites/all/modules/domain/settings.inc";
+if ($custom_da == "NO" ) {
+  if (file_exists('sites/all/modules/domain/settings.inc')) {
+    require_once "sites/all/modules/domain/settings.inc";
+  }
+  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
+    require_once 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
+  }
+  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
+    require_once 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  }
 }
