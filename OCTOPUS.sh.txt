@@ -464,6 +464,7 @@ _CIVICRM6=3.4.5
 _CIVICRM7=4.0.5
 _VIDEOLA=6.x-1.0-alpha1
 _OPENCHURCH=1.21
+_ACQUIA_SEVEN=7.8.7
 
 ###---### Functions
 #
@@ -621,6 +622,7 @@ do
   sed -i "s/EDIT_CIVICRM7/$_CIVICRM7/g"                   $Files
   sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
+  sed -i "s/EDIT_ACQUIA_SEVEN/$_ACQUIA_SEVEN/g"           $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files

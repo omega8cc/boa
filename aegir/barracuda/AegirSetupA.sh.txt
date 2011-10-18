@@ -62,6 +62,7 @@ _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
 _OPENCHURCH=EDIT_OPENCHURCH
+_ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
 
 
 ###---### main config
@@ -827,9 +828,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_ACQUIA_SEVEN
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then

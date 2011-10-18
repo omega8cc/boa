@@ -62,6 +62,7 @@ _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
 _OPENCHURCH=EDIT_OPENCHURCH
+_ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
 
 
 ###---### main config
@@ -481,7 +482,7 @@ fi
 ###---### Distributions full names
 #
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
-_F_ACQUIA_SEVEN="Acquia 7.7.6 P.$_THIS_CORE"
+_F_ACQUIA_SEVEN="Acquia $_ACQUIA_SEVEN P.$_THIS_CORE"
 _F_ATRIUM="Atrium 1.0 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
@@ -637,28 +638,28 @@ fi
 ###---### Acquia Seven
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA_SEVEN install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/acquia-$_SMALLCORE7"
+_CORE_DISTRO="$_CORE/acquia-$_ACQUIA_SEVEN"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia-$_SMALLCORE7 &> /dev/null
-  cd $_CORE/acquia-$_SMALLCORE7
-  rm -f $_CORE/acquia-$_SMALLCORE7/*.txt
+  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia-$_ACQUIA_SEVEN &> /dev/null
+  cd $_CORE/acquia-$_ACQUIA_SEVEN
+  rm -f $_CORE/acquia-$_ACQUIA_SEVEN/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/minimal
-  rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/testing
-  rm -f -r $_CORE/acquia-$_SMALLCORE7/profiles/standard
+  rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/minimal
+  rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/testing
+  rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/standard
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7
-cd $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN
+cd $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
@@ -1860,9 +1861,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ACQUIA_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE7 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_ACQUIA_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN &> /dev/null
     mrun "sleep 5"
   fi
 fi
