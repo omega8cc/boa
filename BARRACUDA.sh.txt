@@ -858,31 +858,38 @@ validate_local_ip () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    _OCT_NGX=nginx_octopus_noup_include.conf
+    _OCT_NGX=nginx_advanced_noup_include.conf
+  else
+    _OCT_NGX=nginx_octopus_include.conf
+    _ADV_NGX=nginx_advanced_include.conf
+  fi
   validate_local_ip
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
+  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
   if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf ./
-    cp -af nginx_octopus_include.conf nginx_simple_include.conf &> /dev/null
-    cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
+    cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
+    cp -af $_OCT_NGX $_ADV_NGX &> /dev/null
   else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
+    cp -af $_ADV_NGX nginx_simple_include.conf &> /dev/null
   fi
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
-  rm -f nginx_advanced_include.conf
+  rm -f $_ADV_NGX
   if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf ./
-    cp -af nginx_octopus_include.conf nginx_simple_include.conf &> /dev/null
-    cp -af nginx_octopus_include.conf nginx_advanced_include.conf &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
+    cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
+    cp -af $_OCT_NGX $_ADV_NGX &> /dev/null
   else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf ./
-    cp -af nginx_advanced_include.conf nginx_simple_include.conf &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
+    cp -af $_ADV_NGX nginx_simple_include.conf &> /dev/null
   fi
   chown aegir:aegir *
 }
@@ -1360,6 +1367,7 @@ _THIS_RV=`lsb_release -sc`
 if [ $_THIS_OS = "Ubuntu" ] ; then
   if [ $_THIS_RV = "oneiric" ] ; then
     _REL_VERSION="oneiric"
+    _DB_SERVER=Percona
   elif [ $_THIS_RV = "natty" ] ; then
     _REL_VERSION="natty"
   elif [ $_THIS_RV = "maverick" ] ; then
@@ -2005,7 +2013,7 @@ st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 ###--------------------###
 if [ $_REL_VERSION = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   if [ ! -L "/usr/lib/libpng.so" ] ; then
-    msg "INFO: Fix for libs in Ubuntu Natty, please wait..."
+    msg "INFO: Fix #1 for libs in Ubuntu $_REL_VERSION, please wait..."
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       ln -s /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
@@ -2015,6 +2023,22 @@ if [ $_REL_VERSION = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
       ln -s /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
       ln -s /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
       ln -s /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+    fi
+  fi
+fi
+
+
+###--------------------###
+if [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ ! -L "/usr/lib/libssl.so.1.0.0" ] ; then
+    msg "INFO: Fix #2 for libs in Ubuntu $_REL_VERSION, please wait..."
+    _X86_64_TEST=`uname -m`
+    if [ "$_X86_64_TEST" = "x86_64" ] ; then
+      ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
+      ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+    else
+      ln -s /usr/lib/i386-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
+      ln -s /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
     fi
   fi
 fi
@@ -2103,7 +2127,11 @@ if [ ! -e "/usr/bin/redis-server" ] ; then
   fi
 fi
 if [ ! -e "/var/log/redis-2.0.5.log" ] ; then
-  install_redis_src
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    true
+  else
+    install_redis_src
+  fi
 fi
 
 
@@ -2308,10 +2336,10 @@ if [ $_STATUS = "UPGRADE" ] ; then
       mrun "sleep 3"
     fi
   else
-    if [ ! -e "/var/log/5.5.15-Percona.log" ] ; then
+    if [ ! -e "/var/log/5.5.16-Percona.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      touch /var/log/5.5.15-Percona.log
-      msg "INFO: PHP rebuild required to include Percona 5.5.15 libs"
+      touch /var/log/5.5.16-Percona.log
+      msg "INFO: PHP rebuild required to include Percona 5.5.16 libs"
       mrun "sleep 3"
     fi
   fi
@@ -2352,6 +2380,10 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   mrun "sleep 3"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
+    patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+  fi
   msg "INFO: Installing PHP-FPM part 2/3"
   mrun "sleep 3"
   st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt $_PHP_EXTRA" 2> /dev/null
@@ -2596,19 +2628,20 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
   fi
-  #echo _BOA_REPO_NAME is $_BOA_REPO_NAME
-  #echo _BOA_REPO_GIT_URL is $_BOA_REPO_GIT_URL
-  #echo _BOA_REPO_GIT_URL_LOCAL is $_BOA_REPO_GIT_URL_LOCAL
-  git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
-  git clone git://github.com/FRiCKLE/ngx_cache_purge.git &> /dev/null
-  cd /var/opt
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    true
+  else
+    git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
+  fi
+  if [ "$_TEST_MODE" = "ON" ] ; then
+    git clone git://github.com/FRiCKLE/ngx_cache_purge.git &> /dev/null
+    perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c
+  fi
   wget -q -U iCab http://nginx.org/download/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
   sed -i "s/nginx/Barracuda/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
-  perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c
-  cd /var/opt/nginx-$_NGINX_VERSION
   if [ "$_TEST_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
-     _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
+    _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
   elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_TEST_MODE" = "OFF" ] ; then
     _NGINX_EXTRA="$_NGINX_EXTRA_CONF"
   elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_TEST_MODE" = "ON" ] ; then
@@ -2616,7 +2649,11 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   else
     _NGINX_EXTRA=""
   fi
-  st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module --without-http_scgi_module  --without-http_uwsgi_module --with-debug --with-ipv6 --add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA" 2> /dev/null
+  if [ -e "/var/opt/nginx-upload-progress-module" ] ; then
+    _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
+  fi
+  cd /var/opt/nginx-$_NGINX_VERSION
+  st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module --without-http_scgi_module  --without-http_uwsgi_module --with-debug --with-ipv6 $_NGINX_EXTRA" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   killall -9 nginx &> /dev/null

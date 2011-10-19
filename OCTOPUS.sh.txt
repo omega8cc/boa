@@ -652,8 +652,16 @@ do
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
 done
-sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
-sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+_REL_VERSION=`lsb_release -sc`
+if [ "$_REL_VERSION" = "oneiric" ] ; then
+  _OCT_NGX=nginx_octopus_noup_include.conf
+  _OCT_NGX=nginx_advanced_noup_include.conf
+else
+  _OCT_NGX=nginx_octopus_include.conf
+  _ADV_NGX=nginx_advanced_include.conf
+fi
+sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
+sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
 if [ -e "/usr/bin/sipcalc" ] ; then
@@ -681,8 +689,8 @@ fi
 if [ -z "$_LOCAL_THISHTIP" ] ; then
   _LOCAL_THISHTIP=all
 fi
-sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
-sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
+sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
