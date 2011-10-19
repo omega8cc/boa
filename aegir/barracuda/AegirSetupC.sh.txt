@@ -279,7 +279,7 @@ download_textile () {
 # download_o_contrib_seven
 download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0-alpha2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/agrcache-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
@@ -289,13 +289,17 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha7.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha10.tar.gz
   if [ "$_TEST_MODE" = "ON" ] ; then
+    wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-7.x-1.0.tar.gz
   else
     rm -f -r nginx_accel_redirect*
@@ -319,13 +323,14 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
@@ -334,7 +339,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   if [ "$_TEST_MODE" = "ON" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.2.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-6.x-1.5.tar.gz
   else
     rm -f -r expire*
