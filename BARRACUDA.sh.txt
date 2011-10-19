@@ -1358,7 +1358,9 @@ mrun "sleep 3"
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ $_THIS_OS = "Ubuntu" ] ; then
-  if [ $_THIS_RV = "natty" ] ; then
+  if [ $_THIS_RV = "oneiric" ] ; then
+    _REL_VERSION="oneiric"
+  elif [ $_THIS_RV = "natty" ] ; then
     _REL_VERSION="natty"
   elif [ $_THIS_RV = "maverick" ] ; then
     _REL_VERSION="maverick"
@@ -1831,12 +1833,12 @@ msg "INFO: Install/upgrade required libraries and tools"
 msg "NOTE: This step can take a few minutes (depending on your server speed), please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev"
-elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ]; then
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev"
 else
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev"
 fi
-if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   _INSTALL="aptitude -y install"
 fi
 install_with_apt_deps () {
@@ -1849,7 +1851,7 @@ install_percona_sql () {
   cd /var/opt
   gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A &> /dev/null
   gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
-  if [ "$_REL_VERSION" = "natty" ] ; then
+  if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     _THIS_REL_VERSION=maverick
   else
     _THIS_REL_VERSION="$_REL_VERSION"
@@ -1874,9 +1876,14 @@ install_mariadb_sql () {
   elif [ $_THIS_OS = "Ubuntu" ] ; then
     _THIS_OS_NAME=ubuntu
   fi
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    _THIS_REL_VERSION=natty
+  else
+    _THIS_REL_VERSION="$_REL_VERSION"
+  fi
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "apt-get autoremove -y"          &> /dev/null
   st_runner "apt-get remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y"  &> /dev/null
@@ -1885,7 +1892,7 @@ install_mariadb_sql () {
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_apt_sql () {
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     _PERCONA_READY=YES
   else
     _PERCONA_READY=NO
@@ -1996,7 +2003,7 @@ st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 
 
 ###--------------------###
-if [ $_REL_VERSION = "natty" ] ; then
+if [ $_REL_VERSION = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   if [ ! -L "/usr/lib/libpng.so" ] ; then
     msg "INFO: Fix for libs in Ubuntu Natty, please wait..."
     _X86_64_TEST=`uname -m`
@@ -2250,21 +2257,21 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/memcached-1.6.0_beta1.log" ] ; then
+if [ ! -e "/var/log/memcached-1.4.9.log" ] ; then
   msg "INFO: Installing Memcached server, please wait..."
   mrun "sleep 3"
   cd /var/opt
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
   rm -f /usr/local/bin/memcached
-  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.6.0_beta1.tar.gz
-  tar -xzf memcached-1.6.0_beta1.tar.gz
-  cd /var/opt/memcached-1.6.0_beta1
+  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.4.9.tar.gz
+  tar -xzf memcached-1.4.9.tar.gz
+  cd /var/opt/memcached-1.4.9
   st_runner "sh ./configure" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   ln -s /usr/local/bin/memcached /usr/bin/memcached
-  echo "memcached-1.6.0_beta1" > /var/log/memcached-1.6.0_beta1.log
+  echo "memcached-1.4.9" > /var/log/memcached-1.4.9.log
 fi
 
 
@@ -2316,6 +2323,11 @@ if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
     mrun "sleep 3"
   fi
 fi
+if [ $_REL_VERSION = "oneiric" ] ; then
+  _PHP_EXTRA=""
+else
+  _PHP_EXTRA="--with-ldap --with-gmp"
+fi
 
 
 if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
@@ -2342,7 +2354,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "sh ./buildconf --force" 2> /dev/null
   msg "INFO: Installing PHP-FPM part 2/3"
   mrun "sleep 3"
-  st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt --with-ldap --with-gmp" 2> /dev/null
+  st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --with-kerberos --with-xsl --with-mcrypt $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM part 3/3"
   mrun "sleep 3"
   st_runner "make --quiet" 2> /dev/null
