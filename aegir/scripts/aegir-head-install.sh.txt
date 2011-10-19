@@ -83,7 +83,12 @@ cat <<EOF
 EOF
 
 AEGIR_DB_USER=aegir_root
-AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5`
+_REL_VERSION=`lsb_release -sc`
+if [ "$_REL_VERSION" = "oneiric" ] ; then
+  AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5 | awk '{ print $2}'`
+else
+  AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5`
+fi
 
 msg "Aegir will now generate a mysql super user password for you: "
 cat <<EOF

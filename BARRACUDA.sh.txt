@@ -2401,17 +2401,20 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 ###--------------------###
   msg "INFO: Installing libmemcached with memcached for PHP-FPM, please wait..."
   mrun "sleep 3"
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    st_runner "$_INSTALL libcloog-ppl0" 2> /dev/null
+  fi
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.49.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
   mrun "sleep 3"
   ldconfig &> /dev/null
-  tar -xzf libmemcached-0.49.tar.gz
-  if [ -e "/var/opt/libmemcached-0.49" ] ; then
-    cd /var/opt/libmemcached-0.49
+  tar -xzf libmemcached-0.53.tar.gz
+  if [ -e "/var/opt/libmemcached-0.53" ] ; then
+    cd /var/opt/libmemcached-0.53
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "libmemcached-0.49" > /var/log/fixed-libmemcached-0.49.log
+    echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
     #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
@@ -2525,19 +2528,19 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/fixed-libmemcached-0.49.log" ] ; then
+if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.49.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
   mrun "sleep 3"
-  tar -xzf libmemcached-0.49.tar.gz
-  if [ -e "/var/opt/libmemcached-0.49" ] ; then
-    cd /var/opt/libmemcached-0.49
+  tar -xzf libmemcached-0.53.tar.gz
+  if [ -e "/var/opt/libmemcached-0.53" ] ; then
+    cd /var/opt/libmemcached-0.53
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "libmemcached-0.49" > /var/log/fixed-libmemcached-0.49.log
+    echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
     #msg "INFO: OK libmemcached installed"
     mrun "sleep 3"
     cd /var/opt
@@ -2954,7 +2957,7 @@ if [ $_STATUS = "INIT" ] ; then
   perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default
-  if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+  if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
