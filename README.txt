@@ -142,7 +142,6 @@ added to all 6.x platforms:
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
  httprl-6.x-1.2
- image-6.x-1.x-dev
  imageinfo_cache-6.x-2.0
  login_security-6.x-1.x-dev
  private_upload-6.x-1.x-dev
