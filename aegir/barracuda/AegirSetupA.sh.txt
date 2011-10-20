@@ -523,26 +523,28 @@ fi
   fi
   cd $_ROOT/config/includes
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
-  mv -f $_ADV_NGX $_ADV_NGX-$_NOW
+  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
   if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
-    cp -af $_OCT_NGX $_ADV_NGX &> /dev/null
+    cp -af $_OCT_NGX nginx_advanced_include.conf &> /dev/null
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
     cp -af $_ADV_NGX nginx_simple_include.conf &> /dev/null
+    cp -af $_ADV_NGX nginx_advanced_include.conf &> /dev/null
   fi
   chown $_USER:$_USRG * &> /dev/null
   cd $_ROOT/.drush/provision/http/nginx
   rm -f nginx_simple_include.conf
-  rm -f $_ADV_NGX
+  rm -f nginx_advanced_include.conf
   if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
-    cp -af $_OCT_NGX $_ADV_NGX &> /dev/null
+    cp -af $_OCT_NGX nginx_advanced_include.conf &> /dev/null
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
     cp -af $_ADV_NGX nginx_simple_include.conf &> /dev/null
+    cp -af $_ADV_NGX nginx_advanced_include.conf &> /dev/null
   fi
   chown $_USER:$_USRG * &> /dev/null
   echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
