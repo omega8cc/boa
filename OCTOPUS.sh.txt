@@ -584,6 +584,15 @@ octopus_cnf () {
 ###---### action
 #
 action () {
+_REL_VERSION=`lsb_release -sc`
+if [ "$_REL_VERSION" = "oneiric" ] ; then
+  _OCT_NGX=nginx_octopus_noup_include.conf
+  _ADV_NGX=nginx_advanced_noup_include.conf
+  _THIS_DB_HOST=localhost
+else
+  _OCT_NGX=nginx_octopus_include.conf
+  _ADV_NGX=nginx_advanced_include.conf
+fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda -type f`
 do
   sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
@@ -652,14 +661,6 @@ do
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
 done
-_REL_VERSION=`lsb_release -sc`
-if [ "$_REL_VERSION" = "oneiric" ] ; then
-  _OCT_NGX=nginx_octopus_noup_include.conf
-  _ADV_NGX=nginx_advanced_noup_include.conf
-else
-  _OCT_NGX=nginx_octopus_include.conf
-  _ADV_NGX=nginx_advanced_include.conf
-fi
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
