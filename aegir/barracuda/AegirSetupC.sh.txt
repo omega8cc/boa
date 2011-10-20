@@ -659,7 +659,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
   rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/minimal
   rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/testing
-  rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/standard
   create_dirs
   themes_for_d7
 fi
