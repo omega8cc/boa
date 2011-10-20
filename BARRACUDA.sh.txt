@@ -860,7 +860,7 @@ validate_local_ip () {
 force_advanced_nginx_config () {
   if [ "$_REL_VERSION" = "oneiric" ] ; then
     _OCT_NGX=nginx_octopus_noup_include.conf
-    _OCT_NGX=nginx_advanced_noup_include.conf
+    _ADV_NGX=nginx_advanced_noup_include.conf
   else
     _OCT_NGX=nginx_octopus_include.conf
     _ADV_NGX=nginx_advanced_include.conf
@@ -1738,7 +1738,7 @@ if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
     if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
-      msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+      msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
       mrun "sleep 3"
       cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
@@ -1770,7 +1770,7 @@ if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
     if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-      msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+      msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
       mrun "sleep 3"
       cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
@@ -1838,7 +1838,7 @@ fi
 
 ###--------------------###
 msg "INFO: Install/upgrade required libraries and tools"
-msg "NOTE: This step can take a few minutes (depending on your server speed), please wait..."
+msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev"
 elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ]; then
@@ -2363,7 +2363,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 ###--------------------###
   msg "INFO: Installing PHP-FPM"
-  msg "NOTE: This step can take longer than 8 minutes (depending on your server speed), please wait..."
+  msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
   mrun "sleep 3"
   cd /var/opt
   rm -f -r /var/opt/php*

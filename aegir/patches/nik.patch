@@ -47,7 +47,7 @@
 +    echo "deb $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
 +    echo "deb-src $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
    elif [ "$_THIS_OS" = "Debian" ] ; then
-     msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, it can take a while, please wait..."
+     msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
      mrun "sleep 3"
      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
