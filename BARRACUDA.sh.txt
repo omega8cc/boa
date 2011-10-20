@@ -3163,8 +3163,17 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
       adduser --system --group --home /opt/solr tomcat &> /dev/null
       touch /opt/solr/fixed.log
+      cd /var/opt
+      wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.0.tar.gz
+      tar -xzf apachesolr_attachments-7.x-1.0.tar.gz
+      cd /opt/solr/conf
+      patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch
+      mkdir -p /opt/tika
+      cd /opt/tika
+      wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
       chown -R tomcat:tomcat /opt/solr
       chown -R tomcat:tomcat /opt/tomcat6
+      chown -R tomcat:tomcat /opt/tika
       st_runner "update-rc.d tomcat defaults" &> /dev/null
       st_runner "invoke-rc.d tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
@@ -3203,6 +3212,21 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
     mrun "sleep 3"
     st_runner "invoke-rc.d tomcat start" &> /dev/null
+  fi
+  if [ ! -e "/opt/tika" ] ; then
+    cd /var/opt
+    wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.0.tar.gz
+    tar -xzf apachesolr_attachments-7.x-1.0.tar.gz
+    cd /opt/solr/conf
+    patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch
+    mkdir -p /opt/tika
+    cd /opt/tika
+    wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
+    chown -R tomcat:tomcat /opt/tika
+    chown -R tomcat:tomcat /opt/solr/conf
+    st_runner "invoke-rc.d tomcat stop" &> /dev/null
+    mrun "sleep 3"
+    st_runner "invoke-rc.d tomcat start" &> /dev/null       
   fi
 fi
 
