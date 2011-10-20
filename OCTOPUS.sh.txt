@@ -586,6 +586,9 @@ octopus_cnf () {
 action () {
 _REL_VERSION=`lsb_release -sc`
 if [ "$_REL_VERSION" = "oneiric" ] ; then
+  _THIS_DB_HOST=localhost
+fi
+if [ "$_REL_VERSION" = "precise" ] ; then
   _OCT_NGX=nginx_octopus_noup_include.conf
   _ADV_NGX=nginx_advanced_noup_include.conf
   _THIS_DB_HOST=localhost

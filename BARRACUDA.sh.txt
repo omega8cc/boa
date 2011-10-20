@@ -858,7 +858,7 @@ validate_local_ip () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "precise" ] ; then
     _OCT_NGX=nginx_octopus_noup_include.conf
     _ADV_NGX=nginx_advanced_noup_include.conf
   else
@@ -2637,7 +2637,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
   fi
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "precise" ] ; then
     true
   else
     git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
