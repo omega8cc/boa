@@ -182,9 +182,9 @@ fi
 fix_modules()
 {
 if [ "$_MODULES" = "YES" ]; then
-      searchStringA="-7."
+      searchStringA="off-7."
       searchStringB="-5."
-      searchStringC="openpublic"
+      searchStringC="openpublic-off"
       case $Dir in
         *"$searchStringA"*) ;;
         *"$searchStringB"*) ;;
