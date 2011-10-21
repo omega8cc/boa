@@ -1838,7 +1838,11 @@ else
   if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
     rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
   fi
-  apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
+  _KEYS_SERVER_TEST=FALSE
+  until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
+    _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
+    sleep 5
+  done
 fi
 
 
@@ -1863,7 +1867,11 @@ install_with_apt_deps () {
 }
 install_percona_sql () {
   cd /var/opt
-  gpg --keyserver  hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A &> /dev/null
+  _KEYS_SERVER_TEST=FALSE
+  until [[ $_KEYS_SERVER_TEST =~ Percona ]] ; do
+    _KEYS_SERVER_TEST=`gpg --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A 2>&1`
+    sleep 5
+  done
   gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
   if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     _THIS_REL_VERSION=maverick
@@ -1884,7 +1892,11 @@ install_percona_sql () {
 }
 install_mariadb_sql () {
   cd /var/opt
-  apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
+  _KEYS_SERVER_TEST=FALSE
+  until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
+    _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
+    sleep 5
+  done
   if [ $_THIS_OS = "Debian" ] ; then
     _THIS_OS_NAME=debian
   elif [ $_THIS_OS = "Ubuntu" ] ; then
@@ -1962,7 +1974,11 @@ else
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/ourdelta.list
-      apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB &> /dev/null
+      _KEYS_SERVER_TEST=FALSE
+      until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
+        _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
+        sleep 5
+      done
       st_runner "apt-get update -y" 2> /dev/null
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     fi
