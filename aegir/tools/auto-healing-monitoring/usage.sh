@@ -224,6 +224,7 @@ if [ "$_PERMISSIONS" = "YES" ]; then
       chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+      chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
 fi
 }
 

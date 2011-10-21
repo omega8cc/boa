@@ -223,7 +223,7 @@ if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt
   $use_cache = 'NO';
 }
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr_search/", $_SERVER['REQUEST_URI'])) {
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUEST_URI'])) {
   $use_cache = 'NO';
 }
 
