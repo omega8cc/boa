@@ -11,6 +11,7 @@
   CiviCRM 4.0.7 ---------------- http://civicrm.org
   Commerce Kickstart 1.0-rc4 --- http://drupalcommerce.org
   OpenPublic 1.0-beta3 --------- http://openpublicapp.com
+  Ubercart 6.x-2.7 ------------- http://ubercart.org
 
 # New features:
 

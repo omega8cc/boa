@@ -117,7 +117,7 @@ Octopus can install the platforms listed below:
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
- Ubercart 6.x-2.6 (int) ------- http://ubercart.org
+ Ubercart 6.x-2.7 (int) ------- http://ubercart.org
  Videola 1.0-alpha1 ----------- http://videola.tv
 
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
