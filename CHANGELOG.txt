@@ -48,7 +48,7 @@
 
 # Fixes:
 
-  * The wkhtmltopdf binary is always executable if exists.
+  * The wkhtmltopdf binary should be always executable if exists.
   * Issue #1238200 - Use custom _SSH_PORT only in TCP_IN.
   * Make sure the keys for MariaDB or Percona are added to avoid broken install.
   * Issue #1307664 - Test repo.percona.com and ftp.osuosl.org availability.
@@ -56,6 +56,7 @@
   * Issue #1281896 - Add some missing video types to mime.types in the Nginx config.
   * Do not use path_alias_cache in the Hostmaster site to avoid broken URL aliases.
   * Issue #1270724 and #1263124 - really use /tmp directory during 'drush dl module'.
+  * Do not break admin/reports/status/rebuild URL in D7.
 
 
 ### Stable Edition 1.0-boa-T-8.10
