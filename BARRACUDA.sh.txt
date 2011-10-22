@@ -2353,14 +2353,14 @@ if [ $_STATUS = "UPGRADE" ] ; then
   if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
     if [ ! -e "/var/log/5.2.9-MariaDB.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      touch /var/log/5.2.9-MariaDB.log
+      echo "5.2.9-MariaDB" > /var/log/5.2.9-MariaDB.log
       msg "INFO: PHP rebuild required to include MariaDB 5.2.9 libs"
       mrun "sleep 3"
     fi
   else
     if [ ! -e "/var/log/5.5.16-Percona.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      touch /var/log/5.5.16-Percona.log
+      echo "5.5.16-Percona" > /var/log/5.5.16-Percona.log
       msg "INFO: PHP rebuild required to include Percona 5.5.16 libs"
       mrun "sleep 3"
     fi
@@ -2414,6 +2414,11 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
+  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
+    echo "5.2.9-MariaDB" > /var/log/5.2.9-MariaDB.log
+  else
+    echo "5.5.16-Percona" > /var/log/5.5.16-Percona.log
+  fi
   cd /usr/local/sbin
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
   chmod 755 php-fpm
