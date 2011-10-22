@@ -9,7 +9,7 @@
   Acquia Commons 2.2 ----------- http://acquia.com/drupalcommons
   CiviCRM 3.4.6 ---------------- http://civicrm.org
   CiviCRM 4.0.6 ---------------- http://civicrm.org
-  Commerce Kickstart 1.0-rc3 --- http://drupalcommerce.org
+  Commerce Kickstart 1.0-rc4 --- http://drupalcommerce.org
   OpenPublic 1.0-beta3 --------- http://openpublicapp.com
 
 # New features:
