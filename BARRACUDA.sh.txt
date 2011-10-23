@@ -2221,13 +2221,25 @@ if [ -d "/var/xdrago" ] ; then
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
+  if [ -e "/var/xdrago/cron/custom.txt" ] ; then
+    cat /var/xdrago/cron/custom.txt >> /var/spool/cron/crontabs/root
+  fi
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
+  if [ -e "/var/xdrago/custom.minute.sh.txt" ] ; then
+    while read line ; do
+      _CUSTOM_MINUTE="$_CUSTOM_MINUTE\n$line"
+    done < /var/xdrago/custom.minute.sh.txt
+    sed -i "s/###CUSTOM###/$_CUSTOM_MINUTE/g" /var/xdrago/minute.sh
+    sed -i "s/###CUSTOM###/\&/g" /var/xdrago/minute.sh
+  fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 222/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/600/300/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
     sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
+    echo "echo rotate > /var/log/nginx/access.log" >> /var/xdrago/clear.sh
+    sed -i "s/INTERVAL 1 HOUR/INTERVAL 30 MINUTE/g" /var/xdrago/purge_binlogs.sh
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz

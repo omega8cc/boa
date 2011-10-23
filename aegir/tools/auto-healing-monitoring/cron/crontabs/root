@@ -5,7 +5,7 @@
 * * * * * bash /var/xdrago/minute.sh >/dev/null 2>&1
 * * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1
 15,45 * * * * bash /var/xdrago/clear.sh >/dev/null 2>&1
-45 * * * * bash /var/xdrago/purge_binlogs.sh >/dev/null 2>&1
+15,45 * * * * bash /var/xdrago/purge_binlogs.sh >/dev/null 2>&1
 15 3 * * * bash /var/xdrago/graceful.sh >/dev/null 2>&1
 15 4 * * * bash /var/xdrago/mysql_backup.sh >/dev/null 2>&1
 45 6 * * * bash /var/xdrago/usage.sh >/dev/null 2>&1
