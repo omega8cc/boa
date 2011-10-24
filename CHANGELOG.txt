@@ -1,6 +1,6 @@
 
 ### Stable Edition BOA-1.4S
-### Date: in HEAD, not yet released.
+### Date: Mon, 24 October 2011 14:00:00 +0200
 ### Installs Aegir stable 1.4S
 
 # Updated Octopus platforms:
