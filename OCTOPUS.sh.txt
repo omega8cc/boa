@@ -192,7 +192,7 @@ _MY_OWNIP=""
 ### _AEGIR_VERSION=HEAD
 ### _AEGIR_VERSION=BOA-1.4S
 ###
-_AEGIR_VERSION=BOA-1.4S
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -548,7 +548,7 @@ octopus_cnf () {
     echo "_CLIENT_CORES=\"$_CLIENT_CORES\"" >> /root/.octopus.cnf
     echo "###" >> /root/.octopus.cnf
     echo "### Configuration created on $_NOW with" >> /root/.octopus.cnf
-    echo "### octopus version $_INSTALLER_VERSION" >> /root/.octopus.cnf
+    echo "### Octopus version $_INSTALLER_VERSION" >> /root/.octopus.cnf
     echo "###" >> /root/.octopus.cnf
   else
     msg "INFO: Reading your /root/.octopus.cnf config file."
