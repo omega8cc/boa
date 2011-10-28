@@ -1100,6 +1100,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   elif [ -d "$_CORE/drupal-7.8" ] ; then
     mv drupal-7.8 commerce-$_COMMERCE-$_SMALLCORE7
   fi
+  elif [ -d "$_CORE/drupal-7.9" ] ; then
+    mv drupal-7.9 commerce-$_COMMERCE-$_SMALLCORE7
+  fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz

@@ -46,7 +46,7 @@ starting with 1+ Aegir Standard or SSD Core:
  Commerce Kickstart 1.0-rc4 --- http://drupalcommerce.org
  Conference 1.0-beta2 6.22 ---- http://usecod.com
  Drupal 6.22 ------------------ http://pressflow.org
- Drupal 7.8 ------------------- http://drupal.org/drupal-7.0
+ Drupal 7.9 ------------------- http://drupal.org/drupal-7.0
  Feature Server 6.22 ---------- http://bit.ly/fserver
  Managing News 1.2 6.22 ------- http://managingnews.com
  Open Atrium 1.0 6.22 --------- http://openatrium.com
@@ -59,7 +59,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
  Acquia Commons 2.2 ----------- http://acquia.com/drupalcommons
  NodeStream 1.0 6.22 ---------- http://nodestream.org
- OpenPublic 1.0-beta3 7.8 ----- http://openpublicapp.com
+ OpenPublic 1.0-beta3 7.9 ----- http://openpublicapp.com
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  Videola 1.0-alpha1 ----------- http://videola.tv
 
