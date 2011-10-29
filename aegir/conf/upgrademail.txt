@@ -4,6 +4,14 @@ Your Aegir Hosting System has been upgraded to version BOA-1.4S
 
   https://aegir.dragon.ny.host8.biz
 
+  Your smokin' fast Drupal hosting comes to California - San Jose
+  is our newest (5th) location and is available both for Standard and
+  Root Aegir Cores, which strengthens our presence in the US top tech
+  innovation hubs: Silicon Valley and New York, and provides our customers
+  with an alternative US-based location for their Aegir instances.
+  
+  http://omega8.cc/welcome-to-california-145
+
   Did you notice that you can host CiviCRM and all other
   platforms available normally with 4+ Aegir Standard Cores
   with just 2+ Aegir SSD Cores?
