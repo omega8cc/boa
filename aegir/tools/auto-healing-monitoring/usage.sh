@@ -66,7 +66,7 @@ if [ -d "$Plr/cache/normal" ] ; then
   chown -R $_THIS_HM_USER:www-data $Plr/cache
   chmod -R 2777 $Plr/cache
 fi
-if [ ! -d "$Plr/cache/normal" ] ; then
+if [ ! -d "$Plr/cache/mobile-smart" ] ; then
   mkdir -p $Plr/cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
   chown -R $_THIS_HM_USER:www-data $Plr/cache
   chmod -R 2777 $Plr/cache
