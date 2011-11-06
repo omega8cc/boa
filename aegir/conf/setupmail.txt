@@ -57,7 +57,7 @@ starting with 1+ Aegir Standard or SSD Core:
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
- Acquia Commons 2.2 ----------- http://acquia.com/drupalcommons
+ Acquia Commons 2.3 ----------- http://acquia.com/drupalcommons
  NodeStream 1.0 6.22 ---------- http://nodestream.org
  OpenPublic 1.0-beta3 7.9 ----- http://openpublicapp.com
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu

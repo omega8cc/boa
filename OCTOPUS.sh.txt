@@ -446,7 +446,7 @@ _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 
 ## Distributions
-_COMMONS=6.x-2.2
+_COMMONS=6.x-2.3
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.9
 _MANAGINGNEWS=1.2
