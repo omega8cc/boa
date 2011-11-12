@@ -18,7 +18,7 @@ projects[features] = 1.0
 projects[filefield] = 3.9
 projects[install_profile_api] = 2.1
 projects[strongarm] = 2.0
-projects[views] = 2.12
+projects[views] = 2.14
 projects[nodereference_url] = 1.11
 
 projects[fserver][download][type] = "git"
