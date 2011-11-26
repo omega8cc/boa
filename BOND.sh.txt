@@ -160,7 +160,7 @@ _FORCE_GIT_MIRROR=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-1.4S
+_INSTALLER_VERSION=1.0-boa
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 
