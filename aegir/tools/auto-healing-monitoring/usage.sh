@@ -57,19 +57,11 @@ fi
 
 fix_boost_cache()
 {
-if [ -d "$Plr/cache/normal" ] ; then
-  rm -f -r $Plr/cache/normal/*
-  rm -f -r $Plr/cache/perm/*
-  rm -f -r $Plr/cache/mobile-tablet/*
-  rm -f -r $Plr/cache/mobile-smart/*
-  rm -f -r $Plr/cache/mobile-other/*
-  chown -R $_THIS_HM_USER:www-data $Plr/cache
-  chmod -R 2777 $Plr/cache
-fi
-if [ ! -d "$Plr/cache/mobile-smart" ] ; then
+if [ -d "$Plr/cache" ] ; then
+  rm -f -r $Plr/cache/*
   mkdir -p $Plr/cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
   chown -R $_THIS_HM_USER:www-data $Plr/cache
-  chmod -R 2777 $Plr/cache
+  chmod -R 777 $Plr/cache
 fi
 if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ]; then
   rm -f $Plr/robots.txt
