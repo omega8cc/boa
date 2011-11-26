@@ -6,8 +6,8 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: safe guard to remove auto-healing pid files after reboot etc.
-# Description:       safe guard to remove auto-healing pid files after reboot etc.
+# Short-Description: safeguard to remove auto-healing pid files after reboot etc.
+# Description:       safeguard to remove auto-healing pid files after reboot etc.
 ### END INIT INFO
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
