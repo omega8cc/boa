@@ -635,6 +635,7 @@ chmod 0755 $_AEGIR_ROOT &> /dev/null
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
 chmod 0750 $_ROOT/backups
+chmod 0750 $_ROOT/clients
 chmod 0711 $_ROOT/.drush
 
 
@@ -756,8 +757,9 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   chsh -s $_PATH_LSHELL $_USERFTP &> /dev/null
   echo >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
-  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static', '/data/disk/$_USER/backups']" >> /etc/lshell.conf
+  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static', '/data/disk/$_USER/backups', '/data/disk/$_USER/clients']" >> /etc/lshell.conf
   touch $_ROOT/log/backups.access.open
+  touch $_ROOT/log/clients.access.open
 fi
 
 
@@ -792,6 +794,29 @@ if [ ! -L "$_USER_DM/drush_make" ] ; then
   chmod 700 $_USER_DM
   ln -s /var/aegir/.drush/drush_make $_USER_DM/drush_make
 fi
+
+
+###---### Add access to the clients directory for older installs
+#
+if [ ! -e "$_ROOT/log/clients.access.open" ] ; then
+  sed -i "s/\/$_USER\/backups\'\]/\/$_USER\/backups\', \'\/data\/disk\/$_USER\/clients\'\]/g" /etc/lshell.conf
+  chmod 0750 $_ROOT/clients
+fi
+
+
+###---### Add symlink to the clients directory
+#
+_USERFTP="$_USER.ftp"
+_USER_HD="/home/$_USERFTP"
+if [ ! -L "$_USER_HD/clients" ] ; then
+  msg "$_STATUS A: Add symlink to the clients directory"
+  mrun "sleep 3"
+  ln -s /data/disk/$_USER/clients $_USER_HD/clients
+fi
+rm -f -r /data/disk/$_USER/clients/admin &> /dev/null
+rm -f -r /data/disk/$_USER/clients/omega8ccgmailcom &> /dev/null
+rm -f -r /data/disk/$_USER/clients/*/backups &> /dev/null
+symlinks -dr /data/disk/$_USER/clients &> /dev/null
 
 
 ###---### Read or create pass.txt

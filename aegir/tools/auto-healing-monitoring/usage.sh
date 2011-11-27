@@ -433,6 +433,10 @@ do
           su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_cron_use_backend 0 &> /dev/null"
         fi
       fi
+      rm -f -r $User/clients/admin &> /dev/null
+      rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
+      rm -f -r $User/clients/*/backups &> /dev/null
+      symlinks -dr $User/clients &> /dev/null
       echo Done for $User
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
