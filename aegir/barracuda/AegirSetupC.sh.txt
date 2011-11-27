@@ -184,12 +184,9 @@ mrun () {
 #
 # create standard directories
 create_dirs () {
-  #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   mkdir -p ./sites/default/files
   mkdir -p ./cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
-  chmod 2777 -R ./cache &> /dev/null
-  #mkdir -p ./backup/modules
-  #chmod 2777 -R ./backup &> /dev/null
+  chmod -R 777 ./cache &> /dev/null
   if [ -e "./sites/default/default.settings.php" ] ; then
     cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
   fi
@@ -261,7 +258,7 @@ cd /data/src/$_THIS_CORE
 themes_for_d7 () {
 cd $_CORE_DISTRO/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta6.tar.gz
-wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta3.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
