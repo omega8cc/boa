@@ -196,6 +196,11 @@ if (isset($_SERVER['HTTP_HOST'])) {
       setcookie('OctopusCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
       header('X-Accel-Expires: 0');
     }
+    elseif (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
+      $lifetime = '240';
+      setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+      header('X-Accel-Expires: 0');
+    }
   }
 }
 
