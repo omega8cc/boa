@@ -182,7 +182,14 @@ if (isset($_SERVER['HTTP_HOST'])) {
         setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
       }
     }
-    elseif (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
+
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
+      $lifetime = '240';
+      setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+      header('X-Accel-Expires: 0');
+    }
+
+    if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
       $lifetime = '86400';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
       header('X-Accel-Expires: 300');
@@ -196,10 +203,10 @@ if (isset($_SERVER['HTTP_HOST'])) {
       setcookie('OctopusCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
       header('X-Accel-Expires: 0');
     }
-    elseif (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
-      $lifetime = '240';
-      setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
-      header('X-Accel-Expires: 0');
+    elseif (!isset($_COOKIE[OctopusCacheID]) && isset($_COOKIE[OctopusNoCacheID])) {
+      $lifetime = '86400';
+      setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
+      header('X-Accel-Expires: 300');
     }
   }
 }
