@@ -440,7 +440,7 @@ _INSTALLER_VERSION=BOA-1.4S
 _WEBG=www-data
 _USRG=users
 _SMALLCORE6=6.22
-_SMALLCORE7=7.9
+_SMALLCORE7=7.10
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
@@ -448,7 +448,7 @@ _NOW=`date +%y%m%d-%H%M`
 ## Distributions
 _COMMONS=6.x-2.3
 _DRUPAL5=5.23.50
-_DRUPAL7=drupal-7.9
+_DRUPAL7=drupal-7.10
 _MANAGINGNEWS=1.2
 _OPENATRIUM=1.0
 _NODESTREAM=6.x-1.x
