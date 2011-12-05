@@ -149,7 +149,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
 
-  if (preg_match("/\/(?:files\/advagg_|files\/styles|files\/imagecache)/", $_SERVER['REQUEST_URI'])) {
+  if (preg_match("/\/(?:files\/advagg_|files\/styles|files\/imagecache|system\/files)/", $_SERVER['REQUEST_URI'])) {
     header('X-Accel-Expires: 0'); // do not cache it on the Nginx level
   }
 
