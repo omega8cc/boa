@@ -114,7 +114,7 @@ Octopus can install the platforms listed below:
  Open Atrium 1.0 -------------- http://openatrium.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  OpenChurch 1.22-a ------------ http://openchurchsite.com
- OpenPublic 1.0-beta3 --------- http://openpublicapp.com
+ OpenPublic 1.0-beta4 --------- http://openpublicapp.com
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Ubercart 6.x-2.7 (int) ------- http://ubercart.org
