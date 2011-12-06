@@ -1367,9 +1367,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/managingnews-$_MANAGINGNEWS/profiles/managingnews/modules/contrib
   rm -f -r views spaces
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-2.16.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/spaces-6.x-3.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/spaces-6.x-3.2.tar.gz
   tar -xzf views-6.x-2.16.tar.gz &> /dev/null
-  tar -xzf spaces-6.x-3.1.tar.gz &> /dev/null
+  tar -xzf spaces-6.x-3.2.tar.gz &> /dev/null
   rm -f *.tar.gz
   cd $_CORE/managingnews-$_MANAGINGNEWS/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
