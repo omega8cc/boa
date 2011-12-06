@@ -1026,6 +1026,13 @@ build_openpublic () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
   tar -xzf openpublic_eu-7.x-1.0.tar.gz &> /dev/null
   rm -f openpublic_eu-7.x-1.0.tar.gz
+  if [ -d "$_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/libraries" ] ; then
+    rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/libraries/colorbox
+    cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/libraries
+    wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
+    unzip colorbox.zip &> /dev/null
+    rm -f colorbox.zip
+  fi
   if [ $_OPENPUBLIC = "beta1-build100" ] ; then
     cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openpublic.patch ./
@@ -1494,6 +1501,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openscholar-$_OPENSCHOLAR/ &> /dev/null
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
+  rm -f -r $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/memcache &> /dev/null
   sed -i "s/'features',/'features', 'cache', 'syslog', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
   rm -f -r ./profiles/default
   create_dirs
