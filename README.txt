@@ -110,10 +110,10 @@ Octopus can install the platforms listed below:
  Drupal 7.10 ------------------ http://drupal.org/drupal-7.0
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2 ------------ http://managingnews.com
- NodeStream 1.0 --------------- http://nodestream.org
+ NodeStream 1.1 --------------- http://nodestream.org
  Open Atrium 1.0 -------------- http://openatrium.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- OpenChurch 1.21 -------------- http://openchurchsite.com
+ OpenChurch 1.22-a ------------ http://openchurchsite.com
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  ProsePoint 0.40 6.22 --------- http://prosepoint.org

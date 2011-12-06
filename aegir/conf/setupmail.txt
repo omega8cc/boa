@@ -51,14 +51,14 @@ starting with 1+ Aegir Standard or SSD Core:
  Managing News 1.2 6.22 ------- http://managingnews.com
  Open Atrium 1.0 6.22 --------- http://openatrium.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- OpenChurch 1.21 -------------- http://openchurchsite.com
+ OpenChurch 1.22-a ------------ http://openchurchsite.com
  ProsePoint 0.40 6.22 --------- http://prosepoint.org
  Ubercart 2.6 6.22 ------------ http://ubercart.org
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
  Acquia Commons 2.3 ----------- http://acquia.com/drupalcommons
- NodeStream 1.0 6.22 ---------- http://nodestream.org
+ NodeStream 1.1 6.22 ---------- http://nodestream.org
  OpenPublic 1.0-beta3 7.10 ---- http://openpublicapp.com
  OpenScholar 2.0-beta11 ------- http://openscholar.harvard.edu
  Videola 1.0-alpha1 ----------- http://videola.tv
