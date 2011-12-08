@@ -46,7 +46,7 @@ if (preg_match("/uberdrupal/", $conf['install_profile']) ||
   unset($conf['file_downloads']); // disable hardcoded public downloads for ubercart
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/dev/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // deny known search bots on dev subdomains
   if (preg_match("/(?:crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
     header("HTTP/1.1 301 Moved Permanently");
@@ -171,7 +171,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
         file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
         file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
         file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt') ||
-        preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+        preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
       header('X-Accel-Expires: 0');
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
         $lifetime = '240';
@@ -258,7 +258,7 @@ if (file_exists('/data/conf/override.global.inc')) {
 // don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
 if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) &&
   isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES" && $custom_cache == "NO" ) {
-  if (isset($_SERVER['HTTP_HOST']) && !preg_match("/dev/", $_SERVER['HTTP_HOST'])) {
+  if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
      if (file_exists($cache_module_path)) {
       $conf['cache_inc'] = $cache_module_path;
@@ -425,7 +425,7 @@ if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/",
       ),
     );
     } // end of if (file_exists('./modules/o_contrib/cache/cache.inc'))
-  } // end of if (!preg_match("/(dev)/", $_SERVER['HTTP_HOST'])
+  } // end of if (!preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])
 } // end of if (!preg_match("/(standard)|(minimal)/", $conf['install_profile']))
 
 /**
