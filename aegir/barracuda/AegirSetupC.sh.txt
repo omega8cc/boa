@@ -63,6 +63,7 @@ _CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
 _OPENCHURCH=EDIT_OPENCHURCH
 _ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
+_OPENDEALS=EDIT_OPENDEALS
 
 
 ###---### main config
@@ -505,6 +506,7 @@ _F_CIVICRM6="CiviCRM $_CIVICRM6 P.$_THIS_CORE"
 _F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_VIDEOLA="Videola $_VIDEOLA P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch $_OPENCHURCH P.$_THIS_CORE"
+_F_OPENDEALS="Open Deals $_OPENDEALS P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -1135,6 +1137,53 @@ msg "STATUS: $_F_COMMERCE installation completed"
 mrun "sleep 2"
 else
   msg "STATUS: $_F_COMMERCE installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+
+
+###---### Open Deals
+#
+if [ "$_CLIENT_CORES" -ge "1" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ODS ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
+true
+msg "STATUS: $_F_OPENDEALS install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://files.aegir.cc/dev/distro/opendeals-$_OPENDEALS.tar.gz
+  tar -xzf opendeals-$_OPENDEALS.tar.gz
+  rm -f opendeals-$_OPENDEALS.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
+  rm -f -r $_DRUPAL7
+  cd $_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
+  rm -f $_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/profiles/minimal
+  rm -f -r $_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/profiles/standard
+  rm -f -r $_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/profiles/testing
+  cd $_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
+  create_dirs
+  themes_for_d7
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
+create_symlinks
+create_d7_symlinks
+rm -f boost_stats.php
+msg "STATUS: $_F_OPENDEALS installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_OPENDEALS installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -1973,6 +2022,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi

@@ -63,6 +63,7 @@ _CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
 _OPENCHURCH=EDIT_OPENCHURCH
 _ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
+_OPENDEALS=EDIT_OPENDEALS
 
 
 ###---### main config
@@ -997,6 +998,11 @@ mrun "sleep 3"
   if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/sites" ] ; then
