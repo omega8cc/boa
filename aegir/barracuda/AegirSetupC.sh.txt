@@ -1158,8 +1158,9 @@ _CORE_DISTRO="$_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   wget -q -U iCab http://files.aegir.cc/dev/distro/opendeals-$_OPENDEALS.tar.gz
-  tar -xzf opendeals-$_OPENDEALS.tar.gz
+  tar -xzf opendeals-$_OPENDEALS.tar.gz &> /dev/null
   rm -f opendeals-$_OPENDEALS.tar.gz
+  mv opendeals-$_OPENDEALS opendeals-$_OPENDEALS-$_SMALLCORE7
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
