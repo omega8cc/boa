@@ -171,7 +171,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 
     if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
         preg_match("/^\/(?:user|admin|cart|checkout|logout)/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users)/", $_SERVER['REQUEST_URI']) ||
+        preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
         file_exists('sites/all/modules/ubercart/README.txt') ||
         file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
         file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
