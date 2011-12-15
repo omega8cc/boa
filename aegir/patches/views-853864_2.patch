@@ -1,0 +1,100 @@
+Index: includes/cache.inc
+===================================================================
+RCS file: /cvs/drupal-contrib/contributions/modules/views/includes/cache.inc,v
+retrieving revision 1.25.2.4
+diff -u -p -r1.25.2.4 cache.inc
+--- includes/cache.inc	12 Mar 2010 01:51:47 -0000	1.25.2.4
++++ includes/cache.inc	4 Jan 2011 12:16:36 -0000
+@@ -100,20 +100,64 @@ function _views_discover_default_views()
+   static $cache = NULL;
+ 
+   if (!isset($cache)) {
++    $lock_name = __FUNCTION__;
+     $index = views_cache_get('views_default_views_index', TRUE);
+ 
++    $rebuild_cache = TRUE;
+     // Retrieve each cached default view
+     if (isset($index->data) && is_array($index->data)) {
++      $rebuild_cache = FALSE;
+       $cache = array();
+       foreach ($index->data as $view_name) {
+-        $data = views_cache_get('views_default:' . $view_name, TRUE);
+-        if (isset($data->data) && is_object($data->data)) {
+-          $cache[$view_name] = $data->data;
++        $cid = 'views_default:' . $view_name;
++        if ($cached = views_cache_get($cid, TRUE)) {
++          $cache[$view_name] = $cached->data;
++        }
++        else {
++          // As soon as there is a cache miss on one item, try to acquire a
++          // lock.
++          if (!$lock_acquired = lock_acquire($lock_name)) {
++            lock_wait($lock_name);
++            // After waiting, try to fetch the default view from cache again.
++            // If available another process may have rebuilt it, so do not
++            // attempt to rebuild the cache.
++            if ($cached = views_cache_get($cid, TRUE)) {
++              $cache[$view_name] = $cached->data;
++            }
++            // If the item is still not in the cache, try to acquire the lock
++            // again and rebuild the cache.
++            else {
++              $lock_acquired = lock_acquire($lock_name);
++              $rebuild_cache = TRUE;
++              break;
++            }
++          }
++          // If the lock was acquired, always rebuild the cache.
++          else {
++            $rebuild_cache = TRUE;
++            break;
++          }
+         }
+       }
+     }
+-    // If missing index, rebuild the cache
+     else {
++      if (!$lock_acquired = lock_acquire($lock_name)) {
++        lock_wait($lock_name);
++        if ($cached = views_cache_get('views_default_views_index', TRUE)) {
++          // Another process has rebuilt the cache while we waited. Re-run the
++          // function to avoid a full cache rebuild.
++          $cache = _views_discover_default_views();
++          $rebuild_cache = FALSE;
++        }
++        else {
++          // Try to re-acquire the lock and re-build the cache either way.
++          lock_acquire($lock_name);
++          $rebuild_cache = TRUE;
++        }
++      }
++    }
++    // Rebuild the cache if necessary.
++    if ($rebuild_cache) {
+       views_include_default_views();
+       $cache = array();
+ 
+@@ -139,13 +183,16 @@ function _views_discover_default_views()
+       // Allow modules to modify default views before they are cached.
+       drupal_alter('views_default_views', $cache);
+ 
+-      // Cache the index
+-      $index = array_keys($cache);
+-      views_cache_set('views_default_views_index', $index, TRUE);
+-
+-      // Cache each view
+-      foreach ($cache as $name => $view) {
+-        views_cache_set('views_default:' . $name, $view, TRUE);
++      if (!empty($lock_acquired)) {
++        // Cache the index
++        $index = array_keys($cache);
++        views_cache_set('views_default_views_index', $index, TRUE);
++
++        // Cache each view
++        foreach ($cache as $name => $view) {
++          views_cache_set('views_default:' . $name, $view, TRUE);
++        }
++        lock_release($lock_name);
+       }
+     }
+   }
