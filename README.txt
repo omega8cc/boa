@@ -101,8 +101,8 @@ Octopus can install the platforms listed below:
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.9.9 ----------------- http://bit.ly/acquiadrupal
  Acquia Commons 2.3 ----------- http://acquia.com/drupalcommons
- CiviCRM 3.4.7 ---------------- http://civicrm.org
- CiviCRM 4.0.7 ---------------- http://civicrm.org
+ CiviCRM 3.4.8 ---------------- http://civicrm.org
+ CiviCRM 4.0.8 ---------------- http://civicrm.org
  Commerce Kickstart 1.0-rc6 --- http://drupalcommerce.org
  Conference 1.0-beta2 --------- http://usecod.com
  Drupal 5.23 Pressflow -------- http://pressflow.org
