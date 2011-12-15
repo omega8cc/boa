@@ -864,12 +864,27 @@ validate_local_ip () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
+  if [ -x "/usr/local/sbin/nginx" ] ; then
+    _NGX_BIN=/usr/local/sbin/nginx
+  elif [ -x "/usr/local/bin/nginx" ] ; then
+    _NGX_BIN=/usr/local/bin/nginx
+  elif [ -x "/usr/sbin/nginx" ] ; then
+    _NGX_BIN=/usr/sbin/nginx
+  fi
+  _NGX_UP_TEST=`$_NGX_BIN -V 2>&1`
+  if [[ $_NGX_UP_TEST =~ upload ]] ; then
+    _NGX_UP_TEST_RESULT=OK
+    _OCT_NGX=nginx_octopus_include.conf
+    _ADV_NGX=nginx_advanced_include.conf
+  else
+    _NGX_UP_TEST_RESULT=FAIL
+    _OCT_NGX=nginx_octopus_noup_include.conf
+    _ADV_NGX=nginx_advanced_noup_include.conf
+  fi
+  ### _REL_VERSION test is left here as a reminder
   if [ "$_REL_VERSION" = "precise" ] ; then
     _OCT_NGX=nginx_octopus_noup_include.conf
     _ADV_NGX=nginx_advanced_noup_include.conf
-  else
-    _OCT_NGX=nginx_octopus_include.conf
-    _ADV_NGX=nginx_advanced_include.conf
   fi
   validate_local_ip
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX &> /dev/null
