@@ -64,6 +64,7 @@ _VIDEOLA=EDIT_VIDEOLA
 _OPENCHURCH=EDIT_OPENCHURCH
 _ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
 _OPENDEALS=EDIT_OPENDEALS
+_ELMS=EDIT_ELMS
 
 
 ###---### main config
@@ -507,6 +508,7 @@ _F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_VIDEOLA="Videola $_VIDEOLA P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch $_OPENCHURCH P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPENDEALS P.$_THIS_CORE"
+_F_ELMS"ELMS $_ELMS P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -1669,6 +1671,47 @@ fi
 fi
 
 
+###---### ELMS
+#
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ELS ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS/modules/path_alias_cache" ] ; then
+echo " "
+if prompt_yes_no "$_F_ELMS - http://elms.psu.edu" ; then
+true
+msg "STATUS: $_F_ELMS install in progress, please wait..."
+mrun "sleep 2"
+_CORE_DISTRO="$_CORE/elms-$_ELMS"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    prepare_pressflow_core
+  fi
+  cd $_CORE
+  wget -q -U iCab http://files.aegir.cc/dev/distro/elms-$_ELMS.tar.gz
+  tar -xzf elms-$_ELMS.tar.gz
+  rm -f elms-$_ELMS.tar.gz
+  if [ -d "$_CORE/elms" ] ; then
+    mv $_CORE/elms $_CORE/elms-$_ELMS
+  fi
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/elms-$_ELMS/ &> /dev/null
+  cd $_CORE/elms-$_ELMS
+  rm -f $_CORE/elms-$_ELMS/*.txt
+  rm -f -r $_CORE/elms-$_ELMS/modules/cookie_cache_bypass
+  rm -f -r ./profiles/default
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/elms-$_ELMS
+cd $_ROOT/distro/$_THIS_CORE/elms-$_ELMS
+create_symlinks
+msg "STATUS: $_F_ELMS installation completed"
+mrun "sleep 2"
+else
+  msg "STATUS: $_F_ELMS installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+
+
 ###---### CiviCRM 3
 #
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
@@ -2059,6 +2102,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/drushrc.php" ] ; then
     $DRUSHC php-script make_platform "$_F_OPENCHURCH" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_ELMS" elms $_ROOT/distro/$_THIS_CORE/elms-$_ELMS &> /dev/null
     mrun "sleep 5"
   fi
 fi

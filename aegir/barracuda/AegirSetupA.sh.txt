@@ -64,6 +64,7 @@ _VIDEOLA=EDIT_VIDEOLA
 _OPENCHURCH=EDIT_OPENCHURCH
 _ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
 _OPENDEALS=EDIT_OPENDEALS
+_ELMS=EDIT_ELMS
 
 
 ###---### main config
@@ -973,6 +974,11 @@ mrun "sleep 3"
   if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/elms-$_ELMS" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/elms-$_ELMS/sites /home/$_USERFTP/platforms/$_THIS_CORE/elms-$_ELMS
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites" ] ; then
