@@ -35,10 +35,12 @@ if [ "$_FIX_CORE_ONE" != "NO" ] ; then
     searchStringE="/distro/$_LAST_ALL/"
     case $Plr in
     *"$searchStringE"*)
-    if [ ! -e "$Plr/includes/fix_pressflow_core_two.txt" ] ; then
-      cp -af /var/opt/pressflow-6-fix/includes/file.inc   $Plr/includes/
-      cp -af /var/opt/pressflow-6-fix/includes/common.inc $Plr/includes/
-      echo fixed > $Plr/includes/fix_pressflow_core_two.txt
+    if [ ! -e "$Plr/includes/fix_pressflow_core_three.txt" ] ; then
+      cp -af /var/opt/pressflow-6-fix/includes/*   $Plr/includes/
+      cp -af /var/opt/pressflow-6-fix/modules/*    $Plr/modules/
+      cp -af /var/opt/pressflow-6-fix/install.php  $Plr/
+      cp -af /var/opt/pressflow-6-fix/update.php   $Plr/
+      echo fixed > $Plr/includes/fix_pressflow_core_three.txt
     fi
     ;;
     *) ;;
@@ -469,7 +471,12 @@ fi
 # Fix one for Pressflow core
 _FIX_CORE_ONE=YES
 rm -f -r /var/opt/pressflow-6-fix
-bzr branch lp:pressflow/6.x /var/opt/pressflow-6-fix &> /dev/null
+cd /var/opt
+wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-6.tar.gz
+tar -xzf pressflow-6.tar.gz
+mv pressflow-6 pressflow-6-fix
+rm -f pressflow-6.tar.gz
+# bzr branch lp:pressflow/6.x /var/opt/pressflow-6-fix &> /dev/null
 #
 mkdir -p /var/xdrago/log/usage
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then

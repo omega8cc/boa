@@ -420,7 +420,9 @@ prepare_pressflow_core () {
   chmod 0700 /data/src/$_THIS_CORE &> /dev/null
   cd /data/src/$_THIS_CORE
   rm -f -r /data/src/$_THIS_CORE/pressflow-6
-  bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
+  # bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
+  wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-6.tar.gz
+  tar -xzf pressflow-6.tar.gz
   cd /data/src/$_THIS_CORE/pressflow-6/
   rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
   rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
