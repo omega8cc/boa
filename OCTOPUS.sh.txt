@@ -102,6 +102,7 @@ _CLIENT_CORES=4
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### ELS ----------- ELMS
+### OOH ----------- Open Outreach
 ###
 ### Examples:
 ###
@@ -469,6 +470,7 @@ _OPENCHURCH=1.22-a
 _ACQUIA_SEVEN=7.10.10
 _OPENDEALS=7.x-1.0-alpha4
 _ELMS=6.x-1.0-alpha5
+_OPENOUTREACH=7.x-1.0-beta5
 
 ###---### Functions
 #
@@ -655,6 +657,7 @@ do
   sed -i "s/EDIT_ACQUIA_SEVEN/$_ACQUIA_SEVEN/g"           $Files
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
   sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files
+  sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files
   sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
