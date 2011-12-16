@@ -423,6 +423,7 @@ prepare_pressflow_core () {
   # bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
   wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-6.tar.gz
   tar -xzf pressflow-6.tar.gz
+  rm -f pressflow-6.tar.gz
   cd /data/src/$_THIS_CORE/pressflow-6/
   rm -f /data/src/$_THIS_CORE/pressflow-6/*.txt
   rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
