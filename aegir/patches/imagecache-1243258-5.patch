@@ -1,0 +1,70 @@
+diff --git a/imagecache.module b/imagecache.module
+index 55d48ce..36ace81 100644
+--- a/imagecache.module
++++ b/imagecache.module
+@@ -442,7 +442,7 @@ function _imagecache_cache($presetname, $path) {
+   }
+ 
+   // umm yeah deliver it early if it is there. especially useful
+-  // to prevent lock files from being created when delivering private files.
++  // to prevent locks from being created when delivering private files.
+   $dst = imagecache_create_path($preset['presetname'], $path);
+   if (is_file($dst)) {
+     imagecache_transfer($dst);
+@@ -458,34 +458,39 @@ function _imagecache_cache($presetname, $path) {
+     exit;
+   };
+ 
+-  // Bail if the requested file isn't an image you can't request .php files
++  // Bail if the requested file isn't an image. You can't request .php files
+   // etc...
+-  if (!getimagesize($src)) {
++  if (!@getimagesize($src)) {
+     watchdog('imagecache', '403: File is not an image %image ', array('%image' => $src), WATCHDOG_ERROR);
+     header('HTTP/1.0 403 Forbidden');
+     exit;
+   }
+ 
+-  $lockfile = file_directory_temp() .'/'. $preset['presetname'] . basename($src);
+-  if (file_exists($lockfile)) {
+-    watchdog('imagecache', 'ImageCache already generating: %dst, Lock file: %tmp.', array('%dst' => $dst, '%tmp' => $lockfile), WATCHDOG_NOTICE);
+-    // 307 Temporary Redirect, to myself. Lets hope the image is done next time around.
+-    header('Location: '. request_uri(), TRUE, 307);
+-    exit;
++  // Generate preset inside of a lock.
++  $lockname = $preset['presetname'] . basename($src);
++  $wait = FALSE;
++  if (lock_acquire($lockname)) {
++    imagecache_build_derivative($preset['actions'], $src, $dst);
++    lock_release($lockname);
++  }
++  else {
++    lock_wait($lockname);
++    $wait = TRUE;
+   }
+-  touch($lockfile);
+-  // register the shtdown function to clean up lock files. by the time shutdown
+-  // functions are being called the cwd has changed from document root, to
+-  // server root so absolute paths must be used for files in shutdown functions.
+-  register_shutdown_function('file_delete', realpath($lockfile));
+ 
+-  // check if deriv exists... (file was created between apaches request handler and reaching this code)
+-  // otherwise try to create the derivative.
+-  if (file_exists($dst) || imagecache_build_derivative($preset['actions'], $src, $dst)) {
++  // Make sure derivative image exists before trying to send it.
++  if (file_exists($dst)) {
++    // exit gets called inside this function.
+     imagecache_transfer($dst);
+   }
++
+   // Generate an error if image could not generate.
+-  watchdog('imagecache', 'Failed generating an image from %image using imagecache preset %preset.', array('%image' => $path, '%preset' => $preset['presetname']), WATCHDOG_ERROR);
++  if ($wait) {
++    watchdog('imagecache', 'Acquired lock, but failed in generating an image from %image using imagecache preset %preset.', array('%image' => $path, '%preset' => $preset['presetname']), WATCHDOG_ERROR);
++  }
++  else {
++    watchdog('imagecache', 'Waited for the lock, but found no generated image from %image using imagecache preset %preset.', array('%image' => $path, '%preset' => $preset['presetname']), WATCHDOG_ERROR);
++  }
+   header("HTTP/1.0 500 Internal Server Error");
+   exit;
+ }

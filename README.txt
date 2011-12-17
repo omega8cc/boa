@@ -110,9 +110,9 @@ Octopus can install the platforms listed below:
  Drupal 7.10 ------------------ http://drupal.org/drupal-7.0
  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
- Managing News 1.2 ------------ http://managingnews.com
+ Managing News 1.2.1 ---------- http://managingnews.com
  NodeStream 1.1 --------------- http://nodestream.org
- Open Atrium 1.0.1 ------------ http://openatrium.com
+ Open Atrium 1.1.1 ------------ http://openatrium.com
  Open Deals 1.0-alpha4 -------- http://opendealsapp.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Open Outreach 1.0-beta5 ------ http://openoutreach.org
