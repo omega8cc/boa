@@ -50,7 +50,7 @@ starting with 1+ Aegir Standard or SSD Core:
  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2 ------------ http://managingnews.com
- Open Atrium 1.0 -------------- http://openatrium.com
+ Open Atrium 1.0.1 ------------ http://openatrium.com
  Open Deals 1.0-alpha4 -------- http://opendealsapp.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Open Outreach 1.0-beta5 ------ http://openoutreach.org
