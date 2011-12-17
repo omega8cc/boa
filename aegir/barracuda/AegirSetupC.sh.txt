@@ -1480,9 +1480,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS.zip
-  unzip -qq managingnews-$_MANAGINGNEWS.zip
-  rm -f managingnews-$_MANAGINGNEWS.zip
+  _MANAGINGNEWS_DL=1.2
+  wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS_DL.zip
+  unzip -qq managingnews-$_MANAGINGNEWS_DL.zip
+  rm -f managingnews-$_MANAGINGNEWS_DL.zip
+  mv managingnews-$_MANAGINGNEWS_DL managingnews-$_MANAGINGNEWS
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/managingnews-$_MANAGINGNEWS/ &> /dev/null
   cd $_CORE/managingnews-$_MANAGINGNEWS/profiles/managingnews/modules/contrib
   rm -f -r ctools features feeds imageapi imagecache jquery_ui libraries mapbox openlayers spaces strongarm views
