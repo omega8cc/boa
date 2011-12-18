@@ -1131,7 +1131,7 @@ if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
 else
   _HTTP_WILDCARD=NO
 fi
-if [ -f "/var/log/ngx-cache-purge-on.log" ] ; then
+if [ -f "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
   _PURGE_MODE=ON
 else
   _PURGE_MODE=OFF
