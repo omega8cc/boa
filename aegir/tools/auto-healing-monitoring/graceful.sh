@@ -17,6 +17,7 @@ action()
   killall -9 php-fpm php-cgi nginx php wget
   sleep 2
   killall -9 php-fpm php-cgi nginx php wget
+  echo rotate > /var/log/nginx/speed_purge.log
   /etc/init.d/php-fpm start
   /etc/init.d/nginx start
   rm -f /var/xdrago/log/wait-for-octopus-barracuda-running
