@@ -124,7 +124,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 
   if (file_exists('./modules/o_contrib/purge/purge.inc')) {
-    $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge?purge_method=get";
+    $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
   }
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
