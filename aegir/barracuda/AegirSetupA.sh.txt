@@ -269,7 +269,6 @@ for i in $REVISIONS; do
     done
   fi
 done
-sed -i "s/, 'expire', 'purge', '/, '/g" /data/all/*/*/profiles/*/*.profile &> /dev/null
 touch /var/log/incompatible-modules-removed-001f.log
 cd
 fi

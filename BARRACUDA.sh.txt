@@ -3192,10 +3192,8 @@ if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ]
   validate_public_ip
   cd /var/aegir/config/server_master/nginx/pre.d
   rm -f speed_purge.conf
-  cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf ./
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
-else
-  rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
 fi
 
 

@@ -300,7 +300,7 @@ download_o_contrib_seven () {
   if [ "$_PURGE_MODE" = "ON" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-7.x-1.0.tar.gz
+   #wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-7.x-1.0.tar.gz
   else
     rm -f -r nginx_accel_redirect*
   fi
@@ -341,10 +341,10 @@ download_o_contrib_six () {
   if [ "$_PURGE_MODE" = "ON" ] ; then
     wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.0.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.4.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-6.x-1.5.tar.gz
+   #wget -q -U iCab http://ftp.drupal.org/files/projects/nginx_accel_redirect-6.x-1.5.tar.gz
   else
-    rm -f -r expire*
-    rm -f -r purge*
+   #rm -f -r expire*
+   #rm -f -r purge*
     rm -f -r nginx_accel_redirect*
   fi
   for archive in ./*.tar.gz; do
@@ -628,7 +628,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/acquia-$_SMALLCORE6
   rm -f $_CORE/acquia-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
   sed -i "s/'name' => 'Acquia Drupal',/'name' => 'Acquia Drupal',\n    'old_short_name' => 'default',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
@@ -715,7 +715,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/atrium-$_OPENATRIUM
   rm -f -r $_CORE/atrium-$_OPENATRIUM/modules/cookie_cache_bypass
   rm -f $_CORE/atrium-$_OPENATRIUM/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   cd ./profiles/openatrium/modules/atrium_features/
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
@@ -790,7 +790,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-dev/ &> /dev/null
   cd $_CORE/pressflow-$_SMALLCORE6-dev
   rm -f $_CORE/pressflow-$_SMALLCORE6-dev/*.txt
-  sed -i "s/'dblog'/'cache', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'drupalcenter',/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-dev/profiles/default/translations &> /dev/null
@@ -818,7 +818,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-stage/ &> /dev/null
   cd $_CORE/pressflow-$_SMALLCORE6-stage
   rm -f $_CORE/pressflow-$_SMALLCORE6-stage/*.txt
-  sed -i "s/'dblog'/'cache', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-stage/profiles/default/translations &> /dev/null
@@ -847,7 +847,7 @@ if [ ! -d "$_CORE/pressflow" ] ; then
     cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/pressflow-$_SMALLCORE6-prod/ &> /dev/null
     cd $_CORE/pressflow-$_SMALLCORE6-prod
     rm -f $_CORE/pressflow-$_SMALLCORE6-prod/*.txt
-    sed -i "s/'dblog'/'cache', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+    sed -i "s/'dblog'/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
     sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
     create_dirs
     ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-prod/profiles/default/translations &> /dev/null
@@ -1295,7 +1295,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/acquia_commons-$_COMMONS
   fi
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1350,7 +1350,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < openenterprise.patch &> /dev/null
     cd $_CORE/openenterprise-$_OPENENTERPRISE
   fi
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1503,7 +1503,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
   cd $_CORE/managingnews-$_MANAGINGNEWS/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'admin', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1582,7 +1582,7 @@ fi
 #   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openpublish-$_OPENPUBLISH/ &> /dev/null
 #   cd $_CORE/openpublish-$_OPENPUBLISH
 #   rm -f $_CORE/openpublish-$_OPENPUBLISH/*.txt
-#   sed -i "s/'profile',/'profile', 'cache', 'robotstxt', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
+#   sed -i "s/'profile',/'profile', 'cache', 'robotstxt', 'expire', 'purge', 'path_alias_cache',/g" ./profiles/openpublish/openpublish.profile
 #   rm -f -r ./profiles/default
 #   create_dirs
 # fi
@@ -1625,7 +1625,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openscholar-$_OPENSCHOLAR
   rm -f $_CORE/openscholar-$_OPENSCHOLAR/*.txt
   rm -f -r $_CORE/openscholar-$_OPENSCHOLAR/profiles/openscholar/modules/contrib/memcache &> /dev/null
-  sed -i "s/'features',/'features', 'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
+  sed -i "s/'features',/'features', 'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1674,7 +1674,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/cod-$_COD
   rm -f $_CORE/cod-$_COD/*.txt
   rm -f -r $_CORE/cod-$_COD/modules/cookie_cache_bypass
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile
   sed -i "s/Conference Organizing Distribution/Conference/g" ./profiles/cod/cod.profile
   rm -f -r ./profiles/default
   create_dirs
@@ -1721,7 +1721,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openchurch-$_OPENCHURCH
   rm -f $_CORE/openchurch-$_OPENCHURCH/*.txt
   rm -f -r $_CORE/openchurch-$_OPENCHURCH/modules/cookie_cache_bypass
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openchurch/openchurch.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openchurch/openchurch.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1817,7 +1817,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/civicrm-$_CIVICRM6
   rm -f -r $_CORE/civicrm-$_CIVICRM6/modules/cookie_cache_bypass
   rm -f $_CORE/civicrm-$_CIVICRM6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile
   sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
   cd $_CORE/civicrm-$_CIVICRM6
   create_dirs
@@ -1956,7 +1956,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/ubercart-$_UBERCART-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/ &> /dev/null
   rm -f $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
   rm -f -r ./profiles/default
   create_dirs
   ln -s /data/all/000/translations $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/profiles/uberdrupal/translations

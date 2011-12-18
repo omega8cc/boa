@@ -22,7 +22,7 @@
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON="cache path_alias_cache robotstxt filefield_nginx_progress"
+_MODULES_ON="cache expire purge path_alias_cache robotstxt filefield_nginx_progress"
 _MODULES_OFF="syslog dblog update l10n_update devel cookie_cache_bypass poormanscron supercron"
 
 
