@@ -481,7 +481,7 @@ _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_MODE=ON
-_CUSTOM_NAME="Nginx/Barracuda"
+_CUSTOM_NAME=nginx
 
 
 ###---### Avoid too many questions
