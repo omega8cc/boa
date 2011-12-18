@@ -315,6 +315,7 @@ download_o_contrib_seven () {
 download_o_contrib_six () {
   wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/esi.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
