@@ -2656,13 +2656,7 @@ mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 fi
-if [ "$_PURGE_MODE" = "ON" ] ; then
-  _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-on.log"
-  rm -f /var/log/ngx-cache-purge-off.log
-else
-  _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-off.log"
-  rm -f /var/log/ngx-cache-purge-on.log
-fi
+_NGINX_EXTRA_CTRL="/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf"
 if [ -e "/usr/sbin/nginx" ] ; then
   _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
   if [ -z "$_NGINX_F_INSTALLED" ] ; then
@@ -2731,7 +2725,6 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   killall -9 nginx &> /dev/null
   mrun "sleep 3"
   invoke-rc.d nginx start &> /dev/null
-  touch $_NGINX_EXTRA_CTRL
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
