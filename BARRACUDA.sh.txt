@@ -481,6 +481,7 @@ _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_MODE=ON
+_CUSTOM_NAME="Nginx/Barracuda"
 
 
 ###---### Avoid too many questions
@@ -2667,7 +2668,7 @@ if [ -e "/usr/sbin/nginx" ] ; then
   if [ -z "$_NGINX_F_INSTALLED" ] ; then
     _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f3 | awk '{ print $1}'`
   fi
-  _NGINX_F_VERSION="Barracuda/$_NGINX_VERSION"
+  _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
   if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild"
@@ -2708,7 +2709,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   fi
   wget -q -U iCab http://nginx.org/download/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
-  sed -i "s/nginx/Barracuda/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
+  sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
   if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
     _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
   elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then
