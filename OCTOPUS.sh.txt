@@ -674,7 +674,7 @@ do
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
   sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files
-  sed -i "s/EDIT_TEST_MODE/$_TEST_MODE/g"                 $Files
+  sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
@@ -1132,9 +1132,9 @@ else
   _HTTP_WILDCARD=NO
 fi
 if [ -f "/var/log/ngx-cache-purge-on.log" ] ; then
-  _TEST_MODE=ON
+  _PURGE_MODE=ON
 else
-  _TEST_MODE=OFF
+  _PURGE_MODE=OFF
 fi
 
 echo "8s before we will continue..."

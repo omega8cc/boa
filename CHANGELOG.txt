@@ -133,7 +133,7 @@
 # New features:
 
   * Speed Booster Purge experimental backend can be installed,
-    but is not used in production yet - see _TEST_MODE flag
+    but is not used in production yet - see _PURGE_MODE flag
     and Issue #1048000.
 
 

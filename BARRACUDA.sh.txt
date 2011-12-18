@@ -480,7 +480,7 @@ _PURE_FTPD_VERSION=1.0.34
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
-_TEST_MODE=OFF
+_PURGE_MODE=ON
 
 
 ###---### Avoid too many questions
@@ -2655,7 +2655,7 @@ mrun "sleep 3"
 if [ $_STATUS = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 fi
-if [ "$_TEST_MODE" = "ON" ] ; then
+if [ "$_PURGE_MODE" = "ON" ] ; then
   _NGINX_EXTRA_CTRL="/var/log/ngx-cache-purge-on.log"
   rm -f /var/log/ngx-cache-purge-off.log
 else
@@ -2699,7 +2699,7 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   else
     git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
   fi
-  if [ "$_TEST_MODE" = "ON" ] ; then
+  if [ "$_PURGE_MODE" = "ON" ] ; then
     git clone git://github.com/FRiCKLE/ngx_cache_purge.git &> /dev/null
     cd ngx_cache_purge
     git checkout 1.4 &> /dev/null
@@ -2709,11 +2709,11 @@ if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
   wget -q -U iCab http://nginx.org/download/nginx-$_NGINX_VERSION.tar.gz
   tar -xzf nginx-$_NGINX_VERSION.tar.gz
   sed -i "s/nginx/Barracuda/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
-  if [ "$_TEST_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
+  if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
     _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
-  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_TEST_MODE" = "OFF" ] ; then
+  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then
     _NGINX_EXTRA="$_NGINX_EXTRA_CONF"
-  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_TEST_MODE" = "ON" ] ; then
+  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "ON" ] ; then
     _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/ $_NGINX_EXTRA_CONF"
   else
     _NGINX_EXTRA=""
@@ -3192,7 +3192,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_TEST_MODE" = "ON" ] ; then
+if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
   msg "INFO: Installing Speed Booster Purge Server, please wait..."
   mrun "sleep 3"
   validate_public_ip
