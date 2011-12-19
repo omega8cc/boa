@@ -290,6 +290,7 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib_seven/$m
       fi
     done
+    cd /data/all/$i/o_contrib_seven
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
