@@ -372,8 +372,6 @@ tune_memory_limits () {
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
 
-# Stop on error.
-set -e ### disable this for debugging
 
 ###---### init
 #

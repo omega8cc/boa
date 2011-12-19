@@ -53,9 +53,8 @@ msg () {
   echo "Barracuda [`date`] ==> $*"
 }
 #
-# Stop on error.
-set -e ### disable this for debugging
-#
+# stop on error
+# set -e
 export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
