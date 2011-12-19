@@ -529,7 +529,7 @@ prompt_confirm_choice () {
 }
 #
 # Stop on error.
-# set -e ### disable this for debugging
+set -e ### disable this for debugging
 #
 # Success msg.
 success () {

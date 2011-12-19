@@ -151,8 +151,8 @@ mrun () {
 	fi
 }
 #
-# stop on error
-# set -e ### disabled for debugging
+# Stop on error.
+set -e ### disable this for debugging
 #
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
