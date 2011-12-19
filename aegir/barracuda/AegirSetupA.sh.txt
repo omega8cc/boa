@@ -282,7 +282,7 @@ fi
 remove_incompatible_modules_002() {
 if [ ! -e "/var/log/incompatible-modules-removed-002g.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
-RMMODULES="session443 cookie_cache_bypass_adv"
+RMMODULES="session443 cookie_cache_bypass_adv expire purge"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] ; then
     for m in $RMMODULES; do
@@ -290,15 +290,15 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib_seven/$m
       fi
     done
-    cd /data/all/$i/o_contrib_seven
-    if [ "$_PURGE_MODE" = "ON" ] ; then
-      wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-    fi
+#     cd /data/all/$i/o_contrib_seven
+#     if [ "$_PURGE_MODE" = "ON" ] ; then
+#       wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
+#       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
+#       for archive in ./*.tar.gz; do
+#         tar -xzf "$archive" &> /dev/null
+#       done
+#       rm -f *.tar.gz
+#     fi
   fi
 done
 touch /var/log/incompatible-modules-removed-002g.log
