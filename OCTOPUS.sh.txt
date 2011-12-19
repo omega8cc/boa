@@ -746,8 +746,6 @@ fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 }
 
-# Stop on error.
-set -e ### disable this for debugging
 
 ###--------------------###
 if ! netcat -w 8 -z ftp.drupal.org 80 ; then
