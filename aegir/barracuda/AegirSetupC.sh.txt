@@ -183,7 +183,7 @@ mrun () {
 }
 #
 # Stop on error.
-set -e ### disable this for debugging
+# set -e ### disable this for debugging
 #
 # create standard directories
 create_dirs () {
