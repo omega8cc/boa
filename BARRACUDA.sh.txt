@@ -2392,10 +2392,10 @@ if [ $_STATUS = "UPGRADE" ] ; then
       mrun "sleep 3"
     fi
   else
-    if [ ! -e "/var/log/5.5.17-Percona.log" ] ; then
+    if [ ! -e "/var/log/5.5.18-Percona.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.5.17-Percona" > /var/log/5.5.17-Percona.log
-      msg "INFO: PHP rebuild required to include Percona 5.5.17 libs"
+      echo "5.5.18-Percona" > /var/log/5.5.18-Percona.log
+      msg "INFO: PHP rebuild required to include Percona 5.5.18 libs"
       mrun "sleep 3"
     fi
   fi
@@ -2451,7 +2451,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
     echo "5.2.10-MariaDB" > /var/log/5.2.10-MariaDB.log
   else
-    echo "5.5.17-Percona" > /var/log/5.5.17-Percona.log
+    echo "5.5.18-Percona" > /var/log/5.5.18-Percona.log
   fi
   cd /usr/local/sbin
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
