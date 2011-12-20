@@ -161,7 +161,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
 
-    if (preg_match("/(?:standard|minimal|testing|openpublic|commerce)/", $conf['install_profile'])) {
+    if (preg_match("/(?:standard|minimal|testing|commerce|openpublic|opendeals|openoutreach)/", $conf['install_profile'])) {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
@@ -264,7 +264,7 @@ if (file_exists('/data/conf/override.global.inc')) {
 }
 
 // don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
-if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic)/", $conf['install_profile']) &&
+if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic|opendeals|openoutreach)/", $conf['install_profile']) &&
   isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES" && $custom_cache == "NO" ) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
