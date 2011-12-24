@@ -633,7 +633,7 @@ install_redis_src () {
   fi
   cd /var/opt
   rm -f -r /var/opt/redis*
-  wget -q -U iCab http://redis.googlecode.com/files/redis-2.0.5.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/redis-2.0.5.tar.gz
   tar -xzf redis-2.0.5.tar.gz
   cd redis-2.0.5
   st_runner "make --quiet" 2> /dev/null
@@ -2195,7 +2195,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
       _IFCONFIG="eth0"
     fi
     cd /var/opt
-    wget -q -U iCab http://humdi.net/vnstat/vnstat-1.10.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/vnstat-1.10.tar.gz
     tar -xzf vnstat-1.10.tar.gz
     cd vnstat-1.10
     st_runner "make --quiet" 2> /dev/null
@@ -2348,7 +2348,7 @@ if [ ! -e "/var/log/memcached-1.4.9.log" ] ; then
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
   rm -f /usr/local/bin/memcached
-  wget -q -U iCab http://memcached.googlecode.com/files/memcached-1.4.9.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.4.9.tar.gz
   tar -xzf memcached-1.4.9.tar.gz
   cd /var/opt/memcached-1.4.9
   st_runner "sh ./configure" 2> /dev/null
@@ -2425,8 +2425,8 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   rm -f -r /var/opt/php*
   rm -f /etc/init.d/php-fpm*
   wget -q -U iCab http://www.php.net/distributions/php-$_PHP_VERSION.tar.gz
-  wget -q -U iCab http://download.suhosin.org/suhosin-patch-5.2.16-0.9.7.patch.gz
-  wget -q -U iCab http://php-fpm.org/downloads/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-5.2.16-0.9.7.patch.gz
+  wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
   tar -xzf php-$_PHP_VERSION.tar.gz
   gunzip -q php-$_PHP_VERSION-fpm-0.5.14.diff.gz
   gunzip -q suhosin-patch-5.2.16-0.9.7.patch.gz
@@ -2498,7 +2498,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
   msg "INFO: Installing Suhosin for PHP-FPM, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://download.suhosin.org/suhosin-0.9.32.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.32.1.tar.gz
   tar -xzf suhosin-0.9.32.1.tar.gz
   cd /var/opt/suhosin-0.9.32.1
   st_runner "/usr/local/bin/phpize" 2> /dev/null
