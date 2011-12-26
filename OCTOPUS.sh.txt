@@ -470,7 +470,7 @@ _OPENCHURCH=1.22-a
 _ACQUIA_SEVEN=7.10.10
 _OPENDEALS=7.x-1.0-alpha4
 _ELMS=6.x-1.0-alpha5
-_OPENOUTREACH=7.x-1.0-beta5
+_OPENOUTREACH=7.x-1.0-beta6
 
 ###---### Functions
 #
