@@ -275,25 +275,17 @@ _USE_SPEED_BOOSTER=YES
 ### If you prefer, you can set the database
 ### to be connected locally via "localhost"
 ### instead of FQDN pointing to your public IP
-### address.
+### address. Note: the "FQDN" is a keyword.
+### Don't replace it with a real hostname.
 ###
-### This feature allows you to "revert" to the
-### old Aegir behaviuor, when it was using by
-### default localhost for database connection.
+### For local or Amazon based installs with
+### local/dynamic IP address it is recommended
+### to use "localhost" option.
 ###
-### You could also use this feature to connect
-### to the remote database server by default,
-### since it allows to "override" the new
-### behaviuor, designed for Aegir multiserver
-### compatibility.
-###
-### If not sure, please don't change the
-### default, which is here still FQDN setup.
-###
-### Possible usage:
+### Available options:
 ###
 ### _THIS_DB_HOST=localhost
-### _THIS_DB_HOST=some.remote.host.name
+### _THIS_DB_HOST=FQDN
 ###
 _THIS_DB_HOST=FQDN
 
