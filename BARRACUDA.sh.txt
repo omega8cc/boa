@@ -3455,40 +3455,6 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
-  if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    echo " "
-    if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
-      true
-      msg "INFO: Installing Bind9 DNS Server, please wait..."
-      mrun "sleep 3"
-      if [ -z "$_THISHTIP" ] ; then
-        _LOC_DOM="$_THISHOST"
-        find_correct_ip
-        _THISHTIP="$_LOC_IP"
-      fi
-      st_runner "$_INSTALL bind9" 2> /dev/null
-      cd /etc/bind
-      rm -f named.conf.options
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
-      sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options
-      st_runner "invoke-rc.d bind9 restart" &> /dev/null
-      if [ ! -e "/etc/init.d/bind" ] ; then
-        ln -s /etc/init.d/bind9 /etc/init.d/bind
-      fi
-      echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
-      echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
-      msg "INFO: Bind9 DNS Server installation completed"
-      mrun "sleep 2"
-    else
-      msg "INFO: Bind9 DNS Server installation skipped"
-      mrun "sleep 2"
-    fi
-  fi
-fi
-
-
-###--------------------###
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ WMN ]] ; then
   if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
@@ -3593,6 +3559,45 @@ if [ ! -e "/var/log/sysctl.conf.custom.log" ] ; then
   mv -f sysctl.conf sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf ./
   touch /var/log/sysctl.conf.custom.log
+fi
+
+
+###--------------------###
+if [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ $_XTRAS_LIST = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
+    _XTRAS_LIST="PDS CHV CSF CGP WMN"
+  fi
+fi
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
+  if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
+      true
+      msg "INFO: Installing Bind9 DNS Server, please wait..."
+      mrun "sleep 3"
+      if [ -z "$_THISHTIP" ] ; then
+        _LOC_DOM="$_THISHOST"
+        find_correct_ip
+        _THISHTIP="$_LOC_IP"
+      fi
+      st_runner "$_INSTALL bind9" 2> /dev/null
+      cd /etc/bind
+      rm -f named.conf.options
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
+      sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options
+      st_runner "invoke-rc.d bind9 restart" &> /dev/null
+      if [ ! -e "/etc/init.d/bind" ] ; then
+        ln -s /etc/init.d/bind9 /etc/init.d/bind
+      fi
+      echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
+      echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+      msg "INFO: Bind9 DNS Server installation completed"
+      mrun "sleep 2"
+    else
+      msg "INFO: Bind9 DNS Server installation skipped"
+      mrun "sleep 2"
+    fi
+  fi
 fi
 
 
