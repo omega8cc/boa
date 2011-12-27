@@ -48,8 +48,7 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
-`killall -9 nginx` if ($nginxsumar > 1 && -f "/etc/init.d/nginx");
-`/etc/init.d/nginx restart` if (!$nginxsumar && -f "/etc/init.d/nginx");
+`killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
 `/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd");
@@ -61,8 +60,8 @@ if ($mysqlsumar > 0) {
   print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives) {
-   $thishostname = `cat /etc/hostname`;
-   chomp($thishostname);
+  $thishostname = `cat /etc/hostname`;
+  chomp($thishostname);
   `hostname -v $thishostname`;
 }
 
@@ -71,15 +70,22 @@ exit;
 #############################################################################
 sub global_action
 {
-   local(@SYTUACJA) = `ps auxf 2>&1`;
-   foreach $line (@SYTUACJA) {
-   local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND) = split(/\s+/,$line);
-         $li_cnt{$USER}++ if ($PID ne "PID");
-	 if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
-	 {
-	   $li_cnt{$COMMAND}++;
-	 }
-   }
+  local(@SYTUACJA) = `ps auxf 2>&1`;
+  foreach $line (@SYTUACJA) {
+    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND) = split(/\s+/,$line);
+    $li_cnt{$USER}++ if ($PID ne "PID");
+    if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
+    {
+      if ($COMMAND =~ /nginx/) {
+        if ($USER =~ /root/) {
+          $li_cnt{$COMMAND}++;
+        }
+      }
+      else {
+        $li_cnt{$COMMAND}++;
+      }
+    }
+  }
 }
 
 ###EOF###
