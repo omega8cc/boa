@@ -3021,7 +3021,7 @@ if [ $_STATUS = "INIT" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
     fi
   fi
-  if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  if [ "$_THIS_OS" = "xUbuntu" ] ; then
     killall -9 nginx &> /dev/null
     mrun "sleep 3"
     invoke-rc.d nginx start &> /dev/null
@@ -3164,7 +3164,7 @@ EOF
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
     fi
-    if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    if [ "$_THIS_OS" = "xUbuntu" ] ; then
       killall -9 nginx &> /dev/null
       mrun "sleep 3"
       invoke-rc.d nginx start &> /dev/null

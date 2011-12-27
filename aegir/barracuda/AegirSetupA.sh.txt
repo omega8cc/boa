@@ -507,7 +507,7 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   rm -f -r $_AEGIR_ROOT/scripts
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
-  if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  if [ "$_THIS_OS" = "xUbuntu" ] ; then
     st_runner "invoke-rc.d nginx stop" &> /dev/null
     killall -9 nginx &> /dev/null
     mrun "sleep 3"
@@ -607,7 +607,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
       mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
-      if [ "$_THIS_OS" = "Ubuntu" ] ; then
+      if [ "$_THIS_OS" = "xUbuntu" ] ; then
         st_runner "invoke-rc.d nginx stop" &> /dev/null
         killall -9 nginx &> /dev/null
         mrun "sleep 3"
