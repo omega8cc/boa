@@ -455,6 +455,7 @@ _LOCAL_NETWORK_HN=""
 _NGINX_EXTRA_CONF=""
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
+_ALL_PURGE_THISHTIP=NO
 
 
 ###----------------------------------------###
