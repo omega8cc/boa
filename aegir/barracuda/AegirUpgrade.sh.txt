@@ -119,12 +119,12 @@ hostmaster_go_up () {
     rm -f drush_make-6.x-2.3.tar.gz
   fi
   if [ $_HTTP_WILDCARD = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/server.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/nginx/vhost_disabled.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
   fi
   if [ ! -e "$_ROOT/config/includes/upload_progress_test.conf" ] ; then
-    cp -af $_ROOT/.drush/provision/http/nginx/upload_progress_test.conf $_ROOT/config/includes/
+    cp -af $_ROOT/.drush/provision/http/Provision/Config/Nginx/upload_progress_test.conf $_ROOT/config/includes/
   fi
   cd $_PREV_AEGIR_ROOT
 }
