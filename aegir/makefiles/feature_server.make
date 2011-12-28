@@ -8,8 +8,8 @@ api = 2
 core = 6.x
 
 projects[pressflow][type] = "core"
-projects[pressflow][download][type] = "git"
-projects[pressflow][download][url] = "git://github.com/omega8cc/pressflow6.git"
+projects[pressflow][download][type] = "get"
+projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow6.tar.gz"
 projects[pressflow][download][branch] = "master"
 
 projects[cck] = 2.9
