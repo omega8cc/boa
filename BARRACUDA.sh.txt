@@ -142,7 +142,7 @@ _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
 ### _AEGIR_VERSION=BOA-2.0.1
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.0.1
 
 
 ###----------------------------------------###
