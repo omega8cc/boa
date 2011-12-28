@@ -237,9 +237,11 @@ do
       fix_permissions
       fix_clear_cache
       fix_pressflow_core_one
-      searchStringD="dev"
+      searchStringD="dev."
+      searchStringF="devel."
       case $Dom in
         *"$searchStringD"*) ;;
+        *"$searchStringF"*) ;;
         *)
         fix_modules
         ;;
