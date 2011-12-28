@@ -23,9 +23,15 @@ case "$1" in
     touch $PIDFILE
     if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
       rm -f /var/xdrago/log/optimize_mysql_ao.pid
-      echo "$NAME done."
+      echo "$NAME 1 done."
     else
-      echo "$NAME nothing to do."
+      echo "$NAME 1 nothing to do."
+    fi
+    if test -f /var/run/octopus_barracuda.pid ; then
+      rm -f /var/run/octopus_barracuda.pid
+      echo "$NAME 2 done."
+    else
+      echo "$NAME 2 nothing to do."
     fi
   ;;
   stop)
@@ -35,6 +41,12 @@ case "$1" in
       echo "$NAME done."
     else
       echo "$NAME nothing to do."
+    fi
+    if test -f /var/run/octopus_barracuda.pid ; then
+      rm -f /var/run/octopus_barracuda.pid
+      echo "$NAME 2 done."
+    else
+      echo "$NAME 2 nothing to do."
     fi
     rm -f $PIDFILE
   ;;
@@ -47,9 +59,15 @@ case "$1" in
   status)
     echo -n "$DESC status: "
     if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
-      echo "fail"
+      echo "fail 1"
     else
-      echo "OK"
+      echo "OK 1"
+      exit 1
+    fi
+    if test -f /var/run/octopus_barracuda.pid ; then
+      echo "fail 2"
+    else
+      echo "OK 2"
       exit 1
     fi
   ;;
