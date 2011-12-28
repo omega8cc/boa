@@ -461,7 +461,7 @@ _SQL_FORCE_REINSTALL=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.0.1
+_INSTALLER_VERSION=BOA-1.4S
 _NGINX_VERSION=1.0.11
 _PHP_VERSION=5.2.17
 _APC_VERSION=3.1.9
@@ -3288,7 +3288,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       true
       msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
       mrun "sleep 3"
-      cd /var/www
+      mkdir -p /var/www/chive
+      cd /var/www/chive
       wget -q -U iCab http://launchpad.net/chive/1.0/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
       tar -xzf chive_$_CHIVE_VERSION.tar.gz
       rm -f chive_$_CHIVE_VERSION.tar.gz
@@ -3322,8 +3323,9 @@ if [ -d "/var/www/chive" ] ; then
   if [ ! -e "/var/log/chive_$_CHIVE_VERSION.log" ] ; then
     msg "INFO: Upgrading Chive $_DB_SERVER Manager, please wait..."
     mrun "sleep 3"
-    cd /var/www
     rm -f -r /var/www/chive
+    mkdir -p /var/www/chive
+    cd /var/www/chive
     wget -q -U iCab http://launchpad.net/chive/1.0/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
     tar -xzf chive_$_CHIVE_VERSION.tar.gz
     rm -f chive_$_CHIVE_VERSION.tar.gz
