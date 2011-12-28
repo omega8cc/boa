@@ -131,7 +131,7 @@ _TUNE_PHP_TIMEOUT=3600
 ###----------------------------------------###
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-1.4S
+### _AEGIR_VERSION=BOA-2.0.1
 ###
 _AEGIR_VERSION=HEAD
 
@@ -160,7 +160,7 @@ _FORCE_GIT_MIRROR=""
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-1.4S
+_INSTALLER_VERSION=BOA-2.0.1
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 

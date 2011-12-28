@@ -3,7 +3,7 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 site deployment.
 
-Your Aegir control panel [version BOA-1.4S] is available at:
+Your Aegir control panel [version BOA-2.0.1] is available at:
 
  https://aegir.dragon.ny.host8.biz
 
