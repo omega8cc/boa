@@ -370,7 +370,6 @@ if [ $_HTTP_WILDCARD = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
 fi
 
-/var/aegir/.drush/provision/http/Provision/Config/Nginx
 ###---### Build Aegir base
 #
 msg "$_STATUS B: Build Aegir base"
