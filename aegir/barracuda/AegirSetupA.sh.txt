@@ -563,7 +563,7 @@ fi
     cp -af $_ADV_NGX nginx_advanced_include.conf &> /dev/null
   fi
   chown $_USER:$_USRG * &> /dev/null
-  cd $_ROOT/.drush/provision/http/nginx
+  cd $_ROOT/.drush/provision/http/Provision/Config/Nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
   if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
