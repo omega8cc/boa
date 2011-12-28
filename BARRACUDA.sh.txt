@@ -3199,8 +3199,8 @@ EOF
     mrun "sleep 30"
   else
     _HTTPS_TEST=FREE
-    validate_public_ip
-    validate_xtras_ip
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
     cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
@@ -3233,7 +3233,7 @@ fi
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
   msg "INFO: Installing Speed Booster Purge Server, please wait..."
   mrun "sleep 3"
-  validate_purge_ip
+  validate_purge_ip &> /dev/null
   cd /var/aegir/config/server_master/nginx/pre.d
   rm -f speed_purge.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf ./
@@ -3327,7 +3327,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     chown -R tomcat:tomcat /opt/solr/conf
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
     mrun "sleep 3"
-    st_runner "invoke-rc.d tomcat start" &> /dev/null       
+    st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
 fi
 
@@ -3347,8 +3347,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       rm -f chive_$_CHIVE_VERSION.tar.gz
       chown -R www-data:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-      validate_public_ip
-      validate_xtras_ip
+      validate_public_ip &> /dev/null
+      validate_xtras_ip &> /dev/null
       echo > $_CHIVE_VHOST
       echo "server {" >> $_CHIVE_VHOST
       echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
@@ -3386,8 +3386,8 @@ if [ -d "/var/www/chive" ] ; then
   fi
   if [ ! -e "/var/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-    validate_public_ip
-    validate_xtras_ip
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
     echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
     echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
@@ -3425,8 +3425,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BDD ]] ; then
       rm -f sqlbuddy_1_3_3.zip
       chown -R www-data:www-data /var/www/sqlbuddy
       _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-      validate_public_ip
-      validate_xtras_ip
+      validate_public_ip &> /dev/null
+      validate_xtras_ip &> /dev/null
       echo > $_SQLBUDDY_VHOST
       echo "server {" >> $_SQLBUDDY_VHOST
       echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
@@ -3470,8 +3470,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
         chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
-        validate_public_ip
-        validate_xtras_ip
+        validate_public_ip &> /dev/null
+        validate_xtras_ip &> /dev/null
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
         echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
