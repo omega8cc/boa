@@ -465,7 +465,7 @@ _INSTALLER_VERSION=BOA-2.0.1
 _NGINX_VERSION=1.0.11
 _PHP_VERSION=5.2.17
 _APC_VERSION=3.1.9
-_CHIVE_VERSION=0.5.1
+_CHIVE_VERSION=1.0.1
 _BZR_VERSION=2.3.4
 _LSHELL_VERSION=0.9.14
 _PURE_FTPD_VERSION=1.0.35
@@ -3289,7 +3289,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
       mrun "sleep 3"
       cd /var/www
-      wget -q -U iCab http://launchpad.net/chive/0.5/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
+      wget -q -U iCab http://launchpad.net/chive/1.0/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
       tar -xzf chive_$_CHIVE_VERSION.tar.gz
       rm -f chive_$_CHIVE_VERSION.tar.gz
       chown -R www-data:www-data /var/www/chive
@@ -3324,7 +3324,7 @@ if [ -d "/var/www/chive" ] ; then
     mrun "sleep 3"
     cd /var/www
     rm -f -r /var/www/chive
-    wget -q -U iCab http://launchpad.net/chive/0.5/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
+    wget -q -U iCab http://launchpad.net/chive/1.0/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
     tar -xzf chive_$_CHIVE_VERSION.tar.gz
     rm -f chive_$_CHIVE_VERSION.tar.gz
     chown -R www-data:www-data /var/www/chive
