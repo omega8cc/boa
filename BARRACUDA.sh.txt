@@ -3181,7 +3181,6 @@ fi
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
   msg "INFO: Installing Speed Booster Purge Server, please wait..."
   mrun "sleep 3"
-  validate_public_ip
   validate_xtras_ip
   cd /var/aegir/config/server_master/nginx/pre.d
   rm -f speed_purge.conf
