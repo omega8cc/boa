@@ -95,7 +95,7 @@ More details about Pressflow Drupal are here:
 
  http://pressflow.org
 
-Hosted Open Atrium 1.0 includes extra features:
+Hosted Open Atrium 1.1.1 includes extra features:
 
  Atrium Folders:  http://bit.ly/oafolders
  Ideation:        http://bit.ly/oaideation
