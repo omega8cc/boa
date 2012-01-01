@@ -131,7 +131,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     header('X-Booster-Expires: D7');
   }
-  elseif (file_exists('./modules/watchdog') {
+  elseif (file_exists('./modules/watchdog')) {
     header('X-Booster-Expires: D5');
   }
   else {
