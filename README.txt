@@ -61,6 +61,7 @@ standard production settings.
 
 ### REQUIREMENTS
 
+* Xen, VServer or VMware based VPS or a dedicated box. Avoid Virtuozzo/OpenVZ.
 * Debian 6.0 Squeeze (recommended) minimal OS 32/64bit fresh install, or
 * Debian 5.0 Lenny minimal OS 32/64bit fresh install, or
 * Ubuntu Oneiric 11.10 minimal OS 32/64bit fresh install, or
