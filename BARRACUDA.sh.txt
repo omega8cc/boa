@@ -3593,14 +3593,6 @@ if [ -e "/usr/sbin/csf" ] ; then
   else
     if [ ! -e "/var/log/custom.csf.log" ] ; then
       csf_install
-      cd /etc/csf
-      mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
-      sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,$_SSH_PORT,/g" /etc/csf/csf.conf
-      chmod 600 /etc/csf/csf.conf &> /dev/null
-      sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config
-      st_runner "invoke-rc.d ssh restart" &> /dev/null
-      st_runner "invoke-rc.d csf restart" &> /dev/null
     fi
   fi
   if [ -e "/var/xdrago/log/lastFire" ] ; then
