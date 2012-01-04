@@ -476,6 +476,8 @@ if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
 fi
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+  mkdir -p $_ROOT/backups/system/off
+  mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   DRUSHC="$_ROOT/tools/drush/drush"
   $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev -y &> /dev/null
   $_DRUSHCMD en hosting_client -y &> /dev/null
