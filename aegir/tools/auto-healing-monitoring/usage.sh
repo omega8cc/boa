@@ -441,6 +441,9 @@ do
       rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
       rm -f -r $User/clients/*/backups &> /dev/null
       symlinks -dr $User/clients &> /dev/null
+      if [ -d "/home/$_THIS_HM_USER.ftp" ] ; then
+        symlinks -dr /home/$_THIS_HM_USER.ftp &> /dev/null
+      fi
       echo Done for $User
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
