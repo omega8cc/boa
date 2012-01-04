@@ -479,8 +479,9 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   DRUSHC="$_ROOT/tools/drush/drush"
   $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev -y &> /dev/null
   $_DRUSHCMD en hosting_client -y &> /dev/null
+  $_DRUSHCMD en hosting_platform_pathauto -y &> /dev/null
   $_DRUSHCMD en css_emimage -y &> /dev/null
-  $_DRUSHCMD en syslog -y &> /dev/null
+  $_DRUSHCMD dis syslog -y &> /dev/null
   $_DRUSHCMD dis cache -y &> /dev/null
   $_DRUSHCMD dis path_alias_cache -y &> /dev/null
   $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
