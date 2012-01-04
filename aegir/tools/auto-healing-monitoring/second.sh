@@ -8,8 +8,12 @@ hold()
   killall -9 nginx
   /etc/init.d/php-fpm stop
   /etc/init.d/redis-server stop
-  killall -9 memcached
-  killall -9 php-fpm php-cgi php wget
+  killall -9 memcached php-fpm php-cgi
+  if test -f /var/run/octopus_barracuda.pid ; then
+    sleep 1
+  else
+    killall -9 php wget
+  fi
   echo load is $ONEX_LOAD:$FIVX_LOAD while maxload is $CTL_ONEX_LOAD:$CTL_FIVX_LOAD
 }
 
