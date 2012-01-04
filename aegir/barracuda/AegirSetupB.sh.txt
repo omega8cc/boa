@@ -364,6 +364,9 @@ else
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 fi
+wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
+tar -xzf provision_boost.tar.gz
+rm -f provision_boost.tar.gz
 if [ $_HTTP_WILDCARD = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null

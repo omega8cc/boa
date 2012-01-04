@@ -117,6 +117,9 @@ hostmaster_go_up () {
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.3.tar.gz
     tar -xzf drush_make-6.x-2.3.tar.gz
     rm -f drush_make-6.x-2.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
+    tar -xzf provision_boost.tar.gz
+    rm -f provision_boost.tar.gz
   fi
   if [ $_HTTP_WILDCARD = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null

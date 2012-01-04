@@ -155,6 +155,10 @@ else
     gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
     rm -f provision-$_AEGIR_VERSION.tar.gz
   fi
+  cd $AEGIR_HOME/.drush
+  wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
+  tar -xzf provision_boost.tar.gz
+  rm -f provision_boost.tar.gz
 fi
 
 msg "Installing the frontend"
