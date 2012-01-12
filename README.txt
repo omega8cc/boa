@@ -119,6 +119,7 @@ Octopus can install the platforms listed below:
  Open Outreach 1.0-beta6 ------ http://openoutreach.org
  OpenChurch 1.22-a ------------ http://openchurchsite.com
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
+ OpenPublish 3-alpha3 --------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
  ProsePoint 0.41 -------------- http://prosepoint.org
  Ubercart 6.x-2.7 (int) ------- http://ubercart.org
