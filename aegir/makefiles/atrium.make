@@ -5,9 +5,8 @@ api = 2
 core = 6.x
 
 projects[pressflow][type] = "core"
-projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow6.tar.gz"
-projects[pressflow][download][branch] = "master"
+projects[pressflow][download][type] = "bzr"
+projects[pressflow][download][url] = "lp:pressflow/6.x"
 
 projects[openatrium][type] = "profile"
 projects[openatrium][download][type] = "git"

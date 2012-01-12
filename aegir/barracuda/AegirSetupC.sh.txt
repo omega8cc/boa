@@ -700,15 +700,24 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make ./
-  $_ROOT/tools/drush/drush make atrium.make atrium-$_OPENATRIUM &> /dev/null
-  rm -f atrium.make
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
-  cd $_CORE/atrium-$_OPENATRIUM/profiles/openatrium/modules/contrib/views
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make ./
+#   $_ROOT/tools/drush/drush make atrium.make atrium-$_OPENATRIUM &> /dev/null
+#   rm -f atrium.make
+#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
+#   cd $_CORE/atrium-$_OPENATRIUM/profiles/openatrium/modules/contrib/views
   # http://drupal.org/node/853864#comment-3898996
-  wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
-  patch -p0 < views-853864_2.patch &> /dev/null
-  cd ../imagecache
+#   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
+#   patch -p0 < views-853864_2.patch &> /dev/null
+#   cd ../imagecache
+  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-1.tgz
+  tar -xzf atrium-1-1.tgz
+  rm -f atrium-1-1.tgz
+  mv atrium-1.1 atrium-$_OPENATRIUM
+  cd /data/src/$_THIS_CORE
+  rm -f -r /data/src/$_THIS_CORE/pressflow-6-original
+  bzr branch lp:pressflow/6.x pressflow-6-original &> /dev/null
+  cp -af /data/src/$_THIS_CORE/pressflow-6-original/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
+  cd $_CORE/atrium-$_OPENATRIUM/profiles/openatrium/modules/contrib/imagecache
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
