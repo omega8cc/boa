@@ -433,7 +433,6 @@ prepare_pressflow_core () {
   chmod 0700 /data/src/$_THIS_CORE &> /dev/null
   cd /data/src/$_THIS_CORE
   rm -f -r /data/src/$_THIS_CORE/pressflow-6
-  # bzr branch lp:pressflow/6.x pressflow-6 &> /dev/null
   wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-6.tar.gz
   tar -xzf pressflow-6.tar.gz
   rm -f pressflow-6.tar.gz
@@ -444,6 +443,7 @@ prepare_pressflow_core () {
   rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
   themes_for_d6
   rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
+  echo abc > /data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION
   if [ ! -e "$_CORE/o_contrib_seven" ] ; then
     mkdir -p $_CORE/o_contrib_seven
     cd $_CORE/o_contrib_seven
@@ -476,6 +476,7 @@ prepare_pressflow_core_original () {
   rm -f /data/src/$_THIS_CORE/pressflow-6-original/themes/*.txt
   themes_for_d6_original
   rm -f /data/src/$_THIS_CORE/pressflow-6-original/sites/all/*.txt
+  echo abc > /data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION
   if [ ! -e "$_CORE/o_contrib_seven" ] ; then
     mkdir -p $_CORE/o_contrib_seven
     cd $_CORE/o_contrib_seven
@@ -579,10 +580,15 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 ###---### Prepare Pressflow core
 #
-if [ $_STATUS = "INIT" ] || [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
-  msg "$_STATUS C: Preparing Pressflow core, please wait.."
+if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  msg "$_STATUS C: Preparing Pressflow core +Extra, please wait.."
   mrun "sleep 2"
   prepare_pressflow_core
+fi
+if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  msg "$_STATUS C: Preparing Pressflow core Original, please wait.."
+  mrun "sleep 2"
+  prepare_pressflow_core_original
 fi
 if [ -d "$_CORE/o_contrib/memcache" ] ; then
   rm -f -r $_CORE/o_contrib/memcache &> /dev/null
@@ -664,7 +670,7 @@ msg "STATUS: $_F_ACQUIA install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/acquia-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -740,7 +746,7 @@ msg "STATUS: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6-original" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core_original
   fi
   cd $_CORE
@@ -834,7 +840,7 @@ msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-dev"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -862,7 +868,7 @@ msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-stage"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -891,7 +897,7 @@ if [ ! -d "$_CORE/pressflow" ] ; then
   mrun "sleep 1"
   _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-prod"
   if [ ! -d "$_CORE_DISTRO" ] ; then
-    if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+    if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
       prepare_pressflow_core
     fi
     cd $_CORE
@@ -1320,7 +1326,7 @@ msg "STATUS: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/acquia_commons-$_COMMONS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1380,7 +1386,7 @@ msg "STATUS: $_F_OPENENTERPRISE install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openenterprise-$_OPENENTERPRISE"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1431,7 +1437,7 @@ msg "STATUS: $_F_VIDEOLA install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/videola-$_VIDEOLA"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1481,7 +1487,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
   fi
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1529,7 +1535,7 @@ msg "STATUS: $_F_MANAGINGNEWS install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1590,7 +1596,7 @@ msg "STATUS: $_F_NODESTREAM install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1629,7 +1635,7 @@ fi
 # mrun "sleep 2"
 # _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH"
 # if [ ! -d "$_CORE_DISTRO" ] ; then
-#   if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+#   if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
 #     prepare_pressflow_core
 #   fi
 #   cd $_CORE
@@ -1672,7 +1678,7 @@ msg "STATUS: $_F_OPENSCHOLAR install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openscholar-$_OPENSCHOLAR"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1718,7 +1724,7 @@ msg "STATUS: $_F_COD install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/cod-$_COD"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1765,7 +1771,7 @@ msg "STATUS: $_F_OPENCHURCH install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openchurch-$_OPENCHURCH"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1811,7 +1817,7 @@ msg "STATUS: $_F_ELMS install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/elms-$_ELMS"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1864,7 +1870,7 @@ msg "STATUS: $_F_CIVICRM6 install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/civicrm-$_CIVICRM6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1961,7 +1967,7 @@ msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -2003,7 +2009,7 @@ if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/fixed_1.log" ] ; then
   rm -f -r $_CORE_DISTRO
 fi
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
