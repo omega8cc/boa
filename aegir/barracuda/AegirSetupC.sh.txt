@@ -492,7 +492,9 @@ prepare_pressflow_core_original () {
   cd /data/src/$_THIS_CORE/pressflow-6-original/
   cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
   ln -s $_CORE/o_contrib modules/o_contrib
-  cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
+  if [ -e "/data/src/$_THIS_CORE/pressflow-6/includes/image.imagemagick.inc" ] ; then
+    cp -a /data/src/$_THIS_CORE/pressflow-6/includes/image.imagemagick.inc includes/
+  fi
 }
 
 
