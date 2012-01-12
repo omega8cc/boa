@@ -257,6 +257,18 @@ wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.2.tar.gz
 cd /data/src/$_THIS_CORE
 }
 #
+# themes_for_d6_original
+themes_for_d6_original () {
+cd /data/src/$_THIS_CORE/pressflow-6-original/themes
+wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta2.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.2.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+cd /data/src/$_THIS_CORE
+}
+#
 # themes_for_d7
 themes_for_d7 () {
 cd $_CORE_DISTRO/themes
@@ -445,6 +457,38 @@ prepare_pressflow_core () {
     cd $_CORE/o_contrib
   fi
   cd /data/src/$_THIS_CORE/pressflow-6/
+  cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
+  ln -s $_CORE/o_contrib modules/o_contrib
+  cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
+}
+#
+# prepare_pressflow_core_original
+prepare_pressflow_core_original () {
+  mkdir -p /data/src/$_THIS_CORE
+  chmod 0700 /data/src/$_THIS_CORE &> /dev/null
+  cd /data/src/$_THIS_CORE
+  rm -f -r /data/src/$_THIS_CORE/pressflow-6-original
+  bzr branch lp:pressflow/6.x pressflow-6-original &> /dev/null
+  cd /data/src/$_THIS_CORE/pressflow-6-original/
+  rm -f /data/src/$_THIS_CORE/pressflow-6-original/*.txt
+  rm -f /data/src/$_THIS_CORE/pressflow-6-original/modules/*.txt
+  rm -f -r /data/src/$_THIS_CORE/pressflow-6-original/modules/cookie_cache_bypass
+  rm -f /data/src/$_THIS_CORE/pressflow-6-original/themes/*.txt
+  themes_for_d6_original
+  rm -f /data/src/$_THIS_CORE/pressflow-6-original/sites/all/*.txt
+  if [ ! -e "$_CORE/o_contrib_seven" ] ; then
+    mkdir -p $_CORE/o_contrib_seven
+    cd $_CORE/o_contrib_seven
+    download_o_contrib_seven
+    cd $_CORE/o_contrib_seven
+  fi
+  if [ ! -e "$_CORE/o_contrib" ] ; then
+    mkdir -p $_CORE/o_contrib
+    cd $_CORE/o_contrib
+    download_o_contrib_six
+    cd $_CORE/o_contrib
+  fi
+  cd /data/src/$_THIS_CORE/pressflow-6-original/
   cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
   ln -s $_CORE/o_contrib modules/o_contrib
   cp -a $_CORE/o_contrib/image/image.imagemagick.inc includes/
@@ -696,8 +740,8 @@ msg "STATUS: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6" ] ; then
-    prepare_pressflow_core
+  if [ ! -d "/data/src/$_THIS_CORE/pressflow-6-original" ] ; then
+    prepare_pressflow_core_original
   fi
   cd $_CORE
 #   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make ./
@@ -714,8 +758,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f atrium-1-1.tgz
   mv atrium-1.1 atrium-$_OPENATRIUM
   cd /data/src/$_THIS_CORE
-  rm -f -r /data/src/$_THIS_CORE/pressflow-6-original
-  bzr branch lp:pressflow/6.x pressflow-6-original &> /dev/null
   cp -af /data/src/$_THIS_CORE/pressflow-6-original/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   echo skip > $_CORE/atrium-$_OPENATRIUM/includes/fix_pressflow_core_three.txt
   cd $_CORE/atrium-$_OPENATRIUM/profiles/openatrium/modules/contrib/imagecache
