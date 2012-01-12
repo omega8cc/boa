@@ -717,6 +717,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r /data/src/$_THIS_CORE/pressflow-6-original
   bzr branch lp:pressflow/6.x pressflow-6-original &> /dev/null
   cp -af /data/src/$_THIS_CORE/pressflow-6-original/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
+  echo skip > $_CORE/atrium-$_OPENATRIUM/includes/fix_pressflow_core_three.txt
   cd $_CORE/atrium-$_OPENATRIUM/profiles/openatrium/modules/contrib/imagecache
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
