@@ -388,6 +388,9 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
     _O_CONTRIB_UP=YES
   fi
 fi
+if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  _O_CONTRIB_UP=YES
+fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
   _TEST_MODULE=purge
 else
@@ -582,6 +585,9 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 ###---### Prepare Pressflow core
 #
+if [ $_STATUS != "INIT" ] ; then
+  upgrade_o_contrib
+fi
 if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
   msg "$_STATUS C: Preparing Pressflow core +Extra, please wait.."
   mrun "sleep 2"
@@ -642,9 +648,6 @@ if [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6.pl.po" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.cs.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.lt.po
   wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE6.ru.po
-fi
-if [ $_STATUS != "INIT" ] ; then
-  upgrade_o_contrib
 fi
 
 
