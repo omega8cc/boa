@@ -145,7 +145,7 @@ added to all 6.x platforms:
  config_perms-6.x-2.x-dev
  css_emimage-6.x-2.x-dev (mikeytown2's fork)
  dbtuner-6.x-1.x-dev
- esi-6.x-1.x-dev (mikeytown2's fork)
+ esi-6.x-2.x-dev
  filefield_nginx_progress-6.x-1.4
  fpa-6.x-2.3
  httprl-6.x-1.2
