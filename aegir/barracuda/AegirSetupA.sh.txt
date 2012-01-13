@@ -846,6 +846,7 @@ if [ ! -L "$_USER_HD/clients" ] ; then
 fi
 rm -f -r /data/disk/$_USER/clients/admin &> /dev/null
 rm -f -r /data/disk/$_USER/clients/omega8ccgmailcom &> /dev/null
+rm -f -r /data/disk/$_USER/clients/nocomega8cc &> /dev/null
 rm -f -r /data/disk/$_USER/clients/*/backups &> /dev/null
 symlinks -dr /data/disk/$_USER/clients &> /dev/null
 

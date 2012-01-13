@@ -439,6 +439,7 @@ do
       fi
       rm -f -r $User/clients/admin &> /dev/null
       rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
+      rm -f -r $User/clients/nocomega8cc &> /dev/null
       rm -f -r $User/clients/*/backups &> /dev/null
       symlinks -dr $User/clients &> /dev/null
       if [ -d "/home/$_THIS_HM_USER.ftp" ] ; then
