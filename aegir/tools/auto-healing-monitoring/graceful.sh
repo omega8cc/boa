@@ -29,7 +29,7 @@ if test -f /var/run/octopus_barracuda.pid ; then
   exit
 else
   touch /var/xdrago/log/optimize_mysql_ao.pid
-  sleep 8
+  sleep 300
   action
   rm -f /var/xdrago/log/optimize_mysql_ao.pid
 fi
