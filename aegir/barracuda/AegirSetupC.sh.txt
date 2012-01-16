@@ -1648,10 +1648,10 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openpublish-$_OPENPUBLISH-$_SMALLCORE7.tar.gz
-  tar -xzf openpublish-$_OPENPUBLISH-$_SMALLCORE7.tar.gz &> /dev/null
-  rm -f openpublish-$_OPENPUBLISH-$_SMALLCORE7.tar.gz
-  mv openpublish-$_OPENPUBLISH-$_SMALLCORE7 openpublish-$_OPENPUBLISH-$_SMALLCORE7
+  wget -q -U iCab http://files.aegir.cc/dev/distro/openpublish-$_OPENPUBLISH.tar.gz
+  tar -xzf openpublish-$_OPENPUBLISH.tar.gz &> /dev/null
+  rm -f openpublish-$_OPENPUBLISH.tar.gz
+  mv openpublish-$_OPENPUBLISH openpublish-$_OPENPUBLISH-$_SMALLCORE7
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
