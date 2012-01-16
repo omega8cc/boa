@@ -1648,10 +1648,10 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openpublish-$_OPENPUBLISH.tar.gz
-  tar -xzf openpublish-$_OPENPUBLISH.tar.gz &> /dev/null
-  rm -f openpublish-$_OPENPUBLISH.tar.gz
-  mv openpublish-$_OPENPUBLISH openpublish-$_OPENPUBLISH-$_SMALLCORE7
+  wget -q -U iCab http://files.aegir.cc/dev/distro/openpublish-$_OPENPUBLISH-$_SMALLCORE7.tar.gz
+  tar -xzf openpublish-$_OPENPUBLISH-$_SMALLCORE7.tar.gz &> /dev/null
+  rm -f openpublish-$_OPENPUBLISH-$_SMALLCORE7.tar.gz
+  mv openpublish-$_OPENPUBLISH-$_SMALLCORE7 openpublish-$_OPENPUBLISH-$_SMALLCORE7
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
@@ -2233,9 +2233,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ;
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
