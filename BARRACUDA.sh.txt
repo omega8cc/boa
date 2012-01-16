@@ -3350,8 +3350,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
       true
       msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
       mrun "sleep 3"
-      mkdir -p /var/www/chive
-      cd /var/www/chive
+      cd /var/www
       wget -q -U iCab http://launchpad.net/chive/1.0/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
       tar -xzf chive_$_CHIVE_VERSION.tar.gz
       rm -f chive_$_CHIVE_VERSION.tar.gz
@@ -3386,8 +3385,7 @@ if [ -d "/var/www/chive" ] ; then
     msg "INFO: Upgrading Chive $_DB_SERVER Manager, please wait..."
     mrun "sleep 3"
     rm -f -r /var/www/chive
-    mkdir -p /var/www/chive
-    cd /var/www/chive
+    cd /var/www
     wget -q -U iCab http://launchpad.net/chive/1.0/$_CHIVE_VERSION/+download/chive_$_CHIVE_VERSION.tar.gz
     tar -xzf chive_$_CHIVE_VERSION.tar.gz
     rm -f chive_$_CHIVE_VERSION.tar.gz
