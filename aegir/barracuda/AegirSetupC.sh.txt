@@ -1637,7 +1637,7 @@ fi
 
 ###---### OpenPublish
 #
-if [ "$_CLIENT_CORES" -ge "4" ] ; then
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
 echo " "
