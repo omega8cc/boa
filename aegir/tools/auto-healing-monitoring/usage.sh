@@ -430,6 +430,7 @@ do
         check_limits
       fi
       if [ -d "$_THIS_HM_SITE" ] ; then
+        read_account_data
         cd $_THIS_HM_SITE
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> C' &> /dev/null"
         if [ ! -e "$User/log/custom_cron" ] ; then
