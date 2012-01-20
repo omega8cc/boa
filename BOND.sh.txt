@@ -157,6 +157,14 @@ _FORCE_GIT_MIRROR=""
 
 
 ###----------------------------------------###
+### ADVANCED CONFIGURATION OPTIONS         ###
+###----------------------------------------###
+
+_NGINX_WORKERS=AUTO
+_PHP_FPM_WORKERS=AUTO
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -264,6 +272,7 @@ restore_default_sql () {
 tune_sql () {
   sed -i "s/900/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf
   sed -i "s/600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh
+  sed -i "s/900/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh
 }
 #
 restore_default_nginx () {
@@ -334,19 +343,48 @@ tune_memory_limits () {
     if [ "$_VMFAMILY" = "XEN" ] ; then
       _USE_PHP=512
       _USE_APC=1024
-      sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
-      sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _LOCAL_PHP_FPM_WORKERS=8
+      else
+        _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+      sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+      if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+        _LOCAL_NGINX_WORKERS=8
+      else
+        _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+      fi
+      sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       _USE_PHP=512
       if [ -d "/boot/grub" ] ; then
         _USE_APC=1024
-        sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
-        sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _LOCAL_PHP_FPM_WORKERS=8
+        else
+          _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+        sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+        if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+          _LOCAL_NGINX_WORKERS=8
+        else
+          _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+        fi
+        sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
       else
         _USE_APC=256
-        sed -i "s/max_children\">4/max_children\"\>2/g" /opt/etc/php-fpm.conf
-        sed -i "s/max_children\">8/max_children\"\>2/g" /opt/etc/php-fpm.conf
-        sed -i "s/worker_processes  8/worker_processes  4/g" /etc/nginx/nginx.conf
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _LOCAL_PHP_FPM_WORKERS=2
+        else
+          _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+        sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+        if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+          _LOCAL_NGINX_WORKERS=4
+        else
+          _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+        fi
+        sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
       fi
     else
       _USE_PHP=256
@@ -371,7 +409,6 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
-
 
 ###---### init
 #
@@ -529,6 +566,9 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   tune_sql
   restore_default_nginx
   tune_nginx
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+  fi
   tune_memory_limits
   restart_services
   msg "STATUS: Tuning completed"
@@ -540,6 +580,9 @@ else
   restore_default_php
   restore_default_sql
   restore_default_nginx
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+  fi
   tune_memory_limits
   restart_services
   msg "STATUS: Tuning stopped and default settings restored"

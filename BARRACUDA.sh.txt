@@ -456,6 +456,8 @@ _NGINX_EXTRA_CONF=""
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 _ALL_PURGE_THISHTIP=NO
+_NGINX_WORKERS=AUTO
+_PHP_FPM_WORKERS=AUTO
 
 
 ###----------------------------------------###
@@ -998,19 +1000,48 @@ tune_memory_limits () {
     if [ "$_VMFAMILY" = "XEN" ] ; then
       _USE_PHP=512
       _USE_APC=1024
-      sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
-      sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _LOCAL_PHP_FPM_WORKERS=8
+      else
+        _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+      sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+      if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+        _LOCAL_NGINX_WORKERS=8
+      else
+        _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+      fi
+      sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       _USE_PHP=512
       if [ -d "/boot/grub" ] ; then
         _USE_APC=1024
-        sed -i "s/max_children\">4/max_children\"\>8/g" /opt/etc/php-fpm.conf
-        sed -i "s/worker_processes  4/worker_processes  8/g" /etc/nginx/nginx.conf
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _LOCAL_PHP_FPM_WORKERS=8
+        else
+          _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+        sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+        if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+          _LOCAL_NGINX_WORKERS=8
+        else
+          _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+        fi
+        sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
       else
         _USE_APC=256
-        sed -i "s/max_children\">4/max_children\"\>2/g" /opt/etc/php-fpm.conf
-        sed -i "s/max_children\">8/max_children\"\>2/g" /opt/etc/php-fpm.conf
-        sed -i "s/worker_processes  8/worker_processes  4/g" /etc/nginx/nginx.conf
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _LOCAL_PHP_FPM_WORKERS=2
+        else
+          _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+        sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+        if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+          _LOCAL_NGINX_WORKERS=4
+        else
+          _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+        fi
+        sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
       fi
     else
       _USE_PHP=256
@@ -1121,6 +1152,8 @@ barracuda_cnf () {
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FORCE_REINSTALL=$_PHP_FORCE_REINSTALL" >> /root/.barracuda.cnf
     echo "_SQL_FORCE_REINSTALL=$_SQL_FORCE_REINSTALL" >> /root/.barracuda.cnf
+    echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
+    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1130,6 +1163,16 @@ barracuda_cnf () {
     sleep 3
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
+    _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
+    if [[ $_WORKERS_TEST =~ "_NGINX_WORKERS" ]] ; then
+      true
+    else
+      echo "### Configuration added on $_NOW" >> /root/.barracuda.cnf
+      echo "###" >> /root/.barracuda.cnf
+      echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
+      echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+      echo "###" >> /root/.barracuda.cnf
+    fi
     sleep 5
     echo " "
     while read line ; do
