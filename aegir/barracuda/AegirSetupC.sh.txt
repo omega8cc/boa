@@ -768,10 +768,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
 #   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
 #   patch -p0 < views-853864_2.patch &> /dev/null
 #   cd ../imagecache
-  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-1.tgz
-  tar -xzf atrium-1-1.tgz
-  rm -f atrium-1-1.tgz
-  mv atrium-1.1 atrium-$_OPENATRIUM
+  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-2.tgz
+  tar -xzf atrium-1-2.tgz
+  rm -f atrium-1-2.tgz
+  mv atrium-1.2 atrium-$_OPENATRIUM
   cd /data/src/$_THIS_CORE
   cp -af /data/src/$_THIS_CORE/pressflow-6-original/* $_CORE/atrium-$_OPENATRIUM/ &> /dev/null
   echo skip > $_CORE/atrium-$_OPENATRIUM/includes/fix_pressflow_core_three.txt
