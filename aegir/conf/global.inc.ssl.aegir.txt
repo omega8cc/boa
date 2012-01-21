@@ -38,7 +38,7 @@ if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
   ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
-  if (preg_match("/host8/i", $_SERVER['HTTP_HOST']) && preg_match("/\/node\/(?:1|2|4|5|7|8|10)\/edit/", $_SERVER['REQUEST_URI'])) {
+  if (preg_match("/host8/i", $_SERVER['HTTP_HOST']) && preg_match("/\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
   }
