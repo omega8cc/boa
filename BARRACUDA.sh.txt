@@ -1522,8 +1522,16 @@ elif [ $_THIS_OS = "Jolicloud" ] ; then
 else
   not_supported_os
 fi
+_AWS_TEST_A=$(grep cloudimg /etc/fstab)
+_AWS_TEST_B=$(grep cloudconfig /etc/fstab)
+if [[ $_AWS_TEST_A =~ "cloudimg" ]] || [[ $_AWS_TEST_B =~ "cloudconfig" ]] ; then
+  _VMFAMILY="AWS"
+  _IFCONFIG="eth0"
+  _HTTP_WILDCARD=YES
+  _THIS_DB_HOST=localhost
+fi
 echo " "
-msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install script."
+msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION ($_VMFAMILY) - highly automated install script."
 echo " "
 mrun "sleep 3"
 

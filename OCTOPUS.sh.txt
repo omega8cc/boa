@@ -584,6 +584,8 @@ octopus_cnf () {
 #
 action () {
 _REL_VERSION=`lsb_release -sc`
+_AWS_TEST_A=$(grep cloudimg /etc/fstab)
+_AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   if [ -x "/usr/local/sbin/nginx" ] ; then
     _NGX_BIN=/usr/local/sbin/nginx
   elif [ -x "/usr/local/bin/nginx" ] ; then
@@ -608,6 +610,13 @@ if [ "$_REL_VERSION" = "precise" ] ; then
   _OCT_NGX=nginx_octopus_noup_include.conf
   _ADV_NGX=nginx_advanced_noup_include.conf
   _THIS_DB_HOST=localhost
+fi
+if [[ $_AWS_TEST_A =~ "cloudimg" ]] || [[ $_AWS_TEST_B =~ "cloudconfig" ]] ; then
+  _VMFAMILY="AWS"
+  _THIS_DB_HOST=localhost
+  _LOC_DOM="$_DOMAIN"
+  find_correct_ip
+  _MY_OWNIP="$_LOC_IP"
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda -type f`
 do
