@@ -255,12 +255,17 @@ if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUE
   $use_cache = 'NO';
 }
 
-// Fix for Mollom and others running via Proxy.
-if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && isset($_SERVER['REMOTE_ADDR'])) {
-  $_SERVER[REMOTE_ADDR] = $_SERVER[HTTP_X_FORWARDED_FOR];
-}
-if (isset($_SERVER['HTTP_X_REAL_IP']) && isset($_SERVER['REMOTE_ADDR'])) {
-  $_SERVER[REMOTE_ADDR] = $_SERVER[HTTP_X_REAL_IP];
+// Fix for Mollom, CloudFlare and others running via Proxy.
+if (isset($_SERVER['REMOTE_ADDR'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+  }
+  if (isset($_SERVER['HTTP_X_REAL_IP'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  }
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  }
 }
 
 /**
