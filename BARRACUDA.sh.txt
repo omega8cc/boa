@@ -1955,6 +1955,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   mrun "sleep 8"
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
+  msg "HINT: Run tail -f /opt/tmp/aegir-install.log in another terminal window to watch details."
   mrun "sleep 3"
   if [ -e "/etc/init.d/bind" ] ; then
     rm -f /etc/init.d/bind
