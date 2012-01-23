@@ -2557,7 +2557,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   cd /var/opt
   rm -f -r /var/opt/php*
   rm -f /etc/init.d/php-fpm*
-  wget -q -U iCab http://www.php.net/distributions/php-$_PHP_VERSION.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-5.2.16-0.9.7.patch.gz
   wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
   tar -xzf php-$_PHP_VERSION.tar.gz
