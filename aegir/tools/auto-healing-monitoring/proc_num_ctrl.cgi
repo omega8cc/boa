@@ -34,7 +34,7 @@ print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
 print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
 print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
 print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
-print "\n $collectdsumar collectd procs\tGLOBAL" if ($collectdlives);
+print "\n $collectdsumar Collectd\tGLOBAL" if ($collectdlives);
 if (-e "/usr/sbin/pdnsd") {
   `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
 }

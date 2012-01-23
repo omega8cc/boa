@@ -458,6 +458,8 @@ _SQL_FORCE_REINSTALL=NO
 _ALL_PURGE_THISHTIP=NO
 _NGINX_WORKERS=AUTO
 _PHP_FPM_WORKERS=AUTO
+_LENNY_TO_SQUEEZE=YES
+_FULL_FORCE_REINSTALL=NO
 
 
 ###----------------------------------------###
@@ -1198,6 +1200,16 @@ barracuda_cnf () {
     fi
   fi
 }
+#
+# Running apt update.
+run_apt_update_again () {
+  msg "INFO: Running apt update, please wait..."
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "aptitude update -y" 2> /dev/null
+  st_runner "aptitude clean -y" 2> /dev/null
+  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  fix_locales
+}
 
 
 ###--------------------###
@@ -1219,6 +1231,7 @@ if [ `whoami` = "root" ] ; then
   rm -f /tmp/cache.inc
   invoke-rc.d cron stop &> /dev/null
   touch /var/run/octopus_barracuda.pid
+  touch /var/xdrago/log/optimize_mysql_ao.pid
   _VM_TEST=`uname -a 2>&1`
   if [[ $_VM_TEST =~ beng ]] ; then
     _VMFAMILY="VS"
@@ -1248,7 +1261,7 @@ else
   msg "INFO: INIT..."
   barracuda_cnf
 fi
-_INITINS="/usr/bin/apt-get -y --force-yes install"
+_INITINS="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
@@ -1531,7 +1544,7 @@ if [[ $_AWS_TEST_A =~ "cloudimg" ]] || [[ $_AWS_TEST_B =~ "cloudconfig" ]] ; the
   _THIS_DB_HOST=localhost
 fi
 echo " "
-msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION ($_VMFAMILY) - highly automated install script."
+msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install/upgrade script."
 echo " "
 mrun "sleep 3"
 
@@ -1853,6 +1866,13 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
   if [ ! -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
     _APT_SOURCES_REWRITE=YES
   fi
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+    run_apt_update_again
+    run_apt_update_again
+    _LOC_REL_VERSION=lenny
+    _REL_VERSION=squeeze
+    _APT_SOURCES_REWRITE=YES
+  fi
 else
   _APT_SOURCES_REWRITE=YES
 fi
@@ -1929,6 +1949,41 @@ fi
 
 
 ###--------------------###
+if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+  _FULL_FORCE_REINSTALL=YES
+  msg "WARN: Lenny to Squeeze upgrade will start in 8 seconds..."
+  msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
+  mrun "sleep 8"
+  msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
+  mrun "sleep 3"
+  if [ -e "/etc/init.d/bind" ] ; then
+    rm -f /etc/init.d/bind
+  fi
+  if [ -e "/etc/init.d/tomcat" ] ; then
+    cd /etc/init.d
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat ./
+    chmod 755 tomcat
+    st_runner "update-rc.d tomcat defaults" &> /dev/null
+    cd /var/opt
+  fi
+  if [ -d "/var/www/cgp" ] ; then
+    st_runner "apt-get -y remove collectd" 2> /dev/null
+  fi
+  st_runner "apt-get update -y" 2> /dev/null
+  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
+  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
+    ln -s /etc/init.d/bind9 /etc/init.d/bind
+  fi
+  if [ -d "/var/www/cgp" ] ; then
+    st_runner "apt-get -y install collectd" 2> /dev/null
+  fi
+  msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful."
+  msg "HINT: Please remember to reboot when Barracuda will complete all upgrades."
+fi
+
+
+###--------------------###
 if [ -d "/etc/webmin" ] ; then
   if [ ! -e "/var/log/webmin_new_apt.log" ] ; then
     msg "INFO: Fix for new Webmin Control Panel apt key, please wait..."
@@ -1942,21 +1997,25 @@ fi
 
 
 ###--------------------###
-msg "INFO: Run apt update, please wait..."
+msg "INFO: Running apt update, please wait..."
 st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
-  st_runner "aptitude safe-upgrade -y" 2> /dev/null
+  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold safe-upgrade" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
-  st_runner "aptitude full-upgrade -y" 2> /dev/null
+  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   st_runner "aptitude autoclean -y" 2> /dev/null
 else
   if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
     rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
   fi
   _KEYS_SERVER_TEST=FALSE
+  invoke-rc.d cron stop &> /dev/null
+  invoke-rc.d lfd stop  &> /dev/null
+  invoke-rc.d csf stop  &> /dev/null
+  invoke-rc.d csf stop  &> /dev/null
   until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 5
@@ -1975,7 +2034,7 @@ else
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev"
 fi
 if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-  _INSTALL="aptitude -y install"
+  _INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
 fi
 install_with_apt_deps () {
   if ! st_runner "$_INSTALL $DEBDEPS" &> /dev/null; then
@@ -2065,7 +2124,7 @@ install_with_apt_sql () {
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 fix_locales
 if [ "$_STATUS" = "INIT" ] ; then
-  _LOCAL_INSTALL="aptitude -y install"
+  _LOCAL_INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
   install_with_apt_sql
 else
   _SQL_UPGRADE=NO
@@ -2113,40 +2172,14 @@ else
     invoke-rc.d csf start     &> /dev/null
     invoke-rc.d php-fpm start &> /dev/null
   else
-    _LOCAL_INSTALL="aptitude -y install"
+    _LOCAL_INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
   fi
 fi
 
 
 ###--------------------###
-msg "INFO: Run apt update again, please wait..."
-st_runner "dpkg --configure --force-all -a" 2> /dev/null
-st_runner "aptitude update -y" 2> /dev/null
-st_runner "aptitude clean -y" 2> /dev/null
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "aptitude safe-upgrade -y" 2> /dev/null
-  fix_locales
-  st_runner "aptitude autoclean -y" 2> /dev/null
-  st_runner "aptitude full-upgrade -y" 2> /dev/null
-  fix_locales
-elif [ "$_THIS_OS" = "Debian" ] ; then
-  st_runner "aptitude full-upgrade -y" 2> /dev/null
-  fix_locales
-fi
-
-
-###--------------------###
-msg "INFO: Run apt update again, please wait..."
-st_runner "dpkg --configure --force-all -a" 2> /dev/null
-st_runner "aptitude update -y" 2> /dev/null
-st_runner "aptitude clean -y" 2> /dev/null
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  st_runner "aptitude safe-upgrade -y" 2> /dev/null
-  st_runner "aptitude autoclean -y" 2> /dev/null
-  st_runner "aptitude full-upgrade -y" 2> /dev/null
-elif [ "$_THIS_OS" = "Debian" ] ; then
-  st_runner "aptitude full-upgrade -y" 2> /dev/null
-fi
+run_apt_update_again
+run_apt_update_again
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
 
 
@@ -2273,11 +2306,14 @@ if [ ! -e "/var/log/redis-2.0.5.log" ] ; then
     install_redis_src
   fi
 fi
+if [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+  install_redis_src
+fi
 
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  if [ ! -e "/usr/bin/vnstat" ] ; then
+  if [ ! -e "/usr/bin/vnstat" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
     msg "INFO: Installing VnStat monitor, please wait..."
     _ETH_TEST=`ifconfig 2>&1`
     if [[ $_ETH_TEST =~ venet0 ]] ; then
@@ -2409,7 +2445,7 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
-if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] ; then
+if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
   msg "INFO: Installing libevent, please wait..."
   rm -f -r /var/opt/libevent*
   cd /var/opt
@@ -2437,7 +2473,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/memcached-1.4.9.log" ] ; then
+if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
   msg "INFO: Installing Memcached server, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -2510,7 +2546,7 @@ else
 fi
 
 
-if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
+if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
 
 
 ###--------------------###
@@ -2734,7 +2770,7 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_BZR="/usr/local/bin/bzr"
 fi
-if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ]; then
+if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
   msg "INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -2785,7 +2821,7 @@ fi
 
 
 ###--------------------###
-if [ $_NGINX_INSTALL_REQUIRED = "YES" ] ; then
+if [ $_NGINX_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
   msg "INFO: Install/upgrade Nginx, please wait..."
   mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
@@ -2873,7 +2909,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] ; then
+if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
   msg "INFO: Installing lshell upgrade, please wait..."
   mrun "sleep 3"
   cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
@@ -2910,7 +2946,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] ; then
+if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
   msg "INFO: Installing latest Pure-FTPd server, please wait..."
   mrun "sleep 3"
   if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
@@ -3803,7 +3839,11 @@ rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/octopus_barracuda.pid
+rm -f /var/xdrago/log/optimize_mysql_ao.pid
 chmod 700 /root
+invoke-rc.d cron start   &> /dev/null
+invoke-rc.d lfd start    &> /dev/null
+invoke-rc.d csf start    &> /dev/null
 invoke-rc.d cron restart &> /dev/null
 msg "BYE!"
 exit 0

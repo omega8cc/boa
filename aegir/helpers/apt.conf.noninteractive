@@ -1,6 +1,6 @@
 APT::Get::Assume-Yes "true";
 APT::Get::Show-Upgraded "true";
 APT::Quiet "true";
-DPkg::Options {"--force-confmiss";"--force-confold"};
+DPkg::Options {"--force-confdef";"--force-confmiss";"--force-confold"};
 DPkg::Pre-Install-Pkgs {"/usr/sbin/dpkg-preconfigure --apt";};
 Dir::Etc::SourceList "/etc/apt/sources.list";
