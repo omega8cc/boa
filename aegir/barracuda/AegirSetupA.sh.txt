@@ -385,11 +385,6 @@ mkdir -p /data/disk
 mkdir -p /data/conf
 chown root:root /data &> /dev/null
 chown root:root /data/disk &> /dev/null
-chown root:$_USRG /data/u &> /dev/null
-chmod 0771 /data/u &> /dev/null
-# chmod 0711 /data &> /dev/null
-# chmod 0711 /data/disk &> /dev/null
-# chmod 0711 /data/conf &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
   msg "$_STATUS A: Add user, please wait..."
   mrun "sleep 3"
@@ -460,7 +455,11 @@ if [ $_LOCAL_STATUS = "INIT" ] ; then
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
   #invoke-rc.d cron stop &> /dev/null
+  chown root:$_USRG /data/u &> /dev/null
+  chmod 0771 /data/u &> /dev/null
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+  chmod 0700 /data/u &> /dev/null
+  chown root:root /data/u &> /dev/null
   msg "$_STATUS A: Aegir Satellite Instance install completed"
 else
   echo " "
@@ -476,7 +475,11 @@ else
     chown -R $_USER $_THIS_HM_ROOT
     chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
+    chown root:$_USRG /data/u &> /dev/null
+    chmod 0771 /data/u &> /dev/null
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+    chmod 0700 /data/u &> /dev/null
+    chown root:root /data/u &> /dev/null
     msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
   else
     msg "$_STATUS A: Aegir Satellite Instance not upgraded this time"
@@ -1190,6 +1193,9 @@ chown -R root:root $_CORE &> /dev/null
 chown -R root:root /data/all/000 &> /dev/null
 chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
+chmod 0700 /data/u &> /dev/null
+chown root:root /data/u &> /dev/null
+rm -f /data/u/*host8* &> /dev/null
 mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
