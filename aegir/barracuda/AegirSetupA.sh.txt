@@ -255,14 +255,6 @@ for i in $REVISIONS; do
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
     tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
     rm -f backup_migrate-6.x-2.4.tar.gz
-    if [ "$_PURGE_MODE" = "ON" ] ; then
-      wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.0.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.4.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-    fi
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
@@ -280,7 +272,7 @@ fi
 # remove incompatible modules from o_contrib_seven
 #
 remove_incompatible_modules_002() {
-if [ ! -e "/var/log/incompatible-modules-removed-002g.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-002h.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
 RMMODULES="session443 cookie_cache_bypass_adv expire purge"
 for i in $REVISIONS; do
@@ -290,18 +282,9 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib_seven/$m
       fi
     done
-#     cd /data/all/$i/o_contrib_seven
-#     if [ "$_PURGE_MODE" = "ON" ] ; then
-#       wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
-#       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
-#       for archive in ./*.tar.gz; do
-#         tar -xzf "$archive" &> /dev/null
-#       done
-#       rm -f *.tar.gz
-#     fi
   fi
 done
-touch /var/log/incompatible-modules-removed-002g.log
+touch /var/log/incompatible-modules-removed-002h.log
 cd
 fi
 }
