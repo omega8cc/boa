@@ -701,7 +701,7 @@ fix_on_upgrade () {
     sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
-    if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ]; then
+    if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ]; then
         mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
