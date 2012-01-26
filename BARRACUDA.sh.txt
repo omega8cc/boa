@@ -460,6 +460,7 @@ _NGINX_WORKERS=AUTO
 _PHP_FPM_WORKERS=AUTO
 _LENNY_TO_SQUEEZE=NO
 _FULL_FORCE_REINSTALL=NO
+_PHP_INSTALL_NEW=NO
 
 
 ###----------------------------------------###
@@ -469,6 +470,7 @@ _FULL_FORCE_REINSTALL=NO
 _INSTALLER_VERSION=BOA-2.0.1
 _NGINX_VERSION=1.0.11
 _PHP_VERSION=5.2.17
+_PHP_VERSION_NEW=5.3.9
 _APC_VERSION=3.1.9
 _CHIVE_VERSION=1.0.2
 _BZR_VERSION=2.3.4
@@ -1173,6 +1175,7 @@ barracuda_cnf () {
       echo "###" >> /root/.barracuda.cnf
       echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
       echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+      echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
       echo "###" >> /root/.barracuda.cnf
     fi
     sleep 5
@@ -1209,6 +1212,148 @@ run_apt_update_again () {
   st_runner "aptitude clean -y" 2> /dev/null
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   fix_locales
+}
+#
+# Install PHP 5.3.9
+install_php_five_three () {
+###--------------------###
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
+  msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r /var/opt/php*
+  rm -f /etc/init.d/php53-fpm*
+  wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-$_PHP_VERSION_NEW-0.9.10.patch.gz
+  tar -xzf php-$_PHP_VERSION_NEW.tar.gz
+  gunzip -q suhosin-patch-$_PHP_VERSION_NEW-0.9.10.patch.gz
+  cat suhosin-patch-$_PHP_VERSION_NEW-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
+  mrun "sleep 3"
+  cd /var/opt/php-$_PHP_VERSION_NEW
+  st_runner "sh ./buildconf --force" 2> /dev/null
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
+    patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+  fi
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
+  mrun "sleep 3"
+  st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
+  mrun "sleep 3"
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  if [ ! -e "/opt/etc/custom.php53.ini" ] ; then
+    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+  fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
+  chmod 755 /etc/init.d/php53-fpm
+  st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+###--------------------###
+  msg "INFO: Installing memcached for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    st_runner "$_INSTALL libcloog-ppl0" 2> /dev/null
+  fi
+  cd /var/opt
+  rm -f -r memcached*
+  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+  tar -xzf memcached-1.0.2.tgz
+  if [ -e "/var/opt/memcached-1.0.2" ] ; then
+    cd /var/opt/memcached-1.0.2
+    st_runner "/opt/local/bin/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
+    mrun "sleep 3"
+  fi
+###--------------------###
+  msg "INFO: Installing Suhosin for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r suhosin*
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
+  tar -xzf suhosin-0.9.33.tgz
+  cd /var/opt/suhosin-0.9.33
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+###--------------------###
+  msg "INFO: Installing UploadProgress for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r uploadprogress*
+  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
+  tar -xzf uploadprogress-1.0.1.tgz
+  cd /var/opt/uploadprogress-1.0.1
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+###--------------------###
+  msg "INFO: Installing APC for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r APC*
+  wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
+  tar -xzf APC-$_APC_VERSION.tgz
+  cd /var/opt/APC-$_APC_VERSION
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "apc-$_APC_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
+###--------------------###
+  msg "INFO: Installing MailParse for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r mailparse*
+  wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
+  tar -xzf mailparse-2.1.5.tgz
+  cd /var/opt/mailparse-2.1.5
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+}
+#
+# Update PHP 5.3
+update_php_five_three () {
+###--------------------###
+if [ ! -e "/var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log" ] ; then
+  msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
+  tar -xzf APC-$_APC_VERSION.tgz
+  cd /var/opt/APC-$_APC_VERSION
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "apc-$_APC_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
+fi
+###--------------------###
+if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
+  msg "INFO: Installing memcached upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r memcached*
+  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+  tar -xzf memcached-1.0.2.tgz
+  if [ -e "/var/opt/memcached-1.0.2" ] ; then
+    cd /var/opt/memcached-1.0.2
+    st_runner "/opt/local/bin/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
+    mrun "sleep 3"
+  fi
+fi
 }
 
 
@@ -2551,7 +2696,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
 
 
 ###--------------------###
-  msg "INFO: Installing PHP-FPM"
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION"
   msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -2565,7 +2710,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   gunzip -q suhosin-patch-5.2.16-0.9.7.patch.gz
   cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
   cat suhosin-patch-5.2.16-0.9.7.patch | patch -d php-$_PHP_VERSION -p1 &> /dev/null
-  msg "INFO: Installing PHP-FPM part 1/3"
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
   mrun "sleep 3"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
@@ -2573,10 +2718,10 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
     patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
-  msg "INFO: Installing PHP-FPM part 2/3"
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
   mrun "sleep 3"
   st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt $_PHP_EXTRA" 2> /dev/null
-  msg "INFO: Installing PHP-FPM part 3/3"
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
   mrun "sleep 3"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
@@ -2593,7 +2738,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
 
 
 ###--------------------###
-  msg "INFO: Installing libmemcached with memcached for PHP-FPM, please wait..."
+  msg "INFO: Installing libmemcached with memcached for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
     st_runner "$_INSTALL libcloog-ppl0" 2> /dev/null
@@ -2628,7 +2773,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
 
 
 ###--------------------###
-  msg "INFO: Installing Suhosin for PHP-FPM, please wait..."
+  msg "INFO: Installing Suhosin for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
@@ -2641,7 +2786,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
 
 
 ###--------------------###
-  msg "INFO: Installing UploadProgress for PHP-FPM, please wait..."
+  msg "INFO: Installing UploadProgress for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
@@ -2654,7 +2799,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
 
 
 ###--------------------###
-  msg "INFO: Installing APC for PHP-FPM, please wait..."
+  msg "INFO: Installing APC for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
@@ -2668,7 +2813,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
 
 
 ###--------------------###
-  msg "INFO: Installing MailParse for PHP-FPM, please wait..."
+  msg "INFO: Installing MailParse for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
@@ -2685,14 +2830,14 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   _X86_64_TEST=`uname -m`
   if [ "$_X86_64_TEST" = "x86_64" ] ; then
     SYSTEMARCH="x86_64"
-    msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
+    msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM $_PHP_VERSION, please wait..."
     mrun "sleep 3"
     cd /var/opt
   wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
   tar -xzf ioncube_loaders_lin_x86-64.tar.gz
   else
     SYSTEMARCH="x86"
-    msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
+    msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM $_PHP_VERSION, please wait..."
     mrun "sleep 3"
     cd /var/opt
   wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
@@ -2701,13 +2846,17 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
   invoke-rc.d php-fpm restart &> /dev/null
 
+  if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
+    install_php_five_three
+    update_php_five_three
+  fi
 
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
 
 
 ###--------------------###
 if [ ! -e "/var/log/apc-$_APC_VERSION.log" ] ; then
-  msg "INFO: Installing APC upgrade for PHP-FPM, please wait..."
+  msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
@@ -2723,7 +2872,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
-  msg "INFO: Installing libmemcached with memcached upgrade for PHP-FPM, please wait..."
+  msg "INFO: Installing libmemcached with memcached upgrade for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
