@@ -349,6 +349,9 @@ tune_memory_limits () {
         _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
       sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+      if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+        sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g" /opt/local/etc/php53-fpm.conf
+      fi
       if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
         _LOCAL_NGINX_WORKERS=8
       else
@@ -365,6 +368,9 @@ tune_memory_limits () {
           _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+        if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+          sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g" /opt/local/etc/php53-fpm.conf
+        fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
           _LOCAL_NGINX_WORKERS=8
         else
@@ -379,6 +385,9 @@ tune_memory_limits () {
           _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
+        if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+          sed -i "s/pm.start_servers =.*/pm.start_servers = 2/g" /opt/local/etc/php53-fpm.conf
+        fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
           _LOCAL_NGINX_WORKERS=4
         else
@@ -406,6 +415,10 @@ tune_memory_limits () {
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini
   sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
+  if [ -e "/opt/local/etc/php53.ini" ] ; then
+    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini
+    sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini
+  fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
