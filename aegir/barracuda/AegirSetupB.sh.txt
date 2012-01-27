@@ -536,6 +536,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     $DRUSHC urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null
     $DRUSHC urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
   fi
+  $DRUSHC sqlq "REPLACE INTO {userprotect} VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,0,0,'user',0)" &> /dev/null
 fi
 
 
