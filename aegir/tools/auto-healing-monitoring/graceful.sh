@@ -14,6 +14,7 @@ action()
   rm -f -r /var/lib/nginx/speed/*
   /etc/init.d/nginx stop
   /etc/init.d/php-fpm stop
+  /etc/init.d/php53-fpm stop
   killall -9 php-fpm php-cgi nginx php wget
   sleep 2
   killall -9 php-fpm php-cgi nginx php wget

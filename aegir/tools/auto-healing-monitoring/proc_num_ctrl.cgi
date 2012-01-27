@@ -14,6 +14,7 @@ foreach $USER (sort keys %li_cnt) {
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /nginx/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /memcache/) {$memcachelives = "YES"; $memcachesumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
@@ -28,6 +29,7 @@ print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
 print "\n $mysqlsumar MySQL procs\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\tGLOBAL" if ($nginxlives);
 print "\n $phpsumar PHP procs\tGLOBAL" if ($phplives);
+print "\n $fpmsumar FPM procs\tGLOBAL" if ($fpmlives);
 print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
 print "\n $memcachesumar Cache procs\tGLOBAL" if ($memcachelives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
@@ -50,6 +52,7 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
 }
 `killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/octopus_barracuda.pid");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
+`/etc/init.d/php53-fpm restart` if (!$fpmsumar && -f "/etc/init.d/php53-fpm");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
 `/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd");
 if (-f "/usr/local/sbin/pure-config.pl") {

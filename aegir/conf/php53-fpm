@@ -14,7 +14,7 @@ prefix=/opt/local
 exec_prefix=${prefix}
 
 php_fpm_BIN=${exec_prefix}/sbin/php-fpm
-php_fpm_CONF=${prefix}/etc/php-fpm.conf
+php_fpm_CONF=${prefix}/etc/php53-fpm.conf
 php_fpm_PID=${prefix}/var/run/php-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF -c /opt/local/etc/php53.ini"
 
