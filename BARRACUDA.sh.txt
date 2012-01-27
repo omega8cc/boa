@@ -2548,11 +2548,14 @@ if [ -d "/var/xdrago" ] ; then
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   if [ -e "/var/xdrago/custom.minute.sh.txt" ] ; then
-    while read line ; do
-      _CUSTOM_MINUTE="$_CUSTOM_MINUTE\n$line"
-    done < /var/xdrago/custom.minute.sh.txt
-    sed -i "s/###CUSTOM###/$_CUSTOM_MINUTE/g" /var/xdrago/minute.sh
-    sed -i "s/###CUSTOM###/\&/g" /var/xdrago/minute.sh
+    if [ ! -e "/var/xdrago/custom.minute.sh.fixed.txt" ] ; then
+      cp -af /var/xdrago/custom.minute.sh.txt /var/xdrago/custom.minute.sh.bak.txt
+      sed -i "s/limit=.*/limit=30\n    killit/g" /var/xdrago/custom.minute.sh.txt
+      sed -i "s/if \[/elif \[/g" /var/xdrago/custom.minute.sh.txt
+      sed -i "s/.*fi.*//g" /var/xdrago/custom.minute.sh.txt
+      sed -i "/^$/d" /var/xdrago/custom.minute.sh.txt
+      touch /var/xdrago/custom.minute.sh.fixed.txt
+    fi
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 295/g" /var/xdrago/firewall/check/scan_nginx
