@@ -1275,7 +1275,6 @@ install_php_five_three () {
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
@@ -2589,11 +2588,15 @@ if [ $_STATUS = "INIT" ] ; then
   mkdir -p /opt/etc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
   sed -i "s/max_children\">1/max_children\"\>4/g" /opt/etc/php-fpm.conf
+  if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf
+  fi
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
