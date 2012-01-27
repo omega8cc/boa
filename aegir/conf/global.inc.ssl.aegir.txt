@@ -20,6 +20,7 @@ $conf['file_downloads'] = 1;      // force public downloads by default
 $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0;   // disable access log stats
 $conf['allow_authorize_operations'] = FALSE; // disable insecure plugin manager
+$conf['boost_ignore_htaccess_warning'] = 1;  // silence false alarm in Boost
 
 ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
