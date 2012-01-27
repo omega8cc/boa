@@ -1198,7 +1198,7 @@ barracuda_cnf () {
       echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
       echo "###" >> /root/.barracuda.cnf
     fi
-    _PHP_INSTALL_NEW_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
+    _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW /root/.barracuda.cnf)
     if [[ $_PHP_INSTALL_NEW_TEST =~ "_PHP_INSTALL_NEW" ]] ; then
       true
     else
