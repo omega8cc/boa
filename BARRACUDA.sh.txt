@@ -1178,6 +1178,7 @@ barracuda_cnf () {
     echo "_SQL_FORCE_REINSTALL=$_SQL_FORCE_REINSTALL" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+    echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1404,7 +1405,6 @@ if [ `whoami` = "root" ] ; then
   rm -f /tmp/cache.inc
   invoke-rc.d cron stop &> /dev/null
   touch /var/run/octopus_barracuda.pid
-  touch /var/xdrago/log/optimize_mysql_ao.pid
   _VM_TEST=`uname -a 2>&1`
   if [[ $_VM_TEST =~ beng ]] ; then
     _VMFAMILY="VS"
@@ -1429,6 +1429,7 @@ if [ -d "/var/aegir" ] ; then
   else
     _HTTP_WILDCARD=NO
   fi
+  touch /var/xdrago/log/optimize_mysql_ao.pid
 else
   _STATUS=INIT
   msg "INFO: INIT..."
