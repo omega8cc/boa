@@ -48,6 +48,22 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
+### PHP-FPM VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-FPM version per Aegir
+### Master and Satellite Instance - both on
+### install and upgrade.
+###
+### Available options:
+###
+### _PHP_FPM_VERSION=5.2
+### _PHP_FPM_VERSION=5.3
+###
+_PHP_FPM_VERSION=5.2
+
+
+###----------------------------------------###
 ### XTRAS INSTALL MODE                     ###
 ###----------------------------------------###
 ###
@@ -950,6 +966,12 @@ force_advanced_nginx_config () {
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf &> /dev/null
+  if [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
+    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX &> /dev/null
+    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX &> /dev/null
+    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf &> /dev/null
+    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf &> /dev/null
+  fi
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
@@ -1205,6 +1227,7 @@ barracuda_cnf () {
       echo "### Configuration added on $_NOW" >> /root/.barracuda.cnf
       echo "###" >> /root/.barracuda.cnf
       echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
+      echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
       echo "###" >> /root/.barracuda.cnf
     fi
     sleep 5
@@ -2117,7 +2140,7 @@ if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
     fi
   fi
   cd /var/log
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
   cd /var/opt
 fi
 
@@ -3435,7 +3458,7 @@ else
     fi
     chmod 711 /var/aegir/.drush &> /dev/null
     cd /var/aegir/config/includes
-    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
+    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
     touch installer_version.txt
     msg "INFO: Aegir Master Instance upgrade completed"
   else
@@ -3994,7 +4017,7 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 if [ $_STATUS = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
   cd /var/aegir/config/includes
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
   touch installer_version.txt
   echo " "
   _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`

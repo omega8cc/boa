@@ -64,6 +64,22 @@ _CLIENT_CORES=4
 
 
 ###----------------------------------------###
+### PHP-FPM VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-FPM version per Aegir
+### Satellite Instance - both on install and
+### upgrade.
+###
+### Available options:
+###
+### _PHP_FPM_VERSION=5.2
+### _PHP_FPM_VERSION=5.3
+###
+_PHP_FPM_VERSION=5.2
+
+
+###----------------------------------------###
 ### PLATFORMS INSTALL MODE                 ###
 ###----------------------------------------###
 ###
@@ -552,6 +568,15 @@ octopus_cnf () {
   else
     msg "INFO: Reading your /root/.$_USER.octopus.cnf config file."
     sleep 3
+    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
+    if [[ $_PHP_FPM_VERSION_TEST =~ "_PHP_FPM_VERSION" ]] ; then
+      true
+    else
+      echo "### Configuration added on $_NOW" >> /root/.$_USER.octopus.cnf
+      echo "###" >> /root/.$_USER.octopus.cnf
+      echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
+      echo "###" >> /root/.$_USER.octopus.cnf
+    fi
     msg "NOTE: Please review all config options displayed below."
     sleep 5
     echo " "
@@ -677,6 +702,7 @@ do
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
   sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files
   sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files
+  sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
@@ -693,6 +719,12 @@ sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+if [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
+  sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
+  sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
+  sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
+  sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+fi
 _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
 if [ -e "/usr/bin/sipcalc" ] ; then
@@ -744,6 +776,9 @@ if [ ! -e "/data/disk/$_USER/log/cores.txt" ] ; then
 fi
 if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
   echo $_CLIENT_SUBSCR > /data/disk/$_USER/log/subscr.txt
+fi
+if [ ! -e "/data/disk/$_USER/log/fpm.txt" ] ; then
+  echo $_PHP_FPM_VERSION > /data/disk/$_USER/log/fpm.txt
 fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 }
@@ -946,6 +981,10 @@ if [ -d "$_ROOT" ] ; then
   if [ -e "/data/disk/$_USER/log/subscr.txt" ] ; then
    _CLIENT_SUBSCR=`cat /data/disk/$_USER/log/subscr.txt`
    _CLIENT_SUBSCR=`echo -n $_CLIENT_SUBSCR | tr -d "\n"`
+  fi
+  if [ -e "/data/disk/$_USER/log/fpm.txt" ] ; then
+   _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
+   _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
   fi
   if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
    _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
