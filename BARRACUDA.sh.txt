@@ -3571,6 +3571,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       chown -R tomcat:tomcat /opt/solr
       chown -R tomcat:tomcat /opt/tomcat6
       st_runner "update-rc.d tomcat defaults" &> /dev/null
+      st_runner "invoke-rc.d tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
       mrun "sleep 2"
     else
@@ -3589,6 +3590,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     sed -i "s/sh \/opt\/tomcat6/su -s \/bin\/bash tomcat -c \"sh \/opt\/tomcat6/g" /etc/init.d/tomcat
     sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
     killall -9 java &> /dev/null
+    st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/solr/fixed.init.log" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat /etc/init.d/tomcat &> /dev/null
@@ -3609,6 +3611,8 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     touch /opt/solr/conf/apachesolr-6.x-1.5.log
     chown -R tomcat:tomcat /opt/solr/conf
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
+    mrun "sleep 3"
+    st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/tika" ] ; then
     cd /var/opt
@@ -3622,6 +3626,8 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     chown -R tomcat:tomcat /opt/tika/*
     chown -R tomcat:tomcat /opt/solr/conf
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
+    mrun "sleep 3"
+    st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
 fi
 
