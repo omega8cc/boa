@@ -30,7 +30,7 @@ ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
-if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
   ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
@@ -41,6 +41,15 @@ if (preg_match("/hostmaster/", $conf['install_profile']) && isset($_SERVER['HTTP
       header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
     }
   }
+}
+
+if (file_exists('./web.config')) {
+  $drupal_seven_up = 'YES';
+  header('X-Backend: B');
+}
+else {
+  $drupal_seven_up = 'NO';
+  header('X-Backend: A');
 }
 
 // http://drupal.org/node/912682#comment-3503636
@@ -152,7 +161,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
-      if (!preg_match("/hostmaster/", $conf['install_profile'])) {
+      if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
       }
     }
@@ -173,7 +182,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
 
-    if (preg_match("/(?:standard|minimal|testing|commerce|openpublic|opendeals|openoutreach)/", $conf['install_profile'])) {
+    if ($drupal_seven_up == "YES") {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
@@ -281,7 +290,7 @@ if (file_exists('/data/conf/override.global.inc')) {
 }
 
 // don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
-if (!preg_match("/(?:hostmaster|standard|minimal|testing|commerce|openpublic|opendeals|openoutreach)/", $conf['install_profile']) &&
+if ($conf['install_profile'] != 'hostmaster' && $drupal_seven_up == "NO" &&
   isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES" && $custom_cache == "NO" ) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
      $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
