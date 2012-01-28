@@ -2246,11 +2246,7 @@ install_percona_sql () {
     sleep 5
   done
   gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
-  if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-    _THIS_REL_VERSION=maverick
-  else
-    _THIS_REL_VERSION="$_REL_VERSION"
-  fi
+  _THIS_REL_VERSION="$_REL_VERSION"
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
