@@ -1685,7 +1685,6 @@ _THIS_RV=`lsb_release -sc`
 if [ $_THIS_OS = "Ubuntu" ] ; then
   if [ $_THIS_RV = "oneiric" ] ; then
     _REL_VERSION="oneiric"
-    _DB_SERVER=Percona
     _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   elif [ $_THIS_RV = "natty" ] ; then
@@ -2323,7 +2322,8 @@ else
     invoke-rc.d csf stop  &> /dev/null
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
     mrun "sleep 50"
-    invoke-rc.d php-fpm stop &> /dev/null
+    invoke-rc.d php-fpm   stop &> /dev/null
+    invoke-rc.d php53-fpm stop &> /dev/null
     mrun "sleep 10"
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
@@ -2349,9 +2349,10 @@ else
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_apt_sql
     _PHP_FORCE_REINSTALL=YES
-    invoke-rc.d lfd start     &> /dev/null
-    invoke-rc.d csf start     &> /dev/null
-    invoke-rc.d php-fpm start &> /dev/null
+    invoke-rc.d lfd start       &> /dev/null
+    invoke-rc.d csf start       &> /dev/null
+    invoke-rc.d php-fpm start   &> /dev/null
+    invoke-rc.d php53-fpm start &> /dev/null
   else
     _LOCAL_INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
   fi
