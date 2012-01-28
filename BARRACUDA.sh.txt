@@ -166,19 +166,13 @@ _AEGIR_VERSION=HEAD
 ###----------------------------------------###
 ###
 ### You can choose MariaDB 5.2 (default)
-### or Percona 5.5 - available now only for
-### Squeeze, Lucid, Maverick and Natty.
+### or Percona 5.5.
 ###
 ### You can choose/change the DB server both
 ### on Barracuda install and upgrade, but
 ### the only upgrade path available is from
 ### MariaDB to Percona - it will also force
 ### PHP-FPM rebuild automatically.
-###
-### Note: Since Percona 5.5.11 is currently
-### broken on Lenny, and 5.5.12 is not yet
-### available in the apt repository, we force
-### installation of MariaDB 5.2 on Lenny.
 ###
 ### _DB_SERVER=Percona
 ###
@@ -1717,7 +1711,6 @@ elif [ $_THIS_OS = "Debian" ] ; then
     _REL_VERSION="squeeze"
   elif [ $_THIS_RV = "lenny" ] ; then
     _REL_VERSION="lenny"
-    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -2271,11 +2264,7 @@ install_mariadb_sql () {
   elif [ $_THIS_OS = "Ubuntu" ] ; then
     _THIS_OS_NAME=ubuntu
   fi
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
-    _THIS_REL_VERSION=natty
-  else
-    _THIS_REL_VERSION="$_REL_VERSION"
-  fi
+  _THIS_REL_VERSION="$_REL_VERSION"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
@@ -2287,7 +2276,7 @@ install_mariadb_sql () {
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_apt_sql () {
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     _PERCONA_READY=YES
   else
     _PERCONA_READY=NO
