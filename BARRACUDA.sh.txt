@@ -2158,11 +2158,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     rm -f /etc/init.d/bind
   fi
   if [ -e "/etc/init.d/tomcat" ] ; then
-    cd /etc/init.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat ./
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat /etc/init.d/tomcat &> /dev/null
     chmod 755 tomcat
     st_runner "update-rc.d tomcat defaults" &> /dev/null
-    cd /var/opt
   fi
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
@@ -3572,7 +3570,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       wget -q -U iCab http://files.aegir.cc/dev/apachesolr.tar.gz
       tar -xzf apachesolr.tar.gz
       cd apachesolr
-      mv -f tomcat /etc/init.d/ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat /etc/init.d/tomcat &> /dev/null
       mv -f solr /opt/ &> /dev/null
       mv -f tomcat6 /opt/ &> /dev/null
       echo "ENABLED=1" > /etc/default/tomcat
@@ -3581,6 +3579,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
       adduser --system --group --home /opt/solr tomcat &> /dev/null
       touch /opt/solr/fixed.log
+      touch /opt/solr/fixed.init.log
       cd /var/opt
       wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.0.tar.gz
       tar -xzf apachesolr_attachments-7.x-1.0.tar.gz
@@ -3612,6 +3611,11 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
     killall -9 java &> /dev/null
     st_runner "invoke-rc.d tomcat start" &> /dev/null
+  fi
+  if [ ! -e "/opt/solr/fixed.init.log" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat /etc/init.d/tomcat &> /dev/null
+    chmod 755 /etc/init.d/tomcat
+    st_runner "update-rc.d tomcat defaults" &> /dev/null
   fi
   if [ ! -e "/opt/solr/conf/apachesolr-6.x-1.5.log" ] ; then
     cd /var/opt
