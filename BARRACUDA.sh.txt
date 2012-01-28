@@ -2896,9 +2896,11 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
   invoke-rc.d php-fpm restart &> /dev/null
 
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53.ini" ] ; then
-    install_php_five_three
-    update_php_five_three
+  if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
+    if [ $_FULL_FORCE_REINSTALL = "YES" ] || [ ! -e "/opt/local/etc/php53.ini" ] ; then
+      install_php_five_three
+      update_php_five_three
+    fi
   fi
 
 fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
@@ -4026,7 +4028,7 @@ if [ $_STATUS = "INIT" ] ; then
   echo " "
   msg "Note: you may need to restart Nginx again with command: "
   msg "  service nginx restart"
-  msg "before you will be able to visit Aegir URL the first time."
+  msg "before you will be able to visit Aegir URL for the first time."
   echo " "
   mrun "sleep 99"
   invoke-rc.d nginx restart &> /dev/null
