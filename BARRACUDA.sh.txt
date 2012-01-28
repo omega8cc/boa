@@ -2295,6 +2295,7 @@ install_with_apt_sql () {
     st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
     st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
     st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
   else
     st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
     st_runner "apt-get autoremove -y"   &> /dev/null
@@ -2302,6 +2303,7 @@ install_with_apt_sql () {
     st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
     st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
     st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
+    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
   fi
 }
 st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
