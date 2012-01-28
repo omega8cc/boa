@@ -3554,9 +3554,6 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
       mv -f solr /opt/ &> /dev/null
       mv -f tomcat6 /opt/ &> /dev/null
       echo "ENABLED=1" > /etc/default/tomcat
-      sed -i "s/\/usr\/lib\/jvm\/java-6-sun\/jre/\/usr\/lib\/jvm\/java-6-openjdk\/jre/g" /etc/init.d/tomcat
-      sed -i "s/sh \/opt\/tomcat6/su -s \/bin\/bash tomcat -c \"sh \/opt\/tomcat6/g" /etc/init.d/tomcat
-      sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
       adduser --system --group --home /opt/solr tomcat &> /dev/null
       touch /opt/solr/fixed.log
       touch /opt/solr/fixed.init.log
@@ -3587,9 +3584,8 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
     chown -R tomcat:tomcat /opt/solr
     chown -R tomcat:tomcat /opt/tomcat6
-    sed -i "s/sh \/opt\/tomcat6/su -s \/bin\/bash tomcat -c \"sh \/opt\/tomcat6/g" /etc/init.d/tomcat
-    sed -i "s/\.sh/\.sh\"/g" /etc/init.d/tomcat
     killall -9 java &> /dev/null
+    mrun "sleep 8"
     st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/solr/fixed.init.log" ] ; then
