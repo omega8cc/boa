@@ -1458,7 +1458,7 @@ else
   msg "INFO: INIT..."
   barracuda_cnf
 fi
-_INITINS="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
+_INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
