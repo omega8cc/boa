@@ -453,6 +453,7 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 _NGINX_EXTRA_CONF=""
+_PHP_INSTALL_NEW=YES
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 _ALL_PURGE_THISHTIP=NO
@@ -460,7 +461,6 @@ _NGINX_WORKERS=AUTO
 _PHP_FPM_WORKERS=AUTO
 _LENNY_TO_SQUEEZE=NO
 _FULL_FORCE_REINSTALL=NO
-_PHP_INSTALL_NEW=NO
 
 
 ###----------------------------------------###
@@ -2714,6 +2714,9 @@ if [ $_STATUS = "UPGRADE" ] ; then
     fi
   fi
 fi
+if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
+  _PHP_INSTALL_REQUIRED=YES
+fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
   if [ $_STATUS = "UPGRADE" ] ; then
@@ -3198,6 +3201,7 @@ if [ $_STATUS = "INIT" ] ; then
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
     st_runner "update-rc.d php-fpm defaults" &> /dev/null
+    st_runner "update-rc.d php53-fpm defaults" &> /dev/null
     st_runner "update-rc.d nginx defaults" &> /dev/null
     st_runner "invoke-rc.d php-fpm start" &> /dev/null
     st_runner "invoke-rc.d nginx start" &> /dev/null
@@ -3209,6 +3213,7 @@ else
     mrun "sleep 3"
     tune_memory_limits
     st_runner "invoke-rc.d php-fpm reload" &> /dev/null
+    st_runner "invoke-rc.d php53-fpm reload" &> /dev/null
     st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
