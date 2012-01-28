@@ -2911,7 +2911,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
   invoke-rc.d php-fpm restart &> /dev/null
 
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
+  if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53.ini" ] ; then
     install_php_five_three
     update_php_five_three
   fi
