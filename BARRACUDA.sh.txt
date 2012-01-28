@@ -369,7 +369,7 @@ _USE_SPEED_BOOSTER=YES
 ### _THIS_DB_HOST=localhost
 ### _THIS_DB_HOST=FQDN
 ###
-_THIS_DB_HOST=FQDN
+_THIS_DB_HOST=localhost
 
 
 ###----------------------------------------###
