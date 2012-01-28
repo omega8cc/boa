@@ -2715,6 +2715,11 @@ if [ $_STATUS = "UPGRADE" ] ; then
   fi
 fi
 if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
+  mkdir -p /opt/local/etc
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
+  if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf
+  fi
   _PHP_INSTALL_REQUIRED=YES
 fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
