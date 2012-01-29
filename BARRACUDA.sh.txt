@@ -2868,18 +2868,20 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
     msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM $_PHP_VERSION, please wait..."
     mrun "sleep 3"
     cd /var/opt
-  wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
-  tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+    wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz
+    tar -xzf ioncube_loaders_lin_x86-64.tar.gz
   else
     SYSTEMARCH="x86"
     msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM $_PHP_VERSION, please wait..."
     mrun "sleep 3"
     cd /var/opt
-  wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
-  tar -xzf ioncube_loaders_lin_x86.tar.gz
+    wget -q -U iCab http://downloads2.ioncube.com/loader_downloads/ioncube_loaders_lin_x86.tar.gz
+    tar -xzf ioncube_loaders_lin_x86.tar.gz
   fi
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-  invoke-rc.d php-fpm restart &> /dev/null
+  if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_FULL_FORCE_REINSTALL" = "NO" ] ; then
+    invoke-rc.d php-fpm restart &> /dev/null
+  fi
 
 ###--------------------###
   if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
