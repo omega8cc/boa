@@ -1303,7 +1303,7 @@ install_php_five_three () {
   msg "INFO: Installing memcached for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 3"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
-    st_runner "$_INSTALL libcloog-ppl0" 2> /dev/null
+    st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
   fi
   cd /var/opt
   rm -f -r memcached*
@@ -1457,6 +1457,7 @@ else
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
+_INSTAPP="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
@@ -2224,11 +2225,9 @@ elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_RE
 else
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev"
 fi
-if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-  _INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
-fi
-install_with_apt_deps () {
-  if ! st_runner "$_INSTALL $DEBDEPS" &> /dev/null; then
+
+install_with_aptitude_deps () {
+  if ! st_runner "$_INSTAPP $DEBDEPS" &> /dev/null; then
     fatal "Installation failed: $?"
   fi
   return 0
@@ -2277,7 +2276,7 @@ install_mariadb_sql () {
   SQLDEB="mariadb-server-5.2 mariadb-client-5.2 mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
-install_with_apt_sql () {
+install_with_aptitude_sql () {
   if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     _PERCONA_READY=YES
   else
@@ -2288,29 +2287,19 @@ install_with_apt_sql () {
   else
     install_mariadb_sql
   fi
-  if [ "$_REL_VERSION" = "natty" ] ; then
-    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
-    st_runner "apt-get autoremove -y"   &> /dev/null
-    st_runner "apt-get update -y"       &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
-  else
-    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
-    st_runner "apt-get autoremove -y"   &> /dev/null
-    st_runner "apt-get update -y"       &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLDEB" &> /dev/null
-    st_runner "$_LOCAL_INSTALL $SQLADD" &> /dev/null
-  fi
+  st_runner "$_INSTAPP $SQLDEB" &> /dev/null
+  st_runner "apt-get autoremove -y"   &> /dev/null
+  st_runner "apt-get update -y"       &> /dev/null
+  st_runner "$_INSTAPP $SQLDEB" &> /dev/null
+  st_runner "$_INSTAPP $SQLADD" &> /dev/null
+  st_runner "$_INSTAPP $SQLDEB" &> /dev/null
 }
-st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
+
+install_with_aptitude_deps
 fix_locales
+
 if [ "$_STATUS" = "INIT" ] ; then
-  _LOCAL_INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
-  install_with_apt_sql
+  install_with_aptitude_sql
 else
   _SQL_UPGRADE=NO
   if [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
@@ -2345,21 +2334,18 @@ else
       st_runner "apt-get update -y" 2> /dev/null
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     fi
-    _LOCAL_INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
     sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/language/\#language/g" /etc/mysql/my.cnf
     rm -f /var/lib/mysql/debian-5.1.flag &> /dev/null
     rm -f /var/lib/mysql/debian-5.2.flag &> /dev/null
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    install_with_apt_sql
+    install_with_aptitude_sql
     _PHP_FORCE_REINSTALL=YES
     invoke-rc.d lfd start       &> /dev/null
     invoke-rc.d csf start       &> /dev/null
     invoke-rc.d php-fpm start   &> /dev/null
     invoke-rc.d php53-fpm start &> /dev/null
-  else
-    _LOCAL_INSTALL="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
   fi
 fi
 
@@ -2367,7 +2353,7 @@ fi
 ###--------------------###
 run_apt_update_again
 run_apt_update_again
-st_runner "$_INSTALL $DEBDEPS" 2> /dev/null
+install_with_aptitude_deps
 
 
 ###--------------------###
@@ -2795,7 +2781,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   msg "INFO: Installing libmemcached with memcached for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
-    st_runner "$_INSTALL libcloog-ppl0" 2> /dev/null
+    st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
   fi
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
@@ -3764,7 +3750,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
         true
         msg "INFO: Installing Collectd Graph Panel, please wait..."
         mrun "sleep 3"
-        st_runner "apt-get -y install collectd" 2> /dev/null
+        st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
         git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
@@ -3822,7 +3808,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ WMN ]] ; then
       apt-key add jcameron-key.asc &> /dev/null
       touch /var/log/webmin_new_apt.log
       st_runner "apt-get update -y --force-yes" 2> /dev/null
-      st_runner "$_INSTALL webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
+      st_runner "$_INSTAPP webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
       update-rc.d webmin defaults &> /dev/null
       msg "INFO: Webmin Control Panel installation completed"
       mrun "sleep 2"
@@ -3927,7 +3913,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
         find_correct_ip
         _THISHTIP="$_LOC_IP"
       fi
-      st_runner "$_INSTALL bind9" 2> /dev/null
+      st_runner "$_INSTAPP bind9" 2> /dev/null
       cd /etc/bind
       rm -f named.conf.options
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
