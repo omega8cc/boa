@@ -108,7 +108,8 @@ _PHP_FPM_VERSION=5.2
 ### ELS ----------- ELMS
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
-### NSM ----------- NodeStream
+### NSM ----------- NodeStream 6.x
+### NS7 ----------- NodeStream 7.x
 ### OAM ----------- Open Atrium
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
@@ -464,6 +465,7 @@ _DRUPAL7=drupal-7.10
 _MANAGINGNEWS=1.2.1
 _OPENATRIUM=1.2.1
 _NODESTREAM=6.x-1.1
+_NODESTREAM7=7.x-2.0-alpha5
 _OPENPUBLISH=3-alpha3
 _OPENSCHOLAR=2.0-beta13
 _PROSEPOINT=0.42
@@ -474,7 +476,7 @@ _COD=6.x-1.0-beta2
 _OPENENTERPRISE=6.x-1.0-beta3
 _CIVICRM6=3.4.8
 _CIVICRM7=4.0.8
-_VIDEOLA=6.x-1.0-alpha1
+_VIDEOLA=6.x-1.0-alpha2
 _OPENCHURCH=1.22-a
 _ACQUIA_SEVEN=7.10.10
 _OPENDEALS=7.x-1.0-beta7
@@ -673,6 +675,7 @@ do
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_NODESTREAM/$_NODESTREAM/g"               $Files
+  sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
   sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
   sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_COD/$_COD/g"                             $Files
