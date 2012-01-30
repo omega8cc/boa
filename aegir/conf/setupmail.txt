@@ -53,14 +53,14 @@ starting with 1+ Aegir Standard or SSD Core:
  Open Atrium 1.2.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- Open Outreach 1.0-beta6 ------ http://openoutreach.org
+ Open Outreach 1.0-beta7 ------ http://openoutreach.org
  OpenChurch 1.22-a ------------ http://openchurchsite.com
  ProsePoint 0.41 -------------- http://prosepoint.org
  Ubercart 2.7 ----------------- http://ubercart.org
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
- Acquia Commons 2.3 ----------- http://acquia.com/drupalcommons
+ Acquia Commons 2.4 ----------- http://acquia.com/drupalcommons
  NodeStream 1.1 --------------- http://nodestream.org
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3-alpha3 --------- http://openpublishapp.com

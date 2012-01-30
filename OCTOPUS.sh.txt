@@ -458,7 +458,7 @@ _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 
 ## Distributions
-_COMMONS=6.x-2.3
+_COMMONS=6.x-2.4
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.10
 _MANAGINGNEWS=1.2.1
@@ -479,7 +479,7 @@ _OPENCHURCH=1.22-a
 _ACQUIA_SEVEN=7.10.10
 _OPENDEALS=7.x-1.0-beta7
 _ELMS=6.x-1.0-alpha5
-_OPENOUTREACH=7.x-1.0-beta6
+_OPENOUTREACH=7.x-1.0-beta7
 
 ###---### Functions
 #

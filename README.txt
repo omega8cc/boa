@@ -101,7 +101,7 @@ Octopus can install the platforms listed below:
 
  Acquia 6.22 (int) ------------ http://bit.ly/acquiadrupal
  Acquia 7.10.10 --------------- http://bit.ly/acquiadrupal
- Acquia Commons 2.3 ----------- http://acquia.com/drupalcommons
+ Acquia Commons 2.4 ----------- http://acquia.com/drupalcommons
  CiviCRM 3.4.8 ---------------- http://civicrm.org
  CiviCRM 4.0.8 ---------------- http://civicrm.org
  Commerce Kickstart 1.2 ------- http://drupalcommerce.org
@@ -116,7 +116,7 @@ Octopus can install the platforms listed below:
  Open Atrium 1.2.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
- Open Outreach 1.0-beta6 ------ http://openoutreach.org
+ Open Outreach 1.0-beta7 ------ http://openoutreach.org
  OpenChurch 1.22-a ------------ http://openchurchsite.com
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3-alpha3 --------- http://openpublishapp.com
