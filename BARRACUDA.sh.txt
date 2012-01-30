@@ -960,6 +960,10 @@ force_advanced_nginx_config () {
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf &> /dev/null
+  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX &> /dev/null
+  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX &> /dev/null
+  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf &> /dev/null
+  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf &> /dev/null
   if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
     sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX &> /dev/null
     sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX &> /dev/null
@@ -2697,16 +2701,16 @@ fi
 if [ $_STATUS = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
-    if [ ! -e "/var/log/5.2.10-MariaDB.log" ] ; then
+    if [ ! -e "/var/log/installed-5.2.10-MariaDB.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.2.10-MariaDB" > /var/log/5.2.10-MariaDB.log
+      echo "5.2.10-MariaDB" > /var/log/installed-5.2.10-MariaDB.log
       msg "INFO: PHP rebuild required to include MariaDB 5.2.10 libs"
       mrun "sleep 3"
     fi
   else
-    if [ ! -e "/var/log/5.5.19-Percona.log" ] ; then
+    if [ ! -e "/var/log/installed-5.5.19-Percona.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.5.19-Percona" > /var/log/5.5.19-Percona.log
+      echo "5.5.19-Percona" > /var/log/installed-5.5.19-Percona.log
       msg "INFO: PHP rebuild required to include Percona 5.5.19 libs"
       mrun "sleep 3"
     fi
@@ -2767,10 +2771,11 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
+  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
-    echo "5.2.10-MariaDB" > /var/log/5.2.10-MariaDB.log
+    echo "5.2.10-MariaDB" > /var/log/installed-5.2.10-MariaDB.log
   else
-    echo "5.5.19-Percona" > /var/log/5.5.19-Percona.log
+    echo "5.5.19-Percona" > /var/log/installed-5.5.19-Percona.log
   fi
   cd /usr/local/sbin
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
