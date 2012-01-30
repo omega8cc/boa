@@ -4024,10 +4024,10 @@ if [ $_STATUS = "INIT" ] ; then
   msg "  service nginx restart"
   msg "before you will be able to visit Aegir URL for the first time."
   echo " "
-  mrun "sleep 3"
+  mrun "sleep 99"
   cd /var/aegir/config/includes
   force_advanced_nginx_config
-  mrun "sleep 99"
+  mrun "sleep 11"
   invoke-rc.d nginx restart &> /dev/null
 else
   invoke-rc.d nginx reload &> /dev/null
