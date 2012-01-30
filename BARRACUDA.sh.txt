@@ -477,7 +477,7 @@ _FULL_FORCE_REINSTALL=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.0.1
+_INSTALLER_VERSION=BOA-2.0.2-dev
 _NGINX_VERSION=1.0.11
 _PHP_VERSION=5.2.17
 _PHP_VERSION_NEW=5.3.9
@@ -1660,15 +1660,34 @@ fi
 
 ###--------------------###
 msg "INFO: Checking BARRACUDA version, please wait..."
-if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/version.txt" ] ; then
-  _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/version.txt`
-  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
-    _VERSIONS_TEST_RESULT=OK
-    msg "INFO: Version test result: OK"
+if [ $_AEGIR_VERSION = "HEAD" ] ; then
+  _FILE_VERSION=release.txt
+else
+  _FILE_VERSION=version.txt
+fi
+if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
+  _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION`
+  if [[ $_VERSIONS_TEST =~ "-dev" ]] ; then
+    if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] && [ $_AEGIR_VERSION = "HEAD" ] ; then
+      _VERSIONS_TEST_RESULT=OK
+      msg "INFO: Version test result: OK"
+    else
+      _VERSIONS_TEST_RESULT=FAIL
+    fi
   else
+    if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] && [[ $_AEGIR_VERSION =~ "BOA" ]] ; then
+      _VERSIONS_TEST_RESULT=OK
+      msg "INFO: Version test result: OK"
+    else
+      _VERSIONS_TEST_RESULT=FAIL
+    fi
+  fi
+  if [ $_VERSIONS_TEST_RESULT = "FAIL" ] ; then
     msg "ERROR: This BARRACUDA version is outdated and will not work correctly."
     msg "Please download and use new version:"
     msg "wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt"
+    msg "You can also use (for testing) latest dev version:"
+    msg "wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt"
     msg "Bye."
     exit 1
   fi
