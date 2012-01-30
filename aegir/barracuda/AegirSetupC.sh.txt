@@ -550,7 +550,7 @@ _F_ATRIUM="Atrium $_OPENATRIUM P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE="Commerce Kickstart 1.0-rc7 P.$_THIS_CORE"
+_F_COMMERCE="Commerce Kickstart 1.2 P.$_THIS_CORE"
 _F_COMMONS="Acquia Commons $_COMMONS P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS P.$_THIS_CORE"
@@ -1184,15 +1184,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/commerce_kickstart-$_COMMERCE-core.tar.gz
   tar -xzf commerce_kickstart-$_COMMERCE-core.tar.gz
   rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
-  if [ -d "$_CORE/drupal-7.4" ] ; then
-    mv drupal-7.4 commerce-$_COMMERCE-$_SMALLCORE7
-  elif [ -d "$_CORE/drupal-7.7" ] ; then
-    mv drupal-7.7 commerce-$_COMMERCE-$_SMALLCORE7
-  elif [ -d "$_CORE/drupal-7.8" ] ; then
-    mv drupal-7.8 commerce-$_COMMERCE-$_SMALLCORE7
-  elif [ -d "$_CORE/drupal-7.9" ] ; then
-    mv drupal-7.9 commerce-$_COMMERCE-$_SMALLCORE7
-  elif [ -d "$_CORE/drupal-7.10" ] ; then
+  if [ -d "$_CORE/drupal-7.10" ] ; then
     mv drupal-7.10 commerce-$_COMMERCE-$_SMALLCORE7
   fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
