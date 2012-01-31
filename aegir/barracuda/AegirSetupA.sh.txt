@@ -917,9 +917,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-$_MANAGINGNEWS
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM
+  if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/sites" ] ; then
