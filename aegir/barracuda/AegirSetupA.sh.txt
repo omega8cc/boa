@@ -1018,9 +1018,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/sites /home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR/sites" ] ; then
