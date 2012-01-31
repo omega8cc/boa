@@ -1003,9 +1003,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites" ] ; then
