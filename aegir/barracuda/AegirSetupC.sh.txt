@@ -1395,14 +1395,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6.tar.gz
-  tar -xzf openenterprise-$_OPENENTERPRISE-$_SMALLCORE6.tar.gz
-  rm -f openenterprise-$_OPENENTERPRISE-$_SMALLCORE6.tar.gz
-  if [ -d "$_CORE/openenterprise" ] ; then
-    mv $_CORE/openenterprise $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-  else
-    mv $_CORE/commons $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-  fi
+  wget -q -U iCab http://files.aegir.cc/dev/distro/openenterprise-$_OPENENTERPRISE.tar.gz
+  tar -xzf openenterprise-$_OPENENTERPRISE.tar.gz
+  rm -f openenterprise-$_OPENENTERPRISE.tar.gz
+  mv $_CORE/openenterprise $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
   rm -f $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/*.txt
@@ -1551,7 +1547,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   unzip -qq managingnews-$_MANAGINGNEWS_DL.zip
   rm -f managingnews-$_MANAGINGNEWS_DL.zip
-  mv managingnews-$_MANAGINGNEWS_DL managingnews-$_MANAGINGNEWS
+  mv managingnews-$_MANAGINGNEWS_DL managingnews-$_MANAGINGNEWS-$_SMALLCORE6
   if [ -d "$_CORE/managingnews-$_MANAGINGNEWS_DL-old" ] ; then
     mv $_CORE/managingnews-$_MANAGINGNEWS_DL-old $_CORE/managingnews-$_MANAGINGNEWS_DL
   fi
@@ -1793,11 +1789,19 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
+  if [ -d "$_CORE/cod-$_COD" ] ; then
+    mv $_CORE/cod-$_COD $_CORE/cod-$_COD-old
+  fi
   wget -q -U iCab http://files.aegir.cc/dev/distro/cod-$_COD.tar.gz
   tar -xzf cod-$_COD.tar.gz
   rm -f cod-$_COD.tar.gz
   if [ -d "$_CORE/cod" ] ; then
     mv $_CORE/cod $_CORE/cod-$_COD-$_SMALLCORE6
+  else
+    mv $_CORE/cod-$_COD $_CORE/cod-$_COD-$_SMALLCORE6
+  fi
+  if [ -d "$_CORE/cod-$_COD-old" ] ; then
+    mv $_CORE/cod-$_COD-old $_CORE/cod-$_COD
   fi
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/cod-$_COD-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/cod-$_COD-$_SMALLCORE6
@@ -1840,11 +1844,19 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
+  if [ -d "$_CORE/openchurch-$_OPENCHURCH" ] ; then
+    mv $_CORE/openchurch-$_OPENCHURCH $_CORE/openchurch-$_OPENCHURCH-old
+  fi
   wget -q -U iCab http://files.aegir.cc/dev/distro/openchurch-$_OPENCHURCH.tar.gz
   tar -xzf openchurch-$_OPENCHURCH.tar.gz
   rm -f openchurch-$_OPENCHURCH.tar.gz
   if [ -d "$_CORE/openchurch" ] ; then
     mv $_CORE/openchurch $_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE6
+  else
+    mv $_CORE/openchurch-$_OPENCHURCH $_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE6
+  fi
+  if [ -d "$_CORE/openchurch-$_OPENCHURCH-old" ] ; then
+    mv $_CORE/openchurch-$_OPENCHURCH-old $_CORE/openchurch-$_OPENCHURCH
   fi
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE6
@@ -1886,11 +1898,19 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
+  if [ -d "$_CORE/elms-$_ELMS" ] ; then
+    mv $_CORE/elms-$_ELMS $_CORE/elms-$_ELMS-old
+  fi
   wget -q -U iCab http://files.aegir.cc/dev/distro/elms-$_ELMS.tar.gz
   tar -xzf elms-$_ELMS.tar.gz
   rm -f elms-$_ELMS.tar.gz
   if [ -d "$_CORE/elms" ] ; then
     mv $_CORE/elms $_CORE/elms-$_ELMS-$_SMALLCORE6
+  else
+    mv $_CORE/elms-$_ELMS $_CORE/elms-$_ELMS-$_SMALLCORE6
+  fi
+  if [ -d "$_CORE/elms-$_ELMS-old" ] ; then
+    mv $_CORE/elms-$_ELMS-old $_CORE/elms-$_ELMS
   fi
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/elms-$_ELMS-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/elms-$_ELMS-$_SMALLCORE6
@@ -2024,30 +2044,37 @@ fi
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/modules/path_alias_cache" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
 msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT"
+_CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
+  if [ -d "$_CORE/prosepoint-$_PROSEPOINT" ] ; then
+    mv $_CORE/prosepoint-$_PROSEPOINT $_CORE/prosepoint-$_PROSEPOINT-old
+  fi
   wget -q -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz
   tar -xzf prosepoint-$_PROSEPOINT.tar.gz
   rm -f prosepoint-$_PROSEPOINT.tar.gz
-  cd $_CORE/prosepoint-$_PROSEPOINT
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT/ &> /dev/null
-  rm -f $_CORE/prosepoint-$_PROSEPOINT/*.txt
+  mv $_CORE/prosepoint-$_PROSEPOINT $_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
+  if [ -d "$_CORE/prosepoint-$_PROSEPOINT-old" ] ; then
+    mv $_CORE/prosepoint-$_PROSEPOINT-old $_CORE/prosepoint-$_PROSEPOINT
+  fi
+  cd $_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/ &> /dev/null
+  rm -f $_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/*.txt
   rm -f -r ./profiles/default
   create_dirs
-  ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT/profiles/prosepoint/translations &> /dev/null
+  ln -s /data/all/000/translations $_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/profiles/prosepoint/translations &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT
-cd $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT
+mkdir -p $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
+cd $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_PROSEPOINT installation completed"
 mrun "sleep 2"
@@ -2078,6 +2105,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
+
+  if [ -d "$_CORE/openscholar-$_OPENSCHOLAR" ] ; then
+    mv $_CORE/openscholar-$_OPENSCHOLAR $_CORE/openscholar-$_OPENSCHOLAR-old
+  fi
+
+  if [ -d "$_CORE/openscholar-$_OPENSCHOLAR-old" ] ; then
+    mv $_CORE/openscholar-$_OPENSCHOLAR-old $_CORE/openscholar-$_OPENSCHOLAR
+  fi
+
   wget -q -U iCab http://files.aegir.cc/dev/distro/ubercart-$_UBERCART.tar.gz
   tar -xzf ubercart-$_UBERCART.tar.gz
   rm -f ubercart-$_UBERCART.tar.gz
@@ -2347,9 +2383,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6" ] ; t
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
