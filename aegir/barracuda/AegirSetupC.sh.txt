@@ -39,34 +39,34 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 ###---### distro config
 #
-_SMALLCORE6=EDIT_SMALLCORE6
-_SMALLCORE7=EDIT_SMALLCORE7
+_ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
+_CIVICRM6=EDIT_CIVICRM6
+_CIVICRM7=EDIT_CIVICRM7
+_COD=EDIT_COD
+_COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL7D="EDIT_DRUPAL7-dev"
-_DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
+_DRUPAL7S="EDIT_DRUPAL7-stage"
+_ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
+_NODESTREAM6=EDIT_NODESTREAM6
+_NODESTREAM7=EDIT_NODESTREAM7
 _OPENATRIUM=EDIT_OPENATRIUM
+_OPENCHURCH=EDIT_OPENCHURCH
+_OPENDEALS=EDIT_OPENDEALS
+_OPENENTERPRISE=EDIT_OPENENTERPRISE
+_OPENOUTREACH=EDIT_OPENOUTREACH
+_OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PROSEPOINT=EDIT_PROSEPOINT
+_SMALLCORE6=EDIT_SMALLCORE6
+_SMALLCORE7=EDIT_SMALLCORE7
 _UBERCART=EDIT_UBERCART
-_NODESTREAM=EDIT_NODESTREAM
-_NODESTREAM7=EDIT_NODESTREAM7
-_COMMERCE=EDIT_COMMERCE
-_OPENPUBLIC=EDIT_OPENPUBLIC
-_COD=EDIT_COD
-_OPENENTERPRISE=EDIT_OPENENTERPRISE
-_CIVICRM6=EDIT_CIVICRM6
-_CIVICRM7=EDIT_CIVICRM7
 _VIDEOLA=EDIT_VIDEOLA
-_OPENCHURCH=EDIT_OPENCHURCH
-_ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
-_OPENDEALS=EDIT_OPENDEALS
-_ELMS=EDIT_ELMS
-_OPENOUTREACH=EDIT_OPENOUTREACH
 
 
 ###---### main config
@@ -545,32 +545,32 @@ fi
 
 ###---### Distributions full names
 #
-_F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_ACQUIA_SEVEN="Acquia $_ACQUIA_SEVEN P.$_THIS_CORE"
+_F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_ATRIUM="Atrium $_OPENATRIUM $_SMALLCORE6 P.$_THIS_CORE"
+_F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
+_F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COD="Conference 1.0-beta2 $_SMALLCORE6 P.$_THIS_CORE"
+_F_COMMERCE="Commerce Kickstart 1.2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMONS="Acquia Commons 2.4 $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE="Commerce Kickstart 1.2 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMONS="Acquia Commons $_COMMONS $_SMALLCORE6 P.$_THIS_CORE"
+_F_ELMS="ELMS 1.0-alpha5 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
-_F_NODESTREAM="NodeStream $_NODESTREAM $_SMALLCORE6 P.$_THIS_CORE"
-_F_NODESTREAM7="NodeStream $_NODESTREAM7 $_SMALLCORE7 P.$_THIS_CORE"
+_F_NODESTREAM6="NodeStream 1.1 $_SMALLCORE6 P.$_THIS_CORE"
+_F_NODESTREAM7="NodeStream 2.0-alpha5 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENDEALS="Open Deals 1.0-beta7 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENENTERPRISE="Open Enterprise 1.0-beta3 $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENOUTREACH="Open Outreach 1.0-beta7 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic beta3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR $_SMALLCORE6 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_UBERCART="Ubercart 2.7 $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENPUBLIC="OpenPublic beta3 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COD="Conference $_COD $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENENTERPRISE="Open Enterprise $_OPENENTERPRISE $_SMALLCORE6 P.$_THIS_CORE"
-_F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
-_F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_VIDEOLA="Videola $_VIDEOLA $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENDEALS="Open Deals $_OPENDEALS $_SMALLCORE7 P.$_THIS_CORE"
-_F_ELMS="ELMS $_ELMS $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENOUTREACH="Open Outreach $_OPENOUTREACH $_SMALLCORE7 P.$_THIS_CORE"
+_F_VIDEOLA="Videola 1.0-alpha2 $_SMALLCORE6 P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -1593,35 +1593,35 @@ fi
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6/modules/path_alias_cache" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
-if prompt_yes_no "$_F_NODESTREAM - http://nodestream.org" ; then
+if prompt_yes_no "$_F_NODESTREAM6 - http://nodestream.org" ; then
 true
-msg "STATUS: $_F_NODESTREAM install in progress, please wait..."
+msg "STATUS: $_F_NODESTREAM6 install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6"
+_CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream.make ./
-  $_ROOT/tools/drush/drush make nodestream.make nodestream-$_NODESTREAM-$_SMALLCORE6 &> /dev/null
+  $_ROOT/tools/drush/drush make nodestream.make nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
   rm -f nodestream.make
-  cd $_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6/ &> /dev/null
-  rm -f $_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6/*.txt
+  cd $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/ &> /dev/null
+  rm -f $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/*.txt
   rm -f -r ./profiles/default
-  rm -f -r $_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6/modules/cookie_cache_bypass
+  rm -f -r $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/modules/cookie_cache_bypass
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6
-cd $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6
+mkdir -p $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6
+cd $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6
 create_symlinks
-msg "STATUS: $_F_NODESTREAM installation completed"
+msg "STATUS: $_F_NODESTREAM6 installation completed"
 mrun "sleep 2"
 else
-  msg "STATUS: $_F_NODESTREAM installation skipped"
+  msg "STATUS: $_F_NODESTREAM6 installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -2294,9 +2294,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ;
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_NODESTREAM" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM-$_SMALLCORE6 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_NODESTREAM6" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
