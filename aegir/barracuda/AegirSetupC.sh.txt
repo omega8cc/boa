@@ -1323,13 +1323,13 @@ fi
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/modules/path_alias_cache" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "STATUS: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/acquia_commons-$_COMMONS"
+_CORE_DISTRO="$_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
     prepare_pressflow_core
@@ -1339,35 +1339,35 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf commons-$_COMMONS.tar.gz
   rm -f commons-$_COMMONS.tar.gz
   if [ -d "$_CORE/acquia_commons" ] ; then
-    mv $_CORE/acquia_commons $_CORE/acquia_commons-$_COMMONS
+    mv $_CORE/acquia_commons $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   elif [ -d "$_CORE/commons-$_COMMONS" ] ; then
-    mv $_CORE/commons-$_COMMONS $_CORE/acquia_commons-$_COMMONS
+    mv $_CORE/commons-$_COMMONS $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   else
-    mv $_CORE/commons $_CORE/acquia_commons-$_COMMONS
+    mv $_CORE/commons $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   fi
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia_commons-$_COMMONS/ &> /dev/null
-  cd $_CORE/acquia_commons-$_COMMONS
-  rm -f $_CORE/acquia_commons-$_COMMONS/*.txt
-  rm -f -r $_CORE/acquia_commons-$_COMMONS/modules/cookie_cache_bypass
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/ &> /dev/null
+  cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
+  rm -f $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/*.txt
+  rm -f -r $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/modules/cookie_cache_bypass
   if [ $_COMMONS = "6.x-1.3" ] ; then
-    cd $_CORE/acquia_commons-$_COMMONS/profiles/drupal_commons
+    cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/profiles/drupal_commons
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1045778-fix-aegir-installs.patch ./
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1060250-aegir-infinite-loop.patch ./
     patch -p1 < commons-1045778-fix-aegir-installs.patch &> /dev/null
     mrun "sleep 2"
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
-    cd $_CORE/acquia_commons-$_COMMONS
+    cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   fi
   sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS
-cd $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS
+mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
+cd $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
 create_symlinks
-if [ ! -L "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/sites/all/libraries/getid3" ] ; then
-  mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/sites/all/libraries/getid3
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites/all/libraries/getid3" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites/all/libraries/getid3
 fi
 msg "STATUS: $_F_COMMONS installation completed"
 mrun "sleep 2"
@@ -2232,9 +2232,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi

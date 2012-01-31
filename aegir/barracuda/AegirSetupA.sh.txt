@@ -1058,9 +1058,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
     fi
   fi
 fi
