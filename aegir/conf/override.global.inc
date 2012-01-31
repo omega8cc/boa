@@ -13,6 +13,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT']) &&
     preg_match("/dev/", $_SERVER['HTTP_HOST']) &&
     preg_match("/(?:crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
 
+  header('X-Accel-Expires: 0');
   header("HTTP/1.1 301 Moved Permanently");
   header("Location: http://dev.null");
 }
@@ -39,6 +40,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
   if (preg_match("/^\/(?:cart.*|admin.*|user|user\/.*\/edit.*|user\/reset.*|user\/register|user\/logout|user\/password)$/", $_SERVER['REQUEST_URI'])) {
     $base_url = 'https://' . $_SERVER['HTTP_HOST'];
     if ($request_type != "SSL") {
+      header('X-Accel-Expires: 0');
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
     }
@@ -46,6 +48,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
     if ($request_type == "SSL" && !preg_match("/(?:autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI'])) {
+      header('X-Accel-Expires: 0');
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
     }
