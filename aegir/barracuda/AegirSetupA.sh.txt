@@ -1013,9 +1013,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA/sites /home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA
+  if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites" ] ; then
