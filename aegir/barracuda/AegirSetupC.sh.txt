@@ -1188,6 +1188,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
   if [ -d "$_CORE/drupal-7.10" ] ; then
     mv drupal-7.10 commerce-$_COMMERCE-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.11" ] ; then
+    mv drupal-7.11 commerce-$_COMMERCE-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.12" ] ; then
+    mv drupal-7.12 commerce-$_COMMERCE-$_SMALLCORE7
   fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
@@ -2105,19 +2109,16 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-
-  if [ -d "$_CORE/openscholar-$_OPENSCHOLAR" ] ; then
-    mv $_CORE/openscholar-$_OPENSCHOLAR $_CORE/openscholar-$_OPENSCHOLAR-old
+  if [ -d "$_CORE/ubercart-$_UBERCART" ] ; then
+    mv $_CORE/ubercart-$_UBERCART $_CORE/ubercart-$_UBERCART-old
   fi
-
-  if [ -d "$_CORE/openscholar-$_OPENSCHOLAR-old" ] ; then
-    mv $_CORE/openscholar-$_OPENSCHOLAR-old $_CORE/openscholar-$_OPENSCHOLAR
-  fi
-
   wget -q -U iCab http://files.aegir.cc/dev/distro/ubercart-$_UBERCART.tar.gz
   tar -xzf ubercart-$_UBERCART.tar.gz
   rm -f ubercart-$_UBERCART.tar.gz
   mv ubercart-$_UBERCART ubercart-$_UBERCART-$_SMALLCORE6
+  if [ -d "$_CORE/ubercart-$_UBERCART-old" ] ; then
+    mv $_CORE/ubercart-$_UBERCART-old $_CORE/ubercart-$_UBERCART
+  fi
   cd $_CORE/ubercart-$_UBERCART-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/ &> /dev/null
   rm -f $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/*.txt
