@@ -1098,40 +1098,40 @@ build_openpublic () {
   wget -q -U iCab http://www.openpublicapp.com/sites/default/files/releases/openpublic.$_OPENPUBLIC.tar.gz
   tar -xzf openpublic.$_OPENPUBLIC.tar.gz
   rm -f openpublic.$_OPENPUBLIC.tar.gz
-  mv openpublic openpublic-$_OPENPUBLIC
+  mv openpublic openpublic-$_OPENPUBLIC-$_SMALLCORE7
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
   cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
   rm -f -r $_DRUPAL7
-  cd $_CORE/openpublic-$_OPENPUBLIC
-  rm -f $_CORE/openpublic-$_OPENPUBLIC/*.txt
+  cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+  rm -f $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/testing
-  rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/standard
-  rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/minimal
+  rm -f -r $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/testing
+  rm -f -r $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/standard
+  rm -f -r $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/minimal
   create_dirs
-  cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/themes
+  cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic/themes
   wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
   tar -xzf openpublic_eu-7.x-1.0.tar.gz &> /dev/null
   rm -f openpublic_eu-7.x-1.0.tar.gz
-  if [ -d "$_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/libraries" ] ; then
-    rm -f -r $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/libraries/colorbox
-    cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic/libraries
+  if [ -d "$_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic/libraries" ] ; then
+    rm -f -r $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic/libraries/colorbox
+    cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic/libraries
     wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
     unzip colorbox.zip &> /dev/null
     rm -f colorbox.zip
   fi
   if [ $_OPENPUBLIC = "beta1-build100" ] ; then
-    cd $_CORE/openpublic-$_OPENPUBLIC/profiles/openpublic
+    cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openpublic.patch ./
     patch -p1 < openpublic.patch &> /dev/null
-    cd $_CORE/openpublic-$_OPENPUBLIC
+    cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
   fi
   touch $_CORE_DISTRO/core_$_SMALLCORE7.log
 }
 
-_CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC"
+_CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7"
 if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/core_$_SMALLCORE7.log" ] ; then
   rm -f -r $_CORE_DISTRO
   cd $_CORE
@@ -1140,7 +1140,7 @@ fi
 
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
 true
@@ -1150,11 +1150,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   build_openpublic
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
-cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC
-if [ ! -L "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries/colorbox" ] ; then
-  mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/openpublic/libraries/colorbox $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/sites/all/libraries/colorbox
+mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries/colorbox" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/openpublic/libraries/colorbox $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries/colorbox
 fi
 create_symlinks
 create_d7_symlinks
@@ -2286,9 +2286,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; t
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
