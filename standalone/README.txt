@@ -1,5 +1,2 @@
 
-### Non-Aegir Drupal configuration for Nginx - coming in winter 2011.
-
-
-
+### Non-Aegir Drupal configuration for Nginx - currently (February 1, 2012) postponed.

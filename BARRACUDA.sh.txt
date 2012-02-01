@@ -1253,7 +1253,7 @@ barracuda_cnf () {
       else
         echo "Upgrade aborted by you."
         exit 1
-      fi 
+      fi
     fi
   fi
 }
@@ -1462,7 +1462,7 @@ else
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
-_INSTAPP="aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+_INSTAPP="/usr/bin/aptitude-fast -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
@@ -1650,11 +1650,10 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Get axelerator
-if [ ! -e "/usr/bin/apt-fast" ] ; then
-  cd /usr/bin
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt-fast.sh.txt ./
-  mv -f apt-fast.sh.txt apt-fast &> /dev/null
-  chmod +x apt-fast &> /dev/null
+if [ ! -e "/usr/bin/aptitude-fast" ] ; then
+  git clone git://github.com/omega8cc/apt-fast.git /opt/tmp/apt-fast &> /dev/null
+  cp -af /opt/tmp/apt-fast/apt-fast /usr/bin/aptitude-fast &> /dev/null
+  chmod +x /usr/bin/aptitude-fast &> /dev/null
   cd /opt/tmp
 fi
 
