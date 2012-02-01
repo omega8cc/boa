@@ -530,6 +530,11 @@ cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ]; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+  if [ $_FORCE_GIT_MIRROR = "github" ]; then
+    cd /opt/tmp/$_BOA_REPO_NAME
+    git checkout 2.0.2-dev &> /dev/null
+    cd /opt/tmp
+  fi
 else
   wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_AEGIR_VERSION.tar.gz
   gunzip -q -c nginx-for-drupal-$_AEGIR_VERSION.tar.gz | tar -xf -
