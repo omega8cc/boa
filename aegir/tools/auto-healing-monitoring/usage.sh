@@ -417,7 +417,11 @@ do
         HxmSiz=`du -s /home/$_THIS_HM_USER.ftp` &> /dev/null
         HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
       fi
-      HomSiz=`du -s $User` &> /dev/null
+      if [ -L "$User" ] ; then
+        HomSiz=`du -D -s $User` &> /dev/null
+      else
+        HomSiz=`du -s $User` &> /dev/null
+      fi
       HomSiz=`echo "$HomSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
       HomSiz=$(($HomSiz + $HxmSiz))
       HomSizH=`echo "scale=0; $HomSiz/1024" | bc`;

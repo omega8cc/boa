@@ -453,35 +453,36 @@ _INSTALLER_VERSION=BOA-2.0.2-dev
 _WEBG=www-data
 _USRG=users
 _SMALLCORE6=6.24
+_SMALLCORE6_LANG=6.23
 _SMALLCORE7=7.12
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
 
 ## Distributions
+_ACQUIA_SEVEN=7.12.11
+_CIVICRM6=3.4.8
+_CIVICRM7=4.0.8
+_COD=6.x-1.0-beta2
+_COMMERCE=7.x-1.2
 _COMMONS=6.x-2.4
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.12
+_ELMS=6.x-1.0-alpha5
 _MANAGINGNEWS=1.2.1
-_OPENATRIUM=1.2.1
 _NODESTREAM6=6.x-1.1
 _NODESTREAM7=7.x-2.0-alpha5
+_OPENATRIUM=1.2.1
+_OPENCHURCH=1.22-a
+_OPENDEALS=7.x-1.0-beta7
+_OPENENTERPRISE=6.x-1.0-beta3
+_OPENOUTREACH=7.x-1.0-beta7
+_OPENPUBLIC=beta3-build100
 _OPENPUBLISH=3-alpha3
 _OPENSCHOLAR=2.0-beta13
 _PROSEPOINT=0.42
 _UBERCART=6.x-2.7
-_COMMERCE=7.x-1.2
-_OPENPUBLIC=beta3-build100
-_COD=6.x-1.0-beta2
-_OPENENTERPRISE=6.x-1.0-beta3
-_CIVICRM6=3.4.8
-_CIVICRM7=4.0.8
 _VIDEOLA=6.x-1.0-alpha2
-_OPENCHURCH=1.22-a
-_ACQUIA_SEVEN=7.10.10
-_OPENDEALS=7.x-1.0-beta7
-_ELMS=6.x-1.0-alpha5
-_OPENOUTREACH=7.x-1.0-beta7
 
 ###---### Functions
 #
@@ -645,76 +646,77 @@ if [[ $_AWS_TEST_A =~ "cloudimg" ]] || [[ $_AWS_TEST_B =~ "cloudconfig" ]] ; the
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda -type f`
 do
-  sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
-  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
-  sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
-  sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files
-  sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files
-  sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files
-  sed -i "s/EDIT_USER/$_USER/g"                           $Files
-  sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
-  sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files
-  sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
-  sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
-  sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files
-  sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files
-  sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files
-  sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
+  sed -i "s/EDIT_ACQUIA_SEVEN/$_ACQUIA_SEVEN/g"           $Files
   sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
-  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
-  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
-  sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
-  sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
-  sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
-  sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
-  sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
-  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files
-  sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
-  sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
-  sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
-  sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files
-  sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
-  sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
-  sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
-  sed -i "s/EDIT_COD/$_COD/g"                             $Files
-  sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
+  sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
+  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
+  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
+  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
   sed -i "s/EDIT_CIVICRM6/$_CIVICRM6/g"                   $Files
   sed -i "s/EDIT_CIVICRM7/$_CIVICRM7/g"                   $Files
-  sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files
-  sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
-  sed -i "s/EDIT_ACQUIA_SEVEN/$_ACQUIA_SEVEN/g"           $Files
-  sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
-  sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files
-  sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files
-  sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
-  sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
-  sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
-  sed -i "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files
+  sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files
+  sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files
+  sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files
+  sed -i "s/EDIT_COD/$_COD/g"                             $Files
+  sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
+  sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
   sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files
-  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
-  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
-  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
-  sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
-  sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
-  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
+  sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
+  sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
+  sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
+  sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
+  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
+  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
+  sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files
+  sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
-  sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
-  sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
-  sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
+  sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
   sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files
-  sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files
+  sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
+  sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files
+  sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files
+  sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
+  sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
+  sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
+  sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files
+  sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
+  sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
+  sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
+  sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
+  sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
+  sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
+  sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files
+  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files
+  sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
+  sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
   sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
+  sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
+  sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
+  sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files
+  sed -i "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files
+  sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
+  sed -i "s/EDIT_SMALLCORE6_LANG/$_SMALLCORE6_LANG/g"     $Files
+  sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
+  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
+  sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
+  sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
+  sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
+  sed -i "s/EDIT_USER/$_USER/g"                           $Files
+  sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
+  sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files
+  sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files
 done
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
-  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
-  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
-  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
-  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
-  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
+  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
+  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
+  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
+  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
+  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
 done
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
