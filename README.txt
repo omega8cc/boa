@@ -108,7 +108,7 @@ Octopus can install the platforms listed below:
  Conference 1.0-beta2 --------- http://usecod.com
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.22 Pressflow (int) -- http://pressflow.org
- Drupal 7.10 ------------------ http://drupal.org/drupal-7.0
+ Drupal 7.12 ------------------ http://drupal.org/drupal-7.0
  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com

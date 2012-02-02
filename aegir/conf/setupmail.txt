@@ -46,7 +46,7 @@ starting with 1+ Aegir Standard or SSD Core:
  Commerce Kickstart 1.2 ------- http://drupalcommerce.org
  Conference 1.0-beta2 --------- http://usecod.com
  Drupal 6.22 ------------------ http://pressflow.org
- Drupal 7.10 ------------------ http://drupal.org/drupal-7.0
+ Drupal 7.12 ------------------ http://drupal.org/drupal-7.0
  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
