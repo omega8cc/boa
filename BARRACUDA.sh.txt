@@ -1462,7 +1462,11 @@ else
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
-_INSTAPP="/usr/bin/aptitude-fast -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+if [ $_AEGIR_VERSION = "HEAD" ] && [ $_FORCE_GIT_MIRROR = "github" ] ; then
+  _INSTAPP="/usr/bin/aptitude-fast -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+else
+  _INSTAPP="/usr/bin/aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+fi
 _SRCDIR=/opt/tmp/files
 rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
