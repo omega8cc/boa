@@ -9,14 +9,7 @@
 
 ### In the Labs
 
-* VirtualBox Debian and Ubuntu BOA Images.
 * Automated FTP accounts per site and per platform.
-* Multiserver support.
-* Site and Platform migration between Octopus instances.
-* Speed Booster Control module for D6 and D7 sites.
-* Cherokee web server support.
-* RedHat/CentOS support.
-* Octopus theme for Hostmaster interface.
 
 
 ### DONE on Aegir Day at CPH DrupalCon

@@ -7,17 +7,17 @@ reset="${esc}[0m"
 testecho=/opt/tmp/testecho-$$
 echo -ne > $testecho
 if grep -q "\-ne" $testecho; then
-	while [ -e $1 ]
-	do
-  	echo -n "."
-  	sleep 1
-	done
-	echo
+  while [ -e $1 ]
+  do
+    echo -n "."
+    sleep 1
+  done
+  echo
 else
-	while [ -e $1 ]
-	do
-  	echo -en "\b${sp:i++%${#sp}:1}"
-  	sleep .2
-	done
-	echo -en "${reset}\b"
+  while [ -e $1 ]
+  do
+    echo -en "\b${sp:i++%${#sp}:1}"
+    sleep .2
+  done
+  echo -en "${reset}\b"
 fi
