@@ -452,8 +452,8 @@ _INSTALLER_VERSION=BOA-2.0.2-dev
 ## System
 _WEBG=www-data
 _USRG=users
-_SMALLCORE6=6.22
-_SMALLCORE7=7.10
+_SMALLCORE6=6.24
+_SMALLCORE7=7.12
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
 _NOW=`date +%y%m%d-%H%M`
@@ -461,7 +461,7 @@ _NOW=`date +%y%m%d-%H%M`
 ## Distributions
 _COMMONS=6.x-2.4
 _DRUPAL5=5.23.50
-_DRUPAL7=drupal-7.10
+_DRUPAL7=drupal-7.12
 _MANAGINGNEWS=1.2.1
 _OPENATRIUM=1.2.1
 _NODESTREAM6=6.x-1.1
