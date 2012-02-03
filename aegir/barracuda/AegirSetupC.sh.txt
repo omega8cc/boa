@@ -115,7 +115,7 @@ msg () {
 #
 # Simple prompt
 prompt_yes_no () {
-if [ "$_AUTOPILOT" = "YES" ]; then
+if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
   while true ; do
@@ -523,7 +523,7 @@ mrun "sleep 2"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ]; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ] ; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
@@ -592,15 +592,15 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 ###---### Prepare Pressflow core
 #
-if [ $_STATUS != "INIT" ] ; then
+if [ "$_STATUS" != "INIT" ] ; then
   upgrade_o_contrib
 fi
-if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+if [ "$_STATUS" = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
   msg "$_STATUS C: Preparing Pressflow core +Extra, please wait.."
   mrun "sleep 2"
   prepare_pressflow_core
 fi
-if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+if [ "$_STATUS" = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
   msg "$_STATUS C: Preparing Pressflow core Original, please wait.."
   mrun "sleep 2"
   prepare_pressflow_core_original
@@ -673,7 +673,7 @@ fi
 
 ###---### Acquia
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "AQ6" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
@@ -711,7 +711,7 @@ fi
 
 ###---### Acquia Seven
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ7 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "AQ7" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
@@ -749,7 +749,7 @@ fi
 
 ###---### Open Atrium
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OAM" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
@@ -809,7 +809,7 @@ fi
 
 ###---### Drupal 5 Pressflow
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D5P ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D5P" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
@@ -849,7 +849,7 @@ true
 
 ###---### Drupal 6 Pressflow Development
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D6D" ]] ; then
 msg "STATUS: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-dev"
@@ -877,7 +877,7 @@ fi
 
 ###---### Drupal 6 Pressflow Staging
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D6S" ]] ; then
 msg "STATUS: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
 _CORE_DISTRO="$_CORE/pressflow-$_SMALLCORE6-stage"
@@ -905,7 +905,7 @@ fi
 
 ###---### Drupal 6 Pressflow Production
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D6P" ]] ; then
 if [ ! -d "$_CORE/pressflow" ] ; then
   msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
   mrun "sleep 1"
@@ -958,7 +958,7 @@ true
 
 ###---### Drupal 7 Development
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D7D" ]] ; then
 msg "STATUS: $_F_DRUPAL7_D install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7D"
@@ -996,7 +996,7 @@ fi
 
 ###---### Drupal 7 Staging
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D7S" ]] ; then
 msg "STATUS: $_F_DRUPAL7_S install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/$_DRUPAL7S"
@@ -1037,7 +1037,7 @@ fi
 
 ###---### Drupal 7 Production
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "D7P" ]] ; then
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
   mrun "sleep 2"
@@ -1123,7 +1123,7 @@ build_openpublic () {
     unzip colorbox.zip &> /dev/null
     rm -f colorbox.zip
   fi
-  if [ $_OPENPUBLIC = "beta1-build100" ] ; then
+  if [ "$_OPENPUBLIC" = "beta1-build100" ] ; then
     cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openpublic.patch ./
     patch -p1 < openpublic.patch &> /dev/null
@@ -1140,7 +1140,7 @@ if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/core_$_SMALLCORE7.log" ] ; th
 fi
 
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OPC" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
@@ -1174,7 +1174,7 @@ fi
 ###---### Commerce 7.x
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "DCE" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
@@ -1231,7 +1231,7 @@ fi
 ###---### Open Deals
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ODS ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "ODS" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
@@ -1279,7 +1279,7 @@ fi
 ###---### Open Outreach
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OOH ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OOH" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
@@ -1327,7 +1327,7 @@ fi
 ###---### Acquia Commons
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "DCS" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
@@ -1354,7 +1354,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   rm -f $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/*.txt
   rm -f -r $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/modules/cookie_cache_bypass
-  if [ $_COMMONS = "6.x-1.3" ] ; then
+  if [ "$_COMMONS" = "6.x-1.3" ] ; then
     cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/profiles/drupal_commons
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1045778-fix-aegir-installs.patch ./
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1060250-aegir-infinite-loop.patch ./
@@ -1387,7 +1387,7 @@ fi
 
 ###---### Open Enterprise
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OEE" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
@@ -1408,7 +1408,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
   rm -f $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/*.txt
   rm -f -r $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/modules/cookie_cache_bypass
-  if [ $_OPENENTERPRISE = "6.x-1.0-beta3" ] ; then
+  if [ "$_OPENENTERPRISE" = "6.x-1.0-beta3" ] ; then
     cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/profiles/openenterprise
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openenterprise.patch ./
     patch -p1 < openenterprise.patch &> /dev/null
@@ -1434,7 +1434,7 @@ fi
 ###---### Videola Make
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "VOA" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_VIDEOLA - http://videola.tv" ; then
@@ -1454,7 +1454,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/videola-$_VIDEOLA-$_SMALLCORE6
   rm -f $_CORE/videola-$_VIDEOLA-$_SMALLCORE6/*.txt
   rm -f -r $_CORE/videola-$_VIDEOLA-$_SMALLCORE6/modules/cookie_cache_bypass
-  if [ $_VIDEOLA = "6.x-1.0-alpha2" ] ; then
+  if [ "$_VIDEOLA" = "6.x-1.0-alpha2" ] ; then
     cd $_CORE/videola-$_VIDEOLA-$_SMALLCORE6/profiles/videola
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/videola.patch ./
     patch -p1 < videola.patch &> /dev/null
@@ -1479,7 +1479,7 @@ fi
 
 ###---### Feature Server Make
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "FSR" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
@@ -1488,7 +1488,7 @@ msg "STATUS: $_F_FSERVER install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/fserver-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
+  if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
     _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
@@ -1532,7 +1532,7 @@ fi
 
 ###---### ManagingNews
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MNS ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "MNS" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
@@ -1593,7 +1593,7 @@ fi
 ###---### NodeStream Make
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "NSM" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM6 - http://nodestream.org" ; then
@@ -1633,7 +1633,7 @@ fi
 ###---### NodeStream7 Make
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NS7 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "NS7" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM7 - http://nodestream.org" ; then
@@ -1680,7 +1680,7 @@ fi
 ###---### OpenPublish
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPH ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OPH" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
@@ -1728,7 +1728,7 @@ fi
 ###---### OpenScholar
 #
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OSR" ]] ; then
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites/all/libraries/shadowbox" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
@@ -1781,7 +1781,7 @@ fi
 
 ###---### Conference Organizing Distribution
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "COD" ]] ; then
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/sites/all/libraries/jquery.ui" ] ; then
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
@@ -1836,7 +1836,7 @@ fi
 
 ###---### Open Church
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "OCH" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENCHURCH - http://openchurchsite.com" ; then
@@ -1890,7 +1890,7 @@ fi
 
 ###---### ELMS
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ELS ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "ELS" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_ELMS - http://elms.psu.edu" ; then
@@ -1951,7 +1951,7 @@ else
   _ALLOW_CIVICRM=NO
 fi
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC3 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "CC3" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
@@ -2004,7 +2004,7 @@ else
   _ALLOW_CIVICRM=NO
 fi
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC4 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "CC4" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
@@ -2048,7 +2048,7 @@ fi
 ###---### Prosepoint
 #
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "PPT" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
@@ -2094,7 +2094,7 @@ fi
 
 ###---### Ubercart
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UCT ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ "$_PLATFORMS_LIST" =~ "UCT" ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
@@ -2192,7 +2192,7 @@ else
   cd $_THIS_HOSTMASTER
 fi
 DRUSHC="$_ROOT/tools/drush/drush"
-if [ $_DRUSH_FAMILY = "3" ] ; then
+if [ "$_DRUSH_FAMILY" = "3" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform_3.php.txt ./
   mv -f make_platform_3.php.txt make_platform.php &> /dev/null
 else
@@ -2400,7 +2400,7 @@ fi
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
-    if [[ $_PLATF =~ aegir ]] ; then
+    if [[ "$_PLATF" =~ "aegir" ]] ; then
 	  _FOUND_HM=YES
     else
       _PLATF_NAME=${_PLATF##*/}

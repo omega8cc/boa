@@ -166,7 +166,7 @@ mrun () {
 #
 # Simple prompt
 prompt_yes_no () {
-if [ "$_AUTOPILOT" = "YES" ]; then
+if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
   while true ; do
@@ -315,29 +315,29 @@ msg "$_STATUS A: Aegir automated install script part A"
 ###---### Checking version..
 #
 msg "INFO: Checking OCTOPUS version, please wait..."
-if [ $_AEGIR_VERSION = "HEAD" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   _FILE_VERSION=release.txt
 else
   _FILE_VERSION=version.txt
 fi
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION`
-  if [[ $_VERSIONS_TEST =~ "-dev" ]] ; then
-    if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] && [ $_AEGIR_VERSION = "HEAD" ] ; then
+  if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "INFO: Version test result: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
-    if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] && [[ $_AEGIR_VERSION =~ "BOA" ]] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "INFO: Version test result: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   fi
-  if [ $_VERSIONS_TEST_RESULT = "FAIL" ] ; then
+  if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
     msg "ERROR: This OCTOPUS version is outdated and will not work correctly."
     msg "Please download and use new stable version:"
     msg "wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt"
@@ -372,7 +372,7 @@ mrun "sleep 3"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ]; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ] ; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
@@ -462,7 +462,7 @@ _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-if [ $_LOCAL_STATUS = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
   mrun "sleep 3"
   rm -f /opt/tmp/testecho*
@@ -506,7 +506,7 @@ _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-if [ $_LOCAL_STATUS = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: post-install start, please wait..."
   mrun "sleep 3"
   if [ ! -e "$_ROOT/config/$_USER.nginx.conf" ] ; then
@@ -551,7 +551,7 @@ fi
     _NGX_BIN=/usr/sbin/nginx
   fi
   _NGX_UP_TEST=`$_NGX_BIN -V 2>&1`
-  if [[ $_NGX_UP_TEST =~ upload ]] ; then
+  if [[ "$_NGX_UP_TEST" =~ upload ]] ; then
     _NGX_UP_TEST_RESULT=OK
     _OCT_NGX=nginx_octopus_include.conf
     _ADV_NGX=nginx_advanced_include.conf
@@ -568,7 +568,7 @@ fi
   cd $_ROOT/config/includes
   mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
   mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
-  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
     cp -af $_OCT_NGX nginx_advanced_include.conf &> /dev/null
@@ -581,7 +581,7 @@ fi
   cd $_ROOT/.drush/provision/http/Provision/Config/Nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
     cp -af $_OCT_NGX nginx_advanced_include.conf &> /dev/null
@@ -613,7 +613,7 @@ fi
 if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
     _SSL_TEST=`cat /data/conf/global.inc 2>&1`
-    if [[ $_SSL_TEST =~ HTTP_X_FORWARDED_PROTO ]] ; then
+    if [[ "$_SSL_TEST" =~ "HTTP_X_FORWARDED_PROTO" ]] ; then
       _SSL_TEST=OK
     else
       msg "$_STATUS A: Installing forced SSL settings for this Hostmaster site, please wait..."
@@ -727,7 +727,7 @@ fi
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
-    if [[ $_PLATF =~ aegir ]] ; then
+    if [[ "$_PLATF" =~ "aegir" ]] ; then
 	  _FOUND_HM=YES
     else
       chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
@@ -752,7 +752,7 @@ _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-# if [ $_LOCAL_STATUS = "INIT" ] ; then
+# if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 #  msg "$_STATUS A: Add cron task"
 #  mrun "sleep 3"
 #  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
@@ -771,7 +771,7 @@ _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-if [ $_LOCAL_STATUS = "INIT" ] ; then
+if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _USERFTP="$_USER.ftp"
   _USERFTP_ROOT="/home/$_USERFTP"
   if [ "$_THIS_OS" = "Debian" ] ; then
@@ -1128,7 +1128,7 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   else
     _SEND_UPGRADE_EMAIL=NO
   fi
-elif [ $_STATUS = "INIT" ] ; then
+elif [ "$_STATUS" = "INIT" ] ; then
  cd $_ROOT/log
  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./
  sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt
@@ -1142,13 +1142,13 @@ fi
 ###---### Send setup e-mail
 #
 _MAILX_TEST=`mail -V 2>&1`
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Send setup e-mail on init, please wait..."
   mrun "sleep 3"
   TIME=`date`
   echo $TIME > $_ROOT/log/date-init.txt
   if [ -e "$_ROOT/log/setupmail.txt" ] ; then
-    if [[ $_MAILX_TEST =~ invalid ]] ; then
+    if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
       cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
     else
       cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
@@ -1161,13 +1161,13 @@ else
     TIME=`date`
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
-      if [[ $_MAILX_TEST =~ invalid ]] ; then
+      if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
         cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
       else
         cat $_ROOT/log/upgrademail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
       fi
     else
-      if [[ $_MAILX_TEST =~ invalid ]] ; then
+      if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
         cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
       else
         cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
@@ -1183,7 +1183,7 @@ fi
 #
 msg "$_STATUS A: Touch install logs"
 TIME=`date`
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
  echo $TIME > $_ROOT/log/date-init.txt
 else
  echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
@@ -1221,7 +1221,7 @@ mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   echo " "
   _AEGIR_LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
   msg "ACCESS -> $_AEGIR_LOGIN_URL"

@@ -505,7 +505,7 @@ msg () {
 }
 # Simple prompt.
 prompt_yes_no () {
-if [ "$_AUTOPILOT" = "YES" ]; then
+if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
   while true ; do
@@ -626,7 +626,7 @@ st_runner () {
 # Find correct IP.
 find_correct_ip () {
   _FQDN_TEST=$(host $_LOC_DOM)
-  if [[ $_FQDN_TEST =~ "is an alias for" ]] ; then
+  if [[ "$_FQDN_TEST" =~ "is an alias for" ]] ; then
     _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
   else
     _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
@@ -707,12 +707,12 @@ fix_on_upgrade () {
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
   _DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_DB_SERVER_TEST =~ MariaDB ]] ; then
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     _DB_SERVER=MariaDB
   else
     _DB_SERVER=Percona
   fi
-  if [ "$_DB_SERVER" = "Percona" ]; then
+  if [ "$_DB_SERVER" = "Percona" ] ; then
     sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/language/\#language/g" /etc/mysql/my.cnf
   fi
@@ -722,7 +722,7 @@ fix_on_upgrade () {
     perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
     if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-      if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ]; then
+      if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
         mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
       fi
@@ -751,7 +751,7 @@ validate_public_ip () {
     fi
   else
     _ETH_TEST=`ifconfig 2>&1`
-    if [[ $_ETH_TEST =~ venet0 ]] ; then
+    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
       _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
@@ -781,11 +781,11 @@ validate_public_ip () {
 #
 # Validate server IP for xtras.
 validate_xtras_ip () {
-  if [ $_HTTP_WILDCARD = "YES" ] ; then
+  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     _XTRAS_THISHTIP="*"
   else
     _ETH_TEST=`ifconfig 2>&1`
-    if [[ $_ETH_TEST =~ venet0 ]] ; then
+    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
       _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
@@ -810,7 +810,7 @@ validate_xtras_ip () {
             _THISHTIP="$_LOC_IP"
           fi
           _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ $_IP_TEST =~ ERR ]] ; then
+          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
             _IP_TEST_RESULT=FAIL
             _XTRAS_THISHTIP="*"
           else
@@ -832,11 +832,11 @@ validate_xtras_ip () {
 #
 # Validate server IP for purge vhost.
 validate_purge_ip () {
-  if [ $_ALL_PURGE_THISHTIP = "YES" ] ; then
+  if [ "$_ALL_PURGE_THISHTIP" = "YES" ] ; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
     _ETH_TEST=`ifconfig 2>&1`
-    if [[ $_ETH_TEST =~ venet0 ]] ; then
+    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
       _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
@@ -861,7 +861,7 @@ validate_purge_ip () {
             _THISHTIP="$_LOC_IP"
           fi
           _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ $_IP_TEST =~ ERR ]] ; then
+          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
             _IP_TEST_RESULT=FAIL
             _PURGE_THISHTIP="0.0.0.0/0"
           else
@@ -883,11 +883,11 @@ validate_purge_ip () {
 #
 # Validate local server IP.
 validate_local_ip () {
-  if [ $_HTTP_WILDCARD = "YES" ] ; then
+  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     _LOCAL_THISHTIP=all
   else
     _ETH_TEST=`ifconfig 2>&1`
-    if [[ $_ETH_TEST =~ venet0 ]] ; then
+    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
       _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
@@ -912,7 +912,7 @@ validate_local_ip () {
             _THISHTIP="$_LOC_IP"
           fi
           _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ $_IP_TEST =~ ERR ]] ; then
+          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
             _IP_TEST_RESULT=FAIL
             _LOCAL_THISHTIP=all
           else
@@ -942,7 +942,7 @@ force_advanced_nginx_config () {
     _NGX_BIN=/usr/sbin/nginx
   fi
   _NGX_UP_TEST=`$_NGX_BIN -V 2>&1`
-  if [[ $_NGX_UP_TEST =~ upload ]] ; then
+  if [[ "$_NGX_UP_TEST" =~ upload ]] ; then
     _NGX_UP_TEST_RESULT=OK
     _OCT_NGX=nginx_octopus_include.conf
     _ADV_NGX=nginx_advanced_include.conf
@@ -974,7 +974,7 @@ force_advanced_nginx_config () {
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
-  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf
     cp -af $_OCT_NGX nginx_advanced_include.conf
@@ -987,7 +987,7 @@ force_advanced_nginx_config () {
   cd /var/aegir/.drush/provision/http/Provision/Config/Nginx
   rm -f nginx_simple_include.conf
   rm -f nginx_advanced_include.conf
-  if [ $_USE_SPEED_BOOSTER = "YES" ] ; then
+  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf
     cp -af $_OCT_NGX nginx_advanced_include.conf
@@ -1003,11 +1003,11 @@ force_advanced_nginx_config () {
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
-  if [[ $_ETH_TEST =~ venet0 ]] ; then
+  if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
-  elif [[ $_VM_TEST =~ beng ]] ; then
+  elif [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   elif [[ "$_THISHOST" =~ ".host8." ]] && [ -d "/boot/grub" ] ; then
     _VMFAMILY="TG"
@@ -1115,7 +1115,7 @@ tune_memory_limits () {
 # Fix locales.
 fix_locales () {
   _LOC_TEST=`locale 2>&1`
-  if [[ $_LOC_TEST =~ Cannot ]] ; then
+  if [[ "$_LOC_TEST" =~ "Cannot" ]] ; then
     _LOCALE_TEST=BROKEN
     msg "WARNING!"
     cat <<EOF
@@ -1211,7 +1211,7 @@ barracuda_cnf () {
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
     _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
-    if [[ $_WORKERS_TEST =~ "_NGINX_WORKERS" ]] ; then
+    if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
       true
     else
       echo "### Configuration added on $_NOW" >> /root/.barracuda.cnf
@@ -1219,14 +1219,14 @@ barracuda_cnf () {
       echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     fi
     _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW /root/.barracuda.cnf)
-    if [[ $_PHP_INSTALL_NEW_TEST =~ "_PHP_INSTALL_NEW" ]] ; then
+    if [[ "$_PHP_INSTALL_NEW_TEST" =~ "_PHP_INSTALL_NEW" ]] ; then
       true
     else
       echo "### Configuration added on $_NOW" >> /root/.barracuda.cnf
       echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
-    if [[ $_PHP_FPM_VERSION_TEST =~ "_PHP_FPM_VERSION" ]] ; then
+    if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
     else
       echo "### Configuration added on $_NOW" >> /root/.barracuda.cnf
@@ -1238,7 +1238,7 @@ barracuda_cnf () {
       echo "$line"
     done < /root/.barracuda.cnf
     echo " "
-    if [ $_STATUS = "INIT" ] ; then
+    if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
         source /root/.barracuda.cnf
@@ -1431,7 +1431,7 @@ if [ `whoami` = "root" ] ; then
   invoke-rc.d cron stop &> /dev/null
   touch /var/run/octopus_barracuda.pid
   _VM_TEST=`uname -a 2>&1`
-  if [[ $_VM_TEST =~ beng ]] ; then
+  if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
     touch /var/run/cloud_vhost.pid
   fi
@@ -1462,8 +1462,12 @@ else
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
-if [ $_AEGIR_VERSION = "HEAD" ] && [ $_FORCE_GIT_MIRROR = "github" ] ; then
-  _INSTAPP="/usr/bin/aptitude-fast -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+if [ "$_AEGIR_VERSION" = "HEAD" ] && [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
+  if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+    _INSTAPP="/usr/bin/aptitude-fast -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+  else
+    _INSTAPP="/usr/bin/aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
+  fi
 else
   _INSTAPP="/usr/bin/aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
 fi
@@ -1475,9 +1479,9 @@ rm -f /var/run/aegir_upgrade.pid
 
 
 ###--------------------###
-if [ $_STATUS = "UPGRADE" ] ; then
+if [ "$_STATUS" = "UPGRADE" ] ; then
   _DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_DB_SERVER_TEST =~ MariaDB ]] ; then
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     if [ "$_DB_SERVER" = "Percona" ] ; then
       _DB_SERVER_SRC=repo.percona.com
     else
@@ -1504,7 +1508,7 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "UPGRADE" ] ; then
+if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ ! -e "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   cat <<EOF
@@ -1526,7 +1530,7 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: We need to install wget, axel, aptitude, netcat & git first, please wait..."
   sleep 3
   apt-get update &> /dev/null
@@ -1621,12 +1625,16 @@ sleep 3
 # Git clone all
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
-if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
-  if [ $_FORCE_GIT_MIRROR = "github" ]; then
-    cd /opt/tmp/$_BOA_REPO_NAME
-    git checkout 2.0.2-dev &> /dev/null
-    cd /opt/tmp
+  if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
+    if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+      cd /opt/tmp/$_BOA_REPO_NAME
+      git checkout 2.0.2-dev &> /dev/null
+      cd /opt/tmp
+    else
+      true
+    fi
   fi
 else
   wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_AEGIR_VERSION.tar.gz
@@ -1669,29 +1677,29 @@ fi
 
 ###--------------------###
 msg "INFO: Checking BARRACUDA version, please wait..."
-if [ $_AEGIR_VERSION = "HEAD" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   _FILE_VERSION=release.txt
 else
   _FILE_VERSION=version.txt
 fi
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION`
-  if [[ $_VERSIONS_TEST =~ "-dev" ]] ; then
-    if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] && [ $_AEGIR_VERSION = "HEAD" ] ; then
+  if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "INFO: Version test result: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
-    if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] && [[ $_AEGIR_VERSION =~ "BOA" ]] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
       msg "INFO: Version test result: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   fi
-  if [ $_VERSIONS_TEST_RESULT = "FAIL" ] ; then
+  if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
     msg "ERROR: This BARRACUDA version is outdated and will not work correctly."
     msg "Please download and use new version:"
     msg "wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt"
@@ -1704,7 +1712,7 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Installing lsb-release and dnsutils now, please wait..."
   mrun "sleep 3"
   if ! st_runner "$_INSTALL lsb-release dnsutils"; then
@@ -1718,39 +1726,39 @@ msg "STATUS: Checking your Debian or Ubuntu version..."
 mrun "sleep 3"
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
-if [ $_THIS_OS = "Ubuntu" ] ; then
-  if [ $_THIS_RV = "oneiric" ] ; then
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  if [ "$_THIS_RV" = "oneiric" ] ; then
     _REL_VERSION="oneiric"
     _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
-  elif [ $_THIS_RV = "natty" ] ; then
+  elif [ "$_THIS_RV" = "natty" ] ; then
     _REL_VERSION="natty"
-  elif [ $_THIS_RV = "maverick" ] ; then
+  elif [ "$_THIS_RV" = "maverick" ] ; then
     _REL_VERSION="maverick"
-  elif [ $_THIS_RV = "lucid" ] ; then
+  elif [ "$_THIS_RV" = "lucid" ] ; then
     _REL_VERSION="lucid"
-  elif [ $_THIS_RV = "karmic" ] ; then
+  elif [ "$_THIS_RV" = "karmic" ] ; then
     _REL_VERSION="karmic"
     _DB_SERVER=MariaDB
-  elif [ $_THIS_RV = "jaunty" ] ; then
+  elif [ "$_THIS_RV" = "jaunty" ] ; then
     _REL_VERSION="jaunty"
     _DB_SERVER=MariaDB
-  elif [ $_THIS_RV = "hardy" ] ; then
+  elif [ "$_THIS_RV" = "hardy" ] ; then
     _REL_VERSION="hardy"
     _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
-elif [ $_THIS_OS = "Debian" ] ; then
-  if [ $_THIS_RV = "squeeze" ] ; then
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  if [ "$_THIS_RV" = "squeeze" ] ; then
     _REL_VERSION="squeeze"
-  elif [ $_THIS_RV = "lenny" ] ; then
+  elif [ "$_THIS_RV" = "lenny" ] ; then
     _REL_VERSION="lenny"
   else
     not_supported_os
   fi
-elif [ $_THIS_OS = "Jolicloud" ] ; then
-  if [ $_THIS_RV = "robby" ] ; then
+elif [ "$_THIS_OS" = "Jolicloud" ] ; then
+  if [ "$_THIS_RV" = "robby" ] ; then
     _THIS_OS=Ubuntu
     _REL_VERSION=jaunty
     _DB_SERVER=MariaDB
@@ -1762,7 +1770,7 @@ else
 fi
 _AWS_TEST_A=$(grep cloudimg /etc/fstab)
 _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-if [[ $_AWS_TEST_A =~ "cloudimg" ]] || [[ $_AWS_TEST_B =~ "cloudconfig" ]] ; then
+if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
   _VMFAMILY="AWS"
   _IFCONFIG="eth0"
   _HTTP_WILDCARD=YES
@@ -1775,7 +1783,7 @@ mrun "sleep 3"
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
     if [ -z "$_LOCAL_NETWORK_HN" ] ; then
       msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
@@ -1793,9 +1801,9 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   _ETH_TEST=`ifconfig 2>&1`
-  if [[ $_ETH_TEST =~ venet0 ]] ; then
+  if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
     _IFCONFIG="venet0"
   elif [ -e "/proc/bean_counters" ] ; then
@@ -1899,7 +1907,7 @@ if [ $_STATUS = "INIT" ] ; then
   if [ "$_DNS_SETUP_TEST" = "NO" ] ; then
     _FQDNTEST=TRUE
   fi
-  if [ $_THISHOST = "localhost" ] ; then
+  if [ "$_THISHOST" = "localhost" ] ; then
     msg "FATAL ERROR: you can't use localhost as your FQDN hostname"
     msg "Please try something like: aegir.local"
     exit 1
@@ -1982,7 +1990,7 @@ EOF
     echo "Installation aborted by you."
     exit 1
   fi
-else ### if [ $_STATUS = "UPGRADE" ] ; then
+else ### if [ "$_STATUS" = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
@@ -2016,7 +2024,7 @@ fi
 
 
 ###--------------------###
-if [ $_THIS_DB_HOST = "FQDN" ] ; then
+if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _THIS_DB_HOST="$_THISHOST"
 fi
 
@@ -2048,10 +2056,10 @@ install_pdnsd_cache () {
 }
 _INSTALL_PDNSD=NO
 _HOSTN_TEST=`hostname -f 2>&1`
-if [[ $_HOSTN_TEST =~ "Name or service not known" ]] ; then
+if [[ "$_HOSTN_TEST" =~ "Name or service not known" ]] ; then
   _INSTALL_PDNSD=YES
 fi
-if [[ $_HOSTN_TEST =~ "Temporary failure in name resolution" ]] ; then
+if [[ "$_HOSTN_TEST" =~ "Temporary failure in name resolution" ]] ; then
   _INSTALL_PDNSD=YES
 fi
 if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
@@ -2063,8 +2071,8 @@ if [ -f "/etc/default/dhcpcd" ] ; then
   sed -i "s/SET_HOSTNAME/\#SET_HOSTNAME/g" /etc/default/dhcpcd
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
-  if [ $_INSTALL_PDNSD = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ PDS ]] ; then
+  if [ "$_INSTALL_PDNSD" = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+    if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "PDS" ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
         true
@@ -2076,7 +2084,7 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
         mrun "sleep 2"
       fi
     fi
-  elif [ $_INSTALL_PDNSD = "YES" ] ; then
+  elif [ "$_INSTALL_PDNSD" = "YES" ] ; then
     install_pdnsd_cache
   fi
 fi
@@ -2101,7 +2109,7 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
 else
   _APT_SOURCES_REWRITE=YES
 fi
-if [ $_APT_SOURCES_REWRITE = "YES" ] ; then
+if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
   msg "INFO: Update apt sources"
   mrun "sleep 3"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -2240,7 +2248,7 @@ else
   invoke-rc.d lfd stop  &> /dev/null
   invoke-rc.d csf stop  &> /dev/null
   invoke-rc.d csf stop  &> /dev/null
-  until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
+  until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 5
   done
@@ -2252,7 +2260,7 @@ msg "INFO: Install/upgrade required libraries and tools"
 msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev"
-elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ]; then
+elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database"
 else
   DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev"
@@ -2267,7 +2275,7 @@ install_with_aptitude_deps () {
 install_percona_sql () {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
-  until [[ $_KEYS_SERVER_TEST =~ Percona ]] ; do
+  until [[ "$_KEYS_SERVER_TEST" =~ "Percona" ]] ; do
     _KEYS_SERVER_TEST=`gpg --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A 2>&1`
     sleep 5
   done
@@ -2288,13 +2296,13 @@ install_percona_sql () {
 install_mariadb_sql () {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
-  until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
+  until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 5
   done
-  if [ $_THIS_OS = "Debian" ] ; then
+  if [ "$_THIS_OS" = "Debian" ] ; then
     _THIS_OS_NAME=debian
-  elif [ $_THIS_OS = "Ubuntu" ] ; then
+  elif [ "$_THIS_OS" = "Ubuntu" ] ; then
     _THIS_OS_NAME=ubuntu
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
@@ -2336,9 +2344,9 @@ else
   _SQL_UPGRADE=NO
   if [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ $_DB_SERVER_TEST =~ MariaDB ]] && [ "$_DB_SERVER" = "Percona" ] ; then
+  elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ $_DB_SERVER_TEST =~ 5.1.49-MariaDB ]] || [[ $_DB_SERVER_TEST =~ 5.2.7-MariaDB ]] ; then
+  elif [[ "$_DB_SERVER_TEST" =~ "5.1.49-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.7-MariaDB" ]] ; then
     _SQL_UPGRADE=YES
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
@@ -2359,7 +2367,7 @@ else
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE
-      until [[ $_KEYS_SERVER_TEST =~ Monty ]] ; do
+      until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
         _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
         sleep 5
       done
@@ -2389,7 +2397,7 @@ install_with_aptitude_deps
 
 
 ###--------------------###
-if [ $_REL_VERSION = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   if [ ! -L "/usr/lib/libpng.so" ] ; then
     msg "INFO: Fix #1 for libs in Ubuntu $_REL_VERSION, please wait..."
     _X86_64_TEST=`uname -m`
@@ -2468,7 +2476,7 @@ fi
 ###
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ###
-if [ ! -z "$_SMTP_RELAY_HOST" ]; then
+if [ ! -z "$_SMTP_RELAY_HOST" ] ; then
   sed -i "s/$_SMTP_RELAY_HOST//g" /etc/postfix/main.cf
   sed -i "s/relayhost =/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf
   postfix reload &> /dev/null
@@ -2482,7 +2490,7 @@ fi
 msg "INFO: Fix for Nginx startup script, please wait..."
 mrun "sleep 3"
 _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
-if [[ $_X_INIT_TEST =~ Barracuda ]] ; then
+if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
   true
   msg "INFO: No fix required"
   sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx
@@ -2511,17 +2519,17 @@ if [ ! -e "/var/log/redis-2.0.5.log" ] ; then
     install_redis_src
   fi
 fi
-if [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  if [ ! -e "/usr/bin/vnstat" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+  if [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing VnStat monitor, please wait..."
     _ETH_TEST=`ifconfig 2>&1`
-    if [[ $_ETH_TEST =~ venet0 ]] ; then
+    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
       _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
@@ -2613,7 +2621,7 @@ if [ -d "/var/xdrago" ] ; then
     sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
   fi
 fi
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   mkdir -p ./xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/ &> /dev/null
   mkdir -p /opt/etc
@@ -2657,7 +2665,7 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
-if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing libevent, please wait..."
   rm -f -r /var/opt/libevent*
   cd /var/opt
@@ -2677,7 +2685,7 @@ if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ $_FULL_FORCE_REINST
   st_runner "make --quiet install" 2> /dev/null
   st_runner "ldconfig" 2> /dev/null
   _PHP_FORCE_REINSTALL=YES
-  if [ $_STATUS = "UPGRADE" ] ; then
+  if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: PHP rebuild required to include newer libevent and memcached"
   fi
   echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
@@ -2685,7 +2693,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing Memcached server, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -2721,14 +2729,14 @@ else
 fi
 if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
   _PHP_INSTALL_REQUIRED=YES
-  if [ $_STATUS = "UPGRADE" ] ; then
+  if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: PHP rebuild required to include libcurl4-openssl-dev"
     mrun "sleep 3"
   fi
 fi
-if [ $_STATUS = "UPGRADE" ] ; then
+if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     if [ ! -e "/var/log/installed-5.2.10-MariaDB.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
       echo "5.2.10-MariaDB" > /var/log/installed-5.2.10-MariaDB.log
@@ -2754,19 +2762,19 @@ if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53-fpm.conf" ] ;
 fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
-  if [ $_STATUS = "UPGRADE" ] ; then
+  if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: PHP rebuild forced"
     mrun "sleep 3"
   fi
 fi
-if [ $_REL_VERSION = "oneiric" ] ; then
+if [ "$_REL_VERSION" = "oneiric" ] ; then
   _PHP_EXTRA=""
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
 fi
 
 
-if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
 
 ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION"
@@ -2800,7 +2808,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
   st_runner "make --quiet install" 2> /dev/null
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_THIS_DB_SERVER_TEST =~ MariaDB ]] ; then
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     echo "5.2.10-MariaDB" > /var/log/installed-5.2.10-MariaDB.log
   else
     echo "5.5.19-Percona" > /var/log/installed-5.5.19-Percona.log
@@ -2922,7 +2930,7 @@ if [ $_PHP_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; th
     update_php_five_three
   fi
 
-fi ### end if [ $_PHP_INSTALL_REQUIRED = "YES" ] ; then
+fi ### end if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] ; then
 
 
 ###--------------------###
@@ -2991,7 +2999,7 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_BZR="/usr/local/bin/bzr"
 fi
-if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing bzr, please wait..."
   mrun "sleep 3"
   cd /var/opt
@@ -3006,7 +3014,7 @@ fi
 ###--------------------###
 msg "INFO: Nginx version test, please wait..."
 mrun "sleep 3"
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 fi
 _NGINX_EXTRA_CTRL="/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf"
@@ -3028,7 +3036,7 @@ if [ -e "/usr/sbin/nginx" ] ; then
     msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
   fi
   if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
-    if [[ $_NGINX_V_INSTALLED =~ geoip ]] ; then
+    if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
       true
     else
       _NGINX_INSTALL_REQUIRED=YES
@@ -3042,11 +3050,11 @@ fi
 
 
 ###--------------------###
-if [ $_NGINX_INSTALL_REQUIRED = "YES" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Install/upgrade Nginx, please wait..."
   mrun "sleep 3"
   cd /var/opt; rm -f -r nginx*
-  if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
+  if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
     _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
@@ -3130,7 +3138,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing lshell upgrade, please wait..."
   mrun "sleep 3"
   cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
@@ -3168,7 +3176,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ $_FULL_FORCE_REINSTALL = "YES" ] ; then
+if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing latest Pure-FTPd server, please wait..."
   mrun "sleep 3"
   if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
@@ -3205,7 +3213,7 @@ fi
 
 
 ###--------------------###
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Update rc.d"
   mrun "sleep 3"
   chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
@@ -3217,7 +3225,7 @@ if [ $_STATUS = "INIT" ] ; then
   mkdir -p /var/backups/dragon/t
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
-  if [ "$_DB_SERVER" = "Percona" ]; then
+  if [ "$_DB_SERVER" = "Percona" ] ; then
     sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/language/\#language/g" /etc/mysql/my.cnf
   fi
@@ -3286,7 +3294,7 @@ EOF
 fi
 
 
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
@@ -3323,7 +3331,7 @@ if [ $_STATUS = "INIT" ] ; then
     su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   mrun "sleep 3"
-  if [ $_HTTP_WILDCARD = "YES" ] ; then
+  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
@@ -3337,7 +3345,7 @@ if [ $_STATUS = "INIT" ] ; then
   msg "INFO: Running hosting-dispatch (3/3), please wait..."
   mrun "sleep 8"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
-  if [ $_HTTP_WILDCARD = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
+  if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
   fi
   rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
@@ -3373,13 +3381,13 @@ if [ $_STATUS = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
   mv -f global.inc.aegir.txt global.inc &> /dev/null
   force_advanced_nginx_config
-  if [ $_DRUSH_FAMILY = "3" ] ; then
+  if [ "$_DRUSH_FAMILY" = "3" ] ; then
     cd /var/aegir/drush
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
     patch -p0 < user.drush.inc.patch &> /dev/null
     chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
-  if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+  if [ "$_DRUSH_VERSION" = "7.x-4.5" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
   fi
   cd /var/aegir
@@ -3389,7 +3397,7 @@ if [ $_STATUS = "INIT" ] ; then
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default
   if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ]; then
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
     fi
@@ -3441,13 +3449,13 @@ else
       mv -f global.inc.aegir.txt global.inc &> /dev/null
     fi
     force_advanced_nginx_config
-    if [ $_DRUSH_FAMILY = "3" ] ; then
+    if [ "$_DRUSH_FAMILY" = "3" ] ; then
       cd /var/aegir/drush
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
       patch -p0 < user.drush.inc.patch &> /dev/null
       chown -R aegir:aegir /var/aegir/drush &> /dev/null
     fi
-    if [ $_DRUSH_VERSION = "7.x-4.5" ] ; then
+    if [ "$_DRUSH_VERSION" = "7.x-4.5" ] ; then
       sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
     fi
     cd /var/aegir
@@ -3473,7 +3481,7 @@ else
   rm -f /var/aegir/*install.sh.txt
 
 
-fi ### end of if [ $_STATUS = "INIT" ] ; then
+fi ### end of if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
@@ -3500,7 +3508,7 @@ if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; 
   msg "INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
   mrun "sleep 3"
   _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
-  if [[ $_HTTPS_TEST =~ 443 ]] ; then
+  if [[ "$_HTTPS_TEST" =~ "443" ]] ; then
     _HTTPS_TEST=EXIST
     msg "WARNING!"
     cat <<EOF
@@ -3525,7 +3533,7 @@ EOF
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     cd /var/aegir/config/server_master/nginx/pre.d
     cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
-    if [ $_HTTP_WILDCARD = "YES" ] ; then
+    if [ "$_HTTP_WILDCARD" = "YES" ] ; then
       sed -i "s/127.0.0.1:80/localhost:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     else
       sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
@@ -3563,7 +3571,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ SLR ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
   if [ ! -d "/opt/solr" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
@@ -3657,7 +3665,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CHV ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   if [ ! -e "/var/www/chive/index.php" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
@@ -3735,7 +3743,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BDD ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
@@ -3779,7 +3787,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CGP ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -d "/var/www/cgp" ] ; then
       echo " "
@@ -3832,7 +3840,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ WMN ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
   if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
@@ -3884,7 +3892,7 @@ csf_install () {
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ CSF ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
@@ -3934,11 +3942,11 @@ fi
 
 ###--------------------###
 if [ "$_REL_VERSION" = "oneiric" ] ; then
-  if [ $_XTRAS_LIST = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
+  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
     _XTRAS_LIST="PDS CHV CSF CGP WMN"
   fi
 fi
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ $_XTRAS_LIST =~ BND ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
   if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
@@ -4022,7 +4030,7 @@ sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"  /etc/apticron/apticron.conf &> /dev/n
 sed -i "s/root/$_MY_EMAIL/g"               /etc/apticron/apticron.conf &> /dev/null
 sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g"   /var/xdrago/checksql.cgi &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
   cd /var/aegir/config/includes
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
@@ -4044,7 +4052,7 @@ msg "Final post-install cleaning, please wait..."
 mrun "sleep 3"
 tune_memory_limits
 invoke-rc.d php-fpm reload &> /dev/null
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   invoke-rc.d cron restart &> /dev/null
   echo " "
   msg "Now waiting 2 minutes before restarting Nginx..."

@@ -18,11 +18,11 @@
 #
 ENABLED=0
 
-if [ -f /etc/default/tomcat ]; then
+if [ -f /etc/default/tomcat ] ; then
   . /etc/default/tomcat
 fi
 
-if [ "$ENABLED" = "0" ]; then
+if [ "$ENABLED" = "0" ] ; then
   exit 0
 fi
 

@@ -492,7 +492,7 @@ msg () {
 }
 # Simple prompt.
 prompt_yes_no () {
-if [ "$_AUTOPILOT" = "YES" ]; then
+if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
 else
   while true ; do
@@ -519,7 +519,7 @@ fi
 # Find correct IP.
 find_correct_ip () {
   _FQDN_TEST=$(host $_LOC_DOM)
-  if [[ $_FQDN_TEST =~ "is an alias for" ]] ; then
+  if [[ "$_FQDN_TEST" =~ "is an alias for" ]] ; then
     _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
   else
     _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
@@ -572,7 +572,7 @@ octopus_cnf () {
     msg "INFO: Reading your /root/.$_USER.octopus.cnf config file."
     sleep 3
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
-    if [[ $_PHP_FPM_VERSION_TEST =~ "_PHP_FPM_VERSION" ]] ; then
+    if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
     else
       echo "### Configuration added on $_NOW" >> /root/.$_USER.octopus.cnf
@@ -585,7 +585,7 @@ octopus_cnf () {
       echo "$line"
     done < /root/.$_USER.octopus.cnf
     echo " "
-    if [ $_STATUS = "INIT" ] ; then
+    if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
         source /root/.$_USER.octopus.cnf
@@ -620,7 +620,7 @@ _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
     _NGX_BIN=/usr/sbin/nginx
   fi
   _NGX_UP_TEST=`$_NGX_BIN -V 2>&1`
-  if [[ $_NGX_UP_TEST =~ upload ]] ; then
+  if [[ "$_NGX_UP_TEST" =~ upload ]] ; then
     _NGX_UP_TEST_RESULT=OK
     _OCT_NGX=nginx_octopus_include.conf
     _ADV_NGX=nginx_advanced_include.conf
@@ -637,7 +637,7 @@ if [ "$_REL_VERSION" = "precise" ] ; then
   _ADV_NGX=nginx_advanced_noup_include.conf
   _THIS_DB_HOST=localhost
 fi
-if [[ $_AWS_TEST_A =~ "cloudimg" ]] || [[ $_AWS_TEST_B =~ "cloudconfig" ]] ; then
+if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
   _VMFAMILY="AWS"
   _THIS_DB_HOST=localhost
   _LOC_DOM="$_DOMAIN"
@@ -737,7 +737,7 @@ if [ -e "/usr/bin/sipcalc" ] ; then
     _THISHTIP="$_LOC_IP"
   fi
   _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-  if [[ $_IP_TEST =~ ERR ]] ; then
+  if [[ "$_IP_TEST" =~ "ERR" ]] ; then
     _IP_TEST_RESULT=FAIL
     _LOCAL_THISHTIP=all
   else
@@ -759,7 +759,7 @@ sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/
 sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
-if [ $_STATUS = "INIT" ] ; then
+if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 else
@@ -854,15 +854,15 @@ else
     msg "WARN: The Gitorious mirror repository server doesn't respond..."
   fi
 fi
-if [ $_DRUPAL_WORKS = "YES" ] ; then
+if [ "$_DRUPAL_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="octopus"
   _BOA_REPO_GIT_URL="http://git.drupal.org/project"
   msg "INFO: Drupal master repository will be used for this install"
-elif [ $_GITHUB_WORKS = "YES" ] ; then
+elif [ "$_GITHUB_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
-elif [ $_GITORIOUS_WORKS = "YES" ] ; then
+elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
   _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
   msg "INFO: Gitorious mirror repository will be used for this install"
@@ -898,7 +898,7 @@ if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
   exit 1
 else
   _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
-  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+  if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
@@ -916,9 +916,9 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
-if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
-  if [ $_FORCE_GIT_MIRROR = "github" ]; then
+  if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
     cd /opt/tmp/$_BOA_REPO_NAME
     git checkout 2.0.2-dev &> /dev/null
     cd /opt/tmp
@@ -969,11 +969,11 @@ if [ -d "$_ROOT" ] ; then
       _DOMAIN=`cat $_ROOT/log/domain.txt`
       _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
     fi
-    if [ -z "$_DOMAIN" ]; then
+    if [ -z "$_DOMAIN" ] ; then
       echo ALERT! _DOMAIN is e-m-p-t-y, exit now...
       exit 1
     fi
-    if [ -z "$_USER" ]; then
+    if [ -z "$_USER" ] ; then
       echo ALERT! _USER is e-m-p-t-y, exit now...
       exit 1
     fi
@@ -1084,7 +1084,7 @@ echo NEW AEGIR setup in progress..
     exit 1
   fi
   _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
-  if [ ! -z "$_FREEID" ]; then
+  if [ ! -z "$_FREEID" ] ; then
     echo ERROR: $_USER is already used or too similar to an existing username.
     echo Please choose different _USER.
     exit 1
@@ -1101,7 +1101,7 @@ else
   exit 1
 fi
 _ETH_TEST=`ifconfig 2>&1`
-if [[ $_ETH_TEST =~ venet0 ]] ; then
+if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
   _VMFAMILY="VZ"
   _IFCONFIG="venet0"
 elif [ -e "/proc/bean_counters" ] ; then
@@ -1172,7 +1172,7 @@ _RAW_CLIENT_EMAIL="$_CLIENT_EMAIL"
 _CLIENT_EMAIL=${_CLIENT_EMAIL//\@/\\\@}
 
 ###--------------------###
-if [ $_THIS_DB_HOST = "FQDN" ] ; then
+if [ "$_THIS_DB_HOST" = "FQDN" ] ; then
   _THIS_DB_HOST=`uname -n`
 fi
 if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then

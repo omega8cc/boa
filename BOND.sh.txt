@@ -254,12 +254,12 @@ restore_default_sql () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
   mv -f my.cnf.txt my.cnf &> /dev/null
   _DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ $_DB_SERVER_TEST =~ MariaDB ]] ; then
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     _DB_SERVER=MariaDB
   else
     _DB_SERVER=Percona
   fi
-  if [ "$_DB_SERVER" = "Percona" ]; then
+  if [ "$_DB_SERVER" = "Percona" ] ; then
     sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/language/\#language/g" /etc/mysql/my.cnf
   fi
@@ -314,11 +314,11 @@ restart_services () {
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
-  if [[ $_ETH_TEST =~ venet0 ]] ; then
+  if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
-  elif [[ $_VM_TEST =~ beng ]] ; then
+  elif [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   elif [[ "$_THISHOST" =~ ".host8." ]] && [ -d "/boot/grub" ] ; then
     _VMFAMILY="TG"
@@ -466,15 +466,15 @@ else
     msg "WARN: The Gitorious mirror repository server doesn't respond..."
   fi
 fi
-if [ $_DRUPAL_WORKS = "YES" ] ; then
+if [ "$_DRUPAL_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda"
   _BOA_REPO_GIT_URL="http://git.drupal.org/project"
   msg "INFO: Drupal master repository will be used for this install"
-elif [ $_GITHUB_WORKS = "YES" ] ; then
+elif [ "$_GITHUB_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
-elif [ $_GITORIOUS_WORKS = "YES" ] ; then
+elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
   _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
   msg "INFO: Gitorious mirror repository will be used for this install"
@@ -510,7 +510,7 @@ if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
   exit 1
 else
   _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
-  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+  if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
@@ -528,9 +528,9 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
-if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
-  if [ $_FORCE_GIT_MIRROR = "github" ]; then
+  if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
     cd /opt/tmp/$_BOA_REPO_NAME
     git checkout 2.0.2-dev &> /dev/null
     cd /opt/tmp
