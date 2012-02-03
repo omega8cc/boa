@@ -1,28 +1,99 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.0.1
+Your Aegir Hosting System has been upgraded to version BOA-2.0.2
 
   https://aegir.dragon.ny.host8.biz
 
-  Your smokin' fast Drupal hosting comes to California - San Jose
-  is our newest (5th) location and is available both for Standard and
-  Root Aegir Cores, which strengthens our presence in the US top tech
-  innovation hubs: Silicon Valley and New York, and provides our customers
-  with an alternative US-based location for their Aegir instances.
-  
-  http://omega8.cc/welcome-to-california-145
+We have many good news and a special promotion (25% off) this time.
 
-  Did you notice that you can host CiviCRM and all other
+Please read below for details.
+
+Some new features:
+
+* New default platforms with new Drupal core versions include
+  either enhanced Pressflow 6.24 +Extra or standard 7.12 core.
+
+  NOTE: before you will try to upgrade any of your sites,
+  please read our important how-to:
+
+  http://omega8.cc/the-best-recipes-for-disaster-139
+  http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
+  http://omega8.cc/managing-your-code-in-the-aegir-style-110
+
+  Really, please read it to avoid some heavy headaches!
+
+* You can choose between PHP-FPM 5.2.17 and 5.3.9 version.
+  Just let us know via http://omega8.cc/support form
+  that you wish to switch to 5.3.9, since 5.2.17 is still
+  configured by default to support some older platforms
+  not fully compatible with PHP 5.3.9, but not everyone still
+  needs to support 5.x or some old 6.x modules, so now you have
+  a choice and you can use latest technology, if you wish.
+
+* Both Speed Booster, Boost and Redis/Memcached supports separate
+  caches per mobile device, so it is safe to use separate themes
+  or content for mobile devices. We use simple logic to determine
+  the kind of device and there are separate cache bins for
+  mobile-tablet, mobile-smart and mobile-other.
+  You can review it here: http://bit.ly/xzFfzK
+
+* Purge module is now enabled by default in all 6.x and 7.x sites.
+  Now Speed Booster works like a Boost - it expires immediately
+  the cache for any node/page after it has been edited, comment
+  has been added etc. It also automatically expires the cache
+  for the homepage and RSS feed. You no longer need to wait
+  up to one hour for Speed Booster cache expiration.
+  Plus, unlike in Boost, it purges all separate caches for all
+  mobile devices along with non-mobile cache, at once.
+  Now you have a good reason to disable Boost and use our
+  crazy fast Speed Booster only.
+
+* You can use GeoIP data provided by your Nginx server
+  in your custom code or modules with variables:
+  $_SERVER['GEOIP_COUNTRY_CODE'] and $_SERVER['GEOIP_COUNTRY_NAME']
+  to display content or block depending on the visitor's country.
+  You can check/review it from your location also on command line
+  with: 'curl -I http://your-domain' - you will see GeoIP headers.
+
+* You can safely manage Clients/Users attached to hosted sites
+  in your Aegir interface. Make sure that all sites have its
+  associated Client! Otherwise this site will be available
+  for all Clients/Users you have added. The site can lost its
+  association with Client after Clone task if there is any
+  non-alphanumeric value in the Client name, like &.
+
+* CloudFlare specific header 'CF-Connecting-IP' is now supported
+  out of the box and available as standard $_SERVER['REMOTE_ADDR']
+  in all 5.x, 6.x and 7.x platforms without any contrib module.
+
+* You can disable both Boost and Speed Booster on the fly
+  by adding ?nocache=1 to any URL. Useful for debugging.
+
+  You can read about all new features, fixes and enhancements at:
+
+  http://omega8.cc/updates
+
+Promotion in February:
+
+  Save 25% on your first payment for SSD and Root Cores,
+  including upgrades for existing SSD and Root Cores.
+  Valid in all available locations until March 1st, 2012.
+
+  Example: you will save $204 USD with yearly subscription
+  for just 2 SSD Cores or $324.75 USD with yearly subscription
+  for just 1 Root Core.
+
+  Remember also that you can host CiviCRM and all other
   platforms available normally with 4+ Aegir Standard Cores
   with just 2+ Aegir SSD Cores?
 
   Make your sites running 10x faster!
   http://omega8.cc/buy#ssd
+  Use coupon code at 2CO order form: FEB25
 
-Please read about all new features, enhancements and promotions at:
-
-  http://omega8.cc/updates
-  http://omega8.cc/news
+  Or if you prefer Aegir Root Core:
+  http://omega8.cc/buy#root
+  Use coupon code at 2CO order form: FEB25
 
 There are also new helpful articles available in our library at:
 
@@ -31,6 +102,21 @@ There are also new helpful articles available in our library at:
   http://omega8.cc/library/development
   http://omega8.cc/library/tips-and-tricks
   http://omega8.cc/library/problems-solutions
+
+We highly recommend:
+
+  http://omega8.cc/speed-booster-cache-boost-and-advagg-108
+  http://omega8.cc/how-to-disable-all-caching-and-aggregation-115
+  http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
+  http://omega8.cc/migrate-sites-between-install-profiles-easily-111
+  http://omega8.cc/extra-modules-available-in-all-platforms-123
+  http://omega8.cc/modules-enabled-or-disabled-automatically-117
+  http://omega8.cc/how-to-add-drupal-7-platform-properly-140
+  http://omega8.cc/too-many-duplicate-platforms-125
+  http://omega8.cc/where-is-the-rename-task-129
+  http://omega8.cc/how-to-manage-aliases-and-redirects-127
+  http://omega8.cc/lost-password-problem-128
+  http://omega8.cc/ftp-and-sftp-password-not-accepted-120
 
 When you need our assistance, please use our support request form at:
 
