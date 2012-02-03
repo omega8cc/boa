@@ -1470,7 +1470,7 @@ fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
 if [ "$_AEGIR_VERSION" = "HEAD" ] && [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
-  if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+  if [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
     _INSTAPP="/usr/bin/aptitude-fast -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
   else
     _INSTAPP="/usr/bin/aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold install"
@@ -1635,7 +1635,7 @@ rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
   if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
-    if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+    if [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
       cd /opt/tmp/$_BOA_REPO_NAME
       git checkout 2.0.2-dev &> /dev/null
       cd /opt/tmp
