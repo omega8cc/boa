@@ -227,7 +227,14 @@ _LOCAL_UBUNTU_MIRROR=""
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
-_FORCE_GIT_MIRROR=""
+### Since v2.0.2 we use forced GitHub mirror
+### by default, because Drupal git server
+### is really too slow - Hostmaster upgrade
+### takes 90-120 second, while with GitHub
+### it takes 15-20 seconds, depending on your
+### network connection and server speed.
+###
+_FORCE_GIT_MIRROR="github"
 
 
 ###----------------------------------------###

@@ -233,7 +233,7 @@ _AEGIR_VERSION=HEAD
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
-_FORCE_GIT_MIRROR=""
+_FORCE_GIT_MIRROR="github"
 
 
 ###----------------------------------------###
