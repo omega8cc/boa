@@ -30,14 +30,14 @@ CTL_ONEX_LOAD=888
 CTL_FIVX_LOAD=888
 CTL_ONEX_LOAD_CRIT=1888
 CTL_FIVX_LOAD_CRIT=1444
-if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD_CRIT ]; then
+if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD_CRIT ] ; then
   terminate
-elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD_CRIT ]; then
+elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD_CRIT ] ; then
   terminate
 fi
-if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD ]; then
+if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD ] ; then
   hold
-elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD ]; then
+elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD ] ; then
   hold
 else
   echo load is $ONEX_LOAD:$FIVX_LOAD while maxload is $CTL_ONEX_LOAD:$CTL_FIVX_LOAD

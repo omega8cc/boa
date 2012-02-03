@@ -112,7 +112,7 @@ fi
 
 setFilePerms(){
 
-        if [ -f $PIDSPATH/$PIDFILE ]; then
+        if [ -f $PIDSPATH/$PIDFILE ] ; then
                 chmod 400 $PIDSPATH/$PIDFILE
         fi
 }
@@ -126,11 +126,11 @@ getPSCount() {
 }
 
 isRunning() {
-        if [ $1 ]; then
+        if [ $1 ] ; then
                 pidof_daemon $1
                 PID=$?
 
-                if [ $PID -gt 0 ]; then
+                if [ $PID -gt 0 ] ; then
                         return 1
                 else
                         return 0
@@ -139,7 +139,7 @@ isRunning() {
                 pidof_daemon
                 PID=$?
 
-                if [ $PID -gt 0 ]; then
+                if [ $PID -gt 0 ] ; then
                         return 1
                 else
                         return 0
@@ -179,7 +179,7 @@ status(){
 	isRunning
 	isAlive=$?
 
-	if [ "${isAlive}" -eq $TRUE ]; then
+	if [ "${isAlive}" -eq $TRUE ] ; then
                 echo "$PIDNAME found running with processes:  `pidof $PS`"
         else
                 echo "$PIDNAME is NOT running."
@@ -189,13 +189,13 @@ status(){
 }
 
 removePIDFile(){
-	if [ $1 ]; then
-                if [ -f $1 ]; then
+	if [ $1 ] ; then
+                if [ -f $1 ] ; then
         	        rm -f $1
 	        fi
         else
 		#Do default removal
-		if [ -f $PIDSPATH/$PIDFILE ]; then
+		if [ -f $PIDSPATH/$PIDFILE ] ; then
         	        rm -f $PIDSPATH/$PIDFILE
 	        fi
         fi
@@ -207,7 +207,7 @@ start() {
 	isRunning
 	isAlive=$?
 	
-        if [ "${isAlive}" -eq $TRUE ]; then
+        if [ "${isAlive}" -eq $TRUE ] ; then
                 log_end_msg $SCRIPT_ERROR
         else
                 start-stop-daemon --start --quiet --chuid $RUNAS --pidfile $PIDSPATH/$PIDFILE --exec $DAEMON \
@@ -222,7 +222,7 @@ stop() {
 	
 	isRunning
 	isAlive=$?
-        if [ "${isAlive}" -eq $TRUE ]; then
+        if [ "${isAlive}" -eq $TRUE ] ; then
                 start-stop-daemon --stop --quiet --pidfile $PIDSPATH/$PIDFILE
 
 		wait_for_pid 'removed' $PIDSPATH/$PIDFILE
@@ -245,7 +245,7 @@ xreload() {
 	log_daemon_msg "Reloading (via HUP) $DESCRIPTION"
 
         isRunning
-        if [ $? -eq $TRUE ]; then
+        if [ $? -eq $TRUE ] ; then
 		`killall -HUP $PS` #to be safe
 
                 log_end_msg $SCRIPT_OK
@@ -260,7 +260,7 @@ reload() {
 	log_daemon_msg "Reloading (via HUP) $DESCRIPTION"
 
         isRunning
-        if [ $? -eq $TRUE ]; then
+        if [ $? -eq $TRUE ] ; then
           start-stop-daemon --stop --signal HUP --quiet --pidfile /var/run/$NAME.pid --exec $DAEMON || true
 
                 log_end_msg $SCRIPT_OK
@@ -274,13 +274,13 @@ quietupgrade() {
 
         isRunning
         isAlive=$?
-        if [ "${isAlive}" -eq $TRUE ]; then
+        if [ "${isAlive}" -eq $TRUE ] ; then
 		kill -USR2 `cat $PIDSPATH/$PIDFILE`
 		kill -WINCH `cat $PIDSPATH/$PIDFILE.oldbin`
 		
 		isRunning
 		isAlive=$?
-		if [ "${isAlive}" -eq $TRUE ]; then
+		if [ "${isAlive}" -eq $TRUE ] ; then
 			kill -QUIT `cat $PIDSPATH/$PIDFILE.oldbin`
 			wait_for_pid 'removed' $PIDSPATH/$PIDFILE.oldbin
                         removePIDFile $PIDSPATH/$PIDFILE.oldbin
@@ -313,7 +313,7 @@ terminate() {
 	[ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`
 
 	for i in $PIDS; do
-		if [ "$i" = "$PIDS2" ]; then
+		if [ "$i" = "$PIDS2" ] ; then
 	        	kill $i
                         wait_for_pid 'removed' $PIDSPATH/$PIDFILE
 			removePIDFile
@@ -335,7 +335,7 @@ pidof_daemon() {
     [ -e $PIDSPATH/$PIDFILE ] && PIDS2=`cat $PIDSPATH/$PIDFILE`
 
     for i in $PIDS; do
-        if [ "$i" = "$PIDS2" ]; then
+        if [ "$i" = "$PIDS2" ] ; then
             return 1
         fi
     done

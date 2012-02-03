@@ -80,6 +80,7 @@ standard production settings.
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.2 or Percona 5.5 database server.
 * Latest version of Nginx web server with upload progress and Boost support.
+* PHP-FPM 5.3.9 with APC, memcached, uploadprogress, suhosin and ionCube.
 * PHP-FPM 5.2.17 with APC, memcached, uploadprogress, suhosin and ionCube.
 * Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.

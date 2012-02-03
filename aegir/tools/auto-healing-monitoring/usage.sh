@@ -65,7 +65,7 @@ if [ -d "$Plr/cache" ] ; then
   chown -R $_THIS_HM_USER:www-data $Plr/cache
   chmod -R 777 $Plr/cache
 fi
-if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ]; then
+if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ] ; then
   rm -f $Plr/robots.txt
 fi
 }
@@ -86,7 +86,7 @@ send_notice_core () {
   _BCC_EMAIL="notify@omega8.cc"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
-  if [[ $_MAILX_TEST =~ invalid ]] ; then
+  if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
   cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: Please migrate $Dom site to Pressflow" $_CLIENT_EMAIL
 Hello,
 
@@ -163,7 +163,7 @@ if [ "$_O_CONTRIB" != "NO" ] ; then
       fi
       if [ ! -e "$Plr/modules/path_alias_cache" ] ; then
         echo Vanilla Drupal 6.x Platform detected in $Plr
-        if [[ $_VM_TEST =~ ".host8." ]] ; then
+        if [[ "$_VM_TEST" =~ ".host8." ]] ; then
           read_account_data
           send_notice_core
         fi
@@ -175,7 +175,7 @@ fi
 
 fix_modules()
 {
-if [ "$_MODULES" = "YES" ]; then
+if [ "$_MODULES" = "YES" ] ; then
       searchStringA="off-7."
       searchStringB="-5."
       searchStringC="openpublic-off"
@@ -203,7 +203,7 @@ fi
 
 fix_permissions()
 {
-if [ "$_PERMISSIONS" = "YES" ]; then
+if [ "$_PERMISSIONS" = "YES" ] ; then
       chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
       chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
       find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
@@ -274,7 +274,7 @@ send_notice_sql () {
   _BCC_EMAIL="notify@omega8.cc"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
-  if [[ $_MAILX_TEST =~ invalid ]] ; then
+  if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
   cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "Your Aegir instance needs an upgrade [sql-$_THIS_HM_USER]" $_CLIENT_EMAIL
 Hello,
 
@@ -325,7 +325,7 @@ send_notice_disk () {
   _BCC_EMAIL="notify@omega8.cc"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
-  if [[ $_MAILX_TEST =~ invalid ]] ; then
+  if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
   cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "Your Aegir instance needs an upgrade [disk-$_THIS_HM_USER]" $_CLIENT_EMAIL
 Hello,
 
@@ -403,7 +403,7 @@ do
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
   CTL_LOAD=888
   if [ -d "$User/config/server_master/nginx/vhost.d" ] ; then
-    if [ $NOW_LOAD -lt $CTL_LOAD ]; then
+    if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
       SumDir=0
       SumDat=0
       HomSiz=0
@@ -430,7 +430,7 @@ do
       echo HomSiz is $HomSiz or $HomSizH MB
       echo SumDir is $SumDir or $SumDirH MB
       echo SumDat is $SumDat or $SumDatH MB
-      if [[ $_VM_TEST =~ ".host8." ]] ; then
+      if [[ "$_VM_TEST" =~ ".host8." ]] ; then
         check_limits
       fi
       if [ -d "$_THIS_HM_SITE" ] ; then
@@ -522,7 +522,7 @@ wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aeg
 if [ -e "/opt/tmp/version.txt" ] ; then
   _INSTALLER_VERSION=`cat /opt/tmp/version.txt`
   _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
-  if [[ $_VERSIONS_TEST =~ "$_INSTALLER_VERSION" ]] ; then
+  if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     _VERSIONS_TEST_RESULT=OK
     echo "INFO: Version test result: OK"
   else

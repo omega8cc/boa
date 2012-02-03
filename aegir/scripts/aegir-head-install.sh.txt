@@ -113,7 +113,7 @@ elif [ -x $DRUSH ] ; then
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
-  if [ $_DRUSH_VERSION = "HEAD" ] ; then
+  if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
     git clone http://git.drupal.org/project/drush.git &> /dev/null
   else
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
@@ -135,7 +135,7 @@ if $DRUSH help | grep "^ provision-install" > /dev/null ; then
 else
   msg "Installing provision backend in $AEGIR_HOME/.drush"
   mkdir -p $AEGIR_HOME/.drush
-  if [ "$_AEGIR_VERSION" = "HEAD" ]; then
+  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
       _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
       git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $AEGIR_HOME/.drush/provision &> /dev/null
