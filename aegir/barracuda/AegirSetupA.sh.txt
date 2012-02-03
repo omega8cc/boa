@@ -240,9 +240,9 @@ fi
 # remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001() {
-if [ ! -e "/var/log/incompatible-modules-removed-001h.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-001i.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
-RMMODULES="drupal-nginx-fast-x-accel-redirect memcache varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate"
+RMMODULES="drupal-nginx-fast-x-accel-redirect memcache varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
@@ -255,16 +255,21 @@ for i in $REVISIONS; do
       sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install
       sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install
     fi
+    # backup_migrate
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
     tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
     rm -f backup_migrate-6.x-2.4.tar.gz
-    if [ -d "/data/all/$i/o_contrib/purge" ] ; then
-      if [ ! -e "/data/all/$i/o_contrib/purge/purge-1327216-8.patch" ] ; then
-        cd /data/all/$i/o_contrib/purge
-        wget -q -U iCab http://drupal.org/files/purge-1327216-8.patch
-        patch -p1 < purge-1327216-8.patch &> /dev/null
-      fi
-    fi
+    # purge
+    git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib/purge &> /dev/null
+    cd /data/all/$i/o_contrib/purge
+    git checkout 6.x-1.x &> /dev/null
+    wget -q -U iCab http://drupal.org/files/purge-1327216-8.patch
+    patch -p1 < purge-1327216-8.patch &> /dev/null
+    # expire
+    git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
+    cd /data/all/$i/o_contrib/expire
+    git checkout 6.x-1.x &> /dev/null
+    cd /data/all/$i/o_contrib
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
@@ -274,7 +279,7 @@ for i in $REVISIONS; do
     done
   fi
 done
-touch /var/log/incompatible-modules-removed-001h.log
+touch /var/log/incompatible-modules-removed-001i.log
 cd
 fi
 }
@@ -282,9 +287,9 @@ fi
 # remove incompatible modules from o_contrib_seven
 #
 remove_incompatible_modules_002() {
-if [ ! -e "/var/log/incompatible-modules-removed-002h.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-002i.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
-RMMODULES="session443 cookie_cache_bypass_adv expire purge"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] ; then
     for m in $RMMODULES; do
@@ -292,9 +297,24 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib_seven/$m
       fi
     done
+    # purge
+    git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
+    cd /data/all/$i/o_contrib_seven/purge
+    git checkout 7.x-1.x &> /dev/null
+    wget -q -U iCab http://drupal.org/files/i1151686_9.patch
+    patch -p1 < i1151686_9.patch &> /dev/null
+    wget -q -U iCab http://drupal.org/files/purge-1327216-8.patch
+    patch -p1 < purge-1327216-8.patch &> /dev/null
+    # expire
+    git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
+    cd /data/all/$i/o_contrib_seven/expire
+    git checkout 7.x-1.x &> /dev/null
+    wget -q -U iCab http://drupal.org/files/1333894-expire-DBTNG.patch
+    patch -p1 < 1333894-expire-DBTNG.patch &> /dev/null
+    cd /data/all/$i/o_contrib_seven
   fi
 done
-touch /var/log/incompatible-modules-removed-002h.log
+touch /var/log/incompatible-modules-removed-002i.log
 cd
 fi
 }
