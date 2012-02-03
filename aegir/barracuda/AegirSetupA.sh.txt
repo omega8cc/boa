@@ -64,7 +64,7 @@ _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PROSEPOINT=EDIT_PROSEPOINT
 _SMALLCORE6=EDIT_SMALLCORE6
-_SMALLCORE6_LANG=EDIT_SMALLCORE6_LANG
+_SMALLCORE_6_LANG=EDIT_SMALLCORE_6_LANG
 _SMALLCORE7=EDIT_SMALLCORE7
 _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
@@ -207,6 +207,7 @@ create_shared_dirs () {
   chown -R $_USER:$_USRG /data/src &> /dev/null
   chown -R $_USER:$_USRG /opt/tmp &> /dev/null
   chown -R $_USER:$_USRG /data/conf &> /dev/null
+  chown -R $_USER:$_USRG /data/all/000 &> /dev/null
   chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 }
 #
@@ -392,9 +393,9 @@ mrun "sleep 3"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE6_LANG.pl.po" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
