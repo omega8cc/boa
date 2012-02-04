@@ -487,7 +487,8 @@ _FULL_FORCE_REINSTALL=NO
 _INSTALLER_VERSION=BOA-2.0.2-dev
 _NGINX_VERSION=1.0.11
 _PHP_VERSION=5.2.17
-_PHP_VERSION_NEW=5.3.9
+_PHP_VERSION_BUILD=5.3.9
+_PHP_VERSION_NEW=5.3.10
 _APC_VERSION=3.1.9
 _CHIVE_VERSION=1.0.2
 _BZR_VERSION=2.3.4
@@ -1285,10 +1286,10 @@ install_php_five_three () {
   rm -f -r /var/opt/php*
   rm -f /etc/init.d/php53-fpm*
   wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-$_PHP_VERSION_NEW-0.9.10.patch.gz
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
   tar -xzf php-$_PHP_VERSION_NEW.tar.gz
-  gunzip -q suhosin-patch-$_PHP_VERSION_NEW-0.9.10.patch.gz
-  cat suhosin-patch-$_PHP_VERSION_NEW-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
+  gunzip -q suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
+  cat suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
   mrun "sleep 3"
   cd /var/opt/php-$_PHP_VERSION_NEW
@@ -2743,9 +2744,9 @@ fi
 ###--------------------###
 msg "INFO: PHP installed version auto-discovering now, please wait..."
 mrun "sleep 3"
-if [ -e "/usr/local/bin/php" ] ; then
-  _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-  if [ "$_PHP_INSTALLED" = "$_PHP_VERSION" ] ; then
+if [ -e "/opt/local/bin/php" ] ; then
+  _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+  if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
     _PHP_INSTALL_REQUIRED=NO
     msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
   else
