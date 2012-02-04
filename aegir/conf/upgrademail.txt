@@ -22,11 +22,11 @@ Some new features:
 
   Really, please read it to avoid some heavy headaches!
 
-* You can choose between PHP-FPM 5.2.17 and 5.3.9 version.
+* You can choose between PHP-FPM 5.2.17 and 5.3.10 version.
   Just let us know via http://omega8.cc/support form
-  that you wish to switch to 5.3.9, since 5.2.17 is still
+  that you wish to switch to 5.3.10, since 5.2.17 is still
   configured by default to support some older platforms
-  not fully compatible with PHP 5.3.9, but not everyone still
+  not fully compatible with PHP 5.3.10, but not everyone still
   needs to support 5.x or some old 6.x modules, so now you have
   a choice and you can use latest technology, if you wish.
 
