@@ -367,7 +367,7 @@ tune_memory_limits () {
       sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       _USE_PHP=512
-      if [ -d "/boot/grub" ] ; then
+      if [ -d "/boot/grub" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_APC=1024
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _LOCAL_PHP_FPM_WORKERS=8
