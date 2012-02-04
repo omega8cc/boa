@@ -168,7 +168,6 @@ added to all 6.x platforms:
 The Drupal 7.x platforms come with contrib modules:
 
  admin-7.x-2.0-beta3
- agrcache-7.x-1.0
  backup_migrate-7.x-2.2
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
