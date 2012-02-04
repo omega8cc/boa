@@ -1420,7 +1420,7 @@ fi
 # Install latest Git.
 install_latest_git () {
   _GIT_TEST=$(git --version)
-  if [[ "$_GIT_TEST" =~ "git version 1.7.9." ]] ; then
+  if [[ "$_GIT_TEST" =~ "git version 1.7.9." ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     true
   else
     msg "INFO: Installing latest Git from sources, please wait..."
