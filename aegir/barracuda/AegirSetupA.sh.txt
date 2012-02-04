@@ -264,7 +264,7 @@ for i in $REVISIONS; do
     git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib/purge &> /dev/null
     cd /data/all/$i/o_contrib/purge
     git checkout 6.x-1.x &> /dev/null
-    wget -q -U iCab http://drupal.org/files/purge-1327216-8.patch
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
     patch -p1 < purge-1327216-8.patch &> /dev/null
     # expire
     git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
@@ -304,7 +304,7 @@ for i in $REVISIONS; do
     git checkout 7.x-1.x &> /dev/null
     wget -q -U iCab http://drupal.org/files/i1151686_9.patch
     patch -p1 < i1151686_9.patch &> /dev/null
-    wget -q -U iCab http://drupal.org/files/purge-1327216-8.patch
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
     patch -p1 < purge-1327216-8.patch &> /dev/null
     # expire
     git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
