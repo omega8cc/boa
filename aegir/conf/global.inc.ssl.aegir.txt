@@ -150,18 +150,18 @@ if (isset($_SERVER['HTTP_HOST'])) {
 
   if (file_exists('./modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    header('X-Booster-Expires: D6');
+    header('X-Purge-Level: 6');
   }
   elseif (file_exists('./modules/o_contrib_seven/purge/purge.inc')) {
     $conf['expire_flush_node_terms'] = 0; // disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    header('X-Booster-Expires: D7');
+    header('X-Purge-Level: 7');
   }
   elseif (file_exists('./modules/watchdog')) {
-    header('X-Booster-Expires: D5');
+    header('X-Purge-Level: 5');
   }
   else {
-    header('X-Booster-Expires: unknown');
+    header('X-Purge-Level: unknown');
   }
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
