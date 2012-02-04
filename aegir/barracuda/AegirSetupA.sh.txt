@@ -1230,7 +1230,7 @@ chown -R root:root /data/conf &> /dev/null
 chown -R root:root $_CORE &> /dev/null
 chown -R root:root /data/all/000 &> /dev/null
 chown root:root /opt/tmp &> /dev/null
-chmod 0711 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
+chmod 0711 $_CORE /data/all /data/all/000 /data/src /data /data/disk /data/conf &> /dev/null
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
 rm -f /data/u/*host8* &> /dev/null

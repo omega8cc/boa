@@ -600,11 +600,11 @@ if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-
   mrun "sleep 2"
   prepare_pressflow_core
 fi
-if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
-  msg "$_STATUS C: Preparing Pressflow core Original, please wait.."
-  mrun "sleep 2"
-  prepare_pressflow_core_original
-fi
+# if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+#   msg "$_STATUS C: Preparing Pressflow core Original, please wait.."
+#   mrun "sleep 2"
+#   prepare_pressflow_core_original
+# fi
 if [ -d "$_CORE/o_contrib/memcache" ] ; then
   rm -f -r $_CORE/o_contrib/memcache &> /dev/null
 fi
@@ -758,26 +758,16 @@ msg "STATUS: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 2"
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6-original/misc/ctrl-$_INSTALLER_VERSION" ] ; then
-    prepare_pressflow_core_original
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+    prepare_pressflow_core
   fi
   cd $_CORE
-#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/atrium.make ./
-#   $_ROOT/tools/drush/drush make atrium.make atrium-$_OPENATRIUM-$_SMALLCORE6 &> /dev/null
-#   rm -f atrium.make
-#   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/ &> /dev/null
-#   cd $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/profiles/openatrium/modules/contrib/views
-  # http://drupal.org/node/853864#comment-3898996
-#   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
-#   patch -p0 < views-853864_2.patch &> /dev/null
-#   cd ../imagecache
   wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-2.tgz
   tar -xzf atrium-1-2.tgz
   rm -f atrium-1-2.tgz
   mv atrium-1.2 atrium-$_OPENATRIUM-$_SMALLCORE6
   cd /data/src/$_THIS_CORE
-  cp -af /data/src/$_THIS_CORE/pressflow-6-original/* $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/ &> /dev/null
-  echo skip > $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/includes/fix_pressflow_core_three.txt
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/profiles/openatrium/modules/contrib/imagecache
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
