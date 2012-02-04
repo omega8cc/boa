@@ -1416,6 +1416,27 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
   fi
 fi
 }
+#
+# Install latest Git.
+install_latest_git () {
+  _GIT_TEST=$(git --version)
+  if [[ "$_GIT_TEST" =~ "git version 1.7.9." ]] ; then
+    true
+  else
+    msg "INFO: Installing latest Git from sources, please wait..."
+    cd /var/opt
+    rm -f -r /var/opt/git*
+    st_runner "git clone git://github.com/gitster/git.git" 2> /dev/null
+    cd /var/opt/git
+    st_runner "make configure" 2> /dev/null
+    st_runner "sh ./configure --quiet" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    mv -f /usr/bin/git /usr/bin/git-old
+    ln -s /usr/local/bin/git /usr/bin/git
+    cd /var/opt
+  fi
+}
 
 
 ###--------------------###
@@ -2401,6 +2422,7 @@ fi
 run_apt_update_again
 run_apt_update_again
 install_with_aptitude_deps
+install_latest_git
 
 
 ###--------------------###
