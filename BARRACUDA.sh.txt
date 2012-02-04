@@ -1276,7 +1276,7 @@ run_apt_update_again () {
   fix_locales
 }
 #
-# Install PHP 5.3.9
+# Install PHP 5.3.10
 install_php_five_three () {
 ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
