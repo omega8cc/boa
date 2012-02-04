@@ -37,10 +37,10 @@ Some new features:
   mobile-tablet, mobile-smart and mobile-other.
   You can review it here: http://bit.ly/xzFfzK
 
-* Purge module is now enabled by default in all 6.x and 7.x sites.
-  Now Speed Booster works like a Boost - it expires immediately
-  the cache for any node/page after it has been edited, comment
-  has been added etc. It also automatically expires the cache
+* Purge module is now enabled by default in all 6.x and also 7.x
+  sites. Now Speed Booster works like a Boost - it expires
+  immediately the cache for any node/page after it has been edited,
+  comment has been added. It also automatically expires the cache
   for the homepage and RSS feed. You no longer need to wait
   up to one hour for Speed Booster cache expiration.
   Plus, unlike in Boost, it purges all separate caches for all
@@ -83,9 +83,9 @@ Promotion in February:
   for just 2 SSD Cores or $324.75 USD with yearly subscription
   for just 1 Root Core.
 
-  Remember also that you can host CiviCRM and all other
+  Remember also, that you can host CiviCRM and all other
   platforms available normally with 4+ Aegir Standard Cores
-  with just 2+ Aegir SSD Cores?
+  with just 2+ Aegir SSD Cores.
 
   Make your sites running 10x faster!
   http://omega8.cc/buy#ssd

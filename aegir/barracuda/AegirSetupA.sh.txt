@@ -73,6 +73,7 @@ _VIDEOLA=EDIT_VIDEOLA
 ###---### main config
 #
 _PURGE_MODE=EDIT_PURGE_MODE
+_PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _STATUS=INIT
 _USER=EDIT_USER
 _DOMAIN=EDIT_DOMAIN
@@ -260,17 +261,19 @@ for i in $REVISIONS; do
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
     tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
     rm -f backup_migrate-6.x-2.4.tar.gz
-    # purge
-    git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib/purge &> /dev/null
-    cd /data/all/$i/o_contrib/purge
-    git checkout 6.x-1.x &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
-    patch -p1 < purge-1327216-8.patch &> /dev/null
-    # expire
-    git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
-    cd /data/all/$i/o_contrib/expire
-    git checkout 6.x-1.x &> /dev/null
-    cd /data/all/$i/o_contrib
+    if [ "$_PURGE_MODE" = "ON" ] ; then
+      # purge
+      git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib/purge &> /dev/null
+      cd /data/all/$i/o_contrib/purge
+      git checkout 6.x-1.x &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
+      patch -p1 < purge-1327216-8.patch &> /dev/null
+      # expire
+      git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
+      cd /data/all/$i/o_contrib/expire
+      git checkout 6.x-1.x &> /dev/null
+      cd /data/all/$i/o_contrib
+    fi
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
@@ -298,21 +301,23 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib_seven/$m
       fi
     done
-    # purge
-    git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
-    cd /data/all/$i/o_contrib_seven/purge
-    git checkout 7.x-1.x &> /dev/null
-    wget -q -U iCab http://drupal.org/files/i1151686_9.patch
-    patch -p1 < i1151686_9.patch &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
-    patch -p1 < purge-1327216-8.patch &> /dev/null
-    # expire
-    git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
-    cd /data/all/$i/o_contrib_seven/expire
-    git checkout 7.x-1.x &> /dev/null
-    wget -q -U iCab http://drupal.org/files/1333894-expire-DBTNG.patch
-    patch -p1 < 1333894-expire-DBTNG.patch &> /dev/null
-    cd /data/all/$i/o_contrib_seven
+    if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
+      # purge
+      git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
+      cd /data/all/$i/o_contrib_seven/purge
+      git checkout 7.x-1.x &> /dev/null
+      wget -q -U iCab http://drupal.org/files/i1151686_9.patch
+      patch -p1 < i1151686_9.patch &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
+      patch -p1 < purge-1327216-8.patch &> /dev/null
+      # expire
+      git clone http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
+      cd /data/all/$i/o_contrib_seven/expire
+      git checkout 7.x-1.x &> /dev/null
+      wget -q -U iCab http://drupal.org/files/1333894-expire-DBTNG.patch
+      patch -p1 < 1333894-expire-DBTNG.patch &> /dev/null
+      cd /data/all/$i/o_contrib_seven
+    fi
   fi
 done
 touch /var/log/incompatible-modules-removed-002i.log
