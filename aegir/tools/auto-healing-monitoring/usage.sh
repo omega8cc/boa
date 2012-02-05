@@ -28,27 +28,6 @@ _MODULES_OFF="syslog dblog update l10n_update devel cookie_cache_bypass poormans
 
 ###-------------SYSTEM-----------------###
 
-fix_pressflow_core_one()
-{
-if [ "$_FIX_CORE_ONE" != "NO" ] ; then
-  if [ -e "$Plr/modules/o_contrib" ] ; then
-    searchStringE="/distro/$_LAST_ALL/"
-    case $Plr in
-    *"$searchStringE"*)
-    if [ ! -e "$Plr/includes/fix_pressflow_core_three.txt" ] ; then
-      cp -af /var/opt/pressflow-6-fix/includes/*   $Plr/includes/
-      cp -af /var/opt/pressflow-6-fix/modules/*    $Plr/modules/
-      cp -af /var/opt/pressflow-6-fix/install.php  $Plr/
-      cp -af /var/opt/pressflow-6-fix/update.php   $Plr/
-      echo fixed > $Plr/includes/fix_pressflow_core_three.txt
-    fi
-    ;;
-    *) ;;
-    esac
-  fi
-fi
-}
-
 fix_clear_cache()
 {
 if [ -d "$Plr/profiles/hostmaster" ] ; then
@@ -240,7 +219,6 @@ do
       fix_boost_cache
       fix_permissions
       fix_clear_cache
-      fix_pressflow_core_one
       searchStringD="dev."
       searchStringF="devel."
       case $Dom in
@@ -483,23 +461,11 @@ else
   _O_CONTRIB_SEVEN=NO
 fi
 #
-# Fix one for Pressflow core
-_FIX_CORE_ONE=YES
-rm -f -r /var/opt/pressflow-6-fix
-cd /var/opt
-wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-6.tar.gz
-tar -xzf pressflow-6.tar.gz
-mv pressflow-6 pressflow-6-fix
-rm -f pressflow-6.tar.gz
-# bzr branch lp:pressflow/6.x /var/opt/pressflow-6-fix &> /dev/null
-#
 mkdir -p /var/xdrago/log/usage
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   touch /var/xdrago/log/wait-counter
   exit
 else
-  #touch /var/xdrago/log/optimize_mysql_ao.pid
-  #touch /var/run/octopus_barracuda.pid
   sleep 60
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
   killall memcached &> /dev/null
@@ -515,8 +481,6 @@ else
   sleep 2
   rm -f /var/lib/redis/*
   invoke-rc.d redis-server restart 2>&1
-  #rm -f /var/xdrago/log/optimize_mysql_ao.pid
-  #rm -f /var/run/octopus_barracuda.pid
 fi
 
 ###--------------------###
