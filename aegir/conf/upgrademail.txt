@@ -69,6 +69,21 @@ Some new features:
 * You can disable both Boost and Speed Booster on the fly
   by adding ?nocache=1 to any URL. Useful for debugging.
 
+* Speed Booster offers now also ESI microcaching, as explained
+  in this article http://groups.drupal.org/node/197478.
+  This may enhance not only anonymous visitors, but also
+  logged in users experience, as it allows you to separate
+  microcache for ESI/SSI includes (valid for just 15 seconds)
+  from both default Speed Booster cache for anonymous visitors
+  (valid by default for 3 hours, unless purged on demand via
+  recently introduced Purge/Expire modules) and also from
+  Speed Booster cache per logged in user (valid for 5 minutes).
+
+  Now you have three different levels of Speed Booster cache
+  to leverage and deliver the 'live content' experience for
+  all visitors, and still protect your server from DoS or
+  simply high load caused by unexpected high traffic etc.
+
   You can read about all new features, fixes and enhancements at:
 
   http://omega8.cc/updates
