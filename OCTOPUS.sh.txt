@@ -99,7 +99,6 @@ _PHP_FPM_VERSION=5.2
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### D5P ----------- Pressflow 5
 ### AQ6 ----------- Acquia 6
-### AQ7 ----------- Acquia 7
 ### CC3 ----------- CiviCRM 3
 ### CC4 ----------- CiviCRM 4
 ### COD ----------- Conference
@@ -119,7 +118,8 @@ _PHP_FPM_VERSION=5.2
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
-### UCT ----------- Ubercart
+### UC7 ----------- Ubercart 7
+### UCT ----------- Ubercart 6
 ### VOA ----------- Videola
 ###
 ### Examples:
@@ -472,7 +472,7 @@ _ACQUIA_SEVEN=7.12.11
 _CIVICRM6=3.4.8
 _CIVICRM7=4.0.8
 _COD=6.x-1.0-beta2
-_COMMERCE=7.x-1.2
+_COMMERCE=7.x-1.3
 _COMMONS=6.x-2.4
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.12
@@ -488,7 +488,8 @@ _OPENOUTREACH=7.x-1.0-beta7
 _OPENPUBLIC=beta3-build100
 _OPENPUBLISH=3-alpha3
 _OPENSCHOLAR=2.0-beta13
-_PROSEPOINT=0.42
+_PROSEPOINT=0.43
+_UBER_CART_SEVEN=3.0.1
 _UBERCART=6.x-2.7
 _VIDEOLA=6.x-1.0-alpha2
 
@@ -708,6 +709,7 @@ do
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
+  sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files
   sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
   sed -i "s/EDIT_USE_SPEED_BOOSTER/$_USE_SPEED_BOOSTER/g" $Files
