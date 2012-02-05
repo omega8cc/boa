@@ -969,10 +969,12 @@ force_advanced_nginx_config () {
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
   sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
   sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
   sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
   sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
   sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
   if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
     sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
     sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
@@ -986,10 +988,12 @@ force_advanced_nginx_config () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf
     cp -af $_OCT_NGX nginx_advanced_include.conf
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf ./
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
     cp -af $_ADV_NGX nginx_simple_include.conf
     cp -af $_ADV_NGX nginx_advanced_include.conf
+    cp -af $_ADV_NGX nginx_modern_include.conf
   fi
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/Provision/Config/Nginx
@@ -999,10 +1003,12 @@ force_advanced_nginx_config () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
     cp -af $_OCT_NGX nginx_simple_include.conf
     cp -af $_OCT_NGX nginx_advanced_include.conf
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf ./
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
     cp -af $_ADV_NGX nginx_simple_include.conf
     cp -af $_ADV_NGX nginx_advanced_include.conf
+    cp -af $_ADV_NGX nginx_modern_include.conf
   fi
   chown aegir:aegir *
 }
