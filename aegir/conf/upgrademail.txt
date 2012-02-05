@@ -10,6 +10,19 @@ Please read below for details.
 
 Some new features:
 
+* All new 7.x sites now run on latest PHP-FPM 5.3.10 by default.
+  For existing sites it is enough to re-verify them in your
+  Aegir control panel to get them on PHP-FPM 5.3.10 automatically.
+
+  All existing and new 5.x sites run on the old PHP-FPM 5.2.17
+  version by default and you can't change that.
+
+  You can still choose between PHP-FPM 5.2.17 and 5.3.10 for
+  all your 6.x sites - just let us know via http://omega8.cc/support
+  that you wish to switch to 5.3.10 - but make sure first that all
+  your 6.x sites are fully PHP 5.3 compatible. By default all
+  6.x sites still run on PHP-FPM 5.2.17.
+
 * New default platforms with new Drupal core versions include
   either enhanced Pressflow 6.24 +Extra or standard 7.12 core.
 
@@ -21,14 +34,6 @@ Some new features:
   http://omega8.cc/managing-your-code-in-the-aegir-style-110
 
   Really, please read it to avoid some heavy headaches!
-
-* You can choose between PHP-FPM 5.2.17 and 5.3.10 version.
-  Just let us know via http://omega8.cc/support form
-  that you wish to switch to 5.3.10, since 5.2.17 is still
-  configured by default to support some older platforms
-  not fully compatible with PHP 5.3.10, but not everyone still
-  needs to support 5.x or some old 6.x modules, so now you have
-  a choice and you can use latest technology, if you wish.
 
 * Both Speed Booster, Boost and Redis/Memcached supports separate
   caches per mobile device, so it is safe to use separate themes
