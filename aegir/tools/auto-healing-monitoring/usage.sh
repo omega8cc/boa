@@ -28,27 +28,6 @@ _MODULES_OFF="syslog dblog update l10n_update devel cookie_cache_bypass poormans
 
 ###-------------SYSTEM-----------------###
 
-fix_pressflow_core_one()
-{
-if [ "$_FIX_CORE_ONE" != "NO" ] ; then
-  if [ -e "$Plr/modules/o_contrib" ] ; then
-    searchStringE="/distro/$_LAST_ALL/"
-    case $Plr in
-    *"$searchStringE"*)
-    if [ ! -e "$Plr/includes/fix_pressflow_core_three.txt" ] ; then
-      cp -af /var/opt/pressflow-6-fix/includes/*   $Plr/includes/
-      cp -af /var/opt/pressflow-6-fix/modules/*    $Plr/modules/
-      cp -af /var/opt/pressflow-6-fix/install.php  $Plr/
-      cp -af /var/opt/pressflow-6-fix/update.php   $Plr/
-      echo fixed > $Plr/includes/fix_pressflow_core_three.txt
-    fi
-    ;;
-    *) ;;
-    esac
-  fi
-fi
-}
-
 fix_clear_cache()
 {
 if [ -d "$Plr/profiles/hostmaster" ] ; then
@@ -96,10 +75,10 @@ for site $Dom.
 The platform root directory for this site is:
 $Plr
 
-Using non-Pressflow 6.x core is not allowed on our servers,
-unless it is a temporary result of your site import, but
-every imported site should be migrated to Pressflow based
-platform as soon as possible.
+Using non-Pressflow 5.x or 6.x core is not allowed
+on our servers, unless it is a temporary result of your site
+import, but every imported site should be migrated to Pressflow
+based platform as soon as possible.
 
 If the site is not migrated to Pressflow based platform
 in seven (7) days, it may cause service interruption.
@@ -123,10 +102,10 @@ for site $Dom.
 The platform root directory for this site is:
 $Plr
 
-Using non-Pressflow 6.x core is not allowed on our servers,
-unless it is a temporary result of your site import, but
-every imported site should be migrated to Pressflow based
-platform as soon as possible.
+Using non-Pressflow 5.x or 6.x core is not allowed
+on our servers, unless it is a temporary result of your site
+import, but every imported site should be migrated to Pressflow
+based platform as soon as possible.
 
 If the site is not migrated to Pressflow based platform
 in seven (7) days, it may cause service interruption.
@@ -156,12 +135,16 @@ if [ "$_O_CONTRIB" != "NO" ] ; then
       if [ -e "$Plr/modules/o_contrib" ] ; then
         rm -f $Plr/modules/o_contrib
       fi
-      echo Drupal 5.x Platform detected in $Plr
+      if [[ "$_VM_TEST" =~ ".host8." ]] && [[ "$Plr" =~ "static" ]] ; then
+        echo Vanilla Drupal 5.x Platform detected in $Plr
+        read_account_data
+        send_notice_core
+      fi
     else
       if [ ! -e "$Plr/modules/o_contrib" ] ; then
         ln -s $_O_CONTRIB $Plr/modules/o_contrib
       fi
-      if [ ! -e "$Plr/modules/path_alias_cache" ] ; then
+      if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
         echo Vanilla Drupal 6.x Platform detected in $Plr
         if [[ "$_VM_TEST" =~ ".host8." ]] ; then
           read_account_data
@@ -236,7 +219,6 @@ do
       fix_boost_cache
       fix_permissions
       fix_clear_cache
-      fix_pressflow_core_one
       searchStringD="dev."
       searchStringF="devel."
       case $Dom in
@@ -479,23 +461,11 @@ else
   _O_CONTRIB_SEVEN=NO
 fi
 #
-# Fix one for Pressflow core
-_FIX_CORE_ONE=YES
-rm -f -r /var/opt/pressflow-6-fix
-cd /var/opt
-wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-6.tar.gz
-tar -xzf pressflow-6.tar.gz
-mv pressflow-6 pressflow-6-fix
-rm -f pressflow-6.tar.gz
-# bzr branch lp:pressflow/6.x /var/opt/pressflow-6-fix &> /dev/null
-#
 mkdir -p /var/xdrago/log/usage
 if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
   touch /var/xdrago/log/wait-counter
   exit
 else
-  #touch /var/xdrago/log/optimize_mysql_ao.pid
-  #touch /var/run/octopus_barracuda.pid
   sleep 60
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
   killall memcached &> /dev/null
@@ -511,8 +481,6 @@ else
   sleep 2
   rm -f /var/lib/redis/*
   invoke-rc.d redis-server restart 2>&1
-  #rm -f /var/xdrago/log/optimize_mysql_ao.pid
-  #rm -f /var/run/octopus_barracuda.pid
 fi
 
 ###--------------------###
