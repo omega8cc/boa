@@ -43,7 +43,7 @@ starting with 1+ Aegir Standard or SSD Core:
 
  Acquia 6.24 ------------------ http://bit.ly/acquiadrupal
  Acquia 7.12.11 --------------- http://bit.ly/acquiadrupal
- Commerce Kickstart 1.2 ------- http://drupalcommerce.org
+ Commerce Kickstart 1.3 ------- http://drupalcommerce.org
  Conference 1.0-beta2 --------- http://usecod.com
  Drupal 5.23 Pressflow -------- http://pressflow.org
  Drupal 6.24 Pressflow -------- http://pressflow.org
