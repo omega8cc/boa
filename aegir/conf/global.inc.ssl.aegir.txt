@@ -10,6 +10,19 @@ if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
   }
 }
 
+// Fix for Mollom, CloudFlare and others running via Proxy.
+if (isset($_SERVER['REMOTE_ADDR'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
+  }
+  if (isset($_SERVER['HTTP_X_REAL_IP'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
+  }
+  if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
+  }
+}
+
 $conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
 $conf['cron_safe_threshold'] = 0; // disable poormanscron in d5 and d6
@@ -219,50 +232,24 @@ if (isset($_SERVER['HTTP_HOST'])) {
         file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
         file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt') ||
         preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
-        if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-          header('X-Accel-Expires: 0');
-        }
-      if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
-        $lifetime = '240';
-        setcookie('OctopusNoCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 0');
       }
-      elseif (!isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
+      if (!isset($_COOKIE[OctopusNoCacheID])) {
         $lifetime = '240';
         setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
       }
     }
-
-    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
+    elseif (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
       $lifetime = '240';
-      setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+      setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
       header('X-Accel-Expires: 0');
     }
-
-    if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
-      $lifetime = '86400';
-      setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
-      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-        header('X-Accel-Expires: 300');
-      }
-    }
-    elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
-      $loggedinactive = 'YES';
-      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-        header('X-Accel-Expires: 300');
-      }
-    }
-    elseif (!isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
-      $lifetime = '0';
-      setcookie('OctopusCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
-      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-        header('X-Accel-Expires: 0');
-      }
-    }
-    elseif (!isset($_COOKIE[OctopusCacheID]) && isset($_COOKIE[OctopusNoCacheID])) {
-      $lifetime = '86400';
-      setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
-      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-        header('X-Accel-Expires: 300');
+    else {
+      if (isset($_COOKIE[$test_sess_name])) {
+        if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+          header('X-Accel-Expires: 300');
+        }
       }
     }
   }
@@ -294,19 +281,6 @@ if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt
 
 if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUEST_URI'])) {
   $use_cache = 'NO';
-}
-
-// Fix for Mollom, CloudFlare and others running via Proxy.
-if (isset($_SERVER['REMOTE_ADDR'])) {
-  if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
-  }
-  if (isset($_SERVER['HTTP_X_REAL_IP'])) {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_REAL_IP'];
-  }
-  if (isset($_SERVER['HTTP_CF_CONNECTING_IP'])) {
-    $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_CF_CONNECTING_IP'];
-  }
 }
 
 /**
