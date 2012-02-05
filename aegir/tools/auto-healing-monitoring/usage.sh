@@ -96,10 +96,10 @@ for site $Dom.
 The platform root directory for this site is:
 $Plr
 
-Using non-Pressflow 6.x core is not allowed on our servers,
-unless it is a temporary result of your site import, but
-every imported site should be migrated to Pressflow based
-platform as soon as possible.
+Using non-Pressflow 5.x or 6.x core is not allowed
+on our servers, unless it is a temporary result of your site
+import, but every imported site should be migrated to Pressflow
+based platform as soon as possible.
 
 If the site is not migrated to Pressflow based platform
 in seven (7) days, it may cause service interruption.
@@ -123,10 +123,10 @@ for site $Dom.
 The platform root directory for this site is:
 $Plr
 
-Using non-Pressflow 6.x core is not allowed on our servers,
-unless it is a temporary result of your site import, but
-every imported site should be migrated to Pressflow based
-platform as soon as possible.
+Using non-Pressflow 5.x or 6.x core is not allowed
+on our servers, unless it is a temporary result of your site
+import, but every imported site should be migrated to Pressflow
+based platform as soon as possible.
 
 If the site is not migrated to Pressflow based platform
 in seven (7) days, it may cause service interruption.
@@ -156,12 +156,16 @@ if [ "$_O_CONTRIB" != "NO" ] ; then
       if [ -e "$Plr/modules/o_contrib" ] ; then
         rm -f $Plr/modules/o_contrib
       fi
-      echo Drupal 5.x Platform detected in $Plr
+      if [[ "$_VM_TEST" =~ ".host8." ]] && [[ "$Plr" =~ "static" ]] ; then
+        echo Vanilla Drupal 5.x Platform detected in $Plr
+        read_account_data
+        send_notice_core
+      fi
     else
       if [ ! -e "$Plr/modules/o_contrib" ] ; then
         ln -s $_O_CONTRIB $Plr/modules/o_contrib
       fi
-      if [ ! -e "$Plr/modules/path_alias_cache" ] ; then
+      if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
         echo Vanilla Drupal 6.x Platform detected in $Plr
         if [[ "$_VM_TEST" =~ ".host8." ]] ; then
           read_account_data
