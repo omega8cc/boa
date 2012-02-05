@@ -492,7 +492,7 @@ _PHP_VERSION_NEW=5.3.10
 _APC_VERSION=3.1.9
 _CHIVE_VERSION=1.0.2
 _BZR_VERSION=2.3.4
-_LSHELL_VERSION=0.9.14
+_LSHELL_VERSION=0.9.15-beta1
 _PURE_FTPD_VERSION=1.0.35
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
@@ -3141,8 +3141,12 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   msg "INFO: Installing lshell, please wait..."
   mrun "sleep 3"
   cd /var/opt
-  wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
-  tar -xzf lshell-$_LSHELL_VERSION.tar.gz
+  if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
+    wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
+    tar -xzf lshell-$_LSHELL_VERSION.tar.gz
+  else
+    git clone git://github.com/ghantoos/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
+  fi
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files
   done
@@ -3174,8 +3178,12 @@ if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "
   cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
   cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   cd /var/opt
-  wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
-  tar -xzf lshell-$_LSHELL_VERSION.tar.gz
+  if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
+    wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
+    tar -xzf lshell-$_LSHELL_VERSION.tar.gz
+  else
+    git clone git://github.com/ghantoos/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
+  fi
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files
   done
