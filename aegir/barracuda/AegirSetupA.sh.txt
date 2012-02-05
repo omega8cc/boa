@@ -63,9 +63,10 @@ _OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PROSEPOINT=EDIT_PROSEPOINT
-_SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE_6_LANG=EDIT_SMALLCORE_6_LANG
+_SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
+_UBER_CART_SEVEN=EDIT_UBER_CART_SEVEN
 _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
 
@@ -936,9 +937,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_ACQUIA_SEVEN
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then

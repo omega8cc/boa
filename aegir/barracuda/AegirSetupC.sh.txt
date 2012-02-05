@@ -66,6 +66,7 @@ _PROSEPOINT=EDIT_PROSEPOINT
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE_6_LANG=EDIT_SMALLCORE_6_LANG
 _SMALLCORE7=EDIT_SMALLCORE7
+_UBER_CART_SEVEN=EDIT_UBER_CART_SEVEN
 _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
 
@@ -571,7 +572,6 @@ fi
 
 ###---### Distributions full names
 #
-_F_ACQUIA_SEVEN="Acquia $_ACQUIA_SEVEN P.$_THIS_CORE"
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_ATRIUM="Atrium $_OPENATRIUM $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
@@ -595,6 +595,7 @@ _F_OPENPUBLIC="OpenPublic beta3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish $_OPENPUBLISH $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR $_SMALLCORE6 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
+_F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart 2.7 $_SMALLCORE6 P.$_THIS_CORE"
 _F_VIDEOLA="Videola 1.0-alpha2 $_SMALLCORE6 P.$_THIS_CORE"
 #
@@ -734,37 +735,60 @@ fi
 fi
 
 
-###---### Acquia Seven
+###---### Ubercart 3.0.1
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
-if prompt_yes_no "$_F_ACQUIA_SEVEN - http://bit.ly/acquiadrupal" ; then
+if prompt_yes_no "$_F_UBER_CART_SEVEN - http://ubercart.org" ; then
 true
-msg "STATUS: $_F_ACQUIA_SEVEN install in progress, please wait..."
+msg "STATUS: $_F_UBER_CART_SEVEN install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/acquia-$_ACQUIA_SEVEN"
+_CORE_DISTRO="$_CORE/ubercart-$_UBER_CART_SEVEN"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/acquia-$_ACQUIA_SEVEN &> /dev/null
-  cd $_CORE/acquia-$_ACQUIA_SEVEN
-  rm -f $_CORE/acquia-$_ACQUIA_SEVEN/*.txt
+  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/ubercart-$_UBER_CART_SEVEN &> /dev/null
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN
+  sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" ./profiles/acquia/acquia.info
+  sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" ./profiles/acquia/acquia.info
+  rm -f $_CORE/ubercart-$_UBER_CART_SEVEN/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/minimal
-  rm -f -r $_CORE/acquia-$_ACQUIA_SEVEN/profiles/testing
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/minimal
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/testing
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/modules/sqlsrv
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/modules/token
+  mkdir -p $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/libraries
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/libraries
+  wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
+  unzip -qq colorbox.zip &> /dev/null
+  rm -f colorbox.zip
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/modules
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.0-rc1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN
-cd $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN
+mkdir -p $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
+cd $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
 create_symlinks
 create_d7_symlinks
 rm -f boost_stats.php
-msg "STATUS: $_F_ACQUIA_SEVEN installation completed"
+msg "STATUS: $_F_UBER_CART_SEVEN installation completed"
 mrun "sleep 2"
 else
-  msg "STATUS: $_F_ACQUIA_SEVEN installation skipped"
+  msg "STATUS: $_F_UBER_CART_SEVEN installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -1135,7 +1159,7 @@ build_openpublic () {
     rm -f -r $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic/libraries/colorbox
     cd $_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/profiles/openpublic/libraries
     wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
-    unzip colorbox.zip &> /dev/null
+    unzip -qq colorbox.zip &> /dev/null
     rm -f colorbox.zip
   fi
   if [ $_OPENPUBLIC = "beta1-build100" ] ; then
@@ -2220,9 +2244,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ACQUIA_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_ACQUIA_SEVEN &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_UBER_CART_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN &> /dev/null
     mrun "sleep 5"
   fi
 fi
