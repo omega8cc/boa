@@ -219,7 +219,9 @@ if (isset($_SERVER['HTTP_HOST'])) {
         file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
         file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt') ||
         preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
-      header('X-Accel-Expires: 0');
+        if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+          header('X-Accel-Expires: 0');
+        }
       if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusNoCacheID])) {
         $lifetime = '240';
         setcookie('OctopusNoCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
@@ -239,21 +241,29 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if (isset($_COOKIE[$test_sess_name]) && !isset($_COOKIE[OctopusCacheID])) {
       $lifetime = '86400';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
-      header('X-Accel-Expires: 300');
+      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 300');
+      }
     }
     elseif (isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
       $loggedinactive = 'YES';
-      header('X-Accel-Expires: 300');
+      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 300');
+      }
     }
     elseif (!isset($_COOKIE[$test_sess_name]) && isset($_COOKIE[OctopusCacheID])) {
       $lifetime = '0';
       setcookie('OctopusCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
-      header('X-Accel-Expires: 0');
+      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 0');
+      }
     }
     elseif (!isset($_COOKIE[OctopusCacheID]) && isset($_COOKIE[OctopusNoCacheID])) {
       $lifetime = '86400';
       setcookie('OctopusCacheID', $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 300), '/', $cookie_domain);
-      header('X-Accel-Expires: 300');
+      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 300');
+      }
     }
   }
 }
