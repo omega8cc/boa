@@ -622,7 +622,7 @@ if [ $_STATUS != "INIT" ] ; then
   upgrade_o_contrib
 fi
 if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
-  msg "$_STATUS C: Preparing Pressflow core +Extra, please wait.."
+  msg "$_STATUS C: Preparing Pressflow +Extra $_SMALLCORE6 core, please wait.."
   mrun "sleep 2"
   prepare_pressflow_core
 fi
@@ -631,9 +631,6 @@ fi
 #   mrun "sleep 2"
 #   prepare_pressflow_core_original
 # fi
-if [ -d "$_CORE/o_contrib/memcache" ] ; then
-  rm -f -r $_CORE/o_contrib/memcache &> /dev/null
-fi
 if [ -d "$_CORE/o_contrib/varnish" ] ; then
   rm -f -r $_CORE/o_contrib/varnish &> /dev/null
 fi
