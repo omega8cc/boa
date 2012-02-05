@@ -733,6 +733,7 @@ sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
 if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
   sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
   sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
@@ -770,6 +771,7 @@ sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/
 sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
 sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
 sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
 if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
