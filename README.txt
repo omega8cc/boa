@@ -148,10 +148,11 @@ added to all 6.x platforms:
  css_emimage-6.x-2.x-dev (mikeytown2's fork)
  dbtuner-6.x-1.x-dev
  esi-6.x-2.x-dev
- filefield_nginx_progress-6.x-1.4
+ filefield_nginx_progress-6.x-1.x-dev
  fpa-6.x-2.3
- httprl-6.x-1.2
- imageinfo_cache-6.x-2.0
+ httprl-6.x-1.4
+ image-6.x-1.x-dev
+ imageinfo_cache-6.x-2.1
  login_security-6.x-1.x-dev
  private_upload-6.x-1.x-dev
  readonlymode-6.x-1.x-dev
@@ -168,25 +169,24 @@ added to all 6.x platforms:
 The Drupal 7.x platforms come with contrib modules:
 
  admin-7.x-2.0-beta3
- agrcache-7.x-1.0
  backup_migrate-7.x-2.2
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
  config_perms-7.x-2.x-dev
- core_library-7.x-2.0-alpha7
  css_emimage-7.x-1.2
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev
  fpa-7.x-2.0
- httprl-7.x-1.2
+ httprl-7.x-1.4
  readonlymode-7.x-1.0-beta1
  robotstxt-7.x-1.x-dev
  seckit-7.x-1.3
  site_verify-7.x-1.0
- textile-7.x-2.0-rc9
+ textile-7.x-2.0-rc11
  variable_clean-7.x-1.x-dev
  vars-7.x-2.0-alpha10
- + theme rubik-7.x-4.0-beta6
+ views_content_cache-7.x-3.x-dev
+ + theme rubik-7.x-4.0-beta7
 
 
 ### BUG SUBMISSION

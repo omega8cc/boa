@@ -15,7 +15,6 @@ $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
 $conf['cron_safe_threshold'] = 0; // disable poormanscron in d5 and d6
 $conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
 $conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
-$conf['cache'] = 1;               // enable hardcoded caching
 $conf['file_downloads'] = 1;      // force public downloads by default
 $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0;   // disable access log stats
@@ -45,12 +44,24 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
 }
 
 if (file_exists('./web.config')) {
+  $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7+
   $drupal_seven_up = 'YES';
+  header('X-Backend: A');
+}
+elseif (file_exists('./modules/path_alias_cache/path_alias_cache.module')) {
+  $conf['cache'] = 3; // enable hardcoded external caching - Pressflow 6 only
+  $drupal_seven_up = 'NO';
   header('X-Backend: B');
 }
-else {
+elseif (file_exists('./modules/watchdog/watchdog.module')) {
+  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
   $drupal_seven_up = 'NO';
-  header('X-Backend: A');
+  header('X-Backend: C');
+}
+else {
+  $conf['cache'] = 1; // enable hardcoded standard caching
+  $drupal_seven_up = 'NO';
+  header('X-Backend: D');
 }
 
 // http://drupal.org/node/912682#comment-3503636
@@ -63,6 +74,7 @@ if ($conf['install_profile'] == 'uberdrupal' ||
     file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
     file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt')) {
   unset($conf['file_downloads']); // disable hardcoded public downloads for ubercart
+  $conf['cache'] = 1; // enable hardcoded standard caching
 }
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
@@ -151,11 +163,8 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     header('X-Purge-Level: 7');
   }
-  elseif (file_exists('./modules/watchdog')) {
-    header('X-Purge-Level: 5');
-  }
   else {
-    header('X-Purge-Level: unknown');
+    header('X-Purge-Level: none');
   }
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
