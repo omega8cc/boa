@@ -123,7 +123,7 @@ Octopus can install the platforms listed below:
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3-alpha3 --------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
- ProsePoint 0.42 -------------- http://prosepoint.org
+ ProsePoint 0.43 -------------- http://prosepoint.org
  Ubercart 2.7 (int) ----------- http://ubercart.org
  Videola 1.0-alpha2 ----------- http://videola.tv
 
