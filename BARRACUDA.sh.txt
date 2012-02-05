@@ -3152,7 +3152,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
   st_runner "python setup.py install" 2> /dev/null
-  addgroup lshellg &> /dev/null
+  addgroup --system lshellg &> /dev/null
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
@@ -3190,7 +3190,7 @@ if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "
   cd /var/opt/lshell-$_LSHELL_VERSION
   st_runner "python setup.py install" 2> /dev/null
   cp -af /etc/lshell.conf-bak /etc/lshell.conf &> /dev/null
-  addgroup lshellg &> /dev/null
+  addgroup --system lshellg &> /dev/null
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
