@@ -243,23 +243,23 @@ http://omega8.cc/library/problems-solutions
 http://omega8.cc/faq
 
 
-=== WE HIGHLY RECOMMEND
+=== SOME ARTICLES WE HIGHLY RECOMMEND
 
+http://omega8.cc/the-biggest-misunderstanding-ever-122
 http://omega8.cc/the-best-recipes-for-disaster-139
 http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
+
+http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
 http://omega8.cc/managing-your-code-in-the-aegir-style-110
 http://omega8.cc/speed-booster-cache-boost-and-advagg-108
+
 http://omega8.cc/how-to-disable-all-caching-and-aggregation-115
-http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
-http://omega8.cc/migrate-sites-between-install-profiles-easily-111
 http://omega8.cc/extra-modules-available-in-all-platforms-123
 http://omega8.cc/modules-enabled-or-disabled-automatically-117
+
 http://omega8.cc/how-to-add-drupal-7-platform-properly-140
-http://omega8.cc/too-many-duplicate-platforms-125
 http://omega8.cc/where-is-the-rename-task-129
 http://omega8.cc/how-to-manage-aliases-and-redirects-127
-http://omega8.cc/lost-password-problem-128
-http://omega8.cc/ftp-and-sftp-password-not-accepted-120
 
 
 Questions? Comments? Please contact us:
