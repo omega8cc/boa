@@ -491,6 +491,7 @@ prepare_pressflow_core () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.20.patch ./
   patch -p1 < taxonomy-6.20.patch &> /dev/null
   rm -f taxonomy-6.20.patch
+  rm -f /data/src/$_THIS_CORE/pressflow-6/modules/taxonomy/taxonomy.module.orig
   themes_for_d6
   rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
   echo abc > /data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION
@@ -606,9 +607,9 @@ _F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENPUBLIC="OpenPublic b3 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENPUBLISH="OpenPublish $_OPENPUBLISH $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENSCHOLAR="OpenScholar $_OPENSCHOLAR $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLISH="OpenPublish 3.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENSCHOLAR="OpenScholar 2.0-b13 $_SMALLCORE6 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart 2.7 $_SMALLCORE6 P.$_THIS_CORE"
