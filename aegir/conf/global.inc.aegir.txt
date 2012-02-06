@@ -44,13 +44,14 @@ ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
+  header('X-Accel-Expires: 1');
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
   ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
   if (preg_match("/(?:host8|omega)/i", $_SERVER['HTTP_HOST'])) {
     if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
         preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
-      header('X-Accel-Expires: 0');
+      header('X-Accel-Expires: 1');
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
     }
@@ -218,32 +219,34 @@ if (isset($_SERVER['HTTP_HOST'])) {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
 
-    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:hostmaster|uberdrupal|commerce)/", $conf['install_profile']) ||
-        preg_match("/^\/(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
+    if (preg_match("/^\/(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
+        preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
+      if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 1');
+      }
+      if (!isset($_COOKIE[OctopusNoCacheID])) {
+        $lifetime = '60';
+        setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+      }
+    }
+    elseif (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || preg_match("/(?:uberdrupal|commerce)/", $conf['install_profile']) ||
         file_exists('sites/all/modules/ubercart/README.txt') ||
         file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
         file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
-        file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt') ||
-        preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
+        file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt')) {
       if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-        header('X-Accel-Expires: 0');
-      }
-      if (!isset($_COOKIE[OctopusNoCacheID])) {
-        $lifetime = '240';
-        setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+        header('X-Accel-Expires: 5');
       }
     }
     elseif (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
-      $lifetime = '240';
-      setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + ($lifetime + 60), '/', $cookie_domain);
+      $lifetime = '60';
+      setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
       header('X-Accel-Expires: 0');
     }
     else {
-      if (isset($_COOKIE[$test_sess_name])) {
-        if (!preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-          header('X-Accel-Expires: 300');
-        }
+      if (isset($_COOKIE[$test_sess_name]) && !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 60');
       }
     }
   }
