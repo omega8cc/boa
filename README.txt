@@ -160,6 +160,7 @@ added to all 6.x platforms:
  seckit-6.x-1.3
  securesite-6.x-2.4
  site_verify-6.x-1.0
+ taxonomy_edge-6.x-1.3
  textile-6.x-2.4
  variable_clean-6.x-1.x-dev
  views_content_cache-6.x-2.x-dev
@@ -183,6 +184,7 @@ The Drupal 7.x platforms come with contrib modules:
  robotstxt-7.x-1.x-dev
  seckit-7.x-1.3
  site_verify-7.x-1.0
+ taxonomy_edge-7.x-1.1
  textile-7.x-2.0-rc11
  variable_clean-7.x-1.x-dev
  vars-7.x-2.0-alpha10

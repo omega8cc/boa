@@ -1,0 +1,36 @@
+From a88b4ae0ec60221b93cd5ed14ac67b1ff5719ddb Mon Sep 17 00:00:00 2001
+From: Thomas Skovgaard Gielfeldt <thomas@gielfeldt.com>
+Date: Sun, 22 May 2011 10:34:56 +0200
+Subject: [PATCH] Use Taxonomy Edge functionality.
+
+---
+ modules/taxonomy/taxonomy.module |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
+ mode change 100644 => 100755 modules/taxonomy/taxonomy.module
+
+diff --git a/modules/taxonomy/taxonomy.module b/modules/taxonomy/taxonomy.module
+index 0141120..26a6845
+--- a/modules/taxonomy/taxonomy.module
++++ b/modules/taxonomy/taxonomy.module
+@@ -835,6 +835,9 @@ function taxonomy_get_children($tid, $vid = 0, $key = 'tid') {
+  *   Results are statically cached.
+  */
+ function taxonomy_get_tree($vid, $parent = 0, $depth = -1, $max_depth = NULL) {
++  if (function_exists('taxonomy_edge_taxonomy_get_tree')) {
++    return taxonomy_edge_taxonomy_get_tree($vid, $parent, $depth, $max_depth);
++  }
+   static $children, $parents, $terms;
+
+   $depth++;
+@@ -1130,6 +1133,9 @@ function theme_taxonomy_term_select($element) {
+  *   A resource identifier pointing to the query results.
+  */
+ function taxonomy_select_nodes($tids = array(), $operator = 'or', $depth = 0, $pager = TRUE, $order = 'n.sticky DESC, n.created DESC') {
++  if (function_exists('taxonomy_edge_taxonomy_select_nodes')) {
++    return taxonomy_edge_taxonomy_select_nodes($tids, $operator, $depth, $pager, $order);
++  }
+   if (count($tids) > 0) {
+     // For each term ID, generate an array of descendant term IDs to the right depth.
+     $descendant_tids = array();
+--
+1.7.4

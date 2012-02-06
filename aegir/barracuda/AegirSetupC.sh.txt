@@ -250,6 +250,15 @@ if [ ! -L "web.config" ] ; then
 fi
 }
 #
+# patch d7 core
+patch_d7_core () {
+if [ ! -e "taxonomy-7.7.patch" ] ; then
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.7.patch ./
+  patch -p1 < taxonomy-7.7.patch &> /dev/null
+  rm -f taxonomy-7.7.patch
+fi
+}
+#
 # themes_for_d6
 themes_for_d6 () {
 cd /data/src/$_THIS_CORE/pressflow-6/themes
@@ -310,6 +319,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc11.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha10.tar.gz
@@ -368,6 +378,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
@@ -477,6 +488,9 @@ prepare_pressflow_core () {
   rm -f /data/src/$_THIS_CORE/pressflow-6/modules/*.txt
   rm -f -r /data/src/$_THIS_CORE/pressflow-6/modules/cookie_cache_bypass
   rm -f /data/src/$_THIS_CORE/pressflow-6/themes/*.txt
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.20.patch ./
+  patch -p1 < taxonomy-6.20.patch &> /dev/null
+  rm -f taxonomy-6.20.patch
   themes_for_d6
   rm -f /data/src/$_THIS_CORE/pressflow-6/sites/all/*.txt
   echo abc > /data/src/$_THIS_CORE/pressflow-6/misc/ctrl-$_INSTALLER_VERSION
@@ -782,6 +796,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
 cd $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_UBER_CART_SEVEN installation completed"
 mrun "sleep 2"
@@ -1025,6 +1040,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7_D installation completed"
 mrun "sleep 1"
@@ -1062,6 +1078,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
 cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
@@ -1105,6 +1122,7 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P
   create_symlinks
   create_d7_symlinks
+  patch_d7_core
   rm -f boost_stats.php
   msg "STATUS: $_F_DRUPAL7_P installation completed"
   mrun "sleep 1"
@@ -1117,6 +1135,7 @@ elif [ -d "$_CORE/$_DRUPAL7" ] ; then
   cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
   create_symlinks
   create_d7_symlinks
+  patch_d7_core
   rm -f boost_stats.php
   msg "STATUS: $_F_DRUPAL7_P installation completed"
   mrun "sleep 1"
@@ -1196,6 +1215,7 @@ if [ ! -L "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/
 fi
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENPUBLIC installation completed"
 mrun "sleep 2"
@@ -1253,6 +1273,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
 cd $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_COMMERCE installation completed"
 mrun "sleep 2"
@@ -1301,6 +1322,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
 cd $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENDEALS installation completed"
 mrun "sleep 2"
@@ -1349,6 +1371,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
 cd $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENOUTREACH installation completed"
 mrun "sleep 2"
@@ -1702,6 +1725,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7
 cd $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_NODESTREAM7 installation completed"
 mrun "sleep 2"
@@ -1750,6 +1774,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7
 cd $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENPUBLISH installation completed"
 mrun "sleep 2"
@@ -2070,6 +2095,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
 cd $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
+patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_CIVICRM7 installation completed"
 mrun "sleep 2"

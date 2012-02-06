@@ -1,0 +1,25 @@
+From f2b5994fe2c2236fb763bdc811437e0fb595c7c5 Mon Sep 17 00:00:00 2001
+From: Thomas Skovgaard Gielfeldt <thomas@gielfeldt.com>
+Date: Sun, 21 Aug 2011 07:45:59 +0200
+Subject: [PATCH] Patch for Taxonomy Edge.
+
+---
+ modules/taxonomy/taxonomy.module |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/modules/taxonomy/taxonomy.module b/modules/taxonomy/taxonomy.module
+index dc2847d..e3337de 100644
+--- a/modules/taxonomy/taxonomy.module
++++ b/modules/taxonomy/taxonomy.module
+@@ -925,6 +925,9 @@ function taxonomy_get_children($tid, $vid = 0) {
+  *   depending on the $load_entities parameter.
+  */
+ function taxonomy_get_tree($vid, $parent = 0, $max_depth = NULL, $load_entities = FALSE) {
++  if (function_exists('taxonomy_edge_get_tree')) {
++    return taxonomy_edge_get_tree($vid, $parent, $max_depth, $load_entities);
++  }
+   $children = &drupal_static(__FUNCTION__, array());
+   $parents = &drupal_static(__FUNCTION__ . ':parents', array());
+   $terms = &drupal_static(__FUNCTION__ . ':terms', array());
+--
+1.7.5.1
