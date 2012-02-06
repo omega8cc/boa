@@ -173,6 +173,7 @@ The Drupal 7.x platforms come with contrib modules:
  blockcache_alter-7.x-1.x-dev
  boost-7.x-1.x-dev
  config_perms-7.x-2.x-dev
+ core_library-7.x-2.0-beta1
  css_emimage-7.x-1.2
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev

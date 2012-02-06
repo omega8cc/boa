@@ -300,6 +300,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-2.0-beta1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
