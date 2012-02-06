@@ -40,7 +40,7 @@ Some new features:
   or content for mobile devices. We use simple logic to determine
   the kind of device and there are separate cache bins for
   mobile-tablet, mobile-smart and mobile-other.
-  You can review it here: http://bit.ly/xzFfzK
+  You can review it here: http://bit.ly/wYz6PG
 
 * Purge module is now enabled by default in all 6.x and also 7.x
   sites. Now Speed Booster works like a Boost - it expires
@@ -82,7 +82,7 @@ Some new features:
   from both default Speed Booster cache for anonymous visitors
   (valid by default for 3 hours, unless purged on demand via
   recently introduced Purge/Expire modules) and also from
-  Speed Booster cache per logged in user (valid for 5 minutes).
+  Speed Booster cache per logged in user (valid for 60 seconds).
 
   Now you have three different levels of Speed Booster cache
   to leverage and deliver the 'live content' experience for
