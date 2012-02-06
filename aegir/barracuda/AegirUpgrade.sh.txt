@@ -130,7 +130,7 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
-  _NEW_NAME="hostmaster-2.0.1 $_NOW"
+  _NEW_NAME="$_AEGIR_VERSION $_NOW"
   export DEBIAN_FRONTEND=noninteractive
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT --version='$_NEW_NAME' -y -d
