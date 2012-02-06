@@ -6,7 +6,8 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.2
 
 We have many good news and a special promotion (25% off) this time.
 
-Please read below for details.
+Please read below for details. This is really long e-mail,
+but it is well worth to read it in its entirety.
 
 Some new features:
 
@@ -44,14 +45,13 @@ Some new features:
 
 * Purge module is now enabled by default in all 6.x and also 7.x
   sites. Now Speed Booster works like a Boost - it expires
-  immediately the cache for any node/page after it has been edited,
-  comment has been added. It also automatically expires the cache
-  for the homepage and RSS feed. You no longer need to wait
-  up to one hour for Speed Booster cache expiration.
-  Plus, unlike in Boost, it purges all separate caches for all
-  mobile devices along with non-mobile cache, at once.
-  Now you have a good reason to disable Boost and use our
-  crazy fast Speed Booster only.
+  immediately the cache for any node/page as soon as it has been
+  edited or comment added. It also automatically expires the cache
+  for the homepage and RSS feed at once. You no longer need to wait
+  up to one hour for Speed Booster cache expiration. Plus, unlike
+  in Boost, it purges all separate caches for all mobile devices
+  along with non-mobile cache, at once. Now you have a good reason
+  to disable Boost and use our crazy fast Speed Booster only.
 
 * You can use GeoIP data provided by your Nginx server
   in your custom code or modules with variables:
@@ -62,7 +62,7 @@ Some new features:
 
 * You can safely manage Clients/Users attached to hosted sites
   in your Aegir interface. Make sure that all sites have its
-  associated Client! Otherwise this site will be available
+  associated Client! Otherwise the site will be listed as available
   for all Clients/Users you have added. The site can lost its
   association with Client after Clone task if there is any
   non-alphanumeric value in the Client name, like &.
@@ -75,14 +75,17 @@ Some new features:
   by adding ?nocache=1 to any URL. Useful for debugging.
 
 * Speed Booster offers now also ESI microcaching, as explained
-  in this article http://groups.drupal.org/node/197478.
+  in this article: http://groups.drupal.org/node/197478.
   This may enhance not only anonymous visitors, but also
-  logged in users experience, as it allows you to separate
+  logged in users experience, since it allows you to separate
   microcache for ESI/SSI includes (valid for just 15 seconds)
   from both default Speed Booster cache for anonymous visitors
   (valid by default for 3 hours, unless purged on demand via
   recently introduced Purge/Expire modules) and also from
   Speed Booster cache per logged in user (valid for 60 seconds).
+  The ESI module is included in all 6.x platforms but is not
+  enabled and not configured automatically, so please consult
+  its documentation for details on how to use it properly.
 
   Now you have three different levels of Speed Booster cache
   to leverage and deliver the 'live content' experience for
