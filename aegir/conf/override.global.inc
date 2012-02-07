@@ -23,7 +23,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT']) &&
 // The code below will make it working for logged in users only, as before.
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.com)/", $_SERVER['HTTP_HOST'])) {
   if (isset($_COOKIE[$test_sess_name]) && isset($_SERVER['HTTP_COOKIE']) &&
-      preg_match("/(?:OctopusCacheID|OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
+      preg_match("/(?:OctopusNoCacheID)/", $_SERVER['HTTP_COOKIE'])) {
     $use_cache = 'YES';
   }
   else {
