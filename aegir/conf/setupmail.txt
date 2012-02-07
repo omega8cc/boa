@@ -79,6 +79,7 @@ Note about platforms naming convention:
   Basic Drupal 6 and Drupal 7 platforms  come in three instances,
   to make your standard workflow easier for: -dev, -stage and -prod,
   with correct suffix: D.00x, S.00x and P.00x in the platform name.
+  There is no difference between D/S/P, besides the name.
 
   Q: How to upgrade/add more Cores?
 
