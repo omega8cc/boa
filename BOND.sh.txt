@@ -153,14 +153,7 @@ _AEGIR_VERSION=HEAD
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
-### Since v2.0.2 we use forced GitHub mirror
-### by default, because Drupal git server
-### is really too slow - Hostmaster upgrade
-### takes 90-120 second, while with GitHub
-### it takes 15-20 seconds, depending on your
-### network connection and server speed.
-###
-_FORCE_GIT_MIRROR="github"
+_FORCE_GIT_MIRROR=""
 
 
 ###----------------------------------------###
