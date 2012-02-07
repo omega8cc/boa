@@ -47,6 +47,7 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:HTTrack|libwww|PECL|si
   // detect known bots
   $known_bot = 'bot';
 }
+$expire_in_seconds = '5';
 
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
@@ -66,6 +67,7 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
       header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
     }
   }
+  $expire_in_seconds = '1';
   header('X-Accel-Expires: 1');
 }
 
@@ -110,6 +112,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // deny known search bots on dev subdomains
   if (!empty($known_bot)) {
+    header('X-Accel-Expires: 10800');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://www.aegirproject.org/");
   }
@@ -127,6 +130,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER[
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST'])) {
   // deny known search bots on host8 subdomains
   if (!empty($known_bot)) {
+    header('X-Accel-Expires: 10800');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://omega8.cc/");
   }
@@ -233,24 +237,33 @@ if (isset($_SERVER['HTTP_HOST'])) {
     if (preg_match("/^\/(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
         preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
-        header('X-Accel-Expires: 1');
-      if (!isset($_COOKIE[OctopusNoCacheID]) && empty($known_bot)) {
-        $lifetime = '60';
-        setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
-      }
+      $expire_in_seconds = '1';
     }
-    elseif (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || $conf['install_profile'] == 'commerce' || !empty($is_ubercart)) {
-      header('X-Accel-Expires: 5');
-    }
-    elseif (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST' && empty($known_bot)) {
+
+    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST' && empty($known_bot) && !isset($_COOKIE[OctopusNoCacheID])) {
       $lifetime = '60';
       setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
-      header('X-Accel-Expires: 0');
+      $expire_in_seconds = '0';
+    }
+
+    if ($expire_in_seconds == '1' && !isset($_COOKIE[OctopusNoCacheID]) && empty($known_bot)) {
+      $lifetime = '60';
+      setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+    }
+    elseif ($expire_in_seconds >= 5 && (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || $conf['install_profile'] == 'commerce' || !empty($is_ubercart))) {
+      $expire_in_seconds = '5';
     }
     else {
       if (isset($_COOKIE[$test_sess_name])) {
-        header('X-Accel-Expires: 60');
+        $expire_in_seconds = '60';
       }
+    }
+
+    if (!empty($known_bot)) {
+      $expire_in_seconds = '10800';
+    }
+    if ($conf['install_profile'] != 'hostmaster') {
+      header("X-Accel-Expires: " . $expire_in_seconds);
     }
   }
 }
