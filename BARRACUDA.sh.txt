@@ -2304,10 +2304,7 @@ else
 fi
 
 install_with_aptitude_deps () {
-  if ! st_runner "$_INSTAPP $DEBDEPS" &> /dev/null; then
-    fatal "Installation failed: $?"
-  fi
-  return 0
+  st_runner "$_INSTAPP $DEBDEPS" 2> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
