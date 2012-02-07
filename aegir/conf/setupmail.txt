@@ -41,12 +41,10 @@ Once in your control panel, you'll find a number of
 Drupal platforms ready to deploy, available in all hosted options,
 starting with 1+ Aegir Standard or SSD Core:
 
- Acquia 6.24 ------------------ http://bit.ly/acquiadrupal
+ Acquia 6.24.1 ---------------- http://bit.ly/acquiadrupal
  Commerce Kickstart 1.3 ------- http://drupalcommerce.org
  Conference 1.0-beta2 --------- http://usecod.com
- Drupal 5.23 Pressflow -------- http://pressflow.org
- Drupal 6.24 Pressflow -------- http://pressflow.org
- Drupal 7.12 ------------------ http://drupal.org/drupal-7.0
+ Drupal 7.12 ------------------ http://drupal.org/drupal-7.12
  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
@@ -55,6 +53,8 @@ starting with 1+ Aegir Standard or SSD Core:
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Open Outreach 1.0-beta7 ------ http://openoutreach.org
  OpenChurch 1.22-a ------------ http://openchurchsite.com
+ Pressflow 5.23 --------------- http://pressflow.org
+ Pressflow 6.24.1 ------------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
  Ubercart 2.7 ----------------- http://ubercart.org
  Ubercart 3.0.1 --------------- http://ubercart.org

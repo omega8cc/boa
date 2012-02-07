@@ -1006,7 +1006,7 @@ fi
 #
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
-if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.0" ; then
+if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.12" ; then
 true
 
 ###---### Drupal 7 Development

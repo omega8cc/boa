@@ -100,15 +100,13 @@ standard production settings.
 
 Octopus can install the platforms listed below:
 
- Acquia 6.24 (int) ------------ http://bit.ly/acquiadrupal
+ Acquia 6.24.1 (int) ---------- http://bit.ly/acquiadrupal
  Acquia Commons 2.4 ----------- http://acquia.com/drupalcommons
  CiviCRM 3.4.8 ---------------- http://civicrm.org
  CiviCRM 4.0.8 ---------------- http://civicrm.org
  Commerce Kickstart 1.3 ------- http://drupalcommerce.org
  Conference 1.0-beta2 --------- http://usecod.com
- Drupal 5.23 Pressflow -------- http://pressflow.org
- Drupal 6.24 Pressflow (int) -- http://pressflow.org
- Drupal 7.12 ------------------ http://drupal.org/drupal-7.0
+ Drupal 7.12 ------------------ http://drupal.org/drupal-7.12
  ELMS 1.0-alpha5 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
@@ -122,6 +120,8 @@ Octopus can install the platforms listed below:
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3-alpha3 --------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
+ Pressflow 5.23 --------------- http://pressflow.org
+ Pressflow 6.24.1 (int) ------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
  Ubercart 2.7 (int) ----------- http://ubercart.org
  Ubercart 3.0.1 --------------- http://ubercart.org
