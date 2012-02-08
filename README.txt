@@ -152,7 +152,6 @@ added to all 6.x platforms:
  fpa-6.x-2.3
  httprl-6.x-1.4
  image-6.x-1.x-dev
- imageinfo_cache-6.x-2.1
  login_security-6.x-1.x-dev
  private_upload-6.x-1.x-dev
  readonlymode-6.x-1.x-dev

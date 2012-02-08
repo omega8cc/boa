@@ -370,7 +370,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/imageinfo_cache-6.x-2.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
