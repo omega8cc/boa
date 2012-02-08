@@ -1089,6 +1089,11 @@ echo NEW AEGIR setup in progress..
     echo ERROR: $_USER is a restricted username, please choose different _USER.
     exit 1
   fi
+  _REGEX="^[[:digit:]]"
+  if [[ "$_USER" =~ "$_REGEX" ]] ; then
+    echo ERROR: $_USER is a wrong username, it should start with a letter, not digit.
+    exit 1
+  fi
   _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
   if [ ! -z "$_FREEID" ] ; then
     echo ERROR: $_USER is already used or too similar to an existing username.
