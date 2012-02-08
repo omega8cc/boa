@@ -47,7 +47,7 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:HTTrack|libwww|PECL|si
   // detect known bots
   $known_bot = 'bot';
 }
-$expire_in_seconds = '5';
+$expire_in_seconds = '10800';
 
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
