@@ -328,11 +328,13 @@ fi
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
-    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_octopus_include.conf
-    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_modern_include.conf
-    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_legacy_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_advanced_include.conf
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
       sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
+      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf
     fi
   fi
 }
