@@ -697,7 +697,6 @@ fi
 if [ -z "$_LOCAL_THISHTIP" ] ; then
   _LOCAL_THISHTIP=all
 fi
-force_advanced_nginx_config_main
 if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
@@ -705,8 +704,10 @@ else
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 fi
+force_advanced_nginx_config_main
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/* &> /dev/null
 bash /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupA.sh.txt
+force_advanced_nginx_config_main
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
 fi
