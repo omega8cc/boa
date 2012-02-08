@@ -324,6 +324,27 @@ touch /var/log/incompatible-modules-removed-002i.log
 cd
 fi
 }
+#
+# Sub Force advanced Nginx configuration.
+sub_force_advanced_nginx_config () {
+  if [ -d "$_THIS_NGX_PATH" ] ; then
+    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_octopus_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_modern_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_legacy_include.conf
+    if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
+    fi
+  fi
+}
+#
+# Force advanced Nginx configuration.
+force_advanced_nginx_config () {
+  validate_local_ip &> /dev/null
+  _THIS_NGX_PATH=/data/disk/$_USER/.drush/provision/http/Provision/Service/http
+  sub_force_advanced_nginx_config
+  _THIS_NGX_PATH=/data/disk/$_USER/config/includes
+  sub_force_advanced_nginx_config
+}
 
 
 msg "$_STATUS A: Welcome `uname -a`"
@@ -561,6 +582,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   cd $_ROOT
   msg "$_STATUS A: post-install completed"
 fi
+
+
+###---### Force advanced Nginx config
+#
+msg "$_STATUS A: Force advanced Nginx config, please wait..."
+mrun "sleep 3"
+force_advanced_nginx_config
 
 
 ###---### Force global.inc update

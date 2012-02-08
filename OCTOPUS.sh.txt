@@ -556,6 +556,29 @@ octopus_cnf () {
   fi
 }
 #
+# Sub Force advanced Nginx configuration.
+sub_force_advanced_nginx_config_main () {
+  if [ -d "$_THIS_NGX_PATH" ] ; then
+    sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" $_BOA_REPO_NAME/nginx_octopus_include.conf
+    sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" $_THIS_NGX_PATH/nginx_modern_include.conf
+    sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_octopus_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_modern_include.conf
+    sed -i "s/EDIT_USER/$_USER/g"             $_THIS_NGX_PATH/nginx_legacy_include.conf
+    if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
+    fi
+  fi
+}
+#
+# Force advanced Nginx configuration.
+force_advanced_nginx_config_main () {
+  _THIS_NGX_PATH=/data/disk/$_USER/.drush/provision/http/Provision/Service/http
+  sub_force_advanced_nginx_config_main
+  _THIS_NGX_PATH=/data/disk/$_USER/config/includes
+  sub_force_advanced_nginx_config_main
+}
+#
 #
 ###---### action
 #
@@ -648,12 +671,6 @@ do
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
 done
-sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
-sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
-sed -i "s/EDIT_USER/$_USER/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_legacy_include.conf
-if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-  sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
-fi
 _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
 if [ -e "/usr/bin/sipcalc" ] ; then
@@ -681,9 +698,7 @@ fi
 if [ -z "$_LOCAL_THISHTIP" ] ; then
   _LOCAL_THISHTIP=all
 fi
-sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
-sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
-sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_legacy_include.conf
+force_advanced_nginx_config_main
 if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
