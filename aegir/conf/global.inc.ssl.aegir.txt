@@ -76,19 +76,22 @@ if (file_exists('./web.config')) {
   $drupal_seven_up = 'YES';
   header('X-Backend: A');
 }
-elseif (file_exists('./modules/path_alias_cache/path_alias_cache.module')) {
+elseif (file_exists('./modules/path_alias_cache')) {
   $conf['cache'] = 3; // enable hardcoded external caching - Pressflow 6 only
   $drupal_seven_up = 'NO';
+  $drupal_six = 'YES';
   header('X-Backend: B');
 }
-elseif (file_exists('./modules/watchdog/watchdog.module')) {
+elseif (file_exists('./modules/watchdog')) {
   $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
   $drupal_seven_up = 'NO';
+  $drupal_five = 'YES';
   header('X-Backend: C');
 }
 else {
   $conf['cache'] = 1; // enable hardcoded standard caching
   $drupal_seven_up = 'NO';
+  $drupal_unknown = 'YES';
   header('X-Backend: D');
 }
 
@@ -254,7 +257,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
       $expire_in_seconds = '5';
     }
     else {
-      if (isset($_COOKIE[$test_sess_name])) {
+      if (isset($_COOKIE[$test_sess_name]) && empty($drupal_five) && empty($drupal_unknown)) {
         $expire_in_seconds = '60';
       }
     }
