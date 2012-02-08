@@ -34,7 +34,7 @@ Some new features:
   http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
   http://omega8.cc/managing-your-code-in-the-aegir-style-110
 
-  Really, please read it to avoid some heavy headaches!
+  REALLY, PLEASE READ IT TO AVOID SOME HEAVY HEADACHES!
 
   Please note that instead of waiting for 6.25, we already
   included patches required to fix major issues with 6.24:

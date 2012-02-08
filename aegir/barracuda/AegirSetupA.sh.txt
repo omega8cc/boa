@@ -108,7 +108,6 @@ _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
-_USE_SPEED_BOOSTER=EDIT_USE_SPEED_BOOSTER
 _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
@@ -562,68 +561,6 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   cd $_ROOT
   msg "$_STATUS A: post-install completed"
 fi
-
-
-###---### Force advanced Nginx config
-#
-#if [ ! -e "$_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION" ] ; then
-  msg "$_STATUS A: Force advanced Nginx config, please wait..."
-  mrun "sleep 3"
-  _REL_VERSION=`lsb_release -sc`
-  if [ -x "/usr/local/sbin/nginx" ] ; then
-    _NGX_BIN=/usr/local/sbin/nginx
-  elif [ -x "/usr/local/bin/nginx" ] ; then
-    _NGX_BIN=/usr/local/bin/nginx
-  elif [ -x "/usr/sbin/nginx" ] ; then
-    _NGX_BIN=/usr/sbin/nginx
-  fi
-  _NGX_UP_TEST=`$_NGX_BIN -V 2>&1`
-  if [[ "$_NGX_UP_TEST" =~ upload ]] ; then
-    _NGX_UP_TEST_RESULT=OK
-    _OCT_NGX=nginx_octopus_include.conf
-    _ADV_NGX=nginx_advanced_include.conf
-  else
-    _NGX_UP_TEST_RESULT=FAIL
-    _OCT_NGX=nginx_octopus_noup_include.conf
-    _ADV_NGX=nginx_advanced_noup_include.conf
-  fi
-  ### _REL_VERSION test is left here as a reminder
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    _OCT_NGX=nginx_octopus_noup_include.conf
-    _ADV_NGX=nginx_advanced_noup_include.conf
-  fi
-  cd $_ROOT/config/includes
-  mv -f nginx_simple_include.conf nginx_simple_include.conf-$_NOW
-  mv -f nginx_advanced_include.conf nginx_advanced_include.conf-$_NOW
-  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./ &> /dev/null
-    cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
-    cp -af $_OCT_NGX nginx_advanced_include.conf &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf ./ &> /dev/null
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
-    cp -af $_ADV_NGX nginx_simple_include.conf &> /dev/null
-    cp -af $_ADV_NGX nginx_advanced_include.conf &> /dev/null
-    cp -af $_ADV_NGX nginx_modern_include.conf &> /dev/null
-  fi
-  chown $_USER:$_USRG * &> /dev/null
-  cd $_ROOT/.drush/provision/http/Provision/Config/Nginx
-  rm -f nginx_simple_include.conf
-  rm -f nginx_advanced_include.conf
-  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./ &> /dev/null
-    cp -af $_OCT_NGX nginx_simple_include.conf &> /dev/null
-    cp -af $_OCT_NGX nginx_advanced_include.conf &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf ./ &> /dev/null
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./ &> /dev/null
-    cp -af $_ADV_NGX nginx_simple_include.conf &> /dev/null
-    cp -af $_ADV_NGX nginx_advanced_include.conf &> /dev/null
-    cp -af $_ADV_NGX nginx_modern_include.conf &> /dev/null
-  fi
-  chown $_USER:$_USRG * &> /dev/null
-  echo "$_NOW" >> $_ROOT/config/includes/nginx_advanced_force.log.$_INSTALLER_VERSION
-#fi
 
 
 ###---### Force global.inc update

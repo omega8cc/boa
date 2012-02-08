@@ -295,56 +295,6 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
-### SPEED BOOSTER                          ###
-###----------------------------------------###
-###
-### It is an experimental feature allowing you
-### to use Nginx built-in cache system, using
-### static copies of full pages, similar to
-### those created by Boost module, but without
-### Boost at all, so it works the same with
-### any Drupal core version: 5.x, 6.x and 7.x.
-###
-### Even when enabled, it will not cache
-### anything if the site is using SSL mode
-### or the platform is Drupal 6 Ubercart,
-### Drupal 7 Commerce or any platform with
-### ubercart module uploaded to sites/all.
-###
-### Also any requests to /user* or /admin*
-### are never cached for obvious reasons.
-###
-### Note: this cache will use hardcoded
-### lifetime value, set to 60 minutes,
-### but if you have also Boost enabled, then
-### the Boost cached pages will be served
-### first, if exists, so it is still possible
-### to use both systems for a bit better
-### cache lifetime control.
-###
-### It is now possible to use this cache
-### system for logged in users, with pages
-### cached per user (valid for 5 minutes max)
-###
-### To disable Speed Booster per platform,
-### create an empty directory with the name
-### "ubercart" (unless you have there the
-### real ubercart module), with one empty
-### README.txt file inside, so its path will
-### be sites/all/modules/ubercart/README.txt
-###
-### You can turn ON/OFF this feature on every
-### upgrade for all platforms on this Aegir
-### Master Instance by changing the value
-### below to YES or NO.
-###
-### _USE_SPEED_BOOSTER=NO
-###
-###
-_USE_SPEED_BOOSTER=YES
-
-
-###----------------------------------------###
 ### DATABASE CUSTOM HOST                   ###
 ###----------------------------------------###
 ###
@@ -936,74 +886,21 @@ validate_local_ip () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
-  if [ -x "/usr/local/sbin/nginx" ] ; then
-    _NGX_BIN=/usr/local/sbin/nginx
-  elif [ -x "/usr/local/bin/nginx" ] ; then
-    _NGX_BIN=/usr/local/bin/nginx
-  elif [ -x "/usr/sbin/nginx" ] ; then
-    _NGX_BIN=/usr/sbin/nginx
-  fi
-  _NGX_UP_TEST=`$_NGX_BIN -V 2>&1`
-  if [[ "$_NGX_UP_TEST" =~ upload ]] ; then
-    _NGX_UP_TEST_RESULT=OK
-    _OCT_NGX=nginx_octopus_include.conf
-    _ADV_NGX=nginx_advanced_include.conf
-  else
-    _NGX_UP_TEST_RESULT=FAIL
-    _OCT_NGX=nginx_octopus_noup_include.conf
-    _ADV_NGX=nginx_advanced_noup_include.conf
-  fi
-  ### _REL_VERSION test is left here as a reminder
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    _OCT_NGX=nginx_octopus_noup_include.conf
-    _ADV_NGX=nginx_advanced_noup_include.conf
-  fi
   validate_local_ip &> /dev/null
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
-  sed -i "s/EDIT_THISHTIP/$_LOCAL_THISHTIP/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
-  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
-  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
-  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
+  sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
+  sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
+  sed -i "s/127.0.0.1;/$_LOCAL_THISHTIP;/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_legacy_include.conf
   sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
   sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf
+  sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_legacy_include.conf
   if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX
-    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX
-    sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_advanced_include.conf
     sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_octopus_include.conf
   fi
   cd /var/aegir/config/includes
   rm -f nginx_compact_include.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
-  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
-    cp -af $_OCT_NGX nginx_simple_include.conf
-    cp -af $_OCT_NGX nginx_advanced_include.conf
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf ./
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
-    cp -af $_ADV_NGX nginx_simple_include.conf
-    cp -af $_ADV_NGX nginx_advanced_include.conf
-    cp -af $_ADV_NGX nginx_modern_include.conf
-  fi
   chown aegir:aegir *
   cd /var/aegir/.drush/provision/http/Provision/Config/Nginx
-  rm -f nginx_simple_include.conf
-  rm -f nginx_advanced_include.conf
-  if [ "$_USE_SPEED_BOOSTER" = "YES" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_OCT_NGX ./
-    cp -af $_OCT_NGX nginx_simple_include.conf
-    cp -af $_OCT_NGX nginx_advanced_include.conf
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_modern_include.conf ./
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_ADV_NGX ./
-    cp -af $_ADV_NGX nginx_simple_include.conf
-    cp -af $_ADV_NGX nginx_advanced_include.conf
-    cp -af $_ADV_NGX nginx_modern_include.conf
-  fi
   chown aegir:aegir *
 }
 #
@@ -1200,7 +1097,6 @@ barracuda_cnf () {
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
     echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
-    echo "_USE_SPEED_BOOSTER=$_USE_SPEED_BOOSTER" >> /root/.barracuda.cnf
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FORCE_REINSTALL=$_PHP_FORCE_REINSTALL" >> /root/.barracuda.cnf
@@ -2206,7 +2102,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     fi
   fi
   cd /var/log
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
   cd /var/opt
 fi
 
@@ -3390,7 +3286,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 ###--------------------###
   msg "INFO: Simple check if Aegir Master Instance install is successful"
   mrun "sleep 3"
-  if [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+  if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] ; then
     msg "INFO: Aegir installation almost completed"
   else
     msg "FATAL ERROR: Something is wrong, Aegir Master Instance not installed - exit now"
@@ -3507,7 +3403,7 @@ else
     fi
     chmod 711 /var/aegir/.drush &> /dev/null
     cd /var/aegir/config/includes
-    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
+    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
     touch installer_version.txt
     msg "INFO: Aegir Master Instance upgrade completed"
   else
@@ -4069,7 +3965,7 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
   cd /var/aegir/config/includes
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / SpeedWild $_USE_SPEED_BOOSTER-$_HTTP_WILDCARD" >> ./barracuda_log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
   touch installer_version.txt
   echo " "
   _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
