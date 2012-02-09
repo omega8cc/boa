@@ -750,32 +750,32 @@ fi
 ###---### Ubercart 3.0.1
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN" ] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBER_CART_SEVEN - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBER_CART_SEVEN install in progress, please wait..."
 mrun "sleep 2"
-_CORE_DISTRO="$_CORE/ubercart-$_UBER_CART_SEVEN"
+_CORE_DISTRO="$_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/ubercart-$_UBER_CART_SEVEN &> /dev/null
-  cd $_CORE/ubercart-$_UBER_CART_SEVEN
+  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
   sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" ./profiles/acquia/acquia.info
   sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" ./profiles/acquia/acquia.info
-  rm -f $_CORE/ubercart-$_UBER_CART_SEVEN/*.txt
+  rm -f $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/minimal
-  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/testing
-  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/modules/sqlsrv
-  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/modules/token
-  mkdir -p $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/libraries
-  cd $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/libraries
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/minimal
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/testing
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/modules/sqlsrv
+  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/modules/token
+  mkdir -p $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/libraries
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/libraries
   wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
-  cd $_CORE/ubercart-$_UBER_CART_SEVEN/profiles/acquia/modules
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/modules
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
@@ -788,12 +788,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  cd $_CORE/ubercart-$_UBER_CART_SEVEN
+  cd $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
-cd $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
+mkdir -p $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
 create_symlinks
 create_d7_symlinks
 patch_d7_core
@@ -2268,9 +2268,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_UBER_CART_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_UBER_CART_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi

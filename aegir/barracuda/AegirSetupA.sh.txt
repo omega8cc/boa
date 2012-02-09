@@ -904,9 +904,9 @@ mrun "sleep 3"
       ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then
