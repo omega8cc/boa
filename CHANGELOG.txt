@@ -164,7 +164,7 @@
   * HTTP/HTTPS redirects example in the override.global.inc file.
   * Enabled by default HTTPS and HTTP sessions/cookies for D7.
   * Issue #1243068 - Allow to override $cache_module_path.
-  
+
 
 ### Stable Edition 1.0-boa-T-8.9
 ### Date: Sat, 30 July 2011 23:50:00 +0200.
