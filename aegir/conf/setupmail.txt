@@ -22,7 +22,7 @@ The following topics are covered within this email:
 3. Setting up search with Solr
 4. Adding modules & themes
 5. Advanced user information
-6. New features in this BOA version - there are some big news!
+6. New features in this BOA version - we have a big news!
 
 Please read this e-mail in its entirety. It contains
 important information required to properly leverage
