@@ -23,7 +23,7 @@
 
   http://groups.drupal.org/node/187209
 
-  Note also then we renamed too basic Acquia 7.x platform to
+  Note also that we renamed too basic Acquia 7.x platform to
   Ubercart 3.x platform. It is based on the same acquia install
   profile, but includes all contrib modules required for any
   basic Ubercart 3.x site.
