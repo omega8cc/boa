@@ -2,19 +2,19 @@
  To enable Apache Solr Search for any site on your server,
  please download and enable Apache Solr Search Integration module
  with required third party library, as explained in its readme.
- 
+
  http://drupal.org/project/apachesolr
- 
- Your server is configured by default for version 6.x-1.5,
+
+ Your server is configured by default for version 6.x-1.6,
  but you can configure each core separately to use 7.x-1.0 version
  by uploading required solrconfig.xml, schema.xml and protwords.txt
  files to the solr/site_00*/conf directory.
- 
+
  In your Solr configuration there are ready to use 8 separate
  cores, since you need to use one core per site to avoid
  displaying search results from different sites on any site
  with enabled Solr module.
- 
+
  Solr host name ...: 127.0.0.1
  Solr port ........: 8080
  Solr path ........: solr/unique001
@@ -25,22 +25,22 @@
  Solr path ........: solr/unique006
  Solr path ........: solr/unique007
  Solr path ........: solr/unique008
- 
+
  To add more cores, you need to:
- 
+
  1. Create a copy of example core directory:
     cp -ar /opt/solr/site_008 /opt/solr/site_009
- 
+
  2. Add new core in file:
     /opt/solr/solr.xml
- 
+
  3. Restart Tomcat:
     invoke-rc.d tomcat restart
- 
+
  You can also rename all cores in the file:
    /opt/solr/solr.xml
  to avoid using them by not authorized site owners:
- 
+
    <cores adminPath="/admin/cores">
      <core name="unique001" instanceDir="site_001" />
      <core name="w44337377" instanceDir="site_002" />
@@ -56,8 +56,8 @@
 ### NOTE: to turn off Apache Solr Search server type as root:
 
     $ service tomcat stop
-    
-    
+
+
 ### NOTE: to disable Apache Solr Search completely, type as root:
 
     $ invoke-rc.d tomcat stop
