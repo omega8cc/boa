@@ -148,12 +148,14 @@ added to all 6.x platforms:
  css_emimage-6.x-2.x-dev (mikeytown2's fork)
  dbtuner-6.x-1.x-dev
  esi-6.x-2.x-dev
+ expire-6.x-1.x
  filefield_nginx_progress-6.x-1.x-dev
  fpa-6.x-2.3
  httprl-6.x-1.4
  image-6.x-1.x-dev
  login_security-6.x-1.x-dev
  private_upload-6.x-1.x-dev
+ purge-6.x-1.x (with patches)
  readonlymode-6.x-1.x-dev
  robotstxt-6.x-1.x-dev
  seckit-6.x-1.3
@@ -175,10 +177,12 @@ The Drupal 7.x platforms come with contrib modules:
  config_perms-7.x-2.x-dev
  core_library-7.x-2.0-beta1
  css_emimage-7.x-1.2
+ expire-7.x-1.x (with patches)
  filefield_nginx_progress-7.x-1.x-dev
  flood_control-7.x-1.x-dev
  fpa-7.x-2.0
  httprl-7.x-1.4
+ purge-7.x-1.x (with patches)
  readonlymode-7.x-1.0-beta1
  robotstxt-7.x-1.x-dev
  seckit-7.x-1.3
