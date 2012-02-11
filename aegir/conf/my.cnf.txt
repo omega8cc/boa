@@ -51,9 +51,9 @@ log_bin_index           = /var/log/mysql/mariadb-bin.index
 expire_logs_days        = 1
 max_binlog_size         = 100M
 open_files_limit        = 196608
-slow_query_log          = 1
-long_query_time         = 10
-slow_query_log_file     = /var/log/mysql/sql-slow-query.log
+#slow_query_log          = 1
+#long_query_time         = 10
+#slow_query_log_file     = /var/log/mysql/sql-slow-query.log
 #log_queries_not_using_indexes
 
 
