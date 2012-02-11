@@ -661,6 +661,9 @@ fix_on_upgrade () {
   if [ ! -e "/etc/mysql/custom.my.cnf" ] ; then
     cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+    sed -i "s/long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+    sed -i "s/slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
   _DB_SERVER_TEST=`mysql -V 2>&1`
@@ -919,6 +922,17 @@ force_advanced_nginx_config () {
 }
 #
 # Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona.
+fix_php53_conf () {
+  sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g"                       /opt/local/etc/php53-fpm.conf
+  sed -i "s/request_slowlog_timeout =.*/request_terminate_timeout = 30s/g"     /opt/local/etc/php53-fpm.conf
+  sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf
+  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 300s/g"  /opt/local/etc/php53-fpm.conf
+  sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf
+  sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf
+  sed -i "s/process_control_timeout =.*/process_control_timeout = 5s/g"        /opt/local/etc/php53-fpm.conf
+}
+#
+# Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona.
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
@@ -958,7 +972,7 @@ tune_memory_limits () {
       fi
       sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
       if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-        sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g" /opt/local/etc/php53-fpm.conf
+        fix_php53_conf
       fi
       if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
         _LOCAL_NGINX_WORKERS=8
@@ -977,7 +991,7 @@ tune_memory_limits () {
         fi
         sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
         if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-          sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g" /opt/local/etc/php53-fpm.conf
+          fix_php53_conf
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
           _LOCAL_NGINX_WORKERS=8
@@ -994,6 +1008,7 @@ tune_memory_limits () {
         fi
         sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
         if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+          fix_php53_conf
           sed -i "s/pm.start_servers =.*/pm.start_servers = 2/g" /opt/local/etc/php53-fpm.conf
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
