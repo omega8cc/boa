@@ -2232,7 +2232,7 @@ else
 fi
 
 install_with_aptitude_deps () {
-  st_runner "$_INSTAPP $DEBDEPS" &> /dev/null
+  st_runner "$_INSTAPP $DEBDEPS" 2> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
