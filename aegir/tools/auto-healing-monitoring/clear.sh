@@ -3,10 +3,10 @@
 /etc/init.d/php-fpm reload
 /etc/init.d/php53-fpm reload
 sleep 5
-echo rotate > /var/log/php/php-fpm-slow.log
 echo rotate > /var/log/php/php-fpm-error.log
-echo rotate > /opt/local/var/log/php-fpm.log
-echo rotate > /opt/local/var/log/www.log.slow
+echo rotate > /var/log/php/php-fpm-slow.log
+echo rotate > /opt/local/var/log/php53-fpm-error.log
+echo rotate > /opt/local/var/log/php53-fpm-slow.log
 echo rotate > /var/log/php/error_log_52
 echo rotate > /var/log/php/error_log_53
 echo rotate > /var/log/php/error_log_cli
