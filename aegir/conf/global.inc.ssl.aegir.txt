@@ -115,7 +115,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // deny known search bots on dev subdomains
   if (!empty($known_bot)) {
-    header('X-Accel-Expires: 10800');
+    header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://www.aegirproject.org/");
   }
@@ -133,7 +133,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER[
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST'])) {
   // deny known search bots on host8 subdomains
   if (!empty($known_bot)) {
-    header('X-Accel-Expires: 10800');
+    header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://omega8.cc/");
   }
