@@ -2944,6 +2944,12 @@ fi ### end if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] ; then
 
 
 ###--------------------###
+if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
+  update_php_five_three
+fi
+
+
+###--------------------###
 if [ ! -e "/var/log/apc-$_APC_VERSION.log" ] ; then
   msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 3"
