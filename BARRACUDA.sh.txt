@@ -434,6 +434,7 @@ _PHP_VERSION=5.2.17
 _PHP_VERSION_BUILD=5.3.9
 _PHP_VERSION_NEW=5.3.10
 _APC_VERSION=3.1.9
+_IMAGICK_VERSION=3.1.0RC1
 _CHIVE_VERSION=1.0.2
 _BZR_VERSION=2.3.4
 _LSHELL_VERSION=0.9.14.1-sec
@@ -1319,6 +1320,19 @@ install_php_five_three () {
   st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
+###--------------------###
+  msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log
 }
 #
 # Update PHP 5.3
@@ -1354,6 +1368,21 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
     echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
     mrun "sleep 3"
   fi
+fi
+###--------------------###
+if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log" ] ; then
+  msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log
 fi
 }
 #
@@ -2228,11 +2257,11 @@ fi
 msg "INFO: Install/upgrade required libraries and tools"
 msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop libmagick9-dev"
 elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database mytop"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database mytop libmagickwand-dev"
 else
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop"
+  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop libmagick9-dev"
 fi
 
 install_with_aptitude_deps () {
@@ -2892,6 +2921,20 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   fi
 
 ###--------------------###
+  msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log
+
+###--------------------###
   if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
     install_php_five_three
     update_php_five_three
@@ -2957,6 +3000,23 @@ if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
       mv -f global.inc.aegir.txt global.inc &> /dev/null
     fi
   fi
+fi
+
+
+###--------------------###
+if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log" ] ; then
+  msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION, please wait..."
+  mrun "sleep 3"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log
 fi
 
 
