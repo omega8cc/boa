@@ -1153,6 +1153,10 @@ barracuda_cnf () {
     sleep 3
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
+    _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
+    if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
+      sed -i "s/_USE_SPEED_BOOSTER.*//g" /root/.barracuda.cnf
+    fi
     _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
     if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
       true
