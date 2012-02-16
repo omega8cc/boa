@@ -64,6 +64,27 @@ _PHP_FPM_VERSION=5.2
 
 
 ###----------------------------------------###
+### PHP-CLI VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-CLI version per server.
+### It will be used by all Aegir instances,
+### including Master and all Satellites,
+### so it will effectively break support
+### for Drupal 5.x sites in all instances.
+###
+### This option can be set both on install
+### and upgrade. Use with care!
+###
+### Available options:
+###
+### _PHP_CLI_VERSION=5.2
+### _PHP_CLI_VERSION=5.3
+###
+_PHP_CLI_VERSION=5.2
+
+
+###----------------------------------------###
 ### XTRAS INSTALL MODE                     ###
 ###----------------------------------------###
 ###
@@ -3023,6 +3044,21 @@ if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log" ] ; then
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log
+fi
+
+
+###--------------------###
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+  if [ -e "/usr/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+    mv -f /usr/local/bin/php /usr/local/bin/php52
+    ln -s /opt/local/bin/php /usr/local/bin/php
+  fi
+fi
+if [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -L "/usr/local/bin/php" ] ; then
+  if [ -e "/usr/local/bin/php52" ] ; then
+    rm -f /usr/local/bin/php
+    mv -f /usr/local/bin/php52 /usr/local/bin/php
+  fi
 fi
 
 
