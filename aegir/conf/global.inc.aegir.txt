@@ -49,6 +49,12 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:HTTrack|libwww|PECL|si
 }
 $expire_in_seconds = '10800';
 
+// Temporary workaround for Purge failing
+// to purge cache for vhosts behind local proxy.
+if (isset($_SERVER['HTTP_X_LOCAL_PROXY'])) {
+  $expire_in_seconds = '60';
+}
+
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
