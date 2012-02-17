@@ -380,7 +380,7 @@ check_limits () {
 
 action()
 {
-for User in `find /data/disk/ -maxdepth 1 -type d | sort`
+for User in `find /data/disk/ -maxdepth 1 | sort`
 do
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
   CTL_LOAD=888
