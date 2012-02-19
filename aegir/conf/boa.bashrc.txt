@@ -1,0 +1,107 @@
+#-------------------------------------------------------------
+# BOA default .bashrc
+#-------------------------------------------------------------
+
+ulimit -S -c 0
+
+set -o notify
+set -o noclobber
+set -o ignoreeof
+set -o nounset
+
+shopt -s cdspell
+shopt -s cdable_vars
+shopt -s checkhash
+shopt -s checkwinsize
+shopt -s sourcepath
+shopt -s no_empty_cmd_completion
+shopt -s cmdhist
+shopt -s histappend histreedit histverify
+shopt -u mailwarn
+unset MAILCHECK
+
+HISTCONTROL=ignoredups:ignorespace
+
+export TERM=xterm1
+
+case "$TERM" in
+xterm*|rxvt*)
+  export PS1='\h:\w\$ '
+  ;;
+  *)
+  ;;
+esac
+
+if [ -x /usr/bin/dircolors ]; then
+  test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+  alias ll="ls -l --group-directories-first --color=auto"
+  alias ls='ls -hF --color=auto'   # add colors for filetype recognition
+  alias la='ls -Al --color=auto'   # show hidden files
+  alias lx='ls -lXB --color=auto'  # sort by extension
+  alias lk='ls -lSr --color=auto'  # sort by size, biggest last
+  alias lc='ls -ltcr --color=auto' # sort by and show change time, most recent last
+  alias lu='ls -ltur --color=auto' # sort by and show access time, most recent last
+  alias lt='ls -ltr --color=auto'  # sort by date, most recent last
+  alias lr='ls -lR --color=auto'   # recursive ls
+  alias dir='dir --color=auto'     # add colors
+  alias vdir='vdir --color=auto'   # add colors
+  alias grep='grep --color=auto'   # add colors
+  alias fgrep='fgrep --color=auto' # add colors
+  alias egrep='egrep --color=auto' # add colors
+else
+  alias ll="ls -l --group-directories-first"
+  alias ls='ls -hF'   # filetype recognition
+  alias la='ls -Al'   # show hidden files
+  alias lx='ls -lXB'  # sort by extension
+  alias lk='ls -lSr'  # sort by size, biggest last
+  alias lc='ls -ltcr' # sort by and show change time, most recent last
+  alias lu='ls -ltur' # sort by and show access time, most recent last
+  alias lt='ls -ltr'  # sort by date, most recent last
+  alias lr='ls -lR'   # recursive ls
+fi
+
+alias df='df -kTh'
+
+function xtitle()
+{
+  case "$TERM" in
+    xterm*|rxvt*)
+    echo -n -e "\033]0;$*\007" ;;
+    *)
+    ;;
+  esac
+}
+
+_L_HOST=`uname -n`
+alias top='xtitle System Processes on $_L_HOST && top'
+alias htop='xtitle System Processes on $_L_HOST && htop'
+alias mytop='xtitle SQL Processes on $_L_HOST && mytop'
+alias make='xtitle Making $(basename $PWD) ; make'
+
+function extract()
+{
+  if [ -f $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip $1     ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+  else
+    echo "'$1' is not a valid file"
+  fi
+}
+
+if [ -f ~/.bash_aliases ]; then
+  . ~/.bash_aliases
+fi
+
+umask 022
