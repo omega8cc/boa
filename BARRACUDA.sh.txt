@@ -661,7 +661,7 @@ set_xterm () {
 #
 # Fix this on upgrade.
 fix_on_upgrade () {
-  perl -p -i -e "s/loglevel\s+.*/loglevel warning/g" /etc/redis/redis.conf
+  sed -i "s/loglevel.*/loglevel info/g" /etc/redis/redis.conf
   sed -i "s/umask.*022/umask 002/g" /etc/profile
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
@@ -696,15 +696,15 @@ fix_on_upgrade () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
+    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
   if [ ! -e "/etc/mysql/custom.my.cnf" ] ; then
     cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
-    sed -i "s/long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
-    sed -i "s/slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+    sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+    sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+    sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
   _DB_SERVER_TEST=`mysql -V 2>&1`
@@ -714,12 +714,12 @@ fix_on_upgrade () {
     _DB_SERVER=Percona
   fi
   if [ "$_DB_SERVER" = "Percona" ] ; then
-    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/language/\#language/g" /etc/mysql/my.cnf
+    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
   if [ ! -e "/var/log/nginx_config_fixed" ] ; then
     cd /var/aegir
-    sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
+    sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
     if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -2108,8 +2108,8 @@ if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
 fi
 if [ -f "/etc/default/dhcpcd" ] ; then
   _INSTALL_PDNSD=YES
-  sed -i "s/SET_DNS/\#SET_DNS/g" /etc/default/dhcpcd
-  sed -i "s/SET_HOSTNAME/\#SET_HOSTNAME/g" /etc/default/dhcpcd
+  sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd
+  sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ "$_INSTALL_PDNSD" = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
@@ -2413,8 +2413,8 @@ else
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     fi
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
-    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/language/\#language/g" /etc/mysql/my.cnf
+    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
     rm -f /var/lib/mysql/debian-5.1.flag &> /dev/null
     rm -f /var/lib/mysql/debian-5.2.flag &> /dev/null
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
@@ -3332,8 +3332,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
   if [ "$_DB_SERVER" = "Percona" ] ; then
-    sed -i "s/default-table-type/\#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/language/\#language/g" /etc/mysql/my.cnf
+    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
   tune_memory_limits
   if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
@@ -3497,7 +3497,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
   fi
   cd /var/aegir
-  sed -i "s/access_log/\#access_log/g" /etc/nginx/nginx.conf
+  sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf
   perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
   perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
   rm -f /etc/nginx/sites-available/default
@@ -4117,7 +4117,7 @@ EOF
   echo "password=$PASWD" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf &> /dev/null
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    perl -p -i -e "s/check_for_crashed_tables/\#check_for_crashed_tables/g" /etc/mysql/debian-start
+    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
     st_runner "invoke-rc.d mysql restart" &> /dev/null
     mrun "sleep 3"
