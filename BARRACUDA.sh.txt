@@ -2161,6 +2161,14 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     _REL_VERSION=squeeze
     _APT_SOURCES_REWRITE=YES
   fi
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list)
+    if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]] ; then
+      true
+    else
+      _APT_SOURCES_REWRITE=YES
+    fi
+  fi
 else
   _APT_SOURCES_REWRITE=YES
 fi
@@ -2221,14 +2229,23 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
     mrun "sleep 3"
+    echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
     echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
     echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
-    echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+    echo "" >> /etc/apt/sources.list
+    echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
     if [ "$_REL_VERSION" = "lenny" ] ; then
       echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
       echo "deb-src http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
     fi
+    if [ "$_REL_VERSION" = "squeeze" ] ; then
+      echo "deb http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
+      echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
+    fi
+    echo "" >> /etc/apt/sources.list
+    echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
+    echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+    echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
   fi
   cd /var/log
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
