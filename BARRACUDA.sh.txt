@@ -1480,6 +1480,7 @@ fi
 if [ `whoami` = "root" ] ; then
   msg "STATUS: This script is ran as a root user."
   msg "STATUS: Stop the cron and wait 5 sec."
+  chmod a+rw /dev/null
   rm -f -r /opt/tmp/*
   rm -f /tmp/cache.inc
   invoke-rc.d cron stop &> /dev/null
