@@ -666,7 +666,9 @@ kill_nash () {
     true
   else
     cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
-    sed -i "s/exit 0/killall nash-hotplug\nexit 0/g" /etc/rc.local
+    sed -i "s/exit 0//g" /etc/rc.local
+    echo "killall nash-hotplug" >> /etc/rc.local
+    echo "exit 0" >> /etc/rc.local
     killall nash-hotplug &> /dev/null
   fi
 }
