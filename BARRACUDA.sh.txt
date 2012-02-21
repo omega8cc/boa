@@ -659,6 +659,18 @@ set_xterm () {
   fi
 }
 #
+# Kill nash-hotplug.
+kill_nash () {
+  _NASH_TEST=$(grep nash-hotplug /etc/rc.local)
+  if [[ "$_NASH_TEST" =~ "nash-hotplug" ]] ; then
+    true
+  else
+    cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
+    sed -i "s/exit 0/killall nash-hotplug\nexit 0/g" /etc/rc.local
+    killall nash-hotplug &> /dev/null
+  fi
+}
+#
 # Fix this on upgrade.
 fix_on_upgrade () {
   sed -i "s/loglevel.*/loglevel info/g" /etc/redis/redis.conf
@@ -737,6 +749,7 @@ fix_on_upgrade () {
     st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   fi
   set_xterm
+  kill_nash
 }
 #
 # Validate server public IP.
@@ -2434,6 +2447,7 @@ run_apt_update_again
 install_with_aptitude_deps
 install_latest_git
 set_xterm
+kill_nash
 
 
 ###--------------------###
