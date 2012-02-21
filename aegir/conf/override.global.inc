@@ -2,7 +2,6 @@
 
 // This file should be created as /data/conf/override.global.inc.
 
-
 // Disable Memcached + Redis cache for listed domains.
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.com)/", $_SERVER['HTTP_HOST'])) {
   $use_cache = 'NO';
@@ -12,8 +11,9 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT']) &&
     preg_match("/dev/", $_SERVER['HTTP_HOST']) &&
     preg_match("/(?:crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
-
-  header('X-Accel-Expires: 0');
+  header('X-Accel-Expires: 1');
+  // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
+  // You always want that one second or you will be vulnerable to DoS attacks.
   header("HTTP/1.1 301 Moved Permanently");
   header("Location: http://dev.null");
 }
@@ -41,7 +41,9 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
       preg_match("/^\/(?:user.*|user\/.*\/edit.*|user\/reset.*|user\/register*|user\/logout|user\/password|user\/login)$/", $_SERVER['REQUEST_URI'])) {
     $base_url = 'https://' . $_SERVER['HTTP_HOST'];
     if ($request_type != "SSL") {
-      header('X-Accel-Expires: 0');
+      header('X-Accel-Expires: 1');
+      // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
+      // You always want that one second or you will be vulnerable to DoS attacks.
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
     }
@@ -49,7 +51,9 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
     if ($request_type == "SSL" && !preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI'])) {
-      header('X-Accel-Expires: 0');
+      header('X-Accel-Expires: 1');
+      // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
+      // You always want that one second or you will be vulnerable to DoS attacks.
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
     }
