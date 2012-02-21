@@ -107,6 +107,7 @@ _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
+_REL_VERSION=`lsb_release -sc`
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
@@ -768,7 +769,7 @@ fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _USERFTP="$_USER.ftp"
   _USERFTP_ROOT="/home/$_USERFTP"
-  if [ "$_THIS_OS" = "Debian" ] ; then
+  if [ "$_REL_VERSION" = "lenny" ] ; then
     _PATH_LSHELL="/usr/bin/lshell"
   else
     _PATH_LSHELL="/usr/local/bin/lshell"
