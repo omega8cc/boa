@@ -673,6 +673,20 @@ kill_nash () {
   fi
 }
 #
+# Fix FTPS access on Squeeze.
+fix_ftps_squeeze () {
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
+    if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
+      true
+    else
+      echo "/usr/bin/lshell" >> /etc/shells
+      ### we don't need this replace, so it is here just for reference:
+      ### sed -i "s/usr\/bin\/lshell/usr\/local\/bin\/lshell/g" /etc/passwd
+    fi
+  fi
+}
+#
 # Fix this on upgrade.
 fix_on_upgrade () {
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf
@@ -752,6 +766,7 @@ fix_on_upgrade () {
   fi
   set_xterm
   kill_nash
+  fix_ftps_squeeze
 }
 #
 # Validate server public IP.
@@ -2468,6 +2483,7 @@ install_with_aptitude_deps
 install_latest_git
 set_xterm
 kill_nash
+fix_ftps_squeeze
 
 
 ###--------------------###
