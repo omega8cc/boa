@@ -562,10 +562,8 @@ sub_force_advanced_nginx_config_main () {
     sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
     sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
     sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
-    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
       sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
     fi
   fi
 }
@@ -576,6 +574,14 @@ force_advanced_nginx_config_main () {
   sub_force_advanced_nginx_config_main
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config_main
+  if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
+    rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+  fi
+  if [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
+    rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
+  fi
 }
 #
 #

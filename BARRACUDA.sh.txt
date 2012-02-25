@@ -970,10 +970,8 @@ sub_force_advanced_nginx_config () {
     sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
     sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_modern_include.conf
     sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_legacy_include.conf
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_advanced_include.conf
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
       sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf
     fi
   fi
 }
@@ -985,12 +983,17 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
-  cd /var/aegir/config/includes
-  rm -f nginx_compact_include.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf ./
-  chown aegir:aegir *
-  cd /var/aegir/.drush/provision/http/Provision/Config/Nginx
-  chown aegir:aegir *
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
+  if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+    rm -f /var/aegir/config/includes/nginx_advanced_include.conf
+    ln -s /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
+  fi
+  if [ ! -L "/var/aegir/config/includes/nginx_simple_include.conf" ] ; then
+    rm -f /var/aegir/config/includes/nginx_simple_include.conf
+    ln -s /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
+  fi
+  chown aegir:aegir /var/aegir/config/includes/*
+  chown aegir:aegir /var/aegir/.drush/provision/http/Provision/Config/Nginx/*
 }
 #
 # Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona.
@@ -4218,7 +4221,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   msg "before you will be able to visit Aegir URL for the first time."
   echo " "
   mrun "sleep 99"
-  cd /var/aegir/config/includes
   force_advanced_nginx_config
   mrun "sleep 11"
   invoke-rc.d nginx restart &> /dev/null
