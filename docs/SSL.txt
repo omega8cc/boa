@@ -24,35 +24,36 @@
 ### CREATE THIS FILE AS: /var/aegir/config/server_master/nginx/pre.d/extra_ip.conf
 ###
 upstream extra_ip {
-   server  YO.UR.AEGIR.IP:80;
+  server  YO.UR.AEGIR.IP:80;
 }
 server {
-   listen                        YO.UR.EXTRA.IP1:80;
-   listen                        YO.UR.EXTRA.IP2:80;
-   listen                        YO.UR.EXTRA.IP3:80;
-   server_name                   _;
-   location / {
-      proxy_pass                 http://extra_ip;
-      proxy_redirect             off;
-      proxy_set_header           Host              $host;
-      proxy_set_header           X-Real-IP         $remote_addr;
-      proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
-      proxy_set_header           X-Forwarded-For   $proxy_add_x_forwarded_for;
-      proxy_set_header           X-Local-Proxy     $scheme;
-      proxy_pass_header          Set-Cookie;
-      proxy_pass_header          Cookie;
-      proxy_pass_header          X-Accel-Expires;
-      proxy_pass_header          X-Accel-Redirect;
-      proxy_pass_header          X-This-Proto;
-      proxy_connect_timeout      90;
-      proxy_send_timeout         90;
-      proxy_read_timeout         90;
-      proxy_buffer_size          4k;
-      proxy_buffers              4 32k;
-      proxy_busy_buffers_size    64k;
-      proxy_temp_file_write_size 64k;
-      access_log                 off;
-   }
+  listen                       YO.UR.EXTRA.IP1:80;
+  listen                       YO.UR.EXTRA.IP2:80;
+  listen                       YO.UR.EXTRA.IP3:80;
+  server_name                  _;
+  location / {
+    proxy_pass                 http://extra_ip;
+    proxy_redirect             off;
+    proxy_set_header           Host              $host;
+    proxy_set_header           X-Real-IP         $remote_addr;
+    proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
+    proxy_set_header           X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header           X-Local-Proxy     $scheme;
+    proxy_pass_header          Set-Cookie;
+    proxy_pass_header          Cookie;
+    proxy_pass_header          X-Accel-Expires;
+    proxy_pass_header          X-Accel-Redirect;
+    proxy_pass_header          X-This-Proto;
+    proxy_connect_timeout      90;
+    proxy_send_timeout         90;
+    proxy_read_timeout         90;
+    proxy_buffer_size          4k;
+    proxy_buffers              4 32k;
+    proxy_busy_buffers_size    64k;
+    proxy_temp_file_write_size 64k;
+    access_log                 off;
+    log_not_found              off;
+  }
 }
 ###
 ### Plain HTTP proxy to add more IPs for HTTP connections (END)
@@ -66,83 +67,103 @@ server {
 ### CREATE THIS FILE AS: /var/aegir/config/server_master/nginx/pre.d/extra_ip_ssl.conf
 ###
 upstream extra_ip_ssl {
-   server  YO.UR.AEGIR.IP:80;
+  server  YO.UR.AEGIR.IP:80;
 }
 ###
 ### FOR abc-ssl-enabled-domain.com
 ###
 server {
-   listen                        YO.UR.EXTRA.IP1:443;
-   server_name                   _;
-   ssl                           on;
-   ssl_certificate               /etc/ssl/private/abc-ssl-enabled-domain.crt;
-   ssl_certificate_key           /etc/ssl/private/abc-ssl-enabled-domain.key;
-   ssl_session_timeout           5m;
-   ssl_protocols                 SSLv3 TLSv1;
-   ssl_ciphers                   HIGH:!ADH:!MD5;
-   ssl_prefer_server_ciphers     on;
-   keepalive_timeout             70;
-   location / {
-      proxy_pass                 http://extra_ip_ssl;
-      proxy_redirect             off;
-      proxy_set_header           Host              $host;
-      proxy_set_header           X-Real-IP         $remote_addr;
-      proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
-      proxy_set_header           X-Forwarded-For   $proxy_add_x_forwarded_for;
-      proxy_set_header           X-Local-Proxy     $scheme;
-      proxy_set_header           X-Forwarded-Proto $scheme;
-      proxy_pass_header          Set-Cookie;
-      proxy_pass_header          Cookie;
-      proxy_pass_header          X-Accel-Expires;
-      proxy_pass_header          X-Accel-Redirect;
-      proxy_pass_header          X-This-Proto;
-      proxy_connect_timeout      90;
-      proxy_send_timeout         90;
-      proxy_read_timeout         90;
-      proxy_buffer_size          4k;
-      proxy_buffers              4 32k;
-      proxy_busy_buffers_size    64k;
-      proxy_temp_file_write_size 64k;
-      access_log                 off;
-   }
+  listen                       YO.UR.EXTRA.IP1:443;
+  server_name                  _;
+  ssl                          on;
+  ssl_certificate              /etc/ssl/private/abc-ssl-enabled-domain.crt;
+  ssl_certificate_key          /etc/ssl/private/abc-ssl-enabled-domain.key;
+  ssl_session_timeout          5m;
+  ssl_protocols                SSLv3 TLSv1;
+  ssl_ciphers                  HIGH:!ADH:!MD5;
+  ssl_prefer_server_ciphers    on;
+  keepalive_timeout            70;
+  ###
+  ### Allways deny crawlers and not allowed bots without any response.
+  ###
+  if ($is_crawler) {
+    return 444;
+  }
+  if ($deny_on_high_load) {
+    return 444;
+  }
+  location / {
+    proxy_pass                 http://extra_ip_ssl;
+    proxy_redirect             off;
+    proxy_set_header           Host              $host;
+    proxy_set_header           X-Real-IP         $remote_addr;
+    proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
+    proxy_set_header           X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header           X-Local-Proxy     $scheme;
+    proxy_set_header           X-Forwarded-Proto $scheme;
+    proxy_pass_header          Set-Cookie;
+    proxy_pass_header          Cookie;
+    proxy_pass_header          X-Accel-Expires;
+    proxy_pass_header          X-Accel-Redirect;
+    proxy_pass_header          X-This-Proto;
+    proxy_connect_timeout      90;
+    proxy_send_timeout         90;
+    proxy_read_timeout         90;
+    proxy_buffer_size          4k;
+    proxy_buffers              4 32k;
+    proxy_busy_buffers_size    64k;
+    proxy_temp_file_write_size 64k;
+    access_log                 off;
+    log_not_found              off;
+  }
 }
 ###
 ### FOR xyz-ssl-enabled-domain.com
 ###
 server {
-   listen                        YO.UR.EXTRA.IP2:443;
-   server_name                   _;
-   ssl                           on;
-   ssl_certificate               /etc/ssl/private/xyz-ssl-enabled-domain.crt;
-   ssl_certificate_key           /etc/ssl/private/xyz-ssl-enabled-domain.key;
-   ssl_session_timeout           5m;
-   ssl_protocols                 SSLv3 TLSv1;
-   ssl_ciphers                   HIGH:!ADH:!MD5;
-   ssl_prefer_server_ciphers     on;
-   keepalive_timeout             70;
-   location / {
-      proxy_pass                 http://extra_ip_ssl;
-      proxy_redirect             off;
-      proxy_set_header           Host              $host;
-      proxy_set_header           X-Real-IP         $remote_addr;
-      proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
-      proxy_set_header           X-Forwarded-For   $proxy_add_x_forwarded_for;
-      proxy_set_header           X-Local-Proxy     $scheme;
-      proxy_set_header           X-Forwarded-Proto $scheme;
-      proxy_pass_header          Set-Cookie;
-      proxy_pass_header          Cookie;
-      proxy_pass_header          X-Accel-Expires;
-      proxy_pass_header          X-Accel-Redirect;
-      proxy_pass_header          X-This-Proto;
-      proxy_connect_timeout      90;
-      proxy_send_timeout         90;
-      proxy_read_timeout         90;
-      proxy_buffer_size          4k;
-      proxy_buffers              4 32k;
-      proxy_busy_buffers_size    64k;
-      proxy_temp_file_write_size 64k;
-      access_log                 off;
-   }
+  listen                       YO.UR.EXTRA.IP2:443;
+  server_name                  _;
+  ssl                          on;
+  ssl_certificate              /etc/ssl/private/xyz-ssl-enabled-domain.crt;
+  ssl_certificate_key          /etc/ssl/private/xyz-ssl-enabled-domain.key;
+  ssl_session_timeout          5m;
+  ssl_protocols                SSLv3 TLSv1;
+  ssl_ciphers                  HIGH:!ADH:!MD5;
+  ssl_prefer_server_ciphers    on;
+  keepalive_timeout            70;
+  ###
+  ### Allways deny crawlers and not allowed bots without any response.
+  ###
+  if ($is_crawler) {
+    return 444;
+  }
+  if ($deny_on_high_load) {
+    return 444;
+  }
+  location / {
+    proxy_pass                 http://extra_ip_ssl;
+    proxy_redirect             off;
+    proxy_set_header           Host              $host;
+    proxy_set_header           X-Real-IP         $remote_addr;
+    proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
+    proxy_set_header           X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header           X-Local-Proxy     $scheme;
+    proxy_set_header           X-Forwarded-Proto $scheme;
+    proxy_pass_header          Set-Cookie;
+    proxy_pass_header          Cookie;
+    proxy_pass_header          X-Accel-Expires;
+    proxy_pass_header          X-Accel-Redirect;
+    proxy_pass_header          X-This-Proto;
+    proxy_connect_timeout      90;
+    proxy_send_timeout         90;
+    proxy_read_timeout         90;
+    proxy_buffer_size          4k;
+    proxy_buffers              4 32k;
+    proxy_busy_buffers_size    64k;
+    proxy_temp_file_write_size 64k;
+    access_log                 off;
+    log_not_found              off;
+  }
 }
 ###
 ### Secure HTTPS proxy to add more IPs for HTTPS connections (END)
