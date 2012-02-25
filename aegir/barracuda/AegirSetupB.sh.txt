@@ -559,9 +559,7 @@ if [ -e "/data/conf/global.inc" ] ; then
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 else
   rm -f $_ROOT/config/includes/global.inc
-  cd /data/conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi
 

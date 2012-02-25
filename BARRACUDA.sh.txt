@@ -764,6 +764,14 @@ fix_on_upgrade () {
     chmod 755 clean-boa-env &> /dev/null
     st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   fi
+  if [ -e "/data/conf/global.inc" ] ; then
+    mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+    else
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
+    fi
+  fi
   set_xterm
   kill_nash
   fix_ftps_squeeze
@@ -3092,17 +3100,6 @@ if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
       mrun "sleep 3"
     fi
   fi
-  if [ -e "/data/conf/global.inc" ] ; then
-    cd /data/conf
-    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
-      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
-    else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-      mv -f global.inc.aegir.txt global.inc &> /dev/null
-    fi
-  fi
 fi
 
 
@@ -3535,10 +3532,12 @@ if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Fix for advanced Nginx config and Drush path"
   mrun "sleep 3"
   ln -s /var/aegir/drush/drush /usr/bin/drush
-  cd /var/aegir/config/includes
-  mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc &> /dev/null
+  mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
+  fi
   force_advanced_nginx_config
   if [ "$_DRUSH_FAMILY" = "3" ] ; then
     cd /var/aegir/drush
@@ -3598,14 +3597,11 @@ else
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
-    cd /var/aegir/config/includes
-    mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
-      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
     else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-      mv -f global.inc.aegir.txt global.inc &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
     fi
     force_advanced_nginx_config
     if [ "$_DRUSH_FAMILY" = "3" ] ; then
@@ -3699,10 +3695,8 @@ EOF
     fi
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
-      cd /var/aegir/config/includes
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+      mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
     fi
     if [ "$_THIS_OS" = "xUbuntu" ] ; then
       killall -9 nginx &> /dev/null

@@ -599,14 +599,11 @@ force_advanced_nginx_config
 
 ###---### Force global.inc update
 #
-cd /data/conf
-mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
-  mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
 else
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt ./
-  mv -f global.inc.aegir.txt global.inc &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
 fi
 
 
@@ -620,10 +617,8 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
     else
       msg "$_STATUS A: Installing forced SSL settings for this Hostmaster site, please wait..."
       mrun "sleep 3"
-      cd /data/conf
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt ./
-      mv -f global.inc global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      mv -f global.inc.ssl.aegir.txt global.inc &> /dev/null
+      mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
       if [ "$_THIS_OS" = "xUbuntu" ] ; then
         st_runner "invoke-rc.d nginx stop" &> /dev/null
         killall -9 nginx &> /dev/null
