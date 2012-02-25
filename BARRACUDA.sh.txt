@@ -632,9 +632,8 @@ install_redis_src () {
   cp -p redis-cli /usr/bin/
   cp -p redis-check-dump /usr/bin/
   cp -p redis-check-aof /usr/bin/
-  cd /etc/init.d
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server ./
-  chmod 755 redis-server &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
+  chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir -p /etc/redis
   cd /etc/redis
@@ -759,9 +758,8 @@ fix_on_upgrade () {
     touch /var/log/nginx_config_fixed
   fi
   if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
-    cd /etc/init.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env ./
-    chmod 755 clean-boa-env &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
     st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   fi
   if [ -e "/data/conf/global.inc" ] ; then
@@ -2601,9 +2599,8 @@ if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
   msg "INFO: No fix required"
   sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx
 else
-  cd /etc/init.d
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
   chmod 755 /etc/init.d/nginx &> /dev/null
   msg "INFO: Fix for Nginx startup script applied"
 fi
@@ -2652,9 +2649,8 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
-    cd /etc/init.d
-    cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat ./
-    chmod 755 vnstat &> /dev/null
+    cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat /etc/init.d/vnstat
+    chmod 755 /etc/init.d/vnstat &> /dev/null
     st_runner "update-rc.d vnstat defaults" &> /dev/null
     st_runner "invoke-rc.d vnstat start" &> /dev/null
   fi
@@ -3392,9 +3388,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   tune_memory_limits
   if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
-    cd /etc/init.d
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env ./
-    chmod 755 clean-boa-env &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
     st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
