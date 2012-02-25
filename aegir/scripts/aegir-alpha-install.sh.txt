@@ -159,6 +159,9 @@ else
   wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
   tar -xzf provision_boost.tar.gz
   rm -f provision_boost.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
+  tar -xzf registry_rebuild-7.x-1.x-dev.tar.gz
+  rm -f registry_rebuild-7.x-1.x-dev.tar.gz
 fi
 
 msg "Installing the frontend"

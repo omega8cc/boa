@@ -305,6 +305,9 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ -e "$_ROOT/.drush/provision_civicrm" ] ; then
     mv -f $_ROOT/.drush/provision_civicrm $_ROOT/backups/system/provision_civicrm-pre-$_DISTRO-$_NOW &> /dev/null
   fi
+  if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
+    mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
 fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
@@ -377,6 +380,9 @@ fi
 wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
 tar -xzf provision_boost.tar.gz
 rm -f provision_boost.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
+tar -xzf registry_rebuild-7.x-1.x-dev.tar.gz
+rm -f registry_rebuild-7.x-1.x-dev.tar.gz
 if [ "$_HTTP_WILDCARD" = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null

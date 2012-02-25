@@ -80,10 +80,14 @@ hostmaster_mv_up () {
   mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
   mv -f $_ROOT/.drush/provision $_ROOT/backups/system/provision-pre-$_DISTRO-$_NOW &> /dev/null
   mv -f $_ROOT/.drush/drush_make $_ROOT/backups/system/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
   if [ -e "$_ROOT/.drush/provision_boost" ] ; then
     mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+  if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
+    mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
   fi
 }
 #
@@ -120,6 +124,9 @@ hostmaster_go_up () {
     wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
     tar -xzf provision_boost.tar.gz
     rm -f provision_boost.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
+    tar -xzf registry_rebuild-7.x-1.x-dev.tar.gz
+    rm -f registry_rebuild-7.x-1.x-dev.tar.gz
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
