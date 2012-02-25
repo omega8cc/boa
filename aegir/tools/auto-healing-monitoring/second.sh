@@ -22,22 +22,43 @@ terminate()
   fi
 }
 
+nginx_high_load_on()
+{
+  mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
+  /etc/init.d/nginx reload
+}
+
+nginx_high_load_off()
+{
+  mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
+  /etc/init.d/nginx reload
+}
+
 control()
 {
 ONEX_LOAD=`awk '{print $1*100}' /proc/loadavg`
 FIVX_LOAD=`awk '{print $2*100}' /proc/loadavg`
+CTL_ONEX_SPIDER_LOAD=333
+CTL_FIVX_SPIDER_LOAD=333
 CTL_ONEX_LOAD=888
 CTL_FIVX_LOAD=888
 CTL_ONEX_LOAD_CRIT=1888
 CTL_FIVX_LOAD_CRIT=1444
-if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD_CRIT ] ; then
+if [ $ONEX_LOAD -ge $CTL_ONEX_SPIDER_LOAD ] && [ $ONEX_LOAD -lt $CTL_ONEX_LOAD ] && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
+  nginx_high_load_on
+elif [ $FIVX_LOAD -ge $CTL_FIVX_SPIDER_LOAD ] && [ $FIVX_LOAD -lt $CTL_FIVX_LOAD ] && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
+  nginx_high_load_on
+elif [ $ONEX_LOAD -lt $CTL_ONEX_SPIDER_LOAD ] && [ $FIVX_LOAD -lt $CTL_FIVX_SPIDER_LOAD ] && [ -e "/data/conf/nginx_high_load.conf" ] ; then
+  nginx_high_load_off
+fi
+if [ $ONEX_LOAD -ge $CTL_ONEX_LOAD_CRIT ] ; then
   terminate
-elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD_CRIT ] ; then
+elif [ $FIVX_LOAD -ge $CTL_FIVX_LOAD_CRIT ] ; then
   terminate
 fi
-if [ $ONEX_LOAD -gt $CTL_ONEX_LOAD ] ; then
+if [ $ONEX_LOAD -ge $CTL_ONEX_LOAD ] ; then
   hold
-elif [ $FIVX_LOAD -gt $CTL_FIVX_LOAD ] ; then
+elif [ $FIVX_LOAD -ge $CTL_FIVX_LOAD ] ; then
   hold
 else
   echo load is $ONEX_LOAD:$FIVX_LOAD while maxload is $CTL_ONEX_LOAD:$CTL_FIVX_LOAD

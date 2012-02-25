@@ -1002,6 +1002,11 @@ force_advanced_nginx_config () {
   fi
   chown aegir:aegir /var/aegir/config/includes/*
   chown aegir:aegir /var/aegir/.drush/provision/http/Provision/Config/Nginx/*
+  if [ ! -e "/data/conf/nginx_high_load_off.conf" ] ; then
+    mkdir -p /data/conf
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
+    chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
+  fi
 }
 #
 # Tune memory limits for PHP-FPM-FPM, Nginx and MariaDB/Percona.
