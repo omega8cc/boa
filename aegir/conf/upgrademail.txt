@@ -9,6 +9,15 @@ We have a very good news and a special promotion (25% off) this time.
 Please read below for details. This is really long e-mail,
 but it is well worth to read it in its entirety.
 
+Important changes in this release:
+
+* While your Aegir instance comes with FTPS/SSH/SFTP access,
+  there is no longer plain FTP access available.
+
+  Compatible FTP-SSL/TLS clients are listed here:
+
+  http://omega8.cc/dev/ftp-tls.txt
+
 Some new features:
 
 * All new 7.x sites now run on latest PHP-FPM 5.3.10 by default.

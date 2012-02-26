@@ -144,7 +144,7 @@ with your desired site.
 ----------------------------------------
 
 To add modules/themes to any of the enabled platforms,
-you need to log into your FTPS/SSH account:
+you need to log into your FTPS/SSH/SFTP account:
 
   host: aegir.dragon.ny.host8.biz
   user: dragon.ftp
@@ -155,11 +155,13 @@ logged in via SSH.
 
 Please change your password via SSH with "passwd" command
 at least every 3 months. Otherwise the password will expire in 90 days
-and you will have to log in via SSH to restore your FTP access.
+and you will have to log in via SSH to restore your FTPS access.
 
 We recommend using SSH keys instead of password.
 
-It is highly recommended you use only SSL/TLS connections for FTPS.
+Note that while your Aegir instance comes with FTPS/SSH/SFTP access,
+there is no plain FTP access available.
+
 Compatible FTP-SSL/TLS clients are listed here:
 
  http://omega8.cc/dev/ftp-tls.txt
