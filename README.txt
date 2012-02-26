@@ -130,69 +130,118 @@ Octopus can install the platforms listed below:
 All 5/6 platforms have been enhanced using Pressflow Drupal core.
 
 Platforms marked with (int) come also with ready to use translations
-of Drupal core in 25 languages. Only languages with at least 10 maintainers
-and at least 60% of progress are included - http://localize.drupal.org
-
+of Drupal core in 25 languages. Only languages with at least
+10 maintainers and at least 60% of progress are included.
 Other platforms are using extended and customized translations or
 require far more than just core translation, so we don't touch them.
 
 There are also some useful and/or performance related modules
-added to all 6.x platforms:
+added to all 6.x and 7.x platforms and you can review the full list
+with currently used versions/releases at our website:
 
- admin-6.x-2.0
- backup_migrate-6.x-2.4
- blockcache_alter-6.x-1.x-dev
- boost-6.x-1.x-dev
- cache-6.x-1.x-dev
- config_perms-6.x-2.x-dev
- css_emimage-6.x-2.x-dev (mikeytown2's fork)
- dbtuner-6.x-1.x-dev
- esi-6.x-2.x-dev
- expire-6.x-1.x
- filefield_nginx_progress-6.x-1.x-dev
- fpa-6.x-2.3
- httprl-6.x-1.4
- image-6.x-1.x-dev
- login_security-6.x-1.x-dev
- private_upload-6.x-1.x-dev
- purge-6.x-1.x (with patches)
- readonlymode-6.x-1.x-dev
- robotstxt-6.x-1.x-dev
- seckit-6.x-1.3
- securesite-6.x-2.4
- site_verify-6.x-1.0
- taxonomy_edge-6.x-1.3
- textile-6.x-2.4
- variable_clean-6.x-1.x-dev
- views_content_cache-6.x-2.x-dev
- views404-6.x-1.x-dev
- + theme rubik-6.x-3.0-beta2
+ http://omega8.cc/extra-modules-available-in-all-platforms-123
 
-The Drupal 7.x platforms come with contrib modules:
+Some core and contrib modules are either enabled or disabled
+by default, by running daily (at morning) maintenance monitor.
 
- admin-7.x-2.0-beta3
- backup_migrate-7.x-2.2
- blockcache_alter-7.x-1.x-dev
- boost-7.x-1.x-dev
- config_perms-7.x-2.x-dev
- core_library-7.x-2.0-beta1
- css_emimage-7.x-1.2
- expire-7.x-1.x (with patches)
- filefield_nginx_progress-7.x-1.x-dev
- flood_control-7.x-1.x-dev
- fpa-7.x-2.0
- httprl-7.x-1.4
- purge-7.x-1.x (with patches)
- readonlymode-7.x-1.0-beta1
- robotstxt-7.x-1.x-dev
- seckit-7.x-1.3
- site_verify-7.x-1.0
- taxonomy_edge-7.x-1.1
- textile-7.x-2.0-rc11
- variable_clean-7.x-1.x-dev
- vars-7.x-2.0-alpha10
- views_content_cache-7.x-3.x-dev
- + theme rubik-7.x-4.0-beta7
+There are also modules supported by Octopus, but not bundled
+by default and/or not enabled.
+
+Some modules require custom rewrites on the web server level,
+but since there is no .htaccess available/used in Nginx,
+we have added all required rewrites and associated supported
+configuration settings on the system level. This is the real
+meaning of [S]upported flag here.
+
+Note that while some of them are enabled by default on initial
+install of "blank" site in the supported platform, they are
+not forced as enabled by the running daily maintenance monitor,
+so we marked them as [S]oft[E]nabled.
+
+Here is a complete list with corresponding flags for every
+module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
+[S]oft[E]nabled or [F]orce[D]isabled.
+
+Supported core version is listed for every module or theme
+as [D6] and/or [D7].
+
+Contrib:
+
+ admin ---------------------- [D6,D7] --- [S] [B] [SE]
+ advagg --------------------- [D6] ------ [S]
+ ais ------------------------ [D7] ------ [S]
+ audio ---------------------- [D5,D6] --- [S]
+ backup_migrate ------------- [D6,D7] --- [S] [B]
+ blockcache_alter ----------- [D6,D7] --- [S] [B]
+ boost ---------------------- [D6,D7] --- [S] [B]
+ cache ---------------------- [D6] ------ [S] [B] [FE]
+ ckeditor ------------------- [D6,D7] --- [S]
+ config_perms --------------- [D6,D7] --- [S] [B]
+ core_library --------------- [D7] ------ [S] [B]
+ css_emimage ---------------- [D6,D7] --- [S] [B]
+ dbtuner -------------------- [D6] ------ [S] [B]
+ devel ---------------------- [D6,D7] --- [FD]
+ esi ------------------------ [D6] ------ [S] [B]
+ expire --------------------- [D6,D7] --- [S] [B] [FE]
+ fbconnect ------------------ [D6,D7] --- [S]
+ fckeditor ------------------ [D6] ------ [S]
+ filefield_nginx_progress --- [D6,D7] --- [S] [B] [FE]
+ flood_control -------------- [D7] ------ [S] [B]
+ fpa ------------------------ [D6,D7] --- [S] [B]
+ httprl --------------------- [D6,D7] --- [S] [B]
+ imagecache ----------------- [D6,D7] --- [S]
+ imagecache_external -------- [D6,D7] --- [S]
+ l10n_update ---------------- [D6,D7] --- [FD]
+ login_security ------------- [D6] ------ [S] [B]
+ poormanscron --------------- [D6] ------ [FD]
+ private_upload ------------- [D6] ------ [S] [B]
+ purge ---------------------- [D6,D7] --- [S] [B] [FE]
+ readonlymode --------------- [D6,D7] --- [S] [B]
+ responsive_images ---------- [D7] ------ [S]
+ robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
+ rubik ---------------------- [D6,D7] --- [S] [B] [SE]
+ seckit --------------------- [D6,D7] --- [S] [B]
+ securesite ----------------- [D6] ------ [S] [B]
+ site_verify ---------------- [D6,D7] --- [S] [B]
+ supercron ------------------ [D6] ------ [FD]
+ taxonomy_edge -------------- [D6,D7] --- [S] [B]
+ textile -------------------- [D6,D7] --- [S] [B]
+ tinybrowser ---------------- [D6,D7] --- [S]
+ tinymce -------------------- [D6] ------ [S]
+ variable_clean ------------- [D6,D7] --- [S] [B]
+ vars ----------------------- [D7] ------ [S] [B]
+ views_content_cache -------- [D6,D7] --- [S] [B]
+ views404 ------------------- [D6] ------ [S] [B]
+ wysiwyg_spellcheck --------- [D6,D7] --- [S]
+
+Core:
+
+ cookie_cache_bypass -------- [D6] ------ [FD]
+ dblog ---------------------- [D6,D7] --- [FD]
+ path_alias_cache ----------- [D6] ------ [FE]
+ syslog --------------------- [D6,D7] --- [FD]
+ update --------------------- [D6,D7] --- [FD]
+
+Provision [E]xtensions [M]aster [S]atellite:
+
+ provision_boost ------------ [D6,D7] --- [S] [B] [FE] [EM,ES]
+ provision_civicrm ---------- [D6,D7] --- [S] [B] [FE] [ES]
+ registry_rebuild ----------- [D6,D7] --- [S] [B] [FE] [EM,ES]
+
+Hostmaster [E]xtensions [M]aster [S]atellite:
+
+ aegir_custom_settings ------ [D6] ------ [S] [B] [FE] [ES]
+ css_emimage ---------------- [D6] ------ [S] [B] [FE] [ES]
+ ctools --------------------- [D6] ------ [S] [B] [FE] [ES]
+ features ------------------- [D6] ------ [S] [B] [FE] [ES]
+ features_extra ------------- [D6] ------ [S] [B] [FE] [ES]
+ hosting_backup_gc ---------- [D6] ------ [S] [B]      [ES]
+ hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
+ hosting_client ------------- [D6] ------ [S] [B] [FE] [EM,ES]
+ hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [EM,ES]
+ protect_critical_users ----- [D6] ------ [S] [B] [FE] [ES]
+ strongarm ------------------ [D6] ------ [S] [B] [FE] [ES]
+ userprotect ---------------- [D6] ------ [S] [B] [FE] [ES]
 
 
 ### BUG SUBMISSION
