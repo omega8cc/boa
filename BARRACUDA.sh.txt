@@ -781,6 +781,10 @@ fix_on_upgrade () {
   if [ ! -e "/opt/local/lib/php.ini" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
+  if [ ! -e "/var/log/nginx_speed_purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+    touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
+  fi
   set_xterm
   kill_nash
   fix_ftps_squeeze
@@ -3779,11 +3783,8 @@ fi
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
   msg "INFO: Installing Speed Booster Purge Server, please wait..."
   mrun "sleep 3"
-  validate_purge_ip &> /dev/null
-  cd /var/aegir/config/server_master/nginx/pre.d
-  rm -f speed_purge.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf ./
-  sed -i "s/EDIT_THISHTIP/$_PURGE_THISHTIP/g" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+  touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
 fi
 
 
