@@ -1592,7 +1592,7 @@ fi
 ###--------------------###
 msg "INFO: Install or upgrade checking, please wait..."
 sleep 3
-if [ -d "/var/aegir" ] ; then
+if [ -e "/var/aegir/config/server_master/nginx.conf" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE..."
   barracuda_cnf
@@ -1605,6 +1605,15 @@ if [ -d "/var/aegir" ] ; then
 else
   _STATUS=INIT
   msg "INFO: INIT..."
+  _ZOMBIE_HOME="/var/backups/zombie/$_INSTALLER_VERSION-$_NOW"
+  mkdir -p $_ZOMBIE_HOME
+  mv -f /etc/nginx/conf.d/* $_ZOMBIE_HOME/ &> /dev/null
+  mv -f /var/aegir $_ZOMBIE_HOME/ &> /dev/null
+  mv -f /root/.my.cnf $_ZOMBIE_HOME/ &> /dev/null
+  mv -f /root/.my.pass.txt $_ZOMBIE_HOME/ &> /dev/null
+  cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
+  sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
+  deluser aegir &> /dev/null
   barracuda_cnf
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
