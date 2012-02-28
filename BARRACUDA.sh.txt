@@ -722,6 +722,8 @@ fix_on_upgrade () {
   if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/etc/custom.php53.ini" ] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+    cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
@@ -770,6 +772,9 @@ fix_on_upgrade () {
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
     fi
+  fi
+  if [ ! -e "/opt/local/lib/php.ini" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
   set_xterm
   kill_nash
@@ -1134,6 +1139,7 @@ tune_memory_limits () {
     sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
+  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
 #
@@ -2729,6 +2735,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/ &> /dev/null
   mkdir -p /opt/etc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
@@ -3379,6 +3386,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   echo "UseDNS no" >> /etc/ssh/sshd_config
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   mkdir -p /var/backups/dragon/t
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null

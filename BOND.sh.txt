@@ -420,6 +420,7 @@ tune_memory_limits () {
     sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
+  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
 }
 
