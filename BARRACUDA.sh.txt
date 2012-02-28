@@ -443,6 +443,10 @@ _PHP_FPM_WORKERS=AUTO
 _LENNY_TO_SQUEEZE=NO
 _FULL_FORCE_REINSTALL=NO
 _LOAD_LIMIT=888
+_CUSTOM_CONFIG_CSF=NO
+_CUSTOM_CONFIG_SQL=NO
+_CUSTOM_CONFIG_PHP_5_2=NO
+_CUSTOM_CONFIG_PHP_5_3=NO
 
 
 ###----------------------------------------###
@@ -714,13 +718,13 @@ fix_on_upgrade () {
   perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump','drush cc','drush cron','drush dbup','drush dd','drush dis','drush dl','drush en','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','drush gm','drush help','drush make','drush mup','drush pmi','drush pml','drush rr','drush sa','drush sql-conf','drush sql-connect','drush sql-dump','drush sql-sync','drush sqlc','drush sqlq','drush st','drush ublk','drush ucan','drush ucrt','drush uinf','drush uli','drush upwd','drush urol','drush urrol','drush uublk','drush vdel','drush vget','drush vset'\]/g" /etc/lshell.conf
   perl -p -i -e "s/,'drush mup':'drush upc'\}/,'drush mup':'drush upc','drush gm':'drush generate-makefile'\}/g" /etc/lshell.conf
   mkdir -p /var/backups/dragon/t
-  if [ ! -e "/opt/etc/custom.php.ini" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] ; then
     cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
     cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/etc/custom.php53.ini" ] ; then
+  if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -730,7 +734,7 @@ fix_on_upgrade () {
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
-  if [ ! -e "/etc/mysql/custom.my.cnf" ] ; then
+  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
     sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
@@ -1234,6 +1238,10 @@ barracuda_cnf () {
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_LOAD_LIMIT=$_LOAD_LIMIT" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1282,6 +1290,39 @@ barracuda_cnf () {
     else
       echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_LOAD_LIMIT=$_LOAD_LIMIT" >> /root/.barracuda.cnf
+    fi
+    _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_CSF_TEST" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
+      if [ -e "/var/log/custom.csf.log" ] ; then
+        sed -i "s/.*_CUSTOM_CONFIG_CSF.*/_CUSTOM_CONFIG_CSF=YES ### Forced because /var/log/custom.csf.log exists./g" /root/.barracuda.cnf
+      fi
+    else
+      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
+      echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
+    fi
+    _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_SQL_TEST" =~ "_CUSTOM_CONFIG_SQL" ]] ; then
+      if [ -e "/etc/mysql/custom.my.cnf" ] ; then
+        sed -i "s/.*_CUSTOM_CONFIG_SQL.*/_CUSTOM_CONFIG_SQL=YES ### Forced because /etc/mysql/custom.my.cnf exists./g" /root/.barracuda.cnf
+      fi
+    else
+      echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
+    fi
+    _CUSTOM_CONFIG_PHP_5_2_TEST=$(grep _CUSTOM_CONFIG_PHP_5_2 /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_PHP_5_2_TEST" =~ "_CUSTOM_CONFIG_PHP_5_2" ]] ; then
+      if [ -e "/opt/etc/custom.php.ini" ] ; then
+        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_2.*/_CUSTOM_CONFIG_PHP_5_2=YES ### Forced because /opt/etc/custom.php.ini exists./g" /root/.barracuda.cnf
+      fi
+    else
+      echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
+    fi
+    _CUSTOM_CONFIG_PHP_5_3_TEST=$(grep _CUSTOM_CONFIG_PHP_5_3 /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_PHP_5_3_TEST" =~ "_CUSTOM_CONFIG_PHP_5_3" ]] ; then
+      if [ -e "/opt/etc/custom.php53.ini" ] ; then
+        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_3.*/_CUSTOM_CONFIG_PHP_5_3=YES ### Forced because /opt/etc/custom.php53.ini exists./g" /root/.barracuda.cnf
+      fi
+    else
+      echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     fi
     sleep 5
     echo " "
@@ -1348,7 +1389,7 @@ install_php_five_three () {
   mrun "sleep 3"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  if [ ! -e "/opt/etc/custom.php53.ini" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
@@ -4197,7 +4238,6 @@ csf_install () {
   mrun "sleep 2"
   touch /var/log/csf_$_INSTALLER_VERSION.log
 }
-
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
@@ -4227,7 +4267,7 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ "$_SSH_PORT" = "22" ] ; then
     _SSH_STANDARD_PORT=YES
   else
-    if [ ! -e "/var/log/custom.csf.log" ] ; then
+    if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] ; then
       csf_install
     fi
   fi
