@@ -33,7 +33,11 @@ $conf['error_level'] = 0;         // disable errors on screen
 $conf['statistics_enable_access_log'] = 0;   // disable access log stats
 $conf['allow_authorize_operations'] = FALSE; // disable insecure plugin manager
 $conf['boost_ignore_htaccess_warning'] = 1;  // silence false alarm in Boost
-$conf['expire_flush_menu_items'] = 0;        // disable flushing menu to avoid problems and confusion
+$conf['expire_flush_front'] = 1;             // default settings for expire module
+$conf['expire_flush_node_terms'] = 1;        // default settings for expire module
+$conf['expire_flush_menu_items'] = 0;        // default settings for expire module
+$conf['expire_flush_cck_references'] = 0;    // default settings for expire module
+$conf['expire_include_base_url'] = 1;        // default settings for expire module
 $gr_set['deslash'] = 0;                      // disable deslash in globalredirect to avoid redirect loop
 $conf['globalredirect_settings'] = $gr_set;  // disable deslash in globalredirect to avoid redirect loop
 
