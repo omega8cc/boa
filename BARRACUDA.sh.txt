@@ -2706,6 +2706,7 @@ if [ -d "/var/xdrago" ] ; then
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   sed -i "s/=888/=$_LOAD_LIMIT/g" /var/xdrago/second.sh
+  mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   if [ -e "/var/xdrago/cron/custom.txt" ] ; then
     cat /var/xdrago/cron/custom.txt >> /var/spool/cron/crontabs/root
@@ -2763,6 +2764,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
   sed -i "s/=888/=$_LOAD_LIMIT/g" /var/xdrago/second.sh
+  mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 295/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/600/300/g" /var/xdrago/minute.sh
