@@ -1220,11 +1220,15 @@ mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  echo " "
-  _AEGIR_LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
-  msg "ACCESS -> $_AEGIR_LOGIN_URL"
-  echo " "
-  mrun "sleep 3"
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    true
+  else
+    echo " "
+    _AEGIR_LOGIN_URL=`grep "Aegir is now installed" $_ROOT/log/install.log 2> /dev/null`
+    msg "ACCESS -> $_AEGIR_LOGIN_URL"
+    echo " "
+    mrun "sleep 3"
+  fi
 else
   feature_server_fix_002
   remove_incompatible_modules_001

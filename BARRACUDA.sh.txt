@@ -4183,11 +4183,15 @@ if [ "$_STATUS" = "INIT" ] ; then
   cd /var/aegir/config/includes
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
   touch installer_version.txt
-  echo " "
-  _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
-  msg "ACCESS -> $_AEGIR_LOGIN_URL"
-  echo " "
-  mrun "sleep 3"
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    true
+  else
+    echo " "
+    _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
+    msg "ACCESS -> $_AEGIR_LOGIN_URL"
+    echo " "
+    mrun "sleep 3"
+  fi
 fi
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
   touch /var/log/cron_aegir_off.pid
