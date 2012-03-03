@@ -1,0 +1,26 @@
+diff --git a/uc_cart/uc_cart.module b/uc_cart/uc_cart.module
+index a3cc27f..dd6722f 100644
+--- a/uc_cart/uc_cart.module
++++ b/uc_cart/uc_cart.module
+@@ -374,12 +374,19 @@ function uc_cart_block($op = 'list', $delta = 0, $edit = array()) {
+     case 'view':
+       // 0 = Default shopping cart block.
+       if ($delta == 0) {
+-        $cachable = !$user->uid && variable_get('cache', CACHE_DISABLED) != CACHE_DISABLED;
++        $cachable = TRUE;
++        if (function_exists('drupal_page_is_cacheable')) {
++          $cachable = drupal_page_is_cacheable();
++        }
++        else {
++          $cachable = !$user->uid && variable_get('cache', CACHE_DISABLED) != CACHE_DISABLED;
++        }
++
+         $product_count = count(uc_cart_get_contents());
+ 
+         // Display nothing if the block is set to hide on empty and there are no
+         // items in the cart.
+-        if (!$cachable && variable_get('uc_cart_block_empty_hide', FALSE) && !$product_count) {
++        if (variable_get('uc_cart_block_empty_hide', FALSE) && !$product_count) {
+           return;
+         }
+ 

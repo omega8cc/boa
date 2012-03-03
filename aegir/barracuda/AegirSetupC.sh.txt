@@ -2183,13 +2183,33 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/ubercart-$_UBERCART-old" ] ; then
     mv $_CORE/ubercart-$_UBERCART-old $_CORE/ubercart-$_UBERCART
   fi
-  cd $_CORE/ubercart-$_UBERCART-$_SMALLCORE6
-  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/ &> /dev/null
-  rm -f $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  cd $_CORE_DISTRO
+  cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE_DISTRO/ &> /dev/null
+  rm -f $_CORE_DISTRO/*.txt
+  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'filefield', 'content', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
   rm -f -r ./profiles/default
+  mkdir -p $_CORE_DISTRO/profiles/uberdrupal/libraries
+  cd $_CORE_DISTRO/profiles/uberdrupal/libraries
+  wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
+  unzip -qq colorbox.zip &> /dev/null
+  rm -f colorbox.zip
+  cd $_CORE_DISTRO/profiles/uberdrupal/modules
+  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-6.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-6.x-3.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-6.x-1.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-3.0.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  ### http://drupal.org/node/1167276#comment-5138248
+  cd $_CORE_DISTRO/profiles/uberdrupal/modules/ubercart
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/ubercart-1167276-reroll.patch ./
+  patch -p1 < ubercart-1167276-reroll.patch
+  cd $_CORE_DISTRO
   create_dirs
-  ln -s /data/all/000/translations $_CORE/ubercart-$_UBERCART-$_SMALLCORE6/profiles/uberdrupal/translations
+  ln -s /data/all/000/translations $_CORE_DISTRO/profiles/uberdrupal/translations
   touch $_CORE_DISTRO/fixed_1.log
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6
