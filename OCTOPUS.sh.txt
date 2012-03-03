@@ -742,6 +742,15 @@ if ! netcat -w 8 -z ftp.drupal.org 80 ; then
   echo " "
   exit 1
 fi
+if ! netcat -w 8 -z github.com 9418 ; then
+  echo " "
+  msg "EXIT on error due to GitHub git server at 9418 downtime."
+  msg "Please try to run this script again in a few minutes."
+  msg "Also, make sure that the git port 9418 is open."
+  msg "Bye."
+  echo " "
+  exit 1
+fi
 
 
 ###---### init
@@ -879,7 +888,7 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
   echo " "
   msg "EXIT on error due to missing helpers."
   msg "Please try to run this script again in a few minutes."
-  msg "Also, make sure the git port 9418 is open."
+  msg "Also, make sure that the git port 9418 is open."
   msg "Bye."
   echo " "
   exit 1
