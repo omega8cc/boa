@@ -2861,7 +2861,7 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
-if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing libevent, please wait..."
   rm -f -r /var/opt/libevent*
   cd /var/opt
