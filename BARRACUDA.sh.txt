@@ -1150,6 +1150,18 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
+    sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
+    sed -i "s/^max_connections.*/max_connections         = 50/g"            /etc/mysql/my.cnf
+    sed -i "s/^max_user_connections.*/max_user_connections    = 50/g"       /etc/mysql/my.cnf
+    sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
+    sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
+    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
+    sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
+    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 1024K/g" /etc/mysql/my.cnf
+  fi
 }
 #
 # Fix locales.
