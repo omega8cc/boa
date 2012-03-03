@@ -16,8 +16,6 @@ mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=
 TRUNCATE $i;
 EOFMYSQL
 echo $i table truncated in $line database
-# mysqlcheck --port=3306 -h localhost -r -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
-# mysqlcheck --port=3306 -h localhost -o -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
 done
 }
 
@@ -30,6 +28,8 @@ mysql -u $DATABASEUSER -p$DATABASEPASS -e "show databases" -s > .databasesToBack
 #Parse the list of databases and then backup using mysqldump
 cat .databasesToBackup | while read line; do
   truncate_cache_tables
+  #mysqlcheck --port=3306 -h localhost -r -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
+  #mysqlcheck --port=3306 -h localhost -o -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
   mysqldump -u $DATABASEUSER -p$DATABASEPASS --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $line | gzip  > $SAVELOCATION/$line.sql.gz
   echo backup completed for $line database
   sleep 1
