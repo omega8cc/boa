@@ -2797,12 +2797,12 @@ if [ -d "/var/xdrago" ] ; then
     fi
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/critnumber = 300/critnumber = 295/g" /var/xdrago/firewall/check/scan_nginx
+    sed -i "s/critnumber = 300/critnumber = 288/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/600/300/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
     sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
     echo "echo rotate > /var/log/nginx/access.log" >> /var/xdrago/clear.sh
-    sed -i "s/INTERVAL 1 HOUR/INTERVAL 30 MINUTE/g" /var/xdrago/purge_binlogs.sh
+    sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" /var/xdrago/purge_binlogs.sh
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
@@ -2839,7 +2839,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   sed -i "s/=888/=$_LOAD_LIMIT/g" /var/xdrago/second.sh
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/critnumber = 300/critnumber = 295/g" /var/xdrago/firewall/check/scan_nginx
+    sed -i "s/critnumber = 300/critnumber = 288/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/600/300/g" /var/xdrago/minute.sh
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
     sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
