@@ -2707,23 +2707,12 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/usr/bin/redis-server" ] ; then
-  if [ "$_REL_VERSION" = "robby" ] ; then
-    install_redis_src
-  fi
-  if [ "$_REL_VERSION" = "lenny" ] ; then
-    install_redis_src
-  fi
-fi
-if [ ! -e "/var/log/redis-2.0.5.log" ] ; then
+if [ ! -e "/var/log/redis-2.0.5.log" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_REL_VERSION" = "oneiric" ] ; then
     true
   else
     install_redis_src
   fi
-fi
-if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_redis_src
 fi
 
 
@@ -2900,7 +2889,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing Memcached server, please wait..."
   mrun "sleep 3"
   cd /var/opt
