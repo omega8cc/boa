@@ -1,5 +1,6 @@
 #!/bin/bash
 
+/usr/sbin/ntpdate pool.ntp.org
 /etc/init.d/php-fpm reload
 /etc/init.d/php53-fpm reload
 sleep 5
