@@ -73,9 +73,9 @@ function xtitle()
 }
 
 _L_HOST=`uname -n`
-alias top='xtitle System Processes on $_L_HOST && top'
-alias htop='xtitle System Processes on $_L_HOST && htop'
-alias mytop='xtitle SQL Processes on $_L_HOST && mytop'
+alias top='xtitle $_L_HOST System Monitor && top'
+alias htop='xtitle $_L_HOST System Monitor && htop'
+alias mytop='xtitle $_L_HOST SQL Monitor && mytop'
 alias make='xtitle Making $(basename $PWD) ; make'
 
 function extract()
