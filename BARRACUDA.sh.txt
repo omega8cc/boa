@@ -2701,7 +2701,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/redis-2.0.5.log" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ ! -e "/var/log/redis-2.0.5.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_REL_VERSION" = "oneiric" ] ; then
     true
   else
