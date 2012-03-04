@@ -41,7 +41,7 @@ else {
 exit;
 #############################################################################
 sub makeactions
-{      
+{
       if (!-e "$IP_log") {
         `echo "#!/bin/bash" > /var/xdrago/$thisserver`;
         `echo " " >> /var/xdrago/firewall/$thisserver`;
@@ -64,7 +64,7 @@ foreach $line (@SYTUACJA) {
     if ($VISITOR =~ /^[a-z0-9]/) {
       chomp($line);
       $li_cnt{$VISITOR}++;
-    }   
+    }
   }
 }
 foreach $VISITOR (sort keys %li_cnt) {
@@ -84,7 +84,7 @@ undef (%li_cnt);
 
 #############################################################################
 sub trash_it_action
-{               
+{
    local($ABUSER,$ILE) = @_;
     print "$ABUSER [$ILE] recorded... $REMOTE_HOST\n";
    `echo "#-- BELOW --# $ABUSER [$ILE] recorded..." >> /var/xdrago/$thisserver`;
@@ -93,6 +93,5 @@ sub trash_it_action
    `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -a -u root --password=NdKBu34erty325r6mUHxWy $ABUSER" >> /var/xdrago/$thisserver`;
    `echo " " >> /var/xdrago/$thisserver`;
 }
-
 
 ###EOF###
