@@ -442,7 +442,8 @@ _NGINX_WORKERS=AUTO
 _PHP_FPM_WORKERS=AUTO
 _LENNY_TO_SQUEEZE=NO
 _FULL_FORCE_REINSTALL=NO
-_LOAD_LIMIT=888
+_LOAD_LIMIT_ONE=1222
+_LOAD_LIMIT_TWO=888
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_PHP_5_2=NO
@@ -1295,7 +1296,8 @@ barracuda_cnf () {
     echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
-    echo "_LOAD_LIMIT=$_LOAD_LIMIT" >> /root/.barracuda.cnf
+    echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
+    echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
@@ -1339,11 +1341,17 @@ barracuda_cnf () {
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     fi
-    _LOAD_LIMIT_TEST=$(grep _LOAD_LIMIT /root/.barracuda.cnf)
-    if [[ "$_LOAD_LIMIT_TEST" =~ "_LOAD_LIMIT" ]] ; then
+    _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE /root/.barracuda.cnf)
+    if [[ "$_LOAD_LIMIT_ONE_TEST" =~ "_LOAD_LIMIT_ONE" ]] ; then
       true
     else
-      echo "_LOAD_LIMIT=$_LOAD_LIMIT" >> /root/.barracuda.cnf
+      echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
+    fi
+    _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO /root/.barracuda.cnf)
+    if [[ "$_LOAD_LIMIT_TWO_TEST" =~ "_LOAD_LIMIT_TWO" ]] ; then
+      true
+    else
+      echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_CSF_TEST" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
@@ -2812,8 +2820,9 @@ if [ -d "/var/xdrago" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/=888/=$_LOAD_LIMIT/g" /var/xdrago/second.sh
+  sed -i "s/88.88.88.88/$_THISHTIP/g"  /var/xdrago/firewall/check/scan_nginx
+  sed -i "s/=1222/=$_LOAD_LIMIT_ONE/g" /var/xdrago/second.sh
+  sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"  /var/xdrago/second.sh
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   if [ -e "/var/xdrago/cron/custom.txt" ] ; then
@@ -2870,8 +2879,9 @@ if [ "$_STATUS" = "INIT" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g" /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/=888/=$_LOAD_LIMIT/g" /var/xdrago/second.sh
+  sed -i "s/88.88.88.88/$_THISHTIP/g"  /var/xdrago/firewall/check/scan_nginx
+  sed -i "s/=1222/=$_LOAD_LIMIT_ONE/g" /var/xdrago/second.sh
+  sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"  /var/xdrago/second.sh
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 288/g" /var/xdrago/firewall/check/scan_nginx
