@@ -11,13 +11,13 @@ if ($status ne "CLEAN") {
 else {
   `touch /var/xdrago/log/last-sqlcheck-clean`;
 }
-
 exit;
+
 #############################################################################
 sub makeactions
 {
-local(@SYTUACJA) = `tail --lines=200 /var/log/syslog 2>&1`;
-  foreach $line (@SYTUACJA) {
+local(@MYARR) = `tail --lines=200 /var/log/syslog 2>&1`;
+  foreach $line (@MYARR) {
     if ($line =~ /(Checking table)/i) {
       $status="ERROR";
     }

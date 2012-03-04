@@ -6,9 +6,9 @@ if (-f "/var/xdrago/log/optimize_mysql_ao.pid") {
 }
 $mailx_test = `mail -V 2>&1`;
 $status="CLEAN";
-$thisserver = "acrashsql.sh";
-$IP_log = "/var/xdrago/$thisserver";
-`rm -f $IP_log`;
+$this_filename = "acrashsql.sh";
+$this_path = "/var/xdrago/$this_filename";
+`rm -f $this_path`;
 $server=`hostname`;
 chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
@@ -23,7 +23,7 @@ sleep(90);
 if ($mailx_test =~ /(invalid)/i) {
   if ($status ne "CLEAN") {
     `cat $logfile | mail -a "From: help\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
-    `sh $IP_log | mail -a "From: help\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+    `sh $this_path | mail -a "From: help\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
   }
   if ($status ne "ERROR") {
     `cat $logfile | mail -e -a "From: help\@omega8.cc" -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
@@ -32,66 +32,61 @@ if ($mailx_test =~ /(invalid)/i) {
 else {
   if ($status ne "CLEAN") {
     `cat $logfile | mail -r help\@omega8.cc -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
-    `sh $IP_log | mail -r help\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+    `sh $this_path | mail -r help\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
   }
   if ($status ne "ERROR") {
     `cat $logfile | mail -e -r help\@omega8.cc -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
   }
 }
 exit;
+
 #############################################################################
 sub makeactions
 {
-      if (!-e "$IP_log") {
-        `echo "#!/bin/bash" > /var/xdrago/$thisserver`;
-        `echo " " >> /var/xdrago/firewall/$thisserver`;
+  if (!-e "$this_path") {
+    `echo "#!/bin/bash" > /var/xdrago/$this_filename`;
+    `echo " " >> /var/xdrago/firewall/$this_filename`;
+  }
+  open (NOT,"<$this_path");
+  @rectable = <NOT>;
+  close (NOT);
+  local(@MYARR) = `tail --lines=999999999 $logfile 2>&1`;
+  local($maxnumber,$critnumber,$alert);
+  local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+  foreach $line (@MYARR) {
+    if ($line =~ /(Table \'\.\/)/i) {
+      $status="ERROR";
+      local($a, $b, $c, $TABLEX, $rest) = split(/\s+/,$line);
+      chomp($TABLEX);
+      local($a, $TABLE, $b) = split(/\//,$TABLEX);
+      $TABLE =~ s/[^a-z0-9\_]//g;
+      if ($TABLE =~ /^[a-z0-9]/) {
+        chomp($line);
+        $li_cnt{$TABLE}++;
       }
-      open (NOT,"<$IP_log");
-      @banetable = <NOT>;
-      close (NOT);
-
-local(@SYTUACJA) = `tail --lines=999999999 $logfile 2>&1`;
-
-local($maxnumber,$critnumber,$alert);
-local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
-foreach $line (@SYTUACJA) {
-  if ($line =~ /(Table \'\.\/)/i) {
-    $status="ERROR";
-    local($a, $b, $c, $VISITORX, $rest) = split(/\s+/,$line);
-    chomp($VISITORX);
-    local($a, $VISITOR, $b) = split(/\//,$VISITORX);
-    $VISITOR =~ s/[^a-z0-9\_]//g;
-    if ($VISITOR =~ /^[a-z0-9]/) {
-      chomp($line);
-      $li_cnt{$VISITOR}++;
     }
   }
-}
-foreach $VISITOR (sort keys %li_cnt) {
-   $sumar = $sumar + $li_cnt{$VISITOR};
-   local($thissumar) = $li_cnt{$VISITOR};
-   $maxnumber = 0;
-   local($blocked) = 0;
-   if ($thissumar > $maxnumber && !$blocked) {
-       &trash_it_action($VISITOR,$thissumar);
-   }
-}
-
-print "\n===[$sumar]\tGLOBAL===\n\n";
-undef (%li_cnt);
-
+  foreach $TABLE (sort keys %li_cnt) {
+    $sumar = $sumar + $li_cnt{$TABLE};
+    local($thissumar) = $li_cnt{$TABLE};
+    $maxnumber = 0;
+    if ($thissumar > $maxnumber) {
+      &repair_this_action($TABLE,$thissumar);
+    }
+  }
+  print "\n===[$sumar]\tGLOBAL===\n\n";
+  undef (%li_cnt);
 }
 
 #############################################################################
-sub trash_it_action
+sub repair_this_action
 {
-   local($ABUSER,$ILE) = @_;
-    print "$ABUSER [$ILE] recorded... $REMOTE_HOST\n";
-   `echo "#-- BELOW --# $ABUSER [$ILE] recorded..." >> /var/xdrago/$thisserver`;
-   `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -r -u root --password=NdKBu34erty325r6mUHxWy $ABUSER" >> /var/xdrago/$thisserver`;
-   `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -o -u root --password=NdKBu34erty325r6mUHxWy $ABUSER" >> /var/xdrago/$thisserver`;
-   `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -a -u root --password=NdKBu34erty325r6mUHxWy $ABUSER" >> /var/xdrago/$thisserver`;
-   `echo " " >> /var/xdrago/$thisserver`;
+  local($FIXTABLE,$COUNTER) = @_;
+  print "$FIXTABLE [$COUNTER] recorded... $REMOTE_HOST\n";
+  `echo "#-- BELOW --# $FIXTABLE [$COUNTER] recorded..." >> /var/xdrago/$this_filename`;
+  `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -r -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
+  `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -o -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
+  `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -a -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
+  `echo " " >> /var/xdrago/$this_filename`;
 }
-
 ###EOF###

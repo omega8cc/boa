@@ -37,8 +37,9 @@ print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
 print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
 print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
 print "\n $collectdsumar Collectd\tGLOBAL" if ($collectdlives);
-if (-e "/usr/sbin/pdnsd") {
-  `/etc/init.d/pdnsd restart` if (!$pdnsdsumar);
+if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
+  `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
+  `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
 }
 if (!$mysqlsumar || $mysqlsumar > 150) {
   `bash /var/xdrago/move_sql.sh`;
@@ -67,14 +68,13 @@ if ($dhcpcdlives) {
   chomp($thishostname);
   `hostname -v $thishostname`;
 }
-
 exit;
 
 #############################################################################
 sub global_action
 {
-  local(@SYTUACJA) = `ps auxf 2>&1`;
-  foreach $line (@SYTUACJA) {
+  local(@MYARR) = `ps auxf 2>&1`;
+  foreach $line (@MYARR) {
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
@@ -90,5 +90,4 @@ sub global_action
     }
   }
 }
-
 ###EOF###
