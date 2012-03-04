@@ -1278,7 +1278,6 @@ barracuda_cnf () {
     if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
       true
     else
-      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
       echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     fi
@@ -1286,28 +1285,24 @@ barracuda_cnf () {
     if [[ "$_PHP_INSTALL_NEW_TEST" =~ "_PHP_INSTALL_NEW" ]] ; then
       true
     else
-      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
     else
-      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
       true
     else
-      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     fi
     _LOAD_LIMIT_TEST=$(grep _LOAD_LIMIT /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_TEST" =~ "_LOAD_LIMIT" ]] ; then
       true
     else
-      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_LOAD_LIMIT=$_LOAD_LIMIT" >> /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
@@ -1316,7 +1311,6 @@ barracuda_cnf () {
         sed -i "s/.*_CUSTOM_CONFIG_CSF.*/_CUSTOM_CONFIG_CSF=YES ### Forced because /var/log/custom.csf.log exists./g" /root/.barracuda.cnf
       fi
     else
-      echo "### Configuration added on $_NOW with $_INSTALLER_VERSION" >> /root/.barracuda.cnf
       echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf)
