@@ -692,17 +692,21 @@ fix_ftps_squeeze () {
   fi
 }
 #
-# Fix this on upgrade.
-fix_on_upgrade () {
-  sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf
-  sed -i "s/umask.*022/umask 002/g" /etc/profile
-  sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
-    sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+# Enable Purge Cruft Machine.
+enable_purge_cruft_machine () {
+  _PURGE_CRUFT_TEST=$(grep purge_cruft /etc/crontab)
+  if [[ "$_PURGE_CRUFT_TEST" =~ "purge_cruft" ]] ; then
+    true
+  else
+    if [[ "$_THISHOST" =~ ".host8." ]] ; then
+      echo "22 2    * * 7   root    bash /var/xdrago/purge_cruft.sh" >> /etc/crontab
+      sed -i "/^$/d" /etc/crontab
+    fi
   fi
+}
+#
+# Update Lshell Config.
+update_lshell_conf () {
   perl -p -i -e "s/allowed\s+:.*\]/allowed         : \['bzr','cat','cd','chmod','cp','curl','cvs','drush cc','drush cron','drush dbup','drush dd','drush dis','drush dl','drush en','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','drush gm','drush help','drush make','drush mup','drush pmi','drush pml','drush rr','drush sa','drush sql-conf','drush sql-connect','drush sql-dump','drush sql-sync','drush sqlc','drush sqlq','drush st','drush ublk','drush ucan','drush ucrt','drush uinf','drush uli','drush upwd','drush urol','drush urrol','drush uublk','drush vdel','drush vget','drush vset','drush','echo','find','git-receive-pack','git-upload-archive','git-upload-pack','git','grep','gzip','less','lftp','ll','ls','mkdir','mv','mysql','mysqldump','nano','passwd','patch','pwd','rm','rsync','scp','sed','ssh-keygen','svn','tar','touch','unzip','vi','vim','wget'\]/g" /etc/lshell.conf
   _LSHELL_CONF_TEST=$(grep 'drush not-allowed' /etc/lshell.conf)
   if [[ "$_LSHELL_CONF_TEST" =~ "drush not-allowed" ]] ; then
@@ -718,7 +722,16 @@ fix_on_upgrade () {
   fi
   perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump','drush cc','drush cron','drush dbup','drush dd','drush dis','drush dl','drush en','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','drush gm','drush help','drush make','drush mup','drush pmi','drush pml','drush rr','drush sa','drush sql-conf','drush sql-connect','drush sql-dump','drush sql-sync','drush sqlc','drush sqlq','drush st','drush ublk','drush ucan','drush ucrt','drush uinf','drush uli','drush upwd','drush urol','drush urrol','drush uublk','drush vdel','drush vget','drush vset'\]/g" /etc/lshell.conf
   perl -p -i -e "s/,'drush mup':'drush upc'\}/,'drush mup':'drush upc','drush gm':'drush generate-makefile'\}/g" /etc/lshell.conf
-  mkdir -p /var/backups/dragon/t
+}
+#
+# Update PHP Config.
+update_php_conf () {
+  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
+  if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
+    sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] ; then
     cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
@@ -731,6 +744,13 @@ fix_on_upgrade () {
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
+  if [ ! -e "/opt/local/lib/php.ini" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  fi
+}
+#
+# Update SQL Config.
+update_sql_conf () {
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
@@ -753,6 +773,10 @@ fix_on_upgrade () {
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
+}
+#
+# Update Nginx Config.
+update_nginx_conf () {
   if [ ! -e "/var/log/nginx_config_fixed" ] ; then
     cd /var/aegir
     sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf
@@ -760,17 +784,21 @@ fix_on_upgrade () {
     perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
     if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
-        mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
+        mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+        mv -f /etc/nginx/nginx.conf-* /var/backups/dragon/t/ &> /dev/null
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
       fi
     fi
     touch /var/log/nginx_config_fixed
   fi
-  if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
-    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+  if [ ! -e "/var/log/nginx_speed_purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+    touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
   fi
+}
+#
+# Update global.inc Config.
+update_global_inc_conf () {
   if [ -e "/data/conf/global.inc" ] ; then
     mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
@@ -780,16 +808,28 @@ fix_on_upgrade () {
     fi
     sed -i "s/10800/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
   fi
-  if [ ! -e "/opt/local/lib/php.ini" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
-  fi
-  if [ ! -e "/var/log/nginx_speed_purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-    touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
+}
+#
+# Fix this on upgrade.
+fix_on_upgrade () {
+  mkdir -p /var/backups/dragon/t
+  sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf
+  sed -i "s/umask.*022/umask 002/g" /etc/profile
+  sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf
+  if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   fi
   set_xterm
   kill_nash
   fix_ftps_squeeze
+  enable_purge_cruft_machine
+  update_lshell_conf
+  update_php_conf
+  update_sql_conf
+  update_nginx_conf
+  update_global_inc_conf
 }
 #
 # Validate server public IP.
@@ -2592,6 +2632,7 @@ install_latest_git
 set_xterm
 kill_nash
 fix_ftps_squeeze
+enable_purge_cruft_machine
 
 
 ###--------------------###
@@ -3651,13 +3692,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
     fi
   fi
-  if [ "$_THIS_OS" = "xUbuntu" ] ; then
-    killall -9 nginx &> /dev/null
-    mrun "sleep 3"
-    invoke-rc.d nginx start &> /dev/null
-  else
-    invoke-rc.d nginx reload &> /dev/null
-  fi
+  invoke-rc.d nginx reload &> /dev/null
   mrun "sleep 3"
   msg "INFO: Aegir Master Instance installation completed"
   mrun "sleep 3"
@@ -3791,15 +3826,9 @@ EOF
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
     fi
     sed -i "s/10800/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
-    if [ "$_THIS_OS" = "xUbuntu" ] ; then
-      killall -9 nginx &> /dev/null
-      mrun "sleep 3"
-      invoke-rc.d nginx start &> /dev/null
-    else
-      killall -9 nginx &> /dev/null
-      mrun "sleep 3"
-      invoke-rc.d nginx start &> /dev/null
-    fi
+    killall -9 nginx &> /dev/null
+    mrun "sleep 3"
+    invoke-rc.d nginx start &> /dev/null
   fi
 fi
 
