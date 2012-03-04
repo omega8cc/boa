@@ -2814,7 +2814,13 @@ if [ -d "/var/xdrago" ] ; then
   rm -f /var/xdrago/log/blackIP.log
   rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute,firewall.sh,stop-mysql-innodb.sh,firewall_restarter,FireStart,memcache,redis}
   cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  if [ -e "/var/xdrago/custom.minute.sh.txt" ] && [ ! -e "/var/xdrago/custom.minute.sh.local.txt" ] ; then
+    cp -af /var/xdrago/minute.sh /var/xdrago/custom.minute.sh.local.txt
+  fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* /var/xdrago/ &> /dev/null
+  if [ -e "/var/xdrago/custom.minute.sh.local.txt" ] ; then
+    cp -af /var/xdrago/custom.minute.sh.local.txt /var/xdrago/minute.sh
+  fi
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
@@ -2830,16 +2836,6 @@ if [ -d "/var/xdrago" ] ; then
   fi
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
-  if [ -e "/var/xdrago/custom.minute.sh.txt" ] ; then
-    if [ ! -e "/var/xdrago/custom.minute.sh.fixed.txt" ] ; then
-      cp -af /var/xdrago/custom.minute.sh.txt /var/xdrago/custom.minute.sh.bak.txt
-      sed -i "s/limit=.*/limit=30\n    killit/g" /var/xdrago/custom.minute.sh.txt
-      sed -i "s/if \[/elif \[/g" /var/xdrago/custom.minute.sh.txt
-      sed -i "s/.*fi.*//g" /var/xdrago/custom.minute.sh.txt
-      sed -i "/^$/d" /var/xdrago/custom.minute.sh.txt
-      touch /var/xdrago/custom.minute.sh.fixed.txt
-    fi
-  fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/critnumber = 300/critnumber = 288/g" /var/xdrago/firewall/check/scan_nginx
     sed -i "s/600/300/g" /var/xdrago/minute.sh
@@ -2869,15 +2865,14 @@ if [ "$_STATUS" = "INIT" ] ; then
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
-  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
-  sed -i "s/max_children\">1/max_children\"\>4/g" /opt/etc/php-fpm.conf
-  if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf
-  fi
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
     _THISHTIP="$_LOC_IP"
+  fi
+  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
+  if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"  /var/xdrago/firewall/check/scan_nginx
   sed -i "s/=1222/=$_LOAD_LIMIT_ONE/g" /var/xdrago/second.sh
@@ -2901,6 +2896,7 @@ fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
   cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run-* /var/xdrago/ &> /dev/null
 fi
+chmod -R 700 /var/xdrago/firewall/check &> /dev/null
 chmod 700 /var/xdrago/* &> /dev/null
 chmod 700 /var/xdrago &> /dev/null
 
