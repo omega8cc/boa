@@ -40,10 +40,10 @@ ONEX_LOAD=`awk '{print $1*100}' /proc/loadavg`
 FIVX_LOAD=`awk '{print $2*100}' /proc/loadavg`
 CTL_ONEX_SPIDER_LOAD=333
 CTL_FIVX_SPIDER_LOAD=333
-CTL_ONEX_LOAD=1222
+CTL_ONEX_LOAD=1444
 CTL_FIVX_LOAD=888
 CTL_ONEX_LOAD_CRIT=1888
-CTL_FIVX_LOAD_CRIT=1444
+CTL_FIVX_LOAD_CRIT=1555
 if [ $ONEX_LOAD -ge $CTL_ONEX_SPIDER_LOAD ] && [ $ONEX_LOAD -lt $CTL_ONEX_LOAD ] && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
   nginx_high_load_on
 elif [ $FIVX_LOAD -ge $CTL_FIVX_SPIDER_LOAD ] && [ $FIVX_LOAD -lt $CTL_FIVX_LOAD ] && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
