@@ -193,6 +193,7 @@ Contrib:
  imagecache_external -------- [D6,D7] --- [S]
  l10n_update ---------------- [D6,D7] --- [FD]
  login_security ------------- [D6] ------ [S] [B]
+ nocurrent_pass ------------- [D7] ------ [S] [B]
  poormanscron --------------- [D6] ------ [FD]
  private_upload ------------- [D6] ------ [S] [B]
  purge ---------------------- [D6,D7] --- [S] [B] [FE]
