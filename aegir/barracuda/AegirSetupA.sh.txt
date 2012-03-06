@@ -205,11 +205,11 @@ create_shared_dirs () {
     mkdir -p /data/src
   fi
   chown $_USER:$_USRG /data/all &> /dev/null
-  chown -R $_USER:$_USRG $_CORE &> /dev/null
-  chown -R $_USER:$_USRG /data/src &> /dev/null
-  chown -R $_USER:$_USRG /opt/tmp &> /dev/null
-  chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chown -R $_USER:$_USRG /data/all/000 &> /dev/null
+  chown -L -R $_USER:$_USRG $_CORE &> /dev/null
+  chown -L -R $_USER:$_USRG /data/src &> /dev/null
+  chown -L -R $_USER:$_USRG /opt/tmp &> /dev/null
+  chown -L -R $_USER:$_USRG /data/conf &> /dev/null
+  chown -L -R $_USER:$_USRG /data/all/000 &> /dev/null
   chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 }
 #
@@ -456,8 +456,8 @@ if [ ! -d "$_ROOT" ] ; then
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
 fi
-chown -R $_USER:$_USRG /opt/tmp &> /dev/null
-chown -R $_USER:$_USRG /data/conf &> /dev/null
+chown -L -R $_USER:$_USRG /opt/tmp &> /dev/null
+chown -L -R $_USER:$_USRG /data/conf &> /dev/null
 
 
 ###---### Prepare scripts
@@ -537,8 +537,8 @@ else
     invoke-rc.d cron stop &> /dev/null
     _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-    chown -R $_USER $_THIS_HM_ROOT
-    chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
+    chown -L -R $_USER $_THIS_HM_ROOT
+    chown -L -R $_USER:$_WEBG $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
     chown root:$_USRG /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
@@ -727,7 +727,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     if [[ "$_PLATF" =~ "aegir" ]] ; then
 	  _FOUND_HM=YES
     else
-      chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
+      chown -L -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
       chmod -R 2770 $_PLATF/sites/*/files &> /dev/null
     fi
   done
@@ -899,7 +899,7 @@ mrun "sleep 3"
   if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
     mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
   fi
-  chown -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
+  chown -L -R $_USER:$_USRG /home/$_USERFTP/platforms &> /dev/null
   chmod 700 /home/$_USERFTP &> /dev/null
   rm -f /home/$_USERFTP/platforms/$_THIS_CORE/{cod,commerce,commons,managingnews,nodestream,openatrium,openenterprise,openpublic,openscholar,prosepoint,drupal6,drupal7}
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites" ] ; then
@@ -1201,10 +1201,10 @@ chmod 700 root &> /dev/null
 mv -f /etc/motd /etc/motd-pre-$_THIS_CORE &> /dev/null
 echo "Barracuda Aegir Hosting System" > /etc/motd
 chown root:root /data/all &> /dev/null
-chown -R root:root /data/src &> /dev/null
-chown -R root:root /data/conf &> /dev/null
-chown -R root:root $_CORE &> /dev/null
-chown -R root:root /data/all/000 &> /dev/null
+chown -L -R root:root /data/src &> /dev/null
+chown -L -R root:root /data/conf &> /dev/null
+chown -L -R root:root $_CORE &> /dev/null
+chown -L -R root:root /data/all/000 &> /dev/null
 chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/all/000 /data/src /data /data/disk /data/conf &> /dev/null
 chmod 0700 /data/u &> /dev/null
