@@ -116,7 +116,7 @@ Octopus can install the platforms listed below:
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Open Outreach 1.0-beta7a ----- http://openoutreach.org
- OpenChurch 1.22-a ------------ http://openchurchsite.com
+ OpenChurch 1.3-alpha --------- http://openchurchsite.com
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3-alpha3 --------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
