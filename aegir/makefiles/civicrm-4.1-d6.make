@@ -6,7 +6,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow6.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.25.1.tar.gz"
 projects[pressflow][download][branch] = "master"
 
 projects[civicrm][type] = "module"

@@ -34,7 +34,7 @@ Some new features:
   6.x sites still run on PHP-FPM 5.2.17.
 
 * New default platforms with new Drupal core versions include
-  either enhanced Pressflow 6.24.1 +Extra or standard 7.12 core.
+  either enhanced Pressflow 6.25.1 +Extra or standard 7.12 core.
 
   NOTE: before you will try to upgrade any of your sites,
   please read our important how-to:
