@@ -480,7 +480,7 @@ prepare_pressflow_core () {
   chmod 0700 /data/src/$_THIS_CORE &> /dev/null
   cd /data/src/$_THIS_CORE
   rm -f -r /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6
-  wget -q -U iCab http://files.aegir.cc/dev/distro/pressflow-$_SMALLCORE6.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/pressflow-$_SMALLCORE6.tar.gz
   tar -xzf pressflow-$_SMALLCORE6.tar.gz
   rm -f pressflow-$_SMALLCORE6.tar.gz
   cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/
