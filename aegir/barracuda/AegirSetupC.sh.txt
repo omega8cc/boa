@@ -1667,9 +1667,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream.make ./
-  $_ROOT/tools/drush/drush make nodestream.make nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
-  rm -f nodestream.make
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream6.make ./
+  $_ROOT/tools/drush/drush make nodestream6.make nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
+  rm -f nodestream6.make
   cd $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/ &> /dev/null
   rm -f $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/*.txt
