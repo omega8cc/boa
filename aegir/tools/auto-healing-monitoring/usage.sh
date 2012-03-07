@@ -30,7 +30,7 @@ _MODULES_OFF="syslog dblog update l10n_update devel cookie_cache_bypass poormans
 
 fix_clear_cache()
 {
-if [ -d "$Plr/profiles/hostmaster" ] ; then
+if [ -e "$Plr/profiles/hostmaster" ] ; then
   cd $Dir
   su -s /bin/bash $_THIS_HM_USER -c "drush cc all &> /dev/null"
 fi
@@ -38,7 +38,7 @@ fi
 
 fix_boost_cache()
 {
-if [ -d "$Plr/cache" ] ; then
+if [ -e "$Plr/cache" ] ; then
   rm -f -r $Plr/cache/*
   mkdir -p $Plr/cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
   chown -L -R $_THIS_HM_USER:www-data $Plr/cache
@@ -169,7 +169,7 @@ if [ "$_MODULES" = "YES" ] ; then
         *)
         if [ -e "$Dir/drushrc.php" ] ; then
           cd $Dir
-          if [ -d "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
+          if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis cache -y &> /dev/null"
             su -s /bin/bash $_THIS_HM_USER -c "drush en syslog -y &> /dev/null"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
@@ -233,13 +233,13 @@ do
       if [ -e "$Dir/drushrc.php" ] ; then
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
         #echo Dat is $Dat
-        if [ -d "$Dir" ] ; then
+        if [ -e "$Dir" ] ; then
           DirSize=`du -s $Dir`
           DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
           SumDir=$(($SumDir + $DirSize))
           echo DirSize of $Dom is $DirSize
         fi
-        if [ -d "/var/lib/mysql/$Dat" ] ; then
+        if [ -e "/var/lib/mysql/$Dat" ] ; then
           DatSize=`du -s /var/lib/mysql/$Dat`
           DatSize=`echo "$DatSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
           SumDat=$(($SumDat + $DatSize))
@@ -385,7 +385,7 @@ for User in `find /data/disk/ -maxdepth 1 | sort`
 do
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
   CTL_LOAD=888
-  if [ -d "$User/config/server_master/nginx/vhost.d" ] ; then
+  if [ -e "$User/config/server_master/nginx/vhost.d" ] ; then
     if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
       SumDir=0
       SumDat=0
@@ -396,7 +396,7 @@ do
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
       echo Counting User $User
       count
-      if [ -d "/home/$_THIS_HM_USER.ftp" ] ; then
+      if [ -e "/home/$_THIS_HM_USER.ftp" ] ; then
         HxmSiz=`du -s /home/$_THIS_HM_USER.ftp` &> /dev/null
         HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
       fi
@@ -416,7 +416,7 @@ do
       if [[ "$_VM_TEST" =~ ".host8." ]] ; then
         check_limits
       fi
-      if [ -d "$_THIS_HM_SITE" ] ; then
+      if [ -e "$_THIS_HM_SITE" ] ; then
         read_account_data
         cd $_THIS_HM_SITE
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> C' &> /dev/null"
@@ -430,7 +430,7 @@ do
       rm -f -r $User/clients/nocomega8cc &> /dev/null
       rm -f -r $User/clients/*/backups &> /dev/null
       symlinks -dr $User/clients &> /dev/null
-      if [ -d "/home/$_THIS_HM_USER.ftp" ] ; then
+      if [ -e "/home/$_THIS_HM_USER.ftp" ] ; then
         symlinks -dr /home/$_THIS_HM_USER.ftp &> /dev/null
       fi
       echo Done for $User
@@ -451,7 +451,7 @@ _NOW=`date +%y%m%d-%H%M`
 _VM_TEST=`uname -a 2>&1`
 #
 # Check for last all nr
-if [ -d "/data/all" ] ; then
+if [ -e "/data/all" ] ; then
   cd /data/all
   listl=([0-9]*)
   _LAST_ALL=${listl[@]: -1}
