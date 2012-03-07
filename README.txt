@@ -110,7 +110,7 @@ Octopus can install the platforms listed below:
  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
- NodeStream 1.1 --------------- http://nodestream.org
+ NodeStream 1.3 --------------- http://nodestream.org
  NodeStream 2.0-alpha6 -------- http://nodestream.org
  Open Atrium 1.2.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
