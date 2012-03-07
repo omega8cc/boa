@@ -3557,11 +3557,11 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "invoke-rc.d mysql restart" &> /dev/null
 else
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    msg "INFO: Restarting PHP-FPM and Nginx"
+    msg "INFO: Restarting PHP-FPM and reloading Nginx"
     mrun "sleep 3"
     tune_memory_limits
-    st_runner "invoke-rc.d php-fpm reload" &> /dev/null
-    st_runner "invoke-rc.d php53-fpm reload" &> /dev/null
+    st_runner "invoke-rc.d php-fpm restart" &> /dev/null
+    st_runner "invoke-rc.d php53-fpm restart" &> /dev/null
     st_runner "invoke-rc.d nginx reload" &> /dev/null
   fi
 fi
@@ -4274,7 +4274,7 @@ fi
 
 ###--------------------###
 tune_memory_limits
-invoke-rc.d php-fpm reload &> /dev/null
+invoke-rc.d php-fpm restart &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   invoke-rc.d cron restart &> /dev/null
   echo " "
