@@ -135,7 +135,7 @@ if [ "$_O_CONTRIB" != "NO" ] ; then
       if [ -e "$Plr/modules/o_contrib" ] ; then
         rm -f $Plr/modules/o_contrib
       fi
-      if [[ "$_VM_TEST" =~ ".host8." ]] && [[ "$Plr" =~ "static" ]] ; then
+      if [[ "$_VM_TEST" =~ ".host8." ]] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
         echo Vanilla Drupal 5.x Platform detected in $Plr
         read_account_data
         send_notice_core
