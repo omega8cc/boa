@@ -65,7 +65,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
  NodeStream 1.3 --------------- http://nodestream.org
  NodeStream 2.0-alpha8 -------- http://nodestream.org
  OpenPublic 1.0-beta5 --------- http://openpublicapp.com
- OpenPublish 3-alpha3 --------- http://openpublishapp.com
+ OpenPublish 3.0-alpha6 ------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
  Videola 1.0-alpha2 ----------- http://videola.tv
 
