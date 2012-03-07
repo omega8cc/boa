@@ -1673,9 +1673,19 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream6.make ./
-  $_ROOT/tools/drush/drush make nodestream6.make nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
-  rm -f nodestream6.make
+  wget -q -U iCab http://ftp.drupal.org/files/projects/nodestream-$_NODESTREAM6-core.tar.gz
+  tar -xzf nodestream-$_NODESTREAM6-core.tar.gz
+  rm -f nodestream-$_NODESTREAM6-core.tar.gz
+  if [ -d "$_CORE/drupal-6.24" ] ; then
+    mv drupal-6.24 nodestream-$_NODESTREAM6-$_SMALLCORE6
+  elif [ -d "$_CORE/drupal-6.25" ] ; then
+    mv drupal-6.25 nodestream-$_NODESTREAM6-$_SMALLCORE6
+  elif [ -d "$_CORE/drupal-6.26" ] ; then
+    mv drupal-6.26 nodestream-$_NODESTREAM6-$_SMALLCORE6
+  fi
+# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream6.make ./
+# $_ROOT/tools/drush/drush make nodestream6.make nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
+# rm -f nodestream6.make
   cd $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6
   cp -af /data/src/$_THIS_CORE/pressflow-6/* $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/ &> /dev/null
   rm -f $_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/*.txt
@@ -1710,9 +1720,19 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream7.make ./
-  $_ROOT/tools/drush/drush make nodestream7.make nodestream-$_NODESTREAM7-$_SMALLCORE7 &> /dev/null
-  rm -f nodestream7.make
+  wget -q -U iCab http://ftp.drupal.org/files/projects/nodestream-$_NODESTREAM7-core.tar.gz
+  tar -xzf nodestream-$_NODESTREAM7-core.tar.gz
+  rm -f nodestream-$_NODESTREAM7-core.tar.gz
+  if [ -d "$_CORE/drupal-7.12" ] ; then
+    mv drupal-7.12 nodestream-$_NODESTREAM7-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.13" ] ; then
+    mv drupal-7.13 nodestream-$_NODESTREAM7-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.14" ] ; then
+    mv drupal-7.14 nodestream-$_NODESTREAM7-$_SMALLCORE7
+  fi
+# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/nodestream7.make ./
+# $_ROOT/tools/drush/drush make nodestream7.make nodestream-$_NODESTREAM7-$_SMALLCORE7 &> /dev/null
+# rm -f nodestream7.make
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
