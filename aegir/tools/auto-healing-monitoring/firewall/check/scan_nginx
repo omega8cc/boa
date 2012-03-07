@@ -29,8 +29,13 @@ sub makeactions
     $VISITOR =~ s/[^0-9\.]//g;
     if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
-      $li_cnt{$VISITOR}++;
-      $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack)/);
+      if ($line =~ /(GET|HEAD|POST)/) {
+        $li_cnt{$VISITOR}++;
+        $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack)/);
+      }
+      else {
+        print "Not Supported Request Type: $line\n";
+      }
     }
   }
   foreach $VISITOR (sort keys %li_cnt) {
