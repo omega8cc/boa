@@ -2019,7 +2019,7 @@ fi
 fi
 
 
-###---### CiviCRM D6
+###---### CiviCRM 3 D6
 #
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _ALLOW_CIVICRM=YES
@@ -2033,7 +2033,7 @@ else
   _ALLOW_CIVICRM=NO
 fi
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CM6 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC3 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
@@ -2046,9 +2046,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.1-d6.make ./
-  $_ROOT/tools/drush/drush make civicrm-4.1-d6.make civicrm-$_CIVICRM6-$_SMALLCORE6 &> /dev/null
-  rm -f civicrm-4.1-d6.make
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm3.make ./
+  $_ROOT/tools/drush/drush make civicrm3.make civicrm-$_CIVICRM6-$_SMALLCORE6 &> /dev/null
+  rm -f civicrm3.make
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
   rm -f -r $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/modules/cookie_cache_bypass
@@ -2072,7 +2072,7 @@ fi
 fi
 
 
-###---### CiviCRM D7
+###---### CiviCRM 4 D7
 #
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _ALLOW_CIVICRM=YES
@@ -2086,7 +2086,7 @@ else
   _ALLOW_CIVICRM=NO
 fi
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CM7 ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC4 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then

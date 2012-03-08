@@ -68,9 +68,9 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
  OpenScholar 2.0-beta14 ------- http://openscholar.harvard.edu
  Videola 1.0-alpha2 ----------- http://videola.tv
 
-Both CiviCRM d6 and d7 are available with 2+ Aegir SSD Cores only:
+Both CiviCRM 3 and 4 are available with 2+ Aegir SSD Cores only:
 
- CiviCRM 4.1.1-d6 ------------- http://civicrm.org
+ CiviCRM 3.4.8-d6 ------------- http://civicrm.org
  CiviCRM 4.1.1-d7 ------------- http://civicrm.org
 
 Note about platforms naming convention:
