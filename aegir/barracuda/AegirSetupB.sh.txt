@@ -305,6 +305,9 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ -e "$_ROOT/.drush/provision_civicrm" ] ; then
     mv -f $_ROOT/.drush/provision_civicrm $_ROOT/backups/system/provision_civicrm-pre-$_DISTRO-$_NOW &> /dev/null
   fi
+  if [ -e "$_ROOT/.drush/provision_cdn" ] ; then
+    mv -f $_ROOT/.drush/provision_cdn $_ROOT/backups/system/provision_cdn-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
   if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
     mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
   fi
@@ -378,11 +381,15 @@ else
   fi
 fi
 wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
-tar -xzf provision_boost.tar.gz
-rm -f provision_boost.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
-tar -xzf registry_rebuild-7.x-1.x-dev.tar.gz
-rm -f registry_rebuild-7.x-1.x-dev.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/provision_cdn-6.x-2.x-dev.tar.gz
+for archive in ./*.tar.gz; do
+  tar -xzf "$archive" &> /dev/null
+done
+rm -f *.tar.gz
+mv -f $_ROOT/.drush/provision_cdn $_ROOT/.drush/provision_cdn_src &> /dev/null
+cp -af $_ROOT/.drush/provision_cdn_src/provision $_ROOT/.drush/provision_cdn
+rm -f -r $_ROOT/.drush/provision_cdn_src
 if [ "$_HTTP_WILDCARD" = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
@@ -495,7 +502,9 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   DRUSHC="$_ROOT/tools/drush/drush"
-  $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules strongarm-6.x-2.1 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules provision_cdn-6.x-2.x-dev strongarm-6.x-2.1 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
+  cp -af $_AEGIR_ROOT/sites/all/modules/provision_cdn/hosting $_AEGIR_ROOT/sites/all/modules/hosting_cdn
+  rm -f -r $_AEGIR_ROOT/sites/all/modules/provision_cdn
   $_DRUSHCMD en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect -y &> /dev/null
   $_DRUSHCMD dis syslog -y &> /dev/null
   $_DRUSHCMD dis cache -y &> /dev/null
