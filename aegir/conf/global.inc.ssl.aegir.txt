@@ -275,9 +275,6 @@ if (isset($_SERVER['HTTP_HOST'])) {
       }
     }
 
-    if (!empty($known_bot)) {
-      $expire_in_seconds = '10800';
-    }
     if ($conf['install_profile'] != 'hostmaster') {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
