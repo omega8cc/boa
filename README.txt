@@ -117,7 +117,6 @@ Octopus can install the platforms listed below:
  Open Enterprise 1.0-beta3 ---- http://leveltendesign.com/enterprise
  Open Outreach 1.0-beta7a ----- http://openoutreach.org
  OpenChurch 1.3-alpha --------- http://openchurchsite.com
- OpenPublic 1.0-beta5 --------- http://openpublicapp.com
  OpenPublish 3.0-alpha6 ------- http://openpublishapp.com
  OpenScholar 2.0-beta14 ------- http://openscholar.harvard.edu
  Pressflow 5.23 --------------- http://pressflow.org

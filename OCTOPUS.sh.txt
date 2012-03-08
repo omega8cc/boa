@@ -114,7 +114,6 @@ _PHP_FPM_VERSION=5.2
 ### ODS ----------- Open Deals
 ### OEE ----------- Open Enterprise
 ### OOH ----------- Open Outreach
-### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
