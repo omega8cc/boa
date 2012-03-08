@@ -3612,14 +3612,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
   ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
   cd /var/aegir
-  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-    _AEGIR_SCRIPT="aegir-head-install"
-  elif [ "$_AEGIR_VERSION" = "TEST" ] ; then
-    _AEGIR_SCRIPT="aegir-test-install"
+  _AEGIR_SCRIPT="aegir-head-install"
+  if [ "$_AEGIR_VERSION" = "TEST" ] ; then
     _DRUSH_VERSION=All-Versions-HEAD
     _DRUSH_FAMILY=5
-  else
-    _AEGIR_SCRIPT="aegir-alpha-install"
   fi
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files
