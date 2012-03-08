@@ -98,7 +98,7 @@ _PHP_FPM_VERSION=5.2
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### D5P ----------- Pressflow 5
-### AQ6 ----------- Acquia 6
+### AQ6 ----------- Acquia D6
 ### CM6 ----------- CiviCRM 4 D6
 ### CM7 ----------- CiviCRM 4 D7
 ### COD ----------- Conference
@@ -107,8 +107,8 @@ _PHP_FPM_VERSION=5.2
 ### ELS ----------- ELMS
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
-### NS7 ----------- NodeStream 7
-### NSM ----------- NodeStream 6
+### NS7 ----------- NodeStream D7
+### NSM ----------- NodeStream D6
 ### OAM ----------- Open Atrium
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
@@ -117,8 +117,8 @@ _PHP_FPM_VERSION=5.2
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
-### UC7 ----------- Ubercart 7
-### UCT ----------- Ubercart 6
+### UC7 ----------- Ubercart D7
+### UCT ----------- Ubercart D6
 ### VOA ----------- Videola
 ###
 ### Examples:
