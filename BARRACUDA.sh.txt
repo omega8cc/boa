@@ -448,7 +448,7 @@ _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_PHP_5_2=NO
 _CUSTOM_CONFIG_PHP_5_3=NO
-_SPEED_VALID_MAX=10800
+_SPEED_VALID_MAX=300
 _NGINX_DOS_LIMIT=300
 
 
@@ -808,7 +808,7 @@ update_global_inc_conf () {
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
     fi
-    sed -i "s/10800/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
+    sed -i "s/300/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
   fi
 }
 #
@@ -3689,7 +3689,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
   fi
-  sed -i "s/10800/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+  sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
   force_advanced_nginx_config
   if [ "$_DRUSH_FAMILY" = "3" ] ; then
     cd /var/aegir/drush
@@ -3749,7 +3749,7 @@ else
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
     fi
-    sed -i "s/10800/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     force_advanced_nginx_config
     if [ "$_DRUSH_FAMILY" = "3" ] ; then
       cd /var/aegir/drush
@@ -3845,7 +3845,7 @@ EOF
       mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
     fi
-    sed -i "s/10800/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     killall -9 nginx &> /dev/null
     mrun "sleep 3"
     invoke-rc.d nginx start &> /dev/null

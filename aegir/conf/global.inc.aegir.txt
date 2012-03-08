@@ -54,7 +54,7 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:HTTrack|libwww|PECL|si
   // detect known bots
   $known_bot = 'bot';
 }
-$expire_in_seconds = '10800';
+$expire_in_seconds = '300';
 
 // Temporary workaround for Purge failing
 // to purge cache for vhosts behind local proxy.
