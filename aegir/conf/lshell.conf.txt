@@ -43,5 +43,5 @@ scp_download    : 1
 sftp            : 1
 
 ##  list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, etc.)
-overssh         : ['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump','drush cc','drush cron','drush dbup','drush dd','drush dis','drush dl','drush en','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','drush gm','drush help','drush make','drush mup','drush pmi','drush pml','drush rr','drush sa','drush sql-conf','drush sql-connect','drush sql-dump','drush sql-sync','drush sqlc','drush sqlq','drush st','drush ublk','drush ucan','drush ucrt','drush uinf','drush uli','drush upwd','drush urol','drush urrol','drush uublk','drush vdel','drush vget','drush vset']
+overssh         : ['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump']
 

@@ -722,7 +722,7 @@ update_lshell_conf () {
   else
     perl -p -i -e "s/warning_counter.*/warning_counter : 3\nstrict          : 0/g" /etc/lshell.conf
   fi
-  perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump','drush cc','drush cron','drush dbup','drush dd','drush dis','drush dl','drush en','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','drush gm','drush help','drush make','drush mup','drush pmi','drush pml','drush rr','drush sa','drush sql-conf','drush sql-connect','drush sql-dump','drush sql-sync','drush sqlc','drush sqlq','drush st','drush ublk','drush ucan','drush ucrt','drush uinf','drush uli','drush upwd','drush urol','drush urrol','drush uublk','drush vdel','drush vget','drush vset'\]/g" /etc/lshell.conf
+  perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump'\]/g" /etc/lshell.conf
   perl -p -i -e "s/,'drush mup':'drush upc'\}/,'drush mup':'drush upc','drush gm':'drush generate-makefile'\}/g" /etc/lshell.conf
 }
 #
