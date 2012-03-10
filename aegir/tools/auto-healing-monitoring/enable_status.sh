@@ -11,12 +11,12 @@ action()
   touch /var/xdrago/log/enableStatus.done
 }
 
-if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
+if test -f /var/run/boa_wait.pid ; then
   touch /var/xdrago/log/optimizemysqlrunning-enabler
   exit
 else
-  touch /var/xdrago/log/optimize_mysql_ao.pid
+  touch /var/run/boa_wait.pid
   sleep 8
   action
-  rm -f /var/xdrago/log/optimize_mysql_ao.pid
+  rm -f /var/run/boa_wait.pid
 fi

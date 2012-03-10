@@ -19,7 +19,7 @@ echo ...we have to wait...
 fi
 }
 
-if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
+if test -f /var/run/boa_wait.pid ; then
   touch /var/xdrago/log/wait-purge
   exit
 else

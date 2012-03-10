@@ -26,12 +26,12 @@ action()
   touch /var/xdrago/log/graceful.done
 }
 
-if test -f /var/run/octopus_barracuda.pid ; then
+if test -f /var/run/boa_run.pid ; then
   touch /var/xdrago/log/wait-for-octopus-barracuda-running
   exit
 else
-  touch /var/xdrago/log/optimize_mysql_ao.pid
+  touch /var/run/boa_wait.pid
   sleep 300
   action
-  rm -f /var/xdrago/log/optimize_mysql_ao.pid
+  rm -f /var/run/boa_wait.pid
 fi

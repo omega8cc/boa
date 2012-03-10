@@ -463,7 +463,7 @@ else
 fi
 #
 mkdir -p /var/xdrago/log/usage
-if test -f /var/xdrago/log/optimize_mysql_ao.pid ; then
+if test -f /var/run/boa_wait.pid ; then
   touch /var/xdrago/log/wait-counter
   exit
 else

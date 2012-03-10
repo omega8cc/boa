@@ -1656,7 +1656,7 @@ if [ `whoami` = "root" ] ; then
   rm -f -r /opt/tmp/*
   rm -f /tmp/cache.inc
   invoke-rc.d cron stop &> /dev/null
-  touch /var/run/octopus_barracuda.pid
+  touch /var/run/boa_run.pid
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
@@ -1681,7 +1681,7 @@ if [ -e "/var/aegir/config/server_master/nginx.conf" ] ; then
   else
     _HTTP_WILDCARD=NO
   fi
-  touch /var/xdrago/log/optimize_mysql_ao.pid
+  touch /var/run/boa_wait.pid
 else
   _STATUS=INIT
   msg "INFO: INIT..."
@@ -4373,8 +4373,8 @@ mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
 rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-rm -f /var/run/octopus_barracuda.pid
-rm -f /var/xdrago/log/optimize_mysql_ao.pid
+rm -f /var/run/boa_run.pid
+rm -f /var/run/boa_wait.pid
 chmod 700 /root
 invoke-rc.d cron start   &> /dev/null
 invoke-rc.d lfd start    &> /dev/null

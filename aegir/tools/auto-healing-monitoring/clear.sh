@@ -14,7 +14,7 @@ echo rotate > /var/log/php/error_log_cli
 echo rotate > /var/log/php/error_log_cli_53
 echo rotate > /var/log/redis/redis-server.log
 echo rotate > /var/log/mysql/sql-slow-query.log
-if test -f /var/run/octopus_barracuda.pid ; then
+if test -f /var/run/boa_run.pid ; then
   sleep 1
 else
   rm -f -r /tmp/*

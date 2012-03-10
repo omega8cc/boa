@@ -1,6 +1,6 @@
 #!/bin/bash
 
-touch /var/xdrago/log/optimize_mysql_ao.pid
+touch /var/run/boa_wait.pid
 sleep 180
 DATABASEUSER=root
 DATABASEPASS=NdKBu34erty325r6mUHxWy
@@ -42,5 +42,5 @@ rm .databasesToBackup
 find $BACKUPDIR -mtime +8 -type d -exec rm -rf {} \;
 
 echo COMPLETED ALL
-rm -f /var/xdrago/log/optimize_mysql_ao.pid
+rm -f /var/run/boa_wait.pid
 touch /var/xdrago/log/last-run-backup

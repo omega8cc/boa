@@ -51,7 +51,7 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
-`killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/octopus_barracuda.pid");
+`killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `killall -9 php-fpm; /etc/init.d/php53-fpm start` if ((!$fpmsumar || $fpmsumar > 1 ) && -f "/etc/init.d/php53-fpm");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");

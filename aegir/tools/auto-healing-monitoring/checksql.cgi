@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 $| = 1;
-if (-f "/var/xdrago/log/optimize_mysql_ao.pid") {
+if (-f "/var/run/boa_wait.pid") {
   exit;
 }
 $mailx_test = `mail -V 2>&1`;
@@ -14,11 +14,11 @@ chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
 $logfile="/var/xdrago/log/mysqlcheck.log";
-`touch /var/xdrago/log/optimize_mysql_ao.pid`;
+`touch /var/run/boa_wait.pid`;
 sleep(90);
 `/usr/bin/mysqlcheck --port=3306 -h localhost -Aa -u root --password=NdKBu34erty325r6mUHxWy > $logfile`;
 &makeactions;
-`rm -f /var/xdrago/log/optimize_mysql_ao.pid`;
+`rm -f /var/run/boa_wait.pid`;
 `touch /var/xdrago/log/last-run-acrashsql`;
 if ($mailx_test =~ /(invalid)/i) {
   if ($status ne "CLEAN") {

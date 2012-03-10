@@ -15,7 +15,7 @@ hold()
 
 terminate()
 {
-  if test -f /var/run/octopus_barracuda.pid ; then
+  if test -f /var/run/boa_run.pid ; then
     sleep 1
   else
     killall -9 php wget

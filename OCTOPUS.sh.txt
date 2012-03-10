@@ -756,7 +756,7 @@ fi
 
 ###---### init
 #
-touch /var/run/octopus_barracuda.pid
+touch /var/run/boa_run.pid
 if [ -d "/var/cache/pdnsd" ] ; then
   invoke-rc.d pdnsd stop &> /dev/null
   sleep 1
@@ -1154,7 +1154,7 @@ action
 rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-rm -f /var/run/octopus_barracuda.pid
+rm -f /var/run/boa_run.pid
 
 ###----------------------------------------###
 ###

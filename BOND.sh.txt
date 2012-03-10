@@ -439,7 +439,7 @@ tune_memory_limits () {
 
 ###---### init
 #
-touch /var/run/octopus_barracuda.pid
+touch /var/run/boa_run.pid
 
 ###--------------------###
 _DRUPAL_WORKS=NO
@@ -622,7 +622,7 @@ else
 fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
-rm -f /var/run/octopus_barracuda.pid
+rm -f /var/run/boa_run.pid
 invoke-rc.d cron start &> /dev/null
 msg "STATUS: Cron started again"
 msg "BYE!"

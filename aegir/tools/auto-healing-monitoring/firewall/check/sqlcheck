@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 $| = 1;
-if (-f "/var/xdrago/log/optimize_mysql_ao.pid") {exit;}
+if (-f "/var/run/boa_wait.pid") {exit;}
 $status="CLEAN";
 &makeactions;
 if ($status ne "CLEAN") {
