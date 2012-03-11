@@ -432,6 +432,7 @@ do
       symlinks -dr $User/clients &> /dev/null
       if [ -e "/home/$_THIS_HM_USER.ftp" ] ; then
         symlinks -dr /home/$_THIS_HM_USER.ftp &> /dev/null
+        rm -f /home/$_THIS_HM_USER.ftp/{.profile,.bash_logout,.bashrc}
       fi
       echo Done for $User
     else
