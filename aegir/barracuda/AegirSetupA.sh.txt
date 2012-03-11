@@ -277,7 +277,7 @@ for i in $REVISIONS; do
     fi
   fi
   if [ -d "/data/all/$i" ] ; then
-    for p in `find /data/all/$i/ -maxdepth 1 -type d | sort`; do
+    for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
       if [ -d "$p/modules/cookie_cache_bypass" ] ; then
         rm -f -r $p/modules/cookie_cache_bypass
       fi

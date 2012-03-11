@@ -4,7 +4,7 @@
 
 action()
 {
-for Runner in `find /var/xdrago -maxdepth 1 -type f | grep run- | uniq | sort`
+for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f | grep run- | uniq | sort`
 do
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
   CTL_LOAD=388

@@ -208,7 +208,7 @@ fi
 
 count()
 {
-for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -type f | sort`
+for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
 do
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
@@ -381,7 +381,7 @@ check_limits () {
 
 action()
 {
-for User in `find /data/disk/ -maxdepth 1 | sort`
+for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
 do
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
   CTL_LOAD=888

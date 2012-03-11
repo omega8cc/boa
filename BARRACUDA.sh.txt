@@ -3578,7 +3578,7 @@ fi
 if [ -e "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
   PASWD=`echo -n $PXSWD | tr -d "\n"`
-  for Files in `find /var/xdrago -maxdepth 1 -type f` ; do
+  for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f` ; do
     sed -i "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files
     sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files
   done
