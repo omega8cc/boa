@@ -1,0 +1,14 @@
+diff --git a/julio.profile b/julio.profile
+index 340580d..8522810 100644
+--- a/julio.profile
++++ b/julio.profile
+@@ -1,6 +1,8 @@
+ <?php
+ // include form function for feature_set
+-!function_exists('feature_set_admin_form') ? module_load_include('inc', 'feature_set', 'feature_set.admin') : FALSE;
++if (!defined('DRUSH_BASE_PATH')) {
++  !function_exists('feature_set_admin_form') ? module_load_include('inc', 'feature_set', 'feature_set.admin') : FALSE;
++}
+
+ /**
+  * Implements form_alter for the configuration form
