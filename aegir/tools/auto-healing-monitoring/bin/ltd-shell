@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+if [[ "$*" =~ "sftp-server" ]] ; then
+  exit 1
+else
+  exec /usr/bin/lshell
+fi
