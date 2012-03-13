@@ -1061,6 +1061,15 @@ else
   msg "Bye."
   exit 1
 fi
+#
+#
+if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+  true
+else
+  octopus_cnf
+fi
+#
+#
 _ETH_TEST=`ifconfig 2>&1`
 if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
   _VMFAMILY="VZ"
@@ -1115,17 +1124,11 @@ cat <<EOF
 
 EOF
 echo " "
-if prompt_yes_no "Do you want to proceed with the setup?" ; then
+if prompt_yes_no "Do you want to proceed?" ; then
   true
 else
   echo "Installation/upgrade aborted by you."
   exit 1
-fi
-
-if [[ "$_DOMAIN" =~ ".host8." ]] ; then
-  true
-else
-  octopus_cnf
 fi
 
 _MY_EMAIL=${_MY_EMAIL//\@/\\\@}
