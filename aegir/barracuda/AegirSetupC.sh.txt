@@ -1935,10 +1935,16 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openchurch-$_OPENCHURCH.tar.gz
-  tar -xzf openchurch-$_OPENCHURCH.tar.gz &> /dev/null
-  rm -f openchurch-$_OPENCHURCH.tar.gz
-  mv openchurch-$_OPENCHURCH openchurch-$_OPENCHURCH-$_SMALLCORE7
+  wget -q -U iCab http://ftp.drupal.org/files/projects/openchurch-$_OPENCHURCH-core.tar.gz
+  tar -xzf openchurch-$_OPENCHURCH-core.tar.gz &> /dev/null
+  rm -f openchurch-$_OPENCHURCH-core.tar.gz
+  if [ -d "$_CORE/drupal-7.12" ] ; then
+    mv drupal-7.12 openchurch-$_OPENCHURCH-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.13" ] ; then
+    mv drupal-7.13 openchurch-$_OPENCHURCH-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.14" ] ; then
+    mv drupal-7.14 openchurch-$_OPENCHURCH-$_SMALLCORE7
+  fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
