@@ -466,7 +466,7 @@ _APC_VERSION=3.1.9
 _IMAGICK_VERSION=3.1.0RC1
 _CHIVE_VERSION=1.0.2
 _BZR_VERSION=2.3.4
-_LSHELL_VERSION=0.9.14.1-sec
+_LSHELL_VERSION=0.9.15.1-sec
 _PURE_FTPD_VERSION=1.0.35
 _DRUSH_VERSION=7.x-4.5 ### or HEAD
 _DRUSH_FAMILY=4        ### change to 5 for HEAD
@@ -722,8 +722,10 @@ update_lshell_conf () {
   else
     perl -p -i -e "s/warning_counter.*/warning_counter : 3\nstrict          : 0/g" /etc/lshell.conf
   fi
+  sed -i "s/strict.*:.*/strict          : 0/g" /etc/lshell.conf
   perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump'\]/g" /etc/lshell.conf
-  perl -p -i -e "s/,'drush mup':'drush upc'\}/,'drush mup':'drush upc','drush gm':'drush generate-makefile'\}/g" /etc/lshell.conf
+  perl -p -i -e "s/, 'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
+  perl -p -i -e "s/,'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
 }
 #
 # Update PHP Config.
@@ -3409,7 +3411,7 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   else
     git clone git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
     cd lshell-$_LSHELL_VERSION
-    git checkout 0.9.14.1-sec &> /dev/null
+    git checkout $_LSHELL_VERSION &> /dev/null
   fi
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files
