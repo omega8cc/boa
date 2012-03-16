@@ -112,7 +112,6 @@ _PHP_FPM_VERSION=5.2
 ### OAM ----------- Open Atrium
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
-### OEE ----------- Open Enterprise
 ### OOH ----------- Open Outreach
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar

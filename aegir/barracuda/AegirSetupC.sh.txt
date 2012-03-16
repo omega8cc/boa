@@ -1454,48 +1454,48 @@ fi
 
 ###---### Open Enterprise
 #
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
-true
-msg "STATUS: $_F_OPENENTERPRISE install in progress, please wait..."
-mrun "sleep 2"
-_CORE_DISTRO="$_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
-    prepare_pressflow_core
-  fi
-  cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openenterprise-$_OPENENTERPRISE.tar.gz
-  tar -xzf openenterprise-$_OPENENTERPRISE.tar.gz
-  rm -f openenterprise-$_OPENENTERPRISE.tar.gz
-  mv $_CORE/openenterprise $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/ &> /dev/null
-  cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-  rm -f $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/*.txt
-  rm -f -r $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/modules/cookie_cache_bypass
-  if [ $_OPENENTERPRISE = "6.x-1.0-beta3" ] ; then
-    cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/profiles/openenterprise
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openenterprise.patch ./
-    patch -p1 < openenterprise.patch &> /dev/null
-    cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-  fi
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
-  rm -f -r ./profiles/default
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-cd $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-create_symlinks
-msg "STATUS: $_F_OPENENTERPRISE installation completed"
-mrun "sleep 2"
-else
-  msg "STATUS: $_F_OPENENTERPRISE installation skipped"
-  mrun "sleep 1"
-fi
-fi
-fi
+# if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
+# if [ ! -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/modules/path_alias_cache" ] ; then
+# echo " "
+# if prompt_yes_no "$_F_OPENENTERPRISE - http://leveltendesign.com/enterprise" ; then
+# true
+# msg "STATUS: $_F_OPENENTERPRISE install in progress, please wait..."
+# mrun "sleep 2"
+# _CORE_DISTRO="$_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6"
+# if [ ! -d "$_CORE_DISTRO" ] ; then
+#   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+#     prepare_pressflow_core
+#   fi
+#   cd $_CORE
+#   wget -q -U iCab http://files.aegir.cc/dev/distro/openenterprise-$_OPENENTERPRISE.tar.gz
+#   tar -xzf openenterprise-$_OPENENTERPRISE.tar.gz
+#   rm -f openenterprise-$_OPENENTERPRISE.tar.gz
+#   mv $_CORE/openenterprise $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
+#   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/ &> /dev/null
+#   cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
+#   rm -f $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/*.txt
+#   rm -f -r $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/modules/cookie_cache_bypass
+#   if [ $_OPENENTERPRISE = "6.x-1.0-beta3" ] ; then
+#     cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/profiles/openenterprise
+#     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openenterprise.patch ./
+#     patch -p1 < openenterprise.patch &> /dev/null
+#     cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
+#   fi
+#   sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
+#   rm -f -r ./profiles/default
+#   create_dirs
+# fi
+# mkdir -p $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
+# cd $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
+# create_symlinks
+# msg "STATUS: $_F_OPENENTERPRISE installation completed"
+# mrun "sleep 2"
+# else
+#   msg "STATUS: $_F_OPENENTERPRISE installation skipped"
+#   mrun "sleep 1"
+# fi
+# fi
+# fi
 
 
 ###---### Videola Make
