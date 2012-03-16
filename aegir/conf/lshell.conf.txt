@@ -42,9 +42,11 @@ scp_download    : 1
 ##  allow of forbid the use of sftp (set to 1 or 0)
 sftp            : 1
 
+##  set sort prompt current directory update (default: 0)
+prompt_short    : 1
+
 ##  list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, etc.)
 overssh         : ['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump']
 
 [grp:ltd-shell]
 sftp            : 0
-
