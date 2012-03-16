@@ -3451,7 +3451,7 @@ if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "
   else
     git clone git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
     cd lshell-$_LSHELL_VERSION
-    git checkout 0.9.14.1-sec &> /dev/null
+    git checkout $_LSHELL_VERSION &> /dev/null
   fi
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files
