@@ -3474,7 +3474,7 @@ if [ ! -e "/var/log/umask_fixed.log" ] ; then
   mrun "sleep 3"
   mkdir -p /var/www
   echo "UMASK=002" >> /etc/default/login
-  echo "UMASK 002" >> /etc/login.defs
+  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs
   sed -i "s/umask.*022/umask 002/g" /etc/profile
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   echo "umask 002" >> /var/www/.profile
