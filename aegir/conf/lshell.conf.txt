@@ -1,6 +1,6 @@
 # lshell.py configuration file
 #
-# $Id: lshell.conf,v 1.24 2010/04/17 23:14:58 ghantoos Exp $
+# $Id: lshell.conf,v 1.27 2010-10-18 19:05:17 ghantoos Exp $
 
 [global]
 ##  log directory (default /var/log/lshell/ )
@@ -44,4 +44,7 @@ sftp            : 1
 
 ##  list of command allowed to execute over ssh (e.g. rsync, rdiff-backup, etc.)
 overssh         : ['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump']
+
+[grp:ltd-shell]
+sftp            : 0
 
