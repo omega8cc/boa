@@ -101,7 +101,7 @@ standard production settings.
 Octopus can install the platforms listed below:
 
  Acquia 6.25.1 (int) ---------- http://bit.ly/acquiadrupal
- Acquia Commons 2.4 ----------- http://acquia.com/drupalcommons
+ Acquia Commons 2.5 ----------- http://acquia.com/drupalcommons
  CiviCRM 3.4.8-d6 ------------- http://civicrm.org
  CiviCRM 4.1.1-d7 ------------- http://civicrm.org
  Commerce Kickstart 1.3 ------- http://drupalcommerce.org
