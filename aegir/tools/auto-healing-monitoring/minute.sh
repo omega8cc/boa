@@ -48,3 +48,4 @@ sleep 15
 action
 echo watcher 4
 echo DONE!
+###EOF2012###

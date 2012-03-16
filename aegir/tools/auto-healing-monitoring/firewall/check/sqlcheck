@@ -23,4 +23,4 @@ local(@MYARR) = `tail --lines=200 /var/log/syslog 2>&1`;
     }
   }
 }
-###EOF###
+###EOF2012###

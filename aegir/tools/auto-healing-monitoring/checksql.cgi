@@ -89,4 +89,4 @@ sub repair_this_action
   `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -a -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
   `echo " " >> /var/xdrago/$this_filename`;
 }
-###EOF###
+###EOF2012###

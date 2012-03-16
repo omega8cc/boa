@@ -33,3 +33,4 @@ sleep 2
 rm -f /var/lib/redis/*
 invoke-rc.d redis-server restart 2>&1
 touch /var/xdrago/log/clear.done
+###EOF2012###

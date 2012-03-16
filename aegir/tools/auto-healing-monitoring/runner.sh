@@ -30,3 +30,4 @@ if test -f /var/run/boa_wait.pid ; then
 else
   action
 fi
+###EOF2012###

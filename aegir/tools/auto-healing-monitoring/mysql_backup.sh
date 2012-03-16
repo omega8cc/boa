@@ -44,3 +44,4 @@ find $BACKUPDIR -mtime +8 -type d -exec rm -rf {} \;
 echo COMPLETED ALL
 rm -f /var/run/boa_wait.pid
 touch /var/xdrago/log/last-run-backup
+###EOF2012###
