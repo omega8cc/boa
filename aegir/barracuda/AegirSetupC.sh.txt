@@ -1300,10 +1300,16 @@ mrun "sleep 2"
 _CORE_DISTRO="$_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/opendeals-$_OPENDEALS.tar.gz
-  tar -xzf opendeals-$_OPENDEALS.tar.gz &> /dev/null
-  rm -f opendeals-$_OPENDEALS.tar.gz
-  mv opendeals-$_OPENDEALS opendeals-$_OPENDEALS-$_SMALLCORE7
+  wget -q -U iCab http://ftp.drupal.org/files/projects/opendeals-$_OPENDEALS-core.tar.gz
+  tar -xzf opendeals-$_OPENDEALS-core.tar.gz
+  rm -f opendeals-$_OPENDEALS-core.tar.gz
+  if [ -d "$_CORE/drupal-7.12" ] ; then
+    mv drupal-7.12 opendeals-$_OPENDEALS-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.13" ] ; then
+    mv drupal-7.13 opendeals-$_OPENDEALS-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.14" ] ; then
+    mv drupal-7.14 opendeals-$_OPENDEALS-$_SMALLCORE7
+  fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   rm -f $_DRUPAL7.tar.gz
