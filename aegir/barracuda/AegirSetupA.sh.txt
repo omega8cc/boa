@@ -259,9 +259,9 @@ for i in $REVISIONS; do
       sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install
     fi
     # backup_migrate
-    wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.4.tar.gz
-    tar -xzf backup_migrate-6.x-2.4.tar.gz &> /dev/null
-    rm -f backup_migrate-6.x-2.4.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
+    tar -xzf backup_migrate-6.x-2.5.tar.gz &> /dev/null
+    rm -f backup_migrate-6.x-2.5.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
       # purge
       git clone http://git.drupal.org/project/purge.git /data/all/$i/o_contrib/purge &> /dev/null
