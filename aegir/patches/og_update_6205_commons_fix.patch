@@ -1,0 +1,21 @@
+diff -urp a/og.install b/og.install
+--- a/og.install        2012-01-18 23:55:27.000000000 +0000
++++ b/og.install        2012-03-17 13:46:41.000000000 +0000
+@@ -447,12 +447,13 @@ function og_update_6204() {
+ }
+
+ /**
+- * Add an index on og_uid.uid.
++ * Add an index on og_uid.uid. Already applied in drupal_commons.make
+  */
+ function og_update_6205() {
+-  $ret = array();
+-  db_add_index($ret, 'og_uid', 'uid', array('uid'));
+-  return $ret;
++  //$ret = array();
++  //db_add_index($ret, 'og_uid', 'uid', array('uid'));
++  //return $ret;
++  return array();
+ }
+
+ // end updates //

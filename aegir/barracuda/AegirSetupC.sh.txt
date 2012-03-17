@@ -1430,6 +1430,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   fi
+  cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/profiles/drupal_commons/modules/contrib/og
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
+  patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
+  cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
