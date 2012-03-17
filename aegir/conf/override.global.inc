@@ -37,8 +37,8 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
     isset($_SERVER['REQUEST_URI']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
   $conf['https'] = TRUE;
-  if (preg_match("/^\/(?:cart.*|admin.*|donate.*|civicrm.*|node\/add*|node\/*\/edit)$/", $_SERVER['REQUEST_URI']) ||
-      preg_match("/^\/(?:user.*|user\/.*\/edit.*|user\/reset.*|user\/register*|user\/logout|user\/password|user\/login)$/", $_SERVER['REQUEST_URI'])) {
+  if (preg_match("/^\/(?:cart.*|admin.*|donate.*|civicrm.*|node\/add.*|node\/.*\/edit)$/", $_SERVER['REQUEST_URI']) ||
+      preg_match("/^\/(?:user.*|user\/.*\/edit.*|user\/reset.*|user\/register.*|user\/logout|user\/password|user\/login)$/", $_SERVER['REQUEST_URI'])) {
     $base_url = 'https://' . $_SERVER['HTTP_HOST'];
     if ($request_type != "SSL") {
       header('X-Accel-Expires: 1');
