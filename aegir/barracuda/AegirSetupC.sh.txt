@@ -748,7 +748,7 @@ fi
 fi
 
 
-###---### Ubercart 3.0.1
+###---### Ubercart 3.0.2
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
