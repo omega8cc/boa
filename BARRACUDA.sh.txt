@@ -186,7 +186,7 @@ _AEGIR_VERSION=HEAD
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.2 (default)
+### You can choose MariaDB 5.3 (default)
 ### or Percona 5.5.
 ###
 ### You can choose/change the DB server both
@@ -2559,13 +2559,13 @@ install_mariadb_sql () {
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.2/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.3/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.3/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "apt-get autoremove -y"          2> /dev/null
   st_runner "apt-get remove mysql-common -y" 2> /dev/null
   st_runner "apt-get purge mysql-common -y"  2> /dev/null
   st_runner "apt-get update -y"              2> /dev/null
-  SQLDEB="mariadb-server-5.2 mariadb-client-5.2 mariadb-common"
+  SQLDEB="mariadb-server-5.3 mariadb-client-5.3 mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
@@ -2598,7 +2598,7 @@ else
     _SQL_UPGRADE=YES
   elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ "$_DB_SERVER_TEST" =~ "5.1.49-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.7-MariaDB" ]] ; then
+  elif [[ "$_DB_SERVER_TEST" =~ "5.1.49-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.7-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.10-MariaDB" ]] ; then
     _SQL_UPGRADE=YES
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
@@ -2631,6 +2631,7 @@ else
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
     rm -f /var/lib/mysql/debian-5.1.flag &> /dev/null
     rm -f /var/lib/mysql/debian-5.2.flag &> /dev/null
+    rm -f /var/lib/mysql/debian-5.3.flag &> /dev/null
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
     _PHP_FORCE_REINSTALL=YES
@@ -2990,10 +2991,10 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/log/installed-5.2.10-MariaDB.log" ] ; then
+    if [ ! -e "/var/log/installed-5.3.5-MariaDB.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.2.10-MariaDB" > /var/log/installed-5.2.10-MariaDB.log
-      msg "INFO: PHP rebuild required to include MariaDB 5.2.10 libs"
+      echo "5.3.5-MariaDB" > /var/log/installed-5.3.5-MariaDB.log
+      msg "INFO: PHP rebuild required to include MariaDB 5.3.5 libs"
       mrun "sleep 3"
     fi
   else
@@ -3062,7 +3063,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "5.2.10-MariaDB" > /var/log/installed-5.2.10-MariaDB.log
+    echo "5.3.5-MariaDB" > /var/log/installed-5.3.5-MariaDB.log
   else
     echo "5.5.20-Percona" > /var/log/installed-5.5.20-Percona.log
   fi
