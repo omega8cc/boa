@@ -393,8 +393,6 @@ download_o_contrib_six () {
     git clone http://git.drupal.org/project/purge.git &> /dev/null
     cd purge
     git checkout 6.x-1.x &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge_1327216_2.patch ./
-    patch -p0 < purge_1327216_2.patch &> /dev/null
     cd ../
     #wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.0.tar.gz
     #wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.4.tar.gz
