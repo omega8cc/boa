@@ -4361,9 +4361,9 @@ fi
 
 ###--------------------###
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
-mrun "sleep 1"
+mrun "sleep 5"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
-mrun "sleep 1"
+mrun "sleep 3"
 msg "Final post-install cleaning, please wait..."
 mrun "sleep 1"
 mkdir -p /data/conf/arch
