@@ -16,7 +16,7 @@
  # Stop on error
  # set -e ### disable this for debugging
 @@ -703,34 +711,40 @@ if [ ! -f "/var/aegir/config/includes/ap
-     mrun "sleep 3"
+     mrun "sleep 1"
      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
      _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
 +		_MIRROR="http://$_MIRROR/ubuntu/"
@@ -24,7 +24,7 @@
 +		_MIRROR=$_CONFIRMED_ANSWER
      msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
      cd /var/opt
-     mrun "sleep 3"
+     mrun "sleep 1"
      echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
 -    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
 -    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
@@ -48,7 +48,7 @@
 +    echo "deb-src $_MIRROR $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
    elif [ "$_THIS_OS" = "Debian" ] ; then
      msg "`date` INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-     mrun "sleep 3"
+     mrun "sleep 1"
      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
 +		_MIRROR="http://$_MIRROR/debian/"
@@ -56,7 +56,7 @@
 +		_MIRROR=$_CONFIRMED_ANSWER
      msg "`date` INFO: We will use $_THIS_OS mirror $_MIRROR"
      cd /var/opt
-     mrun "sleep 3"
+     mrun "sleep 1"
 -    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
 -    echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
 +    echo "deb $_MIRROR $_REL_VERSION main contrib non-free" > /etc/apt/sources.list

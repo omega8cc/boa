@@ -618,7 +618,7 @@ find_correct_ip () {
 # Install Redis from sources.
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ ! -e "/var/lib/redis" ] ; then
     st_runner "adduser --system --group redis" 2> /dev/null
   fi
@@ -1442,7 +1442,7 @@ install_php_five_three () {
 ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
   msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r /var/opt/php*
   rm -f /etc/init.d/php53-fpm*
@@ -1452,7 +1452,7 @@ install_php_five_three () {
   gunzip -q suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
   cat suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt/php-$_PHP_VERSION_NEW
   st_runner "sh ./buildconf --force" 2> /dev/null
   if [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -1460,10 +1460,10 @@ install_php_five_three () {
     patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] ; then
@@ -1475,7 +1475,7 @@ install_php_five_three () {
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
 ###--------------------###
   msg "INFO: Installing memcached for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
     st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
   fi
@@ -1490,11 +1490,11 @@ install_php_five_three () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
 ###--------------------###
   msg "INFO: Installing Suhosin for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r suhosin*
   wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
@@ -1506,7 +1506,7 @@ install_php_five_three () {
   st_runner "make --quiet install" 2> /dev/null
 ###--------------------###
   msg "INFO: Installing UploadProgress for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r uploadprogress*
   wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
@@ -1518,7 +1518,7 @@ install_php_five_three () {
   st_runner "make --quiet install" 2> /dev/null
 ###--------------------###
   msg "INFO: Installing APC for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r APC*
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
@@ -1531,7 +1531,7 @@ install_php_five_three () {
   echo "apc-$_APC_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
 ###--------------------###
   msg "INFO: Installing MailParse for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r mailparse*
   wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
@@ -1543,7 +1543,7 @@ install_php_five_three () {
   st_runner "make --quiet install" 2> /dev/null
 ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r imagick*
   wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
@@ -1561,7 +1561,7 @@ update_php_five_three () {
 ###--------------------###
 if [ ! -e "/var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log" ] ; then
   msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
   tar -xzf APC-$_APC_VERSION.tgz
@@ -1575,7 +1575,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
   msg "INFO: Installing memcached upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r memcached*
   wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
@@ -1587,13 +1587,13 @@ if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
 fi
 ###--------------------###
 if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log" ] ; then
   msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r imagick*
   wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
@@ -1848,8 +1848,6 @@ _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 
 ###--------------------###
 if [ -d "/usr/share/git-core" ] ; then
-  msg "INFO: Fix for possibly broken git-core"
-  sleep 3
   chmod 644 /usr/share/git-core/templates/description &> /dev/null
   chmod 644 /usr/share/git-core/templates/hooks/* &> /dev/null
   chmod 644 /usr/share/git-core/templates/info/* &> /dev/null
@@ -1952,7 +1950,7 @@ fi
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Installing lsb-release and dnsutils now, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if ! st_runner "$_INSTALL lsb-release dnsutils"; then
     fatal "Installation failed: $?"
   fi
@@ -1961,7 +1959,7 @@ fi
 
 ###--------------------###
 msg "STATUS: Checking your Debian or Ubuntu version..."
-mrun "sleep 3"
+mrun "sleep 1"
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -2017,7 +2015,7 @@ fi
 echo " "
 msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install/upgrade script."
 echo " "
-mrun "sleep 3"
+mrun "sleep 1"
 
 
 ###--------------------###
@@ -2194,7 +2192,7 @@ EOF
     msg "DNS test OK - your FQDN hostname is $_THISHOST and it matches your IP $_THISHTIP"
     msg "Please double check whether this is a valid result of my test."
   fi
-  mrun "sleep 3"
+  mrun "sleep 1"
   echo " "
   msg "INSTALL START -> checkpoint: "
   cat <<EOF
@@ -2241,7 +2239,7 @@ else ### if [ "$_STATUS" = "UPGRADE" ] ; then
     echo " "
     exit 1
   fi
-  mrun "sleep 3"
+  mrun "sleep 1"
   echo " "
   msg "UPGRADE START -> checkpoint: "
   cat <<EOF
@@ -2269,7 +2267,7 @@ fi
 
 ###--------------------###
 msg "INFO: Clean up temp files in /var/opt/"
-mrun "sleep 3"
+mrun "sleep 1"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
 chmod 777 /var/log/php* &> /dev/null
@@ -2278,7 +2276,7 @@ chmod 777 /var/log/php* &> /dev/null
 ###--------------------###
 install_pdnsd_cache () {
   msg "INFO: Installing DNS cache pdnsd server, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
   st_runner "$_INSTALL pdnsd resolvconf";
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
@@ -2286,9 +2284,9 @@ install_pdnsd_cache () {
   st_runner "invoke-rc.d pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
   st_runner "invoke-rc.d pdnsd start" &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "invoke-rc.d pdnsd stop" &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
   rm -f /var/cache/pdnsd/pdnsd.cache
   st_runner "invoke-rc.d pdnsd start" &> /dev/null
 }
@@ -2357,12 +2355,12 @@ else
 fi
 if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
   msg "INFO: Update apt sources"
-  mrun "sleep 3"
+  mrun "sleep 1"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
     if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
       msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
@@ -2379,7 +2377,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     fi
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
-    mrun "sleep 3"
+    mrun "sleep 1"
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
     echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
@@ -2394,7 +2392,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
   elif [ "$_THIS_OS" = "Debian" ] ; then
     if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
       msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
       _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
@@ -2411,7 +2409,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     fi
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
-    mrun "sleep 3"
+    mrun "sleep 1"
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
     echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
     echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
@@ -2444,7 +2442,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   mrun "sleep 8"
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
   msg "HINT: Run tail -f /opt/tmp/aegir-install.log in another terminal window to watch details."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ -e "/etc/init.d/bind" ] ; then
     rm -f /etc/init.d/bind
   fi
@@ -2474,7 +2472,7 @@ fi
 if [ -d "/etc/webmin" ] ; then
   if [ ! -e "/var/log/webmin_new_apt.log" ] ; then
     msg "INFO: Fix for new Webmin Control Panel apt key, please wait..."
-    mrun "sleep 3"
+    mrun "sleep 1"
     cd /var/opt
     wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
     apt-key add jcameron-key.asc &> /dev/null
@@ -2690,8 +2688,6 @@ fi
 
 ###--------------------###
 if [ "$_THIS_OS" = "Debian" ] ; then
-  msg "INFO: Fix for broken git-core after upgrade to version: 1:1.5.6.5-3+lenny3.1 on Lenny 32bit"
-  mrun "sleep 3"
   chmod 644 /usr/share/git-core/templates/description &> /dev/null
   chmod 644 /usr/share/git-core/templates/hooks/* &> /dev/null
   chmod 644 /usr/share/git-core/templates/info/* &> /dev/null
@@ -2701,7 +2697,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] && [ ! -e "/sbin/udevd" ] ; then
   msg "INFO: Install udev, just in case it is missing, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "apt-get -y install udev" 2> /dev/null
 fi
 
@@ -2709,7 +2705,7 @@ fi
 ###--------------------###
 if [ -z "$_SMTP_RELAY_HOST" ] && [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "INFO: SMTP check"
-mrun "sleep 3"
+mrun "sleep 1"
 if ! netcat -w 8 -z smtp.postoffice.net 25 ; then
   WE_NEED_RELAY="YES"
   cat <<EOF
@@ -2746,7 +2742,7 @@ fi
 
 ###--------------------###
 msg "INFO: Fix for Nginx startup script, please wait..."
-mrun "sleep 3"
+mrun "sleep 1"
 _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
 if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
   true
@@ -2809,7 +2805,7 @@ fi
 
 ###--------------------###
 msg "INFO: Install/upgrade a few more tools, please wait..."
-mrun "sleep 3"
+mrun "sleep 1"
 cd /var
 if [ -d "/var/xdrago" ] ; then
   fix_on_upgrade
@@ -2949,7 +2945,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing Memcached server, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f /opt/bin/memcached
   rm -f /usr/bin/memcached
@@ -2967,7 +2963,7 @@ fi
 
 ###--------------------###
 msg "INFO: PHP installed version auto-discovering now, please wait..."
-mrun "sleep 3"
+mrun "sleep 1"
 if [ -e "/opt/local/bin/php" ] ; then
   _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
@@ -2977,7 +2973,7 @@ if [ -e "/opt/local/bin/php" ] ; then
     _PHP_INSTALL_REQUIRED=YES
     msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
   fi
-  mrun "sleep 3"
+  mrun "sleep 1"
 else
   _PHP_INSTALL_REQUIRED=YES
 fi
@@ -2985,7 +2981,7 @@ if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
   _PHP_INSTALL_REQUIRED=YES
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: PHP rebuild required to include libcurl4-openssl-dev"
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -2995,14 +2991,14 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
       _PHP_INSTALL_REQUIRED=YES
       echo "5.3.5-MariaDB" > /var/log/installed-5.3.5-MariaDB.log
       msg "INFO: PHP rebuild required to include MariaDB 5.3.5 libs"
-      mrun "sleep 3"
+      mrun "sleep 1"
     fi
   else
     if [ ! -e "/var/log/installed-5.5.20-Percona.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
       echo "5.5.20-Percona" > /var/log/installed-5.5.20-Percona.log
       msg "INFO: PHP rebuild required to include Percona 5.5.20 libs"
-      mrun "sleep 3"
+      mrun "sleep 1"
     fi
   fi
 fi
@@ -3018,7 +3014,7 @@ if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: PHP rebuild forced"
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
 fi
 if [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -3033,7 +3029,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION"
   msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r /var/opt/php*
   rm -f /etc/init.d/php-fpm*
@@ -3046,7 +3042,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
   cat suhosin-patch-5.2.16-0.9.7.patch | patch -d php-$_PHP_VERSION -p1 &> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
   if [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -3054,10 +3050,10 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
     patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
@@ -3074,13 +3070,13 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 
 ###--------------------###
   msg "INFO: Installing libmemcached with memcached for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
     st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
   fi
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
-  mrun "sleep 3"
+  mrun "sleep 1"
   ldconfig &> /dev/null
   tar -xzf libmemcached-0.53.tar.gz
   if [ -e "/var/opt/libmemcached-0.53" ] ; then
@@ -3090,7 +3086,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
     st_runner "make --quiet install" 2> /dev/null
     echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
     #msg "INFO: OK libmemcached installed"
-    mrun "sleep 3"
+    mrun "sleep 1"
     cd /var/opt
     wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
     tar -xzf memcached-1.0.2.tgz
@@ -3102,13 +3098,13 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
       st_runner "make --quiet install" 2> /dev/null
       echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
       #msg "INFO: OK memcached installed"
-      mrun "sleep 3"
+      mrun "sleep 1"
     fi
   fi
 
 ###--------------------###
   msg "INFO: Installing Suhosin for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
   tar -xzf suhosin-0.9.33.tgz
@@ -3120,7 +3116,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 
 ###--------------------###
   msg "INFO: Installing UploadProgress for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
   tar -xzf uploadprogress-1.0.1.tgz
@@ -3132,7 +3128,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 
 ###--------------------###
   msg "INFO: Installing APC for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
   tar -xzf APC-$_APC_VERSION.tgz
@@ -3145,7 +3141,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 
 ###--------------------###
   msg "INFO: Installing MailParse for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
   tar -xzf mailparse-2.1.5.tgz
@@ -3161,14 +3157,14 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   if [ "$_X86_64_TEST" = "x86_64" ] ; then
     SYSTEMARCH="x86_64"
     msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM $_PHP_VERSION, please wait..."
-    mrun "sleep 3"
+    mrun "sleep 1"
     cd /var/opt
     wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86-64.tar.gz
     tar -xzf ioncube_loaders_lin_x86-64.tar.gz
   else
     SYSTEMARCH="x86"
     msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM $_PHP_VERSION, please wait..."
-    mrun "sleep 3"
+    mrun "sleep 1"
     cd /var/opt
     wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86.tar.gz
     tar -xzf ioncube_loaders_lin_x86.tar.gz
@@ -3180,7 +3176,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 
 ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r imagick*
   wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
@@ -3210,7 +3206,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/apc-$_APC_VERSION.log" ] ; then
   msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
   tar -xzf APC-$_APC_VERSION.tgz
@@ -3226,10 +3222,10 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
   msg "INFO: Installing libmemcached with memcached upgrade for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
-  mrun "sleep 3"
+  mrun "sleep 1"
   tar -xzf libmemcached-0.53.tar.gz
   if [ -e "/var/opt/libmemcached-0.53" ] ; then
     cd /var/opt/libmemcached-0.53
@@ -3238,7 +3234,7 @@ if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
     st_runner "make --quiet install" 2> /dev/null
     echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
     #msg "INFO: OK libmemcached installed"
-    mrun "sleep 3"
+    mrun "sleep 1"
     cd /var/opt
     wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
     tar -xzf memcached-1.0.2.tgz
@@ -3250,7 +3246,7 @@ if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
       st_runner "make --quiet install" 2> /dev/null
       echo "memcached-1.0.2" > /var/log/fixed-memcached-1.0.2.log
       #msg "INFO: OK memcached installed"
-      mrun "sleep 3"
+      mrun "sleep 1"
     fi
   fi
 fi
@@ -3259,7 +3255,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log" ] ; then
   msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f -r imagick*
   wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
@@ -3296,7 +3292,7 @@ else
 fi
 if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing bzr, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
   tar -xzf bzr-$_BZR_VERSION.tar.gz
@@ -3308,7 +3304,7 @@ fi
 
 ###--------------------###
 msg "INFO: Nginx version test, please wait..."
-mrun "sleep 3"
+mrun "sleep 1"
 if [ "$_STATUS" = "INIT" ] ; then
   _NGINX_INSTALL_REQUIRED=YES
 fi
@@ -3338,7 +3334,7 @@ if [ -e "/usr/sbin/nginx" ] ; then
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include geoip module"
     fi
   fi
-  mrun "sleep 3"
+  mrun "sleep 1"
 else
   _NGINX_INSTALL_REQUIRED=YES
 fi
@@ -3347,7 +3343,7 @@ fi
 ###--------------------###
 if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Install/upgrade Nginx, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt; rm -f -r nginx*
   if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
     _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
@@ -3386,9 +3382,9 @@ if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" 
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   killall -9 nginx &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
   killall -9 nginx &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
   invoke-rc.d nginx start &> /dev/null
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
@@ -3404,7 +3400,7 @@ else
 fi
 if [ ! -e "$_PATH_LSHELL" ] ; then
   msg "INFO: Installing lshell, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
     wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
@@ -3442,7 +3438,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing lshell upgrade, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
   cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   cd /var/opt
@@ -3472,7 +3468,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/umask_fixed.log" ] ; then
   msg "INFO: Setting better default umask for users, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   mkdir -p /var/www
   echo "UMASK=002" >> /etc/default/login
   sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs
@@ -3487,7 +3483,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   msg "INFO: Installing latest Pure-FTPd server, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
     echo "/bin/false" >> /etc/shells
     echo "/bin/true" >> /etc/shells
@@ -3514,7 +3510,7 @@ if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ "$_FULL_FORCE_REIN
   rm -f pure-ftpd.conf
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
   killall -9 pure-ftpd &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
   cd /var/opt
   echo "pure-ftpd-$_PURE_FTPD_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION.log
@@ -3524,7 +3520,7 @@ fi
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Update rc.d"
-  mrun "sleep 3"
+  mrun "sleep 1"
   chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
   chmod 600 /var/spool/cron/crontabs/root &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -3548,7 +3544,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
-    mrun "sleep 3"
+    mrun "sleep 1"
     st_runner "invoke-rc.d ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
     st_runner "update-rc.d php-fpm defaults" &> /dev/null
@@ -3561,7 +3557,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting PHP-FPM and reloading Nginx"
-    mrun "sleep 3"
+    mrun "sleep 1"
     tune_memory_limits
     st_runner "invoke-rc.d php-fpm restart" &> /dev/null
     st_runner "invoke-rc.d php53-fpm restart" &> /dev/null
@@ -3573,7 +3569,7 @@ fi
 ###--------------------###
 if [ ! -e "/root/.my.pass.txt" ] ; then
   msg "INFO: Generate random password for $_DB_SERVER"
-  mrun "sleep 3"
+  mrun "sleep 1"
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
   pwgen -c -v -s > /root/.my.pass.txt
@@ -3586,7 +3582,7 @@ if [ -e "/root/.my.pass.txt" ] ; then
     sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files
   done
   msg "INFO: OS and services installation/upgrade completed"
-  mrun "sleep 3"
+  mrun "sleep 1"
 else
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   cat <<EOF
@@ -3609,7 +3605,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   msg "INFO: Installing Aegir Master Instance, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   st_runner "adduser --system --group --home /var/aegir aegir"
   st_runner "adduser aegir www-data"
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
@@ -3630,13 +3626,13 @@ if [ "$_STATUS" = "INIT" ] ; then
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
   msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
   else
     su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
@@ -3644,7 +3640,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   msg "INFO: Running hosting-dispatch (2/3), please wait..."
   mrun "sleep 8"
@@ -3660,7 +3656,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   msg "INFO: Simple check if Aegir Master Instance install is successful"
-  mrun "sleep 3"
+  mrun "sleep 1"
   if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] ; then
     msg "INFO: Aegir installation almost completed"
   else
@@ -3672,16 +3668,16 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   msg "INFO: Fix for access to global.inc for www-data user issue"
-  mrun "sleep 3"
+  mrun "sleep 1"
   chmod 711 /var/aegir/config/includes &> /dev/null
   chmod 711 /var/aegir/config &> /dev/null
   chmod 711 /var/aegir/.drush &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
 
 
 ###--------------------###
   msg "INFO: Fix for advanced Nginx config and Drush path"
-  mrun "sleep 3"
+  mrun "sleep 1"
   ln -s /var/aegir/drush/drush /usr/bin/drush
   mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
@@ -3713,16 +3709,16 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   fi
   invoke-rc.d nginx reload &> /dev/null
-  mrun "sleep 3"
+  mrun "sleep 1"
   msg "INFO: Aegir Master Instance installation completed"
-  mrun "sleep 3"
+  mrun "sleep 1"
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
     true
-    mrun "sleep 3"
+    mrun "sleep 1"
     msg "INFO: Running Aegir Master Instance upgrade"
-    mrun "sleep 3"
+    mrun "sleep 1"
     rm -f /opt/tmp/testecho*
     invoke-rc.d cron stop &> /dev/null
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
@@ -3778,7 +3774,7 @@ else
     msg "INFO: Aegir Master Instance upgrade completed"
   else
     msg "INFO: Aegir Master Instance not upgraded this time"
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
   rm -f /var/aegir/*install.sh.txt
 
@@ -3789,7 +3785,7 @@ fi ### end of if [ "$_STATUS" = "INIT" ] ; then
 ###--------------------###
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
 msg "INFO: Fix for mime types in Nginx, please wait..."
-mrun "sleep 3"
+mrun "sleep 1"
   cd /etc/nginx
   mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
@@ -3808,7 +3804,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   msg "INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
   if [[ "$_HTTPS_TEST" =~ "443" ]] ; then
     _HTTPS_TEST=EXIST
@@ -3847,7 +3843,7 @@ EOF
     fi
     sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     killall -9 nginx &> /dev/null
-    mrun "sleep 3"
+    mrun "sleep 1"
     invoke-rc.d nginx start &> /dev/null
   fi
 fi
@@ -3856,7 +3852,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
   msg "INFO: Installing Speed Booster Purge Server, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
 fi
@@ -3869,7 +3865,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
     if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
       true
       msg "INFO: Installing MultiCore Apache Solr Tomcat, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       cd /var/opt
       rm -f -r apachesolr*
       rm -f -r /opt/solr
@@ -3963,7 +3959,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
       true
       msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       cd /var/www
       rm -f -r /var/www/chive &> /dev/null
       wget -q -U iCab http://files.aegir.cc/dev/chive_$_CHIVE_VERSION.tar.gz
@@ -3998,7 +3994,7 @@ fi
 if [ -e "/var/www/chive/index.php" ] ; then
   if [ ! -e "/var/log/chive_$_CHIVE_VERSION.log" ] ; then
     msg "INFO: Upgrading Chive $_DB_SERVER Manager, please wait..."
-    mrun "sleep 3"
+    mrun "sleep 1"
     rm -f -r /var/www/chive
     cd /var/www
     wget -q -U iCab http://files.aegir.cc/dev/chive_$_CHIVE_VERSION.tar.gz
@@ -4041,7 +4037,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
       msg "INFO: Installing SQL Buddy $_DB_SERVER Manager, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       cd /var/www
       wget -q -U iCab http://files.aegir.cc/dev/sqlbuddy_1_3_3.tar.gz
       tar -xzf sqlbuddy_1_3_3.tar.gz &> /dev/null
@@ -4086,7 +4082,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
         msg "INFO: Installing Collectd Graph Panel, please wait..."
-        mrun "sleep 3"
+        mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
         git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
@@ -4138,7 +4134,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
     if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
       true
       msg "INFO: Installing Webmin Control Panel, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       cd /var/opt
       echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
       wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
@@ -4169,7 +4165,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
     if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
       true
       msg "INFO: Installing Bind9 DNS Server, please wait..."
-      mrun "sleep 3"
+      mrun "sleep 1"
       if [ -z "$_THISHTIP" ] ; then
         _LOC_DOM="$_THISHOST"
         find_correct_ip
@@ -4199,7 +4195,7 @@ fi
 ###--------------------###
 if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER final setup"
-  mrun "sleep 3"
+  mrun "sleep 1"
   echo " "
   msg "Please COPY it NOW and set it as your $_DB_SERVER root password during mysql_secure_installation"
   echo " "
@@ -4222,7 +4218,7 @@ EOF
   echo " "
   mysql_secure_installation
   echo " "
-  mrun "sleep 3"
+  mrun "sleep 1"
   echo "[client]" >> /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
   echo "password=$PASWD" >> /root/.my.cnf
@@ -4231,11 +4227,11 @@ EOF
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
     st_runner "invoke-rc.d mysql restart" &> /dev/null
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
-  mrun "sleep 3"
+  mrun "sleep 1"
 fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
 
 
@@ -4264,7 +4260,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
     msg "ACCESS -> $_AEGIR_LOGIN_URL"
     echo " "
-    mrun "sleep 3"
+    mrun "sleep 1"
   fi
 fi
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
@@ -4279,7 +4275,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   invoke-rc.d cron restart &> /dev/null
   echo " "
   msg "Now waiting 2 minutes before restarting Nginx..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   echo " "
   msg "Note: you may need to restart Nginx again with command: "
   msg "  service nginx restart"
@@ -4297,7 +4293,7 @@ fi
 ###--------------------###
 csf_install () {
   msg "INFO: Installing csf/lfd firewall, please wait..."
-  mrun "sleep 3"
+  mrun "sleep 1"
   cd /var/opt
   rm -f /var/xdrago/log/lastFire
   if ! netcat -w 8 -z www.configserver.com 80 ; then
@@ -4365,11 +4361,11 @@ fi
 
 ###--------------------###
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
-mrun "sleep 3"
+mrun "sleep 1"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
-mrun "sleep 3"
+mrun "sleep 1"
 msg "Final post-install cleaning, please wait..."
-mrun "sleep 3"
+mrun "sleep 1"
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null

@@ -571,7 +571,7 @@ _SILENT=/opt/tmp/silent.log
 
 ###---### Tune Your Aegir Hosting System
 #
-mrun "sleep 3"
+mrun "sleep 1"
 echo " "
 msg "TUNER START -> checkpoint: "
 cat <<EOF
