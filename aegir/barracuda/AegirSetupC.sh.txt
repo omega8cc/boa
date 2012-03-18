@@ -327,23 +327,13 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
-    git clone http://git.drupal.org/project/expire.git &> /dev/null
-    cd expire
-    git checkout 7.x-1.x &> /dev/null
-    wget -q -U iCab http://drupal.org/files/1333894-expire-DBTNG.patch
-    patch -p1 < 1333894-expire-DBTNG.patch &> /dev/null
-    cd ../
+    git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r purge*
-    git clone http://git.drupal.org/project/purge.git &> /dev/null
-    cd purge
-    git checkout 7.x-1.x &> /dev/null
-    cd ../
-    #wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
-    #wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
+    git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
   else
     rm -f -r nginx_accel_redirect*
-    rm -f -r purge
-    rm -f -r expire
+    rm -f -r purge*
+    rm -f -r expire*
   fi
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
@@ -381,21 +371,13 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r expire*
-    git clone http://git.drupal.org/project/expire.git &> /dev/null
-    cd expire
-    git checkout 6.x-1.x &> /dev/null
-    cd ../
+    git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r purge*
-    git clone http://git.drupal.org/project/purge.git &> /dev/null
-    cd purge
-    git checkout 6.x-1.x &> /dev/null
-    cd ../
-    #wget -q -U iCab http://ftp.drupal.org/files/projects/expire-6.x-1.0.tar.gz
-    #wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.4.tar.gz
+    git clone --branch 6.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
   else
     rm -f -r nginx_accel_redirect*
-    rm -f -r purge
-    rm -f -r expire
+    rm -f -r purge*
+    rm -f -r expire*
   fi
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
