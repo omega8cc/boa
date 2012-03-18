@@ -337,10 +337,6 @@ download_o_contrib_seven () {
     git clone http://git.drupal.org/project/purge.git &> /dev/null
     cd purge
     git checkout 7.x-1.x &> /dev/null
-    wget -q -U iCab http://drupal.org/files/i1151686_9.patch
-    patch -p1 < i1151686_9.patch &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/purge-1327216-8.patch ./
-    patch -p1 < purge-1327216-8.patch &> /dev/null
     cd ../
     #wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.x-dev.tar.gz
     #wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.x-dev.tar.gz
