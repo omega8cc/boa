@@ -243,7 +243,7 @@ fi
 # remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001() {
-if [ ! -e "/var/log/incompatible-modules-removed-001j.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-001k.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
 RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
 for i in $REVISIONS; do
@@ -275,7 +275,7 @@ for i in $REVISIONS; do
     done
   fi
 done
-touch /var/log/incompatible-modules-removed-001j.log
+touch /var/log/incompatible-modules-removed-001k.log
 cd
 fi
 }
@@ -283,7 +283,7 @@ fi
 # remove incompatible modules from o_contrib_seven
 #
 remove_incompatible_modules_002() {
-if [ ! -e "/var/log/incompatible-modules-removed-002i.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-002k.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
 RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache"
 for i in $REVISIONS; do
@@ -299,7 +299,7 @@ for i in $REVISIONS; do
     fi
   fi
 done
-touch /var/log/incompatible-modules-removed-002i.log
+touch /var/log/incompatible-modules-removed-002k.log
 cd
 fi
 }
