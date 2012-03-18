@@ -166,6 +166,17 @@ else
   mv -f $AEGIR_HOME/.drush/provision_cdn $AEGIR_HOME/.drush/provision_cdn_src &> /dev/null
   cp -af $AEGIR_HOME/.drush/provision_cdn_src/provision $AEGIR_HOME/.drush/provision_cdn
   rm -f -r $AEGIR_HOME/.drush/provision_cdn_src
+  if [ -d "$AEGIR_HOME/.drush/provision_cdn" ] ; then
+    _CDN_IP_TEST=$(grep "ip_addresses as" $AEGIR_HOME/.drush/provision_cdn/Provision/Config/cdn.tpl.php)
+    if [[ "$_CDN_IP_TEST" =~ "ip_addresses as" ]] ; then
+      true
+    else
+      cd $AEGIR_HOME/.drush/provision_cdn
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/patch_commit_340eddf60efd.patch ./
+      patch -p1 < patch_commit_340eddf60efd.patch &> /dev/null
+      cd $AEGIR_HOME/.drush
+    fi
+  fi
 fi
 
 msg "Installing the frontend"
