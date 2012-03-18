@@ -659,7 +659,7 @@ install_redis_src () {
 set_xterm () {
   _XTERM_TEST=$(grep BOA /root/.bashrc)
   if [[ "$_XTERM_TEST" =~ "BOA" ]] ; then
-    true
+    sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
   else
     cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
