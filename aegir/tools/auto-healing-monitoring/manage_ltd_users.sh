@@ -199,6 +199,7 @@ else
   sleep 1
   cp -af $_THIS_LTD_CONF /etc/lshell.conf
   sleep 1
+  find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
 fi
