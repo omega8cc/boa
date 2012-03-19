@@ -339,8 +339,8 @@ download_o_contrib_seven () {
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  download_textile
   touch ctrl-$_INSTALLER_VERSION
+  download_textile
 }
 #
 # download_o_contrib_six
@@ -384,8 +384,8 @@ download_o_contrib_six () {
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  download_textile
   touch ctrl-$_INSTALLER_VERSION
+  download_textile
 }
 #
 # upgrade_o_contrib
