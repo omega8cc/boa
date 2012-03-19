@@ -818,7 +818,14 @@ update_global_inc_conf () {
 fix_on_upgrade () {
   mkdir -p /var/backups/dragon/t
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf
-  sed -i "s/umask.*022/umask 002/g" /etc/profile
+  sed -i "s/^UMASK.*//g" /etc/default/login
+  echo "UMASK=002" >> /etc/default/login
+  sed -i "/^$/d" /etc/default/login
+  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs
+  sed -i "s/^umask.*022/umask 002/g" /etc/profile
+  sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login
+  echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
+  sed -i "/^$/d" /etc/pam.d/login
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf
   if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
