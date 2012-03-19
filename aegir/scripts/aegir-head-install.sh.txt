@@ -164,7 +164,7 @@ else
   done
   rm -f *.tar.gz
   mv -f $AEGIR_HOME/.drush/provision_cdn $AEGIR_HOME/.drush/provision_cdn_src &> /dev/null
-  cp -af $AEGIR_HOME/.drush/provision_cdn_src/provision $AEGIR_HOME/.drush/provision_cdn
+  cp -af $AEGIR_HOME/.drush/provision_cdn_src/provision $AEGIR_HOME/.drush/provision_cdn &> /dev/null
   rm -f -r $AEGIR_HOME/.drush/provision_cdn_src
   if [ -d "$AEGIR_HOME/.drush/provision_cdn" ] ; then
     _CDN_IP_TEST=$(grep "ip_addresses as" $AEGIR_HOME/.drush/provision_cdn/Provision/Config/cdn.tpl.php)

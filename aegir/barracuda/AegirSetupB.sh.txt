@@ -386,7 +386,7 @@ for archive in ./*.tar.gz; do
 done
 rm -f *.tar.gz
 mv -f $_ROOT/.drush/provision_cdn $_ROOT/.drush/provision_cdn_src &> /dev/null
-cp -af $_ROOT/.drush/provision_cdn_src/provision $_ROOT/.drush/provision_cdn
+cp -af $_ROOT/.drush/provision_cdn_src/provision $_ROOT/.drush/provision_cdn &> /dev/null
 rm -f -r $_ROOT/.drush/provision_cdn_src
 if [ -d "$_ROOT/.drush/provision_cdn" ] ; then
   _CDN_IP_TEST=$(grep "ip_addresses as" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php)
