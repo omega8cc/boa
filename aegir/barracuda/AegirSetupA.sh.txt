@@ -712,6 +712,11 @@ else
     fi
   fi
 fi
+cd $_CORE
+find . -name .svn -exec rm -rf {} \; &> /dev/null
+find . -name .bzr -exec rm -rf {} \; &> /dev/null
+find . -name .git -exec rm -rf {} \; &> /dev/null
+find . -name "._*" -type f | xargs rm -rf
 
 
 ###---### Fix files permissions

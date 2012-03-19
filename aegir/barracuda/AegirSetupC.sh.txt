@@ -2267,10 +2267,6 @@ rm -f $_CORE/*/themes/README.txt
 rm -f $_CORE/*.make
 rm -f $_CORE/*.tar.gz
 cd $_CORE
-find . -name .svn -exec rm -rf {} \; &> /dev/null
-find . -name .bzr -exec rm -rf {} \; &> /dev/null
-find . -name .git -exec rm -rf {} \; &> /dev/null
-find . -name "._*" -type f | xargs rm -rf
 
 
 ###---### Save & verify platforms
