@@ -202,24 +202,22 @@ echo -e "#!/bin/sh\n\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_
 mkdir -p $_ROOT/aegir/distro
 mkdir -p $_ROOT/distro/$_DISTRO
 mkdir -p $_ROOT/src/$_DISTRO
-mkdir -p $_ROOT/src/modules
-mkdir -p $_ROOT/src/themes
-mkdir -p $_ROOT/tools
-mkdir -p $_ROOT/log
-mkdir -p $_ROOT/u
-mkdir -p $_ROOT/backups
+mkdir -p $_ROOT/src/{modules,themes}
+mkdir -p $_ROOT/{tools,log,u,backups,platforms,clients}
 chmod 0711 $_ROOT/aegir/distro &> /dev/null
 chmod 0711 $_ROOT/distro/$_DISTRO &> /dev/null
 chmod 0711 $_ROOT/aegir &> /dev/null
 chmod 0711 $_ROOT/tools &> /dev/null
-chmod 0771 $_ROOT/u &> /dev/null
+chmod 0700 $_ROOT/u &> /dev/null
 chmod 0711 $_ROOT/distro &> /dev/null
+chmod 0711 $_ROOT/platforms &> /dev/null
 chmod 0700 $_ROOT/log &> /dev/null
 chmod 0700 $_ROOT/src &> /dev/null
 chmod 0700 $_ROOT/src/$_DISTRO &> /dev/null
 chmod 0700 $_ROOT/src/modules &> /dev/null
 chmod 0700 $_ROOT/src/themes &> /dev/null
-chmod 0700 $_ROOT/backups &> /dev/null
+chmod 0750 $_ROOT/backups &> /dev/null
+chmod 0750 $_ROOT/clients &> /dev/null
 
 if [ "$_STATUS" = "UPGRADE" ] ; then
  msg "$_STATUS B: UPGRADE in progress.."

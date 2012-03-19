@@ -515,6 +515,11 @@ else
     invoke-rc.d cron stop &> /dev/null
     _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    chown -R $_USER:$_USRG $_ROOT/.drush
+    chown -R $_USER:$_USRG $_ROOT/backups
+    chown -R $_USER:$_USRG $_ROOT/clients
+    chown -R $_USER:$_USRG $_ROOT/config
+    chown -R $_USER:$_USRG $_ROOT/tools
     chown -L -R $_USER $_THIS_HM_ROOT
     chown -L -R $_USER:$_WEBG $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files

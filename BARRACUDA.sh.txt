@@ -3723,6 +3723,11 @@ else
     invoke-rc.d cron stop &> /dev/null
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    chown -R aegir:aegir /var/aegir/.drush
+    chown -R aegir:aegir /var/aegir/backups
+    chown -R aegir:aegir /var/aegir/clients
+    chown -R aegir:aegir /var/aegir/config
+    chown -R aegir:aegir /var/aegir/drush
     chown -L -R aegir $_THIS_HM_ROOT
     chown -L -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
