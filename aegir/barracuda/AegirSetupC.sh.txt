@@ -426,6 +426,7 @@ else
 fi
 if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
  if [ ! -d "/data/all/$_LAST_ALL/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
+  msg "$_STATUS C: Running o_contrib upgrade #1, please wait.."
   cd /data/all/$_LAST_ALL/o_contrib
   rm -f -r *
   download_o_contrib_six
@@ -434,6 +435,7 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
 fi
 if [ -d "$_CORE/o_contrib" ] ; then
  if [ ! -d "$_CORE/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
+  msg "$_STATUS C: Running o_contrib upgrade #2, please wait.."
   cd $_CORE/o_contrib
   rm -f -r *
   download_o_contrib_six
@@ -442,6 +444,7 @@ if [ -d "$_CORE/o_contrib" ] ; then
 fi
 if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
  if [ ! -d "/data/all/$_LAST_ALL/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
+  msg "$_STATUS C: Running o_contrib_seven upgrade #1, please wait.."
   cd /data/all/$_LAST_ALL/o_contrib_seven
   rm -f -r *
   download_o_contrib_seven
@@ -450,6 +453,7 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
 fi
 if [ -d "$_CORE/o_contrib_seven" ] ; then
  if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
+  msg "$_STATUS C: Running o_contrib_seven upgrade #2, please wait.."
   cd $_CORE/o_contrib_seven
   rm -f -r *
   download_o_contrib_seven
@@ -619,6 +623,7 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 ###---### Prepare Pressflow core
 #
 if [ $_STATUS != "INIT" ] ; then
+  msg "$_STATUS C: Checking o_contrib and o_contrib_seven status, please wait.."
   upgrade_o_contrib
 fi
 if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
