@@ -1635,6 +1635,24 @@ install_latest_git () {
     cd /var/opt
   fi
 }
+#
+# Check apt updates.
+check_apt_updates () {
+  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
+  do
+    case $Update in
+      *libcurl*)    _UP_PHP=YES ;;
+      *libmysql*)   _UP_PHP=YES ;;
+      *libssl*)     _UP_PHP=YES ;;
+      *mariadb*)    _UP_PHP=YES ;;
+      *nginx*)      _UP_NGX=YES ;;
+      *openjdk*)    _UP_JDK=YES ;;
+      *openssl*)    _UP_PHP=YES ;;
+      *percona*)    _UP_PHP=YES ;;
+      *)  ;;
+    esac
+  done
+}
 
 
 ###--------------------###
@@ -2512,6 +2530,16 @@ else
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 5
   done
+  _UP_PHP=NO
+  _UP_NGX=NO
+  _UP_JDK=NO
+  check_apt_updates
+  if [ "$_UP_PHP" = "YES" ] ; then
+    _PHP_INSTALL_REQUIRED=YES
+  fi
+  if [ "$_UP_NGX" = "YES" ] ; then
+    _NGINX_INSTALL_REQUIRED=YES
+  fi
 fi
 
 
@@ -3961,6 +3989,9 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     mrun "sleep 8"
     st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
+fi
+if [ "$_UP_JDK" = "YES" ] ; then
+  st_runner "invoke-rc.d tomcat restart" &> /dev/null
 fi
 
 
