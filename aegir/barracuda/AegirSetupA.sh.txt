@@ -133,25 +133,25 @@ fatal () {
 	exit 1
 }
 #
-# Perform an action, log it, and run the spinner throughout
-runner () {
-	CMD="$1"
-	touch busy
-	bash $_SRCDIR/spinner busy &
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		success "$CMD:"
-		return 0
-	else
-		rm busy
-		sleep 1
-		echo "$CMD failed.  Error (if any): $?"
-		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
-		tail -15 $_LOG
-		return 1
-	fi
+# Silent runner.
+st_runner () {
+  CMD="$1"
+  touch busy
+  bash $_SRCDIR/spinner busy &
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  else
+    rm busy
+    sleep 1
+    echo "$CMD failed.  Error (if any): $?"
+    echo " "
+    echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+    echo " "
+    tail -15 $_LOG
+    return 1
+  fi
 }
 #
 # Small spinner
@@ -712,11 +712,14 @@ else
     fi
   fi
 fi
-cd $_CORE
-find . -name .svn -exec rm -rf {} \; &> /dev/null
-find . -name .bzr -exec rm -rf {} \; &> /dev/null
-find . -name .git -exec rm -rf {} \; &> /dev/null
-find . -name "._*" -type f | xargs rm -rf
+if [ ! -e "$_CORE/dot-files-ctrl-$_INSTALLER_VERSION" ] ; then
+  cd $_CORE
+  st_runner "find . -name .svn -exec rm -rf {} \;" 2> /dev/null
+  st_runner "find . -name .bzr -exec rm -rf {} \;" 2> /dev/null
+  st_runner "find . -name .git -exec rm -rf {} \;" 2> /dev/null
+  st_runner "find . -name "._*" -type f | xargs rm -rf" 2> /dev/null
+  touch $_CORE/dot-files-ctrl-$_INSTALLER_VERSION
+fi
 
 
 ###---### Fix files permissions
