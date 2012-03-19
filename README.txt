@@ -254,11 +254,13 @@ Hostmaster [E]xtensions [M]aster [S]atellite:
   bug report before submitting your own, and include as much
   information about your context as possible, especially
   please include, using http://gist.github.com, the contents
-  of files:
+  (anonymized for security and privacy) of files:
 
     /var/aegir/config/includes/barracuda_log.txt
     /data/disk/user/log/octopus_log.txt
     /var/aegir/install.log (remove the password)
+    /root/.barracuda.cnf
+    /root/.USER.octopus.cnf
 
 * Issue queues:
   http://drupal.org/project/issues/barracuda (active)
