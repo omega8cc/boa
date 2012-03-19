@@ -725,7 +725,7 @@ update_lshell_conf () {
   sed -i "s/strict.*:.*/strict          : 0/g" /etc/lshell.conf
   perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump'\]/g" /etc/lshell.conf
   perl -p -i -e "s/, 'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
-  perl -p -i -e "s/:'drush generate-makefile'\}/\}/g" /etc/lshell.conf
+  perl -p -i -e "s/,'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
 }
 #
 # Update PHP Config.
