@@ -205,7 +205,19 @@ create_shared_dirs () {
     mkdir -p /data/src
   fi
   chown $_USER:$_USRG /data/all &> /dev/null
-  chown -L -R $_USER:$_USRG $_CORE &> /dev/null
+  chown -L $_USER:$_USRG $_CORE &> /dev/null
+  if [ ! -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] ; then
+    chown -L -R $_USER:$_USRG $_CORE/o_contrib &> /dev/null
+  fi
+  if [ ! -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
+    chown -L -R $_USER:$_USRG $_CORE/o_contrib_seven &> /dev/null
+  fi
+  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
+    chown -L -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib &> /dev/null
+  fi
+  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
+    chown -L -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib_seven &> /dev/null
+  fi
   chown -L -R $_USER:$_USRG /data/src &> /dev/null
   chown -L -R $_USER:$_USRG /opt/tmp &> /dev/null
   chown -L -R $_USER:$_USRG /data/conf &> /dev/null
@@ -1186,7 +1198,11 @@ echo "Barracuda Aegir Hosting System" > /etc/motd
 chown root:root /data/all &> /dev/null
 chown -L -R root:root /data/src &> /dev/null
 chown -L -R root:root /data/conf &> /dev/null
-chown -L -R root:root $_CORE &> /dev/null
+chown -L root:root $_CORE &> /dev/null
+chown -L -R root:root $_CORE/o_contrib &> /dev/null
+chown -L -R root:root $_CORE/o_contrib_seven &> /dev/null
+chown -L -R root:root /data/all/$_LAST_ALL/o_contrib &> /dev/null
+chown -L -R root:root /data/all/$_LAST_ALL/o_contrib_seven &> /dev/null
 chown -L -R root:root /data/all/000 &> /dev/null
 chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/all/000 /data/src /data /data/disk /data/conf &> /dev/null

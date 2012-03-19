@@ -340,6 +340,7 @@ download_o_contrib_seven () {
   done
   rm -f *.tar.gz
   download_textile
+  touch ctrl-$_INSTALLER_VERSION
 }
 #
 # download_o_contrib_six
@@ -384,10 +385,17 @@ download_o_contrib_six () {
   done
   rm -f *.tar.gz
   download_textile
+  touch ctrl-$_INSTALLER_VERSION
 }
 #
 # upgrade_o_contrib
 upgrade_o_contrib () {
+if [ -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
+  _O_CONTRIB_UP=NO
+fi
+if [ -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
+  _O_CONTRIB_UP=NO
+fi
 if [ -d "$_CORE/o_contrib" ] ; then
   if [ ! -e "$_CORE/o_contrib/textile/include/classTextile.php" ] ; then
     _O_CONTRIB_UP=YES
