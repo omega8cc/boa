@@ -713,12 +713,12 @@ else
   fi
 fi
 if [ ! -e "$_CORE/dot-files-ctrl-$_INSTALLER_VERSION" ] ; then
-  msg "$_STATUS A: Clean up dot files"
+  msg "$_STATUS A: Cleaning up various dot files, please wait..."
   cd $_CORE
-  st_runner "find . -name .svn -exec rm -rf {} \;" 2> /dev/null
-  st_runner "find . -name .bzr -exec rm -rf {} \;" 2> /dev/null
-  st_runner "find . -name .git -exec rm -rf {} \;" 2> /dev/null
-  st_runner "find . -name "._*" -type f | xargs rm -rf" 2> /dev/null
+  st_runner "find . -name .svn -exec rm -rf {} \;" &> /dev/null
+  st_runner "find . -name .bzr -exec rm -rf {} \;" &> /dev/null
+  st_runner "find . -name .git -exec rm -rf {} \;" &> /dev/null
+  st_runner "find . -name "._*" -type f | xargs rm -rf" &> /dev/null
   touch $_CORE/dot-files-ctrl-$_INSTALLER_VERSION
 fi
 
