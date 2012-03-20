@@ -469,7 +469,7 @@ mrun "sleep 1"
 if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
-  pwgen -c -v -s > $_ROOT/.$_USER.pass.txt
+  pwgen -v -s -1 > $_ROOT/.$_USER.pass.txt
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
   echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 fi
@@ -791,7 +791,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     touch $_ROOT/log/pass.txt
     chmod 0600 $_ROOT/log/pass.txt
     # generate a nice secure password and put it in a file
-    pwgen -c -v -s > $_ROOT/log/pass.txt
+    pwgen -v -s -1 > $_ROOT/log/pass.txt
     # get the password hash
     ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
     # Set the password
@@ -886,7 +886,7 @@ else
  cd $_ROOT/log
  touch $_ROOT/log/pass.txt
  chmod 0600 $_ROOT/log/pass.txt
- pwgen -c -v -s > $_ROOT/log/pass.txt
+ pwgen -v -s -1 > $_ROOT/log/pass.txt
  ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
  usermod -p $ph $_USERFTP &> /dev/null
  _PASWD=`cat $_ROOT/log/pass.txt`

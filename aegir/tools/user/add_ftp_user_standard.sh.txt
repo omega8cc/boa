@@ -23,7 +23,7 @@ if [ ! -d $_USERFTP_ROOT ] ; then
   cd $_TMP
   touch $_TMP/$_USERFTP.txt
   chmod 0600 $_TMP/$_USERFTP.txt
-  pwgen -c -y -s > $_TMP/$_USERFTP.txt
+  pwgen -v -s -1 > $_TMP/$_USERFTP.txt
   ph=$(makepasswd --clearfrom=$_TMP/$_USERFTP.txt --crypt-md5 |awk '{print $2}')
   usermod -p $ph $_USERFTP
 fi

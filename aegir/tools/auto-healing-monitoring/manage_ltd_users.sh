@@ -46,7 +46,7 @@ ok_create_user()
     adduser $_USER_LTD $_WEBG
     touch $_TMP/$_USER_LTD.txt
     chmod 0600 $_TMP/$_USER_LTD.txt
-    pwgen -c -y -s > $_TMP/$_USER_LTD.txt
+    pwgen -v -s -1 > $_TMP/$_USER_LTD.txt
     ph=$(makepasswd --clearfrom=$_TMP/$_USER_LTD.txt --crypt-md5 |awk '{print $2}')
     usermod -p $ph $_USER_LTD
     passwd -w 7 -x 90 $_USER_LTD
