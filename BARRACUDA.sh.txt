@@ -827,11 +827,9 @@ fix_on_upgrade () {
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   sed -i "/^$/d" /etc/pam.d/login
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf
-  if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
-    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
-  fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+  chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   set_xterm
   kill_nash
   fix_ftps_squeeze
@@ -3572,11 +3570,9 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
   tune_memory_limits
-  if [ ! -e "/etc/init.d/clean-boa-env" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
-    chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-    st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
-  fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+  chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
     mrun "sleep 1"
