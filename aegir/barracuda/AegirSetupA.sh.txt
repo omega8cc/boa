@@ -652,7 +652,7 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
 fi
 
 
-###---### Add sudo for named if exist
+###---### Add sudo for named if exists
 #
 if [ -e "/usr/sbin/named" ] ; then
   if [ ! -e "$_ROOT/log/named_sudo_exist.txt" ] ; then

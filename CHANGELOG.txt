@@ -1088,7 +1088,7 @@ Added/Fixed:
 1. Added automatic, full support for Ubuntu Lucid and Karmic.
 
 2. If there is no FQDN hostname, we are trying to set it
-   using reverse IP hostname, if exist.
+   using reverse IP hostname, if exists.
 
 3. Now we are trying both `uname -n` and `hostname -f`
    to make sure if the FQDN hostname is already set,
