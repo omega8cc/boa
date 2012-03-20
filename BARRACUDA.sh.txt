@@ -4284,7 +4284,7 @@ EOF
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
   mrun "sleep 1"
-fi ### end of if [ ! -e "/root/.my.cnf" ] ; then
+fi
 
 
 ###--------------------###
