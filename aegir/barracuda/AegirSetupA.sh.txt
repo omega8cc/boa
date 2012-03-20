@@ -192,6 +192,17 @@ else
 fi
 }
 #
+# Escape borrowed from mysql_secure_installation.
+basic_single_escape () {
+  # The quoting on this sed command is a bit complex.  Single-quoted strings
+  # don't allow *any* escape mechanism, so they cannot contain a single
+  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
+  #
+  # Inside a character class, \ and ' are not special, so the ['\] character
+  # class is balanced and contains two characters.
+  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+}
+#
 # stop on error
 # set -e ### disabled for debugging
 #
@@ -469,7 +480,9 @@ mrun "sleep 1"
 if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
-  pwgen -v -s -1 > $_ROOT/.$_USER.pass.txt
+  _ESC_PASS=`pwgen -v -s -1`
+  _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  echo "$_ESC_PASS" > $_ROOT/.$_USER.pass.txt
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
   echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
 fi
