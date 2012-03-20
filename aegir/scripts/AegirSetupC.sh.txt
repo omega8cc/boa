@@ -1296,7 +1296,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/opendeals-$_OPENDEALS-core.tar.gz
   tar -xzf opendeals-$_OPENDEALS-core.tar.gz
   rm -f opendeals-$_OPENDEALS-core.tar.gz
-  if [ -d "$_CORE/drupal-7.12" ] ; then
+  if [ -d "$_CORE/drupal-7.10" ] ; then
+    mv drupal-7.10 opendeals-$_OPENDEALS-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.11" ] ; then
+    mv drupal-7.11 opendeals-$_OPENDEALS-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.12" ] ; then
     mv drupal-7.12 opendeals-$_OPENDEALS-$_SMALLCORE7
   elif [ -d "$_CORE/drupal-7.13" ] ; then
     mv drupal-7.13 opendeals-$_OPENDEALS-$_SMALLCORE7
