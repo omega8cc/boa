@@ -374,7 +374,7 @@ download_o_contrib_six () {
     rm -f -r expire*
     git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r purge*
-    git clone --branch 6.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
+    git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git &> /dev/null
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*

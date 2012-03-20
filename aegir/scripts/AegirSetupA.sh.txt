@@ -286,7 +286,7 @@ for i in $REVISIONS; do
     tar -xzf backup_migrate-6.x-2.5.tar.gz &> /dev/null
     rm -f backup_migrate-6.x-2.5.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      git clone --branch 6.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib/purge &> /dev/null
+      git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
     fi
   fi
