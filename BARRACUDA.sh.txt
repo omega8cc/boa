@@ -605,6 +605,17 @@ st_runner () {
   fi
 }
 #
+# Escape borrowed from mysql_secure_installation.
+basic_single_escape () {
+  # The quoting on this sed command is a bit complex.  Single-quoted strings
+  # don't allow *any* escape mechanism, so they cannot contain a single
+  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
+  #
+  # Inside a character class, \ and ' are not special, so the ['\] character
+  # class is balanced and contains two characters.
+  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+}
+#
 # Find correct IP.
 find_correct_ip () {
   _FQDN_TEST=$(host $_LOC_DOM)
@@ -3603,7 +3614,9 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
   mrun "sleep 1"
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
-  pwgen -c -v -s > /root/.my.pass.txt
+  _ESC_PASS=`pwgen -v -s -1`
+  _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  echo "$_ESC_PASS" > /root/.my.pass.txt
 fi
 if [ -e "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
