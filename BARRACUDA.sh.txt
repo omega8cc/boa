@@ -4313,11 +4313,19 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     true
   else
-    echo " "
-    _AEGIR_LOGIN_URL=`grep "Aegir is now installed" /var/aegir/install.log 2> /dev/null`
-    msg "ACCESS -> $_AEGIR_LOGIN_URL"
-    echo " "
-    mrun "sleep 1"
+    _AEGIR_LOGIN_URL=`grep "^http://" /var/aegir/install.log 2> /dev/null`
+    if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
+      echo " "
+      msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully."
+      msg "NOTE: Please wait 2 minutes before opening the following link in your web browser:"
+      echo " "
+      msg "LINK: $_AEGIR_LOGIN_URL"
+      echo " "
+    else
+      msg "ALRT: Something went wrong."
+      msg "ALRT: Please check the install log for details:"
+      msg "ALRT: /var/aegir/install.log"
+    fi
   fi
 fi
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
@@ -4332,12 +4340,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   invoke-rc.d cron restart &> /dev/null
   echo " "
   msg "Now waiting 2 minutes before restarting Nginx..."
-  mrun "sleep 1"
-  echo " "
-  msg "Note: you may need to restart Nginx again with command: "
-  msg "  service nginx restart"
-  msg "before you will be able to visit Aegir URL for the first time."
-  echo " "
   mrun "sleep 99"
   force_advanced_nginx_config
   mrun "sleep 11"
@@ -4417,11 +4419,13 @@ fi
 
 
 ###--------------------###
+echo " "
 msg "CARD: Now charging your credit card for this automated install/upgrade service..."
 mrun "sleep 5"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 3"
-msg "Final post-install cleaning, please wait..."
+echo " "
+msg "Final post-install cleaning, please wait a moment..."
 mrun "sleep 1"
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
