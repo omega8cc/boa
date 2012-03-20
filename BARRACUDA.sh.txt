@@ -2392,22 +2392,26 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
   mrun "sleep 1"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
-    if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
-      msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-      mrun "sleep 1"
-      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
-      _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-      _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-      echo " "
-      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
-      echo " "
-      _MIRROR=$_CONFIRMED_ANSWER
-    else
-      _MIRROR=$_LOCAL_UBUNTU_MIRROR
-    fi
-    if ! netcat -w 5 -z $_MIRROR 80 ; then
-      msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+    if [ "$_AUTOPILOT" = "YES" ] ; then
       _MIRROR=archive.ubuntu.com
+    else
+      if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
+        msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
+        mrun "sleep 1"
+        cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
+        _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+        _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+        echo " "
+        prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
+        echo " "
+        _MIRROR=$_CONFIRMED_ANSWER
+      else
+        _MIRROR=$_LOCAL_UBUNTU_MIRROR
+      fi
+      if ! netcat -w 5 -z $_MIRROR 80 ; then
+        msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+        _MIRROR=archive.ubuntu.com
+      fi
     fi
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
@@ -2424,22 +2428,26 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-    if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-      msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-      mrun "sleep 1"
-      cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
-      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-      _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-      echo " "
-      prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
-      echo " "
-      _MIRROR=$_CONFIRMED_ANSWER
-    else
-      _MIRROR=$_LOCAL_DEBIAN_MIRROR
-    fi
-    if ! netcat -w 5 -z $_MIRROR 80 ; then
-      msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+    if [ "$_AUTOPILOT" = "YES" ] ; then
       _MIRROR=ftp.debian.org
+    else
+      if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
+        msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
+        mrun "sleep 1"
+        cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
+        _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+        _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+        echo " "
+        prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
+        echo " "
+        _MIRROR=$_CONFIRMED_ANSWER
+      else
+        _MIRROR=$_LOCAL_DEBIAN_MIRROR
+      fi
+      if ! netcat -w 5 -z $_MIRROR 80 ; then
+        msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+        _MIRROR=ftp.debian.org
+      fi
     fi
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
     cd /var/opt
