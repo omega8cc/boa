@@ -467,8 +467,8 @@ msg "$_STATUS A: Prepare scripts, please wait..."
 mrun "sleep 1"
 chmod 0711 $_ROOT
 cd $_ROOT
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupB.sh.txt ./
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupC.sh.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupB.sh.txt ./
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupC.sh.txt ./
 chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt &> /dev/null
 chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 

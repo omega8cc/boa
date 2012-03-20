@@ -601,7 +601,7 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
   find_correct_ip
   _MY_OWNIP="$_LOC_IP"
 fi
-for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda -type f`
+for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   sed -i "s/EDIT_ACQUIA_SEVEN/$_ACQUIA_SEVEN/g"           $Files
   sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
@@ -704,15 +704,15 @@ if [ -z "$_LOCAL_THISHTIP" ] ; then
   _LOCAL_THISHTIP=all
 fi
 if [ "$_STATUS" = "INIT" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 else
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/run-xdrago /var/xdrago/run-$_USER &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
   chmod 700 /var/xdrago/run-$_USER &> /dev/null
 fi
 force_advanced_nginx_config_main
-chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/* &> /dev/null
-bash /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirSetupA.sh.txt
+chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
+bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
 force_advanced_nginx_config_main
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt

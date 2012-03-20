@@ -2876,7 +2876,7 @@ if [ -d "/var/xdrago" ] ; then
   if [ -e "/var/xdrago/custom.minute.sh.txt" ] && [ ! -e "/var/xdrago/custom.minute.sh.local.txt" ] ; then
     cp -af /var/xdrago/minute.sh /var/xdrago/custom.minute.sh.local.txt
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* /var/xdrago/ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/* /var/xdrago/ &> /dev/null
   if [ -e "/var/xdrago/custom.minute.sh.local.txt" ] ; then
     cp -af /var/xdrago/custom.minute.sh.local.txt /var/xdrago/minute.sh
   fi
@@ -2918,7 +2918,7 @@ if [ -d "/var/xdrago" ] ; then
 fi
 if [ "$_STATUS" = "INIT" ] ; then
   mkdir -p ./xdrago
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/* ./xdrago/ &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/* ./xdrago/ &> /dev/null
   mkdir -p /opt/etc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
@@ -3784,7 +3784,7 @@ else
     chown -L -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
     cd /var/aegir
-    cp /opt/tmp/$_BOA_REPO_NAME/aegir/barracuda/AegirUpgrade.sh.txt ./
+    cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt

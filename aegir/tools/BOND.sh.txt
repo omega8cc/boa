@@ -265,7 +265,7 @@ restore_default_sql () {
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
   cd /var/xdrago
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/minute.sh ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
   sed -i "s/600/900/g" /var/xdrago/minute.sh
   chmod 700 /var/xdrago/minute.sh
 }
@@ -278,7 +278,7 @@ tune_sql () {
 #
 restore_default_nginx () {
   cd /var/xdrago/firewall/check
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/auto-healing-monitoring/firewall/check/scan_nginx ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/firewall/check/scan_nginx ./
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
     for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
     do
