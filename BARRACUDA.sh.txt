@@ -4248,28 +4248,25 @@ fi
 if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER final setup"
   mrun "sleep 1"
-  echo " "
-  msg "Please COPY it NOW and set it as your $_DB_SERVER root password during mysql_secure_installation"
-  echo " "
-  echo --------vvvvvvvv--------
-  echo ------- $PASWD -------
-  echo --------^^^^^^^^--------
-  echo " "
-  msg "Please remember, you don't have the root password for $_DB_SERVER set yet."
-  cat <<EOF
-
-   * You have to hit Enter _without_ entering the password on the first question you will see.
-   * On the second question say Y and then enter your root password '$PASWD' twice.
-   * Then say Y on all remaining questions.
-
-EOF
-  echo " "
-  msg "...waiting now 15 sec before running interactive mysql_secure_installation..."
-  echo " "
-  mrun "sleep 15"
-  echo " "
-  mysql_secure_installation
-  echo " "
+  #
+  # Let's just do what mysql_secure_installation does, so we can do it non-interactively:
+  # - remove anonymous users
+  # - remove remote root
+  # - remove test database
+  # - remove privileges on test database
+  # - set auto-generated root password
+  # - reload privileges table
+  #
+  if [ -e "/root/.my.pass.txt" ] ; then
+    PXSWD=`cat /root/.my.pass.txt`
+    PASWD=`echo -n $PXSWD | tr -d "\n"`
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
+    mysql -u root -e "DROP DATABASE test;"
+    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') WHERE User='root';"
+    mysql -u root -e "FLUSH PRIVILEGES;"
+  fi
   mrun "sleep 1"
   echo "[client]" >> /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
