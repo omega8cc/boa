@@ -172,10 +172,8 @@ else
       true
     else
       cd $AEGIR_HOME/.drush/provision_cdn
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/patch_commit_340eddf60efd.patch ./
-      patch -p1 < patch_commit_340eddf60efd.patch &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/patch_commit_75f9daa631db.patch ./
-      patch -p1 < patch_commit_75f9daa631db.patch &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/patch_commit_fa47bad85589.patch ./
+      patch -p1 < patch_commit_fa47bad85589.patch &> /dev/null
       cd $AEGIR_HOME/.drush
     fi
   fi
