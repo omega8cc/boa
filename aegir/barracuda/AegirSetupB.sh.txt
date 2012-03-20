@@ -506,6 +506,8 @@ cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.9.tar.gz
 tar -xzf aegir_custom_settings-6.x-1.9.tar.gz
 rm -f aegir_custom_settings-6.x-1.9.tar.gz
+git clone --branch master http://git.drupal.org/project/hosting_civicrm_cron.git &> /dev/null
+rm -f -r hosting_civicrm_cron/.git &> /dev/null
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
   ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 fi
