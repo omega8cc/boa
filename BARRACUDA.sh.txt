@@ -4268,12 +4268,12 @@ if [ ! -e "/root/.my.cnf" ] ; then
   if [ -e "/root/.my.pass.txt" ] ; then
     PXSWD=`cat /root/.my.pass.txt`
     PASWD=`echo -n $PXSWD | tr -d "\n"`
-    mysql -u root -e "DELETE FROM mysql.user WHERE User='';"
-    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');"
-    mysql -u root -e "DROP DATABASE test;"
-    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';"
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') WHERE User='root';"
-    mysql -u root -e "FLUSH PRIVILEGES;"
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+    mysql -u root -e "DROP DATABASE test;" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$PASWD') WHERE User='root';" &> /dev/null
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
   fi
   mrun "sleep 1"
   echo "[client]" >> /root/.my.cnf
