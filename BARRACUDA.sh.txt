@@ -4273,7 +4273,7 @@ EOF
   mrun "sleep 1"
   echo "[client]" >> /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
-  echo "password=$PASWD" >> /root/.my.cnf
+  echo "password=\"$PASWD\"" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf &> /dev/null
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
