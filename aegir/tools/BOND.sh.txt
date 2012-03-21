@@ -450,22 +450,22 @@ if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=NO
   _GITHUB_WORKS=NO
-  sleep 3
+  sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
   msg "INFO: We will use forced GitHub mirror without testing connection"
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=NO
   _GITHUB_WORKS=YES
-  sleep 3
+  sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   msg "INFO: We will use forced Gitorious mirror without testing connection"
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=NO
-  sleep 3
+  sleep 1
 else
   msg "INFO: Testing Drupal, GitHub and Gitorious servers availability, please wait..."
-  sleep 3
+  sleep 1
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=YES
@@ -591,7 +591,8 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   invoke-rc.d cron stop &> /dev/null
   mrun "sleep 30"
   msg "STATUS: Tuning in progress, please wait..."
-  mrun "sleep 2"
+  mrun "sleep 1"
+
   restore_default_php
   tune_php
   restore_default_sql
@@ -604,7 +605,8 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   tune_memory_limits
   restart_services
   msg "STATUS: Tuning completed"
-  mrun "sleep 2"
+  mrun "sleep 1"
+
 else
   msg "STATUS: We will stop cron and then wait 30 seconds..."
   invoke-rc.d cron stop &> /dev/null
@@ -618,7 +620,8 @@ else
   tune_memory_limits
   restart_services
   msg "STATUS: Tuning stopped and default settings restored"
-  mrun "sleep 2"
+  mrun "sleep 1"
+
 fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*

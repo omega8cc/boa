@@ -1249,10 +1249,10 @@ fix_locales () {
   and display last line with "BYE!" and then log in again
   to see the result (and possibly run Octopus installer).
 
-  We will continue in 30 seconds...
+  We will continue in 10 seconds...
 
 EOF
-    sleep 30
+    sleep 10
     locale-gen en_US en_US.UTF-8 &> /dev/null
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
@@ -1274,7 +1274,7 @@ EOF
 barracuda_cnf () {
   if [ ! -e "/root/.barracuda.cnf" ] ; then
     msg "INFO: Creating your /root/.barracuda.cnf config file"
-    sleep 3
+    sleep 1
     echo "###" > /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1329,7 +1329,7 @@ barracuda_cnf () {
     echo "###" >> /root/.barracuda.cnf
   else
     msg "INFO: Reading your /root/.barracuda.cnf config file."
-    sleep 3
+    sleep 1
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
@@ -1417,7 +1417,7 @@ barracuda_cnf () {
     else
       echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     fi
-    sleep 5
+    sleep 1
     echo " "
     while read line ; do
       echo "$line"
@@ -1697,7 +1697,7 @@ if [ `whoami` = "root" ] ; then
     _VMFAMILY="VS"
     touch /var/run/cloud_vhost.pid
   fi
-  sleep 5
+  sleep 1
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first."
   exit 1
@@ -1706,7 +1706,7 @@ fi
 
 ###--------------------###
 msg "INFO: Install or upgrade checking, please wait..."
-sleep 3
+sleep 1
 if [ -e "/var/aegir/config/server_master/nginx.conf" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE..."
@@ -1803,10 +1803,10 @@ fi
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: We need to install wget, axel, aptitude, netcat & git first, please wait..."
-  sleep 3
+  sleep 1
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
-  sleep 5
+  sleep 1
   fix_locales
   $_INITINS wget git-core axel netcat aptitude &> /dev/null
 fi
@@ -1821,22 +1821,22 @@ if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=NO
   _GITHUB_WORKS=NO
-  sleep 3
+  sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
   msg "INFO: We will use forced GitHub mirror without testing connection"
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=NO
   _GITHUB_WORKS=YES
-  sleep 3
+  sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   msg "INFO: We will use forced Gitorious mirror without testing connection"
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=NO
-  sleep 3
+  sleep 1
 else
   msg "INFO: Testing Drupal, GitHub and Gitorious servers availability, please wait..."
-  sleep 3
+  sleep 1
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=YES
@@ -1889,7 +1889,7 @@ fi
 
 ###--------------------###
 msg "INFO: Downloading little helpers, please wait..."
-sleep 3
+sleep 1
 #
 # Git clone all
 cd /opt/tmp
@@ -2347,10 +2347,12 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
         true
         install_pdnsd_cache
         msg "INFO: DNS cache pdnsd server installation completed"
-        mrun "sleep 2"
+        mrun "sleep 1"
+
       else
         msg "INFO: DNS cache pdnsd server installation skipped"
-        mrun "sleep 2"
+        mrun "sleep 1"
+
       fi
     fi
   elif [ "$_INSTALL_PDNSD" = "YES" ] ; then
@@ -2544,7 +2546,7 @@ else
   invoke-rc.d csf stop  &> /dev/null
   until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
-    sleep 5
+    sleep 2
   done
   _UP_PHP=NO
   _UP_NGX=NO
@@ -2578,7 +2580,7 @@ install_percona_sql () {
   _KEYS_SERVER_TEST=FALSE
   until [[ "$_KEYS_SERVER_TEST" =~ "Percona" ]] ; do
     _KEYS_SERVER_TEST=`gpg --keyserver hkp://keys.gnupg.net --recv-keys 1C4CBDCDCD2EFD2A 2>&1`
-    sleep 5
+    sleep 2
   done
   gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
   _THIS_REL_VERSION="$_REL_VERSION"
@@ -2599,7 +2601,7 @@ install_mariadb_sql () {
   _KEYS_SERVER_TEST=FALSE
   until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
-    sleep 5
+    sleep 2
   done
   if [ "$_THIS_OS" = "Debian" ] ; then
     _THIS_OS_NAME=debian
@@ -2670,7 +2672,7 @@ else
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
         _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
-        sleep 5
+        sleep 2
       done
       st_runner "apt-get update -y" 2> /dev/null
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
@@ -3694,10 +3696,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   msg "INFO: Running hosting-dispatch (2/3), please wait..."
-  mrun "sleep 8"
+  mrun "sleep 5"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   msg "INFO: Running hosting-dispatch (3/3), please wait..."
-  mrun "sleep 8"
+  mrun "sleep 5"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
@@ -3876,10 +3878,10 @@ if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; 
   feature on another IP address available and not used by the Hostmaster,
   and other hosted sites.
 
-  We will continue in 30 seconds...
+  We will continue in 10 seconds...
 
 EOF
-    mrun "sleep 30"
+    mrun "sleep 10"
   else
     _HTTPS_TEST=FREE
     validate_public_ip &> /dev/null
@@ -3950,10 +3952,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       st_runner "update-rc.d tomcat defaults" &> /dev/null
       st_runner "invoke-rc.d tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     else
       msg "INFO: MultiCore Apache Solr Tomcat installation skipped"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     fi
   fi
 fi
@@ -3965,7 +3969,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     chown -L -R tomcat:tomcat /opt/solr
     chown -L -R tomcat:tomcat /opt/tomcat6
     killall -9 java &> /dev/null
-    mrun "sleep 8"
+    mrun "sleep 5"
     st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/solr/fixed.init.log" ] ; then
@@ -3987,7 +3991,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     touch /opt/solr/conf/apachesolr-6.x-1.6.log
     chown -L -R tomcat:tomcat /opt/solr/conf
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
-    mrun "sleep 8"
+    mrun "sleep 5"
     st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/tika" ] ; then
@@ -4002,7 +4006,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     chown -L -R tomcat:tomcat /opt/tika/*
     chown -L -R tomcat:tomcat /opt/solr/conf
     st_runner "invoke-rc.d tomcat stop" &> /dev/null
-    mrun "sleep 8"
+    mrun "sleep 5"
     st_runner "invoke-rc.d tomcat start" &> /dev/null
   fi
 fi
@@ -4041,10 +4045,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       echo >> $_CHIVE_VHOST
       touch /var/log/chive_$_CHIVE_VERSION.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     fi
   fi
 fi
@@ -4117,10 +4123,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       echo "}" >> $_SQLBUDDY_VHOST
       echo >> $_SQLBUDDY_VHOST
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     else
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     fi
   fi
 fi
@@ -4163,10 +4171,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo >> $_CGP_VHOST
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
-        mrun "sleep 2"
+        mrun "sleep 1"
+
         else
         msg "INFO: Collectd Graph Panel installation skipped"
-        mrun "sleep 2"
+        mrun "sleep 1"
+
       fi
     fi
   fi
@@ -4203,10 +4213,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
       st_runner "$_INSTAPP webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
       update-rc.d webmin defaults &> /dev/null
       msg "INFO: Webmin Control Panel installation completed"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
       else
       msg "INFO: Webmin Control Panel installation skipped"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     fi
   fi
 fi
@@ -4242,10 +4254,12 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
       echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
       msg "INFO: Bind9 DNS Server installation completed"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     else
       msg "INFO: Bind9 DNS Server installation skipped"
-      mrun "sleep 2"
+      mrun "sleep 1"
+
     fi
   fi
 fi
@@ -4372,7 +4386,8 @@ csf_install () {
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
   st_runner "invoke-rc.d ssh restart" &> /dev/null
   msg "INFO: csf/lfd firewall installation completed"
-  mrun "sleep 2"
+  mrun "sleep 1"
+
   touch /var/log/csf_$_INSTALLER_VERSION.log
 }
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
@@ -4384,7 +4399,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
         csf_install
       else
         msg "INFO: csf/lfd firewall installation skipped"
-        mrun "sleep 2"
+        mrun "sleep 1"
+
       fi
     fi
   fi

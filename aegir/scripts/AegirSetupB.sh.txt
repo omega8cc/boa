@@ -444,10 +444,10 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
   drush '@hostmaster' hosting-dispatch &> /dev/null
   msg "$_STATUS B: Running hosting-dispatch (2/3), please wait..."
-  mrun "sleep 8"
+  mrun "sleep 5"
   drush '@hostmaster' hosting-dispatch &> /dev/null
   msg "$_STATUS B: Running hosting-dispatch (3/3), please wait..."
-  mrun "sleep 8"
+  mrun "sleep 5"
   drush '@hostmaster' hosting-dispatch &> /dev/null
 else
   if [ -d "$_AEGIR_ROOT" ] ; then

@@ -480,7 +480,7 @@ find_correct_ip () {
 octopus_cnf () {
   if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
     msg "INFO: Creating your /root/.$_USER.octopus.cnf config file"
-    sleep 3
+    sleep 1
     echo "###" > /root/.$_USER.octopus.cnf
     echo "### Configuration created on $_NOW with" >> /root/.$_USER.octopus.cnf
     echo "### Octopus version $_INSTALLER_VERSION" >> /root/.$_USER.octopus.cnf
@@ -519,7 +519,7 @@ octopus_cnf () {
     echo "###" >> /root/.$_USER.octopus.cnf
   else
     msg "INFO: Reading your /root/.$_USER.octopus.cnf config file."
-    sleep 3
+    sleep 1
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
@@ -528,7 +528,7 @@ octopus_cnf () {
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
     fi
     msg "NOTE: Please review all config options displayed below."
-    sleep 5
+    sleep 3
     echo " "
     while read line ; do
       echo "$line"
@@ -779,22 +779,22 @@ if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=NO
   _GITHUB_WORKS=NO
-  sleep 3
+  sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
   msg "INFO: We will use forced GitHub mirror without testing connection"
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=NO
   _GITHUB_WORKS=YES
-  sleep 3
+  sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   msg "INFO: We will use forced Gitorious mirror without testing connection"
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=NO
-  sleep 3
+  sleep 1
 else
   msg "INFO: Testing Drupal, GitHub and Gitorious servers availability, please wait..."
-  sleep 3
+  sleep 1
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=YES
   _GITHUB_WORKS=YES
