@@ -1,13 +1,11 @@
 #-------------------------------------------------------------
-# BOA default .bashrc
+# BOA-2.0.3-dev default .bashrc
 #-------------------------------------------------------------
 
 ulimit -S -c 0
 
 set -o notify
-set -o noclobber
 set -o ignoreeof
-set -o nounset
 
 shopt -s cdspell
 shopt -s cdable_vars

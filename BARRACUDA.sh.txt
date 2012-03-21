@@ -671,8 +671,8 @@ install_redis_src () {
 #
 # Set xterm.
 set_xterm () {
-  _XTERM_TEST=$(grep BOA /root/.bashrc)
-  if [[ "$_XTERM_TEST" =~ "BOA" ]] ; then
+  _XTERM_TEST=$(grep $_INSTALLER_VERSION /root/.bashrc)
+  if [[ "$_XTERM_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
   else
     cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
