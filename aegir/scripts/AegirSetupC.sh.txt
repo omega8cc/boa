@@ -744,7 +744,7 @@ fi
 fi
 
 
-###---### Ubercart 3.0.2
+###---### Ubercart 3.0.3
 #
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
@@ -779,8 +779,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.0-rc1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
