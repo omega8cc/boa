@@ -46,6 +46,10 @@ _DEBUG_MODE=EDIT_DEBUG_MODE
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
+
 ###---### Functions
 #
 # noticeable messages

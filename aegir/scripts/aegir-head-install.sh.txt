@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# $Id$
 
 ########################################################################
 # Aegir quick install script
@@ -46,6 +45,9 @@ msg() {
 
 ########################################################################
 # Main script
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 
 AEGIR_HOME="$HOME"
 AEGIR_HOST=`uname -n`

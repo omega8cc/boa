@@ -434,6 +434,10 @@ _UBER_CART_SEVEN=3.0.2
 _UBERCART=6.x-2.7
 _VIDEOLA=6.x-1.0-alpha2
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
+
 ###---### Functions
 #
 # Noticeable messages.

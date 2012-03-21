@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 action()
 {
 NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`

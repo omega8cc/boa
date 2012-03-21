@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 action()
 {
   rm -f -r /opt/tmp

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 /usr/sbin/ntpdate pool.ntp.org
 /etc/init.d/php-fpm reload
 /etc/init.d/php53-fpm reload

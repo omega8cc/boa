@@ -107,6 +107,9 @@ _HM_ONLY=EDIT_HM_ONLY
 _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _DRUSHCMD="php $_ROOT/tools/drush/drush.php"
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 
 ###---### Functions
 #

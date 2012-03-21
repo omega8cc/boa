@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 touch /var/run/boa_wait.pid
 sleep 8
 dir=/var/xdrago/log/mysql_optimize

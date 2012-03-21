@@ -113,6 +113,9 @@ _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 
 ###---### Functions
 # noticeable messages

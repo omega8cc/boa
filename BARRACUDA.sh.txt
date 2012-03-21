@@ -474,6 +474,9 @@ _NOW=`date +%y%m%d-%H%M`
 _PURGE_MODE=ON
 _CUSTOM_NAME=nginx
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 
 ###---### Avoid too many questions
 #

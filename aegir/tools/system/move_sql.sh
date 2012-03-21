@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+
 if test -f /var/run/boa_wait.pid ; then
   touch /var/xdrago/log/wait-for-mysql-restart
   exit
