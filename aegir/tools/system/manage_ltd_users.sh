@@ -26,8 +26,9 @@ do
     _SEC_SYM="/home/$Existing/sites"
     _SEC_DIR=`readlink -n $_SEC_SYM`
     _SEC_DIR=`echo -n $_SEC_DIR | tr -d "\n"`
-    if [ ! -e "$_SEC_DIR" ] || [ ! -e "/home/$_PAR_OWN.ftp/users/$Existing" ] ; then
+    if [ ! -L "$_SEC_SYM" ] || [ ! -e "$_SEC_DIR" ] || [ ! -e "/home/$_PAR_OWN.ftp/users/$Existing" ] ; then
       deluser --remove-home --backup-to /var/backups/zombie/deleted $Existing
+      rm -f /home/$_PAR_OWN.ftp/users/$Existing
       echo Zombie $Existing killed
       echo
     fi
