@@ -1423,10 +1423,10 @@ barracuda_cnf () {
       echo "$line"
     done < /root/.barracuda.cnf
     echo " "
+    source /root/.barracuda.cnf
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
-        source /root/.barracuda.cnf
       else
         echo "Installation aborted by you."
         exit 1
@@ -1434,7 +1434,6 @@ barracuda_cnf () {
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
-        source /root/.barracuda.cnf
       else
         echo "Upgrade aborted by you."
         exit 1
