@@ -39,8 +39,6 @@ $conf['expire_flush_node_terms'] = 1;        // default settings for expire modu
 $conf['expire_flush_menu_items'] = 0;        // default settings for expire module
 $conf['expire_flush_cck_references'] = 0;    // default settings for expire module
 $conf['expire_include_base_url'] = 1;        // default settings for expire module
-$gr_set['deslash'] = 0;                      // disable deslash in globalredirect to avoid redirect loop
-$conf['globalredirect_settings'] = $gr_set;  // disable deslash in globalredirect to avoid redirect loop
 
 ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
