@@ -1666,7 +1666,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/profiles/managingnews/modules/contrib
   rm -f -r data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views
-  drush dl --destination=$_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/profiles/managingnews/modules/contrib data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta11 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.2 views-6.x-2.13 -y &> /dev/null
+  drush dl --destination=$_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/profiles/managingnews/modules/contrib data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta11 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.3 views-6.x-2.13 -y &> /dev/null
   cd views
   # http://drupal.org/node/853864#comment-3898996
   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
