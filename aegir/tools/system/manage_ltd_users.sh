@@ -36,6 +36,30 @@ do
 done
 }
 #
+# Fix dot dirs.
+fix_dot_dirs()
+{
+  _USRG=users
+  _USER_DRUSH="/home/$_USER_LTD/.drush"
+  if [ ! -d "$_USER_DRUSH" ] ; then
+    mkdir -p $_USER_DRUSH
+    chown $_USER_LTD:$_USRG $_USER_DRUSH
+    chmod 700 $_USER_DRUSH
+  fi
+  _USER_SSH="/home/$_USER_LTD/.ssh"
+  if [ ! -d "$_USER_SSH" ] ; then
+    mkdir -p $_USER_SSH
+    chown $_USER_LTD:$_USRG $_USER_SSH
+    chmod 700 $_USER_SSH
+  fi
+  if [ ! -L "$_USER_DRUSH/drush_make" ] ; then
+    ln -s /var/aegir/.drush/drush_make $_USER_DRUSH/drush_make
+  fi
+  if [ ! -L "$_USER_DRUSH/registry_rebuild" ] ; then
+    ln -s /var/aegir/.drush/registry_rebuild $_USER_DRUSH/registry_rebuild
+  fi
+}
+#
 # OK, create user.
 ok_create_user()
 {
@@ -68,6 +92,7 @@ ok_create_user()
     mkdir -p /home/$_ADMIN/users
     echo "$PASWD" > /home/$_ADMIN/users/$_USER_LTD
   fi
+  fix_dot_dirs
   rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bashrc}
 }
 #
@@ -84,6 +109,7 @@ ok_update_user()
     ln -s $Client $_USER_LTD_ROOT/sites
     chmod 700 $_USER_LTD_ROOT
   fi
+  fix_dot_dirs
   rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bashrc}
 }
 #
