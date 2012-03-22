@@ -316,6 +316,31 @@ restart_services () {
   st_runner "invoke-rc.d csf restart" &> /dev/null
 }
 #
+tune_web_server_config () {
+  if [ ! -z "$_L_PHP_FPM_WORKERS" ] ; then
+    sed -i "s/max_children\">.*</max_children\">$_L_PHP_FPM_WORKERS</g"        /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/pm.start_servers =.*/pm.start_servers = $_L_PHP_FPM_WORKERS/g"   /opt/local/etc/php53-fpm.conf &> /dev/null
+  else
+    sed -i "s/max_children\">.*</max_children\">2</g"                          /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/pm.start_servers =.*/pm.start_servers = 2/g"                     /opt/local/etc/php53-fpm.conf &> /dev/null
+  fi
+  if [ ! -z "$_L_NGINX_WORKERS" ] ; then
+    sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g"       /etc/nginx/nginx.conf &> /dev/null
+  else
+    sed -i "s/worker_processes.*/worker_processes  4;/g"                       /etc/nginx/nginx.conf &> /dev/null
+  fi
+  sed -i "s/request_slowlog_timeout =.*/request_terminate_timeout = 30s/g"     /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 300s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/process_control_timeout =.*/process_control_timeout = 5s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
+  _FPM_ERR_LOG="\/opt\/local\/var\/log\/php53-fpm-error.log"
+  sed -i "s/error_log =.*/error_log = $_FPM_ERR_LOG/g"                         /opt/local/etc/php53-fpm.conf &> /dev/null
+  _FPM_SLOW_LOG="\/opt\/local\/var\/log\/php53-fpm-slow.log"
+  sed -i "s/slowlog =.*/slowlog = $_FPM_SLOW_LOG/g"                            /opt/local/etc/php53-fpm.conf &> /dev/null
+}
+#
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
@@ -344,69 +369,84 @@ tune_memory_limits () {
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_APC=512
+    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      _L_PHP_FPM_WORKERS=4
+    else
+      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+    fi
+    if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+      _L_NGINX_WORKERS=4
+    else
+      _L_NGINX_WORKERS=$_NGINX_WORKERS
+    fi
   elif [ "$_USE" -ge "1024" ] ; then
     if [ "$_VMFAMILY" = "XEN" ] ; then
       _USE_PHP=512
       _USE_APC=1024
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _LOCAL_PHP_FPM_WORKERS=8
+        _L_PHP_FPM_WORKERS=8
       else
-        _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
-      fi
-      sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
-      if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-        sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g" /opt/local/etc/php53-fpm.conf
+        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
       if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-        _LOCAL_NGINX_WORKERS=8
+        _L_NGINX_WORKERS=8
       else
-        _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+        _L_NGINX_WORKERS=$_NGINX_WORKERS
       fi
-      sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       _USE_PHP=512
       if [ -d "/boot/grub" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_APC=1024
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _LOCAL_PHP_FPM_WORKERS=8
+          _L_PHP_FPM_WORKERS=8
         else
-          _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
-        fi
-        sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
-        if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-          sed -i "s/pm.start_servers =.*/pm.start_servers = 4/g" /opt/local/etc/php53-fpm.conf
+          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-          _LOCAL_NGINX_WORKERS=8
+          _L_NGINX_WORKERS=8
         else
-          _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+          _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
-        sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
       else
         _USE_APC=256
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _LOCAL_PHP_FPM_WORKERS=2
+          _L_PHP_FPM_WORKERS=2
         else
-          _LOCAL_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
-        fi
-        sed -i "s/max_children\">.*</max_children\">$_LOCAL_PHP_FPM_WORKERS</g" /opt/etc/php-fpm.conf
-        if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-          sed -i "s/pm.start_servers =.*/pm.start_servers = 2/g" /opt/local/etc/php53-fpm.conf
+          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-          _LOCAL_NGINX_WORKERS=4
+          _L_NGINX_WORKERS=4
         else
-          _LOCAL_NGINX_WORKERS=$_NGINX_WORKERS
+          _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
-        sed -i "s/worker_processes.*/worker_processes  $_LOCAL_NGINX_WORKERS;/g" /etc/nginx/nginx.conf
       fi
     else
       _USE_PHP=256
       _USE_APC=128
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _L_PHP_FPM_WORKERS=2
+      else
+        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+      if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+        _L_NGINX_WORKERS=4
+      else
+        _L_NGINX_WORKERS=$_NGINX_WORKERS
+      fi
     fi
   else
     _USE_PHP="$_USE"
     _USE_APC="$_USE"
+    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      _L_PHP_FPM_WORKERS=2
+    else
+      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+    fi
+    if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
+      _L_NGINX_WORKERS=4
+    else
+      _L_NGINX_WORKERS=$_NGINX_WORKERS
+    fi
   fi
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_APC=128
@@ -439,6 +479,7 @@ tune_memory_limits () {
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
     sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 1024K/g" /etc/mysql/my.cnf
   fi
+  tune_web_server_config
 }
 
 ###---### init
