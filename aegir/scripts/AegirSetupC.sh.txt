@@ -2168,9 +2168,9 @@ mrun "sleep 1"
 _CORE_DISTRO="$_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.1-d7.make ./
-  $_ROOT/tools/drush/drush make civicrm-4.1-d7.make civicrm-$_CIVICRM7-$_SMALLCORE7 &> /dev/null
-  rm -f civicrm-4.1-d7.make
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm4.make ./
+  $_ROOT/tools/drush/drush make civicrm4.make civicrm-$_CIVICRM7-$_SMALLCORE7 &> /dev/null
+  rm -f civicrm4.make
   cd $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
   rm -f $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven

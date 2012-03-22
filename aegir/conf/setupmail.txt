@@ -70,7 +70,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 Both CiviCRM 3 and 4 are available with 2+ Aegir SSD Cores only:
 
  CiviCRM 3.4.8-d6 ------------- http://civicrm.org
- CiviCRM 4.1.1-d7 ------------- http://civicrm.org
+ CiviCRM 4.0.8-d7 ------------- http://civicrm.org
 
 Note about platforms naming convention:
 
