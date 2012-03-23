@@ -3502,10 +3502,8 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
-  cd /etc
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/lshell.conf.txt ./
-  mv -f lshell.conf lshell.conf-pre-$_NOW &> /dev/null
-  mv -f lshell.conf.txt lshell.conf &> /dev/null
+  mv -f /etc/lshell.conf /etc/lshell.conf-pre-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
   echo "$_PATH_LSHELL" >> /etc/shells
   echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
   sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
