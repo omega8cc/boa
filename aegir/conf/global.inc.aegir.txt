@@ -105,6 +105,11 @@ if ($conf['install_profile'] == 'managingnews') {
   ini_set('auto_detect_line_endings', TRUE);
 }
 
+// JS aggregation breaks jquery.autopager-1.0.0.js
+if ($conf['install_profile'] == 'martplug') {
+  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
+}
+
 if (isset($_SERVER['HTTP_HOST'])) {
   if ($conf['install_profile'] == 'uberdrupal' ||
       file_exists('sites/all/modules/ubercart/README.txt') ||
