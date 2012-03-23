@@ -1,0 +1,16 @@
+diff --git a/includes/features.user.inc b/includes/features.user.inc
+index c76455d..bf6d6ff 100644
+--- a/includes/features.user.inc
++++ b/includes/features.user.inc
+@@ -122,7 +122,11 @@ function user_permission_features_rebuild($module) {
+ 
+     $roles = _user_features_get_roles();
+     $permissions_by_role = _user_features_get_permissions(FALSE);
++    $modules = user_permission_get_modules();
+     foreach ($defaults as $permission) {
++      if (empty($modules[$permission['name']])) {
++        continue;
++      }
+       $perm = $permission['name'];
+       foreach ($roles as $role) {
+         if (in_array($role, $permission['roles'])) {
