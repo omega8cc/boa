@@ -67,14 +67,15 @@ _PHP_FPM_VERSION=5.2
 ### PHP-CLI VERSION                        ###
 ###----------------------------------------###
 ###
-### You can choose PHP-CLI version per server.
-### It will be used by all Aegir instances,
-### including Master and all Satellites,
-### so it will effectively break support
-### for Drupal 5.x sites in all instances.
+### You can choose PHP-CLI version per Aegir
+### Master and Satellite Instance - both on
+### install and upgrade.
 ###
-### This option can be set both on install
-### and upgrade. Use with care!
+### Note that PHP-CLI 5.3 will break support
+### for Drupal 5.x platforms/sites.
+###
+### Drupal 8.x will be available only with
+### PHP-CLI 5.3.
 ###
 ### Available options:
 ###
@@ -1690,6 +1691,21 @@ check_apt_updates () {
     esac
   done
 }
+#
+# Update php-cli for Drush.
+update_php_cli_drush () {
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+    _L_PHP_CLI=opt
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+    chown aegir:crontab /var/spool/cron/crontabs/aegir
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+    _L_PHP_CLI=usr
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+    chown aegir:crontab /var/spool/cron/crontabs/aegir
+  fi
+}
 
 
 ###--------------------###
@@ -2501,7 +2517,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
   fi
   cd /var/log
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
   cd /var/opt
 fi
 
@@ -3352,13 +3368,7 @@ fi
 
 
 ###--------------------###
-if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
-  if [ -e "/usr/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-    mv -f /usr/local/bin/php /usr/local/bin/php52
-    ln -s /opt/local/bin/php /usr/local/bin/php
-  fi
-fi
-if [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -L "/usr/local/bin/php" ] ; then
+if [ -L "/usr/local/bin/php" ] ; then
   if [ -e "/usr/local/bin/php52" ] ; then
     rm -f /usr/local/bin/php
     mv -f /usr/local/bin/php52 /usr/local/bin/php
@@ -3703,6 +3713,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
   msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
@@ -3823,6 +3834,7 @@ else
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
@@ -3854,7 +3866,7 @@ else
     fi
     chmod 711 /var/aegir/.drush &> /dev/null
     cd /var/aegir/config/includes
-    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
+    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
     touch installer_version.txt
     msg "INFO: Aegir Master Instance upgrade completed"
   else
@@ -4348,7 +4360,7 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
   cd /var/aegir/config/includes
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
   touch installer_version.txt
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     true
@@ -4375,6 +4387,7 @@ fi
 
 ###--------------------###
 tune_memory_limits
+update_php_cli_drush
 service php-fpm restart &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   service cron restart &> /dev/null

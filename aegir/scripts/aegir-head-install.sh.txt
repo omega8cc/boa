@@ -32,6 +32,14 @@ _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
+_PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+  _L_PHP_CLI=/opt/local/bin
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+  _L_PHP_CLI=/usr/local/bin
+else
+  _L_PHP_CLI=/usr/local/bin
+fi
 
 # when adding a variable here, add it to the display below
 
@@ -111,7 +119,7 @@ if which drush 2> /dev/null && which drush | grep -v 'no drush in' > /dev/null; 
   DRUSH=drush
 elif [ -x $DRUSH ] ; then
   msg "Drush found in $DRUSH, good"
-  DRUSH="php $AEGIR_HOME/drush/drush.php"
+  DRUSH="$_L_PHP_CLI/php $AEGIR_HOME/drush/drush.php"
 else
   msg "Installing drush in $AEGIR_HOME"
   cd $AEGIR_HOME
@@ -124,7 +132,7 @@ else
     tar -xzf drush-$_DRUSH_VERSION.tar.gz
     rm -f drush-$_DRUSH_VERSION.tar.gz
   fi
-  DRUSH="php $AEGIR_HOME/drush/drush.php"
+  DRUSH="$_L_PHP_CLI/php $AEGIR_HOME/drush/drush.php"
 fi
 
 if $DRUSH help > /dev/null ; then

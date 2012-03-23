@@ -45,6 +45,15 @@ _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _HTTP_WILDCARD=EDIT_HTTP_WILDCARD
+_PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+  _L_PHP_CLI=/opt/local/bin
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+  _L_PHP_CLI=/usr/local/bin
+else
+  _L_PHP_CLI=/usr/local/bin
+fi
+_DRUSHCMD="$_L_PHP_CLI/php /var/aegir/drush/drush.php"
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
@@ -179,7 +188,6 @@ hostmaster_mi_up () {
 _NOW=`date +%y%m%d-%H%M`
 _LASTNUM=001
 _DISTRO=001
-_DRUSHCMD="php /var/aegir/drush/drush.php"
 _ROOT="/var/aegir"
 _AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
 _PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"

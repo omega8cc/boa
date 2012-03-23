@@ -80,7 +80,6 @@ _DOMAIN=EDIT_DOMAIN
 _WEBG=EDIT_WEBG
 _ROOT="/data/disk/$_USER"
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
-_DRUSHCMD="php $_ROOT/tools/drush/drush.php"
 _STATUS=INIT
 _LASTNUM=EDIT_LASTNUM
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
@@ -100,6 +99,15 @@ _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _AUTOPILOT=EDIT_AUTOPILOT
 _HM_ONLY=EDIT_HM_ONLY
 _HTTP_WILDCARD=EDIT_HTTP_WILDCARD
+_PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+  _L_PHP_CLI=/opt/local/bin
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+  _L_PHP_CLI=/usr/local/bin
+else
+  _L_PHP_CLI=/usr/local/bin
+fi
+_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
@@ -190,7 +198,7 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
 fi
 touch $_ROOT/aegir.sh
 chmod 0755 $_ROOT/aegir.sh &> /dev/null
-echo -e "#!/bin/sh\n\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
+echo -e "#!/bin/bash\n\nPATH=~/bin:$_L_PHP_CLI:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
 
 mkdir -p $_ROOT/aegir/distro
 mkdir -p $_ROOT/distro/$_DISTRO

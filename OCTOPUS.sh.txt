@@ -80,6 +80,28 @@ _PHP_FPM_VERSION=5.2
 
 
 ###----------------------------------------###
+### PHP-CLI VERSION                        ###
+###----------------------------------------###
+###
+### You can choose PHP-CLI version per Aegir
+### Master and Satellite Instance - both on
+### install and upgrade.
+###
+### Note that PHP-CLI 5.3 will break support
+### for Drupal 5.x platforms/sites.
+###
+### Drupal 8.x will be available only with
+### PHP-CLI 5.3.
+###
+### Available options:
+###
+### _PHP_CLI_VERSION=5.2
+### _PHP_CLI_VERSION=5.3
+###
+_PHP_CLI_VERSION=5.2
+
+
+###----------------------------------------###
 ### PLATFORMS INSTALL MODE                 ###
 ###----------------------------------------###
 ###
@@ -507,6 +529,8 @@ octopus_cnf () {
     echo "_USE_CURRENT=$_USE_CURRENT" >> /root/.$_USER.octopus.cnf
     echo "_REMOTE_CACHE_IP=$_REMOTE_CACHE_IP" >> /root/.$_USER.octopus.cnf
     echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.$_USER.octopus.cnf
+    echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
+    echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf
     echo "### NOTE: the group of settings displayed bellow will be *overriden*" >> /root/.$_USER.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.$_USER.octopus.cnf
@@ -529,6 +553,12 @@ octopus_cnf () {
       true
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
+    fi
+    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.$_USER.octopus.cnf)
+    if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
+      true
+    else
+      echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     fi
     msg "NOTE: Please review all config options displayed below."
     sleep 3
@@ -652,6 +682,7 @@ do
   sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files
   sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
   sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
+  sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files
   sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
   sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
   sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
@@ -723,6 +754,9 @@ if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
 fi
 if [ ! -e "/data/disk/$_USER/log/fpm.txt" ] ; then
   echo $_PHP_FPM_VERSION > /data/disk/$_USER/log/fpm.txt
+fi
+if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
+  echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
 fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 }
@@ -943,6 +977,10 @@ if [ -d "$_ROOT" ] ; then
     if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
+    fi
+    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+      _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
+      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
     fi
     if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
       _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
