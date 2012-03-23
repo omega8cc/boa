@@ -270,6 +270,8 @@ fi
 cd $_ROOT/tools
 if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
   git clone http://git.drupal.org/project/drush.git &> /dev/null
+elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+  git clone git://github.com/omega8cc/drush_4x.git drush &> /dev/null
 else
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
@@ -279,6 +281,9 @@ if [ "$_DRUSH_FAMILY" = "3" ] ; then
   cd $_ROOT/tools/drush
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
   patch -p0 < user.drush.inc.patch &> /dev/null
+fi
+if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+  sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null
 fi
 # if [ "$_DRUSH_VERSION" = "7.x-4.6" ] ; then
 #   cd $_ROOT/tools/drush
