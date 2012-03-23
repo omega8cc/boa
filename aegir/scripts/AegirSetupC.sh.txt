@@ -641,13 +641,11 @@ fi
 if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
   msg "$_STATUS C: Preparing Pressflow +Extra $_SMALLCORE6 core, please wait.."
   mrun "sleep 1"
-
   prepare_pressflow_core
 fi
 # if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/vanilla-6-pressflow/misc/ctrl-$_INSTALLER_VERSION" ] ; then
 #   msg "$_STATUS C: Preparing Pressflow core Original, please wait.."
 #   mrun "sleep 1"
-
 #   prepare_pressflow_core_original
 # fi
 if [ -d "$_CORE/o_contrib/varnish" ] ; then
@@ -722,7 +720,6 @@ if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
 msg "STATUS: $_F_ACQUIA install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/acquia-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -744,7 +741,6 @@ cd $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_ACQUIA installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_ACQUIA installation skipped"
   mrun "sleep 1"
@@ -763,7 +759,6 @@ if prompt_yes_no "$_F_UBER_CART_SEVEN - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBER_CART_SEVEN install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -807,7 +802,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_UBER_CART_SEVEN installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_UBER_CART_SEVEN installation skipped"
   mrun "sleep 1"
@@ -826,7 +820,6 @@ if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
 true
 msg "STATUS: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -860,7 +853,6 @@ cd $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_ATRIUM installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_ATRIUM installation skipped"
   mrun "sleep 1"
@@ -878,7 +870,6 @@ if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
 msg "STATUS: $_F_DRUPAL5 install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/pressflow-$_DRUPAL5"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -895,7 +886,6 @@ create_symlinks
 rm -f boost_stats.php
 msg "STATUS: $_F_DRUPAL5 installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
   mrun "sleep 1"
@@ -993,7 +983,6 @@ if [ ! -d "$_CORE/pressflow" ] ; then
   create_symlinks
   msg "STATUS: $_F_DRUPAL6 installation completed"
   mrun "sleep 1"
-
 elif [ -d "$_CORE/pressflow" ] ; then
   echo " "
   msg "STATUS: $_F_DRUPAL6 install in progress, please wait..."
@@ -1004,7 +993,6 @@ elif [ -d "$_CORE/pressflow" ] ; then
   create_symlinks
   msg "STATUS: $_F_DRUPAL6 installation completed"
   mrun "sleep 1"
-
 fi
 fi
 
@@ -1027,7 +1015,6 @@ true
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
 msg "STATUS: $_F_DRUPAL7_D install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/$_DRUPAL7D"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1067,7 +1054,6 @@ fi
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
 msg "STATUS: $_F_DRUPAL7_S install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/$_DRUPAL7S"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1111,7 +1097,6 @@ if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
   mrun "sleep 1"
-
   _CORE_DISTRO="$_CORE/$_DRUPAL7P"
   if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_CORE
@@ -1147,7 +1132,6 @@ elif [ -d "$_CORE/$_DRUPAL7" ] ; then
   echo " "
   msg "STATUS: $_F_DRUPAL7_P install in progress, please wait..."
   mrun "sleep 1"
-
   _CORE_DISTRO="$_CORE/$_DRUPAL7"
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
   cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
@@ -1222,7 +1206,6 @@ build_openpublic () {
 # true
 # msg "STATUS: $_F_OPENPUBLIC install in progress, please wait..."
 # mrun "sleep 1"
-
 # _CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7"
 # if [ ! -d "$_CORE_DISTRO" ] ; then
 #   cd $_CORE
@@ -1240,7 +1223,6 @@ build_openpublic () {
 # rm -f boost_stats.php
 # msg "STATUS: $_F_OPENPUBLIC installation completed"
 # mrun "sleep 1"
-
 # else
 #   msg "STATUS: $_F_OPENPUBLIC installation skipped"
 #   mrun "sleep 1"
@@ -1260,7 +1242,6 @@ if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
 msg "STATUS: $_F_COMMERCE install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/commerce-$_COMMERCE-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1302,7 +1283,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_COMMERCE installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_COMMERCE installation skipped"
   mrun "sleep 1"
@@ -1386,7 +1366,6 @@ if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
 true
 msg "STATUS: $_F_OPENDEALS install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1429,7 +1408,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENDEALS installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_OPENDEALS installation skipped"
   mrun "sleep 1"
@@ -1449,7 +1427,6 @@ if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
 true
 msg "STATUS: $_F_OPENOUTREACH install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1480,7 +1457,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENOUTREACH installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_OPENOUTREACH installation skipped"
   mrun "sleep 1"
@@ -1500,7 +1476,6 @@ if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "STATUS: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -1527,7 +1502,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1060250-aegir-infinite-loop.patch ./
     patch -p1 < commons-1045778-fix-aegir-installs.patch &> /dev/null
     mrun "sleep 1"
-
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
   fi
@@ -1548,7 +1522,6 @@ if [ ! -L "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites
 fi
 msg "STATUS: $_F_COMMONS installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_COMMONS installation skipped"
   mrun "sleep 1"
@@ -1567,7 +1540,6 @@ fi
 # true
 # msg "STATUS: $_F_OPENENTERPRISE install in progress, please wait..."
 # mrun "sleep 1"
-
 # _CORE_DISTRO="$_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6"
 # if [ ! -d "$_CORE_DISTRO" ] ; then
 #   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -1597,7 +1569,6 @@ fi
 # create_symlinks
 # msg "STATUS: $_F_OPENENTERPRISE installation completed"
 # mrun "sleep 1"
-
 # else
 #   msg "STATUS: $_F_OPENENTERPRISE installation skipped"
 #   mrun "sleep 1"
@@ -1616,7 +1587,6 @@ if prompt_yes_no "$_F_VIDEOLA - http://videola.tv" ; then
 true
 msg "STATUS: $_F_VIDEOLA install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/videola-$_VIDEOLA-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -1644,7 +1614,6 @@ cd $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_VIDEOLA installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_VIDEOLA installation skipped"
   mrun "sleep 1"
@@ -1663,7 +1632,6 @@ if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
 msg "STATUS: $_F_FSERVER install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/fserver-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
@@ -1700,7 +1668,6 @@ cd $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_FSERVER installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_FSERVER installation skipped"
   mrun "sleep 1"
@@ -1718,7 +1685,6 @@ if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
 msg "STATUS: $_F_MANAGINGNEWS install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -1762,7 +1728,6 @@ cd $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_MANAGINGNEWS installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_MANAGINGNEWS installation skipped"
   mrun "sleep 1"
@@ -1781,7 +1746,6 @@ if prompt_yes_no "$_F_NODESTREAM6 - http://nodestream.org" ; then
 true
 msg "STATUS: $_F_NODESTREAM6 install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -1812,7 +1776,6 @@ cd $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_NODESTREAM6 installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_NODESTREAM6 installation skipped"
   mrun "sleep 1"
@@ -1832,7 +1795,6 @@ if prompt_yes_no "$_F_NODESTREAM7 - http://nodestream.org" ; then
 true
 msg "STATUS: $_F_NODESTREAM7 install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1871,7 +1833,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_NODESTREAM7 installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_NODESTREAM7 installation skipped"
   mrun "sleep 1"
@@ -1891,7 +1852,6 @@ if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
 msg "STATUS: $_F_OPENPUBLISH install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1930,7 +1890,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENPUBLISH installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_OPENPUBLISH installation skipped"
   mrun "sleep 1"
@@ -1950,7 +1909,6 @@ if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
 msg "STATUS: $_F_OPENSCHOLAR install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -1986,7 +1944,6 @@ if [ ! -L "./sites/all/libraries/tinymce" ] ; then
 fi
 msg "STATUS: $_F_OPENSCHOLAR installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_OPENSCHOLAR installation skipped"
   mrun "sleep 1"
@@ -2005,7 +1962,6 @@ if prompt_yes_no "$_F_COD - http://usecod.com" ; then
 true
 msg "STATUS: $_F_COD install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/cod-$_COD-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -2044,7 +2000,6 @@ if [ ! -L "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/sites/all/libraries/
 fi
 msg "STATUS: $_F_COD installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_COD installation skipped"
   mrun "sleep 1"
@@ -2062,7 +2017,6 @@ if prompt_yes_no "$_F_OPENCHURCH - http://openchurchsite.com" ; then
 true
 msg "STATUS: $_F_OPENCHURCH install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2101,7 +2055,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_OPENCHURCH installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_OPENCHURCH installation skipped"
   mrun "sleep 1"
@@ -2119,7 +2072,6 @@ if prompt_yes_no "$_F_ELMS - http://elms.psu.edu" ; then
 true
 msg "STATUS: $_F_ELMS install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/elms-$_ELMS-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -2152,7 +2104,6 @@ cd $_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_ELMS installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_ELMS installation skipped"
   mrun "sleep 1"
@@ -2182,7 +2133,6 @@ if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
 true
 msg "STATUS: $_F_CIVICRM6 install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -2206,7 +2156,6 @@ cd $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_CIVICRM6 installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_CIVICRM6 installation skipped"
   mrun "sleep 1"
@@ -2237,7 +2186,6 @@ if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
 true
 msg "STATUS: $_F_CIVICRM7 install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2264,7 +2212,6 @@ patch_d7_core
 rm -f boost_stats.php
 msg "STATUS: $_F_CIVICRM7 installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_CIVICRM7 installation skipped"
   mrun "sleep 1"
@@ -2284,7 +2231,6 @@ if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
 msg "STATUS: $_F_PROSEPOINT install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
@@ -2313,7 +2259,6 @@ cd $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_PROSEPOINT installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_PROSEPOINT installation skipped"
   mrun "sleep 1"
@@ -2332,7 +2277,6 @@ if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "STATUS: $_F_UBERCART install in progress, please wait..."
 mrun "sleep 1"
-
 _CORE_DISTRO="$_CORE/ubercart-$_UBERCART-$_SMALLCORE6"
 if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/fixed_1.log" ] ; then
   rm -f -r $_CORE_DISTRO
@@ -2386,7 +2330,6 @@ cd $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6
 create_symlinks
 msg "STATUS: $_F_UBERCART installation completed"
 mrun "sleep 1"
-
 else
   msg "STATUS: $_F_UBERCART installation skipped"
   mrun "sleep 1"
@@ -2400,7 +2343,6 @@ fi
 echo " "
 msg "$_STATUS C: remove some default themes for all"
 mrun "sleep 1"
-
 rm -f -r $_CORE/o_contrib/image
 rm -f -r $_CORE/*/themes/bluemarine
 rm -f -r $_CORE/*/themes/chameleon
@@ -2416,7 +2358,6 @@ cd $_CORE
 #
 msg "$_STATUS C: Save & Verify Platforms, please wait..."
 mrun "sleep 1"
-
 _LOCAL_STATUS="NOT_SET"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
@@ -2657,8 +2598,6 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
       _PLATF_NAME=${_PLATF##*/}
       $DRUSHC php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF
       mrun "sleep 1"
-
-      # &> /dev/null
     fi
   done
 fi
