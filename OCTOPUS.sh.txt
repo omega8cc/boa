@@ -129,6 +129,7 @@ _PHP_CLI_VERSION=5.2
 ### ELS ----------- ELMS
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
+### MPG ----------- MartPlug
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6
 ### OAM ----------- Open Atrium
@@ -145,7 +146,7 @@ _PHP_CLI_VERSION=5.2
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="D7P D6P OAM MNS NSM FSR"
+### _PLATFORMS_LIST="D7P D6P OAM MNS NS7 MPG"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D OAM"
 
@@ -441,6 +442,7 @@ _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.12
 _ELMS=6.x-1.0-alpha6
 _MANAGINGNEWS=1.2.1
+_MARTPLUG=7.x-1.x-dev
 _NODESTREAM6=6.x-1.4
 _NODESTREAM7=7.x-2.0-alpha10
 _OPENATRIUM=1.2.1

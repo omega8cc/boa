@@ -600,6 +600,7 @@ _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_ELMS="ELMS 1.0-a6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
+_F_MARTPLUG="MartPlug 1.0-dev $_SMALLCORE7 P.$_THIS_CORE"
 _F_NODESTREAM6="NodeStream 1.4 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-a10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE7 P.$_THIS_CORE"
@@ -1304,6 +1305,70 @@ mrun "sleep 1"
 
 else
   msg "STATUS: $_F_COMMERCE installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+
+
+###---### MartPlug
+#
+if [ "$_CLIENT_CORES" -ge "1" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MPG ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7" ] ; then
+echo " "
+if prompt_yes_no "$_F_MARTPLUG - http://drupal.org/project/martplug" ; then
+true
+msg "STATUS: $_F_MARTPLUG install in progress, please wait..."
+mrun "sleep 1"
+_CORE_DISTRO="$_CORE/martplug-$_MARTPLUG-$_SMALLCORE7"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/martplug-$_MARTPLUG-core.tar.gz
+  tar -xzf martplug-$_MARTPLUG-core.tar.gz
+  rm -f martplug-$_MARTPLUG-core.tar.gz
+  if [ -d "$_CORE/drupal-7.12" ] ; then
+    mv drupal-7.12 martplug-$_MARTPLUG-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.13" ] ; then
+    mv drupal-7.13 martplug-$_MARTPLUG-$_SMALLCORE7
+  elif [ -d "$_CORE/drupal-7.14" ] ; then
+    mv drupal-7.14 martplug-$_MARTPLUG-$_SMALLCORE7
+  elif [ -d "$_CORE/martplug-$_MARTPLUG" ] ; then
+    mv martplug-$_MARTPLUG martplug-$_MARTPLUG-$_SMALLCORE7
+  fi
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
+  rm -f -r $_DRUPAL7
+  cd $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7
+  rm -f $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/profiles/minimal
+  rm -f -r $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/profiles/standard
+  rm -f -r $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/profiles/testing
+  cd $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/profiles/martplug/modules/contrib/features
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
+  patch -p1 < features-1265168-19-roles.patch &> /dev/null
+  cd $_CORE/martplug-$_MARTPLUG-$_SMALLCORE7
+  sed -i "s/^dependencies.*martplug_sample_content.*//g" ./profiles/martplug/martplug.info
+  sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" ./profiles/martplug/martplug.info
+  find ./profiles/martplug -type d -exec chmod 0755 {} \; &> /dev/null
+  find ./profiles/martplug -type f -exec chmod 0644 {} \; &> /dev/null
+  create_dirs
+  themes_for_d7
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7
+create_symlinks
+create_d7_symlinks
+patch_d7_core
+rm -f boost_stats.php
+msg "STATUS: $_F_MARTPLUG installation completed"
+mrun "sleep 1"
+else
+  msg "STATUS: $_F_MARTPLUG installation skipped"
   mrun "sleep 1"
 fi
 fi

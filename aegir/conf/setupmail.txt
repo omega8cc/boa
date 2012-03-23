@@ -48,6 +48,7 @@ starting with 1+ Aegir Standard or SSD Core:
  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
+ MartPlug 1.0-dev ------------- http://drupal.org/project/martplug
  Open Atrium 1.2.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
  Open Outreach 1.0-beta8 ------ http://openoutreach.org
