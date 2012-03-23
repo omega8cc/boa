@@ -176,18 +176,8 @@ fi
 msg "$_STATUS B: Checking status.."
 mrun "sleep 1"
 if [ -e "$_ROOT/aegir.sh" ] ; then
-_STATUS=UPGRADE
-cd $_ROOT
-# msg "$_STATUS B: _STATUS is $_STATUS"
-# if [ -d "$_PREV_AEGIR_ROOT" ] ; then
-#   msg "$_STATUS B: aegir backup now.."
-#   mrun "sleep 1"
-#   cd $_PREV_AEGIR_ROOT
-#   $_DRUSHCMD --root=$_PREV_AEGIR_ROOT provision-backup $_DOMAIN -d
-#   msg "$_STATUS B: aegir backup completed"
-# fi
-# else
-# msg "$_STATUS B: _STATUS is $_STATUS"
+  _STATUS=UPGRADE
+  cd $_ROOT
 fi
 
 
@@ -500,9 +490,9 @@ fi
 ###
 
 
-###---### Enhance Aegir UI
+###---### Enhancing Aegir UI
 #
-msg "$_STATUS B: Enhance Aegir UI"
+msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mrun "sleep 1"
 cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/eldir.patch ./

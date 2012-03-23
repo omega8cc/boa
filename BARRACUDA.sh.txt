@@ -4414,7 +4414,6 @@ csf_install () {
   st_runner "service ssh restart" &> /dev/null
   msg "INFO: csf/lfd firewall installation completed"
   mrun "sleep 1"
-
   touch /var/log/csf_$_INSTALLER_VERSION.log
 }
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then

@@ -528,7 +528,6 @@ octopus_cnf () {
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
     else
-      echo "### Configuration added on $_NOW" >> /root/.$_USER.octopus.cnf
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
     fi
     msg "NOTE: Please review all config options displayed below."
@@ -668,17 +667,6 @@ do
   sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
   sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files
   sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files
-done
-for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
-do
-  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
-  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
-  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
-  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
-  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
-  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
-  sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
-  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
 done
 _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
