@@ -365,7 +365,7 @@ msg "$_STATUS A: Aegir automated install script part A"
 ###---### Stop the cron and wait 3 seconds
 #
 # msg "$_STATUS A: Stop the cron and wait 3 seconds.."
-# runner "invoke-rc.d cron stop" &> /dev/null
+# runner "service cron stop" &> /dev/null
 # mrun "sleep 1"
 
 
@@ -525,7 +525,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
   mrun "sleep 1"
   rm -f /opt/tmp/testecho*
-  #invoke-rc.d cron stop &> /dev/null
+  #service cron stop &> /dev/null
   chown root:$_USRG /data/u &> /dev/null
   chmod 0771 /data/u &> /dev/null
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
@@ -540,7 +540,7 @@ else
     msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
     mrun "sleep 1"
     rm -f /opt/tmp/testecho*
-    invoke-rc.d cron stop &> /dev/null
+    service cron stop &> /dev/null
     _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     chown -R $_USER:$_USRG $_ROOT/.drush
@@ -586,14 +586,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f -r $_AEGIR_ROOT/scripts
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
-  if [ "$_THIS_OS" = "xUbuntu" ] ; then
-    st_runner "invoke-rc.d nginx stop" &> /dev/null
-    killall -9 nginx &> /dev/null
-    mrun "sleep 1"
-    st_runner "invoke-rc.d nginx start" &> /dev/null
-  else
-    invoke-rc.d nginx reload &> /dev/null
-  fi
+  service nginx reload &> /dev/null
   cd $_AEGIR_ROOT
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   cd $_ROOT
@@ -630,14 +623,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
       mrun "sleep 1"
       mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
-      if [ "$_THIS_OS" = "xUbuntu" ] ; then
-        st_runner "invoke-rc.d nginx stop" &> /dev/null
-        killall -9 nginx &> /dev/null
-        mrun "sleep 1"
-        st_runner "invoke-rc.d nginx start" &> /dev/null
-      else
-        invoke-rc.d nginx reload &> /dev/null
-      fi
+      service nginx reload &> /dev/null
     fi
   fi
 fi
@@ -654,9 +640,9 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
     mrun "sleep 1"
     sed -i "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc
     sed -i "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc
-    invoke-rc.d redis-server stop &> /dev/null
+    service redis-server stop &> /dev/null
     update-rc.d -f redis-server remove &> /dev/null
-    invoke-rc.d redis stop &> /dev/null
+    service redis stop &> /dev/null
     update-rc.d -f redis remove &> /dev/null
     mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
     mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
@@ -717,7 +703,7 @@ else
       mrun "sleep 1"
       msg "$_STATUS A: Switch user and run Distros build, please wait..."
       mrun "sleep 1"
-      invoke-rc.d cron stop &> /dev/null
+      service cron stop &> /dev/null
       rm -f /opt/tmp/testecho*
       create_shared_dirs
       su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
@@ -1233,8 +1219,6 @@ echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VE
 
 ###---### Restart the cron now
 #
-msg "$_STATUS A: Restart the cron now"
-runner "invoke-rc.d cron restart" 2> /dev/null
 msg "$_STATUS A: Final cleaning, please wait a moment..."
 mrun "sleep 1"
 cd /
@@ -1290,6 +1274,8 @@ else
   remove_incompatible_modules_001
   remove_incompatible_modules_002
 fi
+msg "$_STATUS A: Restart the cron now"
+service cron restart 2> /dev/null
 msg "$_STATUS A: All done!"
 msg "BYE!"
 

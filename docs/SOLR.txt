@@ -35,7 +35,7 @@
     /opt/solr/solr.xml
 
  3. Restart Tomcat:
-    invoke-rc.d tomcat restart
+    service tomcat restart
 
  You can also rename all cores in the file:
    /opt/solr/solr.xml
@@ -60,7 +60,7 @@
 
 ### NOTE: to disable Apache Solr Search completely, type as root:
 
-    $ invoke-rc.d tomcat stop
+    $ service tomcat stop
     $ update-rc.d -f tomcat remove
     $ mv /etc/init.d/tomcat /etc/init.d/offtomcat
 

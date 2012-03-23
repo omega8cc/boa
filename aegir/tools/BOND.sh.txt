@@ -309,11 +309,11 @@ tune_nginx () {
 }
 #
 restart_services () {
-  st_runner "invoke-rc.d php-fpm restart" &> /dev/null
-  st_runner "invoke-rc.d mysql restart" &> /dev/null
-  st_runner "invoke-rc.d nginx restart" &> /dev/null
+  st_runner "service php-fpm restart" &> /dev/null
+  st_runner "service mysql restart" &> /dev/null
+  st_runner "service nginx restart" &> /dev/null
   st_runner "bash /var/xdrago/FireStart" &> /dev/null
-  st_runner "invoke-rc.d csf restart" &> /dev/null
+  st_runner "service csf restart" &> /dev/null
 }
 #
 tune_web_server_config () {
@@ -633,7 +633,7 @@ echo " "
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
   true
   msg "STATUS: We will stop cron and then wait 30 seconds..."
-  invoke-rc.d cron stop &> /dev/null
+  service cron stop &> /dev/null
   mrun "sleep 30"
   msg "STATUS: Tuning in progress, please wait..."
   mrun "sleep 1"
@@ -654,7 +654,7 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
 
 else
   msg "STATUS: We will stop cron and then wait 30 seconds..."
-  invoke-rc.d cron stop &> /dev/null
+  service cron stop &> /dev/null
   mrun "sleep 30"
   restore_default_php
   restore_default_sql
@@ -671,7 +671,7 @@ fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
-invoke-rc.d cron start &> /dev/null
+service cron start &> /dev/null
 msg "STATUS: Cron started again"
 msg "BYE!"
 

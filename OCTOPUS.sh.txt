@@ -761,11 +761,11 @@ fi
 #
 touch /var/run/boa_run.pid
 if [ -d "/var/cache/pdnsd" ] ; then
-  invoke-rc.d pdnsd stop &> /dev/null
+  service pdnsd stop &> /dev/null
   sleep 1
   rm -f /var/cache/pdnsd/pdnsd.cache
   sleep 1
-  invoke-rc.d pdnsd start &> /dev/null
+  service pdnsd start &> /dev/null
 fi
 if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
   _DNS_SETUP_TEST=NO

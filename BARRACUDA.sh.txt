@@ -644,7 +644,7 @@ install_redis_src () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   if [ -e "/var/lib/redis" ] ; then
-    st_runner "invoke-rc.d redis-server stop" &> /dev/null
+    st_runner "service redis-server stop" &> /dev/null
     mrun "sleep 5"
     killall -9 redis-server &> /dev/null
   fi
@@ -665,7 +665,7 @@ install_redis_src () {
   mkdir -p /var/lib/redis
   chown redis:redis /var/lib/redis
   rm -f /var/lib/redis/*
-  st_runner "invoke-rc.d redis-server start" &> /dev/null
+  st_runner "service redis-server start" &> /dev/null
   touch /var/log/redis-2.0.5.log
 }
 #
@@ -1719,7 +1719,7 @@ if [ `whoami` = "root" ] ; then
   chmod a+rw /dev/null
   rm -f -r /opt/tmp/*
   rm -f /tmp/cache.inc
-  invoke-rc.d cron stop &> /dev/null
+  service cron stop &> /dev/null
   touch /var/run/boa_run.pid
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_VM_TEST" =~ beng ]] ; then
@@ -2343,14 +2343,14 @@ install_pdnsd_cache () {
   st_runner "$_INSTALL pdnsd resolvconf";
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+  st_runner "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
-  st_runner "invoke-rc.d pdnsd start" &> /dev/null
+  st_runner "service pdnsd start" &> /dev/null
   mrun "sleep 1"
-  st_runner "invoke-rc.d pdnsd stop" &> /dev/null
+  st_runner "service pdnsd stop" &> /dev/null
   mrun "sleep 1"
   rm -f /var/cache/pdnsd/pdnsd.cache
-  st_runner "invoke-rc.d pdnsd start" &> /dev/null
+  st_runner "service pdnsd start" &> /dev/null
 }
 _INSTALL_PDNSD=NO
 _HOSTN_TEST=`hostname -f 2>&1`
@@ -2569,10 +2569,10 @@ else
     rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
   fi
   _KEYS_SERVER_TEST=FALSE
-  invoke-rc.d cron stop &> /dev/null
-  invoke-rc.d lfd stop  &> /dev/null
-  invoke-rc.d csf stop  &> /dev/null
-  invoke-rc.d csf stop  &> /dev/null
+  service cron stop &> /dev/null
+  service lfd stop  &> /dev/null
+  service csf stop  &> /dev/null
+  service csf stop  &> /dev/null
   until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
@@ -2682,14 +2682,14 @@ else
     _SQL_UPGRADE=YES
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
-    invoke-rc.d cron stop &> /dev/null
-    invoke-rc.d lfd stop  &> /dev/null
-    invoke-rc.d csf stop  &> /dev/null
-    invoke-rc.d csf stop  &> /dev/null
+    service cron stop &> /dev/null
+    service lfd stop  &> /dev/null
+    service csf stop  &> /dev/null
+    service csf stop  &> /dev/null
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
     mrun "sleep 50"
-    invoke-rc.d php-fpm   stop &> /dev/null
-    invoke-rc.d php53-fpm stop &> /dev/null
+    service php-fpm   stop &> /dev/null
+    service php53-fpm stop &> /dev/null
     mrun "sleep 10"
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
@@ -2715,10 +2715,10 @@ else
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
     _PHP_FORCE_REINSTALL=YES
-    invoke-rc.d lfd start       &> /dev/null
-    invoke-rc.d csf start       &> /dev/null
-    invoke-rc.d php-fpm start   &> /dev/null
-    invoke-rc.d php53-fpm start &> /dev/null
+    service lfd start       &> /dev/null
+    service csf start       &> /dev/null
+    service php-fpm start   &> /dev/null
+    service php53-fpm start &> /dev/null
   fi
 fi
 
@@ -2873,11 +2873,11 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat /etc/init.d/vnstat
     chmod 755 /etc/init.d/vnstat &> /dev/null
     st_runner "update-rc.d vnstat defaults" &> /dev/null
-    st_runner "invoke-rc.d vnstat start" &> /dev/null
+    st_runner "service vnstat start" &> /dev/null
   fi
 fi
 if [ -e "/etc/init.d/vnstat" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
-  invoke-rc.d vnstat stop &> /dev/null
+  service vnstat stop &> /dev/null
   update-rc.d -f vnstat remove &> /dev/null
   rm -f /etc/init.d/vnstat
   rm -f /usr/bin/vnstat
@@ -3253,7 +3253,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   fi
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
   if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_FULL_FORCE_REINSTALL" = "NO" ] ; then
-    invoke-rc.d php-fpm restart &> /dev/null
+    service php-fpm restart &> /dev/null
   fi
 
 ###--------------------###
@@ -3467,7 +3467,7 @@ if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" 
   mrun "sleep 1"
   killall -9 nginx &> /dev/null
   mrun "sleep 1"
-  invoke-rc.d nginx start &> /dev/null
+  service nginx start &> /dev/null
 fi
 if [ ! -L "/usr/bin/nginx" ] ; then
   ln -s /usr/sbin/nginx /usr/bin/nginx
@@ -3625,23 +3625,23 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     killall -9 nginx php-cgi php-fpm &> /dev/null
     mrun "sleep 1"
-    st_runner "invoke-rc.d ssh restart" &> /dev/null
+    st_runner "service ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
     st_runner "update-rc.d php-fpm defaults" &> /dev/null
     st_runner "update-rc.d php53-fpm defaults" &> /dev/null
     st_runner "update-rc.d nginx defaults" &> /dev/null
-    st_runner "invoke-rc.d php-fpm start" &> /dev/null
-    st_runner "invoke-rc.d nginx start" &> /dev/null
+    st_runner "service php-fpm start" &> /dev/null
+    st_runner "service nginx start" &> /dev/null
   fi
-  st_runner "invoke-rc.d mysql restart" &> /dev/null
+  st_runner "service mysql restart" &> /dev/null
 else
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting PHP-FPM and reloading Nginx"
     mrun "sleep 1"
     tune_memory_limits
-    st_runner "invoke-rc.d php-fpm restart" &> /dev/null
-    st_runner "invoke-rc.d php53-fpm restart" &> /dev/null
-    st_runner "invoke-rc.d nginx reload" &> /dev/null
+    st_runner "service php-fpm restart" &> /dev/null
+    st_runner "service php53-fpm restart" &> /dev/null
+    st_runner "service nginx reload" &> /dev/null
   fi
 fi
 
@@ -3790,7 +3790,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
     fi
   fi
-  invoke-rc.d nginx reload &> /dev/null
+  service nginx reload &> /dev/null
   mrun "sleep 1"
   msg "INFO: Aegir Master Instance installation completed"
   mrun "sleep 1"
@@ -3802,7 +3802,7 @@ else
     msg "INFO: Running Aegir Master Instance upgrade"
     mrun "sleep 1"
     rm -f /opt/tmp/testecho*
-    invoke-rc.d cron stop &> /dev/null
+    service cron stop &> /dev/null
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     chown -R aegir:aegir /var/aegir/.drush
@@ -3883,7 +3883,7 @@ mrun "sleep 1"
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    st_runner "invoke-rc.d nginx reload" &> /dev/null
+    st_runner "service nginx reload" &> /dev/null
   fi
 fi
 
@@ -3931,7 +3931,7 @@ EOF
     sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
-    invoke-rc.d nginx start &> /dev/null
+    service nginx start &> /dev/null
   fi
 fi
 
@@ -3979,7 +3979,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       chown -L -R tomcat:tomcat /opt/solr
       chown -L -R tomcat:tomcat /opt/tomcat6
       st_runner "update-rc.d tomcat defaults" &> /dev/null
-      st_runner "invoke-rc.d tomcat start" &> /dev/null
+      st_runner "service tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
       mrun "sleep 1"
 
@@ -3994,12 +3994,12 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
   if [ ! -e "/opt/solr/fixed.log" ] ; then
     adduser --system --group --home /opt/solr tomcat &> /dev/null
     touch /opt/solr/fixed.log
-    st_runner "invoke-rc.d tomcat stop" &> /dev/null
+    st_runner "service tomcat stop" &> /dev/null
     chown -L -R tomcat:tomcat /opt/solr
     chown -L -R tomcat:tomcat /opt/tomcat6
     killall -9 java &> /dev/null
     mrun "sleep 5"
-    st_runner "invoke-rc.d tomcat start" &> /dev/null
+    st_runner "service tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/solr/fixed.init.log" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat /etc/init.d/tomcat &> /dev/null
@@ -4019,9 +4019,9 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     cp -af apachesolr/protwords.txt /opt/solr/conf/
     touch /opt/solr/conf/apachesolr-6.x-1.6.log
     chown -L -R tomcat:tomcat /opt/solr/conf
-    st_runner "invoke-rc.d tomcat stop" &> /dev/null
+    st_runner "service tomcat stop" &> /dev/null
     mrun "sleep 5"
-    st_runner "invoke-rc.d tomcat start" &> /dev/null
+    st_runner "service tomcat start" &> /dev/null
   fi
   if [ ! -e "/opt/tika" ] ; then
     cd /var/opt
@@ -4034,13 +4034,13 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
     chown -L -R tomcat:tomcat /opt/tika/*
     chown -L -R tomcat:tomcat /opt/solr/conf
-    st_runner "invoke-rc.d tomcat stop" &> /dev/null
+    st_runner "service tomcat stop" &> /dev/null
     mrun "sleep 5"
-    st_runner "invoke-rc.d tomcat start" &> /dev/null
+    st_runner "service tomcat start" &> /dev/null
   fi
 fi
 if [ "$_UP_JDK" = "YES" ] ; then
-  st_runner "invoke-rc.d tomcat restart" &> /dev/null
+  st_runner "service tomcat restart" &> /dev/null
 fi
 
 
@@ -4276,7 +4276,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       rm -f named.conf.options
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
       sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options
-      st_runner "invoke-rc.d bind9 restart" &> /dev/null
+      st_runner "service bind9 restart" &> /dev/null
       if [ ! -e "/etc/init.d/bind" ] ; then
         ln -s /etc/init.d/bind9 /etc/init.d/bind
       fi
@@ -4325,7 +4325,7 @@ if [ ! -e "/root/.my.cnf" ] ; then
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
-    st_runner "invoke-rc.d mysql restart" &> /dev/null
+    st_runner "service mysql restart" &> /dev/null
     mrun "sleep 1"
   fi
   msg "INFO: $_DB_SERVER setup completed"
@@ -4377,17 +4377,17 @@ fi
 
 ###--------------------###
 tune_memory_limits
-invoke-rc.d php-fpm restart &> /dev/null
+service php-fpm restart &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  invoke-rc.d cron restart &> /dev/null
+  service cron restart &> /dev/null
   echo " "
   msg "Now waiting 2 minutes before restarting Nginx..."
   mrun "sleep 99"
   force_advanced_nginx_config
   mrun "sleep 11"
-  invoke-rc.d nginx restart &> /dev/null
+  service nginx restart &> /dev/null
 else
-  invoke-rc.d nginx reload &> /dev/null
+  service nginx reload &> /dev/null
 fi
 
 
@@ -4413,7 +4413,7 @@ csf_install () {
   chmod 600 /etc/csf/csf.conf &> /dev/null
   sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
-  st_runner "invoke-rc.d ssh restart" &> /dev/null
+  st_runner "service ssh restart" &> /dev/null
   msg "INFO: csf/lfd firewall installation completed"
   mrun "sleep 1"
 
@@ -4435,9 +4435,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
   fi
 fi
 if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
-  invoke-rc.d lfd stop &> /dev/null
-  invoke-rc.d csf stop &> /dev/null
-  invoke-rc.d csf stop &> /dev/null
+  service lfd stop &> /dev/null
+  service csf stop &> /dev/null
+  service csf stop &> /dev/null
   update-rc.d -f csf remove &> /dev/null
   update-rc.d -f lfd remove &> /dev/null
   rm -f /etc/cron.d/{csf,lfd}*
@@ -4456,8 +4456,8 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ -e "/var/xdrago/log/lastFire" ] ; then
     sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
     rm -f /var/xdrago/log/lastFire
-    st_runner "invoke-rc.d csf restart" &> /dev/null
-    st_runner "invoke-rc.d lfd restart" &> /dev/null
+    st_runner "service csf restart" &> /dev/null
+    st_runner "service lfd restart" &> /dev/null
   fi
 fi
 
@@ -4481,12 +4481,12 @@ rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
 rm -f /var/run/boa_wait.pid
 chmod 700 /root
-invoke-rc.d cron start   &> /dev/null
-invoke-rc.d lfd start    &> /dev/null
-invoke-rc.d csf start    &> /dev/null
-invoke-rc.d lfd restart  &> /dev/null
-invoke-rc.d csf restart  &> /dev/null
-invoke-rc.d cron restart &> /dev/null
+service cron start   &> /dev/null
+service lfd start    &> /dev/null
+service csf start    &> /dev/null
+service lfd restart  &> /dev/null
+service csf restart  &> /dev/null
+service cron restart &> /dev/null
 msg "BYE!"
 exit 0
 
