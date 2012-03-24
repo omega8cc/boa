@@ -136,6 +136,7 @@ _PHP_CLI_VERSION=5.2
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
+### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
@@ -450,7 +451,7 @@ _OPENCHURCH=7.x-1.9-alpha1
 _OPENDEALS=7.x-1.0-beta7
 _OPENENTERPRISE=6.x-1.0-beta3
 _OPENOUTREACH=7.x-1.0-beta8
-_OPENPUBLIC=7.x-1.0-beta5
+_OPENPUBLIC=7.x-1.0-beta8
 _OPENPUBLISH=7.x-1.0-alpha7
 _OPENSCHOLAR=2.0-beta13
 _PROSEPOINT=0.43

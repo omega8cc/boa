@@ -607,7 +607,7 @@ _F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.0-b8 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENPUBLIC="OpenPublic 1.0-b5 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic 1.0-b8 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-a7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 2.0-b13 $_SMALLCORE6 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
@@ -1198,38 +1198,38 @@ build_openpublic () {
   touch $_CORE_DISTRO/core_$_SMALLCORE7.log
 }
 
-# if [ "$_ALLOW_FOUR" = "YES" ] ; then
-# if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
-# if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
-# echo " "
-# if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
-# true
-# msg "STATUS: $_F_OPENPUBLIC install in progress, please wait..."
-# mrun "sleep 1"
-# _CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7"
-# if [ ! -d "$_CORE_DISTRO" ] ; then
-#   cd $_CORE
-#   build_openpublic
-# fi
-# mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
-# cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
-# if [ ! -L "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries/colorbox" ] ; then
-#   mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries
-#   ln -s $_CORE_DISTRO/profiles/openpublic/libraries/colorbox $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries/colorbox
-# fi
-# create_symlinks
-# create_d7_symlinks
-# patch_d7_core
-# rm -f boost_stats.php
-# msg "STATUS: $_F_OPENPUBLIC installation completed"
-# mrun "sleep 1"
-# else
-#   msg "STATUS: $_F_OPENPUBLIC installation skipped"
-#   mrun "sleep 1"
-# fi
-# fi
-# fi
-# fi
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
+true
+msg "STATUS: $_F_OPENPUBLIC install in progress, please wait..."
+mrun "sleep 1"
+_CORE_DISTRO="$_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  build_openpublic
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+cd $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+if [ ! -L "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries/colorbox" ] ; then
+  mkdir -p $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries
+  ln -s $_CORE_DISTRO/profiles/openpublic/libraries/colorbox $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/libraries/colorbox
+fi
+create_symlinks
+create_d7_symlinks
+patch_d7_core
+rm -f boost_stats.php
+msg "STATUS: $_F_OPENPUBLIC installation completed"
+mrun "sleep 1"
+else
+  msg "STATUS: $_F_OPENPUBLIC installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
 
 
 ###---### Commerce 7.x

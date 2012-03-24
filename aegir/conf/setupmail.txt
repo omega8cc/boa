@@ -64,6 +64,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
  Acquia Commons 2.5 ----------- http://acquia.com/drupalcommons
  NodeStream 1.4 --------------- http://nodestream.org
  NodeStream 2.0-alpha10 ------- http://nodestream.org
+ OpenPublic 1.0-beta8 --------- http://openpublicapp.com
  OpenPublish 3.0-alpha7 ------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
  Videola 1.0-alpha2 ----------- http://videola.tv
