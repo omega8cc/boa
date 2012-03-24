@@ -949,29 +949,39 @@ mrun "sleep 1"
       ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_DRUPAL5
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6
-    fi
-  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/sites /home/$_USERFTP/platforms/$_THIS_CORE/pressflow-$_DRUPAL5
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites" ] ; then
@@ -997,11 +1007,6 @@ mrun "sleep 1"
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6
-    fi
-  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-dev" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-dev
@@ -1025,59 +1030,24 @@ mrun "sleep 1"
       fi
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE6
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7
-    fi
-  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6
-    fi
-  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/sites" ] ; then
@@ -1090,9 +1060,9 @@ mrun "sleep 1"
       ln -s $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/sites" ] ; then
@@ -1105,9 +1075,44 @@ mrun "sleep 1"
       ln -s $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
     fi
   fi
 fi
