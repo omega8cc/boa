@@ -20,10 +20,10 @@ unset MAILCHECK
 
 HISTCONTROL=ignoredups:ignorespace
 
-export TERM=xterm-color
+#export TERM=xterm-color
 
 case "$TERM" in
-xterm*|rxvt*)
+xterm*|rxvt*|vt100)
   export PS1='\h:\w\$ '
   ;;
   *)
