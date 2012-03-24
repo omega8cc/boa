@@ -364,13 +364,6 @@ mrun "sleep 1"
 msg "$_STATUS A: Aegir automated install script part A"
 
 
-###---### Stop the cron and wait 3 seconds
-#
-# msg "$_STATUS A: Stop the cron and wait 3 seconds.."
-# runner "service cron stop" &> /dev/null
-# mrun "sleep 1"
-
-
 ###---### Checking version..
 #
 msg "INFO: Checking OCTOPUS version, please wait..."
@@ -527,7 +520,6 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
   mrun "sleep 1"
   rm -f /opt/tmp/testecho*
-  #service cron stop &> /dev/null
   chown root:$_USRG /data/u &> /dev/null
   chmod 0771 /data/u &> /dev/null
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
@@ -1295,7 +1287,7 @@ else
   remove_incompatible_modules_002
 fi
 msg "$_STATUS A: Restart the cron now"
-service cron restart 2> /dev/null
+service cron start 2> /dev/null
 msg "$_STATUS A: All done!"
 msg "BYE!"
 

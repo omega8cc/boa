@@ -4390,7 +4390,7 @@ tune_memory_limits
 update_php_cli_drush
 service php-fpm restart &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  service cron restart &> /dev/null
+  service cron start &> /dev/null
   echo " "
   msg "Now waiting 2 minutes before restarting Nginx..."
   mrun "sleep 99"
@@ -4496,7 +4496,6 @@ service lfd start    &> /dev/null
 service csf start    &> /dev/null
 service lfd restart  &> /dev/null
 service csf restart  &> /dev/null
-service cron restart &> /dev/null
 msg "BYE!"
 exit 0
 
