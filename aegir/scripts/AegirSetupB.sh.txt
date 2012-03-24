@@ -102,13 +102,13 @@ _HM_ONLY=EDIT_HM_ONLY
 _HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
-  _L_PHP_CLI=/opt/local/bin
+  _L_PHP_CLI=opt
 elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
-  _L_PHP_CLI=/usr/local/bin
+  _L_PHP_CLI=usr
 else
-  _L_PHP_CLI=/usr/local/bin
+  _L_PHP_CLI=usr
 fi
-_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
+_DRUSHCMD="/$_L_PHP_CLI/local/bin/php $_ROOT/tools/drush/drush.php"
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
@@ -170,6 +170,17 @@ mrun () {
 # stop on error
 # set -e ### disabled for debugging
 #
+# Update php-cli for Drush.
+update_php_cli_drush () {
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+    _L_PHP_CLI=opt
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  $_ROOT/tools/drush/drush.php &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+    _L_PHP_CLI=usr
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  $_ROOT/tools/drush/drush.php &> /dev/null
+  fi
+}
+#
 _SRCDIR=/opt/tmp/files
 _LOG=/opt/tmp/aegir-install.log
 #
@@ -199,7 +210,7 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
 fi
 touch $_ROOT/aegir.sh
 chmod 0755 $_ROOT/aegir.sh &> /dev/null
-echo -e "#!/bin/bash\n\nPATH=~/bin:$_L_PHP_CLI:/sbin:/bin:/usr/sbin:/usr/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
+echo -e "#!/bin/bash\n\nPATH=~/bin:/$_L_PHP_CLI/local/bin:/sbin:/bin:/usr/sbin:/usr/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
 
 mkdir -p $_ROOT/aegir/distro
 mkdir -p $_ROOT/distro/$_DISTRO
@@ -283,6 +294,7 @@ if [ "$_DRUSH_FAMILY" = "3" ] ; then
 fi
 if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
   sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null
+  update_php_cli_drush
 fi
 # if [ "$_DRUSH_VERSION" = "7.x-4.6" ] ; then
 #   cd $_ROOT/tools/drush
