@@ -2496,6 +2496,7 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     _APT_SOURCES_REWRITE=YES
   fi
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+    sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
     run_apt_update_again
     run_apt_update_again
     _LOC_REL_VERSION=lenny
@@ -2622,6 +2623,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
+  st_runner "apt-get -y remove libc-client2007b-dev" 2> /dev/null
   st_runner "apt-get update -y" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
@@ -2631,6 +2633,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y install collectd" 2> /dev/null
   fi
+  st_runner "apt-get -y install libc-client2007e-dev" 2> /dev/null
   msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful."
   msg "HINT: Please remember to reboot when Barracuda will complete all upgrades."
 fi
