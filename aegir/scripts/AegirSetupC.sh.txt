@@ -890,11 +890,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7
   rm -f $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/profiles/testing
   for Files in `find $_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/profiles -type f`
   do
-    sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
-    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+    sed -i "s/Minimal/Vanilla Drupal Minimal/g"   $Files
+    sed -i "s/Standard/Vanilla Drupal Standard/g" $Files
+    sed -i "s/Testing/Vanilla Drupal Testing/g"   $Files
   done
   create_dirs
   themes_for_d7
@@ -1274,14 +1274,14 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/$_DRUPAL7D
   rm -f $_CORE/$_DRUPAL7D/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/$_DRUPAL7D/profiles/testing
   for Files in `find $_CORE/$_DRUPAL7D/profiles -type f`
   do
-    sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
-    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+    sed -i "s/Minimal/Vanilla Drupal Minimal/g"   $Files
+    sed -i "s/Standard/Vanilla Drupal Standard/g" $Files
+    sed -i "s/Testing/Vanilla Drupal Testing/g"   $Files
   done
-  sed -i "s/7 Minimal/7 Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
-  sed -i "s/7 Standard/7 Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
+  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
   create_dirs
   themes_for_d7
 fi
@@ -1312,14 +1312,14 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/$_DRUPAL7S
   rm -f $_CORE/$_DRUPAL7S/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/$_DRUPAL7S/profiles/testing
   for Files in `find $_CORE/$_DRUPAL7S/profiles -type f`
   do
-    sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
-    sed -i "s/Standard/Drupal 7 Standard/g" $Files
+    sed -i "s/Minimal/Vanilla Drupal Minimal/g"   $Files
+    sed -i "s/Standard/Vanilla Drupal Standard/g" $Files
+    sed -i "s/Testing/Vanilla Drupal Testing/g"   $Files
   done
-  sed -i "s/7 Minimal/7 Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
-  sed -i "s/7 Standard/7 Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
+  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
   create_dirs
   themes_for_d7
 fi
@@ -1356,14 +1356,14 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
     cd $_CORE/$_DRUPAL7P
     rm -f $_CORE/$_DRUPAL7P/*.txt
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-    rm -f -r $_CORE/$_DRUPAL7P/profiles/testing
     for Files in `find $_CORE/$_DRUPAL7P/profiles -type f`
     do
-      sed -i "s/Minimal/Drupal 7 Minimal/g"   $Files
-      sed -i "s/Standard/Drupal 7 Standard/g" $Files
+      sed -i "s/Minimal/Vanilla Drupal Minimal/g"   $Files
+      sed -i "s/Standard/Vanilla Drupal Standard/g" $Files
+      sed -i "s/Testing/Vanilla Drupal Testing/g"   $Files
     done
-    sed -i "s/7 Minimal/7 Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
-    sed -i "s/7 Standard/7 Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
+    sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+    sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
     create_dirs
     themes_for_d7
   fi
@@ -2253,8 +2253,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" ./profiles/acquia/acquia.info
   rm -f $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/minimal
-  rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/testing
+  rm -f -r ./profiles/minimal
+  rm -f -r ./profiles/testing
+  sed -i "s/Standard/Vanilla Drupal Standard/g" ./profiles/standard/standard.info
+  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
   rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/modules/sqlsrv
   rm -f -r $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/modules/token
   mkdir -p $_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/profiles/acquia/libraries
