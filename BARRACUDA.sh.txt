@@ -684,15 +684,20 @@ set_xterm () {
 #
 # Kill nash-hotplug.
 kill_nash () {
-  _NASH_TEST=$(grep nash-hotplug /etc/rc.local)
-  if [[ "$_NASH_TEST" =~ "nash-hotplug" ]] ; then
+  _L_VM_TEST=`uname -a 2>&1`
+  if [[ "$_L_VM_TEST" =~ beng ]] ; then
     true
   else
-    cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
-    sed -i "s/exit 0//g" /etc/rc.local
-    echo "killall nash-hotplug" >> /etc/rc.local
-    echo "exit 0" >> /etc/rc.local
-    killall nash-hotplug &> /dev/null
+    _NASH_TEST=$(grep nash-hotplug /etc/rc.local)
+    if [[ "$_NASH_TEST" =~ "nash-hotplug" ]] ; then
+      true
+    else
+      cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
+      sed -i "s/exit 0//g" /etc/rc.local
+      echo "killall nash-hotplug" >> /etc/rc.local
+      echo "exit 0" >> /etc/rc.local
+      killall nash-hotplug &> /dev/null
+    fi
   fi
 }
 #
@@ -2634,6 +2639,14 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     st_runner "apt-get -y install collectd" 2> /dev/null
   fi
   st_runner "apt-get -y install libc-client2007e-dev" 2> /dev/null
+  _L_VM_TEST=`uname -a 2>&1`
+  if [[ "$_L_VM_TEST" =~ beng ]] ; then
+    _REMOVE_LINKS="klogd hwclock.sh setserial urandom networking umountfs halt reboot mountvirtfs mountall.sh mountnfs.sh ifupdown"
+    for link in $_REMOVE_LINKS
+    do
+      update-rc.d -f $link remove &> /dev/null
+    done
+  fi
   msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful."
   msg "HINT: Please remember to reboot when Barracuda will complete all upgrades."
 fi
