@@ -3649,6 +3649,7 @@ else
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting PHP-FPM and reloading Nginx"
     mrun "sleep 1"
+    update_php_conf
     tune_memory_limits
     st_runner "service php-fpm restart" &> /dev/null
     st_runner "service php53-fpm restart" &> /dev/null
@@ -4389,6 +4390,7 @@ fi
 
 
 ###--------------------###
+update_php_conf
 tune_memory_limits
 update_php_cli_drush
 service php-fpm restart &> /dev/null
