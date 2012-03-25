@@ -1793,6 +1793,124 @@ upgrade_aegir_master () {
   fi
   rm -f /var/aegir/*install.sh.txt
 }
+#
+# Install or upgrade Nginx.
+install_upgrade_nginx () {
+  msg "INFO: Nginx version test, please wait..."
+  mrun "sleep 1"
+  if [ "$_STATUS" = "INIT" ] ; then
+    _NGINX_INSTALL_REQUIRED=YES
+  fi
+  _NGINX_EXTRA_CTRL="/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf"
+  if [ -e "/usr/sbin/nginx" ] ; then
+    _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
+    _NGINX_V_INSTALLED=`/usr/sbin/nginx -V 2>&1`
+    if [ -z "$_NGINX_F_INSTALLED" ] ; then
+      _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f3 | awk '{ print $1}'`
+    fi
+    _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
+    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] ; then
+      _NGINX_INSTALL_REQUIRED=YES
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
+    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] ; then
+      _NGINX_INSTALL_REQUIRED=NO
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
+    else
+      _NGINX_INSTALL_REQUIRED=YES
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
+    fi
+    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
+      if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
+        true
+      else
+        _NGINX_INSTALL_REQUIRED=YES
+        msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include geoip module"
+      fi
+    fi
+    mrun "sleep 1"
+  else
+    _NGINX_INSTALL_REQUIRED=YES
+  fi
+  if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    msg "INFO: Install/upgrade Nginx, please wait..."
+    mrun "sleep 1"
+    cd /var/opt; rm -f -r nginx*
+    if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
+      _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
+    else
+      _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
+    fi
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      true
+    else
+      git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
+    fi
+    if [ "$_PURGE_MODE" = "ON" ] ; then
+      git clone git://github.com/FRiCKLE/ngx_cache_purge.git &> /dev/null
+      cd ngx_cache_purge
+      git checkout 1.5 &> /dev/null
+      perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c &> /dev/null
+      cd /var/opt
+    fi
+    wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
+    tar -xzf nginx-$_NGINX_VERSION.tar.gz
+    sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
+    if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
+      _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
+    elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then
+      _NGINX_EXTRA="$_NGINX_EXTRA_CONF"
+    elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+      _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/ $_NGINX_EXTRA_CONF"
+    else
+      _NGINX_EXTRA=""
+    fi
+    if [ -e "/var/opt/nginx-upload-progress-module" ] ; then
+      _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
+    fi
+    cd /var/opt/nginx-$_NGINX_VERSION
+    st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-debug --with-ipv6 --with-http_geoip_module $_NGINX_EXTRA" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    killall -9 nginx &> /dev/null
+    mrun "sleep 1"
+    killall -9 nginx &> /dev/null
+    mrun "sleep 1"
+    service nginx start &> /dev/null
+  fi
+  if [ ! -L "/usr/bin/nginx" ] ; then
+    ln -s /usr/sbin/nginx /usr/bin/nginx
+  fi
+}
+#
+# Install or upgrade libevent.
+install_upgrade_libevent () {
+  if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    msg "INFO: Installing libevent, please wait..."
+    rm -f -r /var/opt/libevent*
+    cd /var/opt
+    wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
+    tar -xzf libevent-2.0.11-stable.tar.gz
+    cd /var/opt/libevent-2.0.11-stable
+    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    rm -f -r /var/opt/libevent*
+    cd /var/opt
+    wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
+    tar -xzf libevent-2.0.11-stable.tar.gz
+    cd /var/opt/libevent-2.0.11-stable
+    st_runner "sh ./configure" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    st_runner "ldconfig" 2> /dev/null
+    _PHP_FORCE_REINSTALL=YES
+    if [ "$_STATUS" = "UPGRADE" ] ; then
+      msg "INFO: PHP rebuild required to include newer libevent and memcached"
+    fi
+    echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
+  fi
+}
+
 
 ###--------------------###
 if ! netcat -w 8 -z ftp.drupal.org 80 ; then
@@ -2784,8 +2902,13 @@ install_with_aptitude_sql () {
   st_runner "$_INSTAPP $SQLDEB"     2> /dev/null
 }
 
+
+###--------------------###
 install_with_aptitude_deps
 fix_locales
+install_upgrade_libevent
+install_upgrade_nginx
+
 
 if [ "$_STATUS" = "INIT" ] ; then
   install_with_aptitude_sql
@@ -3111,34 +3234,6 @@ fi
 chmod -R 700 /var/xdrago/firewall/check &> /dev/null
 chmod 700 /var/xdrago/* &> /dev/null
 chmod 700 /var/xdrago &> /dev/null
-
-
-###--------------------###
-if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Installing libevent, please wait..."
-  rm -f -r /var/opt/libevent*
-  cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
-  tar -xzf libevent-2.0.11-stable.tar.gz
-  cd /var/opt/libevent-2.0.11-stable
-  st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  rm -f -r /var/opt/libevent*
-  cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
-  tar -xzf libevent-2.0.11-stable.tar.gz
-  cd /var/opt/libevent-2.0.11-stable
-  st_runner "sh ./configure" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  st_runner "ldconfig" 2> /dev/null
-  _PHP_FORCE_REINSTALL=YES
-  if [ "$_STATUS" = "UPGRADE" ] ; then
-    msg "INFO: PHP rebuild required to include newer libevent and memcached"
-  fi
-  echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
-fi
 
 
 ###--------------------###
@@ -3492,96 +3587,6 @@ if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FU
   cd /var/opt/bzr-$_BZR_VERSION
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
   echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
-fi
-
-
-###--------------------###
-msg "INFO: Nginx version test, please wait..."
-mrun "sleep 1"
-if [ "$_STATUS" = "INIT" ] ; then
-  _NGINX_INSTALL_REQUIRED=YES
-fi
-_NGINX_EXTRA_CTRL="/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf"
-if [ -e "/usr/sbin/nginx" ] ; then
-  _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
-  _NGINX_V_INSTALLED=`/usr/sbin/nginx -V 2>&1`
-  if [ -z "$_NGINX_F_INSTALLED" ] ; then
-    _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f3 | awk '{ print $1}'`
-  fi
-  _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
-  if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] ; then
-    _NGINX_INSTALL_REQUIRED=YES
-    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
-  elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] ; then
-    _NGINX_INSTALL_REQUIRED=NO
-    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
-  else
-    _NGINX_INSTALL_REQUIRED=YES
-    msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
-  fi
-  if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
-    if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
-      true
-    else
-      _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include geoip module"
-    fi
-  fi
-  mrun "sleep 1"
-else
-  _NGINX_INSTALL_REQUIRED=YES
-fi
-
-
-###--------------------###
-if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Install/upgrade Nginx, please wait..."
-  mrun "sleep 1"
-  cd /var/opt; rm -f -r nginx*
-  if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
-    _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
-  else
-    _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
-  fi
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    true
-  else
-    git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
-  fi
-  if [ "$_PURGE_MODE" = "ON" ] ; then
-    git clone git://github.com/FRiCKLE/ngx_cache_purge.git &> /dev/null
-    cd ngx_cache_purge
-    git checkout 1.5 &> /dev/null
-    perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c &> /dev/null
-    cd /var/opt
-  fi
-  wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
-  tar -xzf nginx-$_NGINX_VERSION.tar.gz
-  sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
-  if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
-    _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
-  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then
-    _NGINX_EXTRA="$_NGINX_EXTRA_CONF"
-  elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-    _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/ $_NGINX_EXTRA_CONF"
-  else
-    _NGINX_EXTRA=""
-  fi
-  if [ -e "/var/opt/nginx-upload-progress-module" ] ; then
-    _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
-  fi
-  cd /var/opt/nginx-$_NGINX_VERSION
-  st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-debug --with-ipv6 --with-http_geoip_module $_NGINX_EXTRA" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  killall -9 nginx &> /dev/null
-  mrun "sleep 1"
-  killall -9 nginx &> /dev/null
-  mrun "sleep 1"
-  service nginx start &> /dev/null
-fi
-if [ ! -L "/usr/bin/nginx" ] ; then
-  ln -s /usr/sbin/nginx /usr/bin/nginx
 fi
 
 
