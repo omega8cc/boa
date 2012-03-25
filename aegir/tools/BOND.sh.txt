@@ -637,7 +637,6 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   mrun "sleep 30"
   msg "STATUS: Tuning in progress, please wait..."
   mrun "sleep 1"
-
   restore_default_php
   tune_php
   restore_default_sql
@@ -651,7 +650,6 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   restart_services
   msg "STATUS: Tuning completed"
   mrun "sleep 1"
-
 else
   msg "STATUS: We will stop cron and then wait 30 seconds..."
   service cron stop &> /dev/null
@@ -666,7 +664,6 @@ else
   restart_services
   msg "STATUS: Tuning stopped and default settings restored"
   mrun "sleep 1"
-
 fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
