@@ -2641,7 +2641,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get -y install libc-client2007e-dev" 2> /dev/null
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
-    _REMOVE_LINKS="klogd hwclock.sh setserial urandom networking umountfs halt reboot mountvirtfs mountall.sh mountnfs.sh ifupdown"
+    _REMOVE_LINKS="klogd hwclock.sh hwclockfirst.sh setserial urandom networking umountfs umountnfs.sh halt reboot mountall-bootclean.sh mountvirtfs mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp ifupdown ifupdown-clean"
     for link in $_REMOVE_LINKS
     do
       update-rc.d -f $link remove &> /dev/null
