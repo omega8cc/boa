@@ -544,9 +544,10 @@ fatal () {
 not_supported_os () {
   msg "== FATAL ERROR =="
   msg "Invalid install script or OS used."
-  msg "It is not any supported Ubuntu or Debian version. Sorry."
-  msg "You need Debian (Squeeze or Lenny) or Ubuntu (Natty, Maverick, Lucid, Karmic or Jaunty),"
-  msg "or Jolicloud (Robby)."
+  msg "It is not any supported Debian or Ubuntu version. Sorry."
+  msg "You need Debian - Squeeze (recommended) or Lenny,"
+  msg "or Ubuntu - Oneiric, Natty, Maverick, Lucid, Karmic or Jaunty,"
+  msg "or Jolicloud - Robby."
   msg "Ciao... :)"
   exit 1
 }
