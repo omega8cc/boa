@@ -2927,10 +2927,12 @@ else
     service csf stop  &> /dev/null
     service csf stop  &> /dev/null
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
-    mrun "sleep 50"
-    service php-fpm   stop &> /dev/null
-    service php53-fpm stop &> /dev/null
-    mrun "sleep 10"
+    if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+      mrun "sleep 50"
+      st_runner "service php-fpm stop" &> /dev/null
+      st_runner "service php53-fpm stop" &> /dev/null
+      mrun "sleep 10"
+    fi
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -2955,10 +2957,12 @@ else
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
     _PHP_FORCE_REINSTALL=YES
-    service lfd start       &> /dev/null
-    service csf start       &> /dev/null
-    service php-fpm start   &> /dev/null
-    service php53-fpm start &> /dev/null
+    st_runner "service lfd start" &> /dev/null
+    st_runner "service csf start" &> /dev/null
+    if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+      st_runner "php-fpm start" &> /dev/null
+      st_runner "php53-fpm start" &> /dev/null
+    fi
   fi
 fi
 
@@ -3465,7 +3469,7 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   fi
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
   if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_FULL_FORCE_REINSTALL" = "NO" ] ; then
-    service php-fpm restart &> /dev/null
+    st_runner "service php-fpm restart" &> /dev/null
   fi
 
 ###--------------------###
@@ -3745,6 +3749,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     st_runner "update-rc.d php53-fpm defaults" &> /dev/null
     st_runner "update-rc.d nginx defaults" &> /dev/null
     st_runner "service php-fpm start" &> /dev/null
+    st_runner "service php53-fpm start" &> /dev/null
     st_runner "service nginx start" &> /dev/null
   fi
   st_runner "service mysql restart" &> /dev/null
@@ -4439,6 +4444,7 @@ update_php_conf
 tune_memory_limits
 update_php_cli_drush
 service php-fpm restart &> /dev/null
+service php53-fpm restart &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   service cron start &> /dev/null
   echo " "
