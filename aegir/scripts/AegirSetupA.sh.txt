@@ -1229,7 +1229,7 @@ cd $_ROOT/log
 echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" >> ./octopus_log.txt
 
 
-###---### Restart the cron now
+###---### Final cleaning
 #
 msg "$_STATUS A: Final cleaning, please wait a moment..."
 mrun "sleep 1"
@@ -1286,8 +1286,8 @@ else
   remove_incompatible_modules_001
   remove_incompatible_modules_002
 fi
-msg "$_STATUS A: Restart the cron now"
-service cron start 2> /dev/null
+msg "$_STATUS A: Start the cron now"
+service cron start &> /dev/null
 msg "$_STATUS A: All done!"
 msg "BYE!"
 
