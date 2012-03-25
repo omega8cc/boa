@@ -2752,6 +2752,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get update -y" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  install_upgrade_nginx
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
     ln -s /etc/init.d/bind9 /etc/init.d/bind
   fi
@@ -2971,6 +2972,8 @@ fi
 run_apt_update_again
 run_apt_update_again
 install_with_aptitude_deps
+install_upgrade_libevent
+install_upgrade_nginx
 install_latest_git
 set_xterm
 kill_nash
