@@ -3912,7 +3912,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
 else
   echo " "
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped"
     echo " "
     msg "NOTE: You must reboot the server and then run Barracuda again"
