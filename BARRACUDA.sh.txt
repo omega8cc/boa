@@ -2510,11 +2510,11 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       echo "deb http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
       echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
+      echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+      echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
     fi
-    echo "" >> /etc/apt/sources.list
-    echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
-    echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-    echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
   fi
   cd /var/log
   echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
@@ -2571,6 +2571,9 @@ fi
 
 ###--------------------###
 msg "INFO: Running apt update, please wait..."
+if [ "$_REL_VERSION" = "lenny" ] ; then
+  sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
+fi
 st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
