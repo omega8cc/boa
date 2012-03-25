@@ -434,23 +434,24 @@ _LOCAL_NETWORK_HN=""
 ### ADVANCED CONFIGURATION OPTIONS         ###
 ###----------------------------------------###
 
-_NGINX_EXTRA_CONF=""
-_PHP_INSTALL_NEW=YES
-_PHP_FORCE_REINSTALL=NO
-_SQL_FORCE_REINSTALL=NO
 _ALL_PURGE_THISHTIP=NO
-_NGINX_WORKERS=AUTO
-_PHP_FPM_WORKERS=AUTO
-_LENNY_TO_SQUEEZE=NO
-_FULL_FORCE_REINSTALL=NO
-_LOAD_LIMIT_ONE=1444
-_LOAD_LIMIT_TWO=888
 _CUSTOM_CONFIG_CSF=NO
-_CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_PHP_5_2=NO
 _CUSTOM_CONFIG_PHP_5_3=NO
-_SPEED_VALID_MAX=300
+_CUSTOM_CONFIG_SQL=NO
+_FULL_FORCE_REINSTALL=NO
+_LENNY_TO_SQUEEZE=NO
+_LOAD_LIMIT_ONE=1444
+_LOAD_LIMIT_TWO=888
 _NGINX_DOS_LIMIT=300
+_NGINX_EXTRA_CONF=""
+_NGINX_WORKERS=AUTO
+_PHP_FORCE_REINSTALL=NO
+_PHP_FPM_WORKERS=AUTO
+_PHP_INSTALL_NEW=YES
+_SKIP_AEGIR_MASTER_UPGRADE=NO
+_SPEED_VALID_MAX=300
+_SQL_FORCE_REINSTALL=NO
 
 
 ###----------------------------------------###
@@ -1353,6 +1354,7 @@ barracuda_cnf () {
     echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
+    echo "_SKIP_AEGIR_MASTER_UPGRADE=$_SKIP_AEGIR_MASTER_UPGRADE" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1446,6 +1448,12 @@ barracuda_cnf () {
       true
     else
       echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
+    fi
+    _SKIP_AEGIR_MASTER_UPGRADE_TEST=$(grep _SKIP_AEGIR_MASTER_UPGRADE /root/.barracuda.cnf)
+    if [[ "$_SKIP_AEGIR_MASTER_UPGRADE_TEST" =~ "_SKIP_AEGIR_MASTER_UPGRADE" ]] ; then
+      true
+    else
+      echo "_SKIP_AEGIR_MASTER_UPGRADE=$_SKIP_AEGIR_MASTER_UPGRADE" >> /root/.barracuda.cnf
     fi
     sleep 1
     echo " "
@@ -1706,7 +1714,79 @@ update_php_cli_drush () {
     chown aegir:crontab /var/spool/cron/crontabs/aegir
   fi
 }
-
+#
+# Upgrade Aegir Master Instance.
+upgrade_aegir_master () {
+  if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
+    true
+    mrun "sleep 1"
+    msg "INFO: Running Aegir Master Instance upgrade"
+    mrun "sleep 1"
+    rm -f /opt/tmp/testecho*
+    service cron stop &> /dev/null
+    _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    chown -R aegir:aegir /var/aegir/.drush
+    chown -R aegir:aegir /var/aegir/backups
+    chown -R aegir:aegir /var/aegir/clients
+    chown -R aegir:aegir /var/aegir/config
+    chown -R aegir:aegir /var/aegir/drush
+    chown -L -R aegir $_THIS_HM_ROOT
+    chown -L -R aegir:www-data $_THIS_HM_SITE/files
+    chmod -R 2770 $_THIS_HM_SITE/files
+    cd /var/aegir
+    cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
+    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
+    mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
+    else
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
+    fi
+    sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    force_advanced_nginx_config
+    if [ "$_DRUSH_FAMILY" = "3" ] ; then
+      cd /var/aegir/drush
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
+      patch -p0 < user.drush.inc.patch &> /dev/null
+      chown -L -R aegir:aegir /var/aegir/drush &> /dev/null
+    fi
+    if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+      sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
+    fi
+    cd /var/aegir
+    rm -f AegirUpgrade.sh.txt
+    if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
+      if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
+        cd /var/aegir/config/server_master/nginx
+        cp -a conf.d pre.d
+      fi
+      if [ -e "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
+        rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
+      fi
+    fi
+    chmod 711 /var/aegir/.drush &> /dev/null
+    cd /var/aegir/config/includes
+    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
+    touch installer_version.txt
+    msg "INFO: Aegir Master Instance upgrade completed"
+  else
+    msg "INFO: Aegir Master Instance not upgraded this time"
+    mrun "sleep 1"
+  fi
+  rm -f /var/aegir/*install.sh.txt
+}
 
 ###--------------------###
 if ! netcat -w 8 -z ftp.drupal.org 80 ; then
@@ -3809,78 +3889,20 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
 else
   echo " "
-  if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
-    true
-    mrun "sleep 1"
-    msg "INFO: Running Aegir Master Instance upgrade"
-    mrun "sleep 1"
-    rm -f /opt/tmp/testecho*
-    service cron stop &> /dev/null
-    _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-    _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-    chown -R aegir:aegir /var/aegir/.drush
-    chown -R aegir:aegir /var/aegir/backups
-    chown -R aegir:aegir /var/aegir/clients
-    chown -R aegir:aegir /var/aegir/config
-    chown -R aegir:aegir /var/aegir/drush
-    chown -L -R aegir $_THIS_HM_ROOT
-    chown -L -R aegir:www-data $_THIS_HM_SITE/files
-    chmod -R 2770 $_THIS_HM_SITE/files
-    cd /var/aegir
-    cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
-    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
-    su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
-    mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
-    else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
-    fi
-    sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
-    force_advanced_nginx_config
-    if [ "$_DRUSH_FAMILY" = "3" ] ; then
-      cd /var/aegir/drush
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-      patch -p0 < user.drush.inc.patch &> /dev/null
-      chown -L -R aegir:aegir /var/aegir/drush &> /dev/null
-    fi
-    if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
-      sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
-    fi
-    cd /var/aegir
-    rm -f AegirUpgrade.sh.txt
-    if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
-      if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
-        cd /var/aegir/config/server_master/nginx
-        cp -a conf.d pre.d
-      fi
-      if [ -e "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
-        rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
-      fi
-    fi
-    chmod 711 /var/aegir/.drush &> /dev/null
-    cd /var/aegir/config/includes
-    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
-    touch installer_version.txt
-    msg "INFO: Aegir Master Instance upgrade completed"
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+    msg "INFO: Aegir Master Instance upgrade skipped"
+    echo " "
+    msg "NOTE: You must reboot the server and then run Barracuda again"
+    msg "NOTE: to complete all system upgrades and upgrade also"
+    msg "NOTE: Aegir Master Instance securely."
+    echo " "
+  elif [ "$_SKIP_AEGIR_MASTER_UPGRADE" = "YES" ] ; then
+    msg "INFO: Aegir Master Instance upgrade skipped"
+    echo " "
   else
-    msg "INFO: Aegir Master Instance not upgraded this time"
-    mrun "sleep 1"
+    upgrade_aegir_master
   fi
-  rm -f /var/aegir/*install.sh.txt
-
-
-fi ### end of if [ "$_STATUS" = "INIT" ] ; then
+fi
 
 
 ###--------------------###
