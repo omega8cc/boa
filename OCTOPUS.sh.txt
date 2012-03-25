@@ -981,10 +981,12 @@ if [ -d "$_ROOT" ] ; then
     if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
+      echo _PHP_FPM_VERSION is $_PHP_FPM_VERSION
     fi
     if [ -e "/data/disk/$_USER/log/cli.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
       _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
+      echo _PHP_CLI_VERSION is $_PHP_CLI_VERSION
     fi
     if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
       _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
