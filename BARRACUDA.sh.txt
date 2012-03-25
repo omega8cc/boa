@@ -2734,6 +2734,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   service cron stop &> /dev/null
   mrun "sleep 60"
+  mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
   msg "HINT: Run tail -f /opt/tmp/aegir-install.log in another terminal window to watch details."
   mrun "sleep 1"
@@ -2752,6 +2753,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get update -y" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
   install_upgrade_nginx
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
     ln -s /etc/init.d/bind9 /etc/init.d/bind
@@ -2768,6 +2770,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       update-rc.d -f $link remove &> /dev/null
     done
   fi
+  mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful."
   msg "HINT: Please remember to reboot when Barracuda will complete all upgrades."
 fi
