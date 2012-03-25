@@ -47,6 +47,7 @@ _COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
+_DRUPAL8=EDIT_DRUPAL8
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
@@ -67,6 +68,7 @@ _PROSEPOINT=EDIT_PROSEPOINT
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE_6_LANG=EDIT_SMALLCORE_6_LANG
 _SMALLCORE7=EDIT_SMALLCORE7
+_SMALLCORE8=EDIT_SMALLCORE8
 _UBER_CART_SEVEN=EDIT_UBER_CART_SEVEN
 _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
@@ -109,10 +111,13 @@ _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
+  _D_8_ALLOW=YES
 elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
   _L_PHP_CLI=/usr/local/bin
+  _D_8_ALLOW=NO
 else
   _L_PHP_CLI=/usr/local/bin
+  _D_8_ALLOW=NO
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 
@@ -547,6 +552,49 @@ prepare_pressflow_core_original () {
     cp -a /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/includes/image.imagemagick.inc includes/
   fi
 }
+#
+# create standard D8 directories
+create_d8_dirs () {
+  mkdir -p ./sites/default/files
+  mkdir -p ./cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
+  chmod -R 777 ./cache &> /dev/null
+  if [ -e "./sites/default/default.settings.php" ] ; then
+    cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
+  fi
+  chmod a+rw ./sites/default/settings.php &> /dev/null
+  chmod a+rwx ./sites/default/files &> /dev/null
+  mkdir -p ./sites/all/modules
+  mkdir -p ./sites/all/libraries
+  mkdir -p ./sites/all/themes
+  rm -f ./core/modules/*.txt
+  rm -f ./core/themes/*.txt
+  rm -f ./sites/all/*.txt
+  echo empty > ./sites/all/EMPTY.txt
+  echo empty > ./sites/all/modules/EMPTY.txt
+  echo empty > ./sites/all/libraries/EMPTY.txt
+  echo empty > ./sites/all/themes/EMPTY.txt
+  chmod 0751 ./sites &> /dev/null
+  chmod 0751 ./sites/all &> /dev/null
+  chmod 02775 ./sites/all/modules &> /dev/null
+  chmod 02775 ./sites/all/libraries &> /dev/null
+  chmod 02775 ./sites/all/themes &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./.htaccess
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
+}
+#
+# create standard D8 symlinks
+create_d8_symlinks () {
+if [ ! -L "core" ] ; then
+  ln -s $_CORE_DISTRO/core core &> /dev/null
+  ln -s $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
+  ln -s $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
+  ln -s $_CORE_DISTRO/index.php index.php &> /dev/null
+  ln -s $_CORE_DISTRO/profiles profiles &> /dev/null
+  ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
+  cp -af $_CORE_DISTRO/cache ./
+  cp -af $_CORE_DISTRO/sites ./
+fi
+}
 
 
 ###---### User check
@@ -598,6 +646,7 @@ _F_COMMONS="Acquia Commons 2.5 $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
+_F_DRUPAL8="Drupal $_DRUPAL8 D.$_THIS_CORE"
 _F_ELMS="ELMS 1.0-a6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
@@ -1394,6 +1443,44 @@ fi
 else
   msg "STATUS: $_F_DRUPAL7 installation skipped"
   mrun "sleep 1"
+fi
+fi
+}
+
+
+drupal8_install () {
+###---### Drupal 8
+#
+#_DRUPAL8="8.0-dev-$_NOW"
+#
+if [ "$_D_8_ALLOW" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8D ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
+echo " "
+if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
+true
+msg "STATUS: $_F_DRUPAL8 install in progress, please wait..."
+mrun "sleep 1"
+_CORE_DISTRO="$_CORE/drupal-$_DRUPAL8"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  git clone --branch 8.x http://git.drupal.org/project/drupal.git drupal-$_DRUPAL8 &> /dev/null
+  rm -f $_CORE_DISTRO/*.txt
+  rm -f $_CORE_DISTRO/core/*.txt
+  cd $_CORE_DISTRO
+  create_d8_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8
+cd $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8
+create_d8_symlinks
+rm -f boost_stats.php
+msg "STATUS: $_F_DRUPAL8 installation completed"
+mrun "sleep 1"
+else
+  msg "STATUS: $_F_DRUPAL8 installation skipped"
+  mrun "sleep 1"
+fi
+fi
 fi
 fi
 }
@@ -2403,6 +2490,7 @@ commons_install
 drupal5_install
 drupal6_install
 drupal7_install
+drupal8_install
 elms_install
 fserver_install
 managingnews_install
@@ -2574,6 +2662,12 @@ elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
       $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
       mrun "sleep 5"
     fi
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/drushrc.php" ] ; then
+    $DRUSHC php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8 &> /dev/null
+    mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6" ] ; then

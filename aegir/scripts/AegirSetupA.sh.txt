@@ -47,6 +47,7 @@ _COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
+_DRUPAL8=EDIT_DRUPAL8
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
@@ -67,6 +68,7 @@ _PROSEPOINT=EDIT_PROSEPOINT
 _SMALLCORE_6_LANG=EDIT_SMALLCORE_6_LANG
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
+_SMALLCORE8=EDIT_SMALLCORE8
 _UBER_CART_SEVEN=EDIT_UBER_CART_SEVEN
 _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
@@ -1021,6 +1023,11 @@ mrun "sleep 1"
       if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-prod" ] ; then
         ln -s $_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites /home/$_USERFTP/platforms/$_THIS_CORE/$_DRUPAL7-prod
       fi
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/sites" ] ; then
