@@ -450,9 +450,9 @@ _NGINX_WORKERS=AUTO
 _PHP_FORCE_REINSTALL=NO
 _PHP_FPM_WORKERS=AUTO
 _PHP_INSTALL_NEW=YES
-_SKIP_AEGIR_MASTER_UPGRADE=NO
 _SPEED_VALID_MAX=300
 _SQL_FORCE_REINSTALL=NO
+_SYSTEM_UPGRADE_ONLY=NO
 
 
 ###----------------------------------------###
@@ -1361,7 +1361,7 @@ barracuda_cnf () {
     echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
-    echo "_SKIP_AEGIR_MASTER_UPGRADE=$_SKIP_AEGIR_MASTER_UPGRADE" >> /root/.barracuda.cnf
+    echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1456,11 +1456,11 @@ barracuda_cnf () {
     else
       echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     fi
-    _SKIP_AEGIR_MASTER_UPGRADE_TEST=$(grep _SKIP_AEGIR_MASTER_UPGRADE /root/.barracuda.cnf)
-    if [[ "$_SKIP_AEGIR_MASTER_UPGRADE_TEST" =~ "_SKIP_AEGIR_MASTER_UPGRADE" ]] ; then
+    _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY /root/.barracuda.cnf)
+    if [[ "$_SYSTEM_UPGRADE_ONLY_TEST" =~ "_SYSTEM_UPGRADE_ONLY" ]] ; then
       true
     else
-      echo "_SKIP_AEGIR_MASTER_UPGRADE=$_SKIP_AEGIR_MASTER_UPGRADE" >> /root/.barracuda.cnf
+      echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     fi
     sleep 1
     echo " "
@@ -3961,7 +3961,7 @@ else
     msg "NOTE: to complete all system upgrades and upgrade also"
     msg "NOTE: Aegir Master Instance securely."
     echo " "
-  elif [ "$_SKIP_AEGIR_MASTER_UPGRADE" = "YES" ] ; then
+  elif [ "$_SYSTEM_UPGRADE_ONLY" = "YES" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped"
     echo " "
   else
