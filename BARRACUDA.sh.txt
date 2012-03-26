@@ -443,6 +443,7 @@ _FULL_FORCE_REINSTALL=NO
 _LENNY_TO_SQUEEZE=NO
 _LOAD_LIMIT_ONE=1444
 _LOAD_LIMIT_TWO=888
+_LOC_REL_VERSION=""
 _NGINX_DOS_LIMIT=300
 _NGINX_EXTRA_CONF=""
 _NGINX_WORKERS=AUTO
@@ -1498,7 +1499,7 @@ run_apt_update_again () {
 #
 # Install PHP 5.3.10
 install_php_five_three () {
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
   msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
   mrun "sleep 1"
@@ -1532,7 +1533,7 @@ install_php_five_three () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing memcached for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -1551,7 +1552,7 @@ install_php_five_three () {
     echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
     mrun "sleep 1"
   fi
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing Suhosin for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   cd /var/opt
@@ -1563,7 +1564,7 @@ install_php_five_three () {
   st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing UploadProgress for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   cd /var/opt
@@ -1575,7 +1576,7 @@ install_php_five_three () {
   st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing APC for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   cd /var/opt
@@ -1588,7 +1589,7 @@ install_php_five_three () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "apc-$_APC_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing MailParse for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   cd /var/opt
@@ -1600,7 +1601,7 @@ install_php_five_three () {
   st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-###--------------------###
+  ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   cd /var/opt
@@ -1613,57 +1614,61 @@ install_php_five_three () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log
+  ###--------------------###
+  st_runner "service php53-fpm start" &> /dev/null
 }
 #
 # Update PHP 5.3
 update_php_five_three () {
-###--------------------###
-if [ ! -e "/var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log" ] ; then
-  msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
-  tar -xzf APC-$_APC_VERSION.tgz
-  cd /var/opt/APC-$_APC_VERSION
-  st_runner "/opt/local/bin/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "apc-$_APC_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
-fi
-###--------------------###
-if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
-  msg "INFO: Installing memcached upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r memcached*
-  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-  tar -xzf memcached-1.0.2.tgz
-  if [ -e "/var/opt/memcached-1.0.2" ] ; then
-    cd /var/opt/memcached-1.0.2
+  ###--------------------###
+  if [ ! -e "/var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log" ] ; then
+    msg "INFO: Installing APC upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
+    tar -xzf APC-$_APC_VERSION.tgz
+    cd /var/opt/APC-$_APC_VERSION
     st_runner "/opt/local/bin/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
-    mrun "sleep 1"
+    echo "apc-$_APC_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
   fi
-fi
-###--------------------###
-if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log" ] ; then
-  msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r imagick*
-  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-  tar -xzf imagick-$_IMAGICK_VERSION.tgz
-  cd /var/opt/imagick-$_IMAGICK_VERSION
-  st_runner "/opt/local/bin/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log
-fi
+  ###--------------------###
+  if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
+    msg "INFO: Installing memcached upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r memcached*
+    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+    tar -xzf memcached-1.0.2.tgz
+    if [ -e "/var/opt/memcached-1.0.2" ] ; then
+      cd /var/opt/memcached-1.0.2
+      st_runner "/opt/local/bin/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "memcached-1.0.2-$_PHP_VERSION_NEW" > /var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log
+      mrun "sleep 1"
+    fi
+  fi
+  ###--------------------###
+  if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log" ] ; then
+    msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r imagick*
+    wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+    tar -xzf imagick-$_IMAGICK_VERSION.tgz
+    cd /var/opt/imagick-$_IMAGICK_VERSION
+    st_runner "/opt/local/bin/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION_NEW $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION_NEW.log
+  fi
+  ###--------------------###
+  st_runner "service php53-fpm restart" &> /dev/null
 }
 #
 # Install latest Git.
@@ -2052,6 +2057,13 @@ fi
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: We need to install wget, axel, aptitude, netcat & git first, please wait..."
+  if [ -e "/etc/debian_version" ] ; then
+    _L_DEB_TEST=`grep "^5." /etc/debian_version 2> /dev/null`
+    if [ ! -z "$_L_DEB_TEST" ] ; then
+      sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
+      sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+    fi
+  fi
   sleep 1
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
@@ -2619,8 +2631,11 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
   if [ ! -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
     _APT_SOURCES_REWRITE=YES
   fi
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "$_REL_VERSION" = "lenny" ] ; then
     sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
+    sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+  fi
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
     run_apt_update_again
     run_apt_update_again
     _LOC_REL_VERSION=lenny
@@ -2679,9 +2694,17 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
   elif [ "$_THIS_OS" = "Debian" ] ; then
-    if [ "$_AUTOPILOT" = "YES" ] ; then
-      _MIRROR=ftp.debian.org
+    _MIRROR_CHECK=NO
+    if [ "$_REL_VERSION" = "lenny" ] ; then
+      _MIRROR=archive.debian.org
     else
+      if [ "$_AUTOPILOT" = "YES" ] ; then
+        _MIRROR=ftp.debian.org
+      else
+        _MIRROR_CHECK=YES
+      fi
+    fi
+    if [ "$_MIRROR_CHECK" = "YES" ] ; then
       if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
         msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
         mrun "sleep 1"
@@ -2793,8 +2816,10 @@ fi
 msg "INFO: Running apt update, please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
+  sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+else
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
 fi
-st_runner "dpkg --configure --force-all -a" 2> /dev/null
 st_runner "aptitude update -y" 2> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
@@ -2910,8 +2935,10 @@ install_with_aptitude_sql () {
 ###--------------------###
 install_with_aptitude_deps
 fix_locales
-install_upgrade_libevent
-install_upgrade_nginx
+if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+  install_upgrade_libevent
+  install_upgrade_nginx
+fi
 
 
 if [ "$_STATUS" = "INIT" ] ; then
@@ -2925,18 +2952,18 @@ else
   elif [[ "$_DB_SERVER_TEST" =~ "5.1.49-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.7-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.10-MariaDB" ]] ; then
     _SQL_UPGRADE=YES
   fi
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+    _SQL_UPGRADE=NO
+  fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     service cron stop &> /dev/null
     service lfd stop  &> /dev/null
     service csf stop  &> /dev/null
     service csf stop  &> /dev/null
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
-    if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
-      mrun "sleep 50"
-      st_runner "service php-fpm stop" &> /dev/null
-      st_runner "service php53-fpm stop" &> /dev/null
-      mrun "sleep 10"
-    fi
+    mrun "sleep 50"
+    st_runner "service nginx stop" &> /dev/null
+    mrun "sleep 3"
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -2961,12 +2988,14 @@ else
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
     _PHP_FORCE_REINSTALL=YES
+    mrun "sleep 8"
+    msg "INFO: Restarting $_DB_SERVER server, please wait..."
+    st_runner "service mysql restart" &> /dev/null
+    mrun "sleep 8"
+    st_runner "service nginx start" &> /dev/null
     st_runner "service lfd start" &> /dev/null
     st_runner "service csf start" &> /dev/null
-    if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
-      st_runner "php-fpm start" &> /dev/null
-      st_runner "php53-fpm start" &> /dev/null
-    fi
+    msg "INFO: Restarting $_DB_SERVER server complete"
   fi
 fi
 
@@ -2976,7 +3005,9 @@ run_apt_update_again
 run_apt_update_again
 install_with_aptitude_deps
 install_upgrade_libevent
-install_upgrade_nginx
+if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+  install_upgrade_nginx
+fi
 install_latest_git
 set_xterm
 kill_nash
@@ -3474,9 +3505,6 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
     tar -xzf ioncube_loaders_lin_x86.tar.gz
   fi
   cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-  if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_FULL_FORCE_REINSTALL" = "NO" ] ; then
-    st_runner "service php-fpm restart" &> /dev/null
-  fi
 
 ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_PHP_VERSION, please wait..."
@@ -3491,6 +3519,9 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "imagick-$_IMAGICK_VERSION $_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_PHP_VERSION.log
+
+###--------------------###
+  st_runner "service php-fpm restart" &> /dev/null
 
 ###--------------------###
   if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
@@ -3924,9 +3955,9 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   echo " "
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
-    msg "INFO: Aegir Master Instance upgrade skipped"
+    msg "INFO: Aegir Master Instance upgrade skipped!"
     echo " "
-    msg "NOTE: You must reboot the server and then run Barracuda again"
+    msg "NOTE: You *must* reboot the server and then run Barracuda *again*"
     msg "NOTE: to complete all system upgrades and upgrade also"
     msg "NOTE: Aegir Master Instance securely."
     echo " "
