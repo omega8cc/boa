@@ -2554,7 +2554,6 @@ else
   #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (2)"
   cd $_THIS_HOSTMASTER
 fi
-DRUSHC="$_ROOT/tools/drush/drush"
 if [ $_DRUSH_FAMILY = "3" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform_3.php.txt ./
   mv -f make_platform_3.php.txt make_platform.php &> /dev/null
@@ -2564,211 +2563,211 @@ else
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_ATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_CIVICRM6" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_CIVICRM6" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_CIVICRM7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_CIVICRM7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM7-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL5" default $_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
     if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/drushrc.php" ] ; then
-      $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
       mrun "sleep 5"
     fi
   fi
 elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
     if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
-      $DRUSHC php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
       mrun "sleep 5"
     fi
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
     if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
-      $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
       mrun "sleep 5"
     fi
   fi
 elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
     if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/drushrc.php" ] ; then
-      $DRUSHC php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
       mrun "sleep 5"
     fi
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_ELMS" elms $_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_ELMS" elms $_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_MARTPLUG" martplug $_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_MARTPLUG" martplug $_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_NODESTREAM6" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_NODESTREAM6" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_NODESTREAM7" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_NODESTREAM7" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENCHURCH" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENCHURCH" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENOUTREACH" openoutreach $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENOUTREACH" openoutreach $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_UBERCART" uberdrupal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_UBER_CART_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_UBER_CART_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_VIDEOLA" videola $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_VIDEOLA" videola $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/drushrc.php" ] ; then
-    $DRUSHC php-script make_platform "$_F_OPENENTERPRISE" openenterprise $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENENTERPRISE" openenterprise $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi
@@ -2779,7 +2778,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 	  _FOUND_HM=YES
     else
       _PLATF_NAME=${_PLATF##*/}
-      $DRUSHC php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF
+      $_DRUSHCMD php-script make_platform "$_PLATF_NAME ($RANDOM)" default $_PLATF
       mrun "sleep 1"
     fi
   done
