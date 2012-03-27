@@ -4539,7 +4539,7 @@ if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; 
 fi
 if [ -e "/usr/sbin/csf" ] ; then
   if [ "$_SSH_PORT" = "22" ] ; then
-    _SSH_STANDARD_PORT=YES
+    true
   else
     if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
       csf_install
