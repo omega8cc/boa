@@ -755,17 +755,15 @@ update_lshell_conf () {
 update_php_conf () {
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
-    sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
-  fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] ; then
+  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
     cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -782,7 +780,7 @@ update_sql_conf () {
     sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
     touch /var/log/check_for_crashed_tables_disabled
   fi
-  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
+  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
     sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
@@ -1350,7 +1348,6 @@ barracuda_cnf () {
     echo "_SQL_FORCE_REINSTALL=$_SQL_FORCE_REINSTALL" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
-    echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
@@ -1384,9 +1381,8 @@ barracuda_cnf () {
     fi
     _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW /root/.barracuda.cnf)
     if [[ "$_PHP_INSTALL_NEW_TEST" =~ "_PHP_INSTALL_NEW" ]] ; then
-      true
-    else
-      echo "_PHP_INSTALL_NEW=$_PHP_INSTALL_NEW" >> /root/.barracuda.cnf
+      sed -i "s/.*_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf
+      sed -i "/^$/d" /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
@@ -1526,7 +1522,7 @@ install_php_five_three () {
   mrun "sleep 1"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
@@ -3337,7 +3333,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     fi
   fi
 fi
-if [ "$_PHP_INSTALL_NEW" = "YES" ] && [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
+if [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
   mkdir -p /opt/local/etc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
   if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
@@ -3522,20 +3518,14 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
 
 ###--------------------###
   st_runner "service php-fpm restart" &> /dev/null
-
-###--------------------###
-  if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
-    install_php_five_three
-    update_php_five_three
-  fi
+  install_php_five_three
+  update_php_five_three
 
 fi ### end if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] ; then
 
 
 ###--------------------###
-if [ "$_PHP_INSTALL_NEW" = "YES" ] ; then
-  update_php_five_three
-fi
+update_php_five_three
 
 
 ###--------------------###
@@ -4551,7 +4541,7 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ "$_SSH_PORT" = "22" ] ; then
     _SSH_STANDARD_PORT=YES
   else
-    if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] ; then
+    if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
       csf_install
     fi
   fi
