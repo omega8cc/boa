@@ -595,16 +595,16 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       mv -f make_client.php.txt make_client.php &> /dev/null
     fi
     if [ "$_THIS_DB_HOST" = "localhost" ] ; then
-      $_DRUSHCMD sqlq "UPDATE {hosting_platform} SET status=-1 WHERE nid=7" 2> /dev/null
+      $_DRUSHCMD sqlq "UPDATE hosting_platform SET status=-1 WHERE nid=7" &> /dev/null
     else
-      $_DRUSHCMD sqlq "UPDATE {hosting_platform} SET status=-1 WHERE nid=5" 2> /dev/null
+      $_DRUSHCMD sqlq "UPDATE hosting_platform SET status=-1 WHERE nid=5" &> /dev/null
     fi
     $_DRUSHCMD php-script make_client $_CLIENT_EMAIL &> /dev/null
     rm -f make_client.php
     $_DRUSHCMD urol "admin" --mail=$_CLIENT_EMAIL &> /dev/null
     $_DRUSHCMD urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
   fi
-  $_DRUSHCMD sqlq "REPLACE INTO {userprotect} VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" 2> /dev/null
+  $_DRUSHCMD sqlq "REPLACE INTO userprotect VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
 fi
 
 
