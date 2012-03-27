@@ -679,6 +679,7 @@ do
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
   sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files
   sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
+  sed -i "s/EDIT_NOW/$_NOW/g"                             $Files
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
