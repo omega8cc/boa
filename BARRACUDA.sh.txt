@@ -3880,13 +3880,12 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."
-  mrun "sleep 1"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  mrun "sleep 5"
   msg "INFO: Running hosting-dispatch (2/3), please wait..."
-  mrun "sleep 5"
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
-  msg "INFO: Running hosting-dispatch (3/3), please wait..."
   mrun "sleep 5"
+  msg "INFO: Running hosting-dispatch (3/3), please wait..."
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt

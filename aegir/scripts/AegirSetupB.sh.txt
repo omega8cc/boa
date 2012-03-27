@@ -462,13 +462,12 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS B: Deploying hostmaster application done"
   mrun "sleep 1"
   msg "$_STATUS B: Running hosting-dispatch (1/3), please wait..."
-  mrun "sleep 1"
   drush '@hostmaster' hosting-dispatch &> /dev/null
+  mrun "sleep 5"
   msg "$_STATUS B: Running hosting-dispatch (2/3), please wait..."
-  mrun "sleep 5"
   drush '@hostmaster' hosting-dispatch &> /dev/null
-  msg "$_STATUS B: Running hosting-dispatch (3/3), please wait..."
   mrun "sleep 5"
+  msg "$_STATUS B: Running hosting-dispatch (3/3), please wait..."
   drush '@hostmaster' hosting-dispatch &> /dev/null
 else
   if [ -d "$_AEGIR_ROOT" ] ; then
