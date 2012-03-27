@@ -2448,10 +2448,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   * Your _MY_HOSTN and/or _MY_FRONT doesn't match your _MY_OWNIP,
     or your hostname is not set properly yet.
 
-  * Please add/check correct line in your /etc/hosts file on the server:
-
-  $ echo "$_MY_OWNIP *.$_MY_HOSTN $_MY_FRONT" >> /etc/hosts
-
   * Please make sure that below command returns your FQDN hostname "$_MY_HOSTN":
 
   $ uname -n
