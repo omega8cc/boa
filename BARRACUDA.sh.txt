@@ -71,11 +71,8 @@ _PHP_FPM_VERSION=5.2
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
-### Note that PHP-CLI 5.3 will break support
-### for Drupal 5.x platforms/sites.
-###
-### Drupal 8.x will be available only with
-### PHP-CLI 5.3.
+### Note that PHP-CLI 5.3 is required for
+### Drupal 8.x, but breaks support for 5.x
 ###
 ### Available options:
 ###
@@ -101,14 +98,14 @@ _PHP_CLI_VERSION=5.2
 ### control which xtras will be installed,
 ### using the symbols listed below.
 ###
-### PDS --- fast DNS cache server (pdnsd)
-### BND --- Bind9 DNS Server
-### SLR --- MultiCore Apache Solr Tomcat
-### CHV --- Chive DB Manager
 ### BDD --- SQL Buddy DB Manager
+### BND --- Bind9 DNS Server
 ### CGP --- Collectd Graph Panel
-### WMN --- Webmin Control Panel
+### CHV --- Chive DB Manager
 ### CSF --- csf/lfd Firewall
+### PDS --- fast DNS cache server (pdnsd)
+### SLR --- MultiCore Apache Solr Tomcat
+### WMN --- Webmin Control Panel
 ###
 ### Examples:
 ###
@@ -155,12 +152,43 @@ _AUTOPILOT=NO
 
 
 ###----------------------------------------###
-### DEBUG MODE SWITCH (available)          ###
+### UPGRADE OPTIONS                        ###
 ###----------------------------------------###
 ###
-### Use this when you experience silent hangs
-### or other hard to debug problems to display
-### some errors on screen.
+### Use YES to upgrade system only and skip
+### Aegir Master Instance upgrade.
+###
+_SYSTEM_UPGRADE_ONLY=NO
+
+###
+### You can force PHP and/or database server
+### reinstall, even if there are no updates
+### available.
+###
+_PHP_FORCE_REINSTALL=NO
+_SQL_FORCE_REINSTALL=NO
+
+###
+### Use YES to force installing everything
+### from sources again, even if there are
+### no updates available.
+###
+_FULL_FORCE_REINSTALL=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Lenny to Squeeze.
+###
+_LENNY_TO_SQUEEZE=NO
+
+
+###----------------------------------------###
+### DRUSH DEBUG MODE                       ###
+###----------------------------------------###
+###
+### When set to YES it will run Aegir Master
+### Instance install/upgrade with -d option,
+### displaying complete Drush backend report.
 ###
 ### _DEBUG_MODE=YES
 ###
@@ -209,10 +237,9 @@ _DB_SERVER=MariaDB
 ### port for SSH and SFTP connections.
 ###
 ### Changing the port will alter also your
-### server firewall (csf) settings and can
-### be used only once - on initial Barracuda
-### install or on the first upgrade after
-### this feature has been introduced.
+### server firewall (csf) settings, both on
+### install and upgrade, unless you are using
+### _CUSTOM_CONFIG_CSF=YES option.
 ###
 _SSH_PORT=22
 
@@ -249,6 +276,9 @@ _LOCAL_UBUNTU_MIRROR=""
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
+### We recommend github as it is much faster,
+### often 10x than drupal and gitorious.
+###
 _FORCE_GIT_MIRROR=""
 
 
@@ -263,18 +293,18 @@ _FORCE_GIT_MIRROR=""
 ###
 ### This script is trying to discover your
 ### DNS details and allow or deny the install,
-### if something doesn't look correct.
+### if something doesn't look right.
 ###
 ### This script will also use your FQDN
 ### hostname as a web address of your Aegir
-### frontend (control panel).
+### frontend (control panel) by default.
 ###
-### You can try to change the automatic
+### You may want to change the automatic
 ### defaults by setting up your IP address,
 ### your FQDN hostname and your Aegir frontend
-### web address below.
+### web address below - it is recommended!
 ###
-### It can be useful when you are using local
+### It may be useful when you are using local
 ### environment with custom settings in your
 ### /etc/hosts, when you have more than one
 ### public IPs on eth0 and you wish to use
@@ -317,28 +347,6 @@ _MY_FRONT=""
 
 
 ###----------------------------------------###
-### DATABASE CUSTOM HOST                   ###
-###----------------------------------------###
-###
-### If you prefer, you can set the database
-### to be connected locally via "localhost"
-### instead of FQDN pointing to your public IP
-### address. Note: the "FQDN" is a keyword.
-### Don't replace it with a real hostname.
-###
-### For local or Amazon based installs with
-### local/dynamic IP address it is recommended
-### to use "localhost" option.
-###
-### Available options:
-###
-### _THIS_DB_HOST=localhost
-### _THIS_DB_HOST=FQDN
-###
-_THIS_DB_HOST=localhost
-
-
-###----------------------------------------###
 ### DNS SETUP TEST                         ###
 ###----------------------------------------###
 ###
@@ -356,6 +364,29 @@ _DNS_SETUP_TEST=YES
 
 
 ###----------------------------------------###
+### DATABASE CUSTOM HOST                   ###
+###----------------------------------------###
+###
+### If you prefer, you can set the database
+### to be connected via FQDN pointing to your
+### public IP instead of default "localhost".
+###
+### Note: the "FQDN" is a keyword.
+### Don't replace it with a real hostname.
+###
+### For local or Amazon based installs with
+### local/dynamic IP address it is recommended
+### to use default "localhost" option.
+###
+### Available options:
+###
+### _THIS_DB_HOST=localhost
+### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
+
+
+###----------------------------------------###
 ### SMTP CONNECTION TEST                   ###
 ###----------------------------------------###
 ###
@@ -370,7 +401,7 @@ _SMTP_RELAY_TEST=YES
 ### SMTP RELAY HOST - ONLY WHEN REQUIRED   ###
 ###----------------------------------------###
 ###
-### _SMTP_RELAY_HOST="smtp.cust.voxel.net"
+### _SMTP_RELAY_HOST="smtp.your.relay.net"
 ###
 _SMTP_RELAY_HOST=""
 
@@ -381,16 +412,12 @@ _SMTP_RELAY_HOST=""
 ###
 ### When enabled, it will force your Nginx web
 ### server to listen only on local IP with
-### local hostname:
+### local, non-FQDN hostname, for example:
 ###
 ### _LOCAL_NETWORK_IP=10.10.80.80
 ### _LOCAL_NETWORK_HN=aegir.local
 ###
-### In this example 10.10.80.80 is your local
-### server IP address, where public traffic
-### is NAT'd from another, public IP address.
-###
-### In this case "aegir.local" will be used
+### In this example "aegir.local" will be used
 ### as your hostname and all connections and
 ### grants will use "aegir.local" instead of
 ### FQDN. Also your Aegir Master Instance
@@ -412,19 +439,22 @@ _SMTP_RELAY_HOST=""
 ### services listening on 127.0.0.1
 ###
 ### This option works only with initial
-### install and is disabled for upgrades.
-### When used, it will override all defined
-### above _MY_OWNIP, _MY_HOSTN and _MY_FRONT.
-### It will also disable all DNS and SMTP
-### relay tests automatically. It will also
-### enable debug mode by default.
+### install and is disabled on upgrade.
 ###
-### In general: DON'T TRY THIS OPTION, unless
-### you know, what are you doing. It is only
-### to make local install easier and helps
-### with using Aegir on servers without direct
-### connection to the Internet, but again, you
-### must understand how it works.
+### When used, it will override all defined
+### above _MY_OWNIP, _MY_HOSTN and _MY_FRONT
+### values.
+###
+### It will also disable all DNS and SMTP
+### relay tests and enable drush debug mode
+### automatically.
+###
+### Note that for non-local installs with
+### private and/or dynamic IPs on servers
+### behind some NAT, you should instead use
+### _HTTP_WILDCARD=YES above and leave
+### _LOCAL_NETWORK_IP and _LOCAL_NETWORK_HN
+### empty.
 ###
 _LOCAL_NETWORK_IP=""
 _LOCAL_NETWORK_HN=""
@@ -434,25 +464,56 @@ _LOCAL_NETWORK_HN=""
 ### ADVANCED CONFIGURATION OPTIONS         ###
 ###----------------------------------------###
 
-_ALL_PURGE_THISHTIP=NO
+###
+### Use YES to avoid overwriting configuration
+### for listed services on upgrade.
+###
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_PHP_5_2=NO
 _CUSTOM_CONFIG_PHP_5_3=NO
 _CUSTOM_CONFIG_SQL=NO
-_FULL_FORCE_REINSTALL=NO
-_LENNY_TO_SQUEEZE=NO
+
+###
+### Set max 1 min load before disabling Nginx
+### temporarily, until the load stabilizes.
+###
 _LOAD_LIMIT_ONE=1444
+
+###
+### Set max 5 min load before disabling Nginx
+### temporarily, until the load stabilizes.
+###
 _LOAD_LIMIT_TWO=888
-_LOC_REL_VERSION=""
+
+###
+### Set max allowed page views from one IP
+### out of last 300. Default value of 300
+### effectively disables DoS monitor. Note
+### that it will lock the access completely
+### on the firewall level in /etc/csf/csf.deny
+###
 _NGINX_DOS_LIMIT=300
+
+###
+### Use this only when you need to always
+### compile in some extra/custom module(s).
+###
 _NGINX_EXTRA_CONF=""
+
+###
+### AUTO will default to values calculated
+### on the fly and based on available RAM.
+### You can force workers number for Nginx
+### and PHP-FPM here.
+###
 _NGINX_WORKERS=AUTO
-_PHP_FORCE_REINSTALL=NO
 _PHP_FPM_WORKERS=AUTO
-_PHP_INSTALL_NEW=YES
+
+###
+### Max default TTL for Speed Booster Cache.
+### It will affect all Aegir Instances.
+###
 _SPEED_VALID_MAX=300
-_SQL_FORCE_REINSTALL=NO
-_SYSTEM_UPGRADE_ONLY=NO
 
 
 ###----------------------------------------###
@@ -460,25 +521,34 @@ _SYSTEM_UPGRADE_ONLY=NO
 ###----------------------------------------###
 
 _INSTALLER_VERSION=BOA-2.0.3-dev
+
+###
+### Software versions
+###
+_APC_VERSION=3.1.9
+_BZR_VERSION=2.3.4
+_CHIVE_VERSION=1.0.2
+_DRUSH_FAMILY=4        ### change to 5 for HEAD
+_DRUSH_VERSION=4.6-dev ### or HEAD
 _GIT_VERSION=1.7.9
+_IMAGICK_VERSION=3.1.0RC1
+_LSHELL_VERSION=0.9.15.1-sec
 _NGINX_VERSION=1.0.14
-_PHP_VERSION=5.2.17
 _PHP_VERSION_BUILD=5.3.9
 _PHP_VERSION_NEW=5.3.10
-_APC_VERSION=3.1.9
-_IMAGICK_VERSION=3.1.0RC1
-_CHIVE_VERSION=1.0.2
-_BZR_VERSION=2.3.4
-_LSHELL_VERSION=0.9.15.1-sec
+_PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
-_DRUSH_VERSION=4.6-dev ### or HEAD
-_DRUSH_FAMILY=4        ### change to 5 for HEAD
-_NOW=`date +%y%m%d-%H%M`
-_PURGE_MODE=ON
-_CUSTOM_NAME=nginx
 
-SHELL=/bin/bash
+###
+### Variables
+###
+_CUSTOM_NAME=nginx
+_LOC_REL_VERSION=""
+_NOW=`date +%y%m%d-%H%M`
+_PURGE_ALL_THISHTIP=NO
+_PURGE_MODE=ON
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+SHELL=/bin/bash
 
 
 ###---### Avoid too many questions
@@ -957,7 +1027,7 @@ validate_xtras_ip () {
 #
 # Validate server IP for purge vhost.
 validate_purge_ip () {
-  if [ "$_ALL_PURGE_THISHTIP" = "YES" ] ; then
+  if [ "$_PURGE_ALL_THISHTIP" = "YES" ] ; then
     _PURGE_THISHTIP="0.0.0.0/0"
   else
     _ETH_TEST=`ifconfig 2>&1`
@@ -3936,7 +4006,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
 else
   echo " "
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "xlenny" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped!"
     echo " "
     msg "NOTE: You *must* reboot the server and then run Barracuda *again*"

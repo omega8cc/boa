@@ -87,11 +87,8 @@ _PHP_FPM_VERSION=5.2
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
-### Note that PHP-CLI 5.3 will break support
-### for Drupal 5.x platforms/sites.
-###
-### Drupal 8.x will be available only with
-### PHP-CLI 5.3.
+### Note that PHP-CLI 5.3 is required for
+### Drupal 8.x, but breaks support for 5.x
 ###
 ### Available options:
 ###
@@ -196,12 +193,12 @@ _O_CONTRIB_UP=NO
 
 
 ###----------------------------------------###
-### DEBUG MODE                             ###
+### DRUSH DEBUG MODE                       ###
 ###----------------------------------------###
 ###
-### Use this when you experience silent hangs
-### or other hard to debug problems to display
-### some errors on screen.
+### When set to YES it will run this Satellite
+### Instance install/upgrade with -d option,
+### displaying complete Drush backend report.
 ###
 ### _DEBUG_MODE=YES
 ###
@@ -216,7 +213,7 @@ _DEBUG_MODE=NO
 ### Instance on any non-default IP address
 ### available on your server/machine, please
 ### define it below. For default, main IP
-### based install, leave default empty value.
+### based install, leave this empty.
 ###
 ### _MY_OWNIP=123.45.67.89
 ###
@@ -256,29 +253,10 @@ _AEGIR_VERSION=HEAD
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
+### We recommend github as it is much faster,
+### often 10x than drupal and gitorious.
+###
 _FORCE_GIT_MIRROR=""
-
-
-###----------------------------------------###
-### DATABASE CUSTOM HOST                   ###
-###----------------------------------------###
-###
-### If you prefer, you can set the database
-### to be connected locally via "localhost"
-### instead of FQDN pointing to your public IP
-### address. Note: the "FQDN" is a keyword.
-### Don't replace it with a real hostname.
-###
-### For local or Amazon based installs with
-### local/dynamic IP address it is recommended
-### to use "localhost" option.
-###
-### Available options:
-###
-### _THIS_DB_HOST=localhost
-### _THIS_DB_HOST=FQDN
-###
-_THIS_DB_HOST=localhost
 
 
 ###----------------------------------------###
@@ -296,6 +274,29 @@ _THIS_DB_HOST=localhost
 ### There is no guarantee it will work.
 ###
 _DNS_SETUP_TEST=YES
+
+
+###----------------------------------------###
+### DATABASE CUSTOM HOST                   ###
+###----------------------------------------###
+###
+### If you prefer, you can set the database
+### to be connected via FQDN pointing to your
+### public IP instead of default "localhost".
+###
+### Note: the "FQDN" is a keyword.
+### Don't replace it with a real hostname.
+###
+### For local or Amazon based installs with
+### local/dynamic IP address it is recommended
+### to use default "localhost" option.
+###
+### Available options:
+###
+### _THIS_DB_HOST=localhost
+### _THIS_DB_HOST=FQDN
+###
+_THIS_DB_HOST=localhost
 
 
 ###----------------------------------------###
@@ -364,6 +365,7 @@ _USE_CURRENT=YES
 ###
 ### Use this option only when you want to
 ### switch ALL your Aegir Satellite Instances
+### along with your Aegir Master Instance
 ### from local Redis and Memcache servers
 ### to the remote caches in your network.
 ### It will also permanently disable your
@@ -382,10 +384,6 @@ _REMOTE_CACHE_IP=127.0.0.1
 ###
 ### _LOCAL_NETWORK_IP=10.10.80.80
 ###
-### In this example 10.10.80.80 is your local
-### server IP address, where public traffic
-### is NAT'd from another, public IP address.
-###
 ### This option is useful when your server is
 ### available only in your local network
 ### without any public IP address assigned/
@@ -401,17 +399,14 @@ _REMOTE_CACHE_IP=127.0.0.1
 ### and to avoid conflicts with some other
 ### services listening on 127.0.0.1
 ###
-### In general: DON'T TRY THIS OPTION, unless
-### you know, what are you doing. It is only
-### to make local install easier and helps
-### with using Aegir on servers without direct
-### connection to the Internet, but again, you
-### must understand how it works.
+### This option works only with initial
+### install and is disabled on upgrade.
 ###
 ### You should use this option only when you
 ### already used it with initial Barracuda
-### install. It will override also any
-### defined above _MY_OWNIP value.
+### install. It will override any defined
+### above _MY_OWNIP value, disable DNS test
+### and enable drush debug mode automatically.
 ###
 _LOCAL_NETWORK_IP=""
 
@@ -422,19 +417,25 @@ _LOCAL_NETWORK_IP=""
 
 _INSTALLER_VERSION=BOA-2.0.3-dev
 
-## System
+###
+### Variables
+###
+_DRUSH_FAMILY=4        ### change to 5 for HEAD
+_DRUSH_VERSION=4.6-dev ### or HEAD
 _NOW=`date +%y%m%d-%H%M`
-_WEBG=www-data
-_USRG=users
-_SMALLCORE6=6.25.1
+_PURGE_FOR_SEVEN=YES
 _SMALLCORE_6_LANG=6.25
+_SMALLCORE6=6.25.1
 _SMALLCORE7=7.12
 _SMALLCORE8=8.0-dev
-_DRUSH_VERSION=4.6-dev ### or HEAD
-_DRUSH_FAMILY=4        ### change to 5 for HEAD
-_PURGE_FOR_SEVEN=YES
+_USRG=users
+_WEBG=www-data
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+SHELL=/bin/bash
 
-## Distributions
+###
+### Distributions
+###
 _ACQUIA_SEVEN=7.12.11
 _CIVICRM6=3.4.8
 _CIVICRM7=4.0.8
@@ -461,9 +462,6 @@ _PROSEPOINT=0.43
 _UBER_CART_SEVEN=3.0.3
 _UBERCART=6.x-2.7
 _VIDEOLA=6.x-1.0-alpha2
-
-SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 
 
 ###---### Functions
