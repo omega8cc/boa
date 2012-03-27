@@ -1810,13 +1810,13 @@ install_upgrade_nginx () {
       _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f3 | awk '{ print $1}'`
     fi
     _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
-    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] ; then
+    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
-    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] ; then
+    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
-    else
+    elif [ "$_NGINX_F_INSTALLED" != "$_NGINX_F_VERSION" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
     fi
