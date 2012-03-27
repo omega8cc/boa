@@ -115,12 +115,15 @@ _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
   _D_8_ALLOW=YES
+  _D_5_ALLOW=NO
 elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
   _L_PHP_CLI=/usr/local/bin
   _D_8_ALLOW=NO
+  _D_5_ALLOW=YES
 else
   _L_PHP_CLI=/usr/local/bin
   _D_8_ALLOW=NO
+  _D_5_ALLOW=YES
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
@@ -1158,6 +1161,7 @@ fi
 drupal5_install () {
 ###---### Drupal 5 Pressflow
 #
+if [ "$_D_5_ALLOW" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D5P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_DRUPAL5" ] ; then
 echo " "
@@ -1184,6 +1188,7 @@ mrun "sleep 1"
 else
   msg "STATUS: $_F_DRUPAL5 installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 fi
