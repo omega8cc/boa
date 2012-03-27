@@ -518,9 +518,6 @@ fi
 #
 msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mrun "sleep 1"
-cd $_AEGIR_ROOT/profiles/hostmaster/themes/eldir
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/eldir.patch ./
-patch -p1 <./eldir.patch &> /dev/null
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
 wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.9.tar.gz
@@ -578,7 +575,6 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD vset --always-set hosting_platform_pathauto_base_path "/data/disk/$_USER/static/" &> /dev/null
   $_DRUSHCMD en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD fr aegir_custom_settings -y &> /dev/null
-  sed -i "s/320px/640px/g" $_AEGIR_ROOT/profiles/hostmaster/themes/eldir/style.css &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     $_DRUSHCMD vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
     $_DRUSHCMD vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
