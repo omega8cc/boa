@@ -1476,6 +1476,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE_DISTRO/*.txt
   rm -f $_CORE_DISTRO/core/*.txt
   cd $_CORE_DISTRO
+  for Files in `find $_CORE_DISTRO/profiles -type f`
+  do
+    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
+    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
+    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
+  done
   create_d8_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8
