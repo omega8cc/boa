@@ -413,10 +413,10 @@ download_o_contrib_six () {
 #
 # upgrade_o_contrib
 upgrade_o_contrib () {
-if [ -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION-$_NOW" ] && [ -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION-$_NOW" ] ; then
+if [ -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
   _O_CONTRIB_UP=NO
 fi
-if [ -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION-$_NOW" ] && [ -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION-$_NOW" ] ; then
+if [ -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
   _O_CONTRIB_UP=NO
 fi
 if [ -d "$_CORE/o_contrib" ] ; then

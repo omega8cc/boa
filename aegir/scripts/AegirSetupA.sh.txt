@@ -98,6 +98,7 @@ _LAST_ALL=EDIT_LAST_ALL
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
 _NOW=EDIT_NOW
+_O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
@@ -225,16 +226,16 @@ create_shared_dirs () {
   fi
   chown $_USER:$_USRG /data/all &> /dev/null
   chown -L $_USER:$_USRG $_CORE &> /dev/null
-  if [ ! -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION-$_NOW" ] ; then
+  if [ ! -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
     chown -L -R $_USER:$_USRG $_CORE/o_contrib &> /dev/null
   fi
-  if [ ! -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION-$_NOW" ] ; then
+  if [ ! -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
     chown -L -R $_USER:$_USRG $_CORE/o_contrib_seven &> /dev/null
   fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION-$_NOW" ] ; then
+  if [ ! -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
     chown -L -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib &> /dev/null
   fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION-$_NOW" ] ; then
+  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
     chown -L -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib_seven &> /dev/null
   fi
   chown -L -R $_USER:$_USRG /data/src &> /dev/null
