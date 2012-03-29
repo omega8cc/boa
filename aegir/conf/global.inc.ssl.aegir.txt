@@ -157,19 +157,8 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
 
 if (isset($_SERVER['HTTP_HOST'])) {
 
-  if (isset($_SERVER['HTTP_USER_AGENT'])) {
-    if (preg_match("/(?:Nokia|BlackBerry.+MIDP|240x|320x|Palm|NetFront|Symbian|SonyEricsson)/i", $_SERVER['HTTP_USER_AGENT'])) {
-      $this_device = 'mobile-other';
-    }
-    elseif (preg_match("/(?:iPhone|iPod|Android|BlackBerry.+AppleWebKit)/i", $_SERVER['HTTP_USER_AGENT'])) {
-      $this_device = 'mobile-smart';
-    }
-    elseif (preg_match("/(?:iPad|Tablet)/i", $_SERVER['HTTP_USER_AGENT'])) {
-      $this_device = 'mobile-tablet';
-    }
-    else {
-      $this_device = 'normal';
-    }
+  if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
+    $this_device = $_SERVER['USER_DEVICE'];
   }
   else {
     $this_device = 'normal';
