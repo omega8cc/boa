@@ -113,7 +113,7 @@ Octopus can install the platforms listed below:
  MartPlug 1.0-dev ------------- http://drupal.org/project/martplug
  NodeStream 1.4 --------------- http://nodestream.org
  NodeStream 2.0-alpha10 ------- http://nodestream.org
- Open Atrium 1.2.1 ------------ http://openatrium.com
+ Open Atrium 1.3.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
  Open Outreach 1.0-beta8 ------ http://openoutreach.org
  OpenChurch 1.9-alpha1 -------- http://openchurchsite.com

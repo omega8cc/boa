@@ -823,10 +823,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-2.tgz
-  tar -xzf atrium-1-2.tgz
-  rm -f atrium-1-2.tgz
-  mv atrium-1.2 atrium-$_OPENATRIUM-$_SMALLCORE6
+  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-3.tgz
+  tar -xzf atrium-1-3.tgz
+  rm -f atrium-1-3.tgz
+  mv atrium-1.3 atrium-$_OPENATRIUM-$_SMALLCORE6
   cd /data/src/$_THIS_CORE
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/profiles/openatrium/modules/contrib/imagecache
