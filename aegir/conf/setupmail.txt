@@ -52,7 +52,7 @@ starting with 1+ Aegir Standard or SSD Core:
  Open Atrium 1.3.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
  Open Outreach 1.0-beta8 ------ http://openoutreach.org
- OpenChurch 1.9-alpha1 -------- http://openchurchsite.com
+ OpenChurch 1.9-alpha2 -------- http://openchurchsite.com
  Pressflow 5.23 --------------- http://pressflow.org
  Pressflow 6.25.1 ------------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
