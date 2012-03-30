@@ -1054,6 +1054,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv drupal-7.14 commerce-$_COMMERCE-$_SMALLCORE7
   elif [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
     mv commerce-$_COMMERCE commerce-$_COMMERCE-$_SMALLCORE7
+  elif [ -d "$_CORE/commerce_kickstart-$_COMMERCE" ] ; then
+    mv commerce_kickstart-$_COMMERCE commerce-$_COMMERCE-$_SMALLCORE7
   fi
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
