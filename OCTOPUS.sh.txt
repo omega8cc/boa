@@ -1105,7 +1105,7 @@ else
 fi
 #
 #
-if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+if [[ "$_DOMAIN" =~ ".xhost8." ]] ; then
   true
 else
   octopus_cnf
