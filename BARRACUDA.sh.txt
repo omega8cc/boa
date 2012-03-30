@@ -538,6 +538,7 @@ _PHP_VERSION_BUILD=5.3.9
 _PHP_VERSION_NEW=5.3.10
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
+_REDIS_VERSION=2.4.9
 
 ###
 ### Variables
@@ -712,9 +713,9 @@ install_redis_src () {
   fi
   cd /var/opt
   rm -f -r /var/opt/redis*
-  wget -q -U iCab http://files.aegir.cc/dev/redis-2.0.5.tar.gz
-  tar -xzf redis-2.0.5.tar.gz
-  cd redis-2.0.5
+  wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
+  tar -xzf redis-$_REDIS_VERSION.tar.gz
+  cd redis-$_REDIS_VERSION
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   if [ -e "/var/lib/redis" ] ; then
@@ -740,7 +741,7 @@ install_redis_src () {
   chown redis:redis /var/lib/redis
   rm -f /var/lib/redis/*
   st_runner "service redis-server start" &> /dev/null
-  touch /var/log/redis-2.0.5.log
+  touch /var/log/redis-$_REDIS_VERSION.log
 }
 #
 # Set xterm.
@@ -930,6 +931,7 @@ fix_on_upgrade () {
   update_sql_conf
   update_nginx_conf
   update_global_inc_conf
+  update_redis_password
 }
 #
 # Validate server public IP.
@@ -1317,6 +1319,7 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
+  sed -i "s/888/$_USE_APC/g" /etc/redis/redis.conf
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
     sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
@@ -1600,6 +1603,18 @@ install_php_five_three () {
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
   ###--------------------###
+  msg "INFO: Installing PhpRedis for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r phpredis*
+  git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+  cd /var/opt/phpredis
+  st_runner "/opt/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "phpredis $_PHP_VERSION_NEW $_NOW" > /var/log/phpredis-$_PHP_VERSION_NEW.log
+  ###--------------------###
   msg "INFO: Installing memcached for PHP-FPM $_PHP_VERSION_NEW, please wait..."
   mrun "sleep 1"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -1699,6 +1714,20 @@ update_php_five_three () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "apc-$_APC_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_PHP_VERSION_NEW.log
+  fi
+  ###--------------------###
+  if [ ! -e "/var/log/phpredis-$_PHP_VERSION_NEW.log" ] ; then
+    msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_PHP_VERSION_NEW, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r phpredis*
+    git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+    cd /var/opt/phpredis
+    st_runner "/opt/local/bin/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=/opt/local/bin/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "phpredis $_PHP_VERSION_NEW $_NOW" > /var/log/phpredis-$_PHP_VERSION_NEW.log
   fi
   ###--------------------###
   if [ ! -e "/var/log/fixed-memcached-1.0.2-$_PHP_VERSION_NEW.log" ] ; then
@@ -1832,6 +1861,7 @@ upgrade_aegir_master () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
     fi
     sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    update_redis_password
     force_advanced_nginx_config
     if [ "$_DRUSH_FAMILY" = "3" ] ; then
       cd /var/aegir/drush
@@ -1981,7 +2011,25 @@ install_upgrade_libevent () {
     echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
   fi
 }
-
+#
+# Set or update Redis password..
+update_redis_password () {
+  if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+    msg "INFO: Generate random password for Redis server"
+    touch /root/.redis.pass.txt
+    chmod 0600 /root/.redis.pass.txt &> /dev/null
+    _ESC_RPASS=`pwgen -v -s -1`
+    _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+    echo "$_ESC_RPASS" > /root/.redis.pass.txt
+  fi
+  if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+    RPASS=`cat /root/.redis.pass.txt`
+    RPASS=`echo -n $RPASS | tr -d "\n"`
+    sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
+    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
+    sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
+  fi
+}
 
 ###--------------------###
 if ! netcat -w 8 -z ftp.drupal.org 80 ; then
@@ -3179,9 +3227,9 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/redis-2.0.5.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_REL_VERSION" = "oneiric" ] ; then
-    true
+    install_redis_src
   else
     install_redis_src
   fi
@@ -3463,6 +3511,19 @@ if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] 
   ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
 
 ###--------------------###
+  msg "INFO: Installing PhpRedis for PHP-FPM $_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r phpredis*
+  git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+  cd /var/opt/phpredis
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "phpredis $_PHP_VERSION $_NOW" > /var/log/phpredis-$_PHP_VERSION.log
+
+###--------------------###
   msg "INFO: Installing libmemcached with memcached for PHP-FPM $_PHP_VERSION, please wait..."
   mrun "sleep 1"
   if [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -3589,6 +3650,22 @@ fi ### end if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] ; then
 
 ###--------------------###
 update_php_five_three
+
+
+###--------------------###
+if [ ! -e "/var/log/phpredis-$_PHP_VERSION.log" ] ; then
+  msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r phpredis*
+  git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+  cd /var/opt/phpredis
+  st_runner "/usr/local/bin/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=/usr/local/bin/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "phpredis $_PHP_VERSION $_NOW" > /var/log/phpredis-$_PHP_VERSION.log
+fi
 
 
 ###--------------------###
@@ -3959,7 +4036,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
-  msg "INFO: Fix for access to global.inc for www-data user issue"
+  msg "INFO: Fix for access to global.inc for www-data user"
   mrun "sleep 1"
   chmod 711 /var/aegir/config/includes &> /dev/null
   chmod 711 /var/aegir/config &> /dev/null
@@ -3978,6 +4055,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
   fi
   sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+  update_redis_password
   force_advanced_nginx_config
   if [ "$_DRUSH_FAMILY" = "3" ] ; then
     cd /var/aegir/drush
@@ -4082,6 +4160,7 @@ EOF
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
     fi
     sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    update_redis_password
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
     service nginx start &> /dev/null

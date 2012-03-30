@@ -212,6 +212,25 @@ basic_single_escape () {
   echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
 }
 #
+# Set or update Redis password..
+update_redis_password () {
+  if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+    msg "INFO: Generate random password for Redis server"
+    touch /root/.redis.pass.txt
+    chmod 0600 /root/.redis.pass.txt &> /dev/null
+    _ESC_RPASS=`pwgen -v -s -1`
+    _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+    echo "$_ESC_RPASS" > /root/.redis.pass.txt
+  fi
+  if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+    RPASS=`cat /root/.redis.pass.txt`
+    RPASS=`echo -n $RPASS | tr -d "\n"`
+    sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
+    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
+    sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
+  fi
+}
+#
 # stop on error
 # set -e ### disabled for debugging
 #
@@ -639,6 +658,11 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
   fi
 fi
 cd $_ROOT
+
+
+###---### Set or update Redis password
+#
+update_redis_password
 
 
 ###---### Set/rewrite _REMOTE_CACHE_IP if defined and disable local caches

@@ -615,6 +615,11 @@ else
   rm -f $_ROOT/config/includes/global.inc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
+  if [ -e "/etc/redis/redis.conf" ] ; then
+    RPASS=`grep ^requirepass /etc/redis/redis.conf | cut -d' ' -f2`
+    RPASS=`echo -n $RPASS | tr -d "\n"`
+    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc
+  fi
 fi
 
 
