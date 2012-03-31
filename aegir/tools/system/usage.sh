@@ -25,7 +25,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON="cache_backport redis expire purge path_alias_cache robotstxt filefield_nginx_progress"
+_MODULES_ON="redis expire purge path_alias_cache robotstxt filefield_nginx_progress"
 _MODULES_OFF="cache syslog dblog update l10n_update devel performance cookie_cache_bypass poormanscron supercron css_gzip javascript_aggregator"
 
 
@@ -174,7 +174,6 @@ if [ "$_MODULES" = "YES" ] ; then
           cd $Dir
           if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis cache syslog dblog -y &> /dev/null"
-            su -s /bin/bash $_THIS_HM_USER -c "drush en cache_backport -y &> /dev/null"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
             chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
           else

@@ -350,6 +350,9 @@ if ($use_cache && $use_redis && isset($_SERVER['HTTP_USER_AGENT']) && !$custom_c
       $conf['page_cache_maximum_age']      = 3600;
       $conf['cache_lifetime']              = 0;
       $conf['cache_default_class']         = 'Redis_Cache';
+      if ($conf['install_profile'] == 'hostmaster') {
+        $conf['cache_class_cache'] = 'DrupalDatabaseCache';
+      }
     }
   }
 }
