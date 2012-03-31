@@ -294,9 +294,9 @@ fi
 # remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001() {
-if [ ! -e "/var/log/incompatible-modules-removed-001k.log" ] ; then
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
+if [ ! -e "/var/log/incompatible-modules-removed-001l.log" ] ; then
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
+RMMODULES="cache_backport redis drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
@@ -309,10 +309,15 @@ for i in $REVISIONS; do
       sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install
       sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install
     fi
-    # backup_migrate
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
-    tar -xzf backup_migrate-6.x-2.5.tar.gz &> /dev/null
-    rm -f backup_migrate-6.x-2.5.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+    rm -f redis/redis.info
+    rm -f cache_backport/cache_backport.info
     if [ "$_PURGE_MODE" = "ON" ] ; then
       git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
@@ -326,7 +331,7 @@ for i in $REVISIONS; do
     done
   fi
 done
-touch /var/log/incompatible-modules-removed-001k.log
+touch /var/log/incompatible-modules-removed-001l.log
 cd
 fi
 }
@@ -334,9 +339,9 @@ fi
 # remove incompatible modules from o_contrib_seven
 #
 remove_incompatible_modules_002() {
-if [ ! -e "/var/log/incompatible-modules-removed-002k.log" ] ; then
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache"
+if [ ! -e "/var/log/incompatible-modules-removed-002l.log" ] ; then
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
+RMMODULES="redis session443 cookie_cache_bypass_adv purge expire agrcache"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] ; then
     for m in $RMMODULES; do
@@ -344,13 +349,19 @@ for i in $REVISIONS; do
         rm -f -r /data/all/$i/o_contrib_seven/$m
       fi
     done
+    cd /data/all/$i/o_contrib_seven
+    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
       git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
     fi
   fi
 done
-touch /var/log/incompatible-modules-removed-002k.log
+touch /var/log/incompatible-modules-removed-002l.log
 cd
 fi
 }
