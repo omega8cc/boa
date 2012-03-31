@@ -673,8 +673,8 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
   else
     msg "$_STATUS A: Set/rewrite remote cache IP address and disable local caches"
     mrun "sleep 1"
-    sed -i "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /data/conf/global.inc
-    sed -i "s/127.0.0.1/$_REMOTE_CACHE_IP/g" /var/aegir/config/includes/global.inc
+    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /data/conf/global.inc
+    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /var/aegir/config/includes/global.inc
     service redis-server stop &> /dev/null
     update-rc.d -f redis-server remove &> /dev/null
     service redis stop &> /dev/null

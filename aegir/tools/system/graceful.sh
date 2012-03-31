@@ -18,15 +18,6 @@ action()
   /etc/init.d/nginx stop
   /etc/init.d/php-fpm stop
   /etc/init.d/php53-fpm stop
-  /etc/init.d/redis-server stop
-  sleep 1
-  rm -f /var/lib/redis/*
-  killall redis-server
-  rm -f /var/run/redis.pid
-  rm -f /var/lib/redis/*
-  /etc/init.d/redis-server start
-  rm -f /var/lib/redis/*
-  /etc/init.d/redis-server restart
   killall -9 php-fpm php-cgi nginx php wget
   sleep 1
   killall -9 php-fpm php-cgi nginx php wget

@@ -720,7 +720,6 @@ install_redis_src () {
   st_runner "make --quiet install" 2> /dev/null
   if [ -e "/var/lib/redis" ] ; then
     st_runner "service redis-server stop" &> /dev/null
-    mrun "sleep 5"
     killall -9 redis-server &> /dev/null
   fi
   cd /usr/local/bin

@@ -11,7 +11,6 @@ hold()
   killall -9 nginx
   /etc/init.d/php-fpm stop
   /etc/init.d/php53-fpm stop
-  /etc/init.d/redis-server stop
   killall -9 php-fpm php-cgi
   echo load is $ONEX_LOAD:$FIVX_LOAD while maxload is $CTL_ONEX_LOAD:$CTL_FIVX_LOAD
 }
