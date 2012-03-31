@@ -1,0 +1,47 @@
+diff -urp a/hosting_advanced_cron.module b/hosting_advanced_cron.module
+--- a/hosting_advanced_cron.module	2012-03-29 21:20:33.000000000 -0400
++++ b/hosting_advanced_cron.module	2012-03-31 08:35:39.000000000 -0400
+@@ -58,7 +58,12 @@ function hosting_advanced_cron_queue($co
+       provision_backend_invoke($site_name, "cron");
+     }
+     else {
+-      $cmd = sprintf("wget -O - -q %s  > /dev/null", escapeshellarg(_hosting_site_url($site) . '/cron.php'));
++      // Optionally add the cron_key querystring key if the site has one.
++      $url =_hosting_site_url($site) . '/cron.php';
++      if (!empty($site->cron_key)) {
++        $url .= '?cron_key=' . rawurlencode($site->cron_key);
++      }
++      $cmd = sprintf("wget -O - -q %s  > /dev/null", escapeshellarg($url));
+       drush_shell_exec($cmd);
+     }
+
+@@ -66,7 +71,10 @@ function hosting_advanced_cron_queue($co
+     // with the task queue. There exists a chance that they might both try to save the
+     // same node at the same time, and then an old record from the cron queue might
+     // replace the newly updated record.
+-    db_query("UPDATE {hosting_site} SET last_cron = %d WHERE nid = %d", time(), $site->nid);
++    db_query("UPDATE {hosting_site} SET last_cron=%d WHERE nid=%d", mktime(), $site->nid);
++
++    // A small trick to avoid high load when still too many crons are started at once.
++    sleep(5);
+   }
+ }
+
+@@ -99,7 +107,7 @@ function hosting_advanced_cron_nodeapi(&
+         if (!$result) {
+           $result = array('cron_interval' => variable_get('hosting_advanced_cron_default_interval', 3600));
+         }
+-
++
+         return $result;
+
+       case 'delete':
+@@ -125,7 +133,7 @@ function hosting_advanced_cron_get_sites
+     $cron_interval = $site->cron_interval ? $site->cron_interval : variable_get('hosting_advanced_cron_default_interval', 3600);
+
+     // Run cron if it has never ran before for this site, or if the cron
+-    // interval since last cron run has been exceeded.
++    // interval since last cron run has been exceeded.
+     if ($cron_interval != HOSTING_ADVANCED_CRON_SITE_DISABLED && (!$site->last_cron || ($site->last_cron + $site->cron_interval < time()))) {
+       $sites[$site->nid] = node_load($site->nid);
+     }
