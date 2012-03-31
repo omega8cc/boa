@@ -324,8 +324,8 @@ elseif (file_exists('./modules/o_contrib/redis/redis.autoload.inc') &&
   $cache_lock_path = './modules/o_contrib/redis/redis.lock.inc';
 }
 
-// Don't use redis caching for d8 profiles, sites cron and php-cli.
-if ($use_cache && $use_redis && isset($_SERVER['HTTP_USER_AGENT']) && !$custom_cache ) {
+// Use redis caching only for d6 and d7 profiles.
+if ($use_cache && $use_redis && !$custom_cache ) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
     $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
     if (file_exists($cache_module_path)) {
