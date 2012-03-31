@@ -215,7 +215,7 @@ basic_single_escape () {
 # Set or update Redis password..
 update_redis_password () {
   if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    msg "INFO: Generate random password for Redis server"
+    msg "INIT A: Generate random password for Redis server"
     touch /root/.redis.pass.txt
     chmod 0600 /root/.redis.pass.txt &> /dev/null
     _ESC_RPASS=`pwgen -v -s -1`
