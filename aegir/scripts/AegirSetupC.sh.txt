@@ -340,6 +340,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
@@ -368,12 +369,12 @@ download_o_contrib_seven () {
 #
 # download_o_contrib_six
 download_o_contrib_six () {
-  wget -q -U iCab http://files.aegir.cc/dev/cache.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/esi-6.x-2.x-dev.tar.gz
@@ -384,6 +385,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
@@ -407,6 +409,7 @@ download_o_contrib_six () {
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  rm -f redis/redis.info
   touch ctrl-$_INSTALLER_VERSION
   download_textile
 }
@@ -787,7 +790,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/acquia-$_SMALLCORE6/ &> /dev/null
   cd $_CORE/acquia-$_SMALLCORE6
   rm -f $_CORE/acquia-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile
   sed -i "s/'name' => 'Acquia Drupal',/'name' => 'Acquia Drupal',\n    'old_short_name' => 'default',/g" ./profiles/acquia/acquia.profile
   rm -f -r ./profiles/default
   create_dirs
@@ -836,7 +839,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6
   rm -f -r $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/modules/cookie_cache_bypass
   rm -f $_CORE/atrium-$_OPENATRIUM-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile
   rm -f -r ./profiles/default
   cd ./profiles/openatrium/modules/atrium_features/
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
@@ -894,7 +897,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
   rm -f -r $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/modules/cookie_cache_bypass
   rm -f $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile
   sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
   cd $_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6
   create_dirs
@@ -1006,7 +1009,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/cod-$_COD-$_SMALLCORE6
   rm -f $_CORE/cod-$_COD-$_SMALLCORE6/*.txt
   rm -f -r $_CORE/cod-$_COD-$_SMALLCORE6/modules/cookie_cache_bypass
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile
   sed -i "s/Conference Organizing Distribution/Conference/g" ./profiles/cod/cod.profile
   rm -f -r ./profiles/default
   create_dirs
@@ -1137,7 +1140,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
   patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
   cd $_CORE/acquia_commons-$_COMMONS-$_SMALLCORE6
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -1220,7 +1223,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/pressflow-$_SMALLCORE6-dev/ &> /dev/null
   cd $_CORE/pressflow-$_SMALLCORE6-dev
   rm -f $_CORE/pressflow-$_SMALLCORE6-dev/*.txt
-  sed -i "s/'dblog'/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'drupalcenter',/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-dev/profiles/default/translations &> /dev/null
@@ -1248,7 +1251,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/pressflow-$_SMALLCORE6-stage/ &> /dev/null
   cd $_CORE/pressflow-$_SMALLCORE6-stage
   rm -f $_CORE/pressflow-$_SMALLCORE6-stage/*.txt
-  sed -i "s/'dblog'/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+  sed -i "s/'dblog'/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
   sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
   create_dirs
   ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-stage/profiles/default/translations &> /dev/null
@@ -1277,7 +1280,7 @@ if [ ! -d "$_CORE/pressflow" ] ; then
     cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE/pressflow-$_SMALLCORE6-prod/ &> /dev/null
     cd $_CORE/pressflow-$_SMALLCORE6-prod
     rm -f $_CORE/pressflow-$_SMALLCORE6-prod/*.txt
-    sed -i "s/'dblog'/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
+    sed -i "s/'dblog'/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile
     sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile
     create_dirs
     ln -s /data/all/000/translations $_CORE/pressflow-$_SMALLCORE6-prod/profiles/default/translations &> /dev/null
@@ -1652,7 +1655,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
   cd $_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/
   rm -f $_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -2190,7 +2193,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6
   rm -f $_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/*.txt
   rm -f -r $_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/profiles/openscholar/modules/contrib/memcache &> /dev/null
-  sed -i "s/'features',/'features', 'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
+  sed -i "s/'features',/'features', 'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile
   rm -f -r ./profiles/default
   create_dirs
 fi
@@ -2296,7 +2299,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE_DISTRO
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
   rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'filefield', 'content', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
+  sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'filefield', 'content', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile
   rm -f -r ./profiles/default
   mkdir -p $_CORE_DISTRO/profiles/uberdrupal/libraries
   cd $_CORE_DISTRO/profiles/uberdrupal/libraries
@@ -2479,7 +2482,7 @@ fi
 #     patch -p1 < openenterprise.patch &> /dev/null
 #     cd $_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
 #   fi
-#   sed -i "s/'dblog',/'cache', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
+#   sed -i "s/'dblog',/'cache_backport', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openenterprise/openenterprise.profile
 #   rm -f -r ./profiles/default
 #   create_dirs
 # fi

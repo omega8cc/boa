@@ -554,6 +554,9 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect hosting_advanced_cron -y &> /dev/null
   $_DRUSHCMD dis syslog -y &> /dev/null
   $_DRUSHCMD dis cache -y &> /dev/null
+  if [ -e "$_AEGIR_ROOT/modules/o_contrib/cache_backport" ] && [ -e "$_AEGIR_ROOT/modules/o_contrib/redis" ] ; then
+    $_DRUSHCMD en cache_backport -y &> /dev/null
+  fi
   $_DRUSHCMD dis path_alias_cache -y &> /dev/null
   $_DRUSHCMD vset --always-set hosting_client_register_user 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_admin_client 1 &> /dev/null

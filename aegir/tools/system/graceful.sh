@@ -18,10 +18,20 @@ action()
   /etc/init.d/nginx stop
   /etc/init.d/php-fpm stop
   /etc/init.d/php53-fpm stop
-  killall -9 php-fpm php-cgi nginx php wget
-  sleep 2
-  killall -9 php-fpm php-cgi nginx php wget
+  /etc/init.d/redis-server stop
+  sleep 1
+  rm -f /var/lib/redis/*
+  killall redis-server
+  rm -f /var/run/redis.pid
+  rm -f /var/lib/redis/*
+  /etc/init.d/redis-server start
+  rm -f /var/lib/redis/*
+  /etc/init.d/redis-server restart
+  killall -9 php-fpm php-cgi nginx php wget memcached
+  sleep 1
+  killall -9 php-fpm php-cgi nginx php wget memcached
   echo rotate > /var/log/nginx/speed_purge.log
+  bash /var/xdrago/memcache.sh
   /etc/init.d/php-fpm start
   /etc/init.d/php53-fpm start
   /etc/init.d/nginx start

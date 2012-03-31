@@ -82,28 +82,40 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
   header('X-Accel-Expires: 1');
 }
 
+$drupal_eight = FALSE;
+$drupal_seven = FALSE;
+$drupal_six   = FALSE;
+$drupal_five  = FALSE;
+$use_redis    = FALSE;
+
 if (file_exists('./web.config')) {
-  $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7+
-  $drupal_seven_up = 'YES';
-  header('X-Backend: A');
+  if (file_exists('./core')) {
+    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 8
+    $drupal_eight = TRUE;
+    header('X-Backend: A');
+  }
+  else {
+    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7
+    $drupal_seven = TRUE;
+    $use_redis = TRUE;
+    header('X-Backend: B');
+  }
 }
 elseif (file_exists('./modules/path_alias_cache')) {
   $conf['cache'] = 3; // enable hardcoded external caching - Pressflow 6 only
-  $drupal_seven_up = 'NO';
-  $drupal_six = 'YES';
-  header('X-Backend: B');
+  $drupal_six = TRUE;
+  $use_redis = TRUE;
+  header('X-Backend: C');
 }
 elseif (file_exists('./modules/watchdog')) {
   $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
-  $drupal_seven_up = 'NO';
-  $drupal_five = 'YES';
-  header('X-Backend: C');
+  $drupal_five = TRUE;
+  header('X-Backend: D');
 }
 else {
   $conf['cache'] = 1; // enable hardcoded standard caching
-  $drupal_seven_up = 'NO';
-  $drupal_unknown = 'YES';
-  header('X-Backend: D');
+  $drupal_unknown = TRUE;
+  header('X-Backend: E');
 }
 
 // http://drupal.org/node/912682#comment-3503636
@@ -231,7 +243,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
 
-    if ($drupal_seven_up == "YES") {
+    if ($drupal_seven || $drupal_eight) {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
@@ -273,32 +285,29 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
 }
 
-$use_cache = 'YES';   // Standard Redis/Memcached integration for 6.x core is enabled by default.
+$use_cache = TRUE;     // Standard Redis integration for 6.x and 7.x core is enabled by default.
 
-$cache_module_path = './modules/o_contrib/cache/cache.inc'; // It is possible to define custom path.
+$custom_cache = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Redis configuration.
 
-$custom_cache = 'NO'; // When set to YES it will disable default Redis/Memcached configuration,
-                      // so you can define your own, custom configuration in the included below
-                      // /data/conf/override.global.inc file.
+$custom_fb = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Drupal for Facebook (fb) configuration.
 
-$custom_fb = 'NO';    // When set to YES it will disable default Drupal for Facebook (fb) configuration,
-                      // so you can define your own, custom configuration in the included below
-                      // /data/conf/override.global.inc file.
-
-$custom_da = 'NO';    // When set to YES it will disable default Domain Access configuration,
-                      // so you can define your own, custom configuration in the included below
-                      // /data/conf/override.global.inc file. NOTE: if set to YES, then you
-                      // must set to YES also $custom_cache above and copy all its logic in your
-                      // /data/conf/override.global.inc file, because Domain Access must be included
-                      // *after* any cache-related settings to work properly.
+$custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Domain Access configuration,
+                       // so you can define your own, custom configuration in the included below
+                       // /data/conf/override.global.inc file. NOTE: if set to TRUE, then you
+                       // must set to TRUE also $custom_cache and copy all its logic in your
+                       // /data/conf/override.global.inc file, because Domain Access must be included
+                       // *after* any cache-related settings to work properly.
 
 if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
     file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt'))) {
-  $use_cache = 'NO';
+  $use_cache = FALSE;
 }
 
 if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUEST_URI'])) {
-  $use_cache = 'NO';
+  $use_cache = FALSE;
 }
 
 /**
@@ -309,178 +318,42 @@ if (file_exists('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
 }
 
-// don't use chained memcached and redis caching for hostmaster, d7 profiles, sites cron and php-cli
-if ($conf['install_profile'] != 'hostmaster' && $drupal_seven_up == "NO" &&
-  isset($_SERVER['HTTP_USER_AGENT']) && $use_cache == "YES" && $custom_cache == "NO" ) {
+if (file_exists('./modules/o_contrib_seven/redis/redis.autoload.inc')) {
+  $cache_backport = FALSE;
+  $cache_module_path = './modules/o_contrib_seven/redis/redis.autoload.inc';
+  $cache_lock_path = './modules/o_contrib_seven/redis/redis.lock.inc';
+}
+elseif (file_exists('./modules/o_contrib/redis/redis.autoload.inc') &&
+        file_exists('./modules/o_contrib/cache_backport/cache.inc')) {
+  $cache_backport = TRUE;
+  $cache_module_path = './modules/o_contrib/redis/redis.autoload.inc';
+  $cache_lock_path = './modules/o_contrib/redis/redis.lock.inc';
+}
+
+// Don't use redis caching for d8 profiles, sites cron and php-cli.
+if ($use_cache && $use_redis && isset($_SERVER['HTTP_USER_AGENT']) && !$custom_cache ) {
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
-     $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
-     if (file_exists($cache_module_path)) {
-      $conf['cache_inc'] = $cache_module_path;
-      $conf['cache_settings'] = array(
-      'engines' => array(
-        'redis-engine' => array(
-          'engine' => 'redis',
-          'server' => array('127.0.0.1:6379'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-a' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11211'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-b' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11212'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-c' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11213'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-d' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11214'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-e' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11215'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-f' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11216'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-g' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11217'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'memcache-engine-h' => array(
-          'engine' => 'memcached',
-          'server' => array('127.0.0.1:11218'),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-        'db-engine' => array(
-          'engine' => 'database',
-          'server' => array(),
-          'shared' => TRUE,
-          'prefix' => $this_prefix,
-        ),
-      ),
-      'schemas' => array(
-        'memcache-a-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-a',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-b-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-b',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-c-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-c',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-d-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-d',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-e-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-e',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-f-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-f',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-g-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-g',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-h-redis-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-h',
-          // Secondary cache.
-          'redis-engine',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'redis-db-schema' => array(
-          // Primary cache.
-          'redis-engine',
-          // Secondary cache.
-          //'memcache-engine-f',
-          // Secondary cache.
-          'db-engine',
-        ),
-        'memcache-db-schema' => array(
-          // Primary cache.
-          'memcache-engine-h',
-          // Secondary cache.
-          'db-engine',
-        ),
-      ),
-      'bins' => array(
-        // Bin name           => Schema name.
-        'default'             => 'memcache-f-redis-db-schema',
-        'cache'               => 'memcache-a-redis-db-schema',
-        'cache_form'          => 'memcache-b-redis-db-schema',
-        'cache_filter'        => 'memcache-c-redis-db-schema',
-        'cache_path'          => 'memcache-d-redis-db-schema',
-        'cache_menu'          => 'memcache-d-redis-db-schema',
-        'cache_block'         => 'memcache-e-redis-db-schema',
-        'cache_content'       => 'memcache-e-redis-db-schema',
-        'cache_page'          => 'memcache-e-redis-db-schema',
-        'cache_views_data'    => 'memcache-g-redis-db-schema',
-        'cache_views'         => 'memcache-g-redis-db-schema',
-        'views_object_cache'  => 'memcache-g-redis-db-schema',
-        'cache_path_alias'    => 'memcache-db-schema',
-        'cache_path_source'   => 'memcache-db-schema',
-        'cache_update'        => 'memcache-h-redis-db-schema',
-      ),
-    );
-    } // end of if (file_exists('./modules/o_contrib/cache/cache.inc'))
-  } // end of if (!preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])
-} // end of if (!preg_match("/(standard)|(minimal)/", $conf['install_profile']))
+    $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
+    if (file_exists($cache_module_path)) {
+      if ($cache_backport) {
+        $conf['cache_inc']                 = './modules/o_contrib/cache_backport/cache.inc';
+      }
+      $conf['cache_backends'][]            = $cache_module_path;
+      //$conf['lock_inc']                  = $cache_lock_path;
+      $conf['redis_client_interface']      = 'PhpRedis';
+      $conf['redis_client_host']           = '127.0.0.1';
+      $conf['redis_client_port']           = '6379';
+      $conf['redis_client_password']       = 'isfoobared';
+      $conf['cache_prefix']                = $this_prefix;
+      $conf['page_cache_without_database'] = TRUE;
+      $conf['page_cache_invoke_hooks']     = TRUE;
+      $conf['page_cache_maximum_age']      = 3600;
+      $conf['cache_lifetime']              = 0;
+      $conf['cache_default_class']         = 'Redis_Cache';
+    }
+  }
+}
+
 
 /**
  * Drupal for Facebook (fb)
@@ -490,7 +363,7 @@ if ($conf['install_profile'] != 'hostmaster' && $drupal_seven_up == "NO" &&
  * The default value is &amp;. Change this in settings.php. Make the value "&"
  * http://drupal.org/node/205476
  */
-if ($custom_fb == "NO" ) {
+if (!$custom_fb) {
   if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once "sites/all/modules/fb/fb_settings.inc";
@@ -512,7 +385,7 @@ if ($custom_fb == "NO" ) {
  * Domain module
  *
  */
-if ($custom_da == "NO" ) {
+if (!$custom_da) {
   if (file_exists('sites/all/modules/domain/settings.inc')) {
     require_once "sites/all/modules/domain/settings.inc";
   }

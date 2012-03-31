@@ -22,18 +22,5 @@ if test -f /var/run/boa_run.pid ; then
 else
   rm -f -r /tmp/*
 fi
-killall memcached &> /dev/null
-bash /var/xdrago/memcache.sh
-service redis-server stop 2>&1
-sleep 2
-rm -f /var/lib/redis/*
-rm -f /var/log/redis/*
-killall redis-server &> /dev/null
-rm -f /var/lib/redis/*
-sleep 2
-service redis-server restart 2>&1
-sleep 2
-rm -f /var/lib/redis/*
-service redis-server restart 2>&1
 touch /var/xdrago/log/clear.done
 ###EOF2012###
