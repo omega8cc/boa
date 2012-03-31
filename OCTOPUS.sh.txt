@@ -579,10 +579,10 @@ octopus_cnf () {
       echo "$line"
     done < /root/.$_USER.octopus.cnf
     echo " "
+    source /root/.$_USER.octopus.cnf
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
-        source /root/.$_USER.octopus.cnf
       else
         echo "Installation aborted by you."
         exit 1
@@ -590,7 +590,6 @@ octopus_cnf () {
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
-        source /root/.$_USER.octopus.cnf
       else
         echo "Upgrade aborted by you."
         exit 1
