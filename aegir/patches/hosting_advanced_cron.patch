@@ -20,7 +20,7 @@ diff -urp a/hosting_advanced_cron.module b/hosting_advanced_cron.module
      // same node at the same time, and then an old record from the cron queue might
      // replace the newly updated record.
 -    db_query("UPDATE {hosting_site} SET last_cron = %d WHERE nid = %d", time(), $site->nid);
-+    db_query("UPDATE {hosting_site} SET last_cron=%d WHERE nid=%d", mktime(), $site->nid);
++    db_query("UPDATE {hosting_site} SET last_cron=%d WHERE nid=%d", time(), $site->nid);
 +
 +    // A small trick to avoid high load when still too many crons are started at once.
 +    sleep(5);
