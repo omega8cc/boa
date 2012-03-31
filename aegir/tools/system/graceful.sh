@@ -27,11 +27,10 @@ action()
   /etc/init.d/redis-server start
   rm -f /var/lib/redis/*
   /etc/init.d/redis-server restart
-  killall -9 php-fpm php-cgi nginx php wget memcached
+  killall -9 php-fpm php-cgi nginx php wget
   sleep 1
-  killall -9 php-fpm php-cgi nginx php wget memcached
+  killall -9 php-fpm php-cgi nginx php wget
   echo rotate > /var/log/nginx/speed_purge.log
-  bash /var/xdrago/memcache.sh
   /etc/init.d/php-fpm start
   /etc/init.d/php53-fpm start
   /etc/init.d/nginx start

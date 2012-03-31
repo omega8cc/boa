@@ -15,7 +15,6 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /nginx/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /memcache/) {$memcachelives = "YES"; $memcachesumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
@@ -31,7 +30,6 @@ print "\n $nginxsumar Nginx procs\tGLOBAL" if ($nginxlives);
 print "\n $phpsumar PHP procs\tGLOBAL" if ($phplives);
 print "\n $fpmsumar FPM procs\tGLOBAL" if ($fpmlives);
 print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
-print "\n $memcachesumar Cache procs\tGLOBAL" if ($memcachelives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
 print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
 print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
@@ -43,9 +41,6 @@ if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
 }
 if (!$mysqlsumar || $mysqlsumar > 150) {
   `bash /var/xdrago/move_sql.sh`;
-}
-if (-f "/var/xdrago/memcache.sh") {
-  `/var/xdrago/memcache.sh` if (!$memcachesumar || $memcachesumar < 8);
 }
 if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
