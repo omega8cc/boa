@@ -552,6 +552,14 @@ octopus_cnf () {
   else
     msg "INFO: Reading your /root/.$_USER.octopus.cnf config file."
     sleep 1
+    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+      _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
+      _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
+    fi
+    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+      _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
+      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
+    fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
@@ -800,6 +808,15 @@ if [ -d "/var/cache/pdnsd" ] ; then
   sleep 1
   service pdnsd start &> /dev/null
 fi
+#
+#
+if [[ "$_DOMAIN" =~ ".xhost8." ]] ; then
+  true
+else
+  octopus_cnf
+fi
+#
+#
 if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
   _DNS_SETUP_TEST=NO
   _DEBUG_MODE=YES
@@ -982,16 +999,6 @@ if [ -d "$_ROOT" ] ; then
       _CLIENT_SUBSCR=`cat /data/disk/$_USER/log/subscr.txt`
       _CLIENT_SUBSCR=`echo -n $_CLIENT_SUBSCR | tr -d "\n"`
     fi
-    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
-      _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
-      _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
-      echo _PHP_FPM_VERSION is $_PHP_FPM_VERSION
-    fi
-    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
-      _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
-      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
-      echo _PHP_CLI_VERSION is $_PHP_CLI_VERSION
-    fi
     if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
       _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
       _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
@@ -1102,13 +1109,6 @@ else
   msg "Please change the value for _DOMAIN to make it unique."
   msg "Bye."
   exit 1
-fi
-#
-#
-if [[ "$_DOMAIN" =~ ".xhost8." ]] ; then
-  true
-else
-  octopus_cnf
 fi
 #
 #
