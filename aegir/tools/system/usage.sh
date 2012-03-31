@@ -44,7 +44,7 @@ fix_boost_cache()
 if [ -e "$Plr/cache" ] ; then
   rm -f -r $Plr/cache/*
   mkdir -p $Plr/cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
-  chown -L -R $_THIS_HM_USER:www-data $Plr/cache
+  chown -R $_THIS_HM_USER:www-data $Plr/cache
   chmod -R 777 $Plr/cache
 fi
 if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ] ; then
@@ -190,7 +190,7 @@ fix_permissions()
 {
 if [ "$_PERMISSIONS" = "YES" ] ; then
       chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
-      chown -L -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
       find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
       find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
       chown -L -R $_THIS_HM_USER:www-data $Dir/files &> /dev/null
@@ -201,7 +201,7 @@ if [ "$_PERMISSIONS" = "YES" ] ; then
       find $Dir/private -type d -exec chmod 02775 {} \; &> /dev/null
       find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
       chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
-      chown -L -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
       find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
       chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null

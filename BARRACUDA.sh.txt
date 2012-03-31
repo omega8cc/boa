@@ -1836,8 +1836,8 @@ upgrade_aegir_master () {
     chown -R aegir:aegir /var/aegir/clients
     chown -R aegir:aegir /var/aegir/config
     chown -R aegir:aegir /var/aegir/drush
-    chown -L -R aegir $_THIS_HM_ROOT
-    chown -L -R aegir:www-data $_THIS_HM_SITE/files
+    chown -R aegir $_THIS_HM_ROOT
+    chown -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
@@ -1866,7 +1866,7 @@ upgrade_aegir_master () {
       cd /var/aegir/drush
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
       patch -p0 < user.drush.inc.patch &> /dev/null
-      chown -L -R aegir:aegir /var/aegir/drush &> /dev/null
+      chown -R aegir:aegir /var/aegir/drush &> /dev/null
     fi
     if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
       sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
@@ -3841,7 +3841,7 @@ if [ ! -e "/var/log/umask_fixed.log" ] ; then
   sed -i "s/umask.*022/umask 002/g" /etc/profile
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   echo "umask 002" >> /var/www/.profile
-  chown -L -R www-data:www-data /var/www/* &> /dev/null
+  chown -R www-data:www-data /var/www/* &> /dev/null
   touch /var/log/umask_fixed.log
 fi
 
@@ -4060,7 +4060,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     cd /var/aegir/drush
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
     patch -p0 < user.drush.inc.patch &> /dev/null
-    chown -L -R aegir:aegir /var/aegir/drush &> /dev/null
+    chown -R aegir:aegir /var/aegir/drush &> /dev/null
   fi
   if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
@@ -4207,8 +4207,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       ln -s /opt/tomcat6/lib /opt/tika
       cd /opt/tika
       wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
-      chown -L -R tomcat:tomcat /opt/solr
-      chown -L -R tomcat:tomcat /opt/tomcat6
+      chown -R tomcat:tomcat /opt/solr
+      chown -R tomcat:tomcat /opt/tomcat6
       st_runner "update-rc.d tomcat defaults" &> /dev/null
       st_runner "service tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
@@ -4226,8 +4226,8 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     adduser --system --group --home /opt/solr tomcat &> /dev/null
     touch /opt/solr/fixed.log
     st_runner "service tomcat stop" &> /dev/null
-    chown -L -R tomcat:tomcat /opt/solr
-    chown -L -R tomcat:tomcat /opt/tomcat6
+    chown -R tomcat:tomcat /opt/solr
+    chown -R tomcat:tomcat /opt/tomcat6
     killall -9 java &> /dev/null
     mrun "sleep 5"
     st_runner "service tomcat start" &> /dev/null
@@ -4249,7 +4249,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     cp -af /opt/solr/conf/protwords.txt /opt/solr/conf/protwords.txt-pre-$_INSTALLER_VERSION-$_NOW
     cp -af apachesolr/protwords.txt /opt/solr/conf/
     touch /opt/solr/conf/apachesolr-6.x-1.6.log
-    chown -L -R tomcat:tomcat /opt/solr/conf
+    chown -R tomcat:tomcat /opt/solr/conf
     st_runner "service tomcat stop" &> /dev/null
     mrun "sleep 5"
     st_runner "service tomcat start" &> /dev/null
@@ -4263,8 +4263,8 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
     ln -s /opt/tomcat6/lib /opt/tika
     cd /opt/tika
     wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
-    chown -L -R tomcat:tomcat /opt/tika/*
-    chown -L -R tomcat:tomcat /opt/solr/conf
+    chown -R tomcat:tomcat /opt/tika/*
+    chown -R tomcat:tomcat /opt/solr/conf
     st_runner "service tomcat stop" &> /dev/null
     mrun "sleep 5"
     st_runner "service tomcat start" &> /dev/null
@@ -4288,7 +4288,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       wget -q -U iCab http://files.aegir.cc/dev/chive_$_CHIVE_VERSION.tar.gz
       tar -xzf chive_$_CHIVE_VERSION.tar.gz
       rm -f chive_$_CHIVE_VERSION.tar.gz
-      chown -L -R www-data:www-data /var/www/chive
+      chown -R www-data:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
@@ -4325,7 +4325,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     wget -q -U iCab http://files.aegir.cc/dev/chive_$_CHIVE_VERSION.tar.gz
     tar -xzf chive_$_CHIVE_VERSION.tar.gz
     rm -f chive_$_CHIVE_VERSION.tar.gz
-    chown -L -R www-data:www-data /var/www/chive
+    chown -R www-data:www-data /var/www/chive
     touch /var/log/chive_$_CHIVE_VERSION.log
   fi
   if [ ! -e "/var/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
@@ -4367,7 +4367,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       wget -q -U iCab http://files.aegir.cc/dev/sqlbuddy_1_3_3.tar.gz
       tar -xzf sqlbuddy_1_3_3.tar.gz &> /dev/null
       rm -f sqlbuddy_1_3_3.tar.gz
-      chown -L -R www-data:www-data /var/www/sqlbuddy
+      chown -R www-data:www-data /var/www/sqlbuddy
       _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
@@ -4414,7 +4414,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         cd /var/www
         git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
-        chown -L -R www-data:www-data /var/www/cgp
+        chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
