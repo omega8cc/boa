@@ -4715,6 +4715,7 @@ rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
 rm -f /var/run/boa_wait.pid
 chmod 700 /root
+killall -9 memcached &> /dev/null
 service cron start   &> /dev/null
 service lfd start    &> /dev/null
 service csf start    &> /dev/null
