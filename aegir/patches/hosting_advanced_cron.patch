@@ -1,33 +1,49 @@
 diff -urp a/hosting_advanced_cron.module b/hosting_advanced_cron.module
---- a/hosting_advanced_cron.module	2012-03-31 21:41:29.000000000 -0400
-+++ b/hosting_advanced_cron.module	2012-03-31 21:38:37.000000000 -0400
-@@ -58,7 +58,12 @@ function hosting_advanced_cron_queue($co
-       provision_backend_invoke($site_name, "cron");
-     }
-     else {
--      $cmd = sprintf("wget -O - -q %s  > /dev/null", escapeshellarg(_hosting_site_url($site) . '/cron.php'));
-+      // Optionally add the cron_key querystring key if the site has one.
-+      $url =_hosting_site_url($site) . '/cron.php';
-+      if (!empty($site->cron_key)) {
-+        $url .= '?cron_key=' . rawurlencode($site->cron_key);
-+      }
-+      $cmd = sprintf("wget -O - -q %s  > /dev/null", escapeshellarg($url));
-       drush_shell_exec($cmd);
-     }
+--- a/hosting_advanced_cron.module	2012-03-31 23:08:03.000000000 -0400
++++ b/hosting_advanced_cron.module	2012-03-31 23:04:07.000000000 -0400
+@@ -54,19 +54,29 @@ function hosting_advanced_cron_queue($co
 
-@@ -66,7 +71,10 @@ function hosting_advanced_cron_queue($co
-     // with the task queue. There exists a chance that they might both try to save the
-     // same node at the same time, and then an old record from the cron queue might
-     // replace the newly updated record.
--    db_query("UPDATE {hosting_site} SET last_cron = %d WHERE nid = %d", time(), $site->nid);
-+    db_query("UPDATE {hosting_site} SET last_cron=%d WHERE nid=%d", time(), $site->nid);
+   foreach ($sites as $site) {
+     $site_name = hosting_context_name($site->nid);
+-    if (variable_get('hosting_cron_use_backend', TRUE)) {
+-      provision_backend_invoke($site_name, "cron");
+-    }
+-    else {
+-      $cmd = sprintf("wget -O - -q %s  > /dev/null", escapeshellarg(_hosting_site_url($site) . '/cron.php'));
+-      drush_shell_exec($cmd);
+-    }
++    if (!preg_match("/(?:dev\.|devel\.)/", $site_name)) {
++      if (variable_get('hosting_cron_use_backend', TRUE)) {
++        provision_backend_invoke($site_name, "cron");
++      }
++      else {
++        // Optionally add the cron_key querystring key if the site has one.
++        $url =_hosting_site_url($site) . '/cron.php';
++        if (!empty($site->cron_key)) {
++          $url .= '?cron_key=' . rawurlencode($site->cron_key);
++        }
++        $cmd = sprintf("wget -O - -q %s  > /dev/null", escapeshellarg($url));
++        drush_shell_exec($cmd);
++      }
 +
-+    // A small trick to avoid high load when still too many crons are started at once.
-+    sleep(5);
++      // We are updating the site table here directly to avoid a possible race condition,
++      // with the task queue. There exists a chance that they might both try to save the
++      // same node at the same time, and then an old record from the cron queue might
++      // replace the newly updated record.
++      db_query("UPDATE {hosting_site} SET last_cron=%d WHERE nid=%d", time(), $site->nid);
+
+-    // We are updating the site table here directly to avoid a possible race condition,
+-    // with the task queue. There exists a chance that they might both try to save the
+-    // same node at the same time, and then an old record from the cron queue might
+-    // replace the newly updated record.
+-    db_query("UPDATE {hosting_site} SET last_cron = %d WHERE nid = %d", time(), $site->nid);
++      // A small trick to avoid high load when still too many crons are started at once.
++      sleep(5);
++    }
    }
  }
 
-@@ -193,7 +201,7 @@ function hosting_advanced_cron_interval_
+@@ -193,7 +203,7 @@ function hosting_advanced_cron_interval_
      HOSTING_ADVANCED_CRON_SITE_DISABLED => t('Disabled'),
      HOSTING_ADVANCED_CRON_SITE_DEFAULT => t('Default'),
    );
