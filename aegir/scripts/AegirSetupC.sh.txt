@@ -410,7 +410,6 @@ download_o_contrib_six () {
   done
   rm -f *.tar.gz
   rm -f redis/redis.info
-  rm -f cache_backport/cache_backport.info
   touch ctrl-$_INSTALLER_VERSION
   download_textile
 }
