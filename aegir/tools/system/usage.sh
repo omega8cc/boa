@@ -25,8 +25,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON="redis expire purge path_alias_cache robotstxt filefield_nginx_progress"
-_MODULES_OFF="cache syslog dblog update l10n_update devel performance cookie_cache_bypass poormanscron supercron css_gzip javascript_aggregator"
+_MODULES_ON_SEVEN="redis expire purge robotstxt"
+_MODULES_ON_SIX="expire purge path_alias_cache robotstxt"
+_MODULES_OFF_SEVEN="syslog dblog update l10n_update devel performance"
+_MODULES_OFF_SIX="syslog dblog update l10n_update devel performance poormanscron supercron css_gzip javascript_aggregator"
 
 
 ###-------------SYSTEM-----------------###
@@ -128,8 +130,8 @@ EOF
 
 fix_o_contrib_symlink()
 {
-if [ "$_O_CONTRIB" != "NO" ] ; then
-  if [ -e "$Plr/web.config" ] && [ ! -e "$Plr/core" ] ; then
+if [ "$_O_CONTRIB" != "NO" ] && [ ! -e "$Plr/core" ] ; then
+  if [ -e "$Plr/web.config" ] ; then
     if [ ! -e "$Plr/modules/o_contrib_seven" ] ; then
       ln -s $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven
     fi
@@ -162,13 +164,9 @@ fi
 fix_modules()
 {
 if [ "$_MODULES" = "YES" ] ; then
-      searchStringA="off-7."
-      searchStringB="-5."
-      searchStringC="openpublic-off"
+      searchStringA="pressflow-5.23.50"
       case $Dir in
         *"$searchStringA"*) ;;
-        *"$searchStringB"*) ;;
-        *"$searchStringC"*) ;;
         *)
         if [ -e "$Dir/drushrc.php" ] ; then
           cd $Dir
@@ -176,9 +174,12 @@ if [ "$_MODULES" = "YES" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis cache syslog dblog -y &> /dev/null"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
             chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
-          else
-            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF -y &> /dev/null"
-            su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON -y &> /dev/null"
+          elif [ -e "$Plr/modules/o_contrib" ] ; then
+            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
+            su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
+          elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
+            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+            su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
           fi
         fi
         ;;
