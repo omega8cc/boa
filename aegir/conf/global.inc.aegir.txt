@@ -10,6 +10,9 @@ if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
   }
 }
 
+$cookie_domain = str_replace('..', '.', $cookie_domain);
+header("X-Cookie-Domain: " . $cookie_domain);
+
 // Fix for Mollom, CloudFlare and others running via Proxy.
 if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
