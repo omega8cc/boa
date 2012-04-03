@@ -107,6 +107,7 @@ Octopus can install the platforms listed below:
  Commerce Kickstart 1.4 ------- http://drupalcommerce.org
  Conference 1.0-beta2 --------- http://usecod.com
  Drupal 7.12 ------------------ http://drupal.org/drupal-7.12
+ Drupal 8.0-dev --------------- http://bit.ly/drupal-eight
  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
