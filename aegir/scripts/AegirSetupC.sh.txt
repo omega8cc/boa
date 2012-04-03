@@ -284,7 +284,6 @@ fi
 #
 # themes_for_d6
 themes_for_d6 () {
-msg "$_STATUS C: Downloading o_contrib themes, please wait.."
 cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta3.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz
@@ -297,7 +296,6 @@ cd /data/src/$_THIS_CORE
 #
 # themes_for_d6_original
 themes_for_d6_original () {
-msg "$_STATUS C: Downloading o_contrib themes, please wait.."
 cd /data/src/$_THIS_CORE/vanilla-6-pressflow/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta3.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz
@@ -310,7 +308,6 @@ cd /data/src/$_THIS_CORE
 #
 # themes_for_d7
 themes_for_d7 () {
-msg "$_STATUS C: Downloading o_contrib_seven themes, please wait.."
 cd $_CORE_DISTRO/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta8.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz

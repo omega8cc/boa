@@ -2930,7 +2930,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Running apt update, please wait..."
+msg "INFO: Running aptitude update, please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
@@ -2983,7 +2983,6 @@ else
 fi
 
 install_with_aptitude_deps () {
-  msg "INFO: Installing/updating system libraries and tools, please wait..."
   st_runner "$_INSTAPP $DEBDEPS" 2> /dev/null
 }
 install_percona_sql () {
