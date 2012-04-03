@@ -240,24 +240,62 @@ mrun () {
 	fi
 }
 #
+update_php_conf () {
+  if [ -z "$_THISHTIP" ] ; then
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
+  fi
+  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+    cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
+  fi
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+    cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  fi
+  if [ ! -e "/opt/local/lib/php.ini" ] ; then
+    mkdir -p /opt/local/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  fi
+  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+}
+#
 restore_default_php () {
-  cd /opt/etc
-  cp -af php.ini php.ini-pre-tuner-$_INSTALLER_VERSION-$_NOW
-  cp -af php-fpm.conf php-fpm.conf-pre-tuner-$_INSTALLER_VERSION-$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini ./
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf ./
+  msg "INFO: Restoring default PHP configuration"
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf           &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini                     &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini           &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini           &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini         &> /dev/null
 }
 #
 tune_php () {
-  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php.ini
-  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php-fpm.conf
+  msg "INFO: Tuning PHP configuration"
+  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php.ini              &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php-fpm.conf         &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/local/etc/php53.ini      &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/local/etc/php53-fpm.conf &> /dev/null
 }
 #
 restore_default_sql () {
+  msg "INFO: Restoring default SQL configuration"
   cd /etc/mysql
   mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf &> /dev/null
+  mv -f my.cnf.txt my.cnf
   _DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     _DB_SERVER=MariaDB
@@ -270,17 +308,19 @@ restore_default_sql () {
   fi
   cd /var/xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
-  sed -i "s/600/900/g" /var/xdrago/minute.sh
+  sed -i "s/600/900/g" /var/xdrago/minute.sh &> /dev/null
   chmod 700 /var/xdrago/minute.sh
 }
 #
 tune_sql () {
-  sed -i "s/900/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf
-  sed -i "s/600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh
-  sed -i "s/900/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh
+  msg "INFO: Tuning SQL configuration"
+  sed -i "s/900/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf     &> /dev/null
+  sed -i "s/600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh &> /dev/null
+  sed -i "s/900/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh &> /dev/null
 }
 #
 restore_default_nginx () {
+  msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/firewall/check
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/firewall/check/scan_nginx ./
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
@@ -294,11 +334,12 @@ restore_default_nginx () {
 }
 #
 tune_nginx () {
-  sed -i "s/critnumber = 300/critnumber = $_TUNE_NGINX_FIREWALL/g" /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/300/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf
-  sed -i "s/180/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf
+  msg "INFO: Tuning Nginx configuration"
+  sed -i "s/critnumber = 300/critnumber = $_TUNE_NGINX_FIREWALL/g" /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/300/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+  sed -i "s/180/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   if [ "$_TUNE_NGINX_CONNECT" = "OFF" ] ; then
-    sed -i "s/limit_conn/#limit_conn/g" /var/aegir/config/server_master/nginx.conf
+    sed -i "s/limit_conn/#limit_conn/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
     if [ -d "$_TUNE_HOSTMASTER" ] ; then
       for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
       do
@@ -309,14 +350,17 @@ tune_nginx () {
 }
 #
 restart_services () {
-  st_runner "service php-fpm restart" &> /dev/null
-  st_runner "service mysql restart" &> /dev/null
-  st_runner "service nginx restart" &> /dev/null
+  msg "INFO: Reloading services"
+  st_runner "service php-fpm reload"     &> /dev/null
+  st_runner "service php53-fpm reload"   &> /dev/null
+  st_runner "service mysql restart"      &> /dev/null
+  st_runner "service nginx reload"       &> /dev/null
   st_runner "bash /var/xdrago/FireStart" &> /dev/null
-  st_runner "service csf restart" &> /dev/null
+  st_runner "service csf restart"        &> /dev/null
 }
 #
 tune_web_server_config () {
+  msg "INFO: Default PHP-FPM and Nginx Tuning"
   if [ ! -z "$_L_PHP_FPM_WORKERS" ] ; then
     sed -i "s/max_children\">.*</max_children\">$_L_PHP_FPM_WORKERS</g"        /opt/etc/php-fpm.conf &> /dev/null
     sed -i "s/pm.start_servers =.*/pm.start_servers = $_L_PHP_FPM_WORKERS/g"   /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -329,7 +373,7 @@ tune_web_server_config () {
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g"                       /etc/nginx/nginx.conf &> /dev/null
   fi
-  sed -i "s/request_slowlog_timeout =.*/request_terminate_timeout = 30s/g"     /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 30s/g"       /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 300s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -342,6 +386,7 @@ tune_web_server_config () {
 }
 #
 tune_memory_limits () {
+  msg "INFO: Default Memory Tuning"
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
@@ -458,15 +503,16 @@ tune_memory_limits () {
   if [ "$_USE_PHP" -lt "256" ] ; then
     _USE_PHP=256
   fi
-  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini
-  sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
+  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini
-    sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini
+    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini &> /dev/null
   fi
-  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
-  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini
+  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
+  sed -i "s/888/$_USE_APC/g" /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
     sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
@@ -660,6 +706,7 @@ else
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi
+  update_php_conf
   tune_memory_limits
   restart_services
   msg "STATUS: Tuning stopped and default settings restored"
