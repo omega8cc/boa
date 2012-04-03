@@ -747,7 +747,7 @@ install_redis_src () {
 set_xterm () {
   _XTERM_TEST=$(grep $_INSTALLER_VERSION /root/.bashrc)
   if [[ "$_XTERM_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
-    sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc
+    sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc &> /dev/null
   else
     cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
@@ -765,7 +765,7 @@ kill_nash () {
       true
     else
       cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
-      sed -i "s/exit 0//g" /etc/rc.local
+      sed -i "s/exit 0//g" /etc/rc.local &> /dev/null
       echo "killall nash-hotplug" >> /etc/rc.local
       echo "exit 0" >> /etc/rc.local
       killall nash-hotplug &> /dev/null
@@ -795,7 +795,7 @@ enable_purge_cruft_machine () {
   else
     if [[ "$_THISHOST" =~ ".host8." ]] ; then
       echo "22 2    * * 7   root    bash /var/xdrago/purge_cruft.sh" >> /etc/crontab
-      sed -i "/^$/d" /etc/crontab
+      sed -i "/^$/d" /etc/crontab &> /dev/null
     fi
   fi
 }
@@ -815,7 +815,7 @@ update_lshell_conf () {
   else
     perl -p -i -e "s/warning_counter.*/warning_counter : 3\nstrict          : 0/g" /etc/lshell.conf
   fi
-  sed -i "s/strict.*:.*/strict          : 0/g" /etc/lshell.conf
+  sed -i "s/strict.*:.*/strict          : 0/g" /etc/lshell.conf &> /dev/null
   perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump'\]/g" /etc/lshell.conf
   perl -p -i -e "s/, 'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
   perl -p -i -e "s/,'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
@@ -823,36 +823,46 @@ update_lshell_conf () {
 #
 # Update PHP Config.
 update_php_conf () {
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  if [ -z "$_THISHTIP" ] ; then
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
+  fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
     cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   fi
   if [ ! -e "/opt/local/lib/php.ini" ] ; then
+    mkdir -p /opt/local/lib
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
+  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
 }
 #
 # Update SQL Config.
 update_sql_conf () {
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
     touch /var/log/check_for_crashed_tables_disabled
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
     sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
     sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
     sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
@@ -874,7 +884,7 @@ update_sql_conf () {
 update_nginx_conf () {
   if [ ! -e "/var/log/nginx_config_fixed" ] ; then
     cd /var/aegir
-    sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf
+    sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf &> /dev/null
     perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
     perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
     if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
@@ -908,16 +918,16 @@ update_global_inc_conf () {
 # Fix this on upgrade.
 fix_on_upgrade () {
   mkdir -p /var/backups/dragon/t
-  sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf
-  sed -i "s/^UMASK.*//g" /etc/default/login
+  sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
+  sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
   echo "UMASK=002" >> /etc/default/login
-  sed -i "/^$/d" /etc/default/login
-  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs
-  sed -i "s/^umask.*022/umask 002/g" /etc/profile
-  sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login
+  sed -i "/^$/d" /etc/default/login &> /dev/null
+  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
+  sed -i "s/^umask.*022/umask 002/g" /etc/profile &> /dev/null
+  sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login &> /dev/null
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
-  sed -i "/^$/d" /etc/pam.d/login
-  sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf
+  sed -i "/^$/d" /etc/pam.d/login &> /dev/null
+  sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
@@ -1131,11 +1141,11 @@ validate_local_ip () {
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_modern_include.conf
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_legacy_include.conf
+    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
+    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf
+      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
     fi
   fi
 }
@@ -1179,7 +1189,7 @@ tune_web_server_config () {
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g"                       /etc/nginx/nginx.conf &> /dev/null
   fi
-  sed -i "s/request_slowlog_timeout =.*/request_terminate_timeout = 30s/g"     /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 30s/g"       /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 300s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -1309,16 +1319,16 @@ tune_memory_limits () {
   if [ "$_USE_PHP" -lt "256" ] ; then
     _USE_PHP=256
   fi
-  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini
-  sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini
+  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini
-    sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini
+    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini &> /dev/null
   fi
-  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini
-  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini
+  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
   sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
-  sed -i "s/888/$_USE_APC/g" /etc/redis/redis.conf
+  sed -i "s/888/$_USE_APC/g" /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
     sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
@@ -1336,6 +1346,7 @@ tune_memory_limits () {
 #
 # Fix locales.
 fix_locales () {
+  msg "INFO: Running locales test and update, please wait..."
   _LOC_TEST=`locale 2>&1`
   if [[ "$_LOC_TEST" =~ "Cannot" ]] ; then
     _LOCALE_TEST=BROKEN
@@ -1442,7 +1453,7 @@ barracuda_cnf () {
     msg "NOTE: It will *override* all settings in the Barracuda script."
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
-      sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Now always enabled by default./g" /root/.barracuda.cnf
+      sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Now always enabled by default./g" /root/.barracuda.cnf &> /dev/null
     fi
     _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
     if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
@@ -1453,8 +1464,8 @@ barracuda_cnf () {
     fi
     _PHP_INSTALL_NEW_TEST=$(grep _PHP_INSTALL_NEW /root/.barracuda.cnf)
     if [[ "$_PHP_INSTALL_NEW_TEST" =~ "_PHP_INSTALL_NEW" ]] ; then
-      sed -i "s/.*_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf
-      sed -i "/^$/d" /root/.barracuda.cnf
+      sed -i "s/.*_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
@@ -1483,7 +1494,7 @@ barracuda_cnf () {
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_CSF_TEST" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
       if [ -e "/var/log/custom.csf.log" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_CSF.*/_CUSTOM_CONFIG_CSF=YES ### Forced because /var/log/custom.csf.log exists./g" /root/.barracuda.cnf
+        sed -i "s/.*_CUSTOM_CONFIG_CSF.*/_CUSTOM_CONFIG_CSF=YES ### Forced because /var/log/custom.csf.log exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
@@ -1491,7 +1502,7 @@ barracuda_cnf () {
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_SQL_TEST" =~ "_CUSTOM_CONFIG_SQL" ]] ; then
       if [ -e "/etc/mysql/custom.my.cnf" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_SQL.*/_CUSTOM_CONFIG_SQL=YES ### Forced because /etc/mysql/custom.my.cnf exists./g" /root/.barracuda.cnf
+        sed -i "s/.*_CUSTOM_CONFIG_SQL.*/_CUSTOM_CONFIG_SQL=YES ### Forced because /etc/mysql/custom.my.cnf exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
@@ -1499,7 +1510,7 @@ barracuda_cnf () {
     _CUSTOM_CONFIG_PHP_5_2_TEST=$(grep _CUSTOM_CONFIG_PHP_5_2 /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_PHP_5_2_TEST" =~ "_CUSTOM_CONFIG_PHP_5_2" ]] ; then
       if [ -e "/opt/etc/custom.php.ini" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_2.*/_CUSTOM_CONFIG_PHP_5_2=YES ### Forced because /opt/etc/custom.php.ini exists./g" /root/.barracuda.cnf
+        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_2.*/_CUSTOM_CONFIG_PHP_5_2=YES ### Forced because /opt/etc/custom.php.ini exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
@@ -1507,7 +1518,7 @@ barracuda_cnf () {
     _CUSTOM_CONFIG_PHP_5_3_TEST=$(grep _CUSTOM_CONFIG_PHP_5_3 /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_PHP_5_3_TEST" =~ "_CUSTOM_CONFIG_PHP_5_3" ]] ; then
       if [ -e "/opt/etc/custom.php53.ini" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_3.*/_CUSTOM_CONFIG_PHP_5_3=YES ### Forced because /opt/etc/custom.php53.ini exists./g" /root/.barracuda.cnf
+        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_3.*/_CUSTOM_CONFIG_PHP_5_3=YES ### Forced because /opt/etc/custom.php53.ini exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
@@ -1557,7 +1568,7 @@ barracuda_cnf () {
 #
 # Running apt update.
 run_apt_update_again () {
-  msg "INFO: Running apt update, please wait..."
+  msg "INFO: Running aptitude update, please wait..."
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
@@ -1954,7 +1965,7 @@ install_upgrade_nginx () {
     fi
     wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
     tar -xzf nginx-$_NGINX_VERSION.tar.gz
-    sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h
+    sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h &> /dev/null
     if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
       _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
     elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then
@@ -2679,7 +2690,7 @@ install_pdnsd_cache () {
   mrun "sleep 1"
   cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
   st_runner "$_INSTALL pdnsd resolvconf";
-  sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd
+  sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
   st_runner "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
@@ -2703,8 +2714,8 @@ if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
 fi
 if [ -f "/etc/default/dhcpcd" ] ; then
   _INSTALL_PDNSD=YES
-  sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd
-  sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd
+  sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
+  sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ "$_INSTALL_PDNSD" = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
@@ -2972,6 +2983,7 @@ else
 fi
 
 install_with_aptitude_deps () {
+  msg "INFO: Installing/updating system libraries and tools, please wait..."
   st_runner "$_INSTAPP $DEBDEPS" 2> /dev/null
 }
 install_percona_sql () {
@@ -3200,8 +3212,8 @@ fi
 ### required if you have closed outgoing smtp port and you have to use smtp relay
 ###
 if [ ! -z "$_SMTP_RELAY_HOST" ] ; then
-  sed -i "s/$_SMTP_RELAY_HOST//g" /etc/postfix/main.cf
-  sed -i "s/relayhost =/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf
+  sed -i "s/$_SMTP_RELAY_HOST//g" /etc/postfix/main.cf &> /dev/null
+  sed -i "s/relayhost =/relayhost = $_SMTP_RELAY_HOST/g" /etc/postfix/main.cf &> /dev/null
   postfix reload &> /dev/null
 fi
 ###
@@ -3216,7 +3228,7 @@ _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
 if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
   true
   msg "INFO: No fix required"
-  sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx
+  sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
 else
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
@@ -3305,10 +3317,10 @@ if [ -d "/var/xdrago" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     _NGINX_DOS_LIMIT=188
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh
-  sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh
+  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
+  sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   if [ -e "/var/xdrago/cron/custom.txt" ] ; then
@@ -3317,20 +3329,20 @@ if [ -d "/var/xdrago" ] ; then
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/600/300/g" /var/xdrago/minute.sh
-    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
-    sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
+    sed -i "s/600/300/g" /var/xdrago/minute.sh &> /dev/null
+    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
+    sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx &> /dev/null
     echo "echo rotate > /var/log/nginx/access.log" >> /var/xdrago/clear.sh
-    sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" /var/xdrago/purge_binlogs.sh
+    sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" /var/xdrago/purge_binlogs.sh &> /dev/null
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
   else
-    sed -i "s/600/900/g" /var/xdrago/minute.sh
+    sed -i "s/600/900/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
-    sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh
-    sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
+    sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh &> /dev/null
+    sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh &> /dev/null
   fi
 fi
 if [ "$_STATUS" = "INIT" ] ; then
@@ -3349,30 +3361,28 @@ if [ "$_STATUS" = "INIT" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf
-  if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf
-  fi
+  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     _NGINX_DOS_LIMIT=188
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/firewall/check/scan_nginx
-  sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh
-  sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh
+  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
+  sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/600/300/g" /var/xdrago/minute.sh
-    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root
-    sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx
+    sed -i "s/600/300/g" /var/xdrago/minute.sh &> /dev/null
+    sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
+    sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx &> /dev/null
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
   else
-    sed -i "s/600/900/g" /var/xdrago/minute.sh
-    sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh
-    sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh
+    sed -i "s/600/900/g" /var/xdrago/minute.sh &> /dev/null
+    sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh &> /dev/null
+    sed -i "s/rm -f -r \/tmp/true\n#rm -f -r \/tmp/g" /var/xdrago/clear.sh &> /dev/null
   fi
 fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
@@ -3446,9 +3456,7 @@ fi
 if [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
   mkdir -p /opt/local/etc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
-  if [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf
-  fi
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   _PHP_INSTALL_REQUIRED=YES
 fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
@@ -3837,8 +3845,8 @@ if [ ! -e "/var/log/umask_fixed.log" ] ; then
   mrun "sleep 1"
   mkdir -p /var/www
   echo "UMASK=002" >> /etc/default/login
-  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs
-  sed -i "s/umask.*022/umask 002/g" /etc/profile
+  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
+  sed -i "s/umask.*022/umask 002/g" /etc/profile &> /dev/null
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   echo "umask 002" >> /var/www/.profile
   chown -R www-data:www-data /var/www/* &> /dev/null
@@ -3897,7 +3905,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   chmod 700 /usr/local/sbin/php-fpm &> /dev/null
   mkdir -p /var/backups/dragon/t
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
   if [ "$_DB_SERVER" = "Percona" ] ; then
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
@@ -4066,7 +4074,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
   fi
   cd /var/aegir
-  sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf
+  sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf &> /dev/null
   perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
   perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
   rm -f /etc/nginx/sites-available/default
@@ -4351,7 +4359,7 @@ fi
 ###--------------------###
 _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
 if [ -e "$_CHIVE_VHOST" ] ; then
-  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CHIVE_VHOST
+  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CHIVE_VHOST &> /dev/null
 fi
 
 
@@ -4397,7 +4405,7 @@ fi
 ###--------------------###
 _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
 if [ -e "$_SQLBUDDY_VHOST" ] ; then
-  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_SQLBUDDY_VHOST
+  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_SQLBUDDY_VHOST &> /dev/null
 fi
 
 
@@ -4413,7 +4421,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
         git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
-        sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php
+        sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
         chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
         validate_public_ip &> /dev/null
@@ -4452,7 +4460,7 @@ if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; t
 fi
 _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
 if [ -e "$_CGP_VHOST" ] ; then
-  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CGP_VHOST
+  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CGP_VHOST &> /dev/null
 fi
 
 
@@ -4506,7 +4514,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       cd /etc/bind
       rm -f named.conf.options
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options ./
-      sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options
+      sed -i "s/127.0.1.1/$_THISHTIP/g" named.conf.options &> /dev/null
       st_runner "service bind9 restart" &> /dev/null
       if [ ! -e "/etc/init.d/bind" ] ; then
         ln -s /etc/init.d/bind9 /etc/init.d/bind
@@ -4552,9 +4560,9 @@ if [ ! -e "/root/.my.cnf" ] ; then
   echo "[client]" >> /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
   echo "password=\"$PASWD\"" >> /root/.my.cnf
-  chmod 0600 /root/.my.cnf &> /dev/null
+  chmod 0600 /root/.my.cnf
   if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
     touch /var/log/check_for_crashed_tables_disabled
     st_runner "service mysql restart" &> /dev/null
     mrun "sleep 1"
@@ -4642,11 +4650,11 @@ csf_install () {
   cd /etc/csf
   mv -f csf.conf csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf ./
-  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf
-  sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,$_SSH_PORT,/g" /etc/csf/csf.conf
+  sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf &> /dev/null
+  sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,$_SSH_PORT,/g" /etc/csf/csf.conf &> /dev/null
   chmod 600 /etc/csf/csf.conf &> /dev/null
-  sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config
-  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+  sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config &> /dev/null
+  sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
   st_runner "service ssh restart" &> /dev/null
   msg "INFO: csf/lfd firewall installation completed"
   mrun "sleep 1"
@@ -4687,7 +4695,7 @@ if [ -e "/usr/sbin/csf" ] ; then
     fi
   fi
   if [ -e "/var/xdrago/log/lastFire" ] ; then
-    sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root
+    sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
     rm -f /var/xdrago/log/lastFire
     st_runner "service csf restart" &> /dev/null
     st_runner "service lfd restart" &> /dev/null
