@@ -71,6 +71,7 @@ msg () {
 export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
+  msg "UPGRADE INFO: Downloading drush, please wait.."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
@@ -93,6 +94,7 @@ hostmaster_dr_up () {
 }
 #
 hostmaster_mv_up () {
+  msg "UPGRADE INFO: Moving old directories"
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
@@ -116,7 +118,7 @@ hostmaster_mv_up () {
 #
 hostmaster_go_up () {
   if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
-    msg "UPGRADE INFO: Provision already seems to be installed"
+    msg "UPGRADE INFO: Provision seems to be installed already"
   else
     msg "UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
     mkdir -p $_ROOT/.drush
@@ -126,13 +128,13 @@ hostmaster_go_up () {
         _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
         git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
         _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
-        sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
+        sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
         rm -f -r $_ROOT/.drush/provision/.git
       else
         git clone $_BOA_REPO_GIT_URL/provision.git $_ROOT/.drush/provision &> /dev/null
         _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
         rm -f -r $_ROOT/.drush/provision/.git
       fi
     else
@@ -141,6 +143,7 @@ hostmaster_go_up () {
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
       rm -f provision-$_AEGIR_VERSION.tar.gz
     fi
+    msg "UPGRADE INFO: Downloading drush extensions, please wait.."
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.3.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
@@ -165,15 +168,16 @@ hostmaster_go_up () {
     fi
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
   fi
   cd $_PREV_AEGIR_ROOT
 }
 #
 hostmaster_mi_up () {
+  msg "UPGRADE INFO: Running hostmaster-migrate, please wait..."
   export DEBIAN_FRONTEND=noninteractive
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y -d
@@ -241,7 +245,7 @@ mkdir -p $_ROOT/host_master
 chmod 711 $_ROOT/host_master &> /dev/null
 msg "UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
 if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "UPGRADE INFO: Test OK, we can proceed with the Hostmaster upgrade"
+  msg "UPGRADE INFO: Test OK, we can proceed with Hostmaster upgrade"
   hostmaster_dr_up
   hostmaster_mv_up
   hostmaster_go_up

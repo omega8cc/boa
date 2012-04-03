@@ -152,13 +152,13 @@ else
       _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
       git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $AEGIR_HOME/.drush/provision &> /dev/null
       _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make
-      sed -i "s/hostmaster.git/1074912.git/g" $AEGIR_HOME/.drush/provision/aegir.make
+      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+      sed -i "s/hostmaster.git/1074912.git/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
       rm -f -r $AEGIR_HOME/.drush/provision/.git
     else
       git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
       _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make
+      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
       rm -f -r $AEGIR_HOME/.drush/provision/.git
     fi
   else
