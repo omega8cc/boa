@@ -1837,6 +1837,7 @@ fi
 openchurch_install () {
 ###---### Open Church
 #
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; then
 echo " "
@@ -1885,6 +1886,7 @@ mrun "sleep 1"
 else
   msg "STATUS: $_F_OPENCHURCH installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 fi
