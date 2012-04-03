@@ -267,7 +267,7 @@ create_shared_dirs () {
 #
 # fix for FServer broken due to required now strongarm
 #
-feature_server_fix_002() {
+feature_server_fix_002 () {
 if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
 for i in $REVISIONS; do
@@ -294,8 +294,9 @@ fi
 #
 # remove incompatible modules from o_contrib
 #
-remove_incompatible_modules_001() {
+remove_incompatible_modules_001 () {
 if [ ! -e "/var/log/incompatible-modules-removed-001l.log" ] ; then
+msg "INFO: Removing incompatible modules from o_contrib, please wait..."
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="cache cache_backport redis drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
 for i in $REVISIONS; do
@@ -303,6 +304,7 @@ for i in $REVISIONS; do
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
+        msg "INFO: Removed /data/all/$i/o_contrib/$m"
       fi
     done
     cd /data/all/$i/o_contrib
@@ -322,6 +324,7 @@ for i in $REVISIONS; do
       git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
     fi
+    msg "INFO: Added new versions in /data/all/$i/o_contrib: redis purge expire backup_migrate cache_backport"
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -338,8 +341,9 @@ fi
 #
 # remove incompatible modules from o_contrib_seven
 #
-remove_incompatible_modules_002() {
+remove_incompatible_modules_002 () {
 if [ ! -e "/var/log/incompatible-modules-removed-002l.log" ] ; then
+msg "INFO: Removing incompatible modules from o_contrib_seven, please wait..."
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="redis session443 cookie_cache_bypass_adv purge expire agrcache"
 for i in $REVISIONS; do
@@ -347,6 +351,7 @@ for i in $REVISIONS; do
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
+        msg "INFO: Removed /data/all/$i/o_contrib_seven/$m"
       fi
     done
     cd /data/all/$i/o_contrib_seven
@@ -359,6 +364,7 @@ for i in $REVISIONS; do
       git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
       git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
     fi
+    msg "INFO: Added new versions in /data/all/$i/o_contrib_seven: redis purge expire"
   fi
 done
 touch /var/log/incompatible-modules-removed-002l.log
