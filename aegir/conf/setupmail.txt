@@ -56,7 +56,7 @@ starting with 1+ Aegir Standard or SSD Core:
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
- Acquia Commons 2.5 ----------- http://acquia.com/drupalcommons
+ Acquia Commons 2.6 ----------- http://acquia.com/drupalcommons
  Commerce Kickstart 1.4 ------- http://drupalcommerce.org
  MartPlug 1.0-dev ------------- http://drupal.org/project/martplug
  NodeStream 1.4 --------------- http://nodestream.org
