@@ -52,7 +52,7 @@ starting with 1+ Aegir Standard or SSD Core:
  Pressflow 5.23 --------------- http://pressflow.org
  Pressflow 6.25.1 ------------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
- Ubercart 2.7 ----------------- http://ubercart.org
+ Ubercart 2.7.1 --------------- http://ubercart.org
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 

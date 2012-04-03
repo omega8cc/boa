@@ -676,7 +676,7 @@ _F_OPENPUBLISH="OpenPublish 3.0-a7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 2.0-b13 $_SMALLCORE6 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
-_F_UBERCART="Ubercart 2.7 $_SMALLCORE6 P.$_THIS_CORE"
+_F_UBERCART="Ubercart 2.7.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_VIDEOLA="Videola 1.0-a2 $_SMALLCORE6 P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
@@ -2295,10 +2295,20 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
   cd $_CORE_DISTRO/profiles/uberdrupal/modules
+  wget -q -U iCab http://ftp.drupal.org/files/projects/admin_menu-6.x-3.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/cck-6.x-2.9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-6.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield-6.x-3.10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-6.x-3.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imageapi-6.x-1.10.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imagecache-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imagefield-6.x-3.10.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-6.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/lightbox2-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/rules-6.x-1.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/skinr-6.x-1.6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-6.x-1.18.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-3.0.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
@@ -2308,6 +2318,17 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE_DISTRO/profiles/uberdrupal/modules/ubercart
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/ubercart-1167276-reroll.patch ./
   patch -p1 < ubercart-1167276-reroll.patch &> /dev/null
+  cd $_CORE_DISTRO/profiles/uberdrupal/modules/imagecache
+  # http://drupal.org/node/1243258#comment-4850634
+  wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
+  patch -p1 < imagecache-1243258-5.patch &> /dev/null
+  cd $_CORE_DISTRO/profiles/uberdrupal/themes
+  wget -q -U iCab http://ftp.drupal.org/files/projects/fusion-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/acquia_prosper-6.x-1.1.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
   cd $_CORE_DISTRO
   create_dirs
   ln -s /data/all/000/translations $_CORE_DISTRO/profiles/uberdrupal/translations
