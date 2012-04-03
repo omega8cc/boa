@@ -239,6 +239,7 @@ _LOG=/opt/tmp/aegir-install.log
 #
 # Create shared dirs
 create_shared_dirs () {
+  msg "$_STATUS A: Creating shared directories, please wait..."
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
     mkdir -p /data/src
@@ -306,8 +307,8 @@ for i in $REVISIONS; do
     done
     cd /data/all/$i/o_contrib
     if [ -d "/data/all/$i/o_contrib/boost" ] ; then
-      sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install
-      sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install
+      sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
+      sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
@@ -369,7 +370,7 @@ fi
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
     fi
   fi
 }
@@ -683,8 +684,8 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
   else
     msg "$_STATUS A: Set/rewrite remote cache IP address and disable local caches"
     mrun "sleep 1"
-    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /data/conf/global.inc
-    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /var/aegir/config/includes/global.inc
+    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /data/conf/global.inc &> /dev/null
+    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /var/aegir/config/includes/global.inc &> /dev/null
     service redis-server stop &> /dev/null
     update-rc.d -f redis-server remove &> /dev/null
     service redis stop &> /dev/null
@@ -807,7 +808,7 @@ fi
 # fi
 rm -f /var/spool/cron/crontabs/$_USER
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
-  sed -i "s/\*\/1 \* \* \* \* bash \/var\/xdrago\/run/#*\/1 * * * * bash \/var\/xdrago\/run/g" /var/spool/cron/crontabs/root
+  sed -i "s/\*\/1 \* \* \* \* bash \/var\/xdrago\/run/#*\/1 * * * * bash \/var\/xdrago\/run/g" /var/spool/cron/crontabs/root &> /dev/null
   echo -e "* * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
   touch /var/log/cron_aegir_off.pid
 fi
@@ -858,7 +859,7 @@ fi
 ###---### Add access to backups for older installs
 #
 if [ ! -e "$_ROOT/log/backups.access.open" ] ; then
-  sed -i "s/\/$_USER\/static'\]/\/$_USER\/static', '\/data\/disk\/$_USER\/backups'\]/g" /etc/lshell.conf
+  sed -i "s/\/$_USER\/static'\]/\/$_USER\/static', '\/data\/disk\/$_USER\/backups'\]/g" /etc/lshell.conf &> /dev/null
   chmod 0750 $_ROOT/backups
   touch $_ROOT/log/backups.access.open
 fi
@@ -914,7 +915,7 @@ fi
 ###---### Add access to the clients directory for older installs
 #
 if [ ! -e "$_ROOT/log/clients.access.open" ] ; then
-  sed -i "s/\/$_USER\/backups'\]/\/$_USER\/backups', '\/data\/disk\/$_USER\/clients'\]/g" /etc/lshell.conf
+  sed -i "s/\/$_USER\/backups'\]/\/$_USER\/backups', '\/data\/disk\/$_USER\/clients'\]/g" /etc/lshell.conf &> /dev/null
   chmod 0750 $_ROOT/clients
   touch $_ROOT/log/clients.access.open
 fi
@@ -1201,20 +1202,20 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
       mv -f $_ROOT/log/upgrademail.txt $_ROOT/log/upgrademail-pre-$_THIS_CORE.txt &> /dev/null
     fi
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/upgrademail.txt ./
-    sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt
-    sed -i "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt
-    sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt
-    sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/upgrademail.txt
+    sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/upgrademail.txt &> /dev/null
+    sed -i "s/dragon/$_USER/g" $_ROOT/log/upgrademail.txt &> /dev/null
+    sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/upgrademail.txt &> /dev/null
+    sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/upgrademail.txt &> /dev/null
   else
     _SEND_UPGRADE_EMAIL=NO
   fi
 elif [ "$_STATUS" = "INIT" ] ; then
  cd $_ROOT/log
  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/setupmail.txt ./
- sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt
- sed -i "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt
- sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt
- sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt
+ sed -i "s/aegir.dragon.ny.host8.biz/$_DOMAIN/g" $_ROOT/log/setupmail.txt &> /dev/null
+ sed -i "s/dragon/$_USER/g" $_ROOT/log/setupmail.txt &> /dev/null
+ sed -i "s/FN8rXcQn/$_PASWD/g" $_ROOT/log/setupmail.txt &> /dev/null
+ sed -i "s/166.84.6.231/$_THISHTIP/g" $_ROOT/log/setupmail.txt &> /dev/null
 fi
 fi
 
