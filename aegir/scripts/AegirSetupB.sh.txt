@@ -537,7 +537,7 @@ cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
-  $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules revision_deletion-6.x-1.x-dev provision_cdn-6.x-2.x-dev strongarm-6.x-2.1 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules hosting_task_gc-6.x-1.0-alpha1 revision_deletion-6.x-1.x-dev provision_cdn-6.x-2.x-dev strongarm-6.x-2.1 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
   cd $_AEGIR_ROOT/sites/all/modules/hosting_advanced_cron
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/hosting_advanced_cron.patch ./
   patch -p1 < hosting_advanced_cron.patch &> /dev/null
@@ -558,7 +558,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD en hosting_civicrm_cron -y &> /dev/null
   fi
-  $_DRUSHCMD en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect hosting_advanced_cron revision_deletion -y &> /dev/null
+  $_DRUSHCMD en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect hosting_advanced_cron revision_deletion hosting_task_gc -y &> /dev/null
   $_DRUSHCMD dis syslog -y &> /dev/null
   $_DRUSHCMD dis cache -y &> /dev/null
   $_DRUSHCMD dis path_alias_cache -y &> /dev/null

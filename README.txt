@@ -247,6 +247,7 @@ Hostmaster [E]xtensions [S]atellite:
  hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
  hosting_cdn ---------------- [D6] ------ [S] [B]      [ES]
  hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [ES]
+ hosting_task_gc ------------ [D6] ------ [S] [B] [FE] [ES]
  protect_critical_users ----- [D6] ------ [S] [B] [FE] [ES]
  revision_deletion ---------- [D6] ------ [S] [B] [FE] [ES]
  strongarm ------------------ [D6] ------ [S] [B] [FE] [ES]
