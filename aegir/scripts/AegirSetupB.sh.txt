@@ -523,9 +523,9 @@ msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mrun "sleep 1"
 mkdir -p $_AEGIR_ROOT/sites/all/modules
 cd $_AEGIR_ROOT/sites/all/modules
-wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.9.tar.gz
-tar -xzf aegir_custom_settings-6.x-1.9.tar.gz
-rm -f aegir_custom_settings-6.x-1.9.tar.gz
+wget -q -U iCab http://files.aegir.cc/dev/aegir_custom_settings-6.x-1.10.tar.gz
+tar -xzf aegir_custom_settings-6.x-1.10.tar.gz
+rm -f aegir_custom_settings-6.x-1.10.tar.gz
 git clone --branch master http://git.drupal.org/project/hosting_civicrm_cron.git &> /dev/null
 rm -f -r hosting_civicrm_cron/.git &> /dev/null
 git clone --branch master http://git.drupal.org/project/hosting_advanced_cron.git &> /dev/null
