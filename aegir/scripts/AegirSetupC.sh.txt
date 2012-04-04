@@ -618,6 +618,16 @@ if [ `whoami` = "root" ] ; then
 fi
 
 
+###---### Checking status..
+#
+msg "$_STATUS C: Checking status.."
+mrun "sleep 1"
+if [ -e "$_ROOT/aegir.sh" ] ; then
+  _STATUS=UPGRADE
+  cd $_ROOT
+fi
+
+
 ###---### Hot Sauce check..
 #
 msg "$_STATUS C: Hot Sauce check.."
@@ -638,11 +648,6 @@ else
   _CORE="/data/all/$_ALL_DISTRO"
   _THIS_CORE="$_ALL_DISTRO"
   msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
-fi
-if [ -d "$_CORE/o_contrib" ] ; then
-  _STATUS=CLONE
-else
-  _STATUS=INIT
 fi
 
 
@@ -705,11 +710,6 @@ if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6
   mrun "sleep 1"
   prepare_pressflow_core
 fi
-# if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/vanilla-6-pressflow/misc/ctrl-$_INSTALLER_VERSION" ] ; then
-#   msg "$_STATUS C: Preparing Pressflow core Original, please wait.."
-#   mrun "sleep 1"
-#   prepare_pressflow_core_original
-# fi
 if [ -d "$_CORE/o_contrib/varnish" ] ; then
   rm -f -r $_CORE/o_contrib/varnish &> /dev/null
 fi
