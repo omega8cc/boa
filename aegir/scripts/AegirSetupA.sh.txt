@@ -320,6 +320,7 @@ for i in $REVISIONS; do
     done
     rm -f *.tar.gz
     rm -f redis/redis.info
+    sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     if [ "$_PURGE_MODE" = "ON" ] ; then
       git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null

@@ -412,6 +412,7 @@ msg "$_STATUS C: Downloading o_contrib modules, please wait.."
   done
   rm -f *.tar.gz
   rm -f redis/redis.info
+  sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
   touch ctrl-$_INSTALLER_VERSION
   download_textile
 }
