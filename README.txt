@@ -161,7 +161,8 @@ so we marked them as [S]oft[E]nabled.
 
 Here is a complete list with corresponding flags for every
 module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
-[S]oft[E]nabled or [F]orce[D]isabled.
+[S]oft[E]nabled or [F]orce[D]isabled. [NA] means that
+this module is used without the need to enable it.
 
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].
@@ -175,13 +176,14 @@ Contrib:
  backup_migrate ------------- [D6,D7] --- [S] [B]
  blockcache_alter ----------- [D6,D7] --- [S] [B]
  boost ---------------------- [D6,D7] --- [S] [B]
- cache_backport ------------- [D6] ------ [S] [B] [FE]
+ cache_backport ------------- [D6] ------ [S] [B] [NA]
  ckeditor ------------------- [D6,D7] --- [S]
  config_perms --------------- [D6,D7] --- [S] [B]
  core_library --------------- [D7] ------ [S] [B]
  css_emimage ---------------- [D6,D7] --- [S] [B]
+ css_gzip ------------------- [D6] -------------- [FD]
  dbtuner -------------------- [D6] ------ [S] [B]
- devel ---------------------- [D6,D7] --- [FD]
+ devel ---------------------- [D6,D7] ----------- [FD]
  esi ------------------------ [D6] ------ [S] [B]
  expire --------------------- [D6,D7] --- [S] [B] [FE]
  fbconnect ------------------ [D6,D7] --- [S]
@@ -192,21 +194,23 @@ Contrib:
  httprl --------------------- [D6,D7] --- [S] [B]
  imagecache ----------------- [D6,D7] --- [S]
  imagecache_external -------- [D6,D7] --- [S]
- l10n_update ---------------- [D6,D7] --- [FD]
+ javascript_aggregator ------ [D6] -------------- [FD]
+ l10n_update ---------------- [D6,D7] ----------- [FD]
  login_security ------------- [D6] ------ [S] [B]
  nocurrent_pass ------------- [D7] ------ [S] [B]
- poormanscron --------------- [D6] ------ [FD]
+ performance ---------------- [D6,D7] ----------- [FD]
+ poormanscron --------------- [D6] -------------- [FD]
  private_upload ------------- [D6] ------ [S] [B]
  purge ---------------------- [D6,D7] --- [S] [B] [FE]
  readonlymode --------------- [D6,D7] --- [S] [B]
- redis ---------------------- [D6,D7] --- [S] [B] [FE]
+ redis ---------------------- [D6,D7] --- [S] [B] [NA]
  responsive_images ---------- [D7] ------ [S]
  robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
  rubik ---------------------- [D6,D7] --- [S] [B] [SE]
  seckit --------------------- [D6,D7] --- [S] [B]
  securesite ----------------- [D6] ------ [S] [B]
  site_verify ---------------- [D6,D7] --- [S] [B]
- supercron ------------------ [D6] ------ [FD]
+ supercron ------------------ [D6] -------------- [FD]
  taxonomy_edge -------------- [D6,D7] --- [S] [B]
  textile -------------------- [D6,D7] --- [S] [B]
  tinybrowser ---------------- [D6,D7] --- [S]
@@ -219,30 +223,32 @@ Contrib:
 
 Core:
 
- cookie_cache_bypass -------- [D6] ------ [FD]
- dblog ---------------------- [D6,D7] --- [FD]
- path_alias_cache ----------- [D6] ------ [FE]
- syslog --------------------- [D6,D7] --- [FD]
- update --------------------- [D6,D7] --- [FD]
+ cookie_cache_bypass -------- [D6] -------------- [FD]
+ dblog ---------------------- [D6,D7] ----------- [FD]
+ path_alias_cache ----------- [D6] -------------- [FE]
+ syslog --------------------- [D6,D7] ----------- [FD]
 
 Provision [E]xtensions [M]aster [S]atellite:
 
- provision_boost ------------ [D6,D7] --- [S] [B] [FE] [EM,ES]
- provision_civicrm ---------- [D6,D7] --- [S] [B] [FE] [ES]
- registry_rebuild ----------- [D6,D7] --- [S] [B] [FE] [EM,ES]
+ provision_boost ------------ [D6,D7] --- [S] [B] [EM,ES]
+ provision_cdn -------------- [D6,D7] --- [S] [B] [EM,ES]
+ provision_civicrm ---------- [D6,D7] --- [S] [B] [ES]
+ registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
 
-Hostmaster [E]xtensions [M]aster [S]atellite:
+Hostmaster [E]xtensions [S]atellite:
 
  aegir_custom_settings ------ [D6] ------ [S] [B] [FE] [ES]
  css_emimage ---------------- [D6] ------ [S] [B] [FE] [ES]
  ctools --------------------- [D6] ------ [S] [B] [FE] [ES]
  features ------------------- [D6] ------ [S] [B] [FE] [ES]
  features_extra ------------- [D6] ------ [S] [B] [FE] [ES]
+ hosting_advanced_cron ------ [D6] ------ [S] [B] [FE] [ES]
  hosting_backup_gc ---------- [D6] ------ [S] [B]      [ES]
  hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
- hosting_client ------------- [D6] ------ [S] [B] [FE] [EM,ES]
- hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [EM,ES]
+ hosting_cdn ---------------- [D6] ------ [S] [B]      [ES]
+ hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [ES]
  protect_critical_users ----- [D6] ------ [S] [B] [FE] [ES]
+ revision_deletion ---------- [D6] ------ [S] [B] [FE] [ES]
  strongarm ------------------ [D6] ------ [S] [B] [FE] [ES]
  userprotect ---------------- [D6] ------ [S] [B] [FE] [ES]
 
