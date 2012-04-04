@@ -25,7 +25,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON_SEVEN="redis expire purge robotstxt filefield_nginx_progress"
+_MODULES_ON_SEVEN="expire purge robotstxt filefield_nginx_progress"
 _MODULES_ON_SIX="expire purge path_alias_cache robotstxt filefield_nginx_progress"
 _MODULES_OFF_SEVEN="syslog dblog l10n_update devel performance"
 _MODULES_OFF_SIX="syslog dblog l10n_update devel performance poormanscron supercron css_gzip javascript_aggregator"
