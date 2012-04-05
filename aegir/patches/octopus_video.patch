@@ -1,0 +1,89 @@
+diff -urp a/octopus_video/modules/features/video_core/video_core.strongarm.inc b/octopus_video/modules/features/video_core/video_core.strongarm.inc
+--- a/octopus_video/modules/features/video_core/video_core.strongarm.inc	2012-04-03 12:12:51.000000000 -0400
++++ b/octopus_video/modules/features/video_core/video_core.strongarm.inc	2012-04-04 21:26:51.000000000 -0400
+@@ -293,7 +293,7 @@ function video_core_strongarm() {
+   $strongarm->disabled = FALSE; /* Edit this to true to make a default strongarm disabled initially */
+   $strongarm->api_version = 1;
+   $strongarm->name = 'videojs_directory';
+-  $strongarm->value = 'profiles/octopus/libraries/video-js/video-js';
++  $strongarm->value = 'profiles/octopus_video/libraries/video-js';
+   $export['videojs_directory'] = $strongarm;
+
+   $strongarm = new stdClass;
+diff -urp a/octopus_video/octopus_video.info b/octopus_video/octopus_video.info
+--- a/octopus_video/octopus_video.info	2012-04-03 12:12:51.000000000 -0400
++++ b/octopus_video/octopus_video.info	2012-04-04 22:52:53.000000000 -0400
+@@ -16,8 +16,8 @@ dependencies[] = statistics
+ dependencies[] = syslog
+
+ ; Contrib
+-dependencies[] = admin_menu
+-dependencies[] = admin_menu_toolbar
++dependencies[] = zencoderapi
++dependencies[] = toolbar
+ dependencies[] = amazons3
+ dependencies[] = awssdk
+ dependencies[] = awssdk_ui
+@@ -68,4 +68,8 @@ dependencies[]  = video_user
+
+ ; custom
+ dependencies[] = jwplayer
+-dependencies[] = octopus_helper
+\ No newline at end of file
++dependencies[] = octopus_helper
++
++version = "1.0-alpha5"
++project = "octopus_video"
++
+diff -urp a/octopus_video/octopus_video.install b/octopus_video/octopus_video.install
+--- a/octopus_video/octopus_video.install	2012-04-03 12:12:51.000000000 -0400
++++ b/octopus_video/octopus_video.install	2012-04-04 23:05:32.000000000 -0400
+@@ -5,9 +5,10 @@
+  */
+ function octopus_video_install() {
+   // set themes
+-  theme_enable(array('octopus_video'));
++  theme_enable(array('octopus_video','rubik'));
+   variable_set('theme_default', 'octopus_video');
+-  variable_set('admin_theme', 'seven');
++  variable_set('admin_theme', 'rubik');
++  variable_set('node_admin_theme', '1');
+   // Add text formats.
+   $filtered_html_format = array(
+     'format' => 'filtered_html',
+diff -urp a/octopus_video/themes/octopus_video/octopus_video.info b/octopus_video/themes/octopus_video/octopus_video.info
+--- a/octopus_video/themes/octopus_video/octopus_video.info	2012-04-03 12:12:51.000000000 -0400
++++ b/octopus_video/themes/octopus_video/octopus_video.info	2012-04-04 21:24:25.000000000 -0400
+@@ -118,13 +118,13 @@ settings[alpha_css][omega-menu.css] = '0
+ settings[alpha_css][omega-forms.css] = '0'
+
+ settings[alpha_css][omega-visuals.css] = '0'
+
+ settings[alpha_exclude][modules/comment/comment.css] = '0'
+
+-settings[alpha_exclude][profiles/octopus/modules/contrib/date/date_api/date.css] = '0'
+
++settings[alpha_exclude][profiles/octopus_video/modules/contrib/date/date_api/date.css] = '0'
+
+ settings[alpha_exclude][modules/field/theme/field.css] = '0'
+
+-settings[alpha_exclude][profiles/octopus/modules/contrib/logintoboggan/logintoboggan.css] = '0'
+
++settings[alpha_exclude][profiles/octopus_video/modules/contrib/logintoboggan/logintoboggan.css] = '0'
+
+ settings[alpha_exclude][modules/node/node.css] = '0'
+
+ settings[alpha_exclude][modules/search/search.css] = '0'
+
+ settings[alpha_exclude][modules/user/user.css] = '0'
+
+-settings[alpha_exclude][profiles/octopus/modules/contrib/views/css/views.css] = '0'
+
++settings[alpha_exclude][profiles/octopus_video/modules/contrib/views/css/views.css] = '0'
+
+ settings[alpha_exclude][misc/vertical-tabs.css] = '0'
+
+ settings[alpha_exclude][modules/aggregator/aggregator.css] = '0'
+
+ settings[alpha_exclude][modules/block/block.css] = '0'
+

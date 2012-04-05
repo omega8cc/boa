@@ -1851,13 +1851,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE_DISTRO/profiles/minimal
   rm -f -r $_CORE_DISTRO/profiles/standard
   rm -f -r $_CORE_DISTRO/profiles/testing
-  sed -i "s/profiles\/octopus\//profiles\/octopus_video\//g" $_THIS_PROFILE/modules/features/video_core/video_core.strongarm.inc &> /dev/null
-  sed -i "s/video-js\/video-js/video-js/g" $_THIS_PROFILE/modules/features/video_core/video_core.strongarm.inc &> /dev/null
-  sed -i "s/profiles\/octopus\//profiles\/octopus_video\//g" $_THIS_PROFILE/themes/octopus_video/octopus_video.info &> /dev/null
-  sed -i "s/= admin_menu_toolbar/= zencoderapi/g" $_THIS_PROFILE/octopus_video.info &> /dev/null
-  sed -i "s/= admin_menu/= toolbar/g" $_THIS_PROFILE/octopus_video.info &> /dev/null
-  echo "version = \"1.0-alpha5\"" >> $_THIS_PROFILE/octopus_video.info
-  echo "project = \"octopus_video\"" >> $_THIS_PROFILE/octopus_video.info
+  if [ $_OCTOPUS_VIDEO = "1.0-alpha5" ] ; then
+    cd $_CORE_DISTRO/profiles
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/octopus_video.patch ./
+    patch -p1 < octopus_video.patch &> /dev/null
+    cd $_CORE_DISTRO
+  fi
   cd $_THIS_PROFILE/libraries
   git clone git://github.com/zencoder/zencoder-php.git zencoder &> /dev/null
   cd $_CORE_DISTRO
