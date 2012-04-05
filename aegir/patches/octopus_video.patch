@@ -47,7 +47,7 @@ diff -urp a/octopus_video/octopus_video.install b/octopus_video/octopus_video.in
    variable_set('theme_default', 'octopus_video');
 -  variable_set('admin_theme', 'seven');
 +  variable_set('admin_theme', 'rubik');
-+  variable_set('node_admin_theme', '1');
++  variable_set('node_admin_theme', '0');
    // Add text formats.
    $filtered_html_format = array(
      'format' => 'filtered_html',
