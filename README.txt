@@ -189,7 +189,7 @@ Contrib:
  expire --------------------- [D6,D7] --- [S] [B] [FE]
  fbconnect ------------------ [D6,D7] --- [S]
  fckeditor ------------------ [D6] ------ [S]
- filefield_nginx_progress --- [D6,D7] --- [S] [B] [FE]
+ filefield_nginx_progress --- [D6,D7] --- [S] [B] [SE]
  flood_control -------------- [D7] ------ [S] [B]
  fpa ------------------------ [D6,D7] --- [S] [B]
  httprl --------------------- [D6,D7] --- [S] [B]
