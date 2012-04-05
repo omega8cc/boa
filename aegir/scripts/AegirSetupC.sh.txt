@@ -56,6 +56,7 @@ _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _MARTPLUG=EDIT_MARTPLUG
 _NODESTREAM6=EDIT_NODESTREAM6
 _NODESTREAM7=EDIT_NODESTREAM7
+_OCTOPUS_VIDEO=EDIT_OCTOPUS_VIDEO
 _OPENATRIUM=EDIT_OPENATRIUM
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
@@ -670,6 +671,7 @@ _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_MARTPLUG="MartPlug 1.0-dev $_SMALLCORE7 P.$_THIS_CORE"
 _F_NODESTREAM6="NodeStream 1.4 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-a10 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OCTOPUS_VIDEO="Octopus Video 1.0-a5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
@@ -1818,6 +1820,68 @@ fi
 }
 
 
+octopus_video_install () {
+###---### Octopus Video
+#
+_THIS_DISTRO="octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PROFILE="$_CORE_DISTRO/profiles/octopus_video"
+if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OVO ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+echo " "
+if prompt_yes_no "$_F_OCTOPUS_VIDEO - http://octopusvideo.org" ; then
+true
+msg "STATUS: $_F_OCTOPUS_VIDEO install in progress, please wait..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://files.aegir.cc/dev/distro/octopus_video-$_OCTOPUS_VIDEO.tar.gz
+  tar -xzf octopus_video-$_OCTOPUS_VIDEO.tar.gz &> /dev/null
+  rm -f octopus_video-$_OCTOPUS_VIDEO.tar.gz
+  mv octopus_video-$_OCTOPUS_VIDEO $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
+  rm -f -r $_DRUPAL7
+  cd $_CORE_DISTRO
+  rm -f $_CORE_DISTRO/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  rm -f -r $_CORE_DISTRO/profiles/minimal
+  rm -f -r $_CORE_DISTRO/profiles/standard
+  rm -f -r $_CORE_DISTRO/profiles/testing
+  sed -i "s/profiles\/octopus\//profiles\/octopus_video\//g" $_THIS_PROFILE/modules/features/video_core/video_core.strongarm.inc &> /dev/null
+  sed -i "s/video-js\/video-js/video-js/g" $_THIS_PROFILE/modules/features/video_core/video_core.strongarm.inc &> /dev/null
+  sed -i "s/profiles\/octopus\//profiles\/octopus_video\//g" $_THIS_PROFILE/themes/octopus_video/octopus_video.info &> /dev/null
+  sed -i "s/= admin_menu_toolbar/= zencoderapi/g" $_THIS_PROFILE/octopus_video.info &> /dev/null
+  sed -i "s/= admin_menu/= toolbar/g" $_THIS_PROFILE/octopus_video.info &> /dev/null
+  echo "version = \"1.0-alpha5\"" >> $_THIS_PROFILE/octopus_video.info
+  echo "project = \"octopus_video\"" >> $_THIS_PROFILE/octopus_video.info
+  cd $_THIS_PROFILE/libraries
+  git clone git://github.com/zencoder/zencoder-php.git zencoder &> /dev/null
+  cd $_CORE_DISTRO
+  create_dirs
+  themes_for_d7
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+create_symlinks
+create_d7_symlinks
+patch_d7_core
+rm -f boost_stats.php
+msg "STATUS: $_F_OCTOPUS_VIDEO installation completed"
+mrun "sleep 1"
+else
+  msg "STATUS: $_F_OCTOPUS_VIDEO installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
 openatrium_install () {
 ###---### Open Atrium
 #
@@ -2547,6 +2611,7 @@ managingnews_install
 martplug_install
 nodestream6_install
 nodestream7_install
+octopus_video_install
 openatrium_install
 openchurch_install
 opendeals_install
@@ -2751,6 +2816,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_NODESTREAM7" nodestream $_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM7-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OCTOPUS_VIDEO" octopus_video $_ROOT/distro/$_THIS_CORE/octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi

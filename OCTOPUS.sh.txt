@@ -137,6 +137,7 @@ _PHP_CLI_VERSION=5.2
 ### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
+### OVO ----------- Octopus Video
 ### PPT ----------- ProsePoint
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
@@ -450,6 +451,7 @@ _MANAGINGNEWS=1.2.1
 _MARTPLUG=7.x-1.x-dev
 _NODESTREAM6=6.x-1.4
 _NODESTREAM7=7.x-2.0-alpha10
+_OCTOPUS_VIDEO=1.0-alpha5
 _OPENATRIUM=1.3.1
 _OPENCHURCH=7.x-1.9-alpha3
 _OPENDEALS=7.x-1.0-beta7
@@ -688,6 +690,7 @@ do
   sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
   sed -i "s/EDIT_NOW/$_NOW/g"                             $Files
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
+  sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
