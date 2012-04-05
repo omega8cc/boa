@@ -112,7 +112,7 @@ Octopus can install the platforms listed below:
  Feature Server --------------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
  MartPlug 1.0-dev ------------- http://drupal.org/project/martplug
- NodeStream 1.4 --------------- http://nodestream.org
+ NodeStream 1.5 --------------- http://nodestream.org
  NodeStream 2.0-alpha10 ------- http://nodestream.org
  Octopus Video 1.0-alpha5 ----- http://octopusvideo.org
  Open Atrium 1.3.1 ------------ http://openatrium.com
