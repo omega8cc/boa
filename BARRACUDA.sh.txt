@@ -544,6 +544,7 @@ _REDIS_VERSION=2.4.9
 ### Variables
 ###
 _CUSTOM_NAME=nginx
+_FORCE_REDIS_RESTART=NO
 _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
@@ -739,6 +740,7 @@ install_redis_src () {
   mkdir -p /var/lib/redis
   chown redis:redis /var/lib/redis
   rm -f /var/lib/redis/*
+  update_redis_password
   st_runner "service redis-server start" &> /dev/null
   touch /var/log/redis-$_REDIS_VERSION.log
 }
@@ -2031,6 +2033,7 @@ update_redis_password () {
     _ESC_RPASS=`pwgen -v -s -1`
     _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
     echo "$_ESC_RPASS" > /root/.redis.pass.txt
+    _FORCE_REDIS_RESTART=YES
   fi
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
     RPASS=`cat /root/.redis.pass.txt`
@@ -4619,6 +4622,11 @@ tune_memory_limits
 update_php_cli_drush
 service php-fpm restart &> /dev/null
 service php53-fpm restart &> /dev/null
+if [ "$_FORCE_REDIS_RESTART" = "YES" ] ; then
+  service redis-server stop &> /dev/null
+  killall -9 redis-server &> /dev/null
+  service redis-server start &> /dev/null
+fi
 if [ "$_STATUS" = "INIT" ] ; then
   service cron start &> /dev/null
   echo " "
