@@ -676,7 +676,7 @@ _F_OPENCHURCH="OpenChurch $_OPENCHURCH $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.0-b8 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENPUBLIC="OpenPublic 1.0-b8 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-a7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 2.0-b13 $_SMALLCORE6 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
@@ -2123,9 +2123,10 @@ fi
 ###---### Open Public
 #
 build_openpublic () {
-  wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic-$_OPENPUBLIC-core.tar.gz
-  tar -xzf openpublic-$_OPENPUBLIC-core.tar.gz
-  rm -f openpublic-$_OPENPUBLIC-core.tar.gz
+  wget -q -U iCab http://www.openpublicapp.com/sites/default/files/releases/openpublic.$_OPENPUBLIC.tar.gz
+  tar -xzf openpublic.$_OPENPUBLIC.tar.gz
+  rm -f openpublic.$_OPENPUBLIC.tar.gz
+  mv openpublic $_THIS_DISTRO
   if [ -d "$_CORE/drupal-7.12" ] ; then
     mv drupal-7.12 $_THIS_DISTRO
   elif [ -d "$_CORE/drupal-7.13" ] ; then
