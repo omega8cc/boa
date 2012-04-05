@@ -1738,6 +1738,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE_DISTRO/*.txt
   rm -f -r ./profiles/default
   rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  if [ $_NODESTREAM6 = "6.x-1.5" ] ; then
+    sed -i "s/libraries\/profiler/modules\/profiler/g" ./profiles/nodestream/nodestream.profile &> /dev/null
+  fi
   create_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
