@@ -1793,11 +1793,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE_DISTRO/profiles/minimal
   rm -f -r $_CORE_DISTRO/profiles/standard
   rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO/profiles/nodestream/modules
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
   cd $_CORE_DISTRO
   create_dirs
   themes_for_d7
