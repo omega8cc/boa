@@ -211,7 +211,7 @@ fi
 msg "$_STATUS B: Create dirs and/or set good permissions"
 mrun "sleep 1"
 if [ -e "$_ROOT/aegir.sh" ] ; then
- rm -f $_ROOT/aegir.sh
+  rm -f $_ROOT/aegir.sh
 fi
 touch $_ROOT/aegir.sh
 chmod 0755 $_ROOT/aegir.sh &> /dev/null
