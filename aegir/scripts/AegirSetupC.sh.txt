@@ -819,59 +819,6 @@ fi
 }
 
 
-atrium_install () {
-###---### Open Atrium
-#
-_THIS_DISTRO="atrium-$_OPENATRIUM-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
-echo " "
-if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
-true
-msg "STATUS: $_F_ATRIUM install in progress, please wait..."
-mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
-    prepare_pressflow_core
-  fi
-  cd $_CORE
-  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-3.tgz
-  tar -xzf atrium-1-3.tgz
-  rm -f atrium-1-3.tgz
-  mv atrium-1.3 $_THIS_DISTRO
-  cd /data/src/$_THIS_CORE
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO/profiles/openatrium/modules/contrib/imagecache
-  # http://drupal.org/node/1243258#comment-4850634
-  wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
-  patch -p1 < imagecache-1243258-5.patch &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile &> /dev/null
-  rm -f -r ./profiles/default
-  cd ./profiles/openatrium/modules/atrium_features/
-  git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
-  $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
-  $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
-  cd $_CORE_DISTRO
-  create_dirs
-fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
-msg "STATUS: $_F_ATRIUM installation completed"
-mrun "sleep 1"
-else
-  msg "STATUS: $_F_ATRIUM installation skipped"
-  mrun "sleep 1"
-fi
-fi
-fi
-}
-
-
 civicrm3_install () {
 ###---### CiviCRM 3 D6
 #
@@ -1871,6 +1818,59 @@ fi
 }
 
 
+openatrium_install () {
+###---### Open Atrium
+#
+_THIS_DISTRO="atrium-$_OPENATRIUM-$_SMALLCORE6"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+echo " "
+if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
+true
+msg "STATUS: $_F_ATRIUM install in progress, please wait..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+    prepare_pressflow_core
+  fi
+  cd $_CORE
+  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-3.tgz
+  tar -xzf atrium-1-3.tgz
+  rm -f atrium-1-3.tgz
+  mv atrium-1.3 $_THIS_DISTRO
+  cd /data/src/$_THIS_CORE
+  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
+  cd $_CORE_DISTRO/profiles/openatrium/modules/contrib/imagecache
+  # http://drupal.org/node/1243258#comment-4850634
+  wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
+  patch -p1 < imagecache-1243258-5.patch &> /dev/null
+  cd $_CORE_DISTRO
+  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  rm -f $_CORE_DISTRO/*.txt
+  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile &> /dev/null
+  rm -f -r ./profiles/default
+  cd ./profiles/openatrium/modules/atrium_features/
+  git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
+  $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
+  cd $_CORE_DISTRO
+  create_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+create_symlinks
+msg "STATUS: $_F_ATRIUM installation completed"
+mrun "sleep 1"
+else
+  msg "STATUS: $_F_ATRIUM installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+}
+
+
 openchurch_install () {
 ###---### Open Church
 #
@@ -2532,7 +2532,6 @@ fi
 
 
 acquia_install
-atrium_install
 civicrm3_install
 civicrm4_install
 cod_install
@@ -2548,6 +2547,7 @@ managingnews_install
 martplug_install
 nodestream6_install
 nodestream7_install
+openatrium_install
 openchurch_install
 opendeals_install
 openoutreach_install
