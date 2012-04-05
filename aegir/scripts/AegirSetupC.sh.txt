@@ -623,7 +623,7 @@ fi
 #
 msg "$_STATUS C: Checking status.."
 mrun "sleep 1"
-if [ -e "$_ROOT/aegir.sh" ] ; then
+if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   _STATUS=UPGRADE
   cd $_ROOT
 fi
