@@ -1915,6 +1915,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
   $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
   $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
+  cd ./profiles/openatrium/modules/contrib
+  rm -f -r og
+  wget -q -U iCab http://ftp.drupal.org/files/projects/og-6.x-2.3.tar.gz
+  tar -xzf og-6.x-2.3.tar.gz
+  rm -f og-6.x-2.3.tar.gz
   cd $_CORE_DISTRO
   create_dirs
 fi
