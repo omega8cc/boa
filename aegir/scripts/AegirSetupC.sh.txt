@@ -216,6 +216,7 @@ mrun () {
 #
 # create standard directories
 create_dirs () {
+  cd $_CORE_DISTRO
   mkdir -p ./sites/default/files
   mkdir -p ./cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
   chmod -R 777 ./cache &> /dev/null
@@ -280,6 +281,7 @@ if [ ! -e "taxonomy-7.7.patch" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.7.patch ./
   patch -p1 < taxonomy-7.7.patch &> /dev/null
   rm -f taxonomy-7.7.patch
+  rm -f boost_stats.php
 fi
 }
 #
@@ -446,7 +448,7 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
     _O_CONTRIB_UP=YES
   fi
 fi
-if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
@@ -512,7 +514,7 @@ prepare_pressflow_core () {
   rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/taxonomy/taxonomy.module.orig
   themes_for_d6
   rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/sites/all/*.txt
-  echo abc > /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION
+  echo abc > $_THIS_CTRL
   if [ ! -e "$_CORE/o_contrib_seven" ] ; then
     mkdir -p $_CORE/o_contrib_seven
     cd $_CORE/o_contrib_seven
@@ -608,6 +610,98 @@ if [ ! -L "core" ] ; then
   cp -af $_CORE_DISTRO/sites ./
 fi
 }
+#
+# replace drupal 6 core
+replace_drupal6_core () {
+  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
+  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  rm -f $_CORE_DISTRO/*.txt
+  cd $_CORE_DISTRO
+}
+#
+# enable drupal 6 contrib
+enable_drupal6_contrib () {
+  sed -i "s/'dblog',/'robotstxt', 'path_alias_cache',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+}
+#
+# enable drupal 6 admin
+enable_drupal6_admin () {
+  sed -i "s/'path_alias_cache',/'path_alias_cache', 'admin',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+}
+#
+# add drupal 6 translations
+add_drupal6_translations () {
+  ln -s /data/all/000/translations $_THIS_PRPATH/translations &> /dev/null
+}
+#
+# init this distro root
+init_this_distro_root () {
+  mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+  cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+  create_symlinks
+}
+#
+# add old short name acquia
+add_old_short_name_acquia () {
+  sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+}
+#
+# init distro seven root
+init_core_distro_seven_root () {
+  cd $_CORE_DISTRO
+  rm -f $_CORE_DISTRO/*.txt
+  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+}
+#
+# upgrade ctools
+upgrade_ctools () {
+  rm -f -r ctools
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
+  tar -xzf ctools-7.x-1.0.tar.gz
+  rm -f ctools-7.x-1.0.tar.gz
+}
+#
+# remove default core seven profiles
+remove_default_core_seven_profiles () {
+  rm -f -r $_CORE_DISTRO/profiles/minimal
+  rm -f -r $_CORE_DISTRO/profiles/standard
+  rm -f -r $_CORE_DISTRO/profiles/testing
+}
+#
+# replace drupal7 core
+replace_drupal7_core () {
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
+  tar -xzf $_DRUPAL7.tar.gz
+  rm -f $_DRUPAL7.tar.gz
+  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
+  rm -f -r $_DRUPAL7
+}
+#
+# rename drupal7 profiles
+rename_drupal7_profiles () {
+  for Files in `find $_CORE_DISTRO/profiles -type f`
+  do
+    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
+    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
+    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
+  done
+}
+#
+# rename drupal7 distro directory
+rename_drupal7_distro_directory () {
+  _REVISIONS="10 11 12 13 14 15 16 17 18 19"
+  for i in $_REVISIONS; do
+    if [ -d "$_CORE/drupal-7.$i" ] && [ ! -e "$_CORE_DISTRO" ] ; then
+      mv $_CORE/drupal-7.$i $_CORE_DISTRO
+    fi
+  done
+}
+#
+# add old short name seven
+add_old_short_name_seven () {
+  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" $_CORE_DISTRO/profiles/minimal/minimal.info &> /dev/null
+  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
+}
 
 
 ###---### User check
@@ -650,6 +744,7 @@ else
   _THIS_CORE="$_ALL_DISTRO"
   msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
+_THIS_CTRL="/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION"
 
 
 ###---### Distributions full names
@@ -703,7 +798,7 @@ chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 ###---### Prepare Pressflow core
 #
-if [ $_STATUS = "INIT" ] || [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+if [ $_STATUS = "INIT" ] || [ ! -e "$_THIS_CTRL" ] ; then
   msg "$_STATUS C: Preparing Pressflow +Extra $_SMALLCORE6 core, please wait.."
   mrun "sleep 1"
   prepare_pressflow_core
@@ -783,8 +878,10 @@ fi
 acquia_install () {
 ###---### Acquia
 #
-_THIS_DISTRO="acquia-$_SMALLCORE6"
+_THIS_PRNAME="acquia"
+_THIS_DISTRO="$_THIS_PRNAME-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
@@ -793,23 +890,19 @@ true
 msg "DISTRO: $_F_ACQUIA install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE_DISTRO &> /dev/null
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/acquia/acquia.profile &> /dev/null
-  sed -i "s/'name' => 'Acquia Drupal',/'name' => 'Acquia Drupal',\n    'old_short_name' => 'default',/g" ./profiles/acquia/acquia.profile &> /dev/null
-  rm -f -r ./profiles/default
+  replace_drupal6_core
+  enable_drupal6_contrib
+  sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
-  ln -s /data/all/000/translations $_CORE_DISTRO/profiles/acquia/translations &> /dev/null
+  add_drupal6_translations
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_ACQUIA installation completed"
 mrun "sleep 1"
 else
@@ -824,8 +917,10 @@ fi
 civicrm3_install () {
 ###---### CiviCRM 3 D6
 #
+_THIS_PRNAME="default"
 _THIS_DISTRO="civicrm-$_CIVICRM6-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC3 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
@@ -835,25 +930,19 @@ true
 msg "DISTRO: $_F_CIVICRM6 install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm3.make ./
   $_ROOT/tools/drush/drush make civicrm3.make $_THIS_DISTRO &> /dev/null
   rm -f civicrm3.make
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/default/default.profile &> /dev/null
-  sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile &> /dev/null
-  cd $_CORE_DISTRO
+  replace_drupal6_core
+  enable_drupal6_contrib
+  add_old_short_name_acquia
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_CIVICRM6 installation completed"
 mrun "sleep 1"
 else
@@ -869,8 +958,10 @@ fi
 civicrm4_install () {
 ###---### CiviCRM 4 D7
 #
+_THIS_PRNAME="standard"
 _THIS_DISTRO="civicrm-$_CIVICRM7-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CC4 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -884,24 +975,14 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm4.make ./
   $_ROOT/tools/drush/drush make civicrm4.make $_THIS_DISTRO &> /dev/null
   rm -f civicrm4.make
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  for Files in `find $_CORE_DISTRO/profiles -type f`
-  do
-    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
-  done
+  init_core_distro_seven_root
+  rename_drupal7_profiles
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_CIVICRM7 installation completed"
 mrun "sleep 1"
 else
@@ -917,8 +998,10 @@ fi
 cod_install () {
 ###---### Conference Organizing Distribution
 #
-_THIS_DISTRO="cod-$_COD-$_SMALLCORE6"
+_THIS_PRNAME="cod"
+_THIS_DISTRO="$_THIS_PRNAME-$_COD-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui" ] ; then
 echo " "
@@ -927,39 +1010,34 @@ true
 msg "DISTRO: $_F_COD install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  if [ -d "$_CORE/cod-$_COD" ] ; then
-    mv $_CORE/cod-$_COD $_CORE/cod-$_COD-old
+  if [ -d "$_CORE/$_THIS_PRNAME-$_COD" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_COD $_CORE/$_THIS_PRNAME-$_COD-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/cod-$_COD.tar.gz
-  tar -xzf cod-$_COD.tar.gz
-  rm -f cod-$_COD.tar.gz
-  if [ -d "$_CORE/cod" ] ; then
-    mv $_CORE/cod $_CORE_DISTRO
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_COD.tar.gz
+  tar -xzf $_THIS_PRNAME-$_COD.tar.gz
+  rm -f $_THIS_PRNAME-$_COD.tar.gz
+  if [ -d "$_CORE/$_THIS_PRNAME" ] ; then
+    mv $_CORE/$_THIS_PRNAME $_CORE_DISTRO
   else
-    mv $_CORE/cod-$_COD $_CORE_DISTRO
+    mv $_CORE/$_THIS_PRNAME-$_COD $_CORE_DISTRO
   fi
-  if [ -d "$_CORE/cod-$_COD-old" ] ; then
-    mv $_CORE/cod-$_COD-old $_CORE/cod-$_COD
+  if [ -d "$_CORE/$_THIS_PRNAME-$_COD-old" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_COD-old $_CORE/$_THIS_PRNAME-$_COD
   fi
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/cod/cod.profile &> /dev/null
-  sed -i "s/Conference Organizing Distribution/Conference/g" ./profiles/cod/cod.profile &> /dev/null
-  rm -f -r ./profiles/default
+  replace_drupal6_core
+  enable_drupal6_contrib
+  sed -i "s/Conference Organizing Distribution/Conference/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/cod/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui
+  ln -s $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui
 fi
 msg "DISTRO: $_F_COD installation completed"
 mrun "sleep 1"
@@ -975,8 +1053,10 @@ fi
 commerce_install () {
 ###---### Commerce 7.x
 #
+_THIS_PRNAME="commerce_kickstart"
 _THIS_DISTRO="commerce-$_COMMERCE-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -987,49 +1067,29 @@ msg "DISTRO: $_F_COMMERCE install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/commerce_kickstart-$_COMMERCE-core.tar.gz
-  tar -xzf commerce_kickstart-$_COMMERCE-core.tar.gz
-  rm -f commerce_kickstart-$_COMMERCE-core.tar.gz
-  if [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COMMERCE-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_COMMERCE-core.tar.gz
+  rm -f $_THIS_PRNAME-$_COMMERCE-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
     mv commerce-$_COMMERCE $_THIS_DISTRO
-  elif [ -d "$_CORE/commerce_kickstart-$_COMMERCE" ] ; then
-    mv commerce_kickstart-$_COMMERCE $_THIS_DISTRO
+  elif [ -d "$_CORE/$_THIS_PRNAME-$_COMMERCE" ] ; then
+    mv $_THIS_PRNAME-$_COMMERCE $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO/profiles/commerce_kickstart
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commerce_kickstart.patch ./
-  patch -p1 < commerce_kickstart.patch &> /dev/null
-  cd $_CORE_DISTRO/profiles/commerce_kickstart/modules
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
-  cd $_CORE_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_THIS_PRPATH
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
+  patch -p1 < $_THIS_PRNAME.patch &> /dev/null
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_COMMERCE installation completed"
 mrun "sleep 1"
 else
@@ -1045,8 +1105,10 @@ fi
 commons_install () {
 ###---### Acquia Commons
 #
+_THIS_PRNAME="drupal_commons"
 _THIS_DISTRO="acquia_commons-$_COMMONS-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
@@ -1056,7 +1118,7 @@ true
 msg "DISTRO: $_F_COMMONS install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
@@ -1070,12 +1132,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   else
     mv $_CORE/commons $_CORE_DISTRO
   fi
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  replace_drupal6_core
   if [ $_COMMONS = "6.x-1.3" ] ; then
-    cd $_CORE_DISTRO/profiles/drupal_commons
+    cd $_THIS_PRPATH
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1045778-fix-aegir-installs.patch ./
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1060250-aegir-infinite-loop.patch ./
     patch -p1 < commons-1045778-fix-aegir-installs.patch &> /dev/null
@@ -1083,20 +1142,17 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
     cd $_CORE_DISTRO
   fi
-  cd $_CORE_DISTRO/profiles/drupal_commons/modules/contrib/og
+  cd $_THIS_PRPATH/modules/contrib/og
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
   patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
-  cd $_CORE_DISTRO
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/drupal_commons/drupal_commons.profile &> /dev/null
-  rm -f -r ./profiles/default
+  rm -f -r $_CORE_DISTRO/profiles/default
+  enable_drupal6_contrib
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/drupal_commons/libraries/getid3 $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3
+  ln -s $_THIS_PRPATH/libraries/getid3 $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3
 fi
 msg "DISTRO: $_F_COMMONS installation completed"
 mrun "sleep 1"
@@ -1113,8 +1169,10 @@ fi
 drupal5_install () {
 ###---### Drupal 5 Pressflow
 #
+_THIS_PRNAME="default"
 _THIS_DISTRO="pressflow-$_DRUPAL5"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_D_5_ALLOW" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D5P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -1128,13 +1186,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://launchpad.net/pressflow/5.x/$_DRUPAL5/+download/$_THIS_DISTRO.tar.gz
   tar -xzf $_THIS_DISTRO.tar.gz
   rm -f $_THIS_DISTRO.tar.gz
-  cd $_CORE_DISTRO
   rm -f $_CORE_DISTRO/*.txt
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 rm -f boost_stats.php
 msg "DISTRO: $_F_DRUPAL5 installation completed"
 mrun "sleep 1"
@@ -1158,28 +1213,27 @@ true
 
 ###---### Drupal 6 Pressflow Development
 #
+_THIS_PRNAME="default"
 _THIS_DISTRO="pressflow-$_SMALLCORE6-dev"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
 msg "DISTRO: $_F_DRUPAL6_D install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   mkdir -p $_CORE_DISTRO
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog'/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile &> /dev/null
-  sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'drupalcenter',/g" ./profiles/default/default.profile &> /dev/null
+  replace_drupal6_core
+  enable_drupal6_contrib
+  enable_drupal6_admin
+  add_old_short_name_acquia
   create_dirs
-  ln -s /data/all/000/translations $_CORE_DISTRO/profiles/default/translations &> /dev/null
+  add_drupal6_translations
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_D installation completed"
 mrun "sleep 1"
 echo " "
@@ -1187,28 +1241,27 @@ fi
 
 ###---### Drupal 6 Pressflow Staging
 #
+_THIS_PRNAME="default"
 _THIS_DISTRO="pressflow-$_SMALLCORE6-stage"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
 msg "DISTRO: $_F_DRUPAL6_S install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   mkdir -p $_CORE_DISTRO
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog'/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile &> /dev/null
-  sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile &> /dev/null
+  replace_drupal6_core
+  enable_drupal6_contrib
+  enable_drupal6_admin
+  add_old_short_name_acquia
   create_dirs
-  ln -s /data/all/000/translations $_CORE_DISTRO/profiles/default/translations &> /dev/null
+  add_drupal6_translations
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_S installation completed"
 mrun "sleep 1"
 echo " "
@@ -1216,25 +1269,26 @@ fi
 
 ###---### Drupal 6 Pressflow Production
 #
+_THIS_PRNAME="default"
 _THIS_DISTRO="pressflow-$_SMALLCORE6-prod"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
 if [ ! -d "$_CORE/pressflow" ] ; then
   msg "DISTRO: $_F_DRUPAL6 install in progress, please wait..."
   mrun "sleep 1"
   if [ ! -d "$_CORE_DISTRO" ] ; then
-    if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+    if [ ! -e "$_THIS_CTRL" ] ; then
       prepare_pressflow_core
     fi
     cd $_CORE
     mkdir -p $_CORE_DISTRO
-    cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-    cd $_CORE_DISTRO
-    rm -f $_CORE_DISTRO/*.txt
-    sed -i "s/'dblog'/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache'/g" ./profiles/default/default.profile &> /dev/null
-    sed -i "s/'name' => 'Pressflow',/'name' => 'Pressflow',\n    'old_short_name' => 'acquia',/g" ./profiles/default/default.profile &> /dev/null
+    replace_drupal6_core
+    enable_drupal6_contrib
+    enable_drupal6_admin
+    add_old_short_name_acquia
     create_dirs
-    ln -s /data/all/000/translations $_CORE_DISTRO/profiles/default/translations &> /dev/null
+    add_drupal6_translations
   fi
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
   cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
@@ -1272,8 +1326,10 @@ true
 
 ###---### Drupal 7 Development
 #
+_THIS_PRNAME="standard"
 _THIS_DISTRO="$_DRUPAL7D"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
 msg "DISTRO: $_F_DRUPAL7_D install in progress, please wait..."
 mrun "sleep 1"
@@ -1285,26 +1341,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
   tar -xzf $_DRUPAL7.tar.gz
   mv $_DRUPAL7 $_THIS_DISTRO
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  for Files in `find $_CORE_DISTRO/profiles -type f`
-  do
-    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
-  done
-  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info &> /dev/null
-  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info &> /dev/null
+  init_core_distro_seven_root
+  rename_drupal7_profiles
+  add_old_short_name_seven
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_DRUPAL7_D installation completed"
 mrun "sleep 1"
 echo " "
@@ -1312,8 +1357,10 @@ fi
 
 ###---### Drupal 7 Staging
 #
+_THIS_PRNAME="standard"
 _THIS_DISTRO="$_DRUPAL7S"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
 msg "DISTRO: $_F_DRUPAL7_S install in progress, please wait..."
 mrun "sleep 1"
@@ -1324,26 +1371,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   tar -xzf $_DRUPAL7.tar.gz
   mv $_DRUPAL7 $_THIS_DISTRO
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  for Files in `find $_CORE_DISTRO/profiles -type f`
-  do
-    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
-  done
-  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info &> /dev/null
-  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info &> /dev/null
+  init_core_distro_seven_root
+  rename_drupal7_profiles
+  add_old_short_name_seven
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
 echo " "
@@ -1355,8 +1391,10 @@ fi
 
 ###---### Drupal 7 Production
 #
+_THIS_PRNAME="standard"
 _THIS_DISTRO="$_DRUPAL7P"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   msg "DISTRO: $_F_DRUPAL7_P install in progress, please wait..."
@@ -1369,17 +1407,9 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
     tar -xzf $_DRUPAL7.tar.gz
     rm -f $_DRUPAL7.tar.gz
     mv $_DRUPAL7 $_THIS_DISTRO
-    cd $_CORE_DISTRO
-    rm -f $_CORE_DISTRO/*.txt
-    ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-    for Files in `find $_CORE_DISTRO/profiles -type f`
-    do
-      sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
-      sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
-      sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
-    done
-    sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info &> /dev/null
-    sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info &> /dev/null
+    init_core_distro_seven_root
+    rename_drupal7_profiles
+    add_old_short_name_seven
     create_dirs
     themes_for_d7
   fi
@@ -1388,7 +1418,6 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   create_symlinks
   create_d7_symlinks
   patch_d7_core
-  rm -f boost_stats.php
   msg "DISTRO: $_F_DRUPAL7_P installation completed"
   mrun "sleep 1"
 elif [ -d "$_CORE/$_DRUPAL7" ] ; then
@@ -1401,7 +1430,6 @@ elif [ -d "$_CORE/$_DRUPAL7" ] ; then
   create_symlinks
   create_d7_symlinks
   patch_d7_core
-  rm -f boost_stats.php
   msg "DISTRO: $_F_DRUPAL7_P installation completed"
   mrun "sleep 1"
 fi
@@ -1420,8 +1448,10 @@ drupal8_install () {
 #
 #_DRUPAL8="8.0-dev-$_NOW"
 #
+_THIS_PRNAME="standard"
 _THIS_DISTRO="drupal-$_DRUPAL8"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8D ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -1436,12 +1466,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f $_CORE_DISTRO/*.txt
   rm -f $_CORE_DISTRO/core/*.txt
   cd $_CORE_DISTRO
-  for Files in `find $_CORE_DISTRO/profiles -type f`
-  do
-    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
-  done
+  rename_drupal7_profiles
   create_d8_dirs
 fi
 mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
@@ -1463,44 +1488,41 @@ fi
 elms_install () {
 ###---### ELMS
 #
-_THIS_DISTRO="elms-$_ELMS-$_SMALLCORE6"
+_THIS_PRNAME="elms"
+_THIS_DISTRO="$_THIS_PRNAME-$_ELMS-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ELS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
-if prompt_yes_no "$_F_ELMS - http://elms.psu.edu" ; then
+if prompt_yes_no "$_F_ELMS - http://$_THIS_PRNAME.psu.edu" ; then
 true
 msg "DISTRO: $_F_ELMS install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  if [ -d "$_CORE/elms-$_ELMS" ] ; then
-    mv $_CORE/elms-$_ELMS $_CORE/elms-$_ELMS-old
+  if [ -d "$_CORE/$_THIS_PRNAME-$_ELMS" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_ELMS $_CORE/$_THIS_PRNAME-$_ELMS-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/elms-$_ELMS.tar.gz
-  tar -xzf elms-$_ELMS.tar.gz
-  rm -f elms-$_ELMS.tar.gz
-  if [ -d "$_CORE/elms" ] ; then
-    mv $_CORE/elms $_CORE_DISTRO
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_ELMS.tar.gz
+  tar -xzf $_THIS_PRNAME-$_ELMS.tar.gz
+  rm -f $_THIS_PRNAME-$_ELMS.tar.gz
+  if [ -d "$_CORE/$_THIS_PRNAME" ] ; then
+    mv $_CORE/$_THIS_PRNAME $_CORE_DISTRO
   else
-    mv $_CORE/elms-$_ELMS $_CORE_DISTRO
+    mv $_CORE/$_THIS_PRNAME-$_ELMS $_CORE_DISTRO
   fi
-  if [ -d "$_CORE/elms-$_ELMS-old" ] ; then
-    mv $_CORE/elms-$_ELMS-old $_CORE/elms-$_ELMS
+  if [ -d "$_CORE/$_THIS_PRNAME-$_ELMS-old" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_ELMS-old $_CORE/$_THIS_PRNAME-$_ELMS
   fi
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
-  rm -f -r ./profiles/default
+  replace_drupal6_core
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_ELMS installation completed"
 mrun "sleep 1"
 else
@@ -1515,8 +1537,10 @@ fi
 fserver_install () {
 ###---### Feature Server Make
 #
+_THIS_PRNAME="feature_server"
 _THIS_DISTRO="fserver-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
@@ -1530,33 +1554,28 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   else
     _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
   fi
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   echo "api = 2" > fserver.make
   echo "core = 6.x" >> fserver.make
   echo "projects[drupal][type] = \"core\"" >> fserver.make
-  echo "projects[feature_server][type] = \"profile\"" >> fserver.make
-  echo "projects[feature_server][download][type] = \"git\"" >> fserver.make
-  echo "projects[feature_server][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/feature_server.git\"" >> fserver.make
+  echo "projects[$_THIS_PRNAME][type] = \"profile\"" >> fserver.make
+  echo "projects[$_THIS_PRNAME][download][type] = \"git\"" >> fserver.make
+  echo "projects[$_THIS_PRNAME][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/$_THIS_PRNAME.git\"" >> fserver.make
   $_ROOT/tools/drush/drush make fserver.make $_THIS_DISTRO &> /dev/null
   rm -f fserver.make
-  cd $_CORE_DISTRO
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r ./profiles/default
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  replace_drupal6_core
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
-  cd ./profiles/feature_server/themes
+  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/themes
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
   patch -p0 <./singular.patch &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch ./
   patch -p0 <./singular.mft.patch &> /dev/null
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_FSERVER installation completed"
 mrun "sleep 1"
 else
@@ -1571,8 +1590,10 @@ fi
 managingnews_install () {
 ###---### ManagingNews
 #
-_THIS_DISTRO="managingnews-$_MANAGINGNEWS-$_SMALLCORE6"
+_THIS_PRNAME="managingnews"
+_THIS_DISTRO="$_THIS_PRNAME-$_MANAGINGNEWS-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MNS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
@@ -1581,25 +1602,25 @@ true
 msg "DISTRO: $_F_MANAGINGNEWS install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
   _MANAGINGNEWS_DL=1.2
-  wget -q -U iCab http://managingnews.com/files/managingnews-$_MANAGINGNEWS_DL.zip
-  if [ -d "$_CORE/managingnews-$_MANAGINGNEWS_DL" ] ; then
-    mv $_CORE/managingnews-$_MANAGINGNEWS_DL $_CORE/managingnews-$_MANAGINGNEWS_DL-old
+  wget -q -U iCab http://$_THIS_PRNAME.com/files/$_THIS_PRNAME-$_MANAGINGNEWS_DL.zip
+  if [ -d "$_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old
   fi
-  unzip -qq managingnews-$_MANAGINGNEWS_DL.zip
-  rm -f managingnews-$_MANAGINGNEWS_DL.zip
-  mv managingnews-$_MANAGINGNEWS_DL $_THIS_DISTRO
-  if [ -d "$_CORE/managingnews-$_MANAGINGNEWS_DL-old" ] ; then
-    mv $_CORE/managingnews-$_MANAGINGNEWS_DL-old $_CORE/managingnews-$_MANAGINGNEWS_DL
+  unzip -qq $_THIS_PRNAME-$_MANAGINGNEWS_DL.zip
+  rm -f $_THIS_PRNAME-$_MANAGINGNEWS_DL.zip
+  mv $_THIS_PRNAME-$_MANAGINGNEWS_DL $_THIS_DISTRO
+  if [ -d "$_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL
   fi
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO/profiles/managingnews/modules/contrib
+  replace_drupal6_core
+  cd $_THIS_PRPATH/modules/contrib
   rm -f -r data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views
-  drush dl --destination=$_CORE_DISTRO/profiles/managingnews/modules/contrib data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta11 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.3 views-6.x-2.13 -y &> /dev/null
+  drush dl --destination=$_THIS_PRPATH/modules/contrib data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta11 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.3 views-6.x-2.13 -y &> /dev/null
   cd views
   # http://drupal.org/node/853864#comment-3898996
   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
@@ -1611,15 +1632,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
-  cd $_CORE_DISTRO/
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'admin', 'path_alias_cache',/g" ./profiles/managingnews/managingnews.profile &> /dev/null
-  rm -f -r ./profiles/default
+  enable_drupal6_contrib
+  enable_drupal6_admin
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_MANAGINGNEWS installation completed"
 mrun "sleep 1"
 else
@@ -1634,63 +1652,45 @@ fi
 martplug_install () {
 ###---### MartPlug
 #
-_THIS_DISTRO="martplug-$_MARTPLUG-$_SMALLCORE7"
+_THIS_PRNAME="martplug"
+_THIS_DISTRO="$_THIS_PRNAME-$_MARTPLUG-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MPG ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
-if prompt_yes_no "$_F_MARTPLUG - http://drupal.org/project/martplug" ; then
+if prompt_yes_no "$_F_MARTPLUG - http://drupal.org/project/$_THIS_PRNAME" ; then
 true
 msg "DISTRO: $_F_MARTPLUG install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/martplug-$_MARTPLUG-core.tar.gz
-  tar -xzf martplug-$_MARTPLUG-core.tar.gz
-  rm -f martplug-$_MARTPLUG-core.tar.gz
-  if [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/martplug-$_MARTPLUG" ] ; then
-    mv martplug-$_MARTPLUG $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_MARTPLUG-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_MARTPLUG-core.tar.gz
+  rm -f $_THIS_PRNAME-$_MARTPLUG-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_MARTPLUG" ] ; then
+    mv $_THIS_PRNAME-$_MARTPLUG $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO/profiles/martplug/modules/contrib/features
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_THIS_PRPATH/modules/contrib/features
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
   patch -p1 < features-1265168-19-roles.patch &> /dev/null
-  cd $_CORE_DISTRO/profiles/martplug/modules/contrib
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
-  cd $_CORE_DISTRO
-  sed -i "s/^dependencies.*martplug_sample_content.*//g" ./profiles/martplug/martplug.info &> /dev/null
-  sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" ./profiles/martplug/martplug.info &> /dev/null
-  find ./profiles/martplug -type d -exec chmod 0755 {} \; &> /dev/null
-  find ./profiles/martplug -type f -exec chmod 0644 {} \; &> /dev/null
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools
+  sed -i "s/^dependencies.*$_THIS_PRNAME_sample_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
+  sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
+  find $_THIS_PRPATH -type d -exec chmod 0755 {} \; &> /dev/null
+  find $_THIS_PRPATH -type f -exec chmod 0644 {} \; &> /dev/null
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_MARTPLUG installation completed"
 mrun "sleep 1"
 else
@@ -1706,8 +1706,10 @@ fi
 nodestream6_install () {
 ###---### NodeStream Make
 #
-_THIS_DISTRO="nodestream-$_NODESTREAM6-$_SMALLCORE6"
+_THIS_PRNAME="nodestream"
+_THIS_DISTRO="$_THIS_PRNAME-$_NODESTREAM6-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
@@ -1717,35 +1719,30 @@ true
 msg "DISTRO: $_F_NODESTREAM6 install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/nodestream-$_NODESTREAM6-core.tar.gz
-  tar -xzf nodestream-$_NODESTREAM6-core.tar.gz
-  rm -f nodestream-$_NODESTREAM6-core.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_NODESTREAM6-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_NODESTREAM6-core.tar.gz
+  rm -f $_THIS_PRNAME-$_NODESTREAM6-core.tar.gz
   if [ -d "$_CORE/drupal-6.24" ] ; then
     mv drupal-6.24 $_THIS_DISTRO
   elif [ -d "$_CORE/drupal-6.25" ] ; then
     mv drupal-6.25 $_THIS_DISTRO
   elif [ -d "$_CORE/drupal-6.26" ] ; then
     mv drupal-6.26 $_THIS_DISTRO
-  elif [ -d "$_CORE/nodestream-$_NODESTREAM6" ] ; then
-    mv nodestream-$_NODESTREAM6 $_THIS_DISTRO
+  elif [ -d "$_CORE/$_THIS_PRNAME-$_NODESTREAM6" ] ; then
+    mv $_THIS_PRNAME-$_NODESTREAM6 $_THIS_DISTRO
   fi
-  cd $_CORE_DISTRO
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r ./profiles/default
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  replace_drupal6_core
+  rm -f -r $_CORE_DISTRO/profiles/default
   if [ $_NODESTREAM6 = "6.x-1.5" ] ; then
-    sed -i "s/libraries\/profiler/modules\/profiler/g" ./profiles/nodestream/nodestream.profile &> /dev/null
+    sed -i "s/libraries\/profiler/modules\/profiler/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
   fi
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_NODESTREAM6 installation completed"
 mrun "sleep 1"
 else
@@ -1761,8 +1758,10 @@ fi
 nodestream7_install () {
 ###---### NodeStream7 Make
 #
-_THIS_DISTRO="nodestream-$_NODESTREAM7-$_SMALLCORE7"
+_THIS_PRNAME="nodestream"
+_THIS_DISTRO="$_THIS_PRNAME-$_NODESTREAM7-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NS7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -1773,39 +1772,22 @@ msg "DISTRO: $_F_NODESTREAM7 install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/nodestream-$_NODESTREAM7-core.tar.gz
-  tar -xzf nodestream-$_NODESTREAM7-core.tar.gz
-  rm -f nodestream-$_NODESTREAM7-core.tar.gz
-  if [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/nodestream-$_NODESTREAM7" ] ; then
-    mv nodestream-$_NODESTREAM7 $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_NODESTREAM7-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_NODESTREAM7-core.tar.gz
+  rm -f $_THIS_PRNAME-$_NODESTREAM7-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_NODESTREAM7" ] ; then
+    mv $_THIS_PRNAME-$_NODESTREAM7 $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_NODESTREAM7 installation completed"
 mrun "sleep 1"
 else
@@ -1821,9 +1803,10 @@ fi
 octopus_video_install () {
 ###---### Octopus Video
 #
-_THIS_DISTRO="octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7"
+_THIS_PRNAME="octopus_video"
+_THIS_DISTRO="$_THIS_PRNAME-$_OCTOPUS_VIDEO-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PROFILE="$_CORE_DISTRO/profiles/octopus_video"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OVO ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -1834,39 +1817,27 @@ msg "DISTRO: $_F_OCTOPUS_VIDEO install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/octopus_video-$_OCTOPUS_VIDEO.tar.gz
-  tar -xzf octopus_video-$_OCTOPUS_VIDEO.tar.gz &> /dev/null
-  rm -f octopus_video-$_OCTOPUS_VIDEO.tar.gz
-  mv octopus_video-$_OCTOPUS_VIDEO $_THIS_DISTRO
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz &> /dev/null
+  rm -f $_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz
+  mv $_THIS_PRNAME-$_OCTOPUS_VIDEO $_THIS_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
   if [ $_OCTOPUS_VIDEO = "1.0-alpha5" ] ; then
     cd $_CORE_DISTRO/profiles
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/octopus_video.patch ./
-    patch -p1 < octopus_video.patch &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
+    patch -p1 < $_THIS_PRNAME.patch &> /dev/null
     cd $_CORE_DISTRO
   fi
-  cd $_THIS_PROFILE/libraries
+  cd $_THIS_PRPATH/libraries
   git clone git://github.com/zencoder/zencoder-php.git zencoder &> /dev/null
-  cd $_CORE_DISTRO
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_OCTOPUS_VIDEO installation completed"
 mrun "sleep 1"
 else
@@ -1882,50 +1853,46 @@ fi
 openatrium_install () {
 ###---### Open Atrium
 #
-_THIS_DISTRO="openatrium-$_OPENATRIUM-$_SMALLCORE6"
+_THIS_PRNAME="openatrium"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENATRIUM-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
-if prompt_yes_no "$_F_ATRIUM - http://openatrium.com" ; then
+if prompt_yes_no "$_F_ATRIUM - http://$_THIS_PRNAME.com" ; then
 true
 msg "DISTRO: $_F_ATRIUM install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-3.tgz
+  wget -q -U iCab http://$_THIS_PRNAME.com/sites/$_THIS_PRNAME.com/files/atrium_releases/atrium-1-3.tgz
   tar -xzf atrium-1-3.tgz
   rm -f atrium-1-3.tgz
   mv atrium-1.3 $_THIS_DISTRO
-  cd /data/src/$_THIS_CORE
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO/profiles/openatrium/modules/contrib/imagecache
+  cd $_THIS_PRPATH/modules/contrib/imagecache
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openatrium/openatrium.profile &> /dev/null
-  rm -f -r ./profiles/default
-  cd ./profiles/openatrium/modules/atrium_features/
+  replace_drupal6_core
+  enable_drupal6_contrib
+  rm -f -r $_CORE_DISTRO/profiles/default
+  cd $_THIS_PRPATH/modules/atrium_features/
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
-  $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
-  $_DRUSHCMD dl --destination=$_CORE_DISTRO/profiles/openatrium/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
-  cd ./profiles/openatrium/modules/contrib
+  $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
+  cd $_THIS_PRPATH/modules/contrib
   rm -f -r og
   wget -q -U iCab http://ftp.drupal.org/files/projects/og-6.x-2.3.tar.gz
   tar -xzf og-6.x-2.3.tar.gz
   rm -f og-6.x-2.3.tar.gz
-  cd $_CORE_DISTRO
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_ATRIUM installation completed"
 mrun "sleep 1"
 else
@@ -1940,51 +1907,36 @@ fi
 openchurch_install () {
 ###---### Open Church
 #
-_THIS_DISTRO="openchurch-$_OPENCHURCH-$_SMALLCORE7"
+_THIS_PRNAME="openchurch"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENCHURCH-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENCHURCH - http://openchurchsite.com" ; then
+if prompt_yes_no "$_F_OPENCHURCH - http://$_THIS_PRNAMEsite.com" ; then
 true
 msg "DISTRO: $_F_OPENCHURCH install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/openchurch-$_OPENCHURCH-core.tar.gz
-  tar -xzf openchurch-$_OPENCHURCH-core.tar.gz &> /dev/null
-  rm -f openchurch-$_OPENCHURCH-core.tar.gz
-  if [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/openchurch-$_OPENCHURCH" ] ; then
-    mv openchurch-$_OPENCHURCH $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENCHURCH-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENCHURCH-core.tar.gz &> /dev/null
+  rm -f $_THIS_PRNAME-$_OPENCHURCH-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENCHURCH" ] ; then
+    mv $_THIS_PRNAME-$_OPENCHURCH $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_OPENCHURCH installation completed"
 mrun "sleep 1"
 else
@@ -2000,60 +1952,38 @@ fi
 opendeals_install () {
 ###---### Open Deals
 #
-_THIS_DISTRO="opendeals-$_OPENDEALS-$_SMALLCORE7"
+_THIS_PRNAME="opendeals"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENDEALS-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ODS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
+if prompt_yes_no "$_F_OPENDEALS - http://$_THIS_PRNAMEapp.com" ; then
 true
 msg "DISTRO: $_F_OPENDEALS install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/opendeals-$_OPENDEALS-core.tar.gz
-  tar -xzf opendeals-$_OPENDEALS-core.tar.gz
-  rm -f opendeals-$_OPENDEALS-core.tar.gz
-  if [ -d "$_CORE/drupal-7.10" ] ; then
-    mv drupal-7.10 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.11" ] ; then
-    mv drupal-7.11 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/opendeals-$_OPENDEALS" ] ; then
-    mv opendeals-$_OPENDEALS $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENDEALS-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENDEALS-core.tar.gz
+  rm -f $_THIS_PRNAME-$_OPENDEALS-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENDEALS" ] ; then
+    mv $_THIS_PRNAME-$_OPENDEALS $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO/profiles/opendeals/modules
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
-  cd $_CORE_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules
+  upgrade_ctools
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_OPENDEALS installation completed"
 mrun "sleep 1"
 else
@@ -2069,48 +1999,35 @@ fi
 openoutreach_install () {
 ###---### Open Outreach
 #
-_THIS_DISTRO="openoutreach-$_OPENOUTREACH-$_SMALLCORE7"
+_THIS_PRNAME="openoutreach"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENOUTREACH-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OOH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
+if prompt_yes_no "$_F_OPENOUTREACH - http://$_THIS_PRNAME.org" ; then
 true
 msg "DISTRO: $_F_OPENOUTREACH install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openoutreach-$_OPENOUTREACH.tar.gz
-  tar -xzf openoutreach-$_OPENOUTREACH.tar.gz &> /dev/null
-  rm -f openoutreach-$_OPENOUTREACH.tar.gz
-  mv openoutreach-$_OPENOUTREACH $_THIS_DISTRO
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO/profiles/openoutreach/modules/contrib
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
-  cd $_CORE_DISTRO
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_OPENOUTREACH.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENOUTREACH.tar.gz &> /dev/null
+  rm -f $_THIS_PRNAME-$_OPENOUTREACH.tar.gz
+  mv $_THIS_PRNAME-$_OPENOUTREACH $_THIS_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib
+  upgrade_ctools
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_OPENOUTREACH installation completed"
 mrun "sleep 1"
 else
@@ -2127,59 +2044,44 @@ fi
 #
 build_openpublic () {
   wget -q -U iCab http://www.openpublicapp.com/sites/default/files/releases/openpublic.$_OPENPUBLIC.tar.gz
-  tar -xzf openpublic.$_OPENPUBLIC.tar.gz
-  rm -f openpublic.$_OPENPUBLIC.tar.gz
-  mv openpublic $_THIS_DISTRO
-  if [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/openpublic-$_OPENPUBLIC" ] ; then
-    mv openpublic-$_OPENPUBLIC $_THIS_DISTRO
+  tar -xzf $_THIS_PRNAME.$_OPENPUBLIC.tar.gz
+  rm -f $_THIS_PRNAME.$_OPENPUBLIC.tar.gz
+  mv $_THIS_PRNAME $_THIS_DISTRO
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENPUBLIC" ] ; then
+    mv $_THIS_PRNAME-$_OPENPUBLIC $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  cd $_CORE_DISTRO/profiles/openpublic/modules/contrib
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
-  cd $_CORE_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools
   create_dirs
-  cd $_CORE_DISTRO/profiles/openpublic/themes
+  cd $_THIS_PRPATH/themes
   wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
   tar -xzf openpublic_eu-7.x-1.0.tar.gz &> /dev/null
   rm -f openpublic_eu-7.x-1.0.tar.gz
-  if [ -d "$_CORE_DISTRO/profiles/openpublic/libraries" ] ; then
-    rm -f -r $_CORE_DISTRO/profiles/openpublic/libraries/colorbox
-    cd $_CORE_DISTRO/profiles/openpublic/libraries
+  if [ -d "$_THIS_PRPATH/libraries" ] ; then
+    rm -f -r $_THIS_PRPATH/libraries/colorbox
+    cd $_THIS_PRPATH/libraries
     wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
     unzip -qq colorbox.zip &> /dev/null
     rm -f colorbox.zip
   fi
   if [ $_OPENPUBLIC = "beta1-build100" ] ; then
-    cd $_CORE_DISTRO/profiles/openpublic
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openpublic.patch ./
-    patch -p1 < openpublic.patch &> /dev/null
+    cd $_THIS_PRPATH
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
+    patch -p1 < $_THIS_PRNAME.patch &> /dev/null
     cd $_CORE_DISTRO
   fi
   touch $_CORE_DISTRO/core_$_SMALLCORE7.log
 }
 
 openpublic_install () {
-_THIS_DISTRO="openpublic-$_OPENPUBLIC-$_SMALLCORE7"
+_THIS_PRNAME="openpublic"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENPUBLIC-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -2196,12 +2098,11 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
 cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/openpublic/libraries/colorbox $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox
+  ln -s $_THIS_PRPATH/libraries/colorbox $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox
 fi
 create_symlinks
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_OPENPUBLIC installation completed"
 mrun "sleep 1"
 else
@@ -2217,8 +2118,10 @@ fi
 openpublish_install () {
 ###---### OpenPublish
 #
-_THIS_DISTRO="openpublish-$_OPENPUBLISH-$_SMALLCORE7"
+_THIS_PRNAME="openpublish"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENPUBLISH-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -2229,44 +2132,24 @@ msg "DISTRO: $_F_OPENPUBLISH install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/openpublish-$_OPENPUBLISH-core.tar.gz
-  tar -xzf openpublish-$_OPENPUBLISH-core.tar.gz &> /dev/null
-  rm -f openpublish-$_OPENPUBLISH-core.tar.gz
-  if [ -d "$_CORE/drupal-7.12" ] ; then
-    mv drupal-7.12 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.13" ] ; then
-    mv drupal-7.13 $_THIS_DISTRO
-  elif [ -d "$_CORE/drupal-7.14" ] ; then
-    mv drupal-7.14 $_THIS_DISTRO
-  elif [ -d "$_CORE/openpublish-$_OPENPUBLISH" ] ; then
-    mv openpublish-$_OPENPUBLISH $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz &> /dev/null
+  rm -f $_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENPUBLISH" ] ; then
+    mv $_THIS_PRNAME-$_OPENPUBLISH $_THIS_DISTRO
   fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-  cd $_CORE_DISTRO/profiles/openpublish/modules/contrib
-  rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
-  cd $_CORE_DISTRO
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib
+  upgrade_ctools
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_OPENPUBLISH installation completed"
 mrun "sleep 1"
 else
@@ -2282,8 +2165,10 @@ fi
 openscholar_install () {
 ###---### OpenScholar
 #
-_THIS_DISTRO="openscholar-$_OPENSCHOLAR-$_SMALLCORE6"
+_THIS_PRNAME="openscholar"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENSCHOLAR-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/shadowbox" ] ; then
@@ -2293,36 +2178,32 @@ true
 msg "DISTRO: $_F_OPENSCHOLAR install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  if [ -d "$_CORE/openscholar-$_OPENSCHOLAR" ] ; then
-    mv $_CORE/openscholar-$_OPENSCHOLAR $_CORE/openscholar-$_OPENSCHOLAR-old
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENSCHOLAR" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/scholar/openscholar-$_OPENSCHOLAR.tar.gz
-  tar -xzf openscholar-$_OPENSCHOLAR.tar.gz
-  rm -f openscholar-$_OPENSCHOLAR.tar.gz
-  mv openscholar-$_OPENSCHOLAR $_THIS_DISTRO
-  if [ -d "$_CORE/openscholar-$_OPENSCHOLAR-old" ] ; then
-    mv $_CORE/openscholar-$_OPENSCHOLAR-old $_CORE/openscholar-$_OPENSCHOLAR
+  wget -q -U iCab http://files.aegir.cc/dev/distro/scholar/$_THIS_PRNAME-$_OPENSCHOLAR.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENSCHOLAR.tar.gz
+  rm -f $_THIS_PRNAME-$_OPENSCHOLAR.tar.gz
+  mv $_THIS_PRNAME-$_OPENSCHOLAR $_THIS_DISTRO
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENSCHOLAR-old" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR-old $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR
   fi
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r $_CORE_DISTRO/profiles/openscholar/modules/contrib/memcache &> /dev/null
-  sed -i "s/'features',/'features', 'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'path_alias_cache',/g" ./profiles/openscholar/openscholar.profile &> /dev/null
-  rm -f -r ./profiles/default
+  replace_drupal6_core
+  rm -f -r $_THIS_PRPATH/modules/contrib/memcache &> /dev/null
+  sed -i "s/'features',/'features', 'robotstxt', 'path_alias_cache',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 if [ ! -L "./sites/all/libraries/shadowbox" ] ; then
-  ln -s $_CORE_DISTRO/profiles/openscholar/libraries/shadowbox ./sites/all/libraries/shadowbox
+  ln -s $_THIS_PRPATH/libraries/shadowbox ./sites/all/libraries/shadowbox
 fi
 if [ ! -L "./sites/all/libraries/tinymce" ] ; then
-  ln -s $_CORE_DISTRO/profiles/openscholar/libraries/tinymce ./sites/all/libraries/tinymce
+  ln -s $_THIS_PRPATH/libraries/tinymce ./sites/all/libraries/tinymce
 fi
 msg "DISTRO: $_F_OPENSCHOLAR installation completed"
 mrun "sleep 1"
@@ -2339,8 +2220,10 @@ fi
 prosepoint_install () {
 ###---### Prosepoint
 #
-_THIS_DISTRO="prosepoint-$_PROSEPOINT-$_SMALLCORE6"
+_THIS_PRNAME="prosepoint"
+_THIS_DISTRO="$_THIS_PRNAME-$_PROSEPOINT-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
@@ -2350,30 +2233,26 @@ true
 msg "DISTRO: $_F_PROSEPOINT install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  if [ -d "$_CORE/prosepoint-$_PROSEPOINT" ] ; then
-    mv $_CORE/prosepoint-$_PROSEPOINT $_CORE/prosepoint-$_PROSEPOINT-old
+  if [ -d "$_CORE/$_THIS_PRNAME-$_PROSEPOINT" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old
   fi
-  wget -q -U iCab http://launchpad.net/prosepoint/trunk/$_PROSEPOINT/+download/prosepoint-$_PROSEPOINT.tar.gz
-  tar -xzf prosepoint-$_PROSEPOINT.tar.gz
-  rm -f prosepoint-$_PROSEPOINT.tar.gz
-  mv $_CORE/prosepoint-$_PROSEPOINT $_CORE_DISTRO
-  if [ -d "$_CORE/prosepoint-$_PROSEPOINT-old" ] ; then
-    mv $_CORE/prosepoint-$_PROSEPOINT-old $_CORE/prosepoint-$_PROSEPOINT
+  wget -q -U iCab http://launchpad.net/$_THIS_PRNAME/trunk/$_PROSEPOINT/+download/$_THIS_PRNAME-$_PROSEPOINT.tar.gz
+  tar -xzf $_THIS_PRNAME-$_PROSEPOINT.tar.gz
+  rm -f $_THIS_PRNAME-$_PROSEPOINT.tar.gz
+  mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE_DISTRO
+  if [ -d "$_CORE/$_THIS_PRNAME-$_PROSEPOINT-old" ] ; then
+    mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old $_CORE/$_THIS_PRNAME-$_PROSEPOINT
   fi
-  cd $_CORE_DISTRO
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r ./profiles/default
+  replace_drupal6_core
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
-  ln -s /data/all/000/translations $_CORE_DISTRO/profiles/prosepoint/translations &> /dev/null
+  add_drupal6_translations
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_PROSEPOINT installation completed"
 mrun "sleep 1"
 else
@@ -2389,8 +2268,11 @@ fi
 ubercart6_install () {
 ###---### Ubercart
 #
-_THIS_DISTRO="ubercart-$_UBERCART-$_SMALLCORE6"
+_THIS_PRNAME="uberdrupal"
+_THIS_DINAME="ubercart"
+_THIS_DISTRO="$_THIS_DINAME-$_UBERCART-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UCT ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
@@ -2402,31 +2284,29 @@ if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/fixed_1.log" ] ; then
   rm -f -r $_CORE_DISTRO
 fi
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  if [ -d "$_CORE/ubercart-$_UBERCART" ] ; then
-    mv $_CORE/ubercart-$_UBERCART $_CORE/ubercart-$_UBERCART-old
+  if [ -d "$_CORE/$_THIS_DINAME-$_UBERCART" ] ; then
+    mv $_CORE/$_THIS_DINAME-$_UBERCART $_CORE/$_THIS_DINAME-$_UBERCART-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/ubercart-$_UBERCART.tar.gz
-  tar -xzf ubercart-$_UBERCART.tar.gz
-  rm -f ubercart-$_UBERCART.tar.gz
-  mv ubercart-$_UBERCART $_THIS_DISTRO
-  if [ -d "$_CORE/ubercart-$_UBERCART-old" ] ; then
-    mv $_CORE/ubercart-$_UBERCART-old $_CORE/ubercart-$_UBERCART
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_DINAME-$_UBERCART.tar.gz
+  tar -xzf $_THIS_DINAME-$_UBERCART.tar.gz
+  rm -f $_THIS_DINAME-$_UBERCART.tar.gz
+  mv $_THIS_DINAME-$_UBERCART $_THIS_DISTRO
+  if [ -d "$_CORE/$_THIS_DINAME-$_UBERCART-old" ] ; then
+    mv $_CORE/$_THIS_DINAME-$_UBERCART-old $_CORE/$_THIS_DINAME-$_UBERCART
   fi
-  cd $_CORE_DISTRO
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  rm -f $_CORE_DISTRO/*.txt
-  sed -i "s/'dblog',/'robotstxt', 'expire', 'purge', 'filefield_nginx_progress', 'filefield', 'content', 'path_alias_cache',/g" ./profiles/uberdrupal/uberdrupal.profile &> /dev/null
-  rm -f -r ./profiles/default
-  mkdir -p $_CORE_DISTRO/profiles/uberdrupal/libraries
-  cd $_CORE_DISTRO/profiles/uberdrupal/libraries
+  replace_drupal6_core
+  enable_drupal6_contrib
+  rm -f -r $_CORE_DISTRO/profiles/default
+  mkdir -p $_THIS_PRPATH/libraries
+  cd $_THIS_PRPATH/libraries
   wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
-  cd $_CORE_DISTRO/profiles/uberdrupal/modules
+  cd $_THIS_PRPATH/modules
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin_menu-6.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cck-6.x-2.9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.x-dev.tar.gz
@@ -2447,28 +2327,25 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   done
   rm -f *.tar.gz
   ### http://drupal.org/node/1167276#comment-5138248
-  cd $_CORE_DISTRO/profiles/uberdrupal/modules/ubercart
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/ubercart-1167276-reroll.patch ./
-  patch -p1 < ubercart-1167276-reroll.patch &> /dev/null
-  cd $_CORE_DISTRO/profiles/uberdrupal/modules/imagecache
+  cd $_THIS_PRPATH/modules/$_THIS_DINAME
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_DINAME-1167276-reroll.patch ./
+  patch -p1 < $_THIS_DINAME-1167276-reroll.patch &> /dev/null
+  cd $_THIS_PRPATH/modules/imagecache
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
-  cd $_CORE_DISTRO/profiles/uberdrupal/themes
+  cd $_THIS_PRPATH/themes
   wget -q -U iCab http://ftp.drupal.org/files/projects/fusion-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/acquia_prosper-6.x-1.1.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  cd $_CORE_DISTRO
   create_dirs
-  ln -s /data/all/000/translations $_CORE_DISTRO/profiles/uberdrupal/translations
+  add_drupal6_translations
   touch $_CORE_DISTRO/fixed_1.log
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_UBERCART installation completed"
 mrun "sleep 1"
 else
@@ -2483,8 +2360,10 @@ fi
 ubercart7_install () {
 ###---### Ubercart 3.0.3
 #
+_THIS_PRNAME="acquia"
 _THIS_DISTRO="ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
@@ -2496,23 +2375,21 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE_DISTRO &> /dev/null
-  cd $_CORE_DISTRO
-  sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" ./profiles/acquia/acquia.info &> /dev/null
-  sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" ./profiles/acquia/acquia.info &> /dev/null
-  rm -f $_CORE_DISTRO/*.txt
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
-  rm -f -r ./profiles/minimal
-  rm -f -r ./profiles/testing
-  sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" ./profiles/standard/standard.info &> /dev/null
-  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info &> /dev/null
-  rm -f -r $_CORE_DISTRO/profiles/acquia/modules/sqlsrv
-  rm -f -r $_CORE_DISTRO/profiles/acquia/modules/token
-  mkdir -p $_CORE_DISTRO/profiles/acquia/libraries
-  cd $_CORE_DISTRO/profiles/acquia/libraries
+  init_core_distro_seven_root
+  sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_THIS_PRPATH/acquia.info &> /dev/null
+  sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" $_THIS_PRPATH/acquia.info &> /dev/null
+  rm -f -r $_CORE_DISTRO/profiles/minimal
+  rm -f -r $_CORE_DISTRO/profiles/testing
+  sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
+  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
+  rm -f -r $_THIS_PRPATH/modules/sqlsrv
+  rm -f -r $_THIS_PRPATH/modules/token
+  mkdir -p $_THIS_PRPATH/libraries
+  cd $_THIS_PRPATH/libraries
   wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
-  cd $_CORE_DISTRO/profiles/acquia/modules
+  cd $_THIS_PRPATH/modules
   rm -f -r ctools
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
@@ -2527,16 +2404,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  cd $_CORE_DISTRO
   create_dirs
   themes_for_d7
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-rm -f boost_stats.php
 msg "DISTRO: $_F_UBER_CART_SEVEN installation completed"
 mrun "sleep 1"
 else
@@ -2552,8 +2425,10 @@ fi
 videola_install () {
 ###---### Videola Make
 #
-_THIS_DISTRO="videola-$_VIDEOLA-$_SMALLCORE6"
+_THIS_PRNAME="videola"
+_THIS_DISTRO="$_THIS_PRNAME-$_VIDEOLA-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
@@ -2563,29 +2438,23 @@ true
 msg "DISTRO: $_F_VIDEOLA install in progress, please wait..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
-  if [ ! -e "/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION" ] ; then
+  if [ ! -e "$_THIS_CTRL" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/videola.make ./
-  $_ROOT/tools/drush/drush make videola.make $_THIS_DISTRO &> /dev/null
-  rm -f videola.make
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/$_THIS_PRNAME.make ./
+  $_ROOT/tools/drush/drush make $_THIS_PRNAME.make $_THIS_DISTRO &> /dev/null
+  rm -f $_THIS_PRNAME.make
+  replace_drupal6_core
   if [ $_VIDEOLA = "6.x-1.0-alpha2" ] ; then
-    cd $_CORE_DISTRO/profiles/videola
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/videola.patch ./
-    patch -p1 < videola.patch &> /dev/null
-    cd $_CORE_DISTRO
+    cd $_THIS_PRPATH
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
+    patch -p1 < $_THIS_PRNAME.patch &> /dev/null
   fi
-  rm -f -r ./profiles/default
+  rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_symlinks
+init_this_distro_root
 msg "DISTRO: $_F_VIDEOLA installation completed"
 mrun "sleep 1"
 else
