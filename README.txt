@@ -229,12 +229,16 @@ Core:
  path_alias_cache ----------- [D6] -------------- [FE]
  syslog --------------------- [D6,D7] ----------- [FD]
 
+Drush [E]xtensions [M]aster [S]atellite:
+
+ drush_make ----------------- [D6,D7] --- [S] [B] [EM,ES]
+ registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
+
 Provision [E]xtensions [M]aster [S]atellite:
 
  provision_boost ------------ [D6,D7] --- [S] [B] [EM,ES]
  provision_cdn -------------- [D6,D7] --- [S] [B] [EM,ES]
  provision_civicrm ---------- [D6,D7] --- [S] [B] [ES]
- registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
 
 Hostmaster [E]xtensions [S]atellite:
 
