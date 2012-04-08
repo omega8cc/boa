@@ -4305,7 +4305,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       echo > $_CHIVE_VHOST
       echo "server {" >> $_CHIVE_VHOST
       echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
-      echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
+      echo "   limit_conn  gulag 32;" >> $_CHIVE_VHOST
       echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CHIVE_VHOST
       echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
       echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
@@ -4345,7 +4345,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     echo > $_CHIVE_VHOST
     echo "server {" >> $_CHIVE_VHOST
     echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CHIVE_VHOST
-    echo "   limit_conn  gulag 10;" >> $_CHIVE_VHOST
+    echo "   limit_conn  gulag 32;" >> $_CHIVE_VHOST
     echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CHIVE_VHOST
     echo "   server_name chive.$_THIS_FRONT $_THISHTIP;" >> $_CHIVE_VHOST
     echo "   root        /var/www/chive;" >> $_CHIVE_VHOST
@@ -4384,7 +4384,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       echo > $_SQLBUDDY_VHOST
       echo "server {" >> $_SQLBUDDY_VHOST
       echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_SQLBUDDY_VHOST
-      echo "   limit_conn  gulag 10;" >> $_SQLBUDDY_VHOST
+      echo "   limit_conn  gulag 32;" >> $_SQLBUDDY_VHOST
       echo "   listen      $_XTRAS_THISHTIP:80;" >> $_SQLBUDDY_VHOST
       echo "   server_name sqlbuddy.$_THIS_FRONT;" >> $_SQLBUDDY_VHOST
       echo "   root        /var/www/sqlbuddy;" >> $_SQLBUDDY_VHOST
@@ -4431,7 +4431,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
         echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-        echo "   limit_conn  gulag 10;" >> $_CGP_VHOST
+        echo "   limit_conn  gulag 32;" >> $_CGP_VHOST
         echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
         echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
         echo "   root        /var/www/cgp;" >> $_CGP_VHOST
