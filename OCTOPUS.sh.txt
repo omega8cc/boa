@@ -122,8 +122,8 @@ _PHP_CLI_VERSION=5.2
 ### CC3 ----------- CiviCRM 3 D6
 ### CC4 ----------- CiviCRM 4 D7
 ### COD ----------- Conference
-### DCE ----------- Drupal Commerce
-### DCS ----------- Acquia Commons
+### DCE ----------- Commerce
+### DCS ----------- Commons
 ### ELS ----------- ELMS
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
