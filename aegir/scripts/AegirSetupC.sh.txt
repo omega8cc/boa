@@ -681,9 +681,9 @@ replace_drupal7_core () {
 rename_drupal7_profiles () {
   for Files in `find $_CORE_DISTRO/profiles -type f`
   do
-    sed -i "s/name = Minimal/name = Vanilla Drupal Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Drupal Testing/g"   $Files
+    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files
+    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files
+    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files
   done
 }
 #
@@ -2380,8 +2380,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" $_THIS_PRPATH/acquia.info &> /dev/null
   rm -f -r $_CORE_DISTRO/profiles/minimal
   rm -f -r $_CORE_DISTRO/profiles/testing
-  sed -i "s/name = Standard/name = Vanilla Drupal Standard/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
-  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
+  sed -i "s/name = Standard/name = Vanilla Standard/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
+  sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
   rm -f -r $_THIS_PRPATH/modules/sqlsrv
   rm -f -r $_THIS_PRPATH/modules/token
   mkdir -p $_THIS_PRPATH/libraries
