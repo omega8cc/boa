@@ -1846,7 +1846,7 @@ install_php_five_two () {
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "5.3.5-MariaDB" > /var/log/installed-5.3.5-MariaDB.log
+    echo "5.3.6-MariaDB" > /var/log/installed-5.3.6-MariaDB.log
   else
     echo "5.5.21-Percona" > /var/log/installed-5.5.21-Percona.log
   fi
@@ -3717,10 +3717,10 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/log/installed-5.3.5-MariaDB.log" ] ; then
+    if [ ! -e "/var/log/installed-5.3.6-MariaDB.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.3.5-MariaDB" > /var/log/installed-5.3.5-MariaDB.log
-      msg "INFO: PHP rebuild required to include MariaDB 5.3.5 libs"
+      echo "5.3.6-MariaDB" > /var/log/installed-5.3.6-MariaDB.log
+      msg "INFO: PHP rebuild required to include MariaDB 5.3.6 libs"
       mrun "sleep 1"
     fi
   else
