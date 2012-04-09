@@ -594,7 +594,7 @@ octopus_cnf () {
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
-        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=5.3 ### Forced because _PHP_MODERN_ONLY is set to YES./g" /root/.$_USER.octopus.cnf &> /dev/null
+        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=5.3/g" /root/.$_USER.octopus.cnf &> /dev/null
         echo 5.3 > /data/disk/$_USER/log/fpm.txt
       fi
     else
@@ -603,7 +603,7 @@ octopus_cnf () {
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
       if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
-        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=5.3 ### Forced because _PHP_MODERN_ONLY is set to YES./g" /root/.$_USER.octopus.cnf &> /dev/null
+        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=5.3/g" /root/.$_USER.octopus.cnf &> /dev/null
         echo 5.3 > /data/disk/$_USER/log/cli.txt
       fi
     else

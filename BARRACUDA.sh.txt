@@ -1484,16 +1484,9 @@ barracuda_cnf () {
     sleep 1
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
-    if [ -e "/usr/local/bin/php" ] ; then
-      _PHP_MODERN_ONLY=NO
-    fi
-    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
-    fi
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
-      sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Now always enabled by default./g" /root/.barracuda.cnf &> /dev/null
+      sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Enabled by default/g" /root/.barracuda.cnf &> /dev/null
     fi
     _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
     if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
@@ -1509,25 +1502,29 @@ barracuda_cnf () {
     fi
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
+      if [[ "$_PHP_MODERN_ONLY_TEST" =~ "YES" ]] && [ ! -e "/usr/local/bin/php" ] ; then
+        _PHP_MODERN_ONLY=YES
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
       if [ -e "/usr/local/bin/php" ] ; then
-        sed -i "s/.*_PHP_MODERN_ONLY.*/_PHP_MODERN_ONLY=NO ### Forced because PHP 5.2 exists./g" /root/.barracuda.cnf &> /dev/null
+        _PHP_MODERN_ONLY=NO
+        sed -i "s/.*_PHP_MODERN_ONLY.*/_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY/g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=5.3 ### Forced because _PHP_MODERN_ONLY is set to YES./g" /root/.barracuda.cnf &> /dev/null
+      if [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
+        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=5.3 ### Forced because _PHP_MODERN_ONLY is set to YES./g" /root/.barracuda.cnf &> /dev/null
-      fi
+      sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.barracuda.cnf &> /dev/null
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     fi
@@ -1881,6 +1878,9 @@ install_php_modern () {
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
   st_runner "service php53-fpm start" &> /dev/null
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/bin/php" ] ; then
+    ln -s /opt/local/bin/php /usr/bin/php
+  fi
 }
 #
 # Install PHP 5.2.17
