@@ -76,6 +76,11 @@ _CLIENT_CORES=4
 ### _PHP_FPM_VERSION=5.2
 ### _PHP_FPM_VERSION=5.3
 ###
+### Note that 5.3 will be forced automatically
+### if you installed Barracuda with option
+### _PHP_MODERN_ONLY=YES and there is no 5.2
+### installed/available.
+###
 _PHP_FPM_VERSION=5.2
 
 
@@ -94,6 +99,11 @@ _PHP_FPM_VERSION=5.2
 ###
 ### _PHP_CLI_VERSION=5.2
 ### _PHP_CLI_VERSION=5.3
+###
+### Note that 5.3 will be forced automatically
+### if you installed Barracuda with option
+### _PHP_MODERN_ONLY=YES and there is no 5.2
+### installed/available.
 ###
 _PHP_CLI_VERSION=5.2
 
@@ -511,6 +521,10 @@ find_correct_ip () {
 # Read or create Octopus cnf file.
 octopus_cnf () {
   if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
+    if [ ! -e "/usr/local/bin/php" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    fi
     msg "INFO: Creating your /root/.$_USER.octopus.cnf config file"
     sleep 1
     echo "###" > /root/.$_USER.octopus.cnf
@@ -582,6 +596,10 @@ octopus_cnf () {
     done < /root/.$_USER.octopus.cnf
     echo " "
     source /root/.$_USER.octopus.cnf
+    if [ ! -e "/usr/local/bin/php" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
