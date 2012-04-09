@@ -92,7 +92,7 @@ _PHP_FPM_VERSION=5.2
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
-### Note that PHP-CLI 5.3 is required for
+### Note that PHP-CLI 5.3 is required by
 ### Drupal 8.x, but breaks support for 5.x
 ###
 ### Available options:
@@ -522,6 +522,9 @@ find_correct_ip () {
 octopus_cnf () {
   if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
     if [ ! -e "/usr/local/bin/php" ] ; then
+      _PHP_MODERN_ONLY=YES
+    fi
+    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
     fi
@@ -568,23 +571,41 @@ octopus_cnf () {
   else
     msg "INFO: Reading your /root/.$_USER.octopus.cnf config file."
     sleep 1
-    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    if [[ "$_DOMAIN" =~ ".host8." ]] ; then
+      _LD_DOM=YES
+    else
+      _LD_DOM=NO
+    fi
+    if [ ! -e "/usr/local/bin/php" ] ; then
+      _PHP_MODERN_ONLY=YES
+    fi
+    if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    fi
+    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
     fi
-    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
+    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
       _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      true
+      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
+        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=5.3 ### Forced because _PHP_MODERN_ONLY is set to YES./g" /root/.$_USER.octopus.cnf &> /dev/null
+        echo 5.3 > /data/disk/$_USER/log/fpm.txt
+      fi
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      true
+      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
+        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=5.3 ### Forced because _PHP_MODERN_ONLY is set to YES./g" /root/.$_USER.octopus.cnf &> /dev/null
+        echo 5.3 > /data/disk/$_USER/log/cli.txt
+      fi
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     fi
