@@ -87,10 +87,10 @@ server {
   ### Allways deny crawlers and not allowed bots without any response.
   ###
   if ($is_crawler) {
-    return 444;
+    return 403;
   }
   if ($deny_on_high_load) {
-    return 444;
+    return 403;
   }
   location / {
     proxy_pass                 http://extra_ip_ssl;
@@ -135,10 +135,10 @@ server {
   ### Allways deny crawlers and not allowed bots without any response.
   ###
   if ($is_crawler) {
-    return 444;
+    return 403;
   }
   if ($deny_on_high_load) {
-    return 444;
+    return 403;
   }
   location / {
     proxy_pass                 http://extra_ip_ssl;
