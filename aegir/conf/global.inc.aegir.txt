@@ -26,7 +26,7 @@ if (isset($_SERVER['REMOTE_ADDR'])) {
   }
 }
 
-$conf['page_compression'] = 0;    // required for Nginx, since it already compresses everything
+$conf['page_compression'] = 0;    // required in Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
 $conf['cron_safe_threshold'] = 0; // disable poormanscron in d5 and d6
 $conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
