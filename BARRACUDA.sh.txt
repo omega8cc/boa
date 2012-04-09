@@ -1631,7 +1631,7 @@ run_apt_update_again () {
 # Install IonCube.
 install_ioncube () {
   ###--------------------###
-  if [ ! -e "/usr/local/ioncube" ] ; then
+  if [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     mkdir -p /usr/local/ioncube
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
@@ -1656,7 +1656,7 @@ install_ioncube () {
 # Install libmemcached.
 install_libmemcached () {
   ###--------------------###
-  if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] ; then
+  if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
     mrun "sleep 1"
     cd /var/opt
