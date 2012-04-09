@@ -1,0 +1,105 @@
+
+### How to migrate sites between remote Aegir instances
+#
+# This is detailed how-to for remote_import Provision extension
+# and hosting_remote_import module included by default in every
+# Aegir Satellite Instance since BOA-2.0.3 Edition.
+#
+# We assume that your Octopus system user is default o1.
+#
+# Important: the system user must be the same on source and
+# target, as Aegir doesn't allow (yet) to migrate from o1
+# to o2, only from o1 to o1 or from o2 to o2, etc.
+#
+# The 'source-host' is your source instance FQDN hostname,
+# and 'target-host' is your target instance FQDN hostname.
+
+### On target and source server
+$ chsh -s /bin/bash o1
+$ su o1
+$ mkdir -p ~/.ssh
+
+### On target server
+$ su o1
+$ ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
+
+### On source server
+$ su o1
+$ nano ~/.ssh/authorized_keys
+# Paste id_rsa.pub generated on target
+
+### On source server
+$ su o1
+$ ssh-keyscan -t rsa -H target-host >> ~/.ssh/known_hosts
+
+### On target server
+$ su o1
+$ ssh-keyscan -t rsa -H source-host >> ~/.ssh/known_hosts
+
+### On target server - as root
+#
+# Create shared directory matching the path on the source-host:
+$ mkdir -p /data/all/003
+#
+# Transfer platform files to the shared directory:
+$ rsync -avzu --ignore-errors -e ssh o1@source-host:/data/all/003/platform /data/all/003/
+#
+# Create platform directory in the Octopus instance matching the path on the source-host:
+$ mkdir -p /data/disk/o1/distro/003
+#
+# Transfer platform files to the Octopus instance:
+$ rsync -avzu --ignore-errors -e ssh o1@source-host:/data/disk/o1/distro/003/platform /data/disk/o1/distro/003/
+#
+# Move away all transfered sites directories
+$ mv /data/disk/o1/distro/003/platform/sites/site-name-a /var/backups/
+$ mv /data/disk/o1/distro/003/platform/sites/site-name-b /var/backups/
+# etc.
+#
+# Add the transfered platform in the Aegir frontend
+# with platform path: /data/disk/o1/distro/003/platform
+
+### On source server - as root
+$ mysql
+mysql> GRANT ALL PRIVILEGES ON *.* TO o1@target-ip IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
+mysql> GRANT ALL PRIVILEGES ON *.* TO o1@target-host IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
+mysql> FLUSH PRIVILEGES;
+mysql> exit
+
+### On target and source server - as root
+# If you are migrating big sites, you may need to increase max_execution_time:
+$ sed -i "s/^max_execution_time =.*/max_execution_time = 1800/g" /usr/local/lib/php.ini
+$ sed -i "s/^max_execution_time =.*/max_execution_time = 1800/g" /opt/local/lib/php.ini
+
+### On target and source server - as root
+# Open port 3306 in /etc/csf/csf.conf - see TCP_IN and TCP_OUT, or add IPs
+# of boths servers to /etc/csf/csf.allow and then restart firewall with:
+$ service csf restart
+
+### On target server
+# Test mysql connection:
+$ su o1
+o1@target:~$ mysql -h source-host -u o1 -pSeCrEt
+
+### On target server
+# Enable module via web or on command line:
+$ cd /path/to/hostmaster/site
+$ drush en hosting_remote_import -y
+
+### On target server
+# Note: you will have to wait for cron to run
+# after every step or run it manually with:
+$ bash /var/xdrago/run-o1
+#
+1. Add new remote server - see screenshots:
+
+   https://skitch.com/omega8cc/8tihq/fullscreen-272
+   https://skitch.com/omega8cc/8tih4/fullscreen-273
+
+2. Go to "Import remote sites" tab on the just added server node.
+3. Click on the "Retrieve a list of remote sites" button and run cron.
+4. Choose the site to import from the list.
+5. Choose the platform you have imported and added above and run cron.
+6. Wait... wait.. wait.. until it is done and the site is imported.
+7. Repeat from step 2 to migrate next/more site(s).
+8. Done!
+

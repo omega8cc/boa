@@ -404,6 +404,8 @@ else
   fi
 fi
 msg "$_STATUS B: Downloading drush extensions, please wait.."
+git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/provision/remote_import &> /dev/null
+rm -f -r $_ROOT/.drush/provision/remote_import/.git &> /dev/null
 wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/provision_cdn-6.x-2.x-dev.tar.gz
@@ -531,6 +533,8 @@ git clone --branch master http://git.drupal.org/project/hosting_civicrm_cron.git
 rm -f -r hosting_civicrm_cron/.git &> /dev/null
 git clone --branch master http://git.drupal.org/project/hosting_advanced_cron.git &> /dev/null
 rm -f -r hosting_advanced_cron/.git &> /dev/null
+git clone --branch 6.x-1.x http://git.drupal.org/project/hosting_remote_import.git &> /dev/null
+rm -f -r hosting_remote_import/.git &> /dev/null
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
   ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 fi
