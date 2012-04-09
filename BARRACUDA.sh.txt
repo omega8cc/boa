@@ -2265,6 +2265,7 @@ if [ -e "/var/aegir/config/server_master/nginx.conf" ] ; then
   touch /var/run/boa_wait.pid
 else
   _STATUS=INIT
+  _FULL_FORCE_REINSTALL=YES
   msg "INFO: INIT..."
   _ZOMBIE_HOME="/var/backups/zombie/$_INSTALLER_VERSION-$_NOW"
   mkdir -p $_ZOMBIE_HOME
