@@ -3134,9 +3134,11 @@ else
   check_apt_updates
   if [ "$_UP_PHP" = "YES" ] ; then
     _PHP_INSTALL_REQUIRED=YES
+    msg "INFO: PHP rebuild required to include upgraded libs"
   fi
   if [ "$_UP_NGX" = "YES" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
+    msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
   fi
 fi
 
@@ -4189,7 +4191,9 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
   fi
 fi
 if [ "$_UP_JDK" = "YES" ] ; then
+  msg "INFO: Tomcat restart in progress - required after java upgrade"
   st_runner "service tomcat restart" &> /dev/null
+  msg "INFO: Tomcat restart complete"
 fi
 
 
