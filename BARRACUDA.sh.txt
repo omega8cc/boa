@@ -747,6 +747,26 @@ find_correct_ip () {
   fi
 }
 #
+# Set or update Redis password..
+update_redis_password () {
+  if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+    msg "INFO: Generate random password for Redis server"
+    touch /root/.redis.pass.txt
+    chmod 0600 /root/.redis.pass.txt &> /dev/null
+    _ESC_RPASS=`pwgen -v -s -1`
+    _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+    echo "$_ESC_RPASS" > /root/.redis.pass.txt
+    _FORCE_REDIS_RESTART=YES
+  fi
+  if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+    RPASS=`cat /root/.redis.pass.txt`
+    RPASS=`echo -n $RPASS | tr -d "\n"`
+    sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
+    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
+    sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
+  fi
+}
+#
 # Install Redis from sources.
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
@@ -2227,26 +2247,6 @@ install_upgrade_libevent () {
     st_runner "make --quiet install" 2> /dev/null
     st_runner "ldconfig" 2> /dev/null
     echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
-  fi
-}
-#
-# Set or update Redis password..
-update_redis_password () {
-  if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    msg "INFO: Generate random password for Redis server"
-    touch /root/.redis.pass.txt
-    chmod 0600 /root/.redis.pass.txt &> /dev/null
-    _ESC_RPASS=`pwgen -v -s -1`
-    _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
-    echo "$_ESC_RPASS" > /root/.redis.pass.txt
-    _FORCE_REDIS_RESTART=YES
-  fi
-  if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    RPASS=`cat /root/.redis.pass.txt`
-    RPASS=`echo -n $RPASS | tr -d "\n"`
-    sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
-    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
-    sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
   fi
 }
 
