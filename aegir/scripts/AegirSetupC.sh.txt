@@ -237,9 +237,7 @@ create_dirs () {
   echo empty > ./sites/all/themes/EMPTY.txt
   chmod 0751 ./sites &> /dev/null
   chmod 0751 ./sites/all &> /dev/null
-  chmod 02775 ./sites/all/modules &> /dev/null
-  chmod 02775 ./sites/all/libraries &> /dev/null
-  chmod 02775 ./sites/all/themes &> /dev/null
+  chmod 02775 ./sites/all/{modules,libraries,themes} &> /dev/null
   rm -f .htaccess
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./
   mv -f get.htaccess.txt .htaccess &> /dev/null
@@ -590,9 +588,7 @@ create_d8_dirs () {
   echo empty > ./sites/all/themes/EMPTY.txt
   chmod 0751 ./sites &> /dev/null
   chmod 0751 ./sites/all &> /dev/null
-  chmod 02775 ./sites/all/modules &> /dev/null
-  chmod 02775 ./sites/all/libraries &> /dev/null
-  chmod 02775 ./sites/all/themes &> /dev/null
+  chmod 02775 ./sites/all/{modules,libraries,themes} &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./.htaccess
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
 }
