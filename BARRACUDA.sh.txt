@@ -3171,11 +3171,9 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
-  if [ "$_SQL_UPGRADE" = "YES" ] ; then
-    st_runner "apt-get autoremove -y"          2> /dev/null
-    st_runner "apt-get remove mysql-common -y" 2> /dev/null
-    st_runner "apt-get purge mysql-common -y"  2> /dev/null
-  fi
+  st_runner "apt-get autoremove -y"          2> /dev/null
+  st_runner "apt-get remove mysql-common -y" 2> /dev/null
+  st_runner "apt-get purge mysql-common -y"  2> /dev/null
   st_runner "apt-get update -y"              2> /dev/null
   SQLDEB="percona-server-server-5.5"
   SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
@@ -3215,11 +3213,7 @@ install_with_aptitude_sql () {
     install_mariadb_sql
   fi
   st_runner "$_INSTAPP $SQLDEB"     2> /dev/null
-  st_runner "apt-get autoremove -y" 2> /dev/null
-  st_runner "apt-get update -y"     2> /dev/null
-  st_runner "$_INSTAPP $SQLDEB"     2> /dev/null
   st_runner "$_INSTAPP $SQLADD"     2> /dev/null
-  st_runner "$_INSTAPP $SQLDEB"     2> /dev/null
 }
 
 
