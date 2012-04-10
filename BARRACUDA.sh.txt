@@ -1371,7 +1371,6 @@ tune_memory_limits () {
 #
 # Fix locales.
 fix_locales () {
-  msg "INFO: Running locales test and update, please wait..."
   _LOC_TEST=`locale 2>&1`
   if [[ "$_LOC_TEST" =~ "Cannot" ]] ; then
     _LOCALE_TEST=BROKEN
@@ -1617,7 +1616,6 @@ barracuda_cnf () {
 #
 # Running apt update.
 run_apt_update_again () {
-  msg "INFO: Running aptitude update, please wait..."
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
