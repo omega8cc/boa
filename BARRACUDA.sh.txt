@@ -3236,6 +3236,8 @@ install_with_aptitude_sql () {
 
 
 ###--------------------###
+st_runner "apt-get remove exim4 exim4-base exim4-config -y" &> /dev/null
+st_runner "apt-get purge exim4 exim4-base exim4-config -y" &> /dev/null
 install_with_aptitude_deps
 fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
