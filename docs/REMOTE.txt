@@ -38,6 +38,13 @@ $ ssh-keyscan -t rsa -H source-host >> ~/.ssh/known_hosts
 
 ### On target server - as root
 #
+# This example is for sites hosted on platforms installed
+# by default, so based on shared code in /data/all/ and
+# symlinked directories in /data/disk/o1/distro/.
+#
+# If your site is hosted in the /data/disk/o1/static directory
+# you can skip the steps related to transferring also /data/all.
+#
 # Create shared directory matching the path on the source-host:
 $ mkdir -p /data/all/003
 #
