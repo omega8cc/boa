@@ -2593,6 +2593,7 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
     _REL_VERSION="squeeze"
   elif [ "$_THIS_RV" = "lenny" ] ; then
     _REL_VERSION="lenny"
+    _DB_SERVER=MariaDB
   else
     not_supported_os
   fi
@@ -3215,7 +3216,7 @@ install_mariadb_sql () {
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
-  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     _PERCONA_READY=YES
   else
     _PERCONA_READY=NO
