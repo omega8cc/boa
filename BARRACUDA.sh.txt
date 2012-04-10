@@ -51,23 +51,28 @@ _MY_EMAIL="notify@omega8.cc"
 ### PHP INSTALL MODE                       ###
 ###----------------------------------------###
 ###
-### By default Barracuda installs both 5.2
-### and 5.3, so you can choose version used
-### for PHP-FPM and PHP-CLI *separately* and
-### per Aegir Master and Satellite Instance
-### below with options _PHP_FPM_VERSION
-### and _PHP_CLI_VERSION.
+### By default Barracuda installs only 5.3,
+### so it supports out of the box Drupal 8.x,
+### but breaks support for Drupal 5.x and
+### maybe some still not fully compatible
+### Drupal 6.x contrib modules.
 ###
-### If you wish to install only 5.3 and force
-### both _PHP_FPM_VERSION and _PHP_CLI_VERSION
-### to 5.3 automatically, change this to:
+### To be able to install both 5.2 and 5.3,
+### so you could choose version for PHP-FPM
+### and PHP-CLI *separately* and per Aegir
+### Master and Satellite Instance below with
+### _PHP_FPM_VERSION and _PHP_CLI_VERSION,
+### change this to:
 ###
-### _PHP_MODERN_ONLY=YES
+### _PHP_MODERN_ONLY=NO
 ###
-### Note that PHP 5.3 is required by
-### Drupal 8.x, but breaks support for 5.x
+### Note that this option is always forced
+### to NO automatically when 5.2 is already
+### installed and available, so while you can
+### easily add 5.2 on upgrade by changing it
+### to NO below, you can't remove it later.
 ###
-_PHP_MODERN_ONLY=NO
+_PHP_MODERN_ONLY=YES
 
 
 ###----------------------------------------###
@@ -82,6 +87,10 @@ _PHP_MODERN_ONLY=NO
 ###
 ### _PHP_FPM_VERSION=5.2
 ### _PHP_FPM_VERSION=5.3
+###
+### This option is useful only with its parent
+### option set to _PHP_MODERN_ONLY=NO, which
+### is not default.
 ###
 _PHP_FPM_VERSION=5.2
 
@@ -101,6 +110,10 @@ _PHP_FPM_VERSION=5.2
 ###
 ### _PHP_CLI_VERSION=5.2
 ### _PHP_CLI_VERSION=5.3
+###
+### This option is useful only with its parent
+### option set to _PHP_MODERN_ONLY=NO, which
+### is not default.
 ###
 _PHP_CLI_VERSION=5.2
 
