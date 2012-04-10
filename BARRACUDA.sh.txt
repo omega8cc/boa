@@ -1541,7 +1541,8 @@ barracuda_cnf () {
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
+      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/local/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.3
         sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.barracuda.cnf &> /dev/null
       fi
     else
@@ -1549,7 +1550,10 @@ barracuda_cnf () {
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.barracuda.cnf &> /dev/null
+      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/local/bin/php" ] ; then
+        _PHP_CLI_VERSION=5.3
+        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.barracuda.cnf &> /dev/null
+      fi
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     fi
