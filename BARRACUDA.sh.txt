@@ -920,7 +920,7 @@ update_sql_conf () {
 #
 # Update Nginx Config.
 update_nginx_conf () {
-  if [ ! -e "/var/log/nginx_config_fixed" ] ; then
+  if [ ! -e "/var/log/nginx_config_fixed" ] && [ -d "/var/aegir" ] ; then
     cd /var/aegir
     sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf &> /dev/null
     perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
@@ -2265,7 +2265,7 @@ fi
 ###--------------------###
 msg "INFO: Install or upgrade checking, please wait..."
 sleep 1
-if [ -e "/var/aegir/config/server_master/nginx.conf" ] ; then
+if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE..."
   barracuda_cnf
@@ -2287,6 +2287,7 @@ else
   mkdir -p $_ZOMBIE_HOME
   mv -f /etc/nginx/conf.d/* $_ZOMBIE_HOME/ &> /dev/null
   mv -f /var/aegir $_ZOMBIE_HOME/ &> /dev/null
+  mv -f /var/xdrago $_ZOMBIE_HOME/ &> /dev/null
   mv -f /root/.my.cnf $_ZOMBIE_HOME/ &> /dev/null
   mv -f /root/.my.pass.txt $_ZOMBIE_HOME/ &> /dev/null
   cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
@@ -3466,7 +3467,7 @@ fi
 msg "INFO: Install/upgrade a few more tools, please wait..."
 mrun "sleep 1"
 cd /var
-if [ -d "/var/xdrago" ] ; then
+if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   fix_on_upgrade
   cd /var
   mkdir -p /var/backups/dragon/x
