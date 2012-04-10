@@ -2094,6 +2094,8 @@ install_upgrade_nginx () {
     elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
+    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ "$_STATUS" = "INIT" ] ; then
+      _NGINX_INSTALL_REQUIRED=NO
     elif [ "$_NGINX_F_INSTALLED" != "$_NGINX_F_VERSION" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
@@ -2160,7 +2162,7 @@ install_upgrade_nginx () {
 #
 # Install or upgrade libevent.
 install_upgrade_libevent () {
-  if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing libevent, please wait..."
     rm -f -r /var/opt/libevent*
     cd /var/opt
