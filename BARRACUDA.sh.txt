@@ -3133,9 +3133,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   st_runner "aptitude autoclean -y" 2> /dev/null
 else
-  if [ -e "/var/lib/mysql/debian-5.5.flag" ] ; then
-    rm -f /var/lib/mysql/debian-5.5.flag &> /dev/null
-  fi
+  rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
   service cron stop &> /dev/null
   service lfd stop  &> /dev/null
@@ -3209,10 +3207,12 @@ install_mariadb_sql () {
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.3/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.3/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  st_runner "apt-get autoremove -y"          2> /dev/null
-  st_runner "apt-get remove mysql-common -y" 2> /dev/null
-  st_runner "apt-get purge mysql-common -y"  2> /dev/null
-  st_runner "apt-get update -y"              2> /dev/null
+  st_runner "apt-get autoremove -y"                       2> /dev/null
+  st_runner "apt-get remove mysql-common -y"              2> /dev/null
+  st_runner "apt-get purge mysql-common -y"               2> /dev/null
+  st_runner "apt-get remove percona-server-common-5.5 -y" 2> /dev/null
+  st_runner "apt-get purge percona-server-common-5.5 -y"  2> /dev/null
+  st_runner "apt-get update -y"                           2> /dev/null
   SQLDEB="mariadb-server-5.3 mariadb-client-5.3 mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
@@ -3229,8 +3229,9 @@ install_with_aptitude_sql () {
     msg "INFO: Installing $_DB_SERVER, please wait..."
     install_mariadb_sql
   fi
-  st_runner "$_INSTAPP $SQLDEB"     2> /dev/null
-  st_runner "$_INSTAPP $SQLADD"     2> /dev/null
+  st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
+  st_runner "$_INSTAPP $SQLADD" 2> /dev/null
+  st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
 }
 
 
@@ -3248,7 +3249,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   install_with_aptitude_sql
 else
   _SQL_UPGRADE=NO
-  if [ "$_SQL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_SQL_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _SQL_UPGRADE=YES
   elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES
@@ -3273,6 +3274,7 @@ else
       st_runner "apt-get update -y" 2> /dev/null
       st_runner "apt-get clean -y --force-yes" 2> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
+      rm -f /etc/apt/sources.list.d/percona.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
@@ -3285,9 +3287,7 @@ else
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-    rm -f /var/lib/mysql/debian-5.1.flag &> /dev/null
-    rm -f /var/lib/mysql/debian-5.2.flag &> /dev/null
-    rm -f /var/lib/mysql/debian-5.3.flag &> /dev/null
+    rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
     _PHP_FORCE_REINSTALL=YES
