@@ -501,6 +501,12 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
+### Use YES to still install memcached, even
+### if it is no longer used by default.
+###
+_USE_MEMCACHED=NO
+
+###
 ### Use YES to avoid overwriting configuration
 ### for listed services on upgrade.
 ###
@@ -890,6 +896,12 @@ update_php_conf () {
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  if [ "$_USE_MEMCACHED" = "NO" ] ; then
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/etc/php.ini &> /dev/null
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /usr/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/lib/php.ini &> /dev/null
+  fi
 }
 #
 # Update SQL Config.
@@ -1487,6 +1499,7 @@ barracuda_cnf () {
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
+    echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
     echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1602,6 +1615,12 @@ barracuda_cnf () {
     else
       echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     fi
+    _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED /root/.barracuda.cnf)
+    if [[ "$_USE_MEMCACHED_TEST" =~ "_USE_MEMCACHED" ]] ; then
+      true
+    else
+      echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
+    fi
     sleep 1
     echo " "
     while read line ; do
@@ -1664,19 +1683,21 @@ install_ioncube () {
 # Install libmemcached.
 install_libmemcached () {
   ###--------------------###
-  if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
-    mrun "sleep 1"
-    tar -xzf libmemcached-0.53.tar.gz
-    if [ -e "/var/opt/libmemcached-0.53" ] ; then
-      cd /var/opt/libmemcached-0.53
-      st_runner "sh ./configure" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
+  if [ "$_USE_MEMCACHED" = "YES" ] ; then
+    if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+      msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
+      mrun "sleep 1"
+      tar -xzf libmemcached-0.53.tar.gz
+      if [ -e "/var/opt/libmemcached-0.53" ] ; then
+        cd /var/opt/libmemcached-0.53
+        st_runner "sh ./configure" 2> /dev/null
+        st_runner "make --quiet" 2> /dev/null
+        st_runner "make --quiet install" 2> /dev/null
+        echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
+      fi
     fi
   fi
 }
@@ -1696,23 +1717,25 @@ install_php_extensions () {
   st_runner "make --quiet install" 2> /dev/null
   echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
   ###--------------------###
-  msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
-    st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
-  fi
-  cd /var/opt
-  rm -f -r memcached*
-  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-  tar -xzf memcached-1.0.2.tgz
-  if [ -e "/var/opt/memcached-1.0.2" ] ; then
-    cd /var/opt/memcached-1.0.2
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
+  if [ "$_USE_MEMCACHED" = "YES" ] ; then
+    msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
+    if [ "$_REL_VERSION" = "oneiric" ] ; then
+      st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
+    fi
+    cd /var/opt
+    rm -f -r memcached*
+    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+    tar -xzf memcached-1.0.2.tgz
+    if [ -e "/var/opt/memcached-1.0.2" ] ; then
+      cd /var/opt/memcached-1.0.2
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
+      mrun "sleep 1"
+    fi
   fi
   ###--------------------###
   msg "INFO: Installing Suhosin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -1809,21 +1832,23 @@ update_php_universal () {
     echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ ! -e "/var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing memcached upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r memcached*
-    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-    tar -xzf memcached-1.0.2.tgz
-    if [ -e "/var/opt/memcached-1.0.2" ] ; then
-      cd /var/opt/memcached-1.0.2
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
+  if [ "$_USE_MEMCACHED" = "YES" ] ; then
+   if [ ! -e "/var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing memcached upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
+      cd /var/opt
+      rm -f -r memcached*
+      wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+      tar -xzf memcached-1.0.2.tgz
+      if [ -e "/var/opt/memcached-1.0.2" ] ; then
+        cd /var/opt/memcached-1.0.2
+        st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+        st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+        st_runner "make --quiet" 2> /dev/null
+        st_runner "make --quiet install" 2> /dev/null
+        echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
+        mrun "sleep 1"
+      fi
     fi
   fi
   ###--------------------###
@@ -3577,21 +3602,23 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
-if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Installing Memcached server, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f /opt/bin/memcached
-  rm -f /usr/bin/memcached
-  rm -f /usr/local/bin/memcached
-  wget -q -U iCab http://files.aegir.cc/dev/memcached-1.4.9.tar.gz
-  tar -xzf memcached-1.4.9.tar.gz
-  cd /var/opt/memcached-1.4.9
-  st_runner "sh ./configure" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  ln -s /usr/local/bin/memcached /usr/bin/memcached
-  echo "memcached-1.4.9" > /var/log/memcached-1.4.9.log
+if [ "$_USE_MEMCACHED" = "YES" ] ; then
+  if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    msg "INFO: Installing Memcached server, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f /opt/bin/memcached
+    rm -f /usr/bin/memcached
+    rm -f /usr/local/bin/memcached
+    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.4.9.tar.gz
+    tar -xzf memcached-1.4.9.tar.gz
+    cd /var/opt/memcached-1.4.9
+    st_runner "sh ./configure" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    ln -s /usr/local/bin/memcached /usr/bin/memcached
+    echo "memcached-1.4.9" > /var/log/memcached-1.4.9.log
+  fi
 fi
 
 
