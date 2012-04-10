@@ -3223,8 +3223,10 @@ install_with_aptitude_sql () {
     _PERCONA_READY=NO
   fi
   if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
+    msg "INFO: Installing $_DB_SERVER, please wait..."
     install_percona_sql
   else
+    msg "INFO: Installing $_DB_SERVER, please wait..."
     install_mariadb_sql
   fi
   st_runner "$_INSTAPP $SQLDEB"     2> /dev/null
