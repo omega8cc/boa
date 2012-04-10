@@ -3583,8 +3583,10 @@ fi
 
 
 ###--------------------###
-msg "INFO: PHP installed version auto-discovering now, please wait..."
-mrun "sleep 1"
+if [ "$_STATUS" = "UPGRADE" ] ; then
+  msg "INFO: PHP installed version auto-discovering now, please wait..."
+  mrun "sleep 1"
+fi
 if [ -e "/opt/local/bin/php" ] ; then
   _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
