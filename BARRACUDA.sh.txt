@@ -1616,11 +1616,11 @@ barracuda_cnf () {
 #
 # Running apt update.
 run_apt_update_again () {
+  msg "INFO: Running aptitude full-upgrade again, please wait..."
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" 2> /dev/null
   st_runner "aptitude clean -y" 2> /dev/null
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
-  fix_locales
 }
 #
 # Install IonCube.
@@ -2010,6 +2010,8 @@ upgrade_aegir_master () {
     service cron stop &> /dev/null
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries}
+    chown -R aegir:aegir $_THIS_HM_ROOT/sites/all
     chown -R aegir:aegir /var/aegir/.drush
     chown -R aegir:aegir /var/aegir/backups
     chown -R aegir:aegir /var/aegir/clients
@@ -2077,28 +2079,29 @@ upgrade_aegir_master () {
 install_upgrade_nginx () {
   msg "INFO: Nginx version test, please wait..."
   mrun "sleep 1"
-  if [ "$_STATUS" = "INIT" ] ; then
-    _NGINX_INSTALL_REQUIRED=YES
+  if [ "$_STATUS" = "UPGRADE" ] ; then
+    _NGINX_INSTALL_REQUIRED=NO
   fi
   _NGINX_EXTRA_CTRL="/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf"
-  if [ -e "/usr/sbin/nginx" ] ; then
+  if [ -x "/usr/sbin/nginx" ] ; then
     _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
     _NGINX_V_INSTALLED=`/usr/sbin/nginx -V 2>&1`
     if [ -z "$_NGINX_F_INSTALLED" ] ; then
       _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f3 | awk '{ print $1}'`
     fi
     _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
-    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
-      _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
-    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
+    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
     elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ "$_STATUS" = "INIT" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
     elif [ "$_NGINX_F_INSTALLED" != "$_NGINX_F_VERSION" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
+    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
+      _NGINX_INSTALL_REQUIRED=YES
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
     fi
     if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
       if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
@@ -2162,7 +2165,7 @@ install_upgrade_nginx () {
 #
 # Install or upgrade libevent.
 install_upgrade_libevent () {
-  if [ ! -e "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -f "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing libevent, please wait..."
     rm -f -r /var/opt/libevent*
     cd /var/opt
@@ -2181,10 +2184,6 @@ install_upgrade_libevent () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     st_runner "ldconfig" 2> /dev/null
-    _PHP_FORCE_REINSTALL=YES
-    if [ "$_STATUS" = "UPGRADE" ] ; then
-      msg "INFO: PHP rebuild required to include newer libevent and memcached"
-    fi
     echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
   fi
 }
@@ -2265,8 +2264,12 @@ if [ -e "/var/aegir/config/server_master/nginx.conf" ] ; then
   touch /var/run/boa_wait.pid
 else
   _STATUS=INIT
-  _FULL_FORCE_REINSTALL=YES
-  msg "INFO: INIT..."
+  if [ -d "/var/aegir" ] ; then
+    msg "INFO: FORCED INIT..."
+    _FULL_FORCE_REINSTALL=YES
+  else
+    msg "INFO: NORMAL INIT..."
+  fi
   _ZOMBIE_HOME="/var/backups/zombie/$_INSTALLER_VERSION-$_NOW"
   mkdir -p $_ZOMBIE_HOME
   mv -f /etc/nginx/conf.d/* $_ZOMBIE_HOME/ &> /dev/null
@@ -2923,7 +2926,6 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
   fi
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
     run_apt_update_again
-    run_apt_update_again
     _LOC_REL_VERSION=lenny
     _REL_VERSION=squeeze
     _APT_SOURCES_REWRITE=YES
@@ -3292,8 +3294,8 @@ fi
 
 ###--------------------###
 run_apt_update_again
-run_apt_update_again
 install_with_aptitude_deps
+fix_locales
 install_upgrade_libevent
 install_latest_git
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
@@ -3394,18 +3396,14 @@ fi
 
 
 ###--------------------###
-msg "INFO: Fix for Nginx startup script, please wait..."
-mrun "sleep 1"
 _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
 if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
   true
-  msg "INFO: No fix required"
   sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
 else
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
   chmod 755 /etc/init.d/nginx &> /dev/null
-  msg "INFO: Fix for Nginx startup script applied"
 fi
 
 
@@ -3692,8 +3690,14 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_LSHELL="/usr/local/bin/lshell"
 fi
-if [ ! -e "$_PATH_LSHELL" ] ; then
-  msg "INFO: Installing lshell, please wait..."
+if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_STATUS" = "UPGRADE" ] ; then
+    msg "INFO: Upgrading lshell, please wait..."
+    cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
+    cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
+  else
+    msg "INFO: Installing lshell, please wait..."
+  fi
   mrun "sleep 1"
   cd /var/opt
   if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
@@ -3708,15 +3712,19 @@ if [ ! -e "$_PATH_LSHELL" ] ; then
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
   st_runner "python setup.py install" 2> /dev/null
+  if [ "$_STATUS" = "UPGRADE" ] ; then
+    cp -af /etc/lshell.conf-bak /etc/lshell.conf &> /dev/null
+  else
+    mv -f /etc/lshell.conf /etc/lshell.conf-pre-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
+    echo "$_PATH_LSHELL" >> /etc/shells
+  fi
+  sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
   addgroup --system lshellg &> /dev/null
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
-  mv -f /etc/lshell.conf /etc/lshell.conf-pre-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
-  echo "$_PATH_LSHELL" >> /etc/shells
   echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
-  sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
 fi
 if [ -f "/usr/local/bin/lshell" ] ; then
   if [ ! -L "/usr/bin/lshell" ] ; then
@@ -3726,37 +3734,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Installing lshell upgrade, please wait..."
-  mrun "sleep 1"
-  cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
-  cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
-  cd /var/opt
-  if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
-    wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
-    tar -xzf lshell-$_LSHELL_VERSION.tar.gz
-  else
-    git clone --branch $_LSHELL_VERSION git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
-  fi
-  for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
-    sed -i "s/kicked/logged/g" $Files
-    sed -i "s/Kicked/Logged/g" $Files
-  done
-  cd /var/opt/lshell-$_LSHELL_VERSION
-  st_runner "python setup.py install" 2> /dev/null
-  cp -af /etc/lshell.conf-bak /etc/lshell.conf &> /dev/null
-  addgroup --system lshellg &> /dev/null
-  mkdir -p /var/log/lsh
-  chown :lshellg /var/log/lsh
-  chmod 770 /var/log/lsh &> /dev/null
-  echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
-fi
-
-
-###--------------------###
 if [ ! -e "/var/log/umask_fixed.log" ] ; then
-  msg "INFO: Setting better default umask for users, please wait..."
-  mrun "sleep 1"
   mkdir -p /var/www
   echo "UMASK=002" >> /etc/default/login
   sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
@@ -3916,8 +3894,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
-  msg "INFO: Now running Aegir installer for backend and frontend, please wait..."
-  mrun "sleep 1"
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
   else
@@ -3941,33 +3917,26 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
   fi
+  _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+  mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
+  chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
   rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
+  chmod 711 /var/aegir/config/includes &> /dev/null
+  chmod 711 /var/aegir/config &> /dev/null
+  chmod 711 /var/aegir/.drush &> /dev/null
 
 
 ###--------------------###
-  msg "INFO: Simple check if Aegir Master Instance install is successful"
-  mrun "sleep 1"
   if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] ; then
-    msg "INFO: Aegir installation almost completed"
+    true
   else
-    msg "FATAL ERROR: Something is wrong, Aegir Master Instance not installed - exit now"
+    msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
     msg "FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
     exit 1
   fi
 
 
 ###--------------------###
-  msg "INFO: Fix for access to global.inc for www-data user"
-  mrun "sleep 1"
-  chmod 711 /var/aegir/config/includes &> /dev/null
-  chmod 711 /var/aegir/config &> /dev/null
-  chmod 711 /var/aegir/.drush &> /dev/null
-  mrun "sleep 1"
-
-
-###--------------------###
-  msg "INFO: Fix for advanced Nginx config and Drush path"
-  mrun "sleep 1"
   ln -s /var/aegir/drush/drush /usr/bin/drush
   mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
@@ -4023,8 +3992,6 @@ fi
 
 ###--------------------###
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
-msg "INFO: Fix for mime types in Nginx, please wait..."
-mrun "sleep 1"
   cd /etc/nginx
   mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
@@ -4091,8 +4058,6 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-  msg "INFO: Installing Speed Booster Purge Server, please wait..."
-  mrun "sleep 1"
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
 fi
