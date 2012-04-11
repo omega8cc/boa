@@ -747,6 +747,18 @@ find_correct_ip () {
   fi
 }
 #
+# Fix php.ini files to add redis.so
+fix_php_ini_redis () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
+    if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
+      true
+    else
+      echo "extension=redis.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
 # Set or update Redis password..
 update_redis_password () {
   if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
@@ -922,6 +934,14 @@ update_php_conf () {
     sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/lib/php.ini &> /dev/null
   fi
+  _THIS_FILE=/opt/etc/php.ini
+  fix_php_ini_redis
+  _THIS_FILE=/usr/local/lib/php.ini
+  fix_php_ini_redis
+  _THIS_FILE=/opt/local/etc/php53.ini
+  fix_php_ini_redis
+  _THIS_FILE=/opt/local/lib/php.ini
+  fix_php_ini_redis
 }
 #
 # Update SQL Config.
