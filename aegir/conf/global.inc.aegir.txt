@@ -312,6 +312,22 @@ if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUE
   $use_cache = FALSE;
 }
 
+if ($drupal_seven) {
+  if (isset($_COOKIE[$test_sess_name])) {
+    $use_cache = TRUE;
+  }
+  else {
+    $use_cache = FALSE;
+  }
+}
+
+if ($use_cache && $use_redis) {
+  header('X-Allow-Redis: YES');
+}
+else {
+  header('X-Allow-Redis: NO');
+}
+
 /**
  * Optional extra settings/overrides
  *
