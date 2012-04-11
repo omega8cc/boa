@@ -128,13 +128,16 @@ if ($conf['install_profile'] == 'martplug') {
 
 if (isset($_SERVER['HTTP_HOST'])) {
   if ($conf['install_profile'] == 'uberdrupal' ||
+      $conf['install_profile'] == 'martplug' ||
+      $conf['install_profile'] == 'commerce' ||
+      $conf['install_profile'] == 'commerce_kickstart' ||
+      $conf['install_profile'] == 'opendeals' ||
       file_exists('sites/all/modules/ubercart/README.txt') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
       file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt')) {
-    unset($conf['file_downloads']); // disable hardcoded public downloads for ubercart
-    $conf['cache'] = 1; // enable hardcoded standard caching
-    $is_ubercart = 'ubercart';
+    unset($conf['file_downloads']); // disable hardcoded public downloads
+    $is_cart = 'cart';
   }
 }
 
@@ -268,7 +271,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
       $lifetime = '60';
       setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
     }
-    elseif ($expire_in_seconds >= 5 && (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || $conf['install_profile'] == 'commerce' || !empty($is_ubercart))) {
+    elseif ($expire_in_seconds >= 5 && (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || !empty($is_cart))) {
       $expire_in_seconds = '5';
     }
     else {
