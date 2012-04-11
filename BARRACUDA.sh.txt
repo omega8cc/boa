@@ -904,6 +904,10 @@ update_php_conf () {
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
+  if [ ! -e "/opt/local/lib/php.ini" ] ; then
+    mkdir -p /opt/local/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
@@ -916,24 +920,29 @@ update_php_conf () {
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
-  if [ ! -e "/opt/local/lib/php.ini" ] ; then
-    mkdir -p /opt/local/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
-  fi
+  ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  ###
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  ###
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/lib/php.ini &> /dev/null
+  ###
   if [ "$_USE_MEMCACHED" = "NO" ] ; then
     sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/etc/php.ini &> /dev/null
     sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /usr/local/lib/php.ini &> /dev/null
     sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/lib/php.ini &> /dev/null
   fi
+  ###
   _THIS_FILE=/opt/etc/php.ini
   fix_php_ini_redis
   _THIS_FILE=/usr/local/lib/php.ini
