@@ -1529,6 +1529,13 @@ barracuda_cnf () {
     sleep 1
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
+    if [ -e "/usr/local/bin/php" ] ; then
+      _PHP_MODERN_ONLY=NO
+    fi
+    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    fi
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
       sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Enabled by default/g" /root/.barracuda.cnf &> /dev/null
@@ -1652,6 +1659,13 @@ barracuda_cnf () {
     done < /root/.barracuda.cnf
     echo " "
     source /root/.barracuda.cnf
+    if [ -e "/usr/local/bin/php" ] ; then
+      _PHP_MODERN_ONLY=NO
+    fi
+    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
