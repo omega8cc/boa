@@ -298,7 +298,7 @@ fi
 # remove incompatible modules from o_contrib
 #
 remove_incompatible_modules_001 () {
-if [ ! -e "/var/log/incompatible-modules-removed-001n.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-001o.log" ] ; then
 msg "UPGRADE A: Removing old or incompatible modules from o_contrib globally"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="cache_backport redis drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
@@ -317,7 +317,7 @@ for i in $REVISIONS; do
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
@@ -338,7 +338,7 @@ for i in $REVISIONS; do
     done
   fi
 done
-touch /var/log/incompatible-modules-removed-001n.log
+touch /var/log/incompatible-modules-removed-001o.log
 cd
 fi
 }
@@ -346,7 +346,7 @@ fi
 # remove incompatible modules from o_contrib_seven
 #
 remove_incompatible_modules_002 () {
-if [ ! -e "/var/log/incompatible-modules-removed-002n.log" ] ; then
+if [ ! -e "/var/log/incompatible-modules-removed-002o.log" ] ; then
 msg "UPGRADE A: Removing old or incompatible modules from o_contrib_seven globally"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="redis session443 cookie_cache_bypass_adv purge expire agrcache"
@@ -359,7 +359,7 @@ for i in $REVISIONS; do
       fi
     done
     cd /data/all/$i/o_contrib_seven
-    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
@@ -371,7 +371,7 @@ for i in $REVISIONS; do
     msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: redis purge expire"
   fi
 done
-touch /var/log/incompatible-modules-removed-002n.log
+touch /var/log/incompatible-modules-removed-002o.log
 cd
 fi
 }
