@@ -2284,25 +2284,6 @@ install_upgrade_libevent () {
   fi
 }
 
-###--------------------###
-if ! netcat -w 8 -z ftp.drupal.org 80 ; then
-  echo " "
-  msg "EXIT on error due to ftp.drupal.org downtime."
-  msg "Please try to run this script again in a few minutes"
-  msg "or better yet, hours. Bye."
-  echo " "
-  exit 1
-fi
-if ! netcat -w 8 -z github.com 9418 ; then
-  echo " "
-  msg "EXIT on error due to GitHub git server at 9418 downtime."
-  msg "Please try to run this script again in a few minutes."
-  msg "Also, make sure that the git port 9418 is open."
-  msg "Bye."
-  echo " "
-  exit 1
-fi
-
 
 ###--------------------###
 if [ `whoami` = "root" ] ; then
@@ -2378,35 +2359,6 @@ rm -f /var/run/aegir_upgrade.pid
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
-  _DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ "$_DB_SERVER" = "Percona" ] ; then
-      _DB_SERVER_SRC=repo.percona.com
-    else
-      _DB_SERVER_SRC=ftp.osuosl.org
-    fi
-  else
-    _DB_SERVER_SRC=repo.percona.com
-  fi
-else
-  if [ "$_DB_SERVER" = "Percona" ] ; then
-    _DB_SERVER_SRC=repo.percona.com
-  else
-    _DB_SERVER_SRC=ftp.osuosl.org
-  fi
-fi
-if ! netcat -w 8 -z $_DB_SERVER_SRC 80 ; then
-  echo " "
-  msg "EXIT on error due to $_DB_SERVER_SRC downtime."
-  msg "Please try to run this script again in a few minutes"
-  msg "or better yet, hours. Bye."
-  echo " "
-  exit 1
-fi
-
-
-###--------------------###
-if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ ! -e "/root/.my.cnf" ] ; then
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password."
   cat <<EOF
@@ -2443,6 +2395,55 @@ if [ "$_STATUS" = "INIT" ] ; then
   sleep 1
   fix_locales
   $_INITINS wget git-core axel netcat aptitude &> /dev/null
+fi
+
+
+###--------------------###
+if ! netcat -w 8 -z ftp.drupal.org 80 ; then
+  echo " "
+  msg "EXIT on error due to ftp.drupal.org downtime."
+  msg "Please try to run this script again in a few minutes"
+  msg "or better yet, hours. Bye."
+  echo " "
+  exit 1
+fi
+if ! netcat -w 8 -z github.com 9418 ; then
+  echo " "
+  msg "EXIT on error due to GitHub git server at 9418 downtime."
+  msg "Please try to run this script again in a few minutes."
+  msg "Also, make sure that the git port 9418 is open."
+  msg "Bye."
+  echo " "
+  exit 1
+fi
+
+
+###--------------------###
+if [ "$_STATUS" = "UPGRADE" ] ; then
+  _DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    if [ "$_DB_SERVER" = "Percona" ] ; then
+      _DB_SERVER_SRC=repo.percona.com
+    else
+      _DB_SERVER_SRC=ftp.osuosl.org
+    fi
+  else
+    _DB_SERVER_SRC=repo.percona.com
+  fi
+else
+  if [ "$_DB_SERVER" = "Percona" ] ; then
+    _DB_SERVER_SRC=repo.percona.com
+  else
+    _DB_SERVER_SRC=ftp.osuosl.org
+  fi
+fi
+if ! netcat -w 8 -z $_DB_SERVER_SRC 80 ; then
+  echo " "
+  msg "EXIT on error due to $_DB_SERVER_SRC downtime."
+  msg "Please try to run this script again in a few minutes"
+  msg "or better yet, hours. Bye."
+  echo " "
+  exit 1
 fi
 
 
