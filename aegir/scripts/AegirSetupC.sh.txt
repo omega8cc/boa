@@ -1677,7 +1677,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   patch -p1 < features-1265168-19-roles.patch &> /dev/null
   cd $_THIS_PRPATH/modules/contrib
   upgrade_ctools
-  sed -i "s/^dependencies.*$_THIS_PRNAME_sample_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
+  sed -i "s/^dependencies.*martplug_sample_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   find $_THIS_PRPATH -type d -exec chmod 0755 {} \; &> /dev/null
   find $_THIS_PRPATH -type f -exec chmod 0644 {} \; &> /dev/null
