@@ -342,7 +342,7 @@ msg "$_STATUS C: Downloading o_contrib_seven modules, please wait.."
   wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
@@ -388,7 +388,7 @@ msg "$_STATUS C: Downloading o_contrib modules, please wait.."
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha7.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
