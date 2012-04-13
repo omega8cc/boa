@@ -776,6 +776,8 @@ update_redis_password () {
     sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
     sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
     sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
+    chown redis:redis /etc/redis/redis.conf
+    chmod 0600 /etc/redis/redis.conf
   fi
 }
 #
