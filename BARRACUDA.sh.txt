@@ -3436,10 +3436,14 @@ st_runner "apt-get purge exim4 exim4-base exim4-config -y" &> /dev/null
 install_with_aptitude_deps
 fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
-  install_upgrade_libevent
   install_latest_git
   if [ "$_REL_VERSION" != "squeeze" ] ; then
+    install_upgrade_libevent
     install_upgrade_nginx
+  else
+    if [ "$_USE_MEMCACHED" = "YES" ] ; then
+      install_upgrade_libevent
+    fi
   fi
 fi
 
@@ -3506,9 +3510,11 @@ fi
 run_apt_update_again
 install_with_aptitude_deps
 fix_locales
-install_upgrade_libevent
 install_latest_git
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_USE_MEMCACHED" = "YES" ] ; then
+    install_upgrade_libevent
+  fi
   install_upgrade_nginx
 fi
 set_xterm
