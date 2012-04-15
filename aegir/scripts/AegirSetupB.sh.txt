@@ -460,7 +460,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
-  msg "$_STATUS B: Running hostmaster-install complete"
+  msg "$_STATUS B: Running hostmaster-install completed"
   mrun "sleep 1"
   msg "$_STATUS B: Running hosting-dispatch (1/3), please wait..."
   drush '@hostmaster' hosting-dispatch &> /dev/null
@@ -490,7 +490,7 @@ else
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
-  msg "$_STATUS B: Hostmaster STATUS: upgrade complete"
+  msg "$_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
 
