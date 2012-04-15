@@ -9,8 +9,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 sleep 5
 echo rotate > /var/log/php/php-fpm-error.log
 echo rotate > /var/log/php/php-fpm-slow.log
-echo rotate > /opt/local/var/log/php53-fpm-error.log
-echo rotate > /opt/local/var/log/php53-fpm-slow.log
+echo rotate > /var/log/php/php53-fpm-error.log
+echo rotate > /var/log/php/php53-fpm-slow.log
 echo rotate > /var/log/php/error_log_52
 echo rotate > /var/log/php/error_log_53
 echo rotate > /var/log/php/error_log_cli
