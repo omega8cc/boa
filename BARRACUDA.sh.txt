@@ -582,6 +582,7 @@ _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
 _REDIS_VERSION=2.4.10
 _MARIADB_VERSION=5.5.23
+_PERCONA_VERSION=5.5.21
 
 ###
 ### Variables
@@ -786,38 +787,44 @@ update_redis_password () {
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
   mrun "sleep 1"
-  if [ ! -e "/var/lib/redis" ] ; then
-    st_runner "adduser --system --group redis" 2> /dev/null
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    st_runner "$_INSTAPP redis-server" 2> /dev/null
+  else
+    if [ ! -e "/var/lib/redis" ] ; then
+      st_runner "adduser --system --group redis" 2> /dev/null
+    fi
+    cd /var/opt
+    rm -f -r /var/opt/redis*
+    wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
+    tar -xzf redis-$_REDIS_VERSION.tar.gz
+    cd redis-$_REDIS_VERSION
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    if [ -e "/var/lib/redis" ] ; then
+      st_runner "service redis-server stop" &> /dev/null
+      killall -9 redis-server &> /dev/null
+    fi
+    cd /usr/local/bin
+    cp -p redis-server /usr/bin/
+    cp -p redis-benchmark /usr/bin/
+    cp -p redis-cli /usr/bin/
+    cp -p redis-check-dump /usr/bin/
+    cp -p redis-check-aof /usr/bin/
   fi
-  cd /var/opt
-  rm -f -r /var/opt/redis*
-  wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
-  tar -xzf redis-$_REDIS_VERSION.tar.gz
-  cd redis-$_REDIS_VERSION
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  if [ -e "/var/lib/redis" ] ; then
-    st_runner "service redis-server stop" &> /dev/null
-    killall -9 redis-server &> /dev/null
-  fi
-  cd /usr/local/bin
-  cp -p redis-server /usr/bin/
-  cp -p redis-benchmark /usr/bin/
-  cp -p redis-cli /usr/bin/
-  cp -p redis-check-dump /usr/bin/
-  cp -p redis-check-aof /usr/bin/
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
   mkdir -p /etc/redis
-  cd /etc/redis
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
   mkdir -p /var/log/redis
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
   chown redis:redis /var/lib/redis
   rm -f /var/lib/redis/*
   update_redis_password
+  if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
+    ln -s /usr/bin/redis-server /usr/local/bin/redis-server
+  fi
   st_runner "service redis-server start" &> /dev/null
   touch /var/log/redis-$_REDIS_VERSION.log
 }
@@ -907,6 +914,10 @@ update_php_conf () {
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
+  if [ ! -e "/opt/local/etc/php53.ini" ] ; then
+    mkdir -p /opt/local/etc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+  fi
   if [ ! -e "/opt/local/lib/php.ini" ] ; then
     mkdir -p /opt/local/lib
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
@@ -922,6 +933,26 @@ update_php_conf () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  fi
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
+      mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
+    fi
+    if [ -e "/etc/php5/cli/php.ini" ] && [ ! -L "/etc/php5/cli/php.ini" ] ; then
+      mv -f /etc/php5/cli/php.ini /var/backups/dragon/t/etc-php5-cli-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      ln -s /opt/local/lib/php.ini /etc/php5/cli/php.ini
+    fi
+    sed -i "s/^extension_dir =/;extension_dir =/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/^extension_dir =/;extension_dir =/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/^extension=/;extension=/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/^extension=/;extension=/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/lib/php.ini &> /dev/null
   fi
   ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
@@ -984,23 +1015,18 @@ update_sql_conf () {
 #
 # Update Nginx Config.
 update_nginx_conf () {
-  if [ ! -e "/var/log/nginx_config_fixed" ] && [ -d "/var/aegir" ] ; then
-    cd /var/aegir
-    sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf &> /dev/null
-    perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
-    perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
-    if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-      if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
-        mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-        mv -f /etc/nginx/nginx.conf-* /var/backups/dragon/t/ &> /dev/null
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
-      fi
+  if [ ! -e "/var/log/nginx-config-fixed-$_INSTALLER_VERSION" ] && [ -d "/var/aegir" ] ; then
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] && [ -e "/etc/nginx/nginx.conf" ] ; then
+      mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      mv -f /etc/nginx/nginx.conf-* /var/backups/dragon/t/ &> /dev/null
+      mv -f /etc/nginx/mime.types-pre-* /var/backups/dragon/t/ &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
+      touch /var/log/nginx-config-fixed-$_INSTALLER_VERSION
     fi
-    touch /var/log/nginx_config_fixed
   fi
-  if [ ! -e "/var/log/nginx_speed_purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+  if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-    touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
+    touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
   fi
 }
 #
@@ -1775,17 +1801,31 @@ install_libmemcached () {
 # Install extensions for PHP universal
 install_php_extensions () {
   ###--------------------###
-  msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
   cd /var/opt
-  rm -f -r phpredis*
-  git clone git://github.com/nicolasff/phpredis.git &> /dev/null
-  cd /var/opt/phpredis
+  rm -f -r APC*
+  wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
+  tar -xzf APC-$_APC_VERSION.tgz
+  cd /var/opt/APC-$_APC_VERSION
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
+  echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
+  ###--------------------###
+  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -1793,18 +1833,22 @@ install_php_extensions () {
     if [ "$_REL_VERSION" = "oneiric" ] ; then
       st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
     fi
-    cd /var/opt
-    rm -f -r memcached*
-    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-    tar -xzf memcached-1.0.2.tgz
-    if [ -e "/var/opt/memcached-1.0.2" ] ; then
-      cd /var/opt/memcached-1.0.2
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
-      mrun "sleep 1"
+    if [ "$_REL_VERSION" = "squeeze" ] ; then
+      st_runner "$_INSTAPP php5-memcached" 2> /dev/null
+    else
+      cd /var/opt
+      rm -f -r memcached*
+      wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
+      tar -xzf memcached-1.0.2.tgz
+      if [ -e "/var/opt/memcached-1.0.2" ] ; then
+        cd /var/opt/memcached-1.0.2
+        st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+        st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+        st_runner "make --quiet" 2> /dev/null
+        st_runner "make --quiet install" 2> /dev/null
+        echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
+        mrun "sleep 1"
+      fi
     fi
   fi
   ###--------------------###
@@ -1819,31 +1863,10 @@ install_php_extensions () {
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  ###--------------------###
-  msg "INFO: Installing UploadProgress for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r uploadprogress*
-  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
-  tar -xzf uploadprogress-1.0.1.tgz
-  cd /var/opt/uploadprogress-1.0.1
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  ###--------------------###
-  msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r APC*
-  wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
-  tar -xzf APC-$_APC_VERSION.tgz
-  cd /var/opt/APC-$_APC_VERSION
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
+}
+#
+# Install more extensions for PHP universal
+install_php_extensions_more () {
   ###--------------------###
   msg "INFO: Installing MailParse for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -1857,18 +1880,29 @@ install_php_extensions () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   ###--------------------###
-  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
   cd /var/opt
-  rm -f -r imagick*
-  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-  tar -xzf imagick-$_IMAGICK_VERSION.tgz
-  cd /var/opt/imagick-$_IMAGICK_VERSION
+  rm -f -r phpredis*
+  git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+  cd /var/opt/phpredis
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
+  echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
+  ###--------------------###
+  msg "INFO: Installing UploadProgress for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r uploadprogress*
+  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
+  tar -xzf uploadprogress-1.0.1.tgz
+  cd /var/opt/uploadprogress-1.0.1
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
 }
 #
 # Update PHP universal
@@ -1888,18 +1922,19 @@ update_php_universal () {
     echo "apc-$_APC_VERSION-$_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
-    rm -f -r phpredis*
-    git clone git://github.com/nicolasff/phpredis.git &> /dev/null
-    cd /var/opt/phpredis
+    rm -f -r imagick*
+    wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+    tar -xzf imagick-$_IMAGICK_VERSION.tgz
+    cd /var/opt/imagick-$_IMAGICK_VERSION
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
+    echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
@@ -1921,72 +1956,96 @@ update_php_universal () {
       fi
     fi
   fi
+}
+#
+# Update PHP universal more
+update_php_universal_more () {
   ###--------------------###
-  if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
+    msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
-    rm -f -r imagick*
-    wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-    tar -xzf imagick-$_IMAGICK_VERSION.tgz
-    cd /var/opt/imagick-$_IMAGICK_VERSION
+    rm -f -r phpredis*
+    git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+    cd /var/opt/phpredis
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
+    echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
   fi
 }
 #
 # Install PHP 5.3.10
 install_php_modern () {
   ###--------------------###
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
-  msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r /var/opt/php*
-  rm -f /etc/init.d/php53-fpm*
-  wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
-  tar -xzf php-$_PHP_VERSION_NEW.tar.gz
-  gunzip -q suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
-  cat suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
-  mrun "sleep 1"
-  cd /var/opt/php-$_PHP_VERSION_NEW
-  st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
-    patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW, please wait..."
+    _MODERN_PHP_DEB="php5-apc php5-cli php5-common php5-curl php5-dev php5-ffmpeg php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php5-sasl php5-sqlite php5-suhosin php5-xmlrpc php5-xsl"
+    st_runner "$_INSTAPP $_MODERN_PHP_DEB" 2> /dev/null
+  else
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
+    msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
+    cd /var/opt
+    rm -f -r /var/opt/php*
+    wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
+    tar -xzf php-$_PHP_VERSION_NEW.tar.gz
+    gunzip -q suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
+    cat suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
+    mrun "sleep 1"
+    cd /var/opt/php-$_PHP_VERSION_NEW
+    st_runner "sh ./buildconf --force" 2> /dev/null
+    if [ "$_REL_VERSION" = "oneiric" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
+      patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+    fi
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
+    mrun "sleep 1"
+    st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
+    mrun "sleep 1"
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
   fi
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
-  mrun "sleep 1"
-  st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
-  mrun "sleep 1"
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  _LOC_PHP_PATH=/opt/local/bin
-  install_php_extensions
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    _LOC_PHP_PATH=/usr/bin
+  else
+    _LOC_PHP_PATH=/opt/local/bin
+    install_php_extensions
+  fi
+  install_php_extensions_more
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "5.3.6-MariaDB" > /var/log/installed-5.3.6-MariaDB.log
+    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
   else
-    echo "5.5.21-Percona" > /var/log/installed-5.5.21-Percona.log
+    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+    ln -s /opt/local/bin/php /usr/bin/php
+  fi
+  if [ ! -e "/opt/local/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+    ln -s /usr/bin/php /opt/local/bin/php
+  fi
+  rm -f /etc/init.d/php53-fpm*
+  if [ -e "/etc/init.d/php5-fpm" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+    rm -f /etc/init.d/php5-fpm*
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm-dotdeb /etc/init.d/php53-fpm
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
+  fi
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
   st_runner "service php53-fpm start" &> /dev/null
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/bin/php" ] ; then
-    ln -s /opt/local/bin/php /usr/bin/php
-  fi
+  mrun "sleep 1"
+  st_runner "service php53-fpm reload" &> /dev/null
 }
 #
 # Install PHP 5.2.17
@@ -2024,12 +2083,13 @@ install_php_legacy () {
   _LOC_PHP_VERSION="$_PHP_VERSION"
   _LOC_PHP_PATH=/usr/local/bin
   install_php_extensions
+  install_php_extensions_more
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "5.3.6-MariaDB" > /var/log/installed-5.3.6-MariaDB.log
+    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
   else
-    echo "5.5.21-Percona" > /var/log/installed-5.5.21-Percona.log
+    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
   fi
   cd /usr/local/sbin
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
@@ -2041,8 +2101,14 @@ install_php_legacy () {
 # Update PHP 5.3.10
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  _LOC_PHP_PATH=/opt/local/bin
-  update_php_universal
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    _LOC_PHP_PATH=/usr/bin
+    update_php_universal_more
+  else
+    _LOC_PHP_PATH=/opt/local/bin
+    update_php_universal
+    update_php_universal_more
+  fi
 }
 #
 # Update PHP 5.2.17
@@ -2261,7 +2327,7 @@ install_upgrade_nginx () {
       _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
     fi
     cd /var/opt/nginx-$_NGINX_VERSION
-    st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-debug --with-ipv6 --with-http_geoip_module $_NGINX_EXTRA" 2> /dev/null
+    st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --with-http_dav_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-debug --with-ipv6 --with-http_geoip_module $_NGINX_EXTRA" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     killall -9 nginx &> /dev/null
@@ -3034,6 +3100,9 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     else
       _APT_SOURCES_REWRITE=YES
     fi
+    if [ ! -e "/etc/apt/sources.list.d/dotdeb.list" ] ; then
+      _APT_SOURCES_REWRITE=YES
+    fi
   fi
 else
   _APT_SOURCES_REWRITE=YES
@@ -3127,6 +3196,18 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
       echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+      echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
+      echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+        rm -f dotdeb.gpg*
+        wget -q -U iCab http://www.dotdeb.org/dotdeb.gpg
+        _KEYS_SERVER_TEST=`grep GnuPG dotdeb.gpg 2> /dev/null`
+        sleep 2
+      done
+      cat dotdeb.gpg | apt-key add - &> /dev/null
+      rm -f dotdeb.gpg*
     fi
   fi
   cd /var/log
@@ -3163,7 +3244,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
   st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
   install_latest_git
-  install_upgrade_nginx
+  if [ "$_REL_VERSION" != "squeeze" ] ; then
+    install_upgrade_nginx
+  fi
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
     ln -s /etc/init.d/bind9 /etc/init.d/bind
   fi
@@ -3227,11 +3310,11 @@ else
   _UP_NGX=NO
   _UP_JDK=NO
   check_apt_updates
-  if [ "$_UP_PHP" = "YES" ] ; then
+  if [ "$_UP_PHP" = "YES" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
     _PHP_INSTALL_REQUIRED=YES
     msg "INFO: PHP rebuild required to include upgraded libs"
   fi
-  if [ "$_UP_NGX" = "YES" ] ; then
+  if [ "$_UP_NGX" = "YES" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
   fi
@@ -3239,18 +3322,27 @@ fi
 
 
 ###--------------------###
-msg "INFO: Install/upgrade required libraries and tools"
-msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
-if [ "$_REL_VERSION" = "lenny" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop libmagick9-dev gettext ncurses-term screen tree ffmpeg flvtool2"
-elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev nginx openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database mytop libmagickwand-dev gettext ncurses-term screen tree ffmpeg flvtool2"
+if [ "$_STATUS" = "INIT" ] ; then
+  msg "INFO: Installing required libraries and tools"
 else
-  DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop libmagick9-dev gettext ncurses-term screen tree ffmpeg flvtool2"
+  msg "INFO: Upgrading required libraries and tools"
+fi
+msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
+if [ "$_REL_VERSION" = "squeeze" ] ; then
+  _APT_SQUEEZE="openjdk-6-jdk nginx-extras"
+else
+  _APT_SQUEEZE="openjdk-6-jdk nginx"
+fi
+if [ "$_REL_VERSION" = "lenny" ] ; then
+  _DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop libmagick9-dev gettext ncurses-term screen tree ffmpeg flvtool2"
+elif [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+  _DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_SQUEEZE postfix postfix-pcre pwgen python-dev re2c redis-server rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database mytop libmagickwand-dev gettext ncurses-term screen tree ffmpeg flvtool2"
+else
+  _DEBDEPS="apticron aptitude autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron curl cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libcurl4-openssl-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 libmcrypt-dev libmemcache-dev libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat nginx ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc rsyslog libgmp3-dev symlinks libgeoip1 libgeoip-dev mytop libmagick9-dev gettext ncurses-term screen tree ffmpeg flvtool2"
 fi
 
 install_with_aptitude_deps () {
-  st_runner "$_INSTAPP $DEBDEPS" 2> /dev/null
+  st_runner "$_INSTAPP $_DEBDEPS" 2> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
@@ -3267,9 +3359,14 @@ install_percona_sql () {
   st_runner "apt-get autoremove -y"          2> /dev/null
   st_runner "apt-get remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y"  &> /dev/null
+  st_runner "apt-get autoremove -y"          2> /dev/null
   st_runner "apt-get update -y"              2> /dev/null
   SQLDEB="percona-server-server-5.5"
-  SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit"
+  else
+    SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
+  fi
 }
 install_mariadb_sql () {
   cd /var/opt
@@ -3283,17 +3380,23 @@ install_mariadb_sql () {
   elif [ "$_THIS_OS" = "Ubuntu" ] ; then
     _THIS_OS_NAME=ubuntu
   fi
+  if [ "$_REL_VERSION" = "lenny" ] ; then
+    _MARIADB_VERSION=5.3
+  else
+    _MARIADB_VERSION=5.5
+  fi
   _THIS_REL_VERSION="$_REL_VERSION"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/5.3/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/5.3/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_VERSION/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_VERSION/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "apt-get autoremove -y"                       2> /dev/null
   st_runner "apt-get remove mysql-common -y"              &> /dev/null
   st_runner "apt-get purge mysql-common -y"               &> /dev/null
   st_runner "apt-get remove percona-server-common-5.5 -y" &> /dev/null
   st_runner "apt-get purge percona-server-common-5.5 -y"  &> /dev/null
+  st_runner "apt-get autoremove -y"                       2> /dev/null
   st_runner "apt-get update -y"                           2> /dev/null
-  SQLDEB="mariadb-server-5.3 mariadb-client-5.3 mariadb-common"
+  SQLDEB="mariadb-server-$_MARIADB_VERSION mariadb-client-$_MARIADB_VERSION mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
@@ -3322,7 +3425,9 @@ fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_upgrade_libevent
   install_latest_git
-  install_upgrade_nginx
+  if [ "$_REL_VERSION" != "squeeze" ] ; then
+    install_upgrade_nginx
+  fi
 fi
 
 
@@ -3390,7 +3495,7 @@ install_with_aptitude_deps
 fix_locales
 install_upgrade_libevent
 install_latest_git
-if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
   install_upgrade_nginx
 fi
 set_xterm
@@ -3488,14 +3593,25 @@ fi
 
 
 ###--------------------###
-_X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
-if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
-  true
-  sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
+if [ "$_REL_VERSION" = "squeeze" ] ; then
+  _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
+  if [[ "$_X_INIT_TEST" =~ "test_nginx_config" ]] ; then
+    true
+  else
+    mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx-squeeze-init /etc/init.d/nginx
+    chmod 755 /etc/init.d/nginx &> /dev/null
+  fi
 else
-  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
-  chmod 755 /etc/init.d/nginx &> /dev/null
+  _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
+  if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
+    true
+    sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
+  else
+    mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
+    chmod 755 /etc/init.d/nginx &> /dev/null
+  fi
 fi
 
 
@@ -3705,18 +3821,22 @@ if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] && [ "$_PHP_MODERN_ONLY" = "NO" 
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/log/installed-5.3.6-MariaDB.log" ] ; then
+  if [ ! -e "/etc/php5/conf.d/imagick.ini" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+    _PHP_INSTALL_REQUIRED=YES
+    msg "INFO: PHP rebuild required to install $_PHP_VERSION_NEW from Dotdeb.org"
+    mrun "sleep 1"
+  elif [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    if [ ! -e "/var/log/installed-$_MARIADB_VERSION-MariaDB.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.3.6-MariaDB" > /var/log/installed-5.3.6-MariaDB.log
-      msg "INFO: PHP rebuild required to include MariaDB 5.3.6 libs"
+      echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
+      msg "INFO: PHP rebuild required to include MariaDB $_MARIADB_VERSION libs"
       mrun "sleep 1"
     fi
   else
-    if [ ! -e "/var/log/installed-5.5.21-Percona.log" ] ; then
+    if [ ! -e "/var/log/installed-$_PERCONA_VERSION-Percona.log" ] ; then
       _PHP_INSTALL_REQUIRED=YES
-      echo "5.5.21-Percona" > /var/log/installed-5.5.21-Percona.log
-      msg "INFO: PHP rebuild required to include Percona 5.5.21 libs"
+      echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
+      msg "INFO: PHP rebuild required to include Percona $_PERCONA_VERSION libs"
       mrun "sleep 1"
     fi
   fi
@@ -3724,6 +3844,11 @@ fi
 if [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
   mkdir -p /opt/local/etc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
+  if [ -z "$_THISHTIP" ] ; then
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _THISHTIP="$_LOC_IP"
+  fi
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   _PHP_INSTALL_REQUIRED=YES
 fi
@@ -4053,16 +4178,11 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
   fi
   cd /var/aegir
-  sed -i "s/.*access_log/#access_log/g" /etc/nginx/nginx.conf &> /dev/null
-  perl -p -i -e "s/worker_connections\s+1024/worker_connections  4096/g" /etc/nginx/nginx.conf
-  perl -p -i -e "s/worker_processes\s+1\;/worker_processes  4\;\nworker_rlimit_nofile  8192\;/g" /etc/nginx/nginx.conf
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default
-  if [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
-      mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
-    fi
+  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
+    mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
   fi
   service nginx reload &> /dev/null
   mrun "sleep 1"
@@ -4155,7 +4275,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-  touch /var/log/nginx_speed_purge-$_INSTALLER_VERSION
+  touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
 fi
 
 
