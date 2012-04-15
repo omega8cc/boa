@@ -2403,6 +2403,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     if [ ! -z "$_L_DEB_TEST" ] ; then
       sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
       sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+      sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
     fi
   fi
   sleep 1
@@ -3116,8 +3117,8 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "" >> /etc/apt/sources.list
     echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
     if [ "$_REL_VERSION" = "lenny" ] ; then
-      echo "deb http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
-      echo "deb-src http://volatile.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
+      echo "deb http://archive.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
+      echo "deb-src http://archive.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
     fi
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       echo "deb http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
