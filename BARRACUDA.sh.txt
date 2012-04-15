@@ -139,6 +139,7 @@ _PHP_CLI_VERSION=5.2
 ### CGP --- Collectd Graph Panel
 ### CHV --- Chive DB Manager
 ### CSF --- csf/lfd Firewall
+### FTP --- Pure-FTPd server with forced FTPS
 ### PDS --- fast DNS cache server (pdnsd)
 ### SLR --- MultiCore Apache Solr Tomcat
 ### WMN --- Webmin Control Panel
@@ -147,9 +148,9 @@ _PHP_CLI_VERSION=5.2
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST=ALL
-### _XTRAS_LIST="CHV CGP CSF"
+### _XTRAS_LIST="FTP CHV CGP CSF"
 ###
-_XTRAS_LIST="CHV CSF"
+_XTRAS_LIST="FTP CHV CSF"
 
 
 ###----------------------------------------###
@@ -3968,39 +3969,41 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Installing latest Pure-FTPd server, please wait..."
-  mrun "sleep 1"
-  if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
-    echo "/bin/false" >> /etc/shells
-    echo "/bin/true" >> /etc/shells
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
+  if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    msg "INFO: Installing latest Pure-FTPd server, please wait..."
+    mrun "sleep 1"
+    if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
+      echo "/bin/false" >> /etc/shells
+      echo "/bin/true" >> /etc/shells
+    fi
+    mkdir -p /etc/ssl/private/
+    rm -f /etc/ssl/private/pure-ftpd.pem
+    rm -f /usr/local/sbin/pure-ftpd
+    st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/private/pure-ftpd.pem -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
+    chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
+    cd /var/opt
+    mkdir -p /usr/local/etc
+    rm -f -r pure-ftpd*
+    wget -q -U iCab http://files.aegir.cc/dev/pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
+    tar -xzf pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
+    cd pure-ftpd-$_PURE_FTPD_VERSION
+    st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
+    st_runner "make install-strip" 2> /dev/null
+    cd /usr/local/sbin/
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./
+    mv -f pure-config.pl.txt pure-config.pl &> /dev/null
+    chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
+    cp -af /var/opt/pure-ftpd-$_PURE_FTPD_VERSION/pam/pure-ftpd /etc/pam.d/
+    cd /usr/local/etc
+    rm -f pure-ftpd.conf
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
+    killall -9 pure-ftpd &> /dev/null
+    mrun "sleep 1"
+    st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
+    cd /var/opt
+    echo "pure-ftpd-$_PURE_FTPD_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION.log
   fi
-  mkdir -p /etc/ssl/private/
-  rm -f /etc/ssl/private/pure-ftpd.pem
-  rm -f /usr/local/sbin/pure-ftpd
-  st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/private/pure-ftpd.pem -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
-  chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
-  cd /var/opt
-  mkdir -p /usr/local/etc
-  rm -f -r pure-ftpd*
-  wget -q -U iCab http://files.aegir.cc/dev/pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
-  tar -xzf pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
-  cd pure-ftpd-$_PURE_FTPD_VERSION
-  st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
-  st_runner "make install-strip" 2> /dev/null
-  cd /usr/local/sbin/
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-config.pl.txt ./
-  mv -f pure-config.pl.txt pure-config.pl &> /dev/null
-  chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
-  cp -af /var/opt/pure-ftpd-$_PURE_FTPD_VERSION/pam/pure-ftpd /etc/pam.d/
-  cd /usr/local/etc
-  rm -f pure-ftpd.conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
-  killall -9 pure-ftpd &> /dev/null
-  mrun "sleep 1"
-  st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
-  cd /var/opt
-  echo "pure-ftpd-$_PURE_FTPD_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION.log
 fi
 
 
