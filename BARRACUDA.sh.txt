@@ -3198,8 +3198,16 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
       echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
-      echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-      echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb http://packages.dotdeb.org squeeze nginx" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb-src http://packages.dotdeb.org squeeze nginx" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb http://packages.dotdeb.org squeeze php5" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb-src http://packages.dotdeb.org squeeze php5" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb http://packages.dotdeb.org squeeze php5-pecl" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb-src http://packages.dotdeb.org squeeze php5-pecl" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb http://packages.dotdeb.org squeeze redis" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb-src http://packages.dotdeb.org squeeze redis" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb http://packages.dotdeb.org squeeze percona-toolkit" >> /etc/apt/sources.list.d/dotdeb.list
+      echo "deb-src http://packages.dotdeb.org squeeze percona-toolkit" >> /etc/apt/sources.list.d/dotdeb.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
         rm -f dotdeb.gpg*
