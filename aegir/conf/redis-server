@@ -23,6 +23,11 @@ test -x $DAEMON || exit 0
 
 set -e
 
+maxclients=$(awk '/^[ \t]*maxclients[ \t]/ { print $2 }' /etc/redis/redis.conf)
+if [ ! -z $maxclients ] && [ $maxclients -gt 992 ] ; then
+  ulimit -n $((maxclients+32))
+fi
+
 case "$1" in
   start)
 	echo -n "Starting $DESC: "
@@ -37,13 +42,14 @@ case "$1" in
 	;;
   stop)
 	echo -n "Stopping $DESC: "
-	if start-stop-daemon --stop --retry 10 --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
+	if start-stop-daemon --stop --retry 8 --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
 	then
 		echo "$NAME."
 	else
 		echo "failed"
 	fi
 	rm -f $PIDFILE
+	sleep 1
 	;;
 
   restart|force-reload)
