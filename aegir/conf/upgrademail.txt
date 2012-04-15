@@ -1,139 +1,36 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.0.2
+Your Aegir Hosting System has been upgraded to version BOA-2.0.3
 
   https://aegir.dragon.ny.host8.biz
 
-We have a very good news and a special promotion (25% off) this time.
 
-Please read below for details. This is really long e-mail,
-but it is well worth to read it in its entirety.
+=== VIDEO TUTORIALS
 
-Important changes in this release:
+  If you like video tutorials, you may start this time here:
+
+  http://bit.ly/aegir8cc
+
+
+=== IMPORTANT CHANGES IN THIS RELEASE
 
 * While your Aegir instance comes with FTPS/SSH/SFTP access,
-  there is no longer plain FTP access available.
-
+  there is no longer plain, unencrypted FTP access available.
   Compatible FTP-SSL/TLS clients are listed here:
 
   http://omega8.cc/dev/ftp-tls.txt
 
-Some new features:
 
-* All new 7.x sites now run on latest PHP-FPM 5.3.10 by default.
-  For existing sites it is enough to re-verify them in your
-  Aegir control panel to get them on PHP-FPM 5.3.10 automatically.
+=== NEW FEATURES
 
-  All existing and new 5.x sites run on the old PHP-FPM 5.2.17
-  version by default and you can't change that.
-
-  You can still choose between PHP-FPM 5.2.17 and 5.3.10 for
-  all your 6.x sites - just let us know via http://omega8.cc/support
-  that you wish to switch to 5.3.10 - but make sure first that all
-  your 6.x sites are fully PHP 5.3 compatible. By default all
-  6.x sites still run on PHP-FPM 5.2.17.
-
-* New default platforms with new Drupal core versions include
-  either enhanced Pressflow 6.25.1 +Extra or standard 7.12 core.
-
-  NOTE: before you will try to upgrade any of your sites,
-  please read our important how-to:
-
-  http://omega8.cc/the-best-recipes-for-disaster-139
-  http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
-  http://omega8.cc/managing-your-code-in-the-aegir-style-110
-
-  REALLY, PLEASE READ IT TO AVOID SOME HEAVY HEADACHES!
-
-  Please note that instead of waiting for 6.25, we already
-  included patches required to fix major issues with 6.24:
-
-  http://drupal.org/node/1425868
-  http://drupal.org/node/1425260
-
-* Both Speed Booster, Boost and Redis/Memcached supports separate
-  caches per mobile device, so it is safe to use separate themes
-  or content for mobile devices. We use simple logic to determine
-  the kind of device and there are separate cache bins for
-  mobile-tablet, mobile-smart and mobile-other.
-  You can review it here: http://bit.ly/wYz6PG
-
-* Purge module is now enabled by default in all 6.x and also 7.x
-  sites. Now Speed Booster works like a Boost - it expires
-  immediately the cache for any node/page as soon as it has been
-  edited or comment added. It also automatically expires the cache
-  for the homepage and RSS feed at once. You no longer need to wait
-  up to one hour for Speed Booster cache expiration. Plus, unlike
-  in Boost, it purges all separate caches for all mobile devices
-  along with non-mobile cache, at once. Now you have a good reason
-  to disable Boost and use our crazy fast Speed Booster only.
-
-* You can use GeoIP data provided by your Nginx server
-  in your custom code or modules with variables:
-  $_SERVER['GEOIP_COUNTRY_CODE'] and $_SERVER['GEOIP_COUNTRY_NAME']
-  to display content or block depending on the visitor's country.
-  You can check/review it from your location also on command line
-  with: 'curl -I http://your-domain' - you will see GeoIP headers.
-
-* You can safely manage Clients/Users attached to hosted sites
-  in your Aegir interface. Make sure that all sites have its
-  associated Client! Otherwise the site will be listed as available
-  for all Clients/Users you have added. The site can lost its
-  association with Client after Clone task if there is any
-  non-alphanumeric value in the Client name, like &.
-
-* CloudFlare specific header 'CF-Connecting-IP' is now supported
-  out of the box and available as standard $_SERVER['REMOTE_ADDR']
-  in all 5.x, 6.x and 7.x platforms without any contrib module.
-
-* You can disable both Boost and Speed Booster on the fly
-  by adding ?nocache=1 to any URL. Useful for debugging.
-
-* Speed Booster offers now also ESI microcaching, as explained
-  in this article: http://groups.drupal.org/node/197478.
-  This may enhance not only anonymous visitors, but also
-  logged in users experience, since it allows you to separate
-  microcache for ESI/SSI includes (valid for just 15 seconds)
-  from both default Speed Booster cache for anonymous visitors
-  (valid by default for 3 hours, unless purged on demand via
-  recently introduced Purge/Expire modules) and also from
-  Speed Booster cache per logged in user (valid for 60 seconds).
-  The ESI module is included in all 6.x platforms but is not
-  enabled and not configured automatically, so please consult
-  its documentation for details on how to use it properly.
-
-  Now you have three different levels of Speed Booster cache
-  to leverage and deliver the 'live content' experience for
-  all visitors, and still protect your server from DoS or
-  simply high load caused by unexpected high traffic etc.
+* Placeholder
 
   You can read about all new features, fixes and enhancements at:
 
   http://omega8.cc/updates
 
-Promotion in February:
 
-  Save 25% on your first payment for SSD and Root Cores,
-  including upgrades for existing SSD and Root Cores.
-  Valid in all available locations until March 1st, 2012.
-
-  Example: you will save $204 USD with yearly subscription
-  for just 2 SSD Cores or $324.75 USD with yearly subscription
-  for just 1 Root Core.
-
-  Remember also, that you can host CiviCRM and all other
-  platforms available normally with 4+ Aegir Standard Cores
-  with just 2+ Aegir SSD Cores.
-
-  Make your sites running 10x faster!
-  http://omega8.cc/buy#ssd
-  Use coupon code at 2CO order form: FEB25
-
-  Or if you prefer Aegir Root Core:
-  http://omega8.cc/buy#root
-  Use coupon code at 2CO order form: FEB25
-
-Some articles we highly recommend:
+=== RECOMMENDED ARTICLES
 
   http://omega8.cc/the-biggest-misunderstanding-ever-122
   http://omega8.cc/the-best-recipes-for-disaster-139
