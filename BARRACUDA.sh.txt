@@ -949,9 +949,11 @@ update_php_conf () {
       mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
       ln -s /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
     fi
+    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /var/backups/ &> /dev/null
+    fi
     if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626-old &> /dev/null
       ln -s /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
     fi
     sed -i "s/^extension=/;extension=/g" /opt/local/etc/php53.ini &> /dev/null
