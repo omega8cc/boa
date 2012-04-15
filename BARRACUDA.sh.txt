@@ -140,6 +140,7 @@ _PHP_CLI_VERSION=5.2
 ### CHV --- Chive DB Manager
 ### CSF --- csf/lfd Firewall
 ### FTP --- Pure-FTPd server with forced FTPS
+### GIT --- Latest Git from sources
 ### PDS --- fast DNS cache server (pdnsd)
 ### SLR --- MultiCore Apache Solr Tomcat
 ### WMN --- Webmin Control Panel
@@ -2121,23 +2122,25 @@ update_php_legacy () {
 #
 # Install latest Git.
 install_latest_git () {
-  _GIT_TEST=$(git --version)
-  if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    true
-  else
-    msg "INFO: Installing latest Git from sources, please wait..."
-    cd /var/opt
-    rm -f -r /var/opt/git*
-    wget -q -U iCab http://files.aegir.cc/dev/git-$_GIT_VERSION.tar.gz
-    tar -xzf git-$_GIT_VERSION.tar.gz
-    cd /var/opt/git-$_GIT_VERSION
-    st_runner "make configure" 2> /dev/null
-    st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    mv -f /usr/bin/git /usr/bin/git-old
-    ln -s /usr/local/bin/git /usr/bin/git
-    cd /var/opt
+  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] ; then
+    _GIT_TEST=$(git --version)
+    if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+      true
+    else
+      msg "INFO: Installing latest Git from sources, please wait..."
+      cd /var/opt
+      rm -f -r /var/opt/git*
+      wget -q -U iCab http://files.aegir.cc/dev/git-$_GIT_VERSION.tar.gz
+      tar -xzf git-$_GIT_VERSION.tar.gz
+      cd /var/opt/git-$_GIT_VERSION
+      st_runner "make configure" 2> /dev/null
+      st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      mv -f /usr/bin/git /usr/bin/git-old
+      ln -s /usr/local/bin/git /usr/bin/git
+      cd /var/opt
+    fi
   fi
 }
 #
