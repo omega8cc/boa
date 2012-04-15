@@ -2033,6 +2033,7 @@ install_php_modern () {
     ln -s /opt/local/bin/php /usr/bin/php
   fi
   if [ ! -e "/opt/local/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+    mkdir -p /opt/local/bin
     ln -s /usr/bin/php /opt/local/bin/php
   fi
   rm -f /etc/init.d/php53-fpm*
