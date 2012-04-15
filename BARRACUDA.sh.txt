@@ -762,7 +762,7 @@ fix_php_ini_redis () {
 # Set or update Redis password..
 update_redis_password () {
   if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    msg "INFO: Generate random password for Redis server"
+    msg "INFO: Generating random password for Redis server"
     touch /root/.redis.pass.txt
     chmod 0600 /root/.redis.pass.txt &> /dev/null
     _ESC_RPASS=`pwgen -v -s -1`
@@ -2184,7 +2184,7 @@ upgrade_aegir_master () {
 #
 # Install or upgrade Nginx.
 install_upgrade_nginx () {
-  msg "INFO: Nginx version test, please wait..."
+  msg "INFO: Testing Nginx version..."
   mrun "sleep 1"
   if [ "$_STATUS" = "UPGRADE" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
@@ -2223,7 +2223,11 @@ install_upgrade_nginx () {
     _NGINX_INSTALL_REQUIRED=YES
   fi
   if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Install/upgrade Nginx, please wait..."
+    if [ "$_STATUS" = "UPGRADE" ] ; then
+      msg "INFO: Upgrading Nginx, please wait..."
+    else
+      msg "INFO: Installing Nginx, please wait..."
+    fi
     mrun "sleep 1"
     cd /var/opt; rm -f -r nginx*
     if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
@@ -2322,7 +2326,7 @@ msg "INFO: Install or upgrade checking, please wait..."
 sleep 1
 if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
-  msg "INFO: UPGRADE..."
+  msg "INFO: UPGRADE"
   barracuda_cnf
   if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
     _HTTP_WILDCARD=YES
@@ -2333,10 +2337,10 @@ if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
 else
   _STATUS=INIT
   if [ -d "/var/aegir" ] ; then
-    msg "INFO: FORCED INIT..."
+    msg "INFO: FORCED INIT"
     _FULL_FORCE_REINSTALL=YES
   else
-    msg "INFO: NORMAL INIT..."
+    msg "INFO: NORMAL INIT"
   fi
   _ZOMBIE_HOME="/var/backups/zombie/$_INSTALLER_VERSION-$_NOW"
   mkdir -p $_ZOMBIE_HOME
@@ -2939,7 +2943,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Clean up temp files in /var/opt/"
+msg "INFO: Cleaning up temp files in /var/opt/"
 mrun "sleep 1"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
@@ -3032,7 +3036,7 @@ else
   _APT_SOURCES_REWRITE=YES
 fi
 if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
-  msg "INFO: Update apt sources"
+  msg "INFO: Updating apt sources"
   mrun "sleep 1"
   mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -3173,7 +3177,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     done
   fi
   mv -f /var/xdrago_wait /var/xdrago &> /dev/null
-  msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful."
+  msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful. Congrats!"
   msg "HINT: Please remember to reboot when Barracuda will complete all upgrades."
 fi
 
@@ -3181,8 +3185,6 @@ fi
 ###--------------------###
 if [ -d "/etc/webmin" ] ; then
   if [ ! -e "/var/log/webmin_new_apt.log" ] ; then
-    msg "INFO: Fix for new Webmin Control Panel apt key, please wait..."
-    mrun "sleep 1"
     cd /var/opt
     wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
     apt-key add jcameron-key.asc &> /dev/null
@@ -3297,11 +3299,10 @@ install_with_aptitude_sql () {
   else
     _PERCONA_READY=NO
   fi
+  msg "INFO: Installing $_DB_SERVER, please wait..."
   if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
-    msg "INFO: Installing $_DB_SERVER, please wait..."
     install_percona_sql
   else
-    msg "INFO: Installing $_DB_SERVER, please wait..."
     install_mariadb_sql
   fi
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
@@ -3375,7 +3376,7 @@ else
     st_runner "service nginx start" &> /dev/null
     st_runner "service lfd start" &> /dev/null
     st_runner "service csf start" &> /dev/null
-    msg "INFO: Restarting $_DB_SERVER server complete"
+    msg "INFO: Restarting $_DB_SERVER server completed"
   fi
 fi
 
@@ -3398,7 +3399,7 @@ enable_purge_cruft_machine
 ###--------------------###
 if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   if [ ! -L "/usr/lib/libpng.so" ] ; then
-    msg "INFO: Fix #1 for libs in Ubuntu $_REL_VERSION, please wait..."
+    msg "INFO: Fix #1 for libs in Ubuntu $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       ln -s /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
@@ -3416,7 +3417,7 @@ fi
 ###--------------------###
 if [ "$_REL_VERSION" = "oneiric" ] ; then
   if [ ! -L "/usr/lib/libssl.so.1.0.0" ] ; then
-    msg "INFO: Fix #2 for libs in Ubuntu $_REL_VERSION, please wait..."
+    msg "INFO: Fix #2 for libs in Ubuntu $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
@@ -3439,7 +3440,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] && [ ! -e "/sbin/udevd" ] ; then
-  msg "INFO: Install udev, just in case it is missing, please wait..."
+  msg "INFO: Installing udev, just in case it is missing, please wait..."
   mrun "sleep 1"
   st_runner "apt-get -y install udev" 2> /dev/null
 fi
@@ -3447,7 +3448,7 @@ fi
 
 ###--------------------###
 if [ -z "$_SMTP_RELAY_HOST" ] && [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
-msg "INFO: SMTP check"
+msg "INFO: Checking SMTP connections, please wait..."
 mrun "sleep 1"
 if ! netcat -w 8 -z smtp.postoffice.net 25 ; then
   WE_NEED_RELAY="YES"
@@ -3543,10 +3544,10 @@ fi
 
 
 ###--------------------###
-msg "INFO: Install/upgrade a few more tools, please wait..."
-mrun "sleep 1"
 cd /var
 if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
+  msg "INFO: Upgrading a few more tools, please wait..."
+  mrun "sleep 1"
   fix_on_upgrade
   cd /var
   mkdir -p /var/backups/dragon/x
@@ -3604,6 +3605,8 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   fi
 fi
 if [ "$_STATUS" = "INIT" ] ; then
+  msg "INFO: Installing a few more tools, please wait..."
+  mrun "sleep 1"
   mkdir -p ./xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/* ./xdrago/ &> /dev/null
   mkdir -p /opt/etc
@@ -3674,7 +3677,7 @@ fi
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
-  msg "INFO: PHP installed version auto-discovering now, please wait..."
+  msg "INFO: Checking if PHP upgrade is available"
   mrun "sleep 1"
 fi
 if [ -e "/opt/local/bin/php" ] ; then
@@ -4250,7 +4253,7 @@ fi
 if [ "$_UP_JDK" = "YES" ] ; then
   msg "INFO: Tomcat restart in progress - required after java upgrade"
   st_runner "service tomcat restart" &> /dev/null
-  msg "INFO: Tomcat restart complete"
+  msg "INFO: Tomcat restart completed"
 fi
 
 
