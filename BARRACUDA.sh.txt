@@ -581,6 +581,7 @@ _PHP_VERSION_NEW=5.3.10
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
 _REDIS_VERSION=2.4.10
+_MARIADB_VERSION=5.5.23
 
 ###
 ### Variables
@@ -2674,6 +2675,7 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
   elif [ "$_THIS_RV" = "lenny" ] ; then
     _REL_VERSION="lenny"
     _DB_SERVER=MariaDB
+    _MARIADB_VERSION=5.3.6
   else
     not_supported_os
   fi
