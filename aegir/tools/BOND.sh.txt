@@ -240,36 +240,104 @@ mrun () {
 	fi
 }
 #
+fix_php_ini_redis () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
+    if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
+      true
+    else
+      echo "extension=redis.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
+  if [ ! -e "/opt/local/etc/php53.ini" ] ; then
+    mkdir -p /opt/local/etc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+  fi
+  if [ ! -e "/opt/local/lib/php.ini" ] ; then
+    mkdir -p /opt/local/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
     cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   fi
-  if [ ! -e "/opt/local/lib/php.ini" ] ; then
-    mkdir -p /opt/local/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
+      mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
+    fi
+    if [ -e "/etc/php5/cli/php.ini" ] && [ ! -L "/etc/php5/cli/php.ini" ] ; then
+      mv -f /etc/php5/cli/php.ini /var/backups/dragon/t/etc-php5-cli-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      ln -s /opt/local/lib/php.ini /etc/php5/cli/php.ini
+    fi
+    if [ -x "/usr/sbin/php5-fpm" ] && [ ! -L "/opt/local/sbin/php-fpm" ] ; then
+      mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
+      mkdir -p /opt/local/sbin
+      ln -s /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
+    fi
+    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /var/backups/ &> /dev/null
+    fi
+    if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+      mkdir -p /opt/local/lib/php/extensions
+      ln -s /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+    fi
+    sed -i "s/^extension=/;extension=/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/^extension=/;extension=/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/lib/php.ini &> /dev/null
   fi
+  ###
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  ###
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  ###
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/lib/php.ini &> /dev/null
+  ###
+  if [ "$_USE_MEMCACHED" = "NO" ] ; then
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/etc/php.ini &> /dev/null
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /usr/local/lib/php.ini &> /dev/null
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/lib/php.ini &> /dev/null
+  fi
+  ###
+  _THIS_FILE=/opt/etc/php.ini
+  fix_php_ini_redis
+  _THIS_FILE=/usr/local/lib/php.ini
+  fix_php_ini_redis
+  _THIS_FILE=/opt/local/etc/php53.ini
+  fix_php_ini_redis
+  _THIS_FILE=/opt/local/lib/php.ini
+  fix_php_ini_redis
 }
 #
 restore_default_php () {
@@ -360,7 +428,6 @@ restart_services () {
 }
 #
 tune_web_server_config () {
-  msg "INFO: Default PHP-FPM and Nginx Tuning"
   if [ ! -z "$_L_PHP_FPM_WORKERS" ] ; then
     sed -i "s/max_children\">.*</max_children\">$_L_PHP_FPM_WORKERS</g"        /opt/etc/php-fpm.conf &> /dev/null
     sed -i "s/pm.start_servers =.*/pm.start_servers = $_L_PHP_FPM_WORKERS/g"   /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -379,10 +446,6 @@ tune_web_server_config () {
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 5s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
-  _FPM_ERR_LOG="\/opt\/local\/var\/log\/php53-fpm-error.log"
-  sed -i "s/error_log =.*/error_log = $_FPM_ERR_LOG/g"                         /opt/local/etc/php53-fpm.conf &> /dev/null
-  _FPM_SLOW_LOG="\/opt\/local\/var\/log\/php53-fpm-slow.log"
-  sed -i "s/slowlog =.*/slowlog = $_FPM_SLOW_LOG/g"                            /opt/local/etc/php53-fpm.conf &> /dev/null
 }
 #
 tune_memory_limits () {
