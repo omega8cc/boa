@@ -448,8 +448,6 @@ fi
 
 ###---### Checking status..
 #
-msg "$_STATUS A: Checking status.."
-mrun "sleep 1"
 if [ -d "$_ROOT" ] ; then
   _STATUS=UPGRADE
   cd $_ROOT
@@ -464,8 +462,6 @@ fi
 
 ###---### Hot Sauce check..
 #
-msg "$_STATUS A: Hot Sauce check.."
-mrun "sleep 1"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
@@ -474,7 +470,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
   elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
-    msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
+    msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
   else
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   fi
@@ -487,7 +483,7 @@ fi
 
 ###---### Add required users and create directories
 #
-msg "$_STATUS A: Create directories and/or set good permissions, please wait..."
+msg "$_STATUS A: Creating directories with correct permissions, please wait..."
 mrun "sleep 1"
 mkdir -p /data/u
 mkdir -p /data/disk
@@ -495,7 +491,7 @@ mkdir -p /data/conf
 chown root:root /data &> /dev/null
 chown root:root /data/disk &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
-  msg "$_STATUS A: Add user, please wait..."
+  msg "$_STATUS A: Adding user, please wait..."
   mrun "sleep 1"
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
@@ -623,8 +619,6 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: post-install start, please wait..."
-  mrun "sleep 1"
   if [ ! -e "$_ROOT/config/$_USER.nginx.conf" ] ; then
     rm -f /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
     echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
@@ -642,14 +636,11 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   cd $_AEGIR_ROOT
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   cd $_ROOT
-  msg "$_STATUS A: post-install completed"
 fi
 
 
 ###---### Force advanced Nginx config
 #
-msg "$_STATUS A: Force advanced Nginx config, please wait..."
-mrun "sleep 1"
 force_advanced_nginx_config
 
 
@@ -724,8 +715,6 @@ fi
 
 ###---### Set permissions for all
 #
-msg "$_STATUS A: Set correct permissions"
-mrun "sleep 1"
 chmod 0755 $_AEGIR_ROOT &> /dev/null
 chmod 0711 $_ROOT/config
 chmod 0711 $_ROOT/config/includes
@@ -741,13 +730,13 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Switch user and run Distros build, please wait..."
+  msg "$_STATUS A: Switching user and running Platforms build"
   mrun "sleep 1"
   _DIST_INSTALL=YES
   rm -f /opt/tmp/testecho*
   create_shared_dirs
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
-  msg "$_STATUS A: Distributions install completed"
+  msg "$_STATUS A: Platforms installation completed"
 else
   if [ "$_HM_ONLY" = "YES" ] ; then
     _DIST_INSTALL=NO
@@ -758,13 +747,13 @@ else
       _DIST_INSTALL=YES
       msg "NOTE: Please choose only the platforms/distributions you want to have included"
       mrun "sleep 1"
-      msg "$_STATUS A: Switch user and run Distros build, please wait..."
+      msg "$_STATUS A: Switching user and running Platforms build"
       mrun "sleep 1"
       service cron stop &> /dev/null
       rm -f /opt/tmp/testecho*
       create_shared_dirs
       su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
-      msg "$_STATUS A: Distributions install completed"
+      msg "$_STATUS A: Platforms installation completed"
     else
       msg "$_STATUS A: No new platforms added this time"
       mrun "sleep 1"
@@ -799,8 +788,6 @@ fi
 
 ###---### Clean up old and install files
 #
-msg "$_STATUS A: Clean up old install files"
-mrun "sleep 1"
 rm -f $_ROOT/AegirSetupC.sh.txt
 rm -f $_ROOT/AegirSetupB.sh.txt
 rm -f $_ROOT/*.sh.txt
@@ -812,11 +799,6 @@ _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
-# if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-#  msg "$_STATUS A: Add cron task"
-#  mrun "sleep 1"
-#  echo -e "*/1 * * * * bash /var/xdrago/run-$_USER >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
-# fi
 rm -f /var/spool/cron/crontabs/$_USER
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
   sed -i "s/\*\/1 \* \* \* \* bash \/var\/xdrago\/run/#*\/1 * * * * bash \/var\/xdrago\/run/g" /var/spool/cron/crontabs/root &> /dev/null
@@ -840,7 +822,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     _PATH_LSHELL="/usr/local/bin/lshell"
   fi
   if [ ! -d "$_USERFTP_ROOT" ] ; then
-    msg "$_STATUS A: Add ftps/lshell user, please wait..."
+    msg "$_STATUS A: Adding ftps/lshell user"
     mrun "sleep 1"
     # add user
     useradd -d /home/$_USERFTP -s $_PATH_LSHELL -m -N -r $_USERFTP &> /dev/null
@@ -881,7 +863,7 @@ fi
 _USERFTP="$_USER.ftp"
 _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/backups" ] ; then
-  msg "$_STATUS A: Add symlink to the sites backups"
+  msg "$_STATUS A: Adding symlink to the sites backups"
   mrun "sleep 1"
   ln -s /data/disk/$_USER/backups $_USER_HD/backups
 fi
@@ -892,7 +874,7 @@ fi
 _USERFTP="$_USER.ftp"
 _USER_DM="/home/$_USERFTP/.drush"
 if [ ! -L "$_USER_DM/drush_make" ] ; then
-  msg "$_STATUS A: Add symlink to the system drush_make"
+  msg "$_STATUS A: Adding symlink to the system drush_make"
   mrun "sleep 1"
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
@@ -904,7 +886,7 @@ fi
 ###---### Add symlink to the system registry_rebuild
 #
 if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
-  msg "$_STATUS A: Add symlink to the system registry_rebuild"
+  msg "$_STATUS A: Adding symlink to the system registry_rebuild"
   mrun "sleep 1"
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
@@ -937,7 +919,7 @@ fi
 _USERFTP="$_USER.ftp"
 _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/clients" ] ; then
-  msg "$_STATUS A: Add symlink to the clients directory"
+  msg "$_STATUS A: Adding symlink to the clients directory"
   mrun "sleep 1"
   ln -s /data/disk/$_USER/clients $_USER_HD/clients
 fi
@@ -948,12 +930,12 @@ rm -f -r /data/disk/$_USER/clients/*/backups &> /dev/null
 symlinks -dr /data/disk/$_USER/clients &> /dev/null
 
 
-###---### Read or create pass.txt
+###---### Reading or creating pass.txt
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
 else
-msg "$_STATUS A: Read or create pass.txt"
+msg "$_STATUS A: Reading or creating pass.txt"
 mrun "sleep 1"
 if [ -e "$_ROOT/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/pass.txt`
@@ -976,10 +958,10 @@ fi
 fi
 
 
-###---### Create ftp symlinks
+###---### Creating ftp symlinks
 #
 if [ "$_DIST_INSTALL" = "YES" ] ; then
-msg "$_STATUS A: Create ftp symlinks"
+msg "$_STATUS A: Creating ftp symlinks"
 mrun "sleep 1"
   if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
     mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
@@ -1201,12 +1183,12 @@ else
 fi
 
 
-###---### Prepare setupmail.txt
+###---### Preparing setupmail.txt
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
 else
-msg "$_STATUS A: Prepare setupmail.txt"
+msg "$_STATUS A: Preparing setupmail.txt"
 mrun "sleep 1"
 _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
 _A_DM_EMAIL=${_ADM_EMAIL//\\\@/\@}
@@ -1236,11 +1218,11 @@ fi
 fi
 
 
-###---### Send setup e-mail
+###---### Sending setup e-mail
 #
 _MAILX_TEST=`mail -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Send setup e-mail on init, please wait..."
+  msg "$_STATUS A: Sending setup e-mail on init, please wait..."
   mrun "sleep 1"
   TIME=`date`
   echo $TIME > $_ROOT/log/date-init.txt
@@ -1253,7 +1235,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   if [ "$_DIST_INSTALL" = "YES" ] ; then
-    msg "$_STATUS A: Resend setup e-mail on upgrade, please wait..."
+    msg "$_STATUS A: Resending setup e-mail on upgrade, please wait..."
     mrun "sleep 1"
     TIME=`date`
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
@@ -1278,7 +1260,6 @@ fi
 
 ###---### Touch install logs
 #
-msg "$_STATUS A: Touch install logs"
 TIME=`date`
 if [ "$_STATUS" = "INIT" ] ; then
  echo $TIME > $_ROOT/log/date-init.txt
@@ -1346,7 +1327,7 @@ else
   remove_incompatible_modules_001
   remove_incompatible_modules_002
 fi
-msg "$_STATUS A: Start the cron now"
+msg "$_STATUS A: Starting the cron now"
 service cron start &> /dev/null
 msg "$_STATUS A: All done!"
 msg "BYE!"

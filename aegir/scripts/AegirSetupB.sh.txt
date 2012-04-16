@@ -198,8 +198,6 @@ fi
 
 ###---### Checking status..
 #
-msg "$_STATUS B: Checking status.."
-mrun "sleep 1"
 if [ -e "$_ROOT/aegir.sh" ] ; then
   _STATUS=UPGRADE
   cd $_ROOT
@@ -208,7 +206,7 @@ fi
 
 ###---### Add required users and create directories
 #
-msg "$_STATUS B: Create dirs and/or set good permissions"
+msg "$_STATUS B: Creating directories with correct permissions"
 mrun "sleep 1"
 if [ -e "$_ROOT/aegir.sh" ] ; then
   rm -f $_ROOT/aegir.sh
@@ -245,7 +243,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
-  msg "$_STATUS B: RAW _DOMAIN is $_DOMAIN"
+  msg "$_STATUS B: _DOMAIN is $_DOMAIN"
  elif [ ! -d "$_ROOT/distro" ] ; then
   msg "$_STATUS B: UPGRADE v.1 in progress.."
   msg "$_STATUS B: _DISTRO is $_DISTRO"
@@ -253,19 +251,19 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
-  msg "$_STATUS B: RAW _DOMAIN is $_DOMAIN"
+  msg "$_STATUS B: _DOMAIN is $_DOMAIN"
  fi
 else
  msg "$_STATUS B: NEW AEGIR setup in progress.."
  msg "$_STATUS B: _DISTRO is $_DISTRO"
- msg "$_STATUS B: RAW _DOMAIN is $_DOMAIN"
+ msg "$_STATUS B: _DOMAIN is $_DOMAIN"
 fi
 echo $_DOMAIN > $_ROOT/log/domain.txt
 
 
-###---### Run standard installer
+###---### Running standard installer
 #
-msg "$_STATUS B: Run standard installer"
+msg "$_STATUS B: Running standard installer"
 mrun "sleep 1"
 if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
@@ -430,14 +428,12 @@ fi
 
 ###---### Build Aegir base
 #
-msg "$_STATUS B: Build Aegir base"
 mrun "sleep 1"
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS B: INIT"
   mrun "sleep 1"
   cd $_ROOT
   AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
@@ -612,7 +608,6 @@ fi
 
 ###---### Aegir global.inc file
 #
-msg "$_STATUS B: Aegir global.inc file"
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then
   rm -f $_ROOT/config/includes/global.inc

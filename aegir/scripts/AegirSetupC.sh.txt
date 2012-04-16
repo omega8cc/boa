@@ -712,8 +712,6 @@ fi
 
 ###---### Checking status..
 #
-msg "$_STATUS C: Checking status.."
-mrun "sleep 1"
 if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   _STATUS=UPGRADE
   cd $_ROOT
@@ -722,8 +720,6 @@ fi
 
 ###---### Hot Sauce check..
 #
-msg "$_STATUS C: Hot Sauce check.."
-mrun "sleep 1"
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
@@ -732,7 +728,7 @@ if [ "$_HOT_SAUCE" = "NO" ] ; then
   elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
-    msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created - forced Hot Sauce"
+    msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
   else
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
   fi
@@ -786,8 +782,6 @@ _F_DRUPAL7_P="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 
 ###---### Create directories
 #
-msg "$_STATUS C: Create directories"
-mrun "sleep 1"
 mkdir -p $_ROOT/distro/$_THIS_CORE
 chmod 0711 $_ROOT/distro &> /dev/null
 chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
@@ -884,7 +878,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
-msg "DISTRO: $_F_ACQUIA install in progress, please wait..."
+msg "DISTRO: $_F_ACQUIA installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -924,7 +918,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_CIVICRM6 - http://civicrm.org" ; then
 true
-msg "DISTRO: $_F_CIVICRM6 install in progress, please wait..."
+msg "DISTRO: $_F_CIVICRM6 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -965,7 +959,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM7 - http://civicrm.org" ; then
 true
-msg "DISTRO: $_F_CIVICRM7 install in progress, please wait..."
+msg "DISTRO: $_F_CIVICRM7 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1004,7 +998,7 @@ if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
 true
-msg "DISTRO: $_F_COD install in progress, please wait..."
+msg "DISTRO: $_F_COD installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1060,7 +1054,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
-msg "DISTRO: $_F_COMMERCE install in progress, please wait..."
+msg "DISTRO: $_F_COMMERCE installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1112,7 +1106,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_COMMONS - http://acquia.com/drupalcommons" ; then
 true
-msg "DISTRO: $_F_COMMONS install in progress, please wait..."
+msg "DISTRO: $_F_COMMONS installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1176,7 +1170,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL5 - http://pressflow.org" ; then
 true
-msg "DISTRO: $_F_DRUPAL5 install in progress, please wait..."
+msg "DISTRO: $_F_DRUPAL5 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1215,7 +1209,7 @@ _THIS_DISTRO="pressflow-$_SMALLCORE6-dev"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
-msg "DISTRO: $_F_DRUPAL6_D install in progress, please wait..."
+msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1243,7 +1237,7 @@ _THIS_DISTRO="pressflow-$_SMALLCORE6-stage"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
-msg "DISTRO: $_F_DRUPAL6_S install in progress, please wait..."
+msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1272,7 +1266,7 @@ _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
 if [ ! -d "$_CORE/pressflow" ] ; then
-  msg "DISTRO: $_F_DRUPAL6 install in progress, please wait..."
+  msg "DISTRO: $_F_DRUPAL6 installation in progress..."
   mrun "sleep 1"
   if [ ! -d "$_CORE_DISTRO" ] ; then
     if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1294,7 +1288,7 @@ if [ ! -d "$_CORE/pressflow" ] ; then
   mrun "sleep 1"
 elif [ -d "$_CORE/pressflow" ] ; then
   echo " "
-  msg "DISTRO: $_F_DRUPAL6 install in progress, please wait..."
+  msg "DISTRO: $_F_DRUPAL6 installation in progress..."
   mrun "sleep 1"
   _CORE_DISTRO="$_CORE/pressflow"
   mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow
@@ -1328,7 +1322,7 @@ _THIS_DISTRO="$_DRUPAL7D"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
-msg "DISTRO: $_F_DRUPAL7_D install in progress, please wait..."
+msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1359,7 +1353,7 @@ _THIS_DISTRO="$_DRUPAL7S"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
-msg "DISTRO: $_F_DRUPAL7_S install in progress, please wait..."
+msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1394,7 +1388,7 @@ _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
-  msg "DISTRO: $_F_DRUPAL7_P install in progress, please wait..."
+  msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
   mrun "sleep 1"
   if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_CORE
@@ -1419,7 +1413,7 @@ if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
   mrun "sleep 1"
 elif [ -d "$_CORE/$_DRUPAL7" ] ; then
   echo " "
-  msg "DISTRO: $_F_DRUPAL7_P install in progress, please wait..."
+  msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
   mrun "sleep 1"
   _CORE_DISTRO="$_CORE/$_DRUPAL7"
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
@@ -1455,7 +1449,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
 true
-msg "DISTRO: $_F_DRUPAL8 install in progress, please wait..."
+msg "DISTRO: $_F_DRUPAL8 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1494,7 +1488,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_ELMS - http://elms.psu.edu" ; then
 true
-msg "DISTRO: $_F_ELMS install in progress, please wait..."
+msg "DISTRO: $_F_ELMS installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1543,7 +1537,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
-msg "DISTRO: $_F_FSERVER install in progress, please wait..."
+msg "DISTRO: $_F_FSERVER installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
@@ -1596,7 +1590,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
-msg "DISTRO: $_F_MANAGINGNEWS install in progress, please wait..."
+msg "DISTRO: $_F_MANAGINGNEWS installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1659,7 +1653,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_MARTPLUG - http://drupal.org/project/$_THIS_PRNAME" ; then
 true
-msg "DISTRO: $_F_MARTPLUG install in progress, please wait..."
+msg "DISTRO: $_F_MARTPLUG installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1713,7 +1707,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_NODESTREAM6 - http://nodestream.org" ; then
 true
-msg "DISTRO: $_F_NODESTREAM6 install in progress, please wait..."
+msg "DISTRO: $_F_NODESTREAM6 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1765,7 +1759,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM7 - http://nodestream.org" ; then
 true
-msg "DISTRO: $_F_NODESTREAM7 install in progress, please wait..."
+msg "DISTRO: $_F_NODESTREAM7 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1810,7 +1804,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_OCTOPUS_VIDEO - http://octopusvideo.org" ; then
 true
-msg "DISTRO: $_F_OCTOPUS_VIDEO install in progress, please wait..."
+msg "DISTRO: $_F_OCTOPUS_VIDEO installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1859,7 +1853,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_OPENATRIUM - http://openatrium.com" ; then
 true
-msg "DISTRO: $_F_OPENATRIUM install in progress, please wait..."
+msg "DISTRO: $_F_OPENATRIUM installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -1914,7 +1908,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENCHURCH - http://openchurchsite.com" ; then
 true
-msg "DISTRO: $_F_OPENCHURCH install in progress, please wait..."
+msg "DISTRO: $_F_OPENCHURCH installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -1959,7 +1953,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
 true
-msg "DISTRO: $_F_OPENDEALS install in progress, please wait..."
+msg "DISTRO: $_F_OPENDEALS installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2006,7 +2000,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
 true
-msg "DISTRO: $_F_OPENOUTREACH install in progress, please wait..."
+msg "DISTRO: $_F_OPENOUTREACH installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2085,7 +2079,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
 true
-msg "DISTRO: $_F_OPENPUBLIC install in progress, please wait..."
+msg "DISTRO: $_F_OPENPUBLIC installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2125,7 +2119,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
-msg "DISTRO: $_F_OPENPUBLISH install in progress, please wait..."
+msg "DISTRO: $_F_OPENPUBLISH installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2172,7 +2166,7 @@ if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/shadowbox
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
-msg "DISTRO: $_F_OPENSCHOLAR install in progress, please wait..."
+msg "DISTRO: $_F_OPENSCHOLAR installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -2227,7 +2221,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
-msg "DISTRO: $_F_PROSEPOINT install in progress, please wait..."
+msg "DISTRO: $_F_PROSEPOINT installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -2275,7 +2269,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
-msg "DISTRO: $_F_UBERCART install in progress, please wait..."
+msg "DISTRO: $_F_UBERCART installation in progress..."
 mrun "sleep 1"
 if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/fixed_1.log" ] ; then
   rm -f -r $_CORE_DISTRO
@@ -2367,7 +2361,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBER_CART_SEVEN - http://ubercart.org" ; then
 true
-msg "DISTRO: $_F_UBER_CART_SEVEN install in progress, please wait..."
+msg "DISTRO: $_F_UBER_CART_SEVEN installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
@@ -2432,7 +2426,7 @@ if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ;
 echo " "
 if prompt_yes_no "$_F_VIDEOLA - http://videola.tv" ; then
 true
-msg "DISTRO: $_F_VIDEOLA install in progress, please wait..."
+msg "DISTRO: $_F_VIDEOLA installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ ! -e "$_THIS_CTRL" ] ; then
@@ -2497,7 +2491,7 @@ videola_install
 ###---### remove some module and themes for all
 #
 echo " "
-msg "$_STATUS C: removing some old core themes, please wait..."
+msg "$_STATUS C: Removing some old core themes, please wait..."
 rm -f -r $_CORE/o_contrib/image
 rm -f -r $_CORE/*/themes/bluemarine
 rm -f -r $_CORE/*/themes/chameleon
@@ -2511,7 +2505,7 @@ cd $_CORE
 
 ###---### Save & verify platforms
 #
-msg "$_STATUS C: Save & Verify Platforms, please wait..."
+msg "$_STATUS C: Running Platforms Save & Verify tasks, please wait..."
 _LOCAL_STATUS="NOT_SET"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
