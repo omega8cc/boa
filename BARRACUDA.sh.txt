@@ -947,6 +947,7 @@ update_php_conf () {
     fi
     if [ -x "/usr/sbin/php5-fpm" ] && [ ! -L "/opt/local/sbin/php-fpm" ] ; then
       mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
+      mkdir -p /opt/local/sbin
       ln -s /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
     fi
     if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
@@ -2434,6 +2435,7 @@ else
   cp -af /etc/sudoers $_ZOMBIE_HOME/ &> /dev/null
   sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
   deluser aegir &> /dev/null
+  rm -f /usr/bin/drush
   barracuda_cnf
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
@@ -3214,6 +3216,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
       echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
       echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences.txt /etc/apt/preferences
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
         rm -f dotdeb.gpg*
@@ -3822,7 +3825,8 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 fi
 if [ -e "/opt/local/bin/php" ] ; then
   _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-  if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
+  ###if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
+  if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
     _PHP_INSTALL_REQUIRED=NO
     msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
   else
