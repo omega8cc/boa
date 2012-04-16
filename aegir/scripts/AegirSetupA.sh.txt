@@ -930,8 +930,6 @@ symlinks -dr /data/disk/$_USER/clients &> /dev/null
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
 else
-msg "$_STATUS A: Reading or creating pass.txt"
-mrun "sleep 1"
 if [ -e "$_ROOT/pass.txt" ] ; then
  _PASWD=`cat $_ROOT/pass.txt`
  _PASWD=`echo -n $_PASWD | tr -d "\n"`
