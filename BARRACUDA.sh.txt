@@ -1335,10 +1335,6 @@ tune_web_server_config () {
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 5s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
-  _FPM_ERR_LOG="\/opt\/local\/var\/log\/php53-fpm-error.log"
-  sed -i "s/error_log =.*/error_log = $_FPM_ERR_LOG/g"                         /opt/local/etc/php53-fpm.conf &> /dev/null
-  _FPM_SLOW_LOG="\/opt\/local\/var\/log\/php53-fpm-slow.log"
-  sed -i "s/slowlog =.*/slowlog = $_FPM_SLOW_LOG/g"                            /opt/local/etc/php53-fpm.conf &> /dev/null
 }
 #
 # Tune memory limits for PHP-FPM, Nginx and MariaDB/Percona.
@@ -2048,6 +2044,7 @@ install_php_modern () {
   fi
   rm -f /etc/init.d/php53-fpm*
   if [ "$_REL_VERSION" = "squeeze" ] ; then
+    st_runner "service php5-fpm stop" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     rm -f /etc/init.d/php5-fpm*
     ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm-dotdeb /etc/init.d/php53-fpm
@@ -4055,9 +4052,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    killall -9 nginx php-cgi php-fpm &> /dev/null
-    mrun "sleep 1"
     if [ "$_REL_VERSION" = "squeeze" ] ; then
+      st_runner "service php5-fpm stop" &> /dev/null
       st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
       rm -f /etc/init.d/php5-fpm*
       ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm-dotdeb /etc/init.d/php53-fpm
@@ -4065,6 +4061,8 @@ if [ "$_STATUS" = "INIT" ] ; then
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
     fi
+    killall -9 nginx php-cgi php-fpm &> /dev/null
+    mrun "sleep 1"
     chmod 755 /etc/init.d/php53-fpm
     st_runner "service ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
