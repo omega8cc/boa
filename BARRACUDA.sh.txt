@@ -909,6 +909,21 @@ update_lshell_conf () {
   perl -p -i -e "s/,'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
 }
 #
+# Update php-cli for Drush.
+update_php_cli_drush () {
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+    _L_PHP_CLI=opt
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+    _L_PHP_CLI=usr
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  fi
+}
+#
 # Update PHP Config.
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
@@ -1077,6 +1092,7 @@ fix_on_upgrade () {
   enable_purge_cruft_machine
   update_lshell_conf
   update_php_conf
+  update_php_cli_drush
   update_sql_conf
   update_nginx_conf
   update_global_inc_conf
@@ -2169,21 +2185,6 @@ check_apt_updates () {
       *)  ;;
     esac
   done
-}
-#
-# Update php-cli for Drush.
-update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
-    _L_PHP_CLI=opt
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
-    chown aegir:crontab /var/spool/cron/crontabs/aegir
-  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
-    _L_PHP_CLI=usr
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
-    chown aegir:crontab /var/spool/cron/crontabs/aegir
-  fi
 }
 #
 # Upgrade Aegir Master Instance.
@@ -4079,6 +4080,7 @@ else
     msg "INFO: Restarting PHP-FPM and reloading Nginx"
     mrun "sleep 1"
     update_php_conf
+    update_php_cli_drush
     tune_memory_limits
     st_runner "service php-fpm restart" &> /dev/null
     st_runner "service php53-fpm restart" &> /dev/null
@@ -4841,12 +4843,17 @@ fi
 
 ###--------------------###
 echo " "
-msg "CARD: Now charging your credit card for this automated install/upgrade service..."
+if [ "$_STATUS" = "INIT" ] ; then
+  _L_ST="install"
+else
+  _L_ST="upgrade"
+fi
+msg "CARD: Now charging your credit card for this automated $_L_ST service..."
 mrun "sleep 5"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 3"
 echo " "
-msg "Final post-install cleaning, please wait a moment..."
+msg "Final post-$_L_ST cleaning, please wait a moment..."
 mrun "sleep 1"
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
