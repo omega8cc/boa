@@ -71,7 +71,7 @@ msg () {
 export DEBIAN_FRONTEND=noninteractive
 #
 hostmaster_dr_up () {
-  msg "UPGRADE INFO: Downloading drush, please wait.."
+  msg "UPGRADE INFO: Downloading drush, please wait..."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
@@ -143,7 +143,7 @@ hostmaster_go_up () {
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
       rm -f provision-$_AEGIR_VERSION.tar.gz
     fi
-    msg "UPGRADE INFO: Downloading Drush and Provision extensions, please wait.."
+    msg "UPGRADE INFO: Downloading Drush and Provision extensions, please wait..."
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.3.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz

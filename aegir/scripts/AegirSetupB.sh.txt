@@ -281,7 +281,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   fi
 fi
 cd $_ROOT/tools
-msg "$_STATUS B: Downloading drush, please wait.."
+msg "$_STATUS B: Downloading drush, please wait..."
 if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
   git clone http://git.drupal.org/project/drush.git &> /dev/null
 elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
@@ -395,7 +395,7 @@ else
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 fi
-msg "$_STATUS B: Downloading Drush and Provision extensions, please wait.."
+msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
 git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/provision/remote_import &> /dev/null
 rm -f -r $_ROOT/.drush/provision/remote_import/.git &> /dev/null
 wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
