@@ -3512,7 +3512,6 @@ fi
 ###--------------------###
 run_apt_update_again
 install_with_aptitude_deps
-fix_locales
 install_latest_git
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
