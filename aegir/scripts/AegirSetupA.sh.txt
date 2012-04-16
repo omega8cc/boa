@@ -502,8 +502,6 @@ chown -R $_USER:$_USRG /data/conf &> /dev/null
 
 ###---### Prepare scripts
 #
-msg "$_STATUS A: Prepare scripts, please wait..."
-mrun "sleep 1"
 chmod 0711 $_ROOT
 cd $_ROOT
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupB.sh.txt ./
@@ -514,8 +512,6 @@ chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 
 ###---### Run standard pre-install
 #
-msg "$_STATUS A: pre-install start"
-mrun "sleep 1"
 if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
@@ -547,7 +543,6 @@ EOFMYSQL
 mrun "sleep 1"
 /usr/bin/mysqladmin -u root -h localhost --port=3306 reload
 cd $_ROOT
-msg "$_STATUS A: pre-install completed"
 mrun "sleep 1"
 
 
@@ -558,7 +553,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
+  msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
   mrun "sleep 1"
   rm -f /opt/tmp/testecho*
   chown root:$_USRG /data/u &> /dev/null
@@ -566,13 +561,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
-  msg "$_STATUS A: Aegir Satellite Instance install completed"
+  msg "$_STATUS A: Aegir Satellite Instance installation completed"
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
     mrun "sleep 1"
-    msg "$_STATUS A: Switch user and run AegirSetupB, please wait..."
+    msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
     mrun "sleep 1"
     rm -f /opt/tmp/testecho*
     service cron stop &> /dev/null
