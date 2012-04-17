@@ -301,23 +301,14 @@ $custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc
                        // /data/conf/override.global.inc file, because Domain Access must be included
                        // *after* any cache-related settings to work properly.
 
-if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
-    file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt') ||
-    !file_exists('/var/run/redis.pid'))) {
-  $use_cache = FALSE;
-}
-
 if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUEST_URI'])) {
   $use_cache = FALSE;
 }
 
-if ($drupal_seven) {
-  if (isset($_COOKIE[$test_sess_name])) {
-    $use_cache = TRUE;
-  }
-  else {
-    $use_cache = FALSE;
-  }
+if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
+    file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt') ||
+    !file_exists('/var/run/redis.pid'))) {
+  $use_cache = FALSE;
 }
 
 if ($use_cache && $use_redis) {
@@ -363,9 +354,14 @@ if ($use_cache && $use_redis && !$custom_cache) {
       $conf['redis_client_port']           = '6379';
       $conf['redis_client_password']       = 'isfoobared';
       $conf['cache_prefix']                = $this_prefix;
-      $conf['page_cache_without_database'] = TRUE;
+      if (isset($_COOKIE[$test_sess_name])) {
+        $conf['page_cache_without_database'] = TRUE;
+      }
+      else {
+        $conf['page_cache_without_database'] = FALSE;
+      }
       $conf['page_cache_invoke_hooks']     = TRUE;
-      $conf['page_cache_maximum_age']      = 3600;
+      $conf['page_cache_maximum_age']      = 300;
       $conf['cache_lifetime']              = 0;
       $conf['cache_default_class']         = 'Redis_Cache';
       if ($conf['install_profile'] == 'hostmaster') {
