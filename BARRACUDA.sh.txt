@@ -1314,6 +1314,9 @@ force_advanced_nginx_config () {
   _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
+    sed -i "s/9000/9090/g" /var/aegir/config/includes/nginx_compact_include.conf &> /dev/null
+  fi
   if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
     rm -f /var/aegir/config/includes/nginx_advanced_include.conf
     ln -s /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
