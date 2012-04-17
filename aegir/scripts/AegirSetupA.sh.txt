@@ -451,12 +451,12 @@ fi
 if [ -d "$_ROOT" ] ; then
   _STATUS=UPGRADE
   cd $_ROOT
-  msg "$_STATUS A: _STATUS is $_STATUS"
+  msg "$_STATUS A: $_STATUS"
   mrun "sleep 1"
   rm -f $_ROOT/AegirSetupC.sh.txt
   rm -f $_ROOT/AegirSetupB.sh.txt
 else
-  msg "$_STATUS A: _STATUS is $_STATUS"
+  msg "$_STATUS A: $_STATUS"
 fi
 
 
