@@ -199,10 +199,11 @@ _AUTOPILOT=NO
 _SYSTEM_UPGRADE_ONLY=NO
 
 ###
-### You can force PHP and/or database server
+### You can force Nginx, PHP and/or DB server
 ### reinstall, even if there are no updates
 ### available.
 ###
+_NGX_FORCE_REINSTALL=NO
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
 
@@ -2306,7 +2307,7 @@ install_upgrade_nginx () {
   else
     _NGINX_INSTALL_REQUIRED=YES
   fi
-  if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_NGX_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_STATUS" = "UPGRADE" ] ; then
       msg "INFO: Upgrading Nginx, please wait..."
     else
