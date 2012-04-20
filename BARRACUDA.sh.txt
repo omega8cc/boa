@@ -933,6 +933,9 @@ update_php_conf () {
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
+  if [ ! -e "/opt/etc" ] ; then
+    mkdir -p /opt/etc
+  fi
   if [ ! -e "/opt/local/etc/php53.ini" ] ; then
     mkdir -p /opt/local/etc
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
@@ -1046,16 +1049,18 @@ update_sql_conf () {
 update_nginx_conf () {
   if [ ! -e "/var/log/nginx-config-fixed-$_INSTALLER_VERSION" ] && [ -d "/var/aegir" ] ; then
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] && [ -e "/etc/nginx/nginx.conf" ] ; then
-      mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       mv -f /etc/nginx/nginx.conf-* /var/backups/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* /var/backups/dragon/t/ &> /dev/null
+      mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
       touch /var/log/nginx-config-fixed-$_INSTALLER_VERSION
     fi
   fi
-  if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-    touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
+    if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+      touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+    fi
   fi
 }
 #
@@ -1074,7 +1079,6 @@ update_global_inc_conf () {
 #
 # Fix this on upgrade.
 fix_on_upgrade () {
-  mkdir -p /var/backups/dragon/t
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
   echo "UMASK=002" >> /etc/default/login
@@ -2132,6 +2136,7 @@ install_php_legacy () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
   chmod 755 php-fpm
   ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
+  chmod 755 /usr/local/sbin/php-fpm &> /dev/null
   st_runner "service php-fpm start" &> /dev/null
 }
 #
@@ -3042,6 +3047,7 @@ mrun "sleep 1"
 rm -f -r /var/opt/*
 mkdir -p /var/log/php
 chmod 777 /var/log/php* &> /dev/null
+mkdir -p /var/backups/dragon/{x,z,t}
 
 
 ###--------------------###
@@ -3708,10 +3714,6 @@ cd /var
 if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   msg "INFO: Upgrading a few more tools, please wait..."
   mrun "sleep 1"
-  fix_on_upgrade
-  cd /var
-  mkdir -p /var/backups/dragon/x
-  mkdir -p /var/backups/dragon/z
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
   rm -f -r /var/xdrago/log/init.d-pre*
   rm -f -r /var/backups/dragon/z/init.d-pre-*
@@ -3769,11 +3771,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
   mkdir -p ./xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/* ./xdrago/ &> /dev/null
-  mkdir -p /opt/etc
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
@@ -3782,8 +3779,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
-  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     _NGINX_DOS_LIMIT=188
   fi
@@ -4052,55 +4047,39 @@ fi
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Updating init scripts"
   mrun "sleep 1"
-  chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
-  chmod 600 /var/spool/cron/crontabs/root &> /dev/null
+  update_php_conf
+  update_php_cli_drush
+  tune_memory_limits
   echo "UseDNS no" >> /etc/ssh/sshd_config
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
-  chmod 700 /usr/local/sbin/php-fpm &> /dev/null
-  mkdir -p /var/backups/dragon/t
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
   if [ "$_DB_SERVER" = "Percona" ] ; then
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
-  tune_memory_limits
+  st_runner "service mysql restart" &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    if [ "$_REL_VERSION" = "squeeze" ] ; then
-      st_runner "service php5-fpm stop" &> /dev/null
-      st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-      rm -f /etc/init.d/php5-fpm*
-      ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm-dotdeb /etc/init.d/php53-fpm
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
-    else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
-    fi
     killall -9 nginx php-cgi php-fpm &> /dev/null
     mrun "sleep 1"
-    chmod 755 /etc/init.d/php53-fpm
     st_runner "service ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
-    st_runner "update-rc.d php-fpm defaults" &> /dev/null
+    if [ -e "/etc/init.d/php-fpm" ] ; then
+      st_runner "update-rc.d php-fpm defaults" &> /dev/null
+      st_runner "service php-fpm start" &> /dev/null
+    fi
     st_runner "update-rc.d php53-fpm defaults" &> /dev/null
-    st_runner "update-rc.d nginx defaults" &> /dev/null
-    st_runner "service php-fpm start" &> /dev/null
     st_runner "service php53-fpm start" &> /dev/null
+    st_runner "update-rc.d nginx defaults" &> /dev/null
     st_runner "service nginx start" &> /dev/null
   fi
-  st_runner "service mysql restart" &> /dev/null
 else
+  fix_on_upgrade
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting PHP-FPM and reloading Nginx"
     mrun "sleep 1"
-    update_php_conf
-    update_php_cli_drush
-    tune_memory_limits
     st_runner "service php-fpm restart" &> /dev/null
     st_runner "service php53-fpm restart" &> /dev/null
     st_runner "service nginx reload" &> /dev/null
@@ -4158,6 +4137,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "adduser aegir www-data"
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
   ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+  update_nginx_conf
   cd /var/aegir
   _AEGIR_SCRIPT="aegir-head-install"
   if [ "$_AEGIR_VERSION" = "TEST" ] ; then
@@ -4332,9 +4312,11 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-  touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
+  if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+    touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+  fi
 fi
 
 
@@ -4770,9 +4752,6 @@ fi
 
 
 ###--------------------###
-update_php_conf
-tune_memory_limits
-update_php_cli_drush
 service php-fpm restart &> /dev/null
 service php53-fpm restart &> /dev/null
 if [ "$_FORCE_REDIS_RESTART" = "YES" ] ; then
