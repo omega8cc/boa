@@ -59,17 +59,36 @@ system tuning for development and switching it back easily to the
 standard production settings.
 
 
-### REQUIREMENTS
+### SUPPORTED PARENT SYSTEMS
 
-* Xen, VServer or VMware based VPS or a dedicated box. Avoid Virtuozzo/OpenVZ.
-* Debian 6.0 Squeeze (recommended) minimal OS 32/64bit fresh install, or
-* Debian 5.0 Lenny minimal OS 32/64bit fresh install, or
-* Ubuntu Oneiric 11.10 minimal OS 32/64bit fresh install, or
-* Ubuntu Natty 11.04 minimal OS 32/64bit fresh install, or
-* Ubuntu Maverick 10.10 minimal OS 32/64bit fresh install, or
-* Ubuntu Lucid 10.04 minimal OS 32/64bit fresh install, or
-* Ubuntu Karmic 9.10 minimal OS 32/64bit fresh install, or
-* Jolicloud Robby for netbooks fresh or existing install.
+* Xen, VServer or VMware based VPS or a dedicated box.
+
+
+### SUPPORTED LTS OS (32/64bit minimal, fresh install)
+
+* Debian 6.0 Squeeze (recommended) - 12 min install, 3 min upgrade
+* Ubuntu Lucid 10.04 (optional) - 30 min install, 15 min upgrade
+
+NOTE: Average time to install and upgrade tested with PHP 5.3 option
+      _PHP_MODERN_ONLY=YES (default), using Barracuda installer only.
+
+
+### PARTIALLY SUPPORTED OS (testing only)
+
+* Ubuntu Oneiric 11.10
+
+
+### PREVIOUSLY SUPPORTED OS (deprecated)
+
+* Debian 5.0 Lenny (automatic upgrade to Squeeze supported)
+* Ubuntu Natty 11.04
+* Ubuntu Maverick 10.10
+* Ubuntu Karmic 9.10
+* Jolicloud Robby
+
+
+### OTHER REQUIREMENTS
+
 * The Git standard port 9418 must be open.
 * Minimum 512 MB of RAM or minimum 2 GB of RAM with Solr/Tomcat enabled.
 * Basic sysadmin skills and experience.
