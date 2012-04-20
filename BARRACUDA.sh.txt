@@ -3500,6 +3500,10 @@ fi
 
 
 if [ "$_STATUS" = "INIT" ] ; then
+  service cron stop &> /dev/null
+  service lfd stop  &> /dev/null
+  service csf stop  &> /dev/null
+  service csf stop  &> /dev/null
   install_with_aptitude_sql
 else
   _SQL_UPGRADE=NO
