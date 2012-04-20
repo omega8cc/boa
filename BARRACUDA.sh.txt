@@ -1087,14 +1087,6 @@ update_global_inc_conf () {
 # Fix this on upgrade.
 fix_on_upgrade () {
   sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
-  sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
-  echo "UMASK=002" >> /etc/default/login
-  sed -i "/^$/d" /etc/default/login &> /dev/null
-  sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
-  sed -i "s/^umask.*022/umask 002/g" /etc/profile &> /dev/null
-  sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login &> /dev/null
-  echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
-  sed -i "/^$/d" /etc/pam.d/login &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
@@ -4014,15 +4006,19 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/umask_fixed.log" ] ; then
+if [ ! -e "/var/log/umask_fixed_new.log" ] ; then
   mkdir -p /var/www
+  sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
   echo "UMASK=002" >> /etc/default/login
+  sed -i "/^$/d" /etc/default/login &> /dev/null
   sed -i "s/^UMASK.*/UMASK 002/g" /etc/login.defs &> /dev/null
-  sed -i "s/umask.*022/umask 002/g" /etc/profile &> /dev/null
+  sed -i "s/^umask.*022/umask 002/g" /etc/profile &> /dev/null
+  sed -i "s/^session optional pam_umask.*//g" /etc/pam.d/login &> /dev/null
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
+  sed -i "/^$/d" /etc/pam.d/login &> /dev/null
   echo "umask 002" >> /var/www/.profile
   chown -R www-data:www-data /var/www/* &> /dev/null
-  touch /var/log/umask_fixed.log
+  touch /var/log/umask_fixed_new.log
 fi
 
 
