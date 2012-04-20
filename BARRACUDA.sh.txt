@@ -1471,7 +1471,7 @@ tune_memory_limits () {
     fi
   fi
   if [ "$_VMFAMILY" = "VZ" ] ; then
-    _USE_APC=128
+    _USE_APC=64
   fi
   let "_USE_FPM = (($_USE_PHP / 2))"
   if [ "$_USE_FPM" -lt "128" ] ; then
