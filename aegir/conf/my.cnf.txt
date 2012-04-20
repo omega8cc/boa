@@ -65,7 +65,7 @@ default_storage_engine  = InnoDB
 sql_mode                = NO_ENGINE_SUBSTITUTION
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
-innodb_buffer_pool_size = 888M
+innodb_buffer_pool_size = 88M
 innodb_log_buffer_size  = 4M
 innodb_file_per_table   = 1
 innodb_open_files       = 256

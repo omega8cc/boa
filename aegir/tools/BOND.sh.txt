@@ -567,15 +567,15 @@ tune_memory_limits () {
     _USE_PHP=256
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/888/$_USE_APC/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/88/$_USE_APC/g"  /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/888/$_USE_APC/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/88/$_USE_APC/g"  /opt/local/etc/php53.ini &> /dev/null
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/888/$_USE_SQL/g" /etc/mysql/my.cnf
-  sed -i "s/888/$_USE_APC/g" /etc/redis/redis.conf &> /dev/null
+  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf
+  sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
     sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
