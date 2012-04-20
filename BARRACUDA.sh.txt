@@ -807,6 +807,7 @@ install_redis_src () {
     st_runner "make --quiet install" 2> /dev/null
     if [ -e "/var/lib/redis" ] ; then
       st_runner "service redis-server stop" &> /dev/null
+      mrun "sleep 1"
       killall -9 redis-server &> /dev/null
     fi
     cd /usr/local/bin
@@ -819,6 +820,11 @@ install_redis_src () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
+  mkdir -p /var/log/redis
+  chown redis:redis /var/log/redis
+  mkdir -p /var/lib/redis
+  chown redis:redis /var/lib/redis
+  rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
@@ -827,16 +833,10 @@ install_redis_src () {
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
   fi
-  mkdir -p /var/log/redis
-  chown redis:redis /var/log/redis
-  mkdir -p /var/lib/redis
-  chown redis:redis /var/lib/redis
-  rm -f /var/lib/redis/*
   update_redis_password
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
     ln -s /usr/bin/redis-server /usr/local/bin/redis-server
   fi
-  st_runner "service redis-server start" &> /dev/null
   touch /var/log/redis-$_REDIS_VERSION.log
 }
 #
@@ -4053,11 +4053,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
-    install_redis_src
-  else
-    install_redis_src
-  fi
+  install_redis_src
 fi
 
 
@@ -4068,21 +4064,24 @@ if [ "$_STATUS" = "INIT" ] ; then
   update_php_conf
   update_php_cli_drush
   tune_memory_limits
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+  chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
+  st_runner "service ssh restart" &> /dev/null
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
   if [ "$_DB_SERVER" = "Percona" ] ; then
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
+  msg "INFO: Restarting $_DB_SERVER"
   st_runner "service mysql restart" &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
-  chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
+    msg "INFO: Starting Redis, PHP-FPM and Nginx"
+    st_runner "service redis-server start" &> /dev/null
     killall -9 nginx php-cgi php-fpm &> /dev/null
     mrun "sleep 1"
-    st_runner "service ssh restart" &> /dev/null
     st_runner "update-rc.d cron defaults" &> /dev/null
     if [ -e "/etc/init.d/php-fpm" ] ; then
       st_runner "update-rc.d php-fpm defaults" &> /dev/null
@@ -4097,8 +4096,9 @@ else
   fix_on_upgrade
   tune_memory_limits
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    msg "INFO: Restarting PHP-FPM and reloading Nginx"
+    msg "INFO: Restarting Redis and PHP-FPM, reloading Nginx"
     mrun "sleep 1"
+    st_runner "service redis-server restart" &> /dev/null
     st_runner "service php-fpm restart" &> /dev/null
     st_runner "service php53-fpm restart" &> /dev/null
     st_runner "service nginx reload" &> /dev/null
