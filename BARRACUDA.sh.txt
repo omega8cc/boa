@@ -1562,8 +1562,8 @@ barracuda_cnf () {
     msg "INFO: Creating your /root/.barracuda.cnf config file"
     sleep 1
     echo "###" > /root/.barracuda.cnf
-    echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
-    echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
+    echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
+    echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### NOTE: the group of settings displayed bellow will *not* be overriden" >> /root/.barracuda.cnf
     echo "### on upgrade by the Barracuda script nor by this configuration file." >> /root/.barracuda.cnf
@@ -1612,8 +1612,8 @@ barracuda_cnf () {
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
-    echo "### Configuration created on $_NOW with" >> /root/.barracuda.cnf
-    echo "### Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
+    echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
+    echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
   else
     msg "INFO: Reading your /root/.barracuda.cnf config file."
