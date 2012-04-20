@@ -3434,7 +3434,7 @@ install_percona_sql () {
   st_runner "apt-get update -y"              &> /dev/null
   SQLDEB="percona-server-server-5.5"
   if [ "$_REL_VERSION" = "squeeze" ] ; then
-    SQLADD="percona-toolkit mytop"
+    SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit mytop"
   else
     SQLADD="libmysqlclient-dev libmysqld-dev libdbd-mysql-perl python-mysqldb libdbi-perl mytop"
   fi
