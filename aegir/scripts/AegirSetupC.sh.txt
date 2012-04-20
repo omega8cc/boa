@@ -113,11 +113,11 @@ _ROOT="/data/disk/$_USER"
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 #
-if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
   _D_8_ALLOW=YES
   _D_5_ALLOW=NO
-elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
   _L_PHP_CLI=/usr/local/bin
   _D_8_ALLOW=NO
   _D_5_ALLOW=YES

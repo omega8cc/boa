@@ -521,7 +521,7 @@ find_correct_ip () {
 # Read or create Octopus cnf file.
 octopus_cnf () {
   if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
-    if [ ! -e "/usr/local/bin/php" ] ; then
+    if [ ! -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=YES
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
@@ -576,7 +576,7 @@ octopus_cnf () {
     else
       _LD_DOM=NO
     fi
-    if [ ! -e "/usr/local/bin/php" ] ; then
+    if [ ! -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=YES
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
@@ -617,7 +617,7 @@ octopus_cnf () {
     done < /root/.$_USER.octopus.cnf
     echo " "
     source /root/.$_USER.octopus.cnf
-    if [ ! -e "/usr/local/bin/php" ] ; then
+    if [ ! -x "/usr/local/bin/php" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
     fi

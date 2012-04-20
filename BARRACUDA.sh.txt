@@ -920,12 +920,17 @@ update_lshell_conf () {
 #
 # Update php-cli for Drush.
 update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+    _L_PHP_CLI=usr
+    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
     _L_PHP_CLI=opt
     sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
     sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
     _L_PHP_CLI=usr
     sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
     sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
@@ -1551,7 +1556,7 @@ EOF
 # Read or create Barracuda cnf file.
 barracuda_cnf () {
   if [ ! -e "/root/.barracuda.cnf" ] ; then
-    if [ -e "/usr/local/bin/php" ] ; then
+    if [ -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=NO
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
@@ -1618,7 +1623,7 @@ barracuda_cnf () {
     sleep 1
     msg "NOTE: Please review all config options displayed below."
     msg "NOTE: It will *override* all settings in the Barracuda script."
-    if [ -e "/usr/local/bin/php" ] ; then
+    if [ -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=NO
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
@@ -1653,12 +1658,12 @@ barracuda_cnf () {
     fi
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
-      if [[ "$_PHP_MODERN_ONLY_TEST" =~ "YES" ]] && [ ! -e "/usr/local/bin/php" ] ; then
+      if [[ "$_PHP_MODERN_ONLY_TEST" =~ "YES" ]] && [ ! -x "/usr/local/bin/php" ] ; then
         _PHP_MODERN_ONLY=YES
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
       fi
-      if [ -e "/usr/local/bin/php" ] ; then
+      if [ -x "/usr/local/bin/php" ] ; then
         _PHP_MODERN_ONLY=NO
         sed -i "s/.*_PHP_MODERN_ONLY.*/_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY/g" /root/.barracuda.cnf &> /dev/null
       fi
@@ -1667,7 +1672,7 @@ barracuda_cnf () {
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/local/bin/php" ] ; then
+      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/local/bin/php" ] ; then
         _PHP_FPM_VERSION=5.3
         sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.barracuda.cnf &> /dev/null
       fi
@@ -1676,7 +1681,7 @@ barracuda_cnf () {
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/local/bin/php" ] ; then
+      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/local/bin/php" ] ; then
         _PHP_CLI_VERSION=5.3
         sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.barracuda.cnf &> /dev/null
       fi
@@ -1764,7 +1769,7 @@ barracuda_cnf () {
     done < /root/.barracuda.cnf
     echo " "
     source /root/.barracuda.cnf
-    if [ -e "/usr/local/bin/php" ] ; then
+    if [ -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=NO
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
@@ -2079,10 +2084,10 @@ install_php_modern () {
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -e "/usr/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
     ln -s /opt/local/bin/php /usr/bin/php
   fi
-  if [ ! -e "/opt/local/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ ! -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
     mkdir -p /opt/local/bin
     ln -s /usr/bin/php /opt/local/bin/php
   fi
@@ -3851,7 +3856,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   msg "INFO: Checking if PHP upgrade is available"
   mrun "sleep 1"
 fi
-if [ -e "/opt/local/bin/php" ] ; then
+if [ -x "/opt/local/bin/php" ] ; then
   _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   ###if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
   if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then

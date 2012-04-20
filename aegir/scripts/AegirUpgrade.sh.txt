@@ -46,9 +46,12 @@ _DEBUG_MODE=EDIT_DEBUG_MODE
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
-if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -e "/opt/local/bin/php" ] ; then
+_REL_VERSION=`lsb_release -sc`
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+  _L_PHP_CLI=/usr/bin
+elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
   _L_PHP_CLI=/opt/local/bin
-elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -e "/usr/local/bin/php" ] ; then
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
   _L_PHP_CLI=/usr/local/bin
 else
   _L_PHP_CLI=/usr/local/bin
