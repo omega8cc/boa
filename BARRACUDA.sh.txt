@@ -4069,9 +4069,6 @@ fi
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Updating init scripts"
   mrun "sleep 1"
-  update_php_conf
-  update_php_cli_drush
-  tune_memory_limits
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
@@ -4083,6 +4080,9 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
     sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   fi
+  update_php_conf
+  update_php_cli_drush
+  tune_memory_limits
   msg "INFO: Restarting $_DB_SERVER"
   st_runner "service mysql restart" &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
