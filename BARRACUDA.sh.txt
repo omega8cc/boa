@@ -3677,16 +3677,6 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "oneiric" ] ; then
-    install_redis_src
-  else
-    install_redis_src
-  fi
-fi
-
-
-###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   if [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing VnStat monitor, please wait..."
@@ -4057,6 +4047,16 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
     cd /var/opt
     echo "pure-ftpd-$_PURE_FTPD_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION.log
+  fi
+fi
+
+
+###--------------------###
+if [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_REL_VERSION" = "oneiric" ] ; then
+    install_redis_src
+  else
+    install_redis_src
   fi
 fi
 
