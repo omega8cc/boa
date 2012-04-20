@@ -4085,6 +4085,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   fix_on_upgrade
+  tune_memory_limits
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting PHP-FPM and reloading Nginx"
     mrun "sleep 1"
