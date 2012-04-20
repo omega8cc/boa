@@ -71,6 +71,7 @@ standard production settings.
 
 NOTE: Average time to install and upgrade tested with PHP 5.3 option
       _PHP_MODERN_ONLY=YES (default), using Barracuda installer only.
+      Upgrade time is applicable when PHP upgrade is required.
 
 
 ### PARTIALLY SUPPORTED OS (testing only)
