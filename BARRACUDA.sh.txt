@@ -4158,6 +4158,17 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
+  if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
+    msg "ALRT: $_DB_SERVER server not running!"
+    msg "EXIT: We can't proceed with installation and will exit now."
+    msg "HINT: Please check $_LOG for more information"
+    msg "HINT: on errors occured and then run Barracuda installer again."
+    msg "Bye."
+    rm -f /root/.my.pass.txt
+    mkdir -p /var/aegir
+    echo " "
+    exit 1
+  fi
   msg "INFO: Installing Aegir Master Instance, please wait..."
   mrun "sleep 1"
   st_runner "adduser --system --group --home /var/aegir aegir"
@@ -4267,6 +4278,15 @@ else
     msg "INFO: Aegir Master Instance upgrade skipped"
     echo " "
   else
+    if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
+      msg "ALRT: $_DB_SERVER server not running!"
+      msg "EXIT: We can't proceed with upgrade and will exit now."
+      msg "HINT: Please check $_LOG for more information"
+      msg "HINT: on errors occured and then run Barracuda installer again."
+      msg "Bye."
+      echo " "
+      exit 1
+    fi
     upgrade_aegir_master
   fi
 fi

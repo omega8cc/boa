@@ -837,6 +837,20 @@ if ! netcat -w 8 -z github.com 9418 ; then
   echo " "
   exit 1
 fi
+if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
+  _DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    _DB_SERVER=MariaDB
+  else
+    _DB_SERVER=Percona
+  fi
+  msg "ALRT: $_DB_SERVER server not running!"
+  msg "EXIT: We can't proceed and will exit now."
+  msg "HINT: Please start $_DB_SERVER server and then run Octopus installer again."
+  msg "Bye."
+  echo " "
+  exit 1
+fi
 
 
 ###---### init
