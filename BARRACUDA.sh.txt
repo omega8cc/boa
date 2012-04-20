@@ -598,7 +598,7 @@ _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 SHELL=/bin/bash
 
 

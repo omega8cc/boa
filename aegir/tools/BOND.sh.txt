@@ -174,7 +174,7 @@ _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
 
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 
 
 ###---### Functions

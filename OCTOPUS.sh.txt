@@ -441,7 +441,7 @@ _SMALLCORE7=7.12
 _SMALLCORE8=8.0-dev
 _USRG=users
 _WEBG=www-data
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 SHELL=/bin/bash
 
 ###
