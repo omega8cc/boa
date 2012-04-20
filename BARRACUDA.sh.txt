@@ -1593,8 +1593,6 @@ barracuda_cnf () {
     echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
-    echo "_PHP_FORCE_REINSTALL=$_PHP_FORCE_REINSTALL" >> /root/.barracuda.cnf
-    echo "_SQL_FORCE_REINSTALL=$_SQL_FORCE_REINSTALL" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
@@ -1626,6 +1624,16 @@ barracuda_cnf () {
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
+    fi
+    _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_PHP_FORCE_REINSTALL_TEST" =~ "_PHP_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_PHP_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_SQL_FORCE_REINSTALL_TEST" =~ "_SQL_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
