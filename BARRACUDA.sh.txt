@@ -811,7 +811,9 @@ install_redis_src () {
       killall -9 redis-server &> /dev/null
     fi
     cd /usr/local/bin
-    cp -p redis-server /usr/bin/
+    if [ ! -L "/usr/local/bin/redis-server" ] ; then
+      cp -p redis-server /usr/bin/
+    fi
     cp -p redis-benchmark /usr/bin/
     cp -p redis-cli /usr/bin/
     cp -p redis-check-dump /usr/bin/
