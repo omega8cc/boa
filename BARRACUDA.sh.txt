@@ -1047,16 +1047,8 @@ update_sql_conf () {
     sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
-  _DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    _DB_SERVER=MariaDB
-  else
-    _DB_SERVER=Percona
-  fi
-  if [ "$_DB_SERVER" = "Percona" ] ; then
-    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-  fi
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
 }
 #
 # Update Nginx Config.
@@ -4089,10 +4081,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "service ssh restart" &> /dev/null
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
-  if [ "$_DB_SERVER" = "Percona" ] ; then
-    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-  fi
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   update_php_conf
   tune_memory_limits
   msg "INFO: Restarting $_DB_SERVER"

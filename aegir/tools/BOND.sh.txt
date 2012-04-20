@@ -370,10 +370,8 @@ restore_default_sql () {
   else
     _DB_SERVER=Percona
   fi
-  if [ "$_DB_SERVER" = "Percona" ] ; then
-    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
-  fi
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
   cd /var/xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
   sed -i "s/600/900/g" /var/xdrago/minute.sh &> /dev/null
