@@ -717,7 +717,7 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
-_LOG=/opt/tmp/aegir-install.log
+_LOG=/var/backups/bond-$_NOW.log
 _SILENT=/opt/tmp/silent.log
 #
 #

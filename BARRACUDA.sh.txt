@@ -2689,7 +2689,13 @@ rm -f apt.conf.noninteractive*
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive ./
 #
 # Create tmp stuff
-_LOG=/opt/tmp/aegir-install.log
+if [ "$_STATUS" = "INIT" ] ; then
+  _LOG=/var/backups/barracuda-install-$_NOW.log
+else
+  _LOG=/var/backups/barracuda-upgrade-$_NOW.log
+fi
+touch $_LOG
+chmod 600 $_LOG
 _SILENT=/opt/tmp/silent.log
 cd $_SRCDIR
 #
@@ -3272,7 +3278,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   mrun "sleep 60"
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
-  msg "HINT: Run tail -f /opt/tmp/aegir-install.log in another terminal window to watch details."
+  msg "HINT: Run tail -f $_LOG in another terminal window to watch details."
   mrun "sleep 1"
   if [ -e "/etc/init.d/bind" ] ; then
     rm -f /etc/init.d/bind

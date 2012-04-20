@@ -190,7 +190,7 @@ update_php_cli_drush () {
 }
 #
 _SRCDIR=/opt/tmp/files
-_LOG=/opt/tmp/aegir-install.log
+_LOG=/var/backups/octopus-$_NOW.log
 #
 msg "$_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
