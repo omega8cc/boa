@@ -255,7 +255,7 @@ _AEGIR_VERSION=HEAD
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.3 (default)
+### You can choose MariaDB 5.5 (default)
 ### or Percona 5.5.
 ###
 ### You can choose/change the DB server both
