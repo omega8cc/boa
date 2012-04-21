@@ -1802,7 +1802,7 @@ _THIS_PRNAME="octopus_video"
 _THIS_DISTRO="$_THIS_PRNAME-$_OCTOPUS_VIDEO-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_VIDEO" = "YES" ] ; then
+if [ "$_ALLOW_VIDEO" = "YES" ] || [[ "$_DOMAIN" =~ "node.us.host8.biz" ]] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OVO ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
