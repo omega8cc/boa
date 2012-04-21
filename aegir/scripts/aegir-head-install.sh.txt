@@ -107,7 +107,7 @@ cat <<EOF
 EOF
 
 AEGIR_DB_USER=aegir_root
-if [ "$_REL_VERSION" = "oneiric" ] ; then
+if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5 | awk '{ print $2}'`
 else
   AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5`
