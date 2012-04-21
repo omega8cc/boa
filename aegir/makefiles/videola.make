@@ -11,4 +11,4 @@ projects[pressflow][download][branch] = "master"
 
 projects[videola][type] = "profile"
 projects[videola][download][type] = "git"
-projects[videola][download][url] = "git://github.com/Lullabot/videola.git"
+projects[videola][download][url] = "git://github.com/Videola/videola.git"
