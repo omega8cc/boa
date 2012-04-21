@@ -61,7 +61,7 @@ standard production settings.
 
 ### SUPPORTED PARENT SYSTEMS
 
-* Xen, VServer or VMware based VPS or a dedicated box.
+* Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
 
 
 ### SUPPORTED LTS OS (32/64bit minimal, fresh install)
