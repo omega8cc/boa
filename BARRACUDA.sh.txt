@@ -2343,7 +2343,7 @@ install_upgrade_nginx () {
     else
       _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
     fi
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "incompatible" ] ; then
       true
     else
       git clone $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
