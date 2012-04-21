@@ -852,17 +852,21 @@ fi
 if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _ALLOW_FOUR=YES
   _ALLOW_CIVICRM=YES
+  _ALLOW_VIDEO=NO
 elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
   if [[ "$_DOMAIN" =~ ".host8." ]] ; then
     _ALLOW_FOUR=YES
     _ALLOW_CIVICRM=NO
+    _ALLOW_VIDEO=NO
   else
     _ALLOW_FOUR=YES
     _ALLOW_CIVICRM=YES
+    _ALLOW_VIDEO=YES
   fi
 else
   _ALLOW_FOUR=NO
   _ALLOW_CIVICRM=NO
+  _ALLOW_VIDEO=NO
 fi
 
 
@@ -1798,7 +1802,7 @@ _THIS_PRNAME="octopus_video"
 _THIS_DISTRO="$_THIS_PRNAME-$_OCTOPUS_VIDEO-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
+if [ "$_ALLOW_VIDEO" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OVO ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "

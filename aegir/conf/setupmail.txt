@@ -62,11 +62,14 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
   Ubercart 3.0.3 --------------- http://ubercart.org
   Videola 1.0-alpha2 ----------- http://videola.tv
 
-Octopus Video and CiviCRM are available with 2+ Aegir SSD Cores only:
+Both CiviCRM platforms are available with 2+ Aegir SSD Cores only:
 
-  Octopus Video 1.0-alpha5 ----- http://octopusvideo.org
   CiviCRM 3.4.8-d6 ------------- http://civicrm.org
   CiviCRM 4.0.8-d7 ------------- http://civicrm.org
+
+Octopus Video platform is available with 1+ Aegir Root Cores only:
+
+  Octopus Video 1.0-alpha5 ----- http://octopusvideo.org
 
 Note about vanilla platforms naming convention:
 

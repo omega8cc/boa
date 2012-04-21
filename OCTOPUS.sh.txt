@@ -1013,7 +1013,7 @@ chmod +x spinner &> /dev/null
 _LOG=/var/backups/octopus-$_NOW.log
 touch $_LOG
 chown $_USER:$_USRG $_LOG
-chmod 600 $_LOG
+chmod 646 $_LOG
 _SILENT=/opt/tmp/silent.log
 #
 #
