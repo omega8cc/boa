@@ -236,7 +236,7 @@ update_redis_password () {
 # set -e ### disabled for debugging
 #
 _SRCDIR=/opt/tmp/files
-_LOG=/var/backups/octopus-$_NOW.log
+_LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
 # Create shared dirs
 create_shared_dirs () {

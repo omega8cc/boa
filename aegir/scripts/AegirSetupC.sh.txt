@@ -96,7 +96,6 @@ _LAST_ALL=EDIT_LAST_ALL
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
 _NOW=EDIT_NOW
-_LOG=/var/backups/octopus-$_NOW.log
 _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
@@ -112,6 +111,7 @@ _USER=EDIT_USER
 _ROOT="/data/disk/$_USER"
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
+_LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin

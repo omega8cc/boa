@@ -1018,7 +1018,7 @@ cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/spinner ./
 chmod +x spinner &> /dev/null
 #
 # Create tmp stuff
-_LOG=/var/backups/octopus-$_NOW.log
+_LOG=/var/backups/octopus-$_USER-$_NOW.log
 touch $_LOG
 chown $_USER:$_USRG $_LOG
 chmod 646 $_LOG
