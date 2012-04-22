@@ -2936,6 +2936,8 @@ if [ "$_STATUS" = "INIT" ] ; then
     _THISHOST=`uname -n`
     if [ ! -z "$_FQDNPROB" ] ; then
       _THISHOST=`uname -n`
+      _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
+      _THISHOST=`echo -n $_THISHOST | tr A-Z a-z`
       _LOC_DOM="$_THISHOST"
       find_correct_ip
       _THISRDIP="$_LOC_IP"
@@ -2946,6 +2948,8 @@ if [ "$_STATUS" = "INIT" ] ; then
         _FQDNTEST="FALSE"
         _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
         _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
+        _REVHOSTN=${_REVHOSTN//[^a-zA-Z0-9-.]/}
+        _REVHOSTN=`echo -n $_REVHOSTN | tr A-Z a-z`
         _LOC_DOM="$_REVHOSTN"
         find_correct_ip
         _REVHSTIP="$_LOC_IP"
@@ -2960,6 +2964,8 @@ if [ "$_STATUS" = "INIT" ] ; then
     else
       _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
       _REVHOSTN=`echo -n $_REVHOSTN |sed 's/\(.*\)./\1/'`
+      _REVHOSTN=${_REVHOSTN//[^a-zA-Z0-9-.]/}
+      _REVHOSTN=`echo -n $_REVHOSTN | tr A-Z a-z`
       _LOC_DOM="$_REVHOSTN"
       find_correct_ip
       _REVHSTIP="$_LOC_IP"
@@ -3062,6 +3068,8 @@ EOF
 else ### if [ "$_STATUS" = "UPGRADE" ] ; then
   _THISHOST=`cat /etc/hostname`
   _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
+  _THISHOST=${_THISHOST//[^a-zA-Z0-9-.]/}
+  _THISHOST=`echo -n $_THISHOST | tr A-Z a-z`
   if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
     _THIS_FRONT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "uri'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   elif [ ! -z "$_MY_FRONT" ] ; then
