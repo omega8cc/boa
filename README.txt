@@ -67,7 +67,8 @@ standard production settings.
 ### SUPPORTED LTS OS (32/64bit minimal, fresh install)
 
 * Debian 6.0 Squeeze (recommended) - 12 min install, 3 min upgrade
-* Ubuntu Lucid 10.04 (optional) - 30 min install, 15 min upgrade
+* Ubuntu Precise 12.04 - 12 min install, 3 min upgrade
+* Ubuntu Lucid 10.04 - 30 min install, 15 min upgrade
 
 NOTE: Average time to install and upgrade tested with PHP 5.3 option
       _PHP_MODERN_ONLY=YES (default), using Barracuda installer only.
