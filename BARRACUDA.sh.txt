@@ -2774,6 +2774,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
     _REL_VERSION="precise"
     _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
+    _PURGE_MODE=OFF
   elif [ "$_THIS_RV" = "oneiric" ] ; then
     _REL_VERSION="oneiric"
     _HTTP_WILDCARD=YES
