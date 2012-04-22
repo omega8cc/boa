@@ -3510,7 +3510,7 @@ install_with_aptitude_deps
 fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_latest_git
-  if [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_REL_VERSION" != "squeeze" ] && [ "$_REL_VERSION" != "precise" ] ; then
     install_upgrade_libevent
     install_upgrade_nginx
   else
@@ -3589,7 +3589,7 @@ fi
 run_apt_update_again
 install_with_aptitude_deps
 install_latest_git
-if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_REL_VERSION" != "squeeze" ] && [ "$_REL_VERSION" != "precise" ] ; then
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
