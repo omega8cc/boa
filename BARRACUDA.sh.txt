@@ -2438,6 +2438,31 @@ fi
 
 
 ###--------------------###
+if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
+  _LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP//[^0-9.]/}
+fi
+if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
+  _LOCAL_NETWORK_HN=${_LOCAL_NETWORK_HN//[^a-zA-Z0-9-.]/}
+  _LOCAL_NETWORK_HN=`echo -n $_LOCAL_NETWORK_HN | tr A-Z a-z`
+fi
+if [ ! -z "$_MY_OWNIP" ] ; then
+  _MY_OWNIP=${_MY_OWNIP//[^0-9.]/}
+fi
+if [ ! -z "$_MY_HOSTN" ] ; then
+  _MY_HOSTN=${_MY_HOSTN//[^a-zA-Z0-9-.]/}
+  _MY_HOSTN=`echo -n $_MY_HOSTN | tr A-Z a-z`
+fi
+if [ ! -z "$_MY_FRONT" ] ; then
+  _MY_FRONT=${_MY_FRONT//[^a-zA-Z0-9-.]/}
+  _MY_FRONT=`echo -n $_MY_FRONT | tr A-Z a-z`
+fi
+if [ ! -z "$_SMTP_RELAY_HOST" ] ; then
+  _SMTP_RELAY_HOST=${_SMTP_RELAY_HOST//[^a-zA-Z0-9-.]/}
+  _SMTP_RELAY_HOST=`echo -n $_SMTP_RELAY_HOST | tr A-Z a-z`
+fi
+
+
+###--------------------###
 msg "INFO: Install or upgrade checking, please wait..."
 sleep 1
 if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
