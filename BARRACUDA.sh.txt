@@ -2870,7 +2870,8 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_Q=${_S_N%%${_S_T}}
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-        echo "$_MY_OWNIP .$_MY_HOSTN $_S_E" >> /etc/hosts
+        sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
+        echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN site.$_MY_HOSTN $_S_E" >> /etc/hosts
       fi
       hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
       echo "$_MY_HOSTN" > /etc/hostname
