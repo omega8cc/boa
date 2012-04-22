@@ -3149,11 +3149,9 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
         install_pdnsd_cache
         msg "INFO: DNS cache pdnsd server installation completed"
         mrun "sleep 1"
-
       else
         msg "INFO: DNS cache pdnsd server installation skipped"
         mrun "sleep 1"
-
       fi
     fi
   elif [ "$_INSTALL_PDNSD" = "YES" ] ; then
@@ -3299,8 +3297,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       rm -f dotdeb.gpg*
     fi
   fi
-  cd /var/log
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW M-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./apt-fast-install-log.txt
+  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW M-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> /var/log/apt-fast-install-log.txt
   cd /var/opt
 fi
 
