@@ -48,6 +48,55 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
+### EASY LOCALHOST MODE                    ###
+###----------------------------------------###
+###
+### This option works only with initial
+### install and is disabled on upgrade.
+###
+### You can use this option to configure all
+### other options below automatically for
+### an easy install on your localhost, like
+### on your Linux laptop or VirtualBox VM.
+###
+### It will skip all prompts and configure
+### Barracuda with only safe options/services
+### enabled, as listed below:
+###
+### _PHP_MODERN_ONLY=YES
+### _XTRAS_LIST="CHV"
+### _HTTP_WILDCARD=YES
+### _AUTOPILOT=YES
+### _DEBUG_MODE=YES
+### _AEGIR_VERSION=HEAD
+### _DB_SERVER=MariaDB
+### _SSH_PORT=22
+### _LOCAL_DEBIAN_MIRROR=ftp.debian.org
+### _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
+### _FORCE_GIT_MIRROR=github
+### _DNS_SETUP_TEST=NO
+### _THIS_DB_HOST=localhost
+### _SMTP_RELAY_TEST=NO
+### _LOCAL_NETWORK_IP="127.0.1.1"
+### _LOCAL_NETWORK_HN="aegir.local"
+### _MY_OWNIP="127.0.1.1"
+### _MY_HOSTN="aegir.local"
+### _MY_FRONT="aegir.local"
+###
+### Three ready to use subdomains will be
+### configured automatically for your sites:
+### s1.aegir.local, s2.aegir.local and
+### s3.aegir.local. You can add more of them
+### in the /etc/hosts file, so it will rely
+### only on the local, basic DNS system,
+### without any need to use external DNS.
+###
+### To enable change this to YES below.
+###
+_EASY_LOCALHOST=NO
+
+
+###----------------------------------------###
 ### PHP INSTALL MODE                       ###
 ###----------------------------------------###
 ###
@@ -2494,6 +2543,24 @@ else
   sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
+  if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+    _PHP_MODERN_ONLY=YES
+    _XTRAS_LIST="CHV"
+    _HTTP_WILDCARD=YES
+    _AUTOPILOT=YES
+    _DEBUG_MODE=YES
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _SSH_PORT=22
+    _LOCAL_DEBIAN_MIRROR=ftp.debian.org
+    _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
+    _FORCE_GIT_MIRROR=github
+    _DNS_SETUP_TEST=NO
+    _THIS_DB_HOST=localhost
+    _SMTP_RELAY_TEST=NO
+    _LOCAL_NETWORK_IP="127.0.1.1"
+    _LOCAL_NETWORK_HN="aegir.local"
+  fi
   barracuda_cnf
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
@@ -2896,7 +2963,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
         sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
-        echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN site.$_MY_HOSTN $_S_E" >> /etc/hosts
+        echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN s1.$_MY_HOSTN s2.$_MY_HOSTN s3.$_MY_HOSTN $_S_E" >> /etc/hosts
       fi
       hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
       echo "$_MY_HOSTN" > /etc/hostname
