@@ -3208,11 +3208,6 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
-    if [ "$_REL_VERSION" = "precise" ] ; then
-      apt-get install python-software-properties &> /dev/null
-      add-apt-repository -y ppa:nginx/stable &> /dev/null
-      add-apt-repository -y ppa:nginx/php5 &> /dev/null
-    fi
   elif [ "$_THIS_OS" = "Debian" ] ; then
     _MIRROR_CHECK=NO
     if [ "$_REL_VERSION" = "lenny" ] ; then
