@@ -922,12 +922,16 @@ update_lshell_conf () {
 #
 # Update php-cli for Drush.
 update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+  _NEW_LTS=NO
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _NEW_LTS=YES
+  fi
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "YES" ] ; then
     _L_PHP_CLI=usr
     sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
     sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_NEW_LTS" = "NO" ] ; then
     _L_PHP_CLI=opt
     sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
     sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
@@ -970,7 +974,7 @@ update_php_conf () {
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
       mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
@@ -1882,7 +1886,7 @@ install_php_extensions () {
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
       st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
     fi
-    if [ "$_REL_VERSION" = "squeeze" ] ; then
+    if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
       st_runner "$_INSTAPP php5-memcached" 2> /dev/null
     else
       cd /var/opt
@@ -2028,7 +2032,7 @@ update_php_universal_more () {
 # Install PHP 5.3.10
 install_php_modern () {
   ###--------------------###
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW, please wait..."
     if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
       _EXTRA_PHP_DEB="php5-dev php5-ffmpeg"
@@ -2064,7 +2068,7 @@ install_php_modern () {
     st_runner "make --quiet install" 2> /dev/null
   fi
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _LOC_PHP_PATH=/usr/bin
   else
     _LOC_PHP_PATH=/opt/local/bin
@@ -2081,15 +2085,19 @@ install_php_modern () {
     cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  _NEW_LTS=NO
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _NEW_LTS=YES
+  fi
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "NO" ] ; then
     ln -s /opt/local/bin/php /usr/bin/php
   fi
-  if [ ! -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ ! -x "/opt/local/bin/php" ] && [ "$_NEW_LTS" = "YES" ] ; then
     mkdir -p /opt/local/bin
     ln -s /usr/bin/php /opt/local/bin/php
   fi
   rm -f /etc/init.d/php53-fpm*
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     st_runner "service php5-fpm stop" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     rm -f /etc/init.d/php5-fpm*
@@ -2155,7 +2163,7 @@ install_php_legacy () {
 # Update PHP 5.3.10
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _LOC_PHP_PATH=/usr/bin
     update_php_universal_more
   else
@@ -3200,6 +3208,11 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      apt-get install python-software-properties &> /dev/null
+      add-apt-repository -y ppa:nginx/stable &> /dev/null
+      add-apt-repository -y ppa:nginx/php5 &> /dev/null
+    fi
   elif [ "$_THIS_OS" = "Debian" ] ; then
     _MIRROR_CHECK=NO
     if [ "$_REL_VERSION" = "lenny" ] ; then
@@ -3382,7 +3395,7 @@ else
   msg "INFO: Upgrading required libraries and tools"
 fi
 msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
-if [ "$_REL_VERSION" = "squeeze" ] ; then
+if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _APT_SQUEEZE="openjdk-6-jdk nginx-extras"
 else
   _APT_SQUEEZE="openjdk-6-jdk nginx"
@@ -3682,7 +3695,7 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "squeeze" ] ; then
+if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
   if [[ "$_X_INIT_TEST" =~ "test_nginx_config" ]] ; then
     true
@@ -3890,7 +3903,11 @@ if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] && [ "$_PHP_MODERN_ONLY" = "NO" 
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [ ! -e "/etc/php5/conf.d/imagick.ini" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+  _NEW_LTS=NO
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _NEW_LTS=YES
+  fi
+  if [ ! -e "/etc/php5/conf.d/imagick.ini" ] && [ "$_NEW_LTS" = "YES" ] ; then
     _PHP_INSTALL_REQUIRED=YES
     msg "INFO: PHP rebuild required to install $_PHP_VERSION_NEW from Dotdeb.org"
     mrun "sleep 1"
