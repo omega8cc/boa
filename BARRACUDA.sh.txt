@@ -64,7 +64,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### enabled, as listed below:
 ###
 ### _PHP_MODERN_ONLY=YES
-### _XTRAS_LIST="CHV"
+### _XTRAS_LIST="PDS CHV"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=YES
@@ -83,15 +83,15 @@ _MY_EMAIL="notify@omega8.cc"
 ### _MY_HOSTN="aegir.local"
 ### _MY_FRONT="aegir.local"
 ###
-### Three ready to use subdomains will be
-### configured automatically for your sites:
-### s1.aegir.local, s2.aegir.local and
-### s3.aegir.local. You can add more of them
-### in the /etc/hosts file, so it will rely
-### only on the local, basic DNS system,
-### without any need to use external DNS.
+### Thanks to local DNS wildcard, you will be
+### able to use many levels of subdomains for
+### created sites, for example:
+### site.aegir.local, abc.xyz.site.aegir.local
+### This wildcard will rely only on the local,
+### basic DNS system, without any need to use
+### external DNS.
 ###
-### To enable change this to YES below.
+### To enable, change this to YES below.
 ###
 _EASY_LOCALHOST=NO
 
@@ -2545,7 +2545,7 @@ else
   rm -f /usr/bin/drush
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     _PHP_MODERN_ONLY=YES
-    _XTRAS_LIST="CHV"
+    _XTRAS_LIST="PDS CHV"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=YES
@@ -2962,8 +2962,12 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_Q=${_S_N%%${_S_T}}
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-        sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
-        echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN s1.$_MY_HOSTN s2.$_MY_HOSTN s3.$_MY_HOSTN $_S_E" >> /etc/hosts
+        if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+          sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
+        else
+          sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
+          echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN $_S_E" >> /etc/hosts
+        fi
       fi
       hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
       echo "$_MY_HOSTN" > /etc/hostname
@@ -3190,6 +3194,10 @@ install_pdnsd_cache () {
   st_runner "$_INSTALL pdnsd resolvconf";
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+  if [ -e "﻿/etc/NetworkManager/NetworkManager.conf" ] ; then
+    sed -i "s/^dns=.*/dns=pdnsd/g" ﻿/etc/NetworkManager/NetworkManager.conf &> /dev/null
+    st_runner "service network-manager restart" &> /dev/null
+  fi
   st_runner "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
   st_runner "service pdnsd start" &> /dev/null

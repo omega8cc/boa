@@ -86,11 +86,11 @@ _CLIENT_CORES=4
 ### _LOCAL_NETWORK_IP="127.0.1.1"
 ### _DOMAIN=$_USER.sub.aegir.local
 ###
-### Three ready to use subdomains will be
-### configured automatically for your sites:
-### s1.$_DOMAIN, s2.$_DOMAIN and s3.$_DOMAIN.
-### You can add more of them in the /etc/hosts
-### file, so it will rely only on the local,
+### Thanks to local DNS wildcard, you will be
+### able to use many levels of subdomains for
+### created sites, for example:
+### site.aegir.local, abc.xyz.site.aegir.local
+### This wildcard will rely only on the local,
 ### basic DNS system, without any need to use
 ### external DNS.
 ###
@@ -904,17 +904,6 @@ fi
   msg "_USER is $_USER"
 #
 #
-find_free_ip () {
-  until [ ! -z "$_LAST_IP_TEST" ] && [ -z "$_NEXT_IP_TEST" ] ; do
-    _LAST_IP="127.0.1.$_N"
-    _LAST_IP_TEST=`grep "^$_LAST_IP " /etc/hosts`
-    _N=$(( $_N + 1))
-    _NEXT_IP="127.0.1.$_N"
-    _NEXT_IP_TEST=`grep "^$_NEXT_IP " /etc/hosts`
-  done
-}
-#
-#
 _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
@@ -924,18 +913,8 @@ if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _THIS_DB_HOST=localhost
   _REMOTE_CACHE_IP=127.0.0.1
   _DOMAIN="$_USER.sub.aegir.local"
-  _N=1
-  find_free_ip
-  if [ $_N -ge 1 ] && [ $_N -lt 256 ] ; then
-    _LOCAL_NETWORK_IP="$_NEXT_IP"
-    msg "_LOCAL_NETWORK_IP is $_NEXT_IP"
-    echo "$_LOCAL_NETWORK_IP $_DOMAIN s1.$_DOMAIN s2.$_DOMAIN s3.$_DOMAIN" >> /etc/hosts
-  else
-    msg "No free IPs left, sorry!"
-    msg "Bye."
-    echo " "
-    exit 1
-  fi
+  _LOCAL_NETWORK_IP="127.0.1.1"
+  msg "_LOCAL_NETWORK_IP is $_LOCAL_NETWORK_IP"
 fi
 #
 # Sanitize _DOMAIN
