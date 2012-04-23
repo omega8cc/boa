@@ -4921,7 +4921,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     true
   else
-    _AEGIR_LOGIN_URL=`grep "^http://" /var/aegir/install.log 2> /dev/null`
+    _AEGIR_LOGIN_URL=`grep "^http://$_THIS_FRONT" /var/aegir/install.log 2> /dev/null`
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
       echo " "
       msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully."
