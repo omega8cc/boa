@@ -52,17 +52,10 @@ ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
-if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:HTTrack|libwww|PECL|sistrix|Offline|crawl|google|yahoo|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
+if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|goog|yahoo|yandex|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
   // detect known bots
   $known_bot = 'bot';
 }
-$expire_in_seconds = '300';
-
-// Temporary workaround for Purge failing
-// to purge cache for vhosts behind local proxy.
-//if (isset($_SERVER['HTTP_X_LOCAL_PROXY'])) {
-//  $expire_in_seconds = '60';
-//}
 
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
@@ -82,7 +75,6 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
       header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
     }
   }
-  $expire_in_seconds = '1';
   header('X-Accel-Expires: 1');
 }
 
@@ -254,38 +246,45 @@ if (isset($_SERVER['HTTP_HOST'])) {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
-      unset($conf['file_downloads']);      // disable hardcoded public downloads in d7
+      unset($conf['file_downloads']); // disable hardcoded public downloads in d7
     }
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
 
-    if (preg_match("/^\/(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
-      $expire_in_seconds = '1';
+    if (!isset($_COOKIE[$test_sess_name]) && (file_exists('sites/all/modules/cache_hour/YES.txt') ||
+        file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache_hour/YES.txt'))) {
+      $expire_in_seconds = '3600';
     }
 
-    if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST' && empty($known_bot) && !isset($_COOKIE[OctopusNoCacheID])) {
-      $lifetime = '60';
-      setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
-      $expire_in_seconds = '0';
-    }
+    if (empty($known_bot)) {
+      if (preg_match("/^\/(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
+          preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
+          preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
+        if (!isset($_COOKIE[OctopusNoCacheID])) {
+          $lifetime = '15';
+          setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+        }
+        $expire_in_seconds = '1';
+      }
 
-    if ($expire_in_seconds == '1' && !isset($_COOKIE[OctopusNoCacheID]) && empty($known_bot)) {
-      $lifetime = '60';
-      setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
-    }
-    elseif ($expire_in_seconds >= 5 && (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || !empty($is_cart))) {
-      $expire_in_seconds = '5';
+      if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+        $expire_in_seconds = '1';
+      }
+
+      if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_COOKIE[OctopusNoCacheID])) {
+        $lifetime = '15';
+        setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+        $expire_in_seconds = '0';
+      }
     }
     else {
-      if (isset($_COOKIE[$test_sess_name]) && empty($drupal_five) && empty($drupal_unknown)) {
-        $expire_in_seconds = '60';
+      if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
+        $expire_in_seconds = '3600';
       }
     }
 
-    if ($conf['install_profile'] != 'hostmaster') {
+    if ($conf['install_profile'] != 'hostmaster' && !empty($expire_in_seconds)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
   }
