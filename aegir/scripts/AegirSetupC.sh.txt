@@ -167,14 +167,14 @@ fi
 #
 # Success msg
 success () {
-	msg "$1 Succeeded."
+	msg "$1 Succeeded"
 }
 #
 # Error msg
 fatal () {
 	echo " "
 	msg "Fatal Error Occurred: $1"
-	msg "Cannot continue installation."
+	msg "Cannot continue installation"
 	exit 1
 }
 #

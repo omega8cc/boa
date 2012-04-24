@@ -220,7 +220,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
   else
     _DEBUG_MODE=YES
-    msg "UPGRADE INFO: Testing previous install.. OPS, zombie found, moving it to backups.."
+    msg "UPGRADE INFO: Testing previous install.. OPS, zombie found, moving it to backups..."
     mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/host-master-pre-$_DISTRO-$_NOW &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
@@ -240,7 +240,7 @@ fi
 
 _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_AEGIR_ROOT" ] ; then
-  msg "UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exists! Exiting.."
+  msg "UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exists! Exit"
   exit 1
 fi
 
@@ -254,13 +254,13 @@ if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   hostmaster_go_up
   hostmaster_mi_up
 elif [ ! -d "/var/aegir/.drush/provision/http" ] ; then
-  msg "UPGRADE ERROR: Something (1) is wrong, we should stop now.."
-  msg "UPGRADE ERROR: Please report this in the GitHub queue"
+  msg "UPGRADE ERROR: Something (1) is wrong, we should stop now..."
+  msg "UPGRADE ERROR: Please report this in the Barracuda queue"
   msg "BYE!"
   exit 1
 else
-  msg "UPGRADE ERROR: Something (2) is wrong, we should stop now.."
-  msg "UPGRADE ERROR: Please report this in the GitHub queue"
+  msg "UPGRADE ERROR: Something (2) is wrong, we should stop now..."
+  msg "UPGRADE ERROR: Please report this in the Barracuda queue"
   msg "BYE!"
   exit 1
 fi

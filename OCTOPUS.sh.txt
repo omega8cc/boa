@@ -602,7 +602,7 @@ octopus_cnf () {
     echo "### Octopus version $_INSTALLER_VERSION" >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf
   else
-    msg "INFO: Reading your /root/.$_USER.octopus.cnf config file."
+    msg "INFO: Reading your /root/.$_USER.octopus.cnf config file"
     sleep 1
     if [[ "$_DOMAIN" =~ ".host8." ]] ; then
       _LD_DOM=YES
@@ -642,7 +642,7 @@ octopus_cnf () {
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     fi
-    msg "NOTE: Please review all config options displayed below."
+    msg "NOTE: Please review all config options displayed below"
     sleep 3
     echo " "
     while read line ; do
@@ -658,14 +658,14 @@ octopus_cnf () {
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
       else
-        echo "Installation aborted by you."
+        echo "Installation aborted by you"
         exit 1
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
         true
       else
-        echo "Upgrade aborted by you."
+        echo "Upgrade aborted by you"
         exit 1
       fi
     fi
@@ -855,18 +855,19 @@ rm -f -r /opt/tmp/$_BOA_REPO_NAME
 ###--------------------###
 if ! netcat -w 8 -z ftp.drupal.org 80 ; then
   echo " "
-  msg "EXIT on error due to ftp.drupal.org downtime."
+  msg "EXIT on error due to ftp.drupal.org downtime"
   msg "Please try to run this script again in a few minutes"
-  msg "or better yet, hours. Bye."
+  msg "or better yet, hours"
+  msg "Bye"
   echo " "
   exit 1
 fi
 if ! netcat -w 8 -z github.com 9418 ; then
   echo " "
-  msg "EXIT on error due to GitHub git server at 9418 downtime."
-  msg "Please try to run this script again in a few minutes."
-  msg "Also, make sure that the git port 9418 is open."
-  msg "Bye."
+  msg "EXIT on error due to GitHub git server at 9418 downtime"
+  msg "Please try to run this script again in a few minutes"
+  msg "Also, make sure that the git port 9418 is open"
+  msg "Bye"
   echo " "
   exit 1
 fi
@@ -878,9 +879,9 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
     _DB_SERVER=Percona
   fi
   msg "ALRT: $_DB_SERVER server not running!"
-  msg "EXIT: We can't proceed and will exit now."
-  msg "HINT: Please start $_DB_SERVER server and then run Octopus installer again."
-  msg "Bye."
+  msg "EXIT: We can't proceed and will exit now"
+  msg "HINT: Please start $_DB_SERVER server and then run Octopus installer again"
+  msg "Bye"
   echo " "
   exit 1
 fi
@@ -1004,27 +1005,30 @@ _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 #
 #
 if [ `whoami` = "root" ] ; then
-  msg "STATUS: This script is ran as a root user."
+  msg "STATUS: This script is ran as a root user"
 else
-  msg "ERROR: This script should be ran as a root user, please su - root first."
-  msg "Bye."
+  msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first"
+  msg "Bye"
+  echo " "
   exit 1
 fi
 #
 #
 if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
-  msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
-  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
-  msg "Bye."
+  msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
+  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
+  msg "Bye"
+  echo " "
   exit 1
 else
   _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
   if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
-    msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
-    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
-    msg "Bye."
+    msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
+    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
+    msg "Bye"
+    echo " "
     exit 1
   fi
 fi
@@ -1052,10 +1056,10 @@ else
 fi
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
   echo " "
-  msg "EXIT on error due to missing helpers."
-  msg "Please try to run this script again in a few minutes."
-  msg "Also, make sure that the git port 9418 is open."
-  msg "Bye."
+  msg "EXIT on error due to missing helpers"
+  msg "Please try to run this script again in a few minutes"
+  msg "Also, make sure that the git port 9418 is open"
+  msg "Bye"
   echo " "
   exit 1
 fi
@@ -1069,7 +1073,6 @@ chmod +x spinner &> /dev/null
 # Create tmp stuff
 _LOG=/var/backups/octopus-$_USER-$_NOW.log
 touch $_LOG
-chown $_USER:$_USRG $_LOG
 chmod 646 $_LOG
 _SILENT=/opt/tmp/silent.log
 #
@@ -1093,11 +1096,11 @@ if [ -d "$_ROOT" ] ; then
       _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
     fi
     if [ -z "$_DOMAIN" ] ; then
-      msg "ALERT! _DOMAIN is e-m-p-t-y, exit now."
+      msg "ALERT! _DOMAIN is e-m-p-t-y, exit now"
       exit 1
     fi
     if [ -z "$_USER" ] ; then
-      msg "ALERT! _USER is e-m-p-t-y, exit now."
+      msg "ALERT! _USER is e-m-p-t-y, exit now"
       exit 1
     fi
     msg "_DOMAIN is $_DOMAIN"
@@ -1196,21 +1199,21 @@ msg "NEW Aegir Satellite Instance setup in progress..."
 #
 #
   if [ "$_USER" = "admin" ] ; then
-    msg "ERROR: $_USER is a restricted username, please choose different _USER."
+    msg "ERROR: $_USER is a restricted username, please choose different _USER"
     exit 1
   elif [ "$_USER" = "hostmaster" ] ; then
-    msg "ERROR: $_USER is a restricted username, please choose different _USER."
+    msg "ERROR: $_USER is a restricted username, please choose different _USER"
     exit 1
   fi
   _REGEX="^[[:digit:]]"
   if [[ "$_USER" =~ "$_REGEX" ]] ; then
-    msg "ERROR: $_USER is a wrong username, it should start with a letter, not digit."
+    msg "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
     exit 1
   fi
   _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
   if [ ! -z "$_FREEID" ] ; then
-    msg "ERROR: $_USER is already used or too similar to an existing username."
-    msg "Please choose different _USER."
+    msg "ERROR: $_USER is already used or too similar to an existing username"
+    msg "Please choose different _USER"
     exit 1
   fi
 fi
@@ -1219,9 +1222,10 @@ fi
 if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
   true
 else
-  msg "ERROR: Your defined domain: $_DOMAIN is already used on the Aegir Master Instance."
-  msg "Please change the value for _DOMAIN to make it unique."
-  msg "Bye."
+  msg "ERROR: Your defined domain: $_DOMAIN is already used on the Aegir Master Instance"
+  msg "Please change the value for _DOMAIN to make it unique"
+  msg "Bye"
+  echo " "
   exit 1
 fi
 #
@@ -1249,10 +1253,11 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
     true
   else
-    msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP."
-    msg "Please make sure you have valid IN A or IN CNAME record in your DNS."
-    msg "It's also possible, that your DNS change didn't propagate yet. Wait a bit."
-    msg "Bye."
+    msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP"
+    msg "Please make sure you have valid IN A or IN CNAME record in your DNS"
+    msg "It's also possible, that your DNS change didn't propagate yet"
+    msg "Bye"
+    echo " "
     exit 1
   fi
 else
@@ -1283,7 +1288,7 @@ echo " "
 if prompt_yes_no "Do you want to proceed?" ; then
   true
 else
-  echo "Installation/upgrade aborted by you."
+  echo "Installation/upgrade aborted by you"
   exit 1
 fi
 

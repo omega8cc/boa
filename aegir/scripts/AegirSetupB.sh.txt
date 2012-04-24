@@ -128,14 +128,14 @@ msg() {
 #
 # Success msg
 success () {
-	msg "$1 Succeeded."
+	msg "$1 Succeeded"
 }
 #
 # Error msg
 fatal () {
 	echo " "
 	msg "Fatal Error Occurred: $1"
-	msg "Cannot continue installation."
+	msg "Cannot continue installation"
 	exit 1
 }
 #
@@ -239,16 +239,16 @@ chmod 0750 $_ROOT/backups &> /dev/null
 chmod 0750 $_ROOT/clients &> /dev/null
 
 if [ "$_STATUS" = "UPGRADE" ] ; then
- msg "$_STATUS B: UPGRADE in progress.."
+ msg "$_STATUS B: UPGRADE in progress..."
  if [ -d "$_ROOT/distro" ] ; then
-  msg "$_STATUS B: UPGRADE v.2 in progress.."
+  msg "$_STATUS B: UPGRADE v.2 in progress..."
   if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
   msg "$_STATUS B: _DOMAIN is $_DOMAIN"
  elif [ ! -d "$_ROOT/distro" ] ; then
-  msg "$_STATUS B: UPGRADE v.1 in progress.."
+  msg "$_STATUS B: UPGRADE v.1 in progress..."
   msg "$_STATUS B: _DISTRO is $_DISTRO"
   if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
@@ -257,7 +257,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   msg "$_STATUS B: _DOMAIN is $_DOMAIN"
  fi
 else
- msg "$_STATUS B: NEW AEGIR setup in progress.."
+ msg "$_STATUS B: NEW AEGIR setup in progress..."
  msg "$_STATUS B: _DISTRO is $_DISTRO"
  msg "$_STATUS B: _DOMAIN is $_DOMAIN"
 fi
@@ -469,7 +469,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   drush '@hostmaster' hosting-dispatch &> /dev/null
 else
   if [ -d "$_AEGIR_ROOT" ] ; then
-    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exist! Exiting.."
+    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exists! Exit"
     exit 1
   fi
   msg "$_STATUS B: Hostmaster STATUS: upgrade start"

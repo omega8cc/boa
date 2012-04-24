@@ -219,9 +219,9 @@ st_runner () {
 		sleep 1
 		echo "$CMD failed.  Error (if any): $?"
 		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem."
+		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem"
 		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
-		echo "command first and choose default answer, then run this installer again."
+		echo "command first and choose default answer, then run this installer again"
 		echo " "
 		tail -15 $_LOG
 		return 1
@@ -661,27 +661,30 @@ _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 #
 #
 if [ `whoami` = "root" ] ; then
-  msg "STATUS: This script is ran as a root user."
+  msg "STATUS: This script is ran as a root user"
 else
-  msg "ERROR: This script should be ran as a root user, please su - root first."
-  msg "Bye."
+  msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first"
+  msg "Bye"
+  echo " "
   exit 1
 fi
 #
 #
 if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
-  msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
-  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
-  msg "Bye."
+  msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
+  msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
+  msg "Bye"
+  echo " "
   exit 1
 else
   _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
   if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     _VERSIONS_TEST_RESULT=OK
   else
-    msg "ERROR: This script should be used only when the same version of BARRACUDA was used before."
-    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first."
-    msg "Bye."
+    msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
+    msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
+    msg "Bye"
+    echo " "
     exit 1
   fi
 fi
