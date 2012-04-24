@@ -12,12 +12,12 @@ projects[pressflow][download][branch] = "master"
 projects[civicrm][type] = "module"
 projects[civicrm][directory_name] = "civicrm"
 projects[civicrm][download][type] = "get"
-projects[civicrm][download][url] = "http://voxel.dl.sourceforge.net/project/civicrm/civicrm-stable/4.1.1/civicrm-4.1.1-drupal6.tar.gz"
+projects[civicrm][download][url] = "http://voxel.dl.sourceforge.net/project/civicrm/civicrm-stable/4.1.2/civicrm-4.1.2-drupal6.tar.gz"
 
 projects[civicrm_l10n][type] = "module"
 projects[civicrm_l10n][subdir] = "civicrm"
 projects[civicrm_l10n][download][type] = "get"
-projects[civicrm_l10n][download][url] = "http://voxel.dl.sourceforge.net/project/civicrm/civicrm-stable/4.1.1/civicrm-4.1.1-l10n.tar.gz"
+projects[civicrm_l10n][download][url] = "http://voxel.dl.sourceforge.net/project/civicrm/civicrm-stable/4.1.2/civicrm-4.1.2-l10n.tar.gz"
 projects[civicrm_l10n][overwrite] = TRUE
 
 projects[civicrm_theme][subdir] = "contrib"
