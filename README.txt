@@ -100,14 +100,14 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 ### PROVIDES
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.3 or Percona 5.5 database server.
+* Latest release of MariaDB 5.5 or Percona 5.5 database server.
 * Latest version of Nginx web server with upload progress and Boost support.
 * PHP-FPM 5.3.10 with APC, phpredis, uploadprogress, suhosin and ionCube.
 * PHP-FPM 5.2.17 with APC, phpredis, uploadprogress, suhosin and ionCube.
-* Maintenance & Auto-Healing scripts in /var/xdrago.
+* Redis cache server with standard DB auto-failover.
+* Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat (optional).
-* Redis and Memcached chained cache with DB auto-failover.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
 * Webmin Control Panel (optional).
@@ -115,7 +115,8 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * Chive database manager in "chive." subdomain (optional).
 * SQL Buddy database manager in "sqlbuddy." subdomain (optional).
 * Collectd server monitor in "cgp." subdomain (optional).
-* Limited shell and FTPS separate accounts per Octopus instance.
+* Limited shell, SFTP and FTPS separate accounts per Octopus instance.
+* Limited shell and FTPS separate accounts per Aegir Client/Developer.
 
 
 ### OCTOPUS PLATFORMS
