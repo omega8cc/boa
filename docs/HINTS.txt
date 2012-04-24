@@ -45,13 +45,13 @@ $ drush en filefield filefield_nginx_progress -y
 location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   access_log off;
   expires    30d;
-  rewrite    ^/files/(.*)$     /sites/$host/files/$1 last;
-  rewrite    ^/images/(.*)$    /sites/$host/files/images/$1 last;
-  rewrite    ^/downloads/(.*)$ /sites/$host/files/downloads/$1 last;
-  rewrite    ^/download/(.*)$  /sites/$host/files/download/$1 last;
-  rewrite    ^/docs/(.*)$      /sites/$host/files/docs/$1 last;
-  rewrite    ^/documents/(.*)$ /sites/$host/files/documents/$1 last;
-  rewrite    ^/legacy/(.*)$    /sites/$host/files/legacy/$1 last;
+  rewrite    ^/files/(.*)$     /sites/$server_name/files/$1 last;
+  rewrite    ^/images/(.*)$    /sites/$server_name/files/images/$1 last;
+  rewrite    ^/downloads/(.*)$ /sites/$server_name/files/downloads/$1 last;
+  rewrite    ^/download/(.*)$  /sites/$server_name/files/download/$1 last;
+  rewrite    ^/docs/(.*)$      /sites/$server_name/files/docs/$1 last;
+  rewrite    ^/documents/(.*)$ /sites/$server_name/files/documents/$1 last;
+  rewrite    ^/legacy/(.*)$    /sites/$server_name/files/legacy/$1 last;
   try_files  $uri =404;
 }
 #
