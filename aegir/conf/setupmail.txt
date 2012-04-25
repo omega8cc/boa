@@ -44,7 +44,7 @@ starting with 1+ Aegir Standard or SSD Core:
   Pressflow 5.23 --------------- http://pressflow.org
   Pressflow 6.25.1 ------------- http://pressflow.org
   ProsePoint 0.43 -------------- http://prosepoint.org
-  Ubercart 2.7.1 --------------- http://ubercart.org
+  Ubercart 2.8.1 --------------- http://ubercart.org
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
@@ -59,7 +59,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
   OpenPublic 1.0-beta3 --------- http://openpublicapp.com
   OpenPublish 3.0-alpha7 ------- http://openpublishapp.com
   OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
-  Ubercart 3.0.3 --------------- http://ubercart.org
+  Ubercart 3.1.1 --------------- http://ubercart.org
   Videola 1.0-alpha2 ----------- http://videola.tv
 
 Both CiviCRM platforms are available with 2+ Aegir SSD Cores only:

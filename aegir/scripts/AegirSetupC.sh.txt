@@ -2304,7 +2304,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_THIS_PRPATH/modules
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin_menu-6.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cck-6.x-2.9.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield-6.x-3.10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-6.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageapi-6.x-1.10.tar.gz
@@ -2353,7 +2353,7 @@ fi
 
 
 ubercart7_install () {
-###---### Ubercart 3.0.3
+###---### Ubercart 3.1.1
 #
 _THIS_PRNAME="acquia"
 _THIS_DISTRO="ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
@@ -2386,13 +2386,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f colorbox.zip
   cd $_THIS_PRPATH/modules
   rm -f -r ctools
-  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.0-rc1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.3.tar.gz
   for archive in ./*.tar.gz; do
