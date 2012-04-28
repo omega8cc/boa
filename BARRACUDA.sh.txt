@@ -675,7 +675,6 @@ _PERCONA_VERSION=5.5.22
 ###
 _CUSTOM_NAME=nginx
 _FORCE_REDIS_RESTART=NO
-_FROM_SOURCES=YES
 _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
@@ -1004,8 +1003,10 @@ update_lshell_conf () {
 # Update php-cli for Drush.
 update_php_cli_drush () {
   _NEW_LTS=NO
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    _NEW_LTS=YES
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_FROM_SOURCES" = "NO" ] ; then
+      _NEW_LTS=YES
+    fi
   fi
   if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "YES" ] ; then
     _L_PHP_CLI=usr
@@ -3675,13 +3676,11 @@ install_with_aptitude_deps
 fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_latest_git
-  if [ "$_FROM_SOURCES" = "YES" ] ; then
+  if [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
+  fi
+  if [ "$_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
-  else
-    if [ "$_USE_MEMCACHED" = "YES" ] ; then
-      install_upgrade_libevent
-    fi
   fi
 fi
 
