@@ -63,6 +63,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### Barracuda with only safe options/services
 ### enabled, as listed below:
 ###
+### _BUILD_FROM_SOURCES=NO
 ### _PHP_MODERN_ONLY=YES
 ### _XTRAS_LIST="PDS CHV"
 ### _HTTP_WILDCARD=YES
@@ -94,6 +95,37 @@ _MY_EMAIL="notify@omega8.cc"
 ### To enable, change this to YES below.
 ###
 _EASY_LOCALHOST=NO
+
+
+###----------------------------------------###
+### PHP, NGINX AND REDIS INSTALL METHOD    ###
+###----------------------------------------###
+###
+### This option is used only in Debian Squeeze
+### and Ubuntu Precise.
+###
+### By default Barracuda uses Dotdeb packages
+### to install PHP 5.3, Nginx and Redis on
+### Debian Squeeze and standard Ubuntu Precise
+### packages to install PHP 5.3 and Nginx on
+### Ubuntu Precise.
+###
+### They are sometimes not fully up to date
+### when new version of PHP or Nginx is
+### released, so even if it is slower to build
+### from sources, it may be useful.
+###
+### If you prefer to build from sources also
+### PHP 5.3, Nginx and Redis on Squeeze or
+### Precise, change this to:
+###
+### _BUILD_FROM_SOURCES=YES
+###
+### Note that PHP 5.2, if used, will be always
+### installed from sources in all supported
+### OS flavors.
+###
+_BUILD_FROM_SOURCES=NO
 
 
 ###----------------------------------------###
@@ -643,6 +675,7 @@ _PERCONA_VERSION=5.5.22
 ###
 _CUSTOM_NAME=nginx
 _FORCE_REDIS_RESTART=NO
+_FROM_SOURCES=NO
 _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
@@ -971,7 +1004,7 @@ update_lshell_conf () {
 # Update php-cli for Drush.
 update_php_cli_drush () {
   _NEW_LTS=NO
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     _NEW_LTS=YES
   fi
   if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "YES" ] ; then
@@ -1022,7 +1055,7 @@ update_php_conf () {
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
       mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
@@ -1649,6 +1682,7 @@ barracuda_cnf () {
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+    echo "_BUILD_FROM_SOURCES=$_BUILD_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
@@ -1811,6 +1845,12 @@ barracuda_cnf () {
     else
       echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
     fi
+    _BUILD_FROM_SOURCES_TEST=$(grep _BUILD_FROM_SOURCES /root/.barracuda.cnf)
+    if [[ "$_BUILD_FROM_SOURCES_TEST" =~ "_BUILD_FROM_SOURCES" ]] ; then
+      true
+    else
+      echo "_BUILD_FROM_SOURCES=$_BUILD_FROM_SOURCES" >> /root/.barracuda.cnf
+    fi
     sleep 1
     echo " "
     while read line ; do
@@ -1934,7 +1974,7 @@ install_php_extensions () {
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
       st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
     fi
-    if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_FROM_SOURCES" = "NO" ] ; then
       st_runner "$_INSTAPP php5-memcached" 2> /dev/null
     else
       cd /var/opt
@@ -2080,7 +2120,7 @@ update_php_universal_more () {
 # Install PHP 5.3.11
 install_php_modern () {
   ###--------------------###
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW, please wait..."
     if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
       _EXTRA_PHP_DEB="php5-dev php5-ffmpeg"
@@ -2116,7 +2156,7 @@ install_php_modern () {
     st_runner "make --quiet install" 2> /dev/null
   fi
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     _LOC_PHP_PATH=/usr/bin
   else
     _LOC_PHP_PATH=/opt/local/bin
@@ -2134,7 +2174,7 @@ install_php_modern () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
   fi
   _NEW_LTS=NO
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     _NEW_LTS=YES
   fi
   if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "NO" ] ; then
@@ -2145,7 +2185,7 @@ install_php_modern () {
     ln -s /usr/bin/php /opt/local/bin/php
   fi
   rm -f /etc/init.d/php53-fpm*
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     st_runner "service php5-fpm stop" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     rm -f /etc/init.d/php5-fpm*
@@ -2211,7 +2251,7 @@ install_php_legacy () {
 # Update PHP 5.3.11
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     _LOC_PHP_PATH=/usr/bin
     update_php_universal_more
   else
@@ -2517,6 +2557,13 @@ if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE"
   barracuda_cnf
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_BUILD_FROM_SOURCES" = "YES" ] ; then
+      _FROM_SOURCES=YES
+    else
+      _FROM_SOURCES=NO
+    fi
+  fi
   if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
     _HTTP_WILDCARD=YES
   else
@@ -2543,6 +2590,7 @@ else
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+    _BUILD_FROM_SOURCES=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CHV"
     _HTTP_WILDCARD=YES
@@ -2561,6 +2609,13 @@ else
     _LOCAL_NETWORK_HN="aegir.local"
   fi
   barracuda_cnf
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_BUILD_FROM_SOURCES" = "YES" ] ; then
+      _FROM_SOURCES=YES
+    else
+      _FROM_SOURCES=NO
+    fi
+  fi
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
@@ -3499,7 +3554,7 @@ else
   msg "INFO: Upgrading required libraries and tools"
 fi
 msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
-if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "$_FROM_SOURCES" = "NO" ] ; then
   _APT_SQUEEZE="openjdk-6-jdk nginx-extras"
 else
   _APT_SQUEEZE="openjdk-6-jdk nginx"
@@ -3799,7 +3854,7 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "$_FROM_SOURCES" = "NO" ] ; then
   _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
   if [[ "$_X_INIT_TEST" =~ "test_nginx_config" ]] ; then
     true
@@ -4008,7 +4063,7 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   _NEW_LTS=NO
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     _NEW_LTS=YES
   fi
   if [ ! -e "/etc/php5/conf.d/imagick.ini" ] && [ "$_NEW_LTS" = "YES" ] ; then
