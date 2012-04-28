@@ -6,6 +6,8 @@
 
 $| = 1;
 $this_filename = "segfault_alert";
+$s=`hostname`;
+chomp($s);
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";
 exit;
@@ -57,7 +59,6 @@ INTRO
   }
   print "\n===[$sumar]\tGLOBAL===\n\n";
   undef (%li_cnt);
-  &send_alert;
 }
 
 #############################################################################
@@ -73,6 +74,9 @@ sub trash_it_action
     `echo "### PHP: CRASH at $CRASH [$COUNTER] discovered on $now_is for $dx" >> $this_path`;
     `echo "### SYS: $sysl" >> $this_path`;
     `echo "### NGX: $ngxl" >> $this_path`;
+    `echo "### PTH: $pthl" >> $this_path`;
+    `echo "### VHT: $disl" >> $this_path`;
+    &send_alert;
   }
 }
 
@@ -105,6 +109,23 @@ sub find_domain
   if ($d !~ /^$/) {
     $found = 1;
     $dx = $d;
+    $pthl=`cat /data/disk/*/.drush/$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
+    if ($pthl !~ /^$/) {
+      $oct = 1;
+    }
+    else {
+      $pthl=`cat /var/aegir/.drush/$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
+    }
+    local($w, $x, $y, $z) = split(/\s+/,$pthl);
+    $pthl = $z;
+    chomp ($pthl);
+    local($o, $p, $q, $r) = split(/\//,$pthl);
+    $disl = "/data/disk/$r/config/server_master/nginx/vhost.d/$d";
+    `mkdir -p /var/backups/segfault`;
+    if (-f "$disl" && $s =~ /host8/) {
+      `mv -f $disl /var/backups/segfault/`;
+      `service nginx reload`;
+    }
     $ngxl =~ s/([";])/\\$1/g;
     chomp ($ngxl);
     $sysl =~ s/([";])/\\$1/g;
@@ -116,8 +137,6 @@ sub find_domain
 sub send_alert
 {
   $mailx_test = `mail -V 2>&1`;
-  $s=`hostname`;
-  chomp($s);
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
   if ($mailx_test =~ /invalid/i) {
