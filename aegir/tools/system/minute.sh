@@ -8,6 +8,7 @@ perl /var/xdrago/monitor/check/hackmail
 perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/scan_nginx
 perl /var/xdrago/monitor/check/sqlcheck
+perl /var/xdrago/monitor/check/segfault_alert
 
 killit()
 {
