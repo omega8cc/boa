@@ -1201,6 +1201,7 @@ fi
 drupal6_install () {
 ###---### Drupal 6 Pressflow
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] || [[ $_PLATFORMS_LIST =~ D6S ]] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL6 - http://pressflow.org" ; then
@@ -1308,12 +1309,14 @@ else
   mrun "sleep 1"
 fi
 fi
+fi
 }
 
 
 drupal7_install () {
 ###---### Drupal 7
 #
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] || [[ $_PLATFORMS_LIST =~ D7S ]] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.12" ; then
@@ -1433,6 +1436,7 @@ fi
 else
   msg "DISTRO: $_F_DRUPAL7 installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 }
