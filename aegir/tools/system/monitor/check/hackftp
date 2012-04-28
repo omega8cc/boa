@@ -9,10 +9,10 @@ exit;
 #############################################################################
 sub makeactions
 {
-  $this_path = "/var/xdrago/firewall/$this_filename";
+  $this_path = "/var/xdrago/monitor/$this_filename";
   if (!-e "$this_path") {
-    `echo "#!/bin/bash" >> /var/xdrago/firewall/$this_filename`;
-    `echo " " >> /var/xdrago/firewall/$this_filename`;
+    `echo "#!/bin/bash" >> /var/xdrago/monitor/$this_filename`;
+    `echo " " >> /var/xdrago/monitor/$this_filename`;
   }
   open (NOT,"<$this_path");
   @banetable = <NOT>;
@@ -69,9 +69,9 @@ sub trash_it_action
     chomp($now_is);
     print "$ABUSER [$COUNTER] recorded... $REMOTE_HOST\n";
     `/sbin/iptables -A INPUT -p tcp -s $ABUSER --dport 21 -j DROP` if (!$blocked);
-    `echo "#-- BELOW --# $ABUSER [$COUNTER] recorded... [$now_is] $REMOTE_HOST" >> /var/xdrago/firewall/$this_filename`;
-    `echo "/sbin/iptables -A INPUT -s $ABUSER -j DROP" >> /var/xdrago/firewall/$this_filename`;
-    `echo " " >> /var/xdrago/firewall/$this_filename`;
+    `echo "#-- BELOW --# $ABUSER [$COUNTER] recorded... [$now_is] $REMOTE_HOST" >> /var/xdrago/monitor/$this_filename`;
+    `echo "/sbin/iptables -A INPUT -s $ABUSER -j DROP" >> /var/xdrago/monitor/$this_filename`;
+    `echo " " >> /var/xdrago/monitor/$this_filename`;
   }
 }
 

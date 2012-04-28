@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 $| = 1;
-$this_filename = "hackmail";
+$this_filename = "hackcheck";
 &makeactions;
 print " CONTROL hack1 done_______________________\n ...\n";
 exit;
@@ -9,27 +9,33 @@ exit;
 #############################################################################
 sub makeactions
 {
-  $this_path = "/var/xdrago/firewall/$this_filename";
+  $this_path = "/var/xdrago/monitor/$this_filename";
   if (!-e "$this_path") {
-    `echo "#!/bin/bash" >> /var/xdrago/firewall/$this_filename`;
-    `echo " " >> /var/xdrago/firewall/$this_filename`;
+    `echo "#!/bin/bash" >> /var/xdrago/monitor/$this_filename`;
+    `echo " " >> /var/xdrago/monitor/$this_filename`;
   }
   open (NOT,"<$this_path");
   @banetable = <NOT>;
   close (NOT);
-  local(@MYARR) = `tail --lines=999 /var/log/mail.log 2>&1`;
+  local(@MYARR) = `tail --lines=999 /var/log/auth.log 2>&1`;
   local($maxnumber,$critnumber,$alert);
   local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
   foreach $line (@MYARR) {
-    if ($line =~ /(Failed)|(identification)|(authentication)/i) {
-      local($a, $b, $c, $d, $e, $f, $VISITORX, $rest) = split(/\s+/,$line) if ($line =~ /(failure)/i);
-      chomp($VISITORX);
-      local($a, $VISITOR) = split(/\[/,$VISITORX);
+    if ($line =~ /(Failed password for root)/i) {
+      local($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $VISITOR, $rest) = split(/\s+/,$line);
       $VISITOR =~ s/[^0-9\.]//g;
-      if ($VISITOR =~ /^[0-9]/) {
+      if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
         chomp($line);
         $li_cnt{$VISITOR}++;
       }
+    }
+  }
+  if ($line =~ /(Failed password for invalid user)/i) {
+    local($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $VISITOR, $rest) = split(/\s+/,$line);
+    $VISITOR =~ s/[^0-9\.]//g;
+    if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+      chomp($line);
+      $li_cnt{$VISITOR}++;
     }
   }
   foreach $VISITOR (sort keys %li_cnt) {
@@ -63,15 +69,14 @@ sub trash_it_action
   else {
     $REMOTE_HOST = "$name";
   }
-  if ($REMOTE_HOST !~ /(my-white-listed-host)/)
-  {
+  if ($REMOTE_HOST !~ /(my-white-listed-host)/) {
     $now_is = `date +%y%m%d-%H%M%S`;
     chomp($now_is);
     print "$ABUSER [$COUNTER] recorded... $REMOTE_HOST\n";
-    `/sbin/iptables -A INPUT -p tcp -s $ABUSER --dport 25 -j DROP` if (!$blocked);
-    `echo "#-- BELOW --# $ABUSER [$COUNTER] recorded... [$now_is] $REMOTE_HOST" >> /var/xdrago/firewall/$this_filename`;
-    `echo "/sbin/iptables -A INPUT -s $ABUSER -j DROP" >> /var/xdrago/firewall/$this_filename`;
-    `echo " " >> /var/xdrago/firewall/$this_filename`;
+    `/sbin/iptables -A INPUT -p tcp -s $ABUSER --dport 22 -j DROP` if (!$blocked);
+    `echo "#-- BELOW --# $ABUSER [$COUNTER] recorded... [$now_is] $REMOTE_HOST" >> /var/xdrago/monitor/$this_filename`;
+    `echo "/sbin/iptables -A INPUT -s $ABUSER -j DROP" >> /var/xdrago/monitor/$this_filename`;
+    `echo " " >> /var/xdrago/monitor/$this_filename`;
   }
 }
 

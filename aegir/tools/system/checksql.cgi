@@ -22,20 +22,20 @@ sleep(90);
 `touch /var/xdrago/log/last-run-acrashsql`;
 if ($mailx_test =~ /(invalid)/i) {
   if ($status ne "CLEAN") {
-    `cat $logfile | mail -a "From: help\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
-    `sh $this_path | mail -a "From: help\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+    `cat $logfile | mail -a "From: notify\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" notify\@omega8.cc`;
+    `sh $this_path | mail -a "From: notify\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;
   }
   if ($status ne "ERROR") {
-    `cat $logfile | mail -e -a "From: help\@omega8.cc" -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
+    `cat $logfile | mail -e -a "From: notify\@omega8.cc" -s "SQL check CLEAN [$server] $timedate" notify\@omega8.cc`;
   }
 }
 else {
   if ($status ne "CLEAN") {
-    `cat $logfile | mail -r help\@omega8.cc -e -s "SQL check ERROR [$server] $timedate" help\@omega8.cc`;
-    `sh $this_path | mail -r help\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" help\@omega8.cc`;
+    `cat $logfile | mail -r notify\@omega8.cc -e -s "SQL check ERROR [$server] $timedate" notify\@omega8.cc`;
+    `sh $this_path | mail -r notify\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;
   }
   if ($status ne "ERROR") {
-    `cat $logfile | mail -e -r help\@omega8.cc -s "SQL check CLEAN [$server] $timedate" help\@omega8.cc`;
+    `cat $logfile | mail -e -r notify\@omega8.cc -s "SQL check CLEAN [$server] $timedate" notify\@omega8.cc`;
   }
 }
 exit;
@@ -45,7 +45,7 @@ sub makeactions
 {
   if (!-e "$this_path") {
     `echo "#!/bin/bash" > /var/xdrago/$this_filename`;
-    `echo " " >> /var/xdrago/firewall/$this_filename`;
+    `echo " " >> /var/xdrago/monitor/$this_filename`;
   }
   open (NOT,"<$this_path");
   @rectable = <NOT>;

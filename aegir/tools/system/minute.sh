@@ -3,11 +3,11 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
 
-perl /var/xdrago/firewall/check/hackcheck
-perl /var/xdrago/firewall/check/hackmail
-perl /var/xdrago/firewall/check/hackftp
-perl /var/xdrago/firewall/check/scan_nginx
-perl /var/xdrago/firewall/check/sqlcheck
+perl /var/xdrago/monitor/check/hackcheck
+perl /var/xdrago/monitor/check/hackmail
+perl /var/xdrago/monitor/check/hackftp
+perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/sqlcheck
 
 killit()
 {

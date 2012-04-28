@@ -1,0 +1,131 @@
+#!/usr/bin/perl
+
+###
+### This is a segfault monitor for php-fpm and nginx
+###
+
+$| = 1;
+$this_filename = "segfault_alert";
+&makeactions;
+print " CONTROL 1 done_______________________\n ...\n";
+exit;
+
+#############################################################################
+sub makeactions
+{
+  $this_path = "/var/xdrago/monitor/$this_filename";
+  if (!-e "$this_path") {
+    $intro = <<INTRO
+This report is generated automatically when new segfault is discovered.
+It may be a result of some bug in the PHP version used, but it is often
+caused or exposed by something in the affected site's PHP code.
+
+See the reports linked below to learn more:
+
+https://bugs.php.net/bug.php?id=48034
+http://drupal.org/node/1462984#comment-5790468
+http://drupal.org/node/1366084#comment-5877974
+INTRO
+;
+    `echo "$intro" >> $this_path`;
+  }
+  open (NOT,"<$this_path");
+  @banetable = <NOT>;
+  close (NOT);
+  local(@MYARR) = `tail --lines=999 /var/log/syslog 2>&1`;
+  local($maxnumber,$critnumber,$alert);
+  local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+  foreach $line (@MYARR) {
+    if ($line =~ /php\-.*: segfault/i) {
+      local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
+      chomp($TIMEX);
+      $TIMEX =~ s/[^0-9\:]//g;
+      if ($TIMEX =~ /^[0-9]/) {
+        chomp($line);
+        $li_cnt{$TIMEX}++;
+      }
+    }
+  }
+  foreach $TIMEX (sort keys %li_cnt) {
+    $sumar = $sumar + $li_cnt{$TIMEX};
+    local($thissumar) = $li_cnt{$TIMEX};
+    local($blocked) = 0;
+    &check_ip($TIMEX);
+    if (!$blocked && $thissumar > 0) {
+      &trash_it_action($TIMEX,$thissumar);
+    }
+  }
+  print "\n===[$sumar]\tGLOBAL===\n\n";
+  undef (%li_cnt);
+  &send_alert;
+}
+
+#############################################################################
+sub trash_it_action
+{
+  local($CRASH,$COUNTER) = @_;
+  $now_is = `date +%y%m%d-%H%M%S`;
+  chomp($now_is);
+  &find_domain($CRASH);
+  if ($found) {
+    print "$CRASH [$COUNTER] recorded on [$now_is]\n";
+    `echo " " >> $this_path`;
+    `echo "### PHP: CRASH at $CRASH [$COUNTER] discovered on $now_is for $dx" >> $this_path`;
+    `echo "### SYS: $sysl" >> $this_path`;
+    `echo "### NGX: $ngxl" >> $this_path`;
+  }
+}
+
+#############################################################################
+sub check_ip
+{
+  local($i) = @_;
+  foreach $line (@banetable) {
+    chomp ($line);
+    if ($line =~ /discovered/) {
+      local($a, $b, $c, $d, $e, $f) = split(/\s+/,$line);
+      if ($e eq $i) {
+        $blocked = 1;
+        last;
+      }
+    }
+  }
+}
+
+#############################################################################
+sub find_domain
+{
+  local($CRASHED) = @_;
+  $lx = $d;
+  $ngxl=`grep "$CRASHED.* 502 " /var/log/nginx/access.log`;
+  $sysl=`grep "$CRASHED.*php\-.*: segfault" /var/log/syslog`;
+  local($a, $b, $c, $x, $y) = split(/\"\s+/,"$ngxl");
+  local($d, $e) = split(/\s+/,$b);
+  $d =~ s/[^a-z0-9\.\-]//g;
+  if ($d !~ /^$/) {
+    $found = 1;
+    $dx = $d;
+    $ngxl =~ s/([";])/\\$1/g;
+    chomp ($ngxl);
+    $sysl =~ s/([";])/\\$1/g;
+    chomp ($sysl);
+  }
+}
+
+#############################################################################
+sub send_alert
+{
+  $mailx_test = `mail -V 2>&1`;
+  $s=`hostname`;
+  chomp($s);
+  $t=`date +%y%m%d-%H%M`;
+  chomp($t);
+  if ($mailx_test =~ /invalid/i) {
+    `cat $this_path | mail -a "From: notify\@omega8.cc" -e -s "PHP Segfault Alert for [$dx] at [$s] on $t" notify\@omega8.cc`;
+  }
+  else {
+    `cat $this_path | mail -r notify\@omega8.cc -e -s "PHP Segfault Alert for [$dx] at [$s] on $t" notify\@omega8.cc`;
+  }
+}
+
+###EOF2012###

@@ -3887,8 +3887,8 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     _NGINX_DOS_LIMIT=188
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/firewall/check/scan_nginx &> /dev/null
-  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
   sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
@@ -3931,8 +3931,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     _NGINX_DOS_LIMIT=188
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/firewall/check/scan_nginx &> /dev/null
-  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/firewall/check/scan_nginx &> /dev/null
+  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
   sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
@@ -3953,7 +3953,7 @@ fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
   cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run-* /var/xdrago/ &> /dev/null
 fi
-chmod -R 700 /var/xdrago/firewall/check &> /dev/null
+chmod -R 700 /var/xdrago/monitor/check &> /dev/null
 chmod 700 /var/xdrago/* &> /dev/null
 chmod 700 /var/xdrago &> /dev/null
 
@@ -4913,8 +4913,9 @@ XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
 sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"  /etc/csf/csf.conf &> /dev/null
 sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"  /etc/apticron/apticron.conf &> /dev/null
 sed -i "s/root/$_MY_EMAIL/g"               /etc/apticron/apticron.conf &> /dev/null
-sed -i "s/help\\\@omega8.cc/$XPTEMAIL/g"   /var/xdrago/checksql.cgi &> /dev/null
+sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
+sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_alert &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
   cd /var/aegir/config/includes
