@@ -63,7 +63,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### Barracuda with only safe options/services
 ### enabled, as listed below:
 ###
-### _BUILD_FROM_SOURCES=NO
+### _BUILD_FROM_SRC=NO
 ### _PHP_MODERN_ONLY=YES
 ### _XTRAS_LIST="PDS CHV"
 ### _HTTP_WILDCARD=YES
@@ -119,13 +119,13 @@ _EASY_LOCALHOST=NO
 ### PHP 5.3, Nginx and Redis on Squeeze or
 ### Precise, change this to:
 ###
-### _BUILD_FROM_SOURCES=YES
+### _BUILD_FROM_SRC=YES
 ###
 ### Note that PHP 5.2, if used, will be always
 ### installed from sources in all supported
 ### OS flavors.
 ###
-_BUILD_FROM_SOURCES=NO
+_BUILD_FROM_SRC=NO
 
 
 ###----------------------------------------###
@@ -675,7 +675,7 @@ _PERCONA_VERSION=5.5.22
 ###
 _CUSTOM_NAME=nginx
 _FORCE_REDIS_RESTART=NO
-_FROM_SOURCES=NO
+_FROM_SOURCES=YES
 _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
@@ -1682,7 +1682,7 @@ barracuda_cnf () {
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
-    echo "_BUILD_FROM_SOURCES=$_BUILD_FROM_SOURCES" >> /root/.barracuda.cnf
+    echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
     echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
@@ -1845,11 +1845,11 @@ barracuda_cnf () {
     else
       echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
     fi
-    _BUILD_FROM_SOURCES_TEST=$(grep _BUILD_FROM_SOURCES /root/.barracuda.cnf)
-    if [[ "$_BUILD_FROM_SOURCES_TEST" =~ "_BUILD_FROM_SOURCES" ]] ; then
+    _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC /root/.barracuda.cnf)
+    if [[ "$_BUILD_FROM_SRC_TEST" =~ "_BUILD_FROM_SRC" ]] ; then
       true
     else
-      echo "_BUILD_FROM_SOURCES=$_BUILD_FROM_SOURCES" >> /root/.barracuda.cnf
+      echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
     fi
     sleep 1
     echo " "
@@ -1920,21 +1920,18 @@ install_ioncube () {
 # Install libmemcached.
 install_libmemcached () {
   ###--------------------###
-  if [ "$_USE_MEMCACHED" = "YES" ] ; then
-    if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-      msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
-      mrun "sleep 1"
-      cd /var/opt
-      wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
-      mrun "sleep 1"
-      tar -xzf libmemcached-0.53.tar.gz
-      if [ -e "/var/opt/libmemcached-0.53" ] ; then
-        cd /var/opt/libmemcached-0.53
-        st_runner "sh ./configure" 2> /dev/null
-        st_runner "make --quiet" 2> /dev/null
-        st_runner "make --quiet install" 2> /dev/null
-        echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
-      fi
+  if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
+    tar -xzf libmemcached-0.53.tar.gz
+    if [ -e "/var/opt/libmemcached-0.53" ] ; then
+      cd /var/opt/libmemcached-0.53
+      st_runner "sh ./configure" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
     fi
   fi
 }
@@ -2558,11 +2555,13 @@ if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   msg "INFO: UPGRADE"
   barracuda_cnf
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    if [ "$_BUILD_FROM_SOURCES" = "YES" ] ; then
+    if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
       _FROM_SOURCES=YES
     else
       _FROM_SOURCES=NO
     fi
+  else
+    _FROM_SOURCES=YES
   fi
   if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
     _HTTP_WILDCARD=YES
@@ -2590,7 +2589,7 @@ else
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
-    _BUILD_FROM_SOURCES=NO
+    _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CHV"
     _HTTP_WILDCARD=YES
@@ -2610,11 +2609,13 @@ else
   fi
   barracuda_cnf
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    if [ "$_BUILD_FROM_SOURCES" = "YES" ] ; then
+    if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
       _FROM_SOURCES=YES
     else
       _FROM_SOURCES=NO
     fi
+  else
+    _FROM_SOURCES=YES
   fi
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
@@ -3470,7 +3471,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
   st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
   install_latest_git
-  if [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
   fi
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
@@ -3536,11 +3537,11 @@ else
   _UP_NGX=NO
   _UP_JDK=NO
   check_apt_updates
-  if [ "$_UP_PHP" = "YES" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
     _PHP_INSTALL_REQUIRED=YES
     msg "INFO: PHP rebuild required to include upgraded libs"
   fi
-  if [ "$_UP_NGX" = "YES" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_UP_NGX" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
     msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
   fi
@@ -3674,7 +3675,7 @@ install_with_aptitude_deps
 fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_latest_git
-  if [ "$_REL_VERSION" != "squeeze" ] && [ "$_REL_VERSION" != "precise" ] ; then
+  if [ "$_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_libevent
     install_upgrade_nginx
   else
@@ -3753,7 +3754,7 @@ fi
 run_apt_update_again
 install_with_aptitude_deps
 install_latest_git
-if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_REL_VERSION" != "squeeze" ] && [ "$_REL_VERSION" != "precise" ] ; then
+if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
@@ -4041,23 +4042,37 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 fi
 if [ -x "/opt/local/bin/php" ] ; then
   _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-  ###if [ "$_PHP_INSTALLED" = "$_PHP_VERSION_NEW" ] ; then
   if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
-    _PHP_INSTALL_REQUIRED=NO
+    _PHP_INSTALL_REQUIRED_NEW=NO
     msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
   else
-    _PHP_INSTALL_REQUIRED=YES
-    msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    if [ "$_FROM_SOURCES" = "YES" ] ; then
+      _PHP_INSTALL_REQUIRED_NEW=YES
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    fi
   fi
-  mrun "sleep 1"
 else
-  _PHP_INSTALL_REQUIRED=YES
+  _PHP_INSTALL_REQUIRED_NEW=YES
 fi
-if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] && [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
-  _PHP_INSTALL_REQUIRED=YES
-  if [ "$_STATUS" = "UPGRADE" ] ; then
-    msg "INFO: PHP rebuild required to include libcurl4-openssl-dev"
-    mrun "sleep 1"
+if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
+  if [ -x "/usr/local/bin/php" ] ; then
+    _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+    if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
+      _PHP_INSTALL_REQUIRED=NO
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+    else
+      _PHP_INSTALL_REQUIRED=YES
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    fi
+  else
+    _PHP_INSTALL_REQUIRED=YES
+  fi
+  if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
+    _PHP_INSTALL_REQUIRED=YES
+    if [ "$_STATUS" = "UPGRADE" ] ; then
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include libcurl4-openssl-dev"
+      mrun "sleep 1"
+    fi
   fi
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -4067,19 +4082,22 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     _NEW_LTS=YES
   fi
   if [ ! -e "/etc/php5/conf.d/imagick.ini" ] && [ "$_NEW_LTS" = "YES" ] ; then
-    _PHP_INSTALL_REQUIRED=YES
+    _PHP_INSTALL_REQUIRED_NEW=YES
     msg "INFO: PHP rebuild required to install $_PHP_VERSION_NEW from Dotdeb.org"
     mrun "sleep 1"
-  elif [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/log/installed-$_MARIADB_VERSION-MariaDB.log" ] ; then
+  fi
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    if [ ! -e "/var/log/installed-$_MARIADB_VERSION-MariaDB.log" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED=YES
+      _PHP_INSTALL_REQUIRED_NEW=YES
       echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
       msg "INFO: PHP rebuild required to include MariaDB $_MARIADB_VERSION libs"
       mrun "sleep 1"
     fi
   else
-    if [ ! -e "/var/log/installed-$_PERCONA_VERSION-Percona.log" ] ; then
+    if [ ! -e "/var/log/installed-$_PERCONA_VERSION-Percona.log" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED=YES
+      _PHP_INSTALL_REQUIRED_NEW=YES
       echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
       msg "INFO: PHP rebuild required to include Percona $_PERCONA_VERSION libs"
       mrun "sleep 1"
@@ -4095,10 +4113,11 @@ if [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
     _THISHTIP="$_LOC_IP"
   fi
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
-  _PHP_INSTALL_REQUIRED=YES
+  _PHP_INSTALL_REQUIRED_NEW=YES
 fi
 if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
+  _PHP_INSTALL_REQUIRED_NEW=YES
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: PHP rebuild forced"
     mrun "sleep 1"
@@ -4109,18 +4128,26 @@ if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
 fi
-if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
-  install_libmemcached
-  if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
-    install_php_legacy
+  if [ "$_USE_MEMCACHED" = "YES" ] ; then
+    install_libmemcached
   fi
-  install_php_modern
 fi
 if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
-  update_php_legacy
+  if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    install_php_legacy
+  fi
 fi
-update_php_modern
+if [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  install_php_modern
+fi
+if [ "$_STATUS" = "UPGRADE" ] ; then
+  if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
+    update_php_legacy
+  fi
+  update_php_modern
+fi
 
 
 ###--------------------###
