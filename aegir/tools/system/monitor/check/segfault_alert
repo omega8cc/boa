@@ -19,6 +19,7 @@ sub makeactions
   if (!-e "$this_path") {
     $intro = <<INTRO
 This report is generated automatically when new segfault is discovered.
+
 It may be a result of some bug in the PHP version used, but it is often
 caused or exposed by something in the affected site's PHP code.
 
@@ -29,9 +30,22 @@ http://drupal.org/node/1462984#comment-5790468
 http://drupal.org/node/1366084#comment-5877974
 INTRO
 ;
+    $intrx = <<INTROX
+Note that any vhost file (not the site) listed below as causing
+segfault has been automatically (re)moved to the /var/backups/segfault/
+directory, so affected site will display standard Under Construction page
+until you will run Verify task in the Aegir control panel for this site.
+
+However, if the problem is not fixed and it still causes segfault,
+any affected site will be disabled again after another segfault
+immediately, to protect your web server availability.
+INTROX
+;
     `echo "$intro" >> $this_path`;
+    `echo "$intrx" >> $this_path`;
   }
-  open (NOT,"<$this_path");
+  $this_archive="/var/xdrago/monitor/segfault_alert_archive";
+  open (NOT,"<$this_archive");
   @banetable = <NOT>;
   close (NOT);
   local(@MYARR) = `tail --lines=999 /var/log/syslog 2>&1`;
@@ -70,7 +84,6 @@ sub trash_it_action
   &find_domain($CRASH);
   if ($found) {
     print "$CRASH [$COUNTER] recorded on [$now_is]\n";
-    `echo " " >> $this_path`;
     `echo "### PHP: CRASH at $CRASH [$COUNTER] discovered on $now_is for $dx" >> $this_path`;
     `echo "### SYS: $sysl" >> $this_path`;
     `echo "### NGX: $ngxl" >> $this_path`;
@@ -120,9 +133,10 @@ sub find_domain
     $pthl = $z;
     chomp ($pthl);
     local($o, $p, $q, $r) = split(/\//,$pthl);
-    $disl = "/data/disk/$r/config/server_master/nginx/vhost.d/$d";
+    $rx = $r;
+    $disl = "/data/disk/$rx/config/server_master/nginx/vhost.d/$d";
     `mkdir -p /var/backups/segfault`;
-    if (-f "$disl" && $s =~ /host8/) {
+    if (-f "$disl" && $rx !~ /^$/) {
       `mv -f $disl /var/backups/segfault/`;
       `service nginx reload`;
     }
@@ -136,15 +150,31 @@ sub find_domain
 #############################################################################
 sub send_alert
 {
+  $this_email="/data/disk/$rx/log/email.txt";
+  if (-f "$this_email") {
+    open (FILE,"<$this_email");
+    while (<FILE>) {
+      $cmail = "$_";
+    }
+    close (FILE);
+    chomp ($cmail);
+    print "\ncmail===[$cmail]===\n";
+  }
+  else {
+    $cmail="notify\@omega8.cc";
+    print "\nlmail___[$cmail]___\n";
+  }
   $mailx_test = `mail -V 2>&1`;
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
   if ($mailx_test =~ /invalid/i) {
-    `cat $this_path | mail -a "From: notify\@omega8.cc" -e -s "PHP Segfault Alert for [$dx] at [$s] on $t" notify\@omega8.cc`;
+    `cat $this_path | mail -a "From: notify\@omega8.cc" -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   else {
-    `cat $this_path | mail -r notify\@omega8.cc -e -s "PHP Segfault Alert for [$dx] at [$s] on $t" notify\@omega8.cc`;
+    `cat $this_path | mail -r notify\@omega8.cc -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
+  `cat /var/xdrago/monitor/segfault_alert >> /var/xdrago/monitor/segfault_alert_archive`;
+  `rm -f /var/xdrago/monitor/segfault_alert`;
 }
 
 ###EOF2012###

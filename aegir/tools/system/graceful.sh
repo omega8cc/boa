@@ -8,8 +8,6 @@ action()
   rm -f -r /opt/tmp
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
-  cat /var/xdrago/monitor/segfault_alert >> /var/xdrago/monitor/segfault_alert_archive
-  rm -f /var/xdrago/monitor/segfault_alert
   rm -f /opt/tmp/sess*
   rm -f /tmp/*error*
   rm -f /tmp/sess*
