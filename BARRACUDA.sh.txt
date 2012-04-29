@@ -2506,6 +2506,9 @@ install_upgrade_libevent () {
 
 ###--------------------###
 if [ `whoami` = "root" ] ; then
+  msg "BOA Skynet welcomes you aboard!"
+  echo " "
+  sleep 3
   msg "STATUS: This script is ran as a root user"
   msg "STATUS: Stop the cron and wait 5 seconds"
   chmod a+rw /dev/null

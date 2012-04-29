@@ -404,8 +404,9 @@ force_advanced_nginx_config () {
 }
 
 
-msg "$_STATUS A: Welcome `uname -a`"
-mrun "sleep 1"
+msg "BOA Skynet welcomes you aboard!"
+echo " "
+mrun "sleep 3"
 msg "$_STATUS A: Aegir automated install script part A"
 
 
