@@ -317,7 +317,6 @@ for i in $REVISIONS; do
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
