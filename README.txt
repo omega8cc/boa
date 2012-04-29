@@ -77,14 +77,10 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
       Upgrade time is applicable when PHP upgrade is required.
 
 
-### PARTIALLY SUPPORTED OS (testing only)
-
-* Ubuntu Oneiric 11.10
-
-
 ### PREVIOUSLY SUPPORTED OS (deprecated)
 
 * Debian 5.0 Lenny (automatic upgrade to Squeeze supported)
+* Ubuntu Oneiric 11.10
 * Ubuntu Natty 11.04
 * Ubuntu Maverick 10.10
 * Ubuntu Karmic 9.10
