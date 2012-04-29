@@ -586,6 +586,15 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
+### Change this to YES if you prefer to even
+### better control what the www-data user
+### can do on your system. See for reference
+### related configuration below [www-data]
+### in the /var/xdrago/conf/lshell.conf file.
+###
+_USE_RESTRICTED_WWW_SHELL=NO
+
+###
 ### Use YES to still install memcached, even
 ### if it is no longer used by default.
 ###
@@ -1676,6 +1685,7 @@ barracuda_cnf () {
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
+    echo "_USE_RESTRICTED_WWW_SHELL=$_USE_RESTRICTED_WWW_SHELL" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -1829,6 +1839,12 @@ barracuda_cnf () {
       true
     else
       echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
+    fi
+    _USE_RESTRICTED_WWW_SHELL_TEST=$(grep _USE_RESTRICTED_WWW_SHELL /root/.barracuda.cnf)
+    if [[ "$_USE_RESTRICTED_WWW_SHELL_TEST" =~ "_USE_RESTRICTED_WWW_SHELL" ]] ; then
+      true
+    else
+      echo "_USE_RESTRICTED_WWW_SHELL=$_USE_RESTRICTED_WWW_SHELL" >> /root/.barracuda.cnf
     fi
     sleep 1
     echo " "
@@ -4238,6 +4254,15 @@ if [ -f "/usr/local/bin/lshell" ] ; then
   if [ ! -L "/usr/bin/lshell" ] ; then
     ln -s /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
   fi
+fi
+if [ "$_USE_RESTRICTED_WWW_SHELL" = "NO" ] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    chsh -s $_PATH_LSHELL www-data &> /dev/null
+  else
+    chsh -s /bin/sh www-data &> /dev/null
+  fi
+elif [ "$_USE_RESTRICTED_WWW_SHELL" = "YES" ] ; then
+  chsh -s $_PATH_LSHELL www-data &> /dev/null
 fi
 
 
