@@ -902,7 +902,9 @@ fi
   _USER=${_USER//[^a-zA-Z0-9-.]/}
   _USER=`echo -n $_USER | tr A-Z a-z`
   _ROOT="/data/disk/$_USER"
-  msg "_USER is $_USER"
+  msg "BOA Skynet welcomes you aboard!"
+  echo " "
+  sleep 3
 #
 #
 _THIS_HOST=`uname -n`
