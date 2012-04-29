@@ -2502,6 +2502,35 @@ install_upgrade_libevent () {
     echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
   fi
 }
+#
+# Install wkhtmltopdf.
+install_wkhtmltopdf () {
+  ###--------------------###
+  if [ ! -x "/usr/bin/wkhtmltopdf" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    _X86_64_TEST=`uname -m`
+    if [ "$_X86_64_TEST" = "x86_64" ] ; then
+      SYSTEMARCH="x86_64"
+      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.11.0_rc1-static-amd64.tar.gz
+      tar -xzf wkhtmltopdf-0.11.0_rc1-static-amd64.tar.gz
+      cp -af wkhtmltopdf-amd64 /usr/bin/wkhtmltopdf &> /dev/null
+      chown root:root /usr/bin/wkhtmltopdf &> /dev/null
+      chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
+    else
+      SYSTEMARCH="x86"
+      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.11.0_rc1-static-i386.tar.gz
+      tar -xzf wkhtmltopdf-0.11.0_rc1-static-i386.tar.gz
+      cp -af wkhtmltopdf-i386 /usr/bin/wkhtmltopdf &> /dev/null
+      chown root:root /usr/bin/wkhtmltopdf &> /dev/null
+      chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
+    fi
+  fi
+}
 
 
 ###--------------------###
@@ -3771,6 +3800,7 @@ set_xterm
 kill_nash
 fix_ftps_squeeze
 enable_purge_cruft_machine
+install_wkhtmltopdf
 
 
 ###--------------------###
