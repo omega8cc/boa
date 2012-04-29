@@ -584,7 +584,7 @@ tune_memory_limits () {
     sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
     sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 1024K/g" /etc/mysql/my.cnf
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
   fi
   tune_web_server_config
 }
