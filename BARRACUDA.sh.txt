@@ -979,27 +979,6 @@ enable_purge_cruft_machine () {
   fi
 }
 #
-# Update Lshell Config.
-update_lshell_conf () {
-  perl -p -i -e "s/allowed\s+:.*\]/allowed         : \['bzr','cat','cd','chmod','compass','cp','curl','cvs','drush cc','drush cron','drush dbup','drush dd','drush dis','drush dl','drush en','drush fd','drush fe','drush fl','drush fr','drush fra','drush fu','drush fua','drush help','drush make','drush mup','drush pmi','drush pml','drush rr','drush sa','drush sql-conf','drush sql-connect','drush sql-dump','drush sql-sync','drush sqlc','drush sqlq','drush st','drush ublk','drush ucan','drush ucrt','drush uinf','drush uli','drush upwd','drush urol','drush urrol','drush uublk','drush vdel','drush vget','drush vset','drush','echo','find','git-receive-pack','git-upload-archive','git-upload-pack','git','grep','gzip','less','lftp','ll','ls','mkdir','mv','mysql','mysqldump','nano','openssl','passwd','patch','pwd','rm','rsync','scp','sed','ssh-copy-id','ssh-keygen','svn','tar','touch','unzip','vi','vim','wget'\]/g" /etc/lshell.conf
-  _LSHELL_CONF_TEST=$(grep 'drush not-allowed' /etc/lshell.conf)
-  if [[ "$_LSHELL_CONF_TEST" =~ "drush not-allowed" ]] ; then
-    perl -p -i -e "s/'drush not-allowed',.*\]/'drush not-allowed','drush cli','drush core-cli','drush core-rsync','drush ev','drush eval','drush php-eval','drush php-script','drush pm-update','drush pm-updatecode','drush scr','drush self-update','drush selfupdate','drush si','drush site-install','drush site-upgrade','drush sup','drush up','drush upc'\]/g" /etc/lshell.conf
-  else
-    perl -p -i -e "s/'drush up',.*\]/'drush not-allowed','drush cli','drush core-cli','drush core-rsync','drush ev','drush eval','drush php-eval','drush php-script','drush pm-update','drush pm-updatecode','drush scr','drush self-update','drush selfupdate','drush si','drush site-install','drush site-upgrade','drush sup','drush up','drush upc'\]/g" /etc/lshell.conf
-  fi
-  _LSHELL_STRICT_TEST=$(grep 'strict' /etc/lshell.conf)
-  if [[ "$_LSHELL_STRICT_TEST" =~ "strict" ]] ; then
-    true
-  else
-    perl -p -i -e "s/warning_counter.*/warning_counter : 3\nstrict          : 0/g" /etc/lshell.conf
-  fi
-  sed -i "s/strict.*:.*/strict          : 0/g" /etc/lshell.conf &> /dev/null
-  perl -p -i -e "s/overssh\s+:.*\]/overssh         : \['ls','rsync','scp','git','git-receive-pack','git-upload-pack','git-upload-archive','mysqldump','ssh-add','ssh-copy-id'\]/g" /etc/lshell.conf
-  perl -p -i -e "s/, 'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
-  perl -p -i -e "s/,'drush gm':'drush generate-makefile'\}/\}/g" /etc/lshell.conf
-}
-#
 # Update php-cli for Drush.
 update_php_cli_drush () {
   _NEW_LTS=NO
@@ -1183,7 +1162,6 @@ fix_on_upgrade () {
   kill_nash
   fix_ftps_squeeze
   enable_purge_cruft_machine
-  update_lshell_conf
   update_php_conf
   update_php_cli_drush
   update_sql_conf
