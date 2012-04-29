@@ -62,7 +62,8 @@ standard production settings.
 ### SUPPORTED PARENT SYSTEMS
 
 * Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
-* VirtualBox VM for localhost install.
+* VirtualBox VM for localhost install - best on Squeeze or Precise
+  with _EASY_LOCALHOST=YES option.
 
 
 ### SUPPORTED LTS OS (32/64bit minimal, fresh install)
