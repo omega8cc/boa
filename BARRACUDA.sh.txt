@@ -2409,8 +2409,10 @@ install_upgrade_nginx () {
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
     elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
-      _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
+      if [ "$_PURGE_MODE" = "ON" ] ; then
+        _NGINX_INSTALL_REQUIRED=YES
+        msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
+      fi
     fi
     if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
       if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
