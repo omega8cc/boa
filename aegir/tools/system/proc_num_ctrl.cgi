@@ -12,29 +12,31 @@ foreach $USER (sort keys %li_cnt) {
   if ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
 }
 foreach $COMMAND (sort keys %li_cnt) {
+  if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nginx/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\tGLOBAL";
-print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
+print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
+print "\n $collectdsumar Collectd\tGLOBAL" if ($collectdlives);
+print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
+print "\n $fpmsumar FPM procs\tGLOBAL" if ($fpmlives);
+print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
 print "\n $mysqlsumar MySQL procs\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\tGLOBAL" if ($nginxlives);
+print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
 print "\n $phpsumar PHP procs\tGLOBAL" if ($phplives);
-print "\n $fpmsumar FPM procs\tGLOBAL" if ($fpmlives);
-print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
+print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
 print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
-print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
-print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
-print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
-print "\n $collectdsumar Collectd\tGLOBAL" if ($collectdlives);
+print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
@@ -46,6 +48,7 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
+`/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix");
 `killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `killall -9 php-fpm; /etc/init.d/php53-fpm start` if ((!$fpmsumar || $fpmsumar > 1 ) && -f "/etc/init.d/php53-fpm");
@@ -77,6 +80,11 @@ sub global_action
       if ($COMMAND =~ /nginx/) {
         if ($USER =~ /root/) {
           $li_cnt{$COMMAND}++;
+        }
+      }
+      elsif ($COMMAND =~ /sendmail/) {
+        if ($USER =~ /root/) {
+          `kill $PID`;
         }
       }
       else {
