@@ -1778,7 +1778,11 @@ barracuda_cnf () {
         sed -i "s/.*_CUSTOM_CONFIG_CSF.*/_CUSTOM_CONFIG_CSF=YES ### Forced because /var/log/custom.csf.log exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
-      echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
+      if [ -e "/var/log/custom.csf.log" ] ; then
+        echo "_CUSTOM_CONFIG_CSF=YES" >> /root/.barracuda.cnf
+      else
+        echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
+      fi
     fi
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_SQL_TEST" =~ "_CUSTOM_CONFIG_SQL" ]] ; then
@@ -1786,7 +1790,11 @@ barracuda_cnf () {
         sed -i "s/.*_CUSTOM_CONFIG_SQL.*/_CUSTOM_CONFIG_SQL=YES ### Forced because /etc/mysql/custom.my.cnf exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
-      echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
+      if [ -e "/etc/mysql/custom.my.cnf" ] ; then
+        echo "_CUSTOM_CONFIG_SQL=YES" >> /root/.barracuda.cnf
+      else
+        echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
+      fi
     fi
     _CUSTOM_CONFIG_PHP_5_2_TEST=$(grep _CUSTOM_CONFIG_PHP_5_2 /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_PHP_5_2_TEST" =~ "_CUSTOM_CONFIG_PHP_5_2" ]] ; then
@@ -1794,7 +1802,11 @@ barracuda_cnf () {
         sed -i "s/.*_CUSTOM_CONFIG_PHP_5_2.*/_CUSTOM_CONFIG_PHP_5_2=YES ### Forced because /opt/etc/custom.php.ini exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
-      echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
+      if [ -e "/opt/etc/custom.php.ini" ] ; then
+        echo "_CUSTOM_CONFIG_PHP_5_2=YES" >> /root/.barracuda.cnf
+      else
+        echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
+      fi
     fi
     _CUSTOM_CONFIG_PHP_5_3_TEST=$(grep _CUSTOM_CONFIG_PHP_5_3 /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_PHP_5_3_TEST" =~ "_CUSTOM_CONFIG_PHP_5_3" ]] ; then
@@ -1802,7 +1814,11 @@ barracuda_cnf () {
         sed -i "s/.*_CUSTOM_CONFIG_PHP_5_3.*/_CUSTOM_CONFIG_PHP_5_3=YES ### Forced because /opt/etc/custom.php53.ini exists./g" /root/.barracuda.cnf &> /dev/null
       fi
     else
-      echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
+      if [ -e "/opt/etc/custom.php53.ini" ] ; then
+        echo "_CUSTOM_CONFIG_PHP_5_3=YES" >> /root/.barracuda.cnf
+      else
+        echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
+      fi
     fi
     _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX /root/.barracuda.cnf)
     if [[ "$_SPEED_VALID_MAX_TEST" =~ "_SPEED_VALID_MAX" ]] ; then
