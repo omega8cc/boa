@@ -54,9 +54,9 @@ trying to install site with the same domain on two or more instances.
 The instances will not be aware of other running instances,
 so it is your responsibility to use such system wisely.
 
-There is also Tuner script available (see BOND.sh.txt) for easy
-system tuning for development and switching it back easily to the
-standard production settings.
+There is also Tuner script available (see aegir/tools/BOND.sh.txt)
+for easy system tuning for development and switching it back easily
+to the standard production settings.
 
 
 ### SUPPORTED PARENT SYSTEMS
