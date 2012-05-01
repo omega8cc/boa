@@ -1257,8 +1257,8 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
  echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
 fi
-cd $_ROOT/log
-echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" >> ./octopus_log.txt
+echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VERSION / Octopus $_INSTALLER_VERSION / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION" >> $_ROOT/log/octopus_log.txt
+msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
 
 
 ###---### Final cleaning
