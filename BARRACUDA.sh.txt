@@ -2379,9 +2379,6 @@ upgrade_aegir_master () {
       fi
     fi
     chmod 711 /var/aegir/.drush &> /dev/null
-    cd /var/aegir/config/includes
-    echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW M-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
-    touch installer_version.txt
     msg "INFO: Aegir Master Instance upgrade completed"
   else
     msg "INFO: Aegir Master Instance not upgraded this time"
@@ -3479,7 +3476,6 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       rm -f dotdeb.gpg*
     fi
   fi
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW M-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> /var/log/apt-fast-install-log.txt
   cd /var/opt
 fi
 
@@ -5057,9 +5053,6 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_alert &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "sh /usr/sbin/apticron"
-  cd /var/aegir/config/includes
-  echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW M-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> ./barracuda_log.txt
-  touch installer_version.txt
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     true
   else
@@ -5080,6 +5073,19 @@ fi
 if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
   touch /var/log/cron_aegir_off.pid
 fi
+
+
+###--------------------###
+if [ -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
+  cp -af /var/aegir/config/includes/barracuda_log.txt /var/log/barracuda_log.txt
+  mv -f /var/aegir/config/includes/barracuda_log.txt /var/backups/barracuda_log.txt
+fi
+if [ ! -L "/var/aegir/config/includes/barracuda_log.txt" ] && [ -e "/var/aegir/config/includes" ] ; then
+  ln -s /var/log/barracuda_log.txt /var/aegir/config/includes/barracuda_log.txt
+fi
+echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> /var/log/barracuda_log.txt
+echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> /var/backups/barracuda_log.txt
+msg "INFO: New entry added to /var/log/barracuda_log.txt"
 
 
 ###--------------------###
