@@ -107,16 +107,14 @@ _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 #
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
-  _L_PHP_CLI=opt
-elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
-  _L_PHP_CLI=usr
+  _L_PHP_CLI=/opt/local/bin
 else
-  _L_PHP_CLI=usr
+  _L_PHP_CLI=/usr/local/bin
 fi
-_DRUSHCMD="/$_L_PHP_CLI/local/bin/php $_ROOT/tools/drush/drush.php"
+_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
 ###---### Functions
@@ -177,15 +175,10 @@ mrun () {
 #
 # Update php-cli for Drush.
 update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
-    _L_PHP_CLI=opt
-    sed -i "s/^#\!\/.*/#\!\/usr\/bin\/php/g" $_ROOT/tools/drush/drush.php &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
-    _L_PHP_CLI=opt
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  $_ROOT/tools/drush/drush.php &> /dev/null
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/local\/bin\/php/g"  $_ROOT/tools/drush/drush.php &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
-    _L_PHP_CLI=usr
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  $_ROOT/tools/drush/drush.php &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php/g"  $_ROOT/tools/drush/drush.php &> /dev/null
   fi
 }
 #
@@ -216,7 +209,7 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
 fi
 touch $_ROOT/aegir.sh
 chmod 0755 $_ROOT/aegir.sh &> /dev/null
-echo -e "#!/bin/bash\n\nPATH=~/bin:/$_L_PHP_CLI/local/bin:/sbin:/bin:/usr/sbin:/usr/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
+echo -e "#!/bin/bash\n\nPATH=~/bin:$_L_PHP_CLI:/sbin:/bin:/usr/sbin:/usr/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
 
 mkdir -p $_ROOT/aegir/distro
 mkdir -p $_ROOT/distro/$_DISTRO

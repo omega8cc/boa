@@ -33,22 +33,17 @@ _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
+_FROM_SOURCES=EDIT_FROM_SOURCES
 _REL_VERSION=`lsb_release -sc`
-if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
-  _L_PHP_CLI=/usr/bin
-elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
-elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
-  _L_PHP_CLI=/usr/local/bin
 else
   _L_PHP_CLI=/usr/local/bin
 fi
 #
 # Update php-cli for Drush.
 update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/usr\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_REL_VERSION" != "squeeze" ] ; then
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
@@ -69,7 +64,7 @@ msg() {
 # Main script
 
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 AEGIR_HOME="$HOME"
 AEGIR_HOST=`uname -n`

@@ -117,10 +117,6 @@ if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
   _D_8_ALLOW=YES
   _D_5_ALLOW=NO
-elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
-  _L_PHP_CLI=/usr/local/bin
-  _D_8_ALLOW=NO
-  _D_5_ALLOW=YES
 else
   _L_PHP_CLI=/usr/local/bin
   _D_8_ALLOW=NO
@@ -129,7 +125,7 @@ fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
 ###---### Functions

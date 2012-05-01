@@ -679,7 +679,7 @@ _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 
 
@@ -981,26 +981,13 @@ enable_purge_cruft_machine () {
 #
 # Update php-cli for Drush.
 update_php_cli_drush () {
-  _NEW_LTS=NO
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    if [ "$_FROM_SOURCES" = "NO" ] ; then
-      _NEW_LTS=YES
-    fi
-  fi
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "YES" ] ; then
-    _L_PHP_CLI=usr
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
-    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] && [ "$_NEW_LTS" = "NO" ] ; then
-    _L_PHP_CLI=opt
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/opt\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
-    _L_PHP_CLI=usr
-    sed -i "s/^#\!\/.*/#\!\/$_L_PHP_CLI\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-    sed -i "s/^PATH=.*/PATH=\/$_L_PHP_CLI\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    sed -i "s/^PATH=.*/PATH=\/usr\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
   fi
 }
@@ -2369,6 +2356,7 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
@@ -4486,6 +4474,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
+    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
   if [ "$_DEBUG_MODE" = "YES" ] ; then

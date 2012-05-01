@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 find /data/disk/*/backups/* -mtime +1 -type f -exec rm -rf {} \;
 find /data/disk/*/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +1 -type f -exec rm -rf {} \;
