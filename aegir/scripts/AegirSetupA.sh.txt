@@ -120,8 +120,13 @@ _ROOT="/data/disk/$_USER"
 _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
 #
+if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
+  _L_PHP_CLI=/opt/local/bin
+else
+  _L_PHP_CLI=/usr/local/bin
+fi
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
 ###---### Functions
