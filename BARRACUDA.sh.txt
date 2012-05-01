@@ -5083,8 +5083,18 @@ fi
 if [ ! -L "/var/aegir/config/includes/barracuda_log.txt" ] && [ -e "/var/aegir/config/includes" ] ; then
   ln -s /var/log/barracuda_log.txt /var/aegir/config/includes/barracuda_log.txt
 fi
-echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> /var/log/barracuda_log.txt
-echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_FORCE_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER $_THIS_DB_HOST / Wildcard $_HTTP_WILDCARD" >> /var/backups/barracuda_log.txt
+if [ "$_THIS_DB_HOST" = "localhost" ] ; then
+  _LOG_DB_HOST=localhost
+else
+  _LOG_DB_HOST=FQDN
+fi
+if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
+  _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"
+fi
+_LOG_DB_V=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
+_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
+echo "$_BARRACUDA_VERSION_INFO" >> /var/log/barracuda_log.txt
+echo "$_BARRACUDA_VERSION_INFO" >> /var/backups/barracuda_log.txt
 msg "INFO: New entry added to /var/log/barracuda_log.txt"
 
 
