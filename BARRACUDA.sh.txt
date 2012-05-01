@@ -1624,6 +1624,16 @@ EOF
 # Read or create Barracuda cnf file.
 barracuda_cnf () {
   if [ ! -e "/root/.barracuda.cnf" ] ; then
+    if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
+      _CHECK_HOST=`uname -n`
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        true
+      else
+        msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
+        msg "EXIT: Bye"
+        exit 1
+      fi
+    fi
     if [ -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=NO
     fi
@@ -1865,6 +1875,17 @@ barracuda_cnf () {
     done < /root/.barracuda.cnf
     echo " "
     source /root/.barracuda.cnf
+    if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
+      _CHECK_HOST=`uname -n`
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        true
+      else
+        msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
+        msg "EXIT: stored in the /root/.barracuda.cnf config file"
+        msg "EXIT: Bye"
+        exit 1
+      fi
+    fi
     if [ -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=NO
     fi

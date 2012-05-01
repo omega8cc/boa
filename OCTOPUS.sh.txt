@@ -554,6 +554,16 @@ find_correct_ip () {
 # Read or create Octopus cnf file.
 octopus_cnf () {
   if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
+    if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
+      _CHECK_HOST=`uname -n`
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        true
+      else
+        msg "EXIT: You must enter **your** valid e-mail address"
+        msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
+        exit 1
+      fi
+    fi
     if [ ! -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=YES
     fi
@@ -650,6 +660,16 @@ octopus_cnf () {
     done < /root/.$_USER.octopus.cnf
     echo " "
     source /root/.$_USER.octopus.cnf
+    if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
+      _CHECK_HOST=`uname -n`
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        true
+      else
+        msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
+        msg "EXIT: stored in the /root/.$_USER.octopus.cnf config file"
+        exit 1
+      fi
+    fi
     if [ ! -x "/usr/local/bin/php" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
@@ -1121,7 +1141,28 @@ if [ -d "$_ROOT" ] ; then
     if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
       _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
       _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
+      if [[ "$_CLIENT_EMAIL" =~ "\\\@" ]] ; then
+        true
+      else
+        msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
+        msg "EXIT: stored both in the /root/.$_USER.octopus.cnf config file **and**"
+        msg "EXIT: in the /data/disk/$_USER/log/email.txt file, where the \@ sign must be escaped"
+        msg "EXIT: Bye"
+        exit 1
+      fi
       _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+    fi
+    if [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
+      _CHECK_HOST=`uname -n`
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        true
+      else
+        msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
+        msg "EXIT: stored both in the /root/.$_USER.octopus.cnf config file **and**"
+        msg "EXIT: in the /data/disk/$_USER/log/email.txt file, where the \@ sign must be escaped"
+        msg "EXIT: Bye"
+        exit 1
+      fi
     fi
 #
 # Check for last distro nr
