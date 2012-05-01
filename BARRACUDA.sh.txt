@@ -2547,6 +2547,7 @@ install_wkhtmltopdf () {
 
 ###--------------------###
 if [ `whoami` = "root" ] ; then
+  echo " "
   msg "BOA Skynet welcomes you aboard!"
   echo " "
   sleep 3
@@ -3845,11 +3846,27 @@ if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
     msg "INFO: Fix #2 for libs in Ubuntu $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
-      ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
-      ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] ; then
+        ln -s /usr/lib/x86_64-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
+      elif [ -e "/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] ; then
+        ln -s /lib/x86_64-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
+      fi
+      if [ -e "/usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0" ] ; then
+        ln -s /usr/lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      elif [ -e "/lib/x86_64-linux-gnu/libcrypto.so.1.0.0" ] ; then
+        ln -s /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      fi
     else
-      ln -s /usr/lib/i386-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
-      ln -s /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      if [ -e "/usr/lib/i386-linux-gnu/libssl.so.1.0.0" ] ; then
+        ln -s /usr/lib/i386-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
+      elif [ -e "/lib/i386-linux-gnu/libssl.so.1.0.0" ] ; then
+        ln -s /lib/i386-linux-gnu/libssl.so.1.0.0  /usr/lib/libssl.so.1.0.0
+      fi
+      if [ -e "/usr/lib/i386-linux-gnu/libcrypto.so.1.0.0" ] ; then
+        ln -s /usr/lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      elif [ -e "/lib/i386-linux-gnu/libcrypto.so.1.0.0" ] ; then
+        ln -s /lib/i386-linux-gnu/libcrypto.so.1.0.0 /usr/lib/libcrypto.so.1.0.0
+      fi
     fi
   fi
 fi
