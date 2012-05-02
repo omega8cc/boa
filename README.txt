@@ -120,7 +120,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 Octopus can install the platforms listed below:
 
- Acquia 6.25.1 (int) ---------- http://bit.ly/acquiadrupal
+ Acquia 6.26.1 (int) ---------- http://bit.ly/acquiadrupal
  CiviCRM 3.4.8-d6 ------------- http://civicrm.org
  CiviCRM 4.0.8-d7 ------------- http://civicrm.org
  Commerce 1.4 ----------------- http://drupalcommerce.org
@@ -143,7 +143,7 @@ Octopus can install the platforms listed below:
  OpenPublish 3.0-alpha7 ------- http://openpublishapp.com
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
  Pressflow 5.23 --------------- http://pressflow.org
- Pressflow 6.25.1 (int) ------- http://pressflow.org
+ Pressflow 6.26.1 (int) ------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
  Ubercart 2.8.1 (int) --------- http://ubercart.org
  Ubercart 3.1.1 --------------- http://ubercart.org
