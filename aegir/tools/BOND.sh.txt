@@ -422,7 +422,7 @@ restart_services () {
   st_runner "service mysql restart"      &> /dev/null
   st_runner "service nginx reload"       &> /dev/null
   st_runner "bash /var/xdrago/FireStart" &> /dev/null
-  st_runner "service csf restart"        &> /dev/null
+  st_runner "csf -q"                     &> /dev/null
 }
 #
 tune_web_server_config () {

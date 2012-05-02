@@ -3573,9 +3573,7 @@ else
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
   service cron stop &> /dev/null
-  service lfd stop  &> /dev/null
-  service csf stop  &> /dev/null
-  service csf stop  &> /dev/null
+  csf -x &> /dev/null
   until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
@@ -3736,9 +3734,7 @@ fi
 
 if [ "$_STATUS" = "INIT" ] ; then
   service cron stop &> /dev/null
-  service lfd stop  &> /dev/null
-  service csf stop  &> /dev/null
-  service csf stop  &> /dev/null
+  csf -x &> /dev/null
   install_with_aptitude_sql
 else
   _SQL_UPGRADE=NO
@@ -3756,9 +3752,7 @@ else
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     service cron stop &> /dev/null
-    service lfd stop  &> /dev/null
-    service csf stop  &> /dev/null
-    service csf stop  &> /dev/null
+    csf -x &> /dev/null
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
     mrun "sleep 50"
     st_runner "service nginx stop" &> /dev/null
@@ -3798,8 +3792,7 @@ else
     st_runner "service mysql restart" &> /dev/null
     mrun "sleep 8"
     st_runner "service nginx start" &> /dev/null
-    st_runner "service lfd start" &> /dev/null
-    st_runner "service csf start" &> /dev/null
+    st_runner "csf -e" &> /dev/null
     msg "INFO: Restarting $_DB_SERVER server completed"
   fi
 fi
@@ -5187,9 +5180,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
   fi
 fi
 if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
-  service lfd stop &> /dev/null
-  service csf stop &> /dev/null
-  service csf stop &> /dev/null
+  csf -x &> /dev/null
   update-rc.d -f csf remove &> /dev/null
   update-rc.d -f lfd remove &> /dev/null
   rm -f /etc/cron.d/{csf,lfd}*
@@ -5208,8 +5199,9 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ -e "/var/xdrago/log/lastFire" ] ; then
     sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
     rm -f /var/xdrago/log/lastFire
-    st_runner "service csf restart" &> /dev/null
-    st_runner "service lfd restart" &> /dev/null
+    st_runner "csf -x" &> /dev/null
+    st_runner "csf -e" &> /dev/null
+    st_runner "csf -q" &> /dev/null
   fi
 fi
 
@@ -5240,10 +5232,9 @@ rm -f /var/run/boa_wait.pid
 chmod 700 /root
 killall -9 memcached &> /dev/null
 service cron start   &> /dev/null
-service lfd start    &> /dev/null
-service csf start    &> /dev/null
-service lfd restart  &> /dev/null
-service csf restart  &> /dev/null
+csf -x &> /dev/null
+csf -e &> /dev/null
+csf -q &> /dev/null
 msg "BYE!"
 exit 0
 

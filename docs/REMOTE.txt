@@ -80,7 +80,7 @@ $ sed -i "s/^max_execution_time =.*/max_execution_time = 1800/g" /opt/local/lib/
 ### On target and source server - as root
 # Open port 3306 in /etc/csf/csf.conf - see TCP_IN and TCP_OUT, or add IPs
 # of boths servers to /etc/csf/csf.allow and then restart firewall with:
-$ service csf restart
+$ csf -q
 
 ### On target server
 # Test mysql connection:
