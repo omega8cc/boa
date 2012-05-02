@@ -5081,11 +5081,11 @@ fi
 
 
 ###--------------------###
-if [ -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
-  cp -af /var/aegir/config/includes/barracuda_log.txt /var/log/barracuda_log.txt
-  mv -f /var/aegir/config/includes/barracuda_log.txt /var/backups/barracuda_log.txt
-fi
-if [ ! -L "/var/aegir/config/includes/barracuda_log.txt" ] && [ -e "/var/aegir/config/includes" ] ; then
+if [ ! -L "/var/aegir/config/includes/barracuda_log.txt" ] ; then
+  if [ -e "/var/aegir/config/includes/barracuda_log.txt" ] ; then
+    cp -af /var/aegir/config/includes/barracuda_log.txt /var/log/barracuda_log.txt
+    mv -f /var/aegir/config/includes/barracuda_log.txt /var/backups/barracuda_log.txt
+  fi
   ln -s /var/log/barracuda_log.txt /var/aegir/config/includes/barracuda_log.txt
 fi
 if [ "$_THIS_DB_HOST" = "localhost" ] ; then
