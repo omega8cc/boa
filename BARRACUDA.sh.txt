@@ -2424,6 +2424,10 @@ install_upgrade_nginx () {
   else
     _NGINX_INSTALL_REQUIRED=YES
   fi
+  if [ "$_UP_NGX" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
+    _NGINX_INSTALL_REQUIRED=YES
+    msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
+  fi
   if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_NGX_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_STATUS" = "UPGRADE" ] ; then
       msg "INFO: Upgrading Nginx, please wait..."
@@ -2470,6 +2474,8 @@ install_upgrade_nginx () {
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
     service nginx start &> /dev/null
+    _UP_NGX=NO
+    _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ] ; then
     ln -s /usr/sbin/nginx /usr/bin/nginx
@@ -3568,14 +3574,6 @@ else
   _UP_NGX=NO
   _UP_JDK=NO
   check_apt_updates
-  if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-    _PHP_INSTALL_REQUIRED=YES
-    msg "INFO: PHP rebuild required to include upgraded libs"
-  fi
-  if [ "$_UP_NGX" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-    _NGINX_INSTALL_REQUIRED=YES
-    msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
-  fi
 fi
 
 
@@ -4173,6 +4171,10 @@ if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: PHP rebuild forced"
     mrun "sleep 1"
   fi
+fi
+if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
+  _PHP_INSTALL_REQUIRED=YES
+  msg "INFO: PHP rebuild required to include upgraded libs"
 fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _PHP_EXTRA=""
