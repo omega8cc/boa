@@ -1415,17 +1415,18 @@ tune_memory_limits () {
     _VMFAMILY="VZ"
   elif [ -e "/proc/bean_counters" ] ; then
     _VMFAMILY="VZ"
-  elif [[ "$_VM_TEST" =~ beng ]] ; then
-    _VMFAMILY="VS"
-  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -d "/boot/grub" ] ; then
+  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
     _VMFAMILY="TG"
   else
     _VMFAMILY="XEN"
   fi
+  if [[ "$_VM_TEST" =~ beng ]] ; then
+    _VMFAMILY="VS"
+  fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+    if [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
       let "_USE_SQL = (($_RAM / 32))"
     else
       let "_USE_SQL = (($_RAM / 6))"
@@ -1462,7 +1463,7 @@ tune_memory_limits () {
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       _USE_PHP=512
-      if [ -d "/boot/grub" ] || [ -e "/root/.tg.cnf" ] ; then
+      if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_APC=1024
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=8
@@ -3965,7 +3966,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     st_runner "service vnstat start" &> /dev/null
   fi
 fi
-if [ -e "/etc/init.d/vnstat" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+if [ -e "/etc/init.d/vnstat" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   service vnstat stop &> /dev/null
   update-rc.d -f vnstat remove &> /dev/null
   rm -f /etc/init.d/vnstat
@@ -4932,7 +4933,7 @@ fi
 
 
 ###--------------------###
-if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   rm -f /var/aegir/config/server_master/nginx/vhost.d/cgp*
   st_runner "apt-get -y remove collectd" 2> /dev/null
   st_runner "apt-get -y purge collectd" 2> /dev/null
@@ -5178,7 +5179,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
     fi
   fi
 fi
-if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -d "/boot/grub" ] ; then
+if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   csf -x &> /dev/null
   update-rc.d -f csf remove &> /dev/null
   update-rc.d -f lfd remove &> /dev/null
