@@ -234,27 +234,28 @@ chmod 0750 $_ROOT/backups &> /dev/null
 chmod 0750 $_ROOT/clients &> /dev/null
 
 if [ "$_STATUS" = "UPGRADE" ] ; then
- msg "$_STATUS B: UPGRADE in progress..."
+ #msg "$_STATUS B: UPGRADE in progress..."
  if [ -d "$_ROOT/distro" ] ; then
-  msg "$_STATUS B: UPGRADE v.2 in progress..."
+  #msg "$_STATUS B: UPGRADE v.2 in progress..."
   if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
-  msg "$_STATUS B: _DOMAIN is $_DOMAIN"
+  #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
  elif [ ! -d "$_ROOT/distro" ] ; then
-  msg "$_STATUS B: UPGRADE v.1 in progress..."
-  msg "$_STATUS B: _DISTRO is $_DISTRO"
+  #msg "$_STATUS B: UPGRADE v.1 in progress..."
+  #msg "$_STATUS B: _DISTRO is $_DISTRO"
   if [ -e "$_ROOT/log/domain.txt" ] ; then
    _DOMAIN=`cat $_ROOT/log/domain.txt`
    _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
   fi
-  msg "$_STATUS B: _DOMAIN is $_DOMAIN"
+  #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
  fi
 else
- msg "$_STATUS B: NEW AEGIR setup in progress..."
- msg "$_STATUS B: _DISTRO is $_DISTRO"
- msg "$_STATUS B: _DOMAIN is $_DOMAIN"
+ true
+ #msg "$_STATUS B: NEW AEGIR setup in progress..."
+ #msg "$_STATUS B: _DISTRO is $_DISTRO"
+ #msg "$_STATUS B: _DOMAIN is $_DOMAIN"
 fi
 echo $_DOMAIN > $_ROOT/log/domain.txt
 
