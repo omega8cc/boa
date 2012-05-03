@@ -40,6 +40,8 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 ###---### distro config
 #
 _ACQUIA_SEVEN=EDIT_ACQUIA_SEVEN
+_CIVICRM_M6=EDIT_CIVICRM_M6
+_CIVICRM_M7=EDIT_CIVICRM_M7
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _COD=EDIT_COD
@@ -47,10 +49,10 @@ _COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
-_DRUPAL8=EDIT_DRUPAL8
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
+_DRUPAL8=EDIT_DRUPAL8
 _ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _MARTPLUG=EDIT_MARTPLUG
@@ -968,6 +970,16 @@ mrun "sleep 1"
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM6-$_SMALLCORE6/sites" ] ; then

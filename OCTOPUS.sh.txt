@@ -162,8 +162,10 @@ _PHP_CLI_VERSION=5.2
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### D5P ----------- Pressflow 5
 ### AQ6 ----------- Acquia D6
-### CC3 ----------- CiviCRM 3 D6
-### CC4 ----------- CiviCRM 4 D7
+### CC3 ----------- CiviCRM 3.4.8 D6
+### CC4 ----------- CiviCRM 4.0.8 D7
+### CM6 ----------- CiviCRM 4.1.2 D6
+### CM7 ----------- CiviCRM 4.1.2 D7
 ### COD ----------- Conference
 ### DCE ----------- Commerce
 ### DCS ----------- Commons
@@ -481,6 +483,8 @@ SHELL=/bin/bash
 ### Distributions
 ###
 _ACQUIA_SEVEN=7.12.11
+_CIVICRM_M6=4.1.2
+_CIVICRM_M7=4.1.2
 _CIVICRM6=3.4.8
 _CIVICRM7=4.0.8
 _COD=6.x-1.0-beta2
@@ -750,6 +754,8 @@ do
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
+  sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files
+  sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files
   sed -i "s/EDIT_CIVICRM6/$_CIVICRM6/g"                   $Files
   sed -i "s/EDIT_CIVICRM7/$_CIVICRM7/g"                   $Files
   sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files
