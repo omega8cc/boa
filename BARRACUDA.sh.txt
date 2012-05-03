@@ -1620,7 +1620,7 @@ barracuda_cnf () {
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
-        msg "EXIT: Bye"
+        msg "EXIT: Bye (1)"
         exit 1
       fi
     fi
@@ -1872,7 +1872,7 @@ barracuda_cnf () {
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: stored in the /root/.barracuda.cnf config file"
-        msg "EXIT: Bye"
+        msg "EXIT: Bye (2)"
         exit 1
       fi
     fi
@@ -3045,7 +3045,7 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
   _THIS_DB_HOST=localhost
 fi
 echo " "
-msg "Aegir v.$_AEGIR_VERSION with Nginx on $_THIS_OS/$_REL_VERSION - highly automated install/upgrade script"
+msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_AEGIR_VERSION"
 echo " "
 mrun "sleep 1"
 
