@@ -761,7 +761,7 @@ _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_MARTPLUG="MartPlug 1.0-dev $_SMALLCORE7 P.$_THIS_CORE"
 _F_NODESTREAM6="NodeStream 1.5 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-a13 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OCTOPUS_VIDEO="Octopus Video 1.0-a5 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM="Open Atrium $_OPENATRIUM $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.9-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1907,7 +1907,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  if [ $_OCTOPUS_VIDEO = "1.0-alpha5" ] ; then
+  if [ $_OCTOPUS_VIDEO = "1.0-alpha5" ] || [ $_OCTOPUS_VIDEO = "1.0-alpha6" ] ; then
     cd $_CORE_DISTRO/profiles
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
     patch -p1 < $_THIS_PRNAME.patch &> /dev/null

@@ -32,7 +32,7 @@ diff -urp a/octopus_video/octopus_video.info b/octopus_video/octopus_video.info
 \ No newline at end of file
 +dependencies[] = octopus_helper
 +
-+version = "1.0-alpha5"
++version = "1.0-alpha6"
 +project = "octopus_video"
 +
 diff -urp a/octopus_video/octopus_video.install b/octopus_video/octopus_video.install
