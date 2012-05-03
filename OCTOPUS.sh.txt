@@ -656,7 +656,7 @@ octopus_cnf () {
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     fi
-    msg "NOTE: Please review all config options displayed below"
+    msg "NOTE! Please review all config options displayed below"
     sleep 3
     echo " "
     while read line ; do
@@ -1034,7 +1034,7 @@ _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 #
 #
 if [ `whoami` = "root" ] ; then
-  msg "STATUS: This script is ran as a root user"
+  true
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first"
   msg "Bye"

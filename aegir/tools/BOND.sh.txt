@@ -662,7 +662,7 @@ _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 #
 #
 if [ `whoami` = "root" ] ; then
-  msg "STATUS: This script is ran as a root user"
+  msg "INFO: This script is ran as a root user"
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first"
   msg "Bye"
@@ -743,10 +743,10 @@ EOF
 echo " "
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
   true
-  msg "STATUS: We will stop cron and then wait 30 seconds..."
+  msg "INFO: We will stop cron and then wait 30 seconds..."
   service cron stop &> /dev/null
   mrun "sleep 30"
-  msg "STATUS: Tuning in progress, please wait..."
+  msg "INFO: Tuning in progress, please wait..."
   mrun "sleep 1"
   restore_default_php
   tune_php
@@ -759,10 +759,10 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   fi
   tune_memory_limits
   restart_services
-  msg "STATUS: Tuning completed"
+  msg "INFO: Tuning completed"
   mrun "sleep 1"
 else
-  msg "STATUS: We will stop cron and then wait 30 seconds..."
+  msg "INFO: We will stop cron and then wait 30 seconds..."
   service cron stop &> /dev/null
   mrun "sleep 30"
   restore_default_php
@@ -774,14 +774,14 @@ else
   update_php_conf
   tune_memory_limits
   restart_services
-  msg "STATUS: Tuning stopped and default settings restored"
+  msg "INFO: Tuning stopped and default settings restored"
   mrun "sleep 1"
 fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
 service cron start &> /dev/null
-msg "STATUS: Cron started again"
+msg "INFO: Cron started again"
 msg "BYE!"
 
 ###----------------------------------------###

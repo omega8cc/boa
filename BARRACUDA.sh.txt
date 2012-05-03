@@ -1690,8 +1690,8 @@ barracuda_cnf () {
   else
     msg "INFO: Reading your /root/.barracuda.cnf config file"
     sleep 1
-    msg "NOTE: Please review all config options displayed below"
-    msg "NOTE: It will *override* all settings in the Barracuda script"
+    msg "NOTE! Please review all config options displayed below"
+    msg "NOTE! It will *override* all settings in the Barracuda script"
     if [ -x "/usr/local/bin/php" ] ; then
       _PHP_MODERN_ONLY=NO
     fi
@@ -2146,7 +2146,7 @@ install_php_modern () {
     st_runner "$_INSTAPP $_MODERN_PHP_DEB" 2> /dev/null
   else
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
-    msg "NOTE: This step may take longer than 8 minutes, please wait..."
+    msg "NOTE! This step may take longer than 8 minutes, please wait..."
     cd /var/opt
     rm -f -r /var/opt/php*
     wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
@@ -2217,7 +2217,7 @@ install_php_modern () {
 install_php_legacy () {
   ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION"
-  msg "NOTE: This step may take longer than 8 minutes, please wait..."
+  msg "NOTE! This step may take longer than 8 minutes, please wait..."
   mrun "sleep 1"
   cd /var/opt
   rm -f -r /var/opt/php*
@@ -2571,8 +2571,6 @@ if [ `whoami` = "root" ] ; then
   msg "BOA Skynet welcomes you aboard!"
   echo " "
   sleep 3
-  msg "STATUS: This script is ran as a root user"
-  msg "STATUS: Stop the cron and wait 5 seconds"
   chmod a+rw /dev/null
   rm -f -r /opt/tmp/*
   rm -f /tmp/cache.inc
@@ -2616,8 +2614,6 @@ fi
 
 
 ###--------------------###
-msg "INFO: Install or upgrade checking, please wait..."
-sleep 1
 if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE"
@@ -2965,7 +2961,7 @@ fi
 
 
 ###--------------------###
-msg "STATUS: Checking your Debian or Ubuntu version..."
+msg "INFO: Checking your Debian or Ubuntu version..."
 mrun "sleep 1"
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
@@ -3602,7 +3598,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   msg "INFO: Upgrading required libraries and tools"
 fi
-msg "NOTE: This step may take a few minutes, please wait..."
+msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_FROM_SOURCES" = "NO" ] ; then
   _APT_SQUEEZE="openjdk-6-jdk nginx-extras"
 else
@@ -4572,9 +4568,9 @@ else
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "xlenny" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped!"
     echo " "
-    msg "NOTE: You *must* reboot the server and then run Barracuda *again*"
-    msg "NOTE: to complete all system upgrades and upgrade also"
-    msg "NOTE: Aegir Master Instance securely"
+    msg "NOTE! You *must* reboot the server and then run Barracuda *again*"
+    msg "NOTE! to complete all system upgrades and upgrade also"
+    msg "NOTE! Aegir Master Instance securely"
     echo " "
   elif [ "$_SYSTEM_UPGRADE_ONLY" = "YES" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped"
@@ -5110,7 +5106,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
       echo " "
       msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully"
-      msg "NOTE: Please wait 2 minutes before opening the following link in your web browser:"
+      msg "NOTE! Please wait 2 minutes before opening the following link in your web browser:"
       echo " "
       msg "LINK: $_AEGIR_LOGIN_URL"
     else

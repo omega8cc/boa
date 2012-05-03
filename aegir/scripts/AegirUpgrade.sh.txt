@@ -80,7 +80,7 @@ update_php_cli_drush () {
 }
 #
 hostmaster_dr_up () {
-  msg "UPGRADE INFO: Downloading drush, please wait..."
+  msg "INFO: Downloading drush, please wait..."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
@@ -98,15 +98,15 @@ hostmaster_dr_up () {
   fi
   update_php_cli_drush
   if $_DRUSHCMD help > /dev/null ; then
-    msg "UPGRADE INFO: Drush seems to be functioning properly"
+    msg "INFO: Drush seems to be functioning properly"
   else
-    msg "UPGRADE INFO: Drush is broken ($DRUSH help failed)"
+    msg "INFO: Drush is broken ($DRUSH help failed)"
     exit 1
   fi
 }
 #
 hostmaster_mv_up () {
-  msg "UPGRADE INFO: Moving old directories"
+  msg "INFO: Moving old directories"
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
@@ -130,9 +130,9 @@ hostmaster_mv_up () {
 #
 hostmaster_go_up () {
   if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
-    msg "UPGRADE INFO: Provision seems to be installed already"
+    msg "INFO: Provision seems to be installed already"
   else
-    msg "UPGRADE INFO: Installing provision backend in $_ROOT/.drush"
+    msg "INFO: Installing provision backend in $_ROOT/.drush"
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
@@ -155,7 +155,7 @@ hostmaster_go_up () {
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
       rm -f provision-$_AEGIR_VERSION.tar.gz
     fi
-    msg "UPGRADE INFO: Downloading Drush and Provision extensions, please wait..."
+    msg "INFO: Downloading Drush and Provision extensions, please wait..."
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.3.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
@@ -189,7 +189,7 @@ hostmaster_go_up () {
 }
 #
 hostmaster_mi_up () {
-  msg "UPGRADE INFO: Running hostmaster-migrate, please wait..."
+  msg "INFO: Running hostmaster-migrate, please wait..."
   export DEBIAN_FRONTEND=noninteractive
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y -d
@@ -224,12 +224,12 @@ if [ -d "$_ROOT/host_master/000" ] ; then
   nextnum=${nextnum: -3}
   _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
   if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
-    msg "UPGRADE INFO: Testing previous install.. OK"
+    msg "INFO: Testing previous install.. OK"
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
   else
     _DEBUG_MODE=YES
-    msg "UPGRADE INFO: Testing previous install.. OPS, zombie found, moving it to backups..."
+    msg "INFO: Testing previous install.. OPS, zombie found, moving it to backups..."
     mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/host-master-pre-$_DISTRO-$_NOW &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
@@ -240,7 +240,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
     if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
-      msg "UPGRADE INFO: Testing previous install.. OK"
+      msg "INFO: Testing previous install.. OK"
       _DISTRO=${nextnum}
       _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
     fi
@@ -249,15 +249,15 @@ fi
 
 _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_AEGIR_ROOT" ] ; then
-  msg "UPGRADE INFO: FATAL ERROR: $_AEGIR_ROOT already exists! Exit"
+  msg "INFO: FATAL ERROR: $_AEGIR_ROOT already exists! Exit"
   exit 1
 fi
 
 mkdir -p $_ROOT/host_master
 chmod 711 $_ROOT/host_master &> /dev/null
-msg "UPGRADE INFO: Simple check if previous Hostmaster version was a valid install"
+msg "INFO: Simple check if previous Hostmaster version was a valid install"
 if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "UPGRADE INFO: Test OK, we can proceed with Hostmaster upgrade"
+  msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
   hostmaster_dr_up
   hostmaster_mv_up
   hostmaster_go_up

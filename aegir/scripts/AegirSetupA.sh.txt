@@ -745,7 +745,7 @@ else
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
       true
       _DIST_INSTALL=YES
-      msg "NOTE: Please choose only the platforms/distributions you want to have included"
+      msg "NOTE! Please choose only the platforms/distributions you want to have included"
       mrun "sleep 1"
       msg "$_STATUS A: Switching user and running Platforms build"
       mrun "sleep 1"
@@ -1320,7 +1320,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
       echo " "
       msg "INFO: Congratulations, Aegir backend and frontend have been installed successfully"
-      msg "NOTE: Please wait 1 minute before opening the following link in your web browser:"
+      msg "NOTE! Please wait 1 minute before opening the following link in your web browser:"
       echo " "
       msg "LINK: $_AEGIR_LOGIN_URL"
       echo " "
