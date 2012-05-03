@@ -147,7 +147,7 @@ Octopus can install the platforms listed below:
  Pressflow 5.23 --------------- http://pressflow.org
  Pressflow 6.26.1 (int) ------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
- Ubercart 2.8.1 (int) --------- http://ubercart.org
+ Ubercart 2.9.1 (int) --------- http://ubercart.org
  Ubercart 3.1.1 --------------- http://ubercart.org
  Videola 1.0-alpha2 ----------- http://videola.tv
 
