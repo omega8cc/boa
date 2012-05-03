@@ -282,8 +282,10 @@ cd $_ROOT/tools
 msg "$_STATUS B: Downloading drush, please wait..."
 if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
   git clone http://git.drupal.org/project/drush.git &> /dev/null
+  rm -f -r $_ROOT/tools/drush/.git &> /dev/null
 elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
   git clone git://github.com/omega8cc/drush_4x.git drush &> /dev/null
+  rm -f -r $_ROOT/tools/drush/.git &> /dev/null
 else
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
