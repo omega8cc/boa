@@ -1119,7 +1119,7 @@ if [ -d "$_ROOT" ] ; then
   _STATUS=UPGRADE
   msg "UPGRADE in progress..."
   if [ -d "$_ROOT/distro" ] ; then
-    msg "UPGRADE v.2 in progress..."
+    #msg "UPGRADE v.2 in progress..."
     if [ -e "$_ROOT/log/domain.txt" ] ; then
       _DOMAIN=`cat $_ROOT/log/domain.txt`
       _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
@@ -1132,7 +1132,7 @@ if [ -d "$_ROOT" ] ; then
       msg "ALERT! _USER is e-m-p-t-y, exit now"
       exit 1
     fi
-    msg "_DOMAIN is $_DOMAIN"
+    #msg "_DOMAIN is $_DOMAIN"
     if [ -e "/data/disk/$_USER/log/option.txt" ] ; then
       _CLIENT_OPTION=`cat /data/disk/$_USER/log/option.txt`
       _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
@@ -1178,14 +1178,15 @@ if [ -d "$_ROOT" ] ; then
       list=([0-9]*)
       last=${list[@]: -1}
       _LASTNUM=$last
-      msg "_LASTNUM is $last"
+      #msg "_LASTNUM is $last"
       nextnum=00$((10#${last%%[^0-9]*} + 1))
       nextnum=${nextnum: -3}
       _DISTRO=${nextnum}
     else
-      msg "_LASTNUM is $_LASTNUM"
+      true
+      #msg "_LASTNUM is $_LASTNUM"
     fi
-    msg "_DISTRO is $_DISTRO"
+    #msg "_DISTRO is $_DISTRO"
 #
 # Check for last hm nr
     if [ -d "$_ROOT/aegir/distro" ] ; then
@@ -1193,14 +1194,15 @@ if [ -d "$_ROOT" ] ; then
       listx=([0-9]*)
       lastx=${listx[@]: -1}
       _LAST_HMR=$lastx
-      msg "_LAST_HMR is $lastx"
+      #msg "_LAST_HMR is $lastx"
       nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
       nextnumx=${nextnumx: -3}
       _HM_DISTRO=${nextnumx}
     else
-      msg "_LAST_HMR is $_LAST_HMR"
+      true
+      #msg "_LAST_HMR is $_LAST_HMR"
     fi
-    msg "_HM_DISTRO is $_HM_DISTRO"
+    #msg "_HM_DISTRO is $_HM_DISTRO"
 #
 # Check for last all nr
     if [ -d "/data/all" ] ; then
@@ -1208,24 +1210,25 @@ if [ -d "$_ROOT" ] ; then
       listl=([0-9]*)
       lastl=${listl[@]: -1}
       _LAST_ALL=$lastl
-      msg "_LAST_ALL is $lastl"
+      #msg "_LAST_ALL is $lastl"
       nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
       nextnuml=${nextnuml: -3}
       _ALL_DISTRO=${nextnuml}
     else
-      msg "_LAST_ALL is $_LAST_ALL"
+      true
+      #msg "_LAST_ALL is $_LAST_ALL"
     fi
-    msg "_ALL_DISTRO is $_ALL_DISTRO"
+    #msg "_ALL_DISTRO is $_ALL_DISTRO"
 #
 #
   elif [ ! -d "$_ROOT/distro" ] ; then
-    msg "UPGRADE v.1 in progress..."
-    msg "_DISTRO is $_DISTRO"
+    #msg "UPGRADE v.1 in progress..."
+    #msg "_DISTRO is $_DISTRO"
     if [ -e "$_ROOT/log/domain.txt" ] ; then
       _DOMAIN=`cat $_ROOT/log/domain.txt`
       _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
     fi
-    msg "_DOMAIN is $_DOMAIN"
+    #msg "_DOMAIN is $_DOMAIN"
   fi
 else
 msg "NEW Aegir Satellite Instance setup in progress..."
@@ -1236,16 +1239,17 @@ msg "NEW Aegir Satellite Instance setup in progress..."
     listl=([0-9]*)
     lastl=${listl[@]: -1}
     _LAST_ALL=$lastl
-    msg "_LAST_ALL is $lastl"
+    #msg "_LAST_ALL is $lastl"
     nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
     nextnuml=${nextnuml: -3}
     _ALL_DISTRO=${nextnuml}
   else
-    msg "_LAST_ALL is $_LAST_ALL"
+    true
+    #msg "_LAST_ALL is $_LAST_ALL"
   fi
-  msg "_ALL_DISTRO is $_ALL_DISTRO"
-  msg "_DISTRO is $_DISTRO"
-  msg "_DOMAIN is $_DOMAIN"
+  #msg "_ALL_DISTRO is $_ALL_DISTRO"
+  #msg "_DISTRO is $_DISTRO"
+  #msg "_DOMAIN is $_DOMAIN"
 #
 #
   if [ "$_USER" = "admin" ] ; then
