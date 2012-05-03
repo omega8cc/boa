@@ -60,7 +60,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
   OpenPublish 3.0-alpha8 ------- http://openpublishapp.com
   OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
   Ubercart 3.1.1 --------------- http://ubercart.org
-  Videola 1.0-alpha2 ----------- http://videola.tv
+  Videola 1.0-alpha3 ----------- http://videola.tv
 
 All CiviCRM platforms are available with 2+ Aegir SSD Cores only:
 
