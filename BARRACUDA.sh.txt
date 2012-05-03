@@ -2622,15 +2622,6 @@ if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE"
   barracuda_cnf
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
-      _FROM_SOURCES=YES
-    else
-      _FROM_SOURCES=NO
-    fi
-  else
-    _FROM_SOURCES=YES
-  fi
   if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
     _HTTP_WILDCARD=YES
   else
@@ -2676,15 +2667,6 @@ else
     _LOCAL_NETWORK_HN="aegir.local"
   fi
   barracuda_cnf
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
-      _FROM_SOURCES=YES
-    else
-      _FROM_SOURCES=NO
-    fi
-  else
-    _FROM_SOURCES=YES
-  fi
 fi
 _INITINS="/usr/bin/apt-get -y --force-yes install"
 _INSTALL="/usr/bin/apt-get -y --force-yes --config-file /opt/tmp/apt.conf.noninteractive install"
@@ -3035,6 +3017,15 @@ elif [ "$_THIS_OS" = "Jolicloud" ] ; then
   fi
 else
   not_supported_os
+fi
+if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
+    _FROM_SOURCES=YES
+  else
+    _FROM_SOURCES=NO
+  fi
+else
+  _FROM_SOURCES=YES
 fi
 _AWS_TEST_A=$(grep cloudimg /etc/fstab)
 _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
