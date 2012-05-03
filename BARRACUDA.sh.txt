@@ -369,15 +369,31 @@ _SSH_PORT=22
 ### LOCAL DEBIAN OR UBUNTU MIRROR          ###
 ###----------------------------------------###
 ###
-### Use this when you prefer to use the mirror
-### you know is the best / the fastest for you
-### and skip searching around the globe.
+### Modify this if you prefer to use some
+### mirror you know is the best / the fastest
+### in your server location. For example:
 ###
 ### _LOCAL_DEBIAN_MIRROR=ftp.au.debian.org
 ### _LOCAL_UBUNTU_MIRROR=au.archive.ubuntu.com
 ###
-_LOCAL_DEBIAN_MIRROR=""
-_LOCAL_UBUNTU_MIRROR=""
+### To search for the fastest mirror around
+### the globe, use empty variables:
+###
+### _LOCAL_DEBIAN_MIRROR=""
+### _LOCAL_UBUNTU_MIRROR=""
+###
+### Note that searching around the globe is
+### no longer enabled by default!
+###
+### Note also that it may hang and later cause
+### broken upgrades if some tested mirror
+### responds with unexpected delay instead of
+### just respond or not, so it is better
+### to use reliable mirrors you know,
+### or leave default values.
+###
+_LOCAL_DEBIAN_MIRROR=ftp.debian.org
+_LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
 ###----------------------------------------###
