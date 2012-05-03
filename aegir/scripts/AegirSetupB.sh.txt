@@ -367,7 +367,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     _ALLOW_CIVICRM=NO
   fi
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-    git clone --branch 6.x-1.x http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+    git clone --branch boa-testing git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 else
@@ -391,7 +391,7 @@ else
     _ALLOW_CIVICRM=NO
   fi
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-    git clone --branch 6.x-1.x http://git.drupal.org/project/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+    git clone --branch boa-testing git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 fi
