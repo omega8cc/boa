@@ -384,7 +384,7 @@ msg "$_STATUS C: Downloading o_contrib modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.1.tar.gz
@@ -2588,7 +2588,6 @@ videola_install
 #
 echo " "
 msg "$_STATUS C: Removing some old core themes, please wait..."
-rm -f -r $_CORE/o_contrib/image
 rm -f -r $_CORE/*/themes/bluemarine
 rm -f -r $_CORE/*/themes/chameleon
 rm -f -r $_CORE/*/themes/pushbutton
