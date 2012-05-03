@@ -2146,7 +2146,7 @@ install_php_modern () {
     st_runner "$_INSTAPP $_MODERN_PHP_DEB" 2> /dev/null
   else
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
-    msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
+    msg "NOTE: This step may take longer than 8 minutes, please wait..."
     cd /var/opt
     rm -f -r /var/opt/php*
     wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
@@ -2217,7 +2217,7 @@ install_php_modern () {
 install_php_legacy () {
   ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION"
-  msg "NOTE: This step may take longer than 8 minutes (depending on your server speed), please wait..."
+  msg "NOTE: This step may take longer than 8 minutes, please wait..."
   mrun "sleep 1"
   cd /var/opt
   rm -f -r /var/opt/php*
@@ -3602,7 +3602,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   msg "INFO: Upgrading required libraries and tools"
 fi
-msg "NOTE: This step may take a few minutes (depending on your server speed), please wait..."
+msg "NOTE: This step may take a few minutes, please wait..."
 if [ "$_FROM_SOURCES" = "NO" ] ; then
   _APT_SQUEEZE="openjdk-6-jdk nginx-extras"
 else
