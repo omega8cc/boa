@@ -1749,7 +1749,7 @@ msg "DISTRO: $_F_MARTPLUG installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_MARTPLUG-core.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_MARTPLUG-core.tar.gz
   tar -xzf $_THIS_PRNAME-$_MARTPLUG-core.tar.gz
   rm -f $_THIS_PRNAME-$_MARTPLUG-core.tar.gz
   rename_drupal7_distro_directory
