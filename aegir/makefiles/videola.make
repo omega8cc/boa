@@ -7,7 +7,6 @@ core = 6.x
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
 projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.26.1.tar.gz"
-projects[pressflow][download][branch] = "master"
 
 projects[videola][type] = "profile"
 projects[videola][download][type] = "git"
