@@ -990,13 +990,14 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Switching user and running Platforms build"
-  mrun "sleep 1"
   _DIST_INSTALL=YES
   rm -f /opt/tmp/testecho*
   create_shared_dirs
   manage_o_contrib
-  su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+  msg "$_STATUS A: Switching user and running Platforms build"
+  mrun "sleep 1"
+  cd $_ROOT
+  su -s /bin/bash $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
   if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -1012,15 +1013,16 @@ else
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
       true
       _DIST_INSTALL=YES
-      msg "NOTE! Please choose only the platforms/distributions you want to have included"
-      mrun "sleep 1"
-      msg "$_STATUS A: Switching user and running Platforms build"
-      mrun "sleep 1"
       service cron stop &> /dev/null
       rm -f /opt/tmp/testecho*
       create_shared_dirs
       manage_o_contrib
-      su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+      msg "NOTE! Please choose only the platforms/distributions you want to have included"
+      mrun "sleep 1"
+      msg "$_STATUS A: Switching user and running Platforms build"
+      mrun "sleep 1"
+      cd $_ROOT
+      su -s /bin/bash $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
         msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
