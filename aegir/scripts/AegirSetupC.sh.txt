@@ -354,8 +354,10 @@ msg "$_STATUS C: Downloading o_contrib_seven modules, please wait..."
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
     git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
+    rm -f -r expire/.git
     rm -f -r purge*
     git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
+    rm -f -r purge/.git
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
@@ -401,8 +403,10 @@ msg "$_STATUS C: Downloading o_contrib modules, please wait..."
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r expire*
     git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
+    rm -f -r expire/.git
     rm -f -r purge*
     git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git &> /dev/null
+    rm -f -r purge/.git
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
@@ -894,6 +898,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   cd $_CORE
   git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE_DISTRO &> /dev/null
+  rm -f -r $_CORE_DISTRO/.git
   replace_drupal6_core
   enable_drupal6_contrib
   sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
@@ -1547,6 +1552,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   git clone --branch 8.x http://git.drupal.org/project/drupal.git $_THIS_DISTRO &> /dev/null
+  rm -f -r $_CORE_DISTRO/.git
   rm -f $_CORE_DISTRO/*.txt
   rm -f $_CORE_DISTRO/core/*.txt
   cd $_CORE_DISTRO
@@ -1916,6 +1922,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   cd $_THIS_PRPATH/libraries
   git clone git://github.com/zencoder/zencoder-php.git zencoder &> /dev/null
+  rm -f -r zencoder/.git
   create_dirs
   themes_for_d7
 fi
@@ -1966,6 +1973,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE_DISTRO/profiles/default
   cd $_THIS_PRPATH/modules/atrium_features/
   git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
+  rm -f -r atrium_folders/.git
   $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
   $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
   $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
@@ -2459,6 +2467,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE_DISTRO &> /dev/null
+  rm -f -r $_CORE_DISTRO/.git
   replace_drupal7_core
   init_core_distro_seven_root
   sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_THIS_PRPATH/acquia.info &> /dev/null
