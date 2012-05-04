@@ -666,7 +666,6 @@ if [ `whoami` = "root" ] ; then
 else
   msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first"
   msg "Bye"
-  echo " "
   exit 1
 fi
 #
@@ -675,7 +674,6 @@ if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
   msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
   msg "Bye"
-  echo " "
   exit 1
 else
   _VERSIONS_TEST=`cat /var/aegir/config/includes/barracuda_log.txt`
@@ -685,7 +683,6 @@ else
     msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
     msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
     msg "Bye"
-    echo " "
     exit 1
   fi
 fi

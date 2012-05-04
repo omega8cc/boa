@@ -766,7 +766,6 @@ not_supported_os () {
   msg "It is not any supported Debian or Ubuntu version"
   msg "You need Debian - Squeeze (recommended)"
   msg "or Ubuntu - Precise or Lucid"
-  msg " "
   exit 1
 }
 #
@@ -2704,7 +2703,6 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 
 EOF
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
-  echo " "
   exit 1
   fi
 fi
@@ -2737,7 +2735,6 @@ if ! netcat -w 8 -z ftp.drupal.org 80 ; then
   msg "Please try to run this script again in a few minutes"
   msg "or better yet, hours"
   msg "Bye"
-  echo " "
   exit 1
 fi
 if ! netcat -w 8 -z github.com 9418 ; then
@@ -2746,7 +2743,6 @@ if ! netcat -w 8 -z github.com 9418 ; then
   msg "Please try to run this script again in a few minutes"
   msg "Also, make sure that the git port 9418 is open"
   msg "Bye"
-  echo " "
   exit 1
 fi
 
@@ -2776,7 +2772,6 @@ if ! netcat -w 8 -z $_DB_SERVER_SRC 80 ; then
   msg "Please try to run this script again in a few minutes"
   msg "or better yet, hours"
   msg "Bye"
-  echo " "
   exit 1
 fi
 
@@ -2887,7 +2882,6 @@ if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; t
   msg "Please try to run this script again in a few minutes"
   msg "Also, make sure that the git port 9418 is open"
   msg "Bye"
-  echo " "
   exit 1
 fi
 # Get apt helper
@@ -2950,7 +2944,6 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "You can also use (for testing) latest dev version:"
     msg "wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt"
     msg "Bye"
-    echo " "
     exit 1
   fi
 fi
@@ -3212,7 +3205,6 @@ EOF
 
 EOF
     msg "EXIT on error due to invalid DNS setup"
-    echo " "
     exit 1
   else
     echo "$_THISHOST" > /etc/hostname
@@ -3267,7 +3259,6 @@ else ### if [ "$_STATUS" = "UPGRADE" ] ; then
   else
     msg "EXIT on error due to not found or not specified Aegir domain"
     msg "Please specify your previously working Aegir domain as a value of _MY_FRONT"
-    echo " "
     exit 1
   fi
   mrun "sleep 1"
@@ -4452,7 +4443,6 @@ else
 
 EOF
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
-  echo " "
   exit 1
 fi
 
@@ -4469,7 +4459,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     msg "Bye"
     rm -f /root/.my.pass.txt
     mkdir -p /var/aegir
-    echo " "
     exit 1
   fi
   msg "INFO: Installing Aegir Master Instance, please wait..."
@@ -4595,7 +4584,6 @@ else
       msg "HINT: Please check $_LOG for more information"
       msg "HINT: on errors occured and then run Barracuda installer again"
       msg "Bye"
-      echo " "
       exit 1
     fi
     upgrade_aegir_master

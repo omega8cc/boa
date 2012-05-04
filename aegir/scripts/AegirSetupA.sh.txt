@@ -683,7 +683,6 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "You can also use (for testing) latest dev version:"
     msg "wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt"
     msg "Bye"
-    echo " "
     touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1
   fi
