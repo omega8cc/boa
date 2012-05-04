@@ -128,7 +128,7 @@ Octopus can install the platforms listed below:
  Commerce 1.6 ----------------- http://drupalcommerce.org
  Commons 2.6 ------------------ http://acquia.com/drupalcommons
  Conference 1.0-beta2 --------- http://usecod.com
- Drupal 7.14 ------------------ http://drupal.org/drupal-7.14
+ Drupal 7.14.1 ---------------- http://drupal.org/drupal-7.14
  Drupal 8.0-dev --------------- http://bit.ly/drupal-eight
  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
  Feature Server 1.1 ----------- http://bit.ly/fserver
@@ -151,7 +151,10 @@ Octopus can install the platforms listed below:
  Ubercart 3.1.1 --------------- http://ubercart.org
  Videola 1.0-alpha3 ----------- http://videola.tv
 
-All 5/6 platforms have been enhanced using Pressflow Drupal core.
+All D5/D6 platforms have been enhanced using Pressflow Drupal core.
+
+All D7 platforms include some hotfixes published between latest
+Drupal core release and latest BOA release.
 
 Platforms marked with (int) come also with ready to use translations
 of Drupal core in 25 languages. Only languages with at least
