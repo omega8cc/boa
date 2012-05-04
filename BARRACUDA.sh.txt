@@ -4474,7 +4474,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
   update_nginx_conf
   cd /var/aegir
-  _AEGIR_SCRIPT="aegir-head-install"
+  _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   if [ "$_AEGIR_VERSION" = "TEST" ] ; then
     _DRUSH_VERSION=All-Versions-HEAD
     _DRUSH_FAMILY=5
@@ -4489,11 +4489,11 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
     sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files
   done
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT.sh.txt ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+    su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
   else
-    su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT.sh.txt $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+    su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   mrun "sleep 1"
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
@@ -4516,7 +4516,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
   chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
-  rm -f /var/aegir/$_AEGIR_SCRIPT.sh.txt
+  rm -f /var/aegir/$_AEGIR_SCRIPT
   chmod 711 /var/aegir/config/includes &> /dev/null
   chmod 711 /var/aegir/config &> /dev/null
   chmod 711 /var/aegir/.drush &> /dev/null

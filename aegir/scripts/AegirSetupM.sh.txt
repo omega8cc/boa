@@ -71,7 +71,9 @@ AEGIR_HOST=`uname -n`
 DRUSH="$AEGIR_HOME/drush/drush.php"
 
 if [ `whoami` = "root" ] ; then
-  msg "This script should be ran as a non-root user"
+  msg "FATAL ERROR: This script should be ran as a non-root user"
+  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 
