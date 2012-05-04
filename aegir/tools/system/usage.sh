@@ -476,7 +476,7 @@ else
 fi
 
 ###--------------------###
-echo "INFO: Checking BARRACUDA version, please wait..."
+echo "INFO: Checking BARRACUDA version..."
 cd /opt/tmp
 wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/version.txt
 if [ -e "/opt/tmp/version.txt" ] ; then

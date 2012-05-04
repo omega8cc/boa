@@ -728,7 +728,8 @@ create_drupal7_basic () {
 #
 msg "$_STATUS C: Aegir automated install script part C"
 if [ `whoami` = "root" ] ; then
-  msg "$_STATUS C: This script should be ran as a non-root user - exit now"
+  msg "$_STATUS C: FATAL ERROR: This script should be ran as a non-root user"
+  msg "$_STATUS C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
   exit 1
 fi
 

@@ -2914,7 +2914,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Checking BARRACUDA version, please wait..."
+msg "INFO: Checking BARRACUDA version..."
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   _FILE_VERSION=release.txt
 else

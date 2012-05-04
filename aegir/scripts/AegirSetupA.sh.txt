@@ -733,6 +733,15 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
+  msg "$_STATUS A: Checking again if Aegir install was successful"
+  mrun "sleep 1"
+  if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+    msg "$_STATUS A: Aegir setup test OK, we can proceed"
+  else
+    msg "$_STATUS A: FATAL ERROR: Something is wrong, Aegir not ready"
+    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    exit 1
+  fi
   msg "$_STATUS A: Switching user and running Platforms build"
   mrun "sleep 1"
   _DIST_INSTALL=YES
@@ -744,6 +753,15 @@ else
   if [ "$_HM_ONLY" = "YES" ] ; then
     _DIST_INSTALL=NO
   else
+    msg "$_STATUS A: Checking again if Aegir upgrade was successful"
+    mrun "sleep 1"
+    if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+      msg "$_STATUS A: Aegir setup test OK, we can proceed"
+    else
+      msg "$_STATUS A: FATAL ERROR: Something is wrong, Aegir not ready"
+      msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      exit 1
+    fi
     echo " "
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
       true

@@ -188,7 +188,8 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
 msg "$_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
-  msg "$_STATUS B: This script should be ran as a non-root user - exit now"
+  msg "$_STATUS B: FATAL ERROR: This script should be ran as a non-root user"
+  msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   exit 1
 fi
 
@@ -489,12 +490,18 @@ fi
 
 
 ###--------------------###
-msg "$_STATUS B: Simple check if Aegir install or upgrade is successful"
+if [ "$_LOCAL_STATUS" = "INIT" ] ; then
+  _MSG_STATUS="install"
+else
+  _MSG_STATUS="upgrade"
+fi
+msg "$_STATUS B: Simple check if Aegir $_MSG_STATUS is successful"
 mrun "sleep 1"
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "$_STATUS B: Aegir setup test OK"
 else
-  msg "$_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready - exit now"
+  msg "$_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready"
+  msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   exit 1
 fi
 
