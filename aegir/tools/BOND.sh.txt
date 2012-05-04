@@ -141,17 +141,20 @@ _AEGIR_VERSION=HEAD
 ###----------------------------------------###
 ###
 ### Use this when you are experiencing issues
-### trying to connect to the default drupal
+### trying to connect to the default github
 ### repository. Valid options:
 ###
-### _FORCE_GIT_MIRROR=drupal
 ### _FORCE_GIT_MIRROR=github
+### _FORCE_GIT_MIRROR=drupal
 ### _FORCE_GIT_MIRROR=gitorious
 ###
 ### Note: with forced mirror the script will
 ### not try to connect and then switch to
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
+###
+### We recommend github as it is much faster,
+### often 10x than drupal and gitorious.
 ###
 _FORCE_GIT_MIRROR=""
 

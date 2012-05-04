@@ -401,11 +401,11 @@ _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 ###----------------------------------------###
 ###
 ### Use this when you are experiencing issues
-### trying to connect to the default drupal
+### trying to connect to the default github
 ### repository. Valid options:
 ###
-### _FORCE_GIT_MIRROR=drupal
 ### _FORCE_GIT_MIRROR=github
+### _FORCE_GIT_MIRROR=drupal
 ### _FORCE_GIT_MIRROR=gitorious
 ###
 ### Note: with forced mirror the script will
