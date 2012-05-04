@@ -135,6 +135,7 @@ fatal () {
 	echo " "
 	msg "Fatal Error Occurred: $1"
 	msg "Cannot continue installation"
+	touch /opt/tmp/status-AegirSetupB-FAIL
 	exit 1
 }
 #
@@ -310,7 +311,9 @@ fi
 if $_DRUSHCMD help > /dev/null ; then
   msg "$_STATUS B: Drush seems to be functioning properly"
 else
-  msg "$_STATUS B: Drush is broken ($DRUSH help failed)"
+  msg "$_STATUS B: FATAL ERROR: Drush is broken ($DRUSH help failed)"
+  msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+  touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -468,7 +471,9 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   drush '@hostmaster' hosting-dispatch &> /dev/null
 else
   if [ -d "$_AEGIR_ROOT" ] ; then
-    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exists! Exit"
+    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exists!"
+    msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+    touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
   fi
   msg "$_STATUS B: Hostmaster STATUS: upgrade start"
@@ -499,22 +504,13 @@ fi
 msg "$_STATUS B: Simple check if Aegir $_MSG_STATUS is successful"
 mrun "sleep 1"
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-  msg "$_STATUS B: Aegir setup test OK"
+  msg "$_STATUS B: Aegir $_MSG_STATUS test result: OK"
 else
-  msg "$_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready"
+  msg "$_STATUS B: FATAL ERROR: Required file $_AEGIR_ROOT/sites/$_DOMAIN/settings.php does not exist"
   msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
 fi
-
-
-### fix for typo http://drupal.org/node/979656
-#
-# cd $_ROOT/.drush/drush_make
-# cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/drush-remote_make_files.patch ./
-# patch -p0 < drush-remote_make_files.patch &> /dev/null
-#
-###
 
 
 ###---### Enhancing Aegir UI

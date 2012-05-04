@@ -146,6 +146,7 @@ fatal () {
 	echo " "
 	msg "Fatal Error Occurred: $1"
 	msg "Cannot continue installation"
+	touch /opt/tmp/status-AegirSetupA-FAIL
 	exit 1
 }
 #
@@ -683,6 +684,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt"
     msg "Bye"
     echo " "
+    touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1
   fi
 fi
@@ -768,7 +770,9 @@ AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
 AEGIR_HOST=`uname -n`
 _RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
 if [ -z "$_RESOLVEIP" ] ; then
-  msg "This server does not have a hostname that resolves to an IP address"
+  msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
+  msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+  touch /opt/tmp/status-AegirSetupA-FAIL
   exit 1
 else
   AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $6}'`
@@ -801,6 +805,12 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   chown root:$_USRG /data/u &> /dev/null
   chmod 0771 /data/u &> /dev/null
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+  if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
+    msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
+    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    touch /opt/tmp/status-AegirSetupA-FAIL
+    exit 1
+  fi
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
   msg "$_STATUS A: Aegir Satellite Instance installation completed"
@@ -826,6 +836,12 @@ else
     chown root:$_USRG /data/u &> /dev/null
     chmod 0771 /data/u &> /dev/null
     su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+    if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
+      msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
+      msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+      touch /opt/tmp/status-AegirSetupA-FAIL
+      exit 1
+    fi
     chmod 0700 /data/u &> /dev/null
     chown root:root /data/u &> /dev/null
     msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
@@ -967,16 +983,6 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Checking again if Aegir install was successful"
-  mrun "sleep 1"
-  if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-    msg "$_STATUS A: Aegir setup test OK, we can proceed"
-  else
-    msg "$_STATUS A: FATAL ERROR: Something is wrong, Aegir not ready"
-    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-    touch /opt/tmp/status-AegirSetupA-FAIL
-    exit 1
-  fi
   msg "$_STATUS A: Switching user and running Platforms build"
   mrun "sleep 1"
   _DIST_INSTALL=YES
@@ -984,21 +990,17 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   create_shared_dirs
   manage_o_contrib
   su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+  if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
+    msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
+    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    touch /opt/tmp/status-AegirSetupA-FAIL
+    exit 1
+  fi
   msg "$_STATUS A: Platforms installation completed"
 else
   if [ "$_HM_ONLY" = "YES" ] ; then
     _DIST_INSTALL=NO
   else
-    msg "$_STATUS A: Checking again if Aegir upgrade was successful"
-    mrun "sleep 1"
-    if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
-      msg "$_STATUS A: Aegir setup test OK, we can proceed"
-    else
-      msg "$_STATUS A: FATAL ERROR: Something is wrong, Aegir not ready"
-      msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch /opt/tmp/status-AegirSetupA-FAIL
-      exit 1
-    fi
     echo " "
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
       true
@@ -1012,6 +1014,12 @@ else
       create_shared_dirs
       manage_o_contrib
       su -s /bin/bash $_USER -c "/bin/bash AegirSetupC.sh.txt"
+      if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
+        msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
+        msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+        touch /opt/tmp/status-AegirSetupA-FAIL
+        exit 1
+      fi
       msg "$_STATUS A: Platforms installation completed"
     else
       msg "$_STATUS A: No new platforms added this time"

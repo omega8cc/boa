@@ -853,6 +853,12 @@ fi
 force_advanced_nginx_config_main
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
 bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
+if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
+  msg "FATAL ERROR: AegirSetupA installer failed"
+  msg "FATAL ERROR: Aborting Octopus installer NOW!"
+  touch /opt/tmp/status-Octopus-FAIL
+  exit 1
+fi
 force_advanced_nginx_config_main
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt

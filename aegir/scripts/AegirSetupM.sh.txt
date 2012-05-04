@@ -80,7 +80,9 @@ fi
 _RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
 
 if [ -z "$_RESOLVEIP" ] ; then
-  msg "This server does not have a hostname that resolves to an IP address"
+  msg "FATAL ERROR: This server does not have a hostname that resolves to an IP address"
+  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 else
   AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $6}'`
@@ -93,7 +95,9 @@ if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
   msg  "MySQL is listening on $AEGIR_HOST_IP."
   true
 else
-  msg "MySQL is not configured to listen on $AEGIR_HOST_IP."
+  msg "FATAL ERROR: MySQL is not configured to listen on $AEGIR_HOST_IP"
+  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 
@@ -152,7 +156,9 @@ update_php_cli_drush
 if $DRUSH help > /dev/null ; then
   msg "Drush seems to be functioning properly"
 else
-  msg "Drush is broken ($DRUSH help failed)"
+  msg "FATAL ERROR: Drush is broken ($DRUSH help failed)"
+  msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
+  touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 

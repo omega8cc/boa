@@ -2361,6 +2361,12 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
+    if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
+      msg "FATAL ERROR: AegirUpgrade installer failed"
+      msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+      touch /opt/tmp/status-Barracuda-FAIL
+      exit 1
+    fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
@@ -4496,6 +4502,13 @@ if [ "$_STATUS" = "INIT" ] ; then
     su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   mrun "sleep 1"
+  if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
+    msg "FATAL ERROR: AegirSetupM installer failed"
+    msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+    msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
+    touch /opt/tmp/status-Barracuda-FAIL
+    exit 1
+  fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
@@ -4527,7 +4540,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     true
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
-    msg "FATAL ERROR: Please check /var/aegir/install.log for more information on errors occured"
+    msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
     exit 1
   fi
 

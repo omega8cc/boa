@@ -100,7 +100,9 @@ hostmaster_dr_up () {
   if $_DRUSHCMD help > /dev/null ; then
     msg "INFO: Drush seems to be functioning properly"
   else
-    msg "INFO: Drush is broken ($DRUSH help failed)"
+    msg "FATAL ERROR: Drush is broken ($DRUSH help failed)"
+    msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+    touch /opt/tmp/status-AegirUpgrade-FAIL
     exit 1
   fi
 }
@@ -223,8 +225,8 @@ if [ -d "$_ROOT/host_master/000" ] ; then
   nextnum=00$((10#${last%%[^0-9]*} + 1))
   nextnum=${nextnum: -3}
   _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+  msg "INFO: Testing previous install..."
   if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
-    msg "INFO: Testing previous install..."
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
   else
@@ -239,8 +241,8 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     nextnum=${nextnum: -3}
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+    msg "INFO: Testing previous install again after removing zombie..."
     if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
-      msg "INFO: Testing previous install..."
       _DISTRO=${nextnum}
       _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
     fi
@@ -249,7 +251,9 @@ fi
 
 _AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
 if [ -d "$_AEGIR_ROOT" ] ; then
-  msg "INFO: FATAL ERROR: $_AEGIR_ROOT already exists! Exit"
+  msg "FATAL ERROR: $_AEGIR_ROOT already exists"
+  msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
 fi
 
@@ -261,15 +265,16 @@ if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   hostmaster_mv_up
   hostmaster_go_up
   hostmaster_mi_up
-elif [ ! -d "/var/aegir/.drush/provision/http" ] ; then
-  msg "UPGRADE ERROR: Something (1) is wrong, we should stop now..."
-  msg "UPGRADE ERROR: Please report this in the Barracuda queue"
-  msg "BYE!"
+elif [ ! -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+  msg "FATAL ERROR: It looks like your setup is already broken because required file"
+  msg "FATAL ERROR: $_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php does not exist"
+  msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
-else
-  msg "UPGRADE ERROR: Something (2) is wrong, we should stop now..."
-  msg "UPGRADE ERROR: Please report this in the Barracuda queue"
-  msg "BYE!"
+elif [ ! -d "/var/aegir/.drush/provision/http" ] ; then
+  msg "FATAL ERROR: Required directory /var/aegir/.drush/provision/http does not exist"
+  msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
 fi
 
