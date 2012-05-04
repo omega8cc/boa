@@ -617,7 +617,7 @@ manage_o_contrib () {
     cd $_CORE/o_contrib
   fi
   if [ $_STATUS != "INIT" ] ; then
-    msg "$_STATUS A: Upgrading o_contrib and o_contrib_seven modules, please wait..."
+    msg "$_STATUS A: Running o_contrib modules check and upgrade, please wait..."
     upgrade_o_contrib
   fi
   if [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
@@ -730,6 +730,7 @@ else
   _THIS_CORE="$_ALL_DISTRO"
   msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
+_THIS_CTRL="$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION"
 
 
 ###---### Add required users and create directories
