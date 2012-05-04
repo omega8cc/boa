@@ -38,7 +38,7 @@ starting with 1+ Aegir Standard or SSD Core:
   Drupal 7.14 ------------------ http://drupal.org/drupal-7.14
   Drupal 8.0-dev (option) ------ http://bit.ly/drupal-eight
   ELMS 1.0-alpha6 -------------- http://elms.psu.edu
-  Feature Server --------------- http://bit.ly/fserver
+  Feature Server 1.1 ----------- http://bit.ly/fserver
   Managing News 1.2.1 ---------- http://managingnews.com
   Open Atrium 1.3.1 ------------ http://openatrium.com
   Pressflow 5.23 --------------- http://pressflow.org

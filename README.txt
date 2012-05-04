@@ -131,7 +131,7 @@ Octopus can install the platforms listed below:
  Drupal 7.14 ------------------ http://drupal.org/drupal-7.14
  Drupal 8.0-dev --------------- http://bit.ly/drupal-eight
  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
- Feature Server --------------- http://bit.ly/fserver
+ Feature Server 1.1 ----------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
  MartPlug 1.0-dev ------------- http://drupal.org/project/martplug
  NodeStream 1.5 --------------- http://nodestream.org
