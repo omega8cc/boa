@@ -426,7 +426,7 @@ download_textile () {
 #
 # download_o_contrib_seven
 download_o_contrib_seven () {
-msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
+  #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
@@ -476,7 +476,7 @@ msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
 #
 # download_o_contrib_six
 download_o_contrib_six () {
-msg "$_STATUS A: Downloading o_contrib modules, please wait..."
+  #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
@@ -566,7 +566,7 @@ else
 fi
 if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
  if [ ! -d "/data/all/$_LAST_ALL/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  msg "$_STATUS A: Running o_contrib upgrade #1, please wait..."
+  #msg "$_STATUS A: Running o_contrib upgrade #1, please wait..."
   cd /data/all/$_LAST_ALL/o_contrib
   rm -f -r *
   download_o_contrib_six
@@ -575,7 +575,7 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib" ] ; then
 fi
 if [ -d "$_CORE/o_contrib" ] ; then
  if [ ! -d "$_CORE/o_contrib/$_TEST_MODULE" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  msg "$_STATUS A: Running o_contrib upgrade #2, please wait..."
+  #msg "$_STATUS A: Running o_contrib upgrade #2, please wait..."
   cd $_CORE/o_contrib
   rm -f -r *
   download_o_contrib_six
@@ -584,7 +584,7 @@ if [ -d "$_CORE/o_contrib" ] ; then
 fi
 if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
  if [ ! -d "/data/all/$_LAST_ALL/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  msg "$_STATUS A: Running o_contrib_seven upgrade #1, please wait..."
+  #msg "$_STATUS A: Running o_contrib_seven upgrade #1, please wait..."
   cd /data/all/$_LAST_ALL/o_contrib_seven
   rm -f -r *
   download_o_contrib_seven
@@ -593,7 +593,7 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
 fi
 if [ -d "$_CORE/o_contrib_seven" ] ; then
  if [ ! -d "$_CORE/o_contrib_seven/robotstxt" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-  msg "$_STATUS A: Running o_contrib_seven upgrade #2, please wait..."
+  #msg "$_STATUS A: Running o_contrib_seven upgrade #2, please wait..."
   cd $_CORE/o_contrib_seven
   rm -f -r *
   download_o_contrib_seven
@@ -617,7 +617,7 @@ manage_o_contrib () {
     cd $_CORE/o_contrib
   fi
   if [ $_STATUS != "INIT" ] ; then
-    msg "$_STATUS A: Checking o_contrib and o_contrib_seven status, please wait..."
+    msg "$_STATUS A: Upgrading o_contrib and o_contrib_seven modules, please wait..."
     upgrade_o_contrib
   fi
   if [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
