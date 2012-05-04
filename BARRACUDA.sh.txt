@@ -2777,52 +2777,52 @@ fi
 
 
 ###--------------------###
+_GITHUB_WORKS=NO
 _DRUPAL_WORKS=NO
 _GITORIOUS_WORKS=NO
-_GITHUB_WORKS=NO
-if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
-  msg "INFO: We will use forced Drupal repository without testing connection"
-  _DRUPAL_WORKS=YES
-  _GITORIOUS_WORKS=NO
-  _GITHUB_WORKS=NO
-  sleep 1
-elif [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
   msg "INFO: We will use forced GitHub mirror without testing connection"
+  _GITHUB_WORKS=YES
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=NO
-  _GITHUB_WORKS=YES
+  sleep 1
+elif [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
+  msg "INFO: We will use forced Drupal repository without testing connection"
+  _GITHUB_WORKS=NO
+  _DRUPAL_WORKS=YES
+  _GITORIOUS_WORKS=NO
   sleep 1
 elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   msg "INFO: We will use forced Gitorious mirror without testing connection"
+  _GITHUB_WORKS=NO
   _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=YES
-  _GITHUB_WORKS=NO
   sleep 1
 else
-  msg "INFO: Testing Drupal, GitHub and Gitorious servers availability, please wait..."
+  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability, please wait..."
   sleep 1
+  _GITHUB_WORKS=YES
   _DRUPAL_WORKS=YES
   _GITORIOUS_WORKS=YES
-  _GITHUB_WORKS=YES
-  if ! netcat -w 8 -z git.drupal.org 80 ; then
-    _DRUPAL_WORKS=NO
-    msg "WARN: The Drupal master repository server doesn't respond..."
-  elif ! netcat -w 8 -z github.com 9418 ; then
+  if ! netcat -w 8 -z github.com 9418 ; then
     _GITHUB_WORKS=NO
     msg "WARN: The GitHub mirror repository server doesn't respond..."
+  elif ! netcat -w 8 -z git.drupal.org 80 ; then
+    _DRUPAL_WORKS=NO
+    msg "WARN: The Drupal master repository server doesn't respond..."
   elif ! netcat -w 8 -z code.aegir.cc 9418 ; then
     _GITORIOUS_WORKS=NO
     msg "WARN: The Gitorious mirror repository server doesn't respond..."
   fi
 fi
-if [ "$_DRUPAL_WORKS" = "YES" ] ; then
-  _BOA_REPO_NAME="barracuda"
-  _BOA_REPO_GIT_URL="http://git.drupal.org/project"
-  msg "INFO: Drupal master repository will be used for this install"
-elif [ "$_GITHUB_WORKS" = "YES" ] ; then
+if [ "$_GITHUB_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
   msg "INFO: GitHub mirror repository will be used for this install"
+elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
+  _BOA_REPO_NAME="barracuda"
+  _BOA_REPO_GIT_URL="http://git.drupal.org/project"
+  msg "INFO: Drupal master repository will be used for this install"
 elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
   _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
@@ -2967,7 +2967,7 @@ _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   if [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
-    _HTTP_WILDCARD=YES
+    #_HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
     _PURGE_MODE=OFF
   elif [ "$_THIS_RV" = "oneiric" ] ; then
