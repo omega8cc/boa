@@ -482,7 +482,6 @@ SHELL=/bin/bash
 ###
 ### Distributions
 ###
-_ACQUIA_SEVEN=7.12.11
 _CIVICRM_M6=4.1.2
 _CIVICRM_M7=4.1.2
 _CIVICRM6=3.4.8
@@ -748,7 +747,6 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
-  sed -i "s/EDIT_ACQUIA_SEVEN/$_ACQUIA_SEVEN/g"           $Files
   sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
   sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
