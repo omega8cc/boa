@@ -172,6 +172,7 @@ fatal () {
 	echo " "
 	msg "Fatal Error Occurred: $1"
 	msg "Cannot continue installation"
+	touch /opt/tmp/status-AegirSetupC-FAIL
 	exit 1
 }
 #
@@ -730,6 +731,7 @@ msg "$_STATUS C: Aegir automated install script part C"
 if [ `whoami` = "root" ] ; then
   msg "$_STATUS C: FATAL ERROR: This script should be ran as a non-root user"
   msg "$_STATUS C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
+  touch /opt/tmp/status-AegirSetupC-FAIL
   exit 1
 fi
 
@@ -2835,6 +2837,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 fi
 rm -f make_platform.php
 
+touch /opt/tmp/status-AegirSetupC-OK
 
 ###----------------------------------------###
 ###

@@ -190,6 +190,7 @@ msg "$_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
   msg "$_STATUS B: FATAL ERROR: This script should be ran as a non-root user"
   msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+  touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
 fi
 
@@ -502,6 +503,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
 else
   msg "$_STATUS B: FATAL ERROR: Something is wrong, Aegir not ready"
   msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+  touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
 fi
 
@@ -623,6 +625,7 @@ else
   ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi
 
+touch /opt/tmp/status-AegirSetupB-OK
 
 ###----------------------------------------###
 ###
