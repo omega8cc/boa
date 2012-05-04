@@ -672,11 +672,13 @@ remove_default_core_seven_profiles () {
 #
 # replace drupal7 core
 replace_drupal7_core () {
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  rm -f $_DRUPAL7.tar.gz
-  cp -af $_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_DRUPAL7
+  if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
+    cd $_CORE
+    wget -q -U iCab http://files.aegir.cc/dev/$_DRUPAL7.tar.gz
+    tar -xzf $_CORE/$_DRUPAL7.tar.gz
+    rm -f $_CORE/$_DRUPAL7.tar.gz
+  fi
+  cp -af $_CORE/$_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
 }
 #
 # rename drupal7 profiles
@@ -703,6 +705,22 @@ rename_drupal7_distro_directory () {
 add_old_short_name_seven () {
   sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" $_CORE_DISTRO/profiles/minimal/minimal.info &> /dev/null
   sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
+}
+#
+# create drupal7 basic platform
+create_drupal7_basic () {
+  if [ ! -d "$_CORE_DISTRO" ] ; then
+    mkdir -p $_CORE_DISTRO
+    replace_drupal7_core
+    init_core_distro_seven_root
+    rename_drupal7_profiles
+    add_old_short_name_seven
+    create_dirs
+    themes_for_d7
+  fi
+  init_this_distro_root
+  create_d7_symlinks
+  patch_d7_core
 }
 
 
@@ -1420,23 +1438,7 @@ _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
 msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  if [ -d "$_CORE/$_DRUPAL7" ] ; then
-    mv $_CORE/$_DRUPAL7 $_CORE/drupal-seven-old
-  fi
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  tar -xzf $_DRUPAL7.tar.gz
-  mv $_DRUPAL7 $_THIS_DISTRO
-  init_core_distro_seven_root
-  rename_drupal7_profiles
-  add_old_short_name_seven
-  create_dirs
-  themes_for_d7
-fi
-init_this_distro_root
-create_d7_symlinks
-patch_d7_core
+create_drupal7_basic
 msg "DISTRO: $_F_DRUPAL7_D installation completed"
 mrun "sleep 1"
 echo " "
@@ -1451,29 +1453,10 @@ _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
 msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  if [ ! -e "$_CORE/$_DRUPAL7.tar.gz" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-  fi
-  tar -xzf $_DRUPAL7.tar.gz
-  mv $_DRUPAL7 $_THIS_DISTRO
-  init_core_distro_seven_root
-  rename_drupal7_profiles
-  add_old_short_name_seven
-  create_dirs
-  themes_for_d7
-fi
-init_this_distro_root
-create_d7_symlinks
-patch_d7_core
+create_drupal7_basic
 msg "DISTRO: $_F_DRUPAL7_S installation completed"
 mrun "sleep 1"
 echo " "
-fi
-
-if [ -d "$_CORE/drupal-seven-old" ] ; then
-  mv $_CORE/drupal-seven-old $_CORE/$_DRUPAL7
 fi
 
 ###---### Drupal 7 Production
@@ -1483,43 +1466,11 @@ _THIS_DISTRO="$_DRUPAL7P"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
-if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
-  msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
-  mrun "sleep 1"
-  if [ ! -d "$_CORE_DISTRO" ] ; then
-    cd $_CORE
-    if [ ! -e "$_CORE/$_DRUPAL7.tar.gz" ] ; then
-      wget -q -U iCab http://ftp.drupal.org/files/projects/$_DRUPAL7.tar.gz
-    fi
-    tar -xzf $_DRUPAL7.tar.gz
-    rm -f $_DRUPAL7.tar.gz
-    mv $_DRUPAL7 $_THIS_DISTRO
-    init_core_distro_seven_root
-    rename_drupal7_profiles
-    add_old_short_name_seven
-    create_dirs
-    themes_for_d7
-  fi
-  mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-  cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-  create_symlinks
-  create_d7_symlinks
-  patch_d7_core
-  msg "DISTRO: $_F_DRUPAL7_P installation completed"
-  mrun "sleep 1"
-elif [ -d "$_CORE/$_DRUPAL7" ] ; then
-  echo " "
-  msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
-  mrun "sleep 1"
-  _CORE_DISTRO="$_CORE/$_DRUPAL7"
-  mkdir -p $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
-  cd $_ROOT/distro/$_THIS_CORE/$_DRUPAL7
-  create_symlinks
-  create_d7_symlinks
-  patch_d7_core
-  msg "DISTRO: $_F_DRUPAL7_P installation completed"
-  mrun "sleep 1"
-fi
+msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
+mrun "sleep 1"
+create_drupal7_basic
+msg "DISTRO: $_F_DRUPAL7_P installation completed"
+mrun "sleep 1"
 fi
 
 else

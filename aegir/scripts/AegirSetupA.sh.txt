@@ -1315,6 +1315,11 @@ mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
+if [ -d "$_CORE/$_DRUPAL7" ] ; then
+  mkdir -p /var/backups/trash
+  rm -f -r /var/backups/trash/*
+  mv -f $_CORE/$_DRUPAL7 /var/backups/trash/ &> /dev/null
+fi
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     true
