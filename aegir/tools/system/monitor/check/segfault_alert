@@ -121,24 +121,35 @@ sub find_domain
   $d =~ s/[^a-z0-9\.\-]//g;
   if ($d !~ /^$/) {
     $found = 1;
+    $d =~ s/^www\.//g;
     $dx = $d;
     $pthl=`cat /data/disk/*/.drush/$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
-    if ($pthl !~ /^$/) {
-      $oct = 1;
+    if ($pthl =~ /(No such file or directory)/) {
+      $pthl=`cat /data/disk/*/.drush/www.$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
     }
-    else {
+    if ($pthl =~ /(No such file or directory)/) {
       $pthl=`cat /var/aegir/.drush/$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
+    }
+    if ($pthl =~ /(No such file or directory)/) {
+      $pthl=`cat /var/aegir/.drush/www.$d.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`;
     }
     local($w, $x, $y, $z) = split(/\s+/,$pthl);
     $pthl = $z;
     chomp ($pthl);
     local($o, $p, $q, $r) = split(/\//,$pthl);
     $rx = $r;
-    $disl = "/data/disk/$rx/config/server_master/nginx/vhost.d/$d";
+    $disla = "/data/disk/$rx/config/server_master/nginx/vhost.d/$d";
+    $dislb = "/data/disk/$rx/config/server_master/nginx/vhost.d/www.$d";
     `mkdir -p /var/backups/segfault`;
-    if (-f "$disl" && $rx !~ /^$/) {
-      `mv -f $disl /var/backups/segfault/`;
+    if (-f "$disla" && $rx !~ /^$/) {
+      `mv -f $disla /var/backups/segfault/`;
       `service nginx reload`;
+      $disl = $disla;
+    }
+    elsif (-f "$dislb" && $rx !~ /^$/) {
+      `mv -f $dislb /var/backups/segfault/`;
+      `service nginx reload`;
+      $disl = $dislb;
     }
     $ngxl =~ s/([";])/\\$1/g;
     chomp ($ngxl);
