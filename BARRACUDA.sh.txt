@@ -84,7 +84,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _DNS_SETUP_TEST=YES
 ### _THIS_DB_HOST=localhost
 ### _SMTP_RELAY_TEST=YES
-### _MY_OWNIP=automatic
+### _MY_OWNIP=automatically-discovered
 ### _MY_HOSTN=$_EASY_HOSTNAME
 ### _MY_FRONT=master.$_EASY_HOSTNAME
 ###
@@ -2738,12 +2738,12 @@ else
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
   if [ "$_EASY_LOCALHOST" = "YES" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
-    msg "FATAL ERROR: You must enable either _EASY_HOST or _EASY_LOCALHOST mode, not both"
+    msg "FATAL ERROR: You must enable either _EASY_PUBLIC or _EASY_LOCALHOST mode, not both"
     exit 1
   fi
   if [ "$_EASY_PUBLIC" = "YES" ] ; then
-    if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "your-wildcard-enabled-hostname-here" ] ; then
-      msg "FATAL ERROR: You must define also _EASY_HOSTNAME when _EASY_HOST mode is enabled"
+    if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "wildcard-enabled-hostname" ] ; then
+      msg "FATAL ERROR: You must define also _EASY_HOSTNAME when _EASY_PUBLIC mode is enabled"
       exit 1
     fi
   fi
@@ -2783,6 +2783,8 @@ else
     _SMTP_RELAY_TEST=YES
     _MY_HOSTN="$_EASY_HOSTNAME"
     _MY_FRONT="master.$_EASY_HOSTNAME"
+    validate_public_ip &> /dev/null
+    _MY_OWNIP="$_THISHTIP"
   fi
   barracuda_cnf
 fi
