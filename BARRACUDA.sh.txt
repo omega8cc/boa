@@ -240,11 +240,12 @@ _XTRAS_LIST="FTP CHV CSF"
 ### HTTP LISTENING MODE                    ###
 ###----------------------------------------###
 ###
-### By default Nginx will listen on defined
-### or discovered IP address, but you can
-### change this to wildcard, so it will listen
-### on all available IPs. This may be useful
-### in some environments like Amazon EC2
+### With disabled wildcard mode Nginx would
+### listen only on defined or discovered IP
+### address, while with now default wildcard,
+### it will listen on all available IPs.
+### This may be useful in some environments
+### like localhost install or Amazon EC2
 ### with dynamic local IP and separate public
 ### IP not available on the local interface.
 ###
@@ -252,11 +253,11 @@ _XTRAS_LIST="FTP CHV CSF"
 ### install. You can't change this on upgrade
 ### because it could cause serious issues.
 ###
-### To enable wildcard mode, change this to:
+### To not use wildcard mode, change this to:
 ###
-### _HTTP_WILDCARD=YES
+### _HTTP_WILDCARD=NO
 ###
-_HTTP_WILDCARD=NO
+_HTTP_WILDCARD=YES
 
 
 ###----------------------------------------###
@@ -2967,7 +2968,7 @@ _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   if [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
-    #_HTTP_WILDCARD=YES
+    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
     _PURGE_MODE=OFF
   elif [ "$_THIS_RV" = "oneiric" ] ; then
