@@ -59,6 +59,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
   OpenPublic 1.0-beta3 --------- http://openpublicapp.com
   OpenPublish 3.0-alpha8 ------- http://openpublishapp.com
   OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
+  Panopoly 1.0-beta3 ----------- http://drupal.org/project/panopoly
   Ubercart 3.1.1 --------------- http://ubercart.org
   Videola 1.0-alpha3 ----------- http://videola.tv
 

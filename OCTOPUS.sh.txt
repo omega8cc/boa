@@ -184,6 +184,7 @@ _PHP_CLI_VERSION=5.2
 ### OSR ----------- OpenScholar
 ### OVO ----------- Octopus Video
 ### PPT ----------- ProsePoint
+### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ### VOA ----------- Videola
@@ -506,6 +507,7 @@ _OPENOUTREACH=7.x-1.0-beta8
 _OPENPUBLIC=beta3-build100
 _OPENPUBLISH=7.x-1.0-alpha8
 _OPENSCHOLAR=2.0-beta13
+_PANOPOLY=7.x-1.0-beta3
 _PROSEPOINT=0.43
 _UBER_CART_SEVEN=3.1.1
 _UBERCART=2.9.1
@@ -795,6 +797,7 @@ do
   sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files
   sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
   sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
+  sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files
   sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files
   sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
   sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files

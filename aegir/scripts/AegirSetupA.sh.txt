@@ -66,6 +66,7 @@ _OPENOUTREACH=EDIT_OPENOUTREACH
 _OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
+_PANOPOLY=EDIT_PANOPOLY
 _PROSEPOINT=EDIT_PROSEPOINT
 _SMALLCORE_6_LANG=EDIT_SMALLCORE_6_LANG
 _SMALLCORE6=EDIT_SMALLCORE6
@@ -1408,6 +1409,11 @@ mrun "sleep 1"
   if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites" ] ; then
