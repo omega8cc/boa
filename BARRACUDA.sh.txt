@@ -48,16 +48,83 @@ _MY_EMAIL="notify@omega8.cc"
 
 
 ###----------------------------------------###
-### EASY LOCALHOST MODE                    ###
+### EASY SETUP                             ###
 ###----------------------------------------###
 ###
-### This option works only with initial
-### install and is disabled on upgrade.
+### You can configure all options manually
+### or simply use 'EASY PUBLIC SETUP MODE' for
+### standard install or 'EASY LOCALHOST MODE'
+### for local install. See below for details.
 ###
-### You can use this option to configure all
-### other options below automatically for
-### an easy install on your localhost, like
-### on your Linux laptop or VirtualBox VM.
+
+
+###----------------------------------------###
+### EASY PUBLIC SETUP MODE                 ###
+###----------------------------------------###
+###
+### Useful only during initial system setup.
+### Enabled by default since BOA-2.0.3
+###
+### It will skip all prompts and configure
+### Barracuda with only some options/services
+### enabled, as listed below:
+###
+### _BUILD_FROM_SRC=NO
+### _PHP_MODERN_ONLY=YES
+### _XTRAS_LIST="PDS CSF CHV FTP"
+### _HTTP_WILDCARD=YES
+### _AUTOPILOT=YES
+### _DEBUG_MODE=NO
+### _AEGIR_VERSION=HEAD
+### _DB_SERVER=MariaDB
+### _SSH_PORT=22
+### _LOCAL_DEBIAN_MIRROR=ftp.debian.org
+### _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
+### _FORCE_GIT_MIRROR=github
+### _DNS_SETUP_TEST=YES
+### _THIS_DB_HOST=localhost
+### _SMTP_RELAY_TEST=YES
+### _MY_OWNIP=automatic
+### _MY_HOSTN=$_EASY_HOSTNAME
+### _MY_FRONT=master.$_EASY_HOSTNAME
+###
+### To disable, change this to NO below.
+###
+_EASY_PUBLIC=YES
+
+###
+### Please enter your FQDN hostname below.
+###
+### It should already point to your server
+### IP address with DNS wildcard configured,
+### so you may need to wait for propagation
+### on the Internet before it will work.
+###
+### See for reference: http://bit.ly/IZqv2Q
+###
+### NOTE! You shouldn't use "mydomain.org"
+### as your hostname. It should be some
+### subdomain, like "server.mydomain.org"
+###
+### You *don't* need to configure your server
+### hostname, since Barracuda will do that
+### for you, automatically.
+###
+_EASY_HOSTNAME="wildcard-enabled-hostname"
+
+###----------------------------------------###
+###
+### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
+### IF _EASY_PUBLIC MODE HAS BEEN ENABLED.
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### EASY LOCALHOST SETUP MODE              ###
+###----------------------------------------###
+###
+### Useful only during initial system setup.
 ###
 ### It will skip all prompts and configure
 ### Barracuda with only safe options/services
@@ -68,7 +135,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _XTRAS_LIST="PDS CHV"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
-### _DEBUG_MODE=YES
+### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
@@ -92,9 +159,30 @@ _MY_EMAIL="notify@omega8.cc"
 ### basic DNS system, without any need to use
 ### external DNS.
 ###
-### To enable, change this to YES below.
+### To enable, change this to YES below
+### and make sure that _EASY_PUBLIC option
+### above is set to NO (it's YES by default).
 ###
 _EASY_LOCALHOST=NO
+
+
+###----------------------------------------###
+###
+### STOP! NO NEED TO CONFIGURE ANYTHING BELOW
+### IF EITHER _EASY_LOCALHOST OR _EASY_PUBLIC
+### MODE HAS BEEN ENABLED.
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### MANUAL INSTALL MODE                    ###
+###----------------------------------------###
+###
+### You can configure all options manually
+### below when both 'EASY PUBLIC SETUP MODE'
+### and 'EASY LOCALHOST MODE' are *disabled*
+###
 
 
 ###----------------------------------------###
@@ -231,9 +319,9 @@ _PHP_CLI_VERSION=5.2
 ###
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST=ALL
-### _XTRAS_LIST="FTP CHV CGP CSF"
+### _XTRAS_LIST="PDS CSF CGP CHV FTP"
 ###
-_XTRAS_LIST="FTP CHV CSF"
+_XTRAS_LIST="PDS CSF CHV FTP"
 
 
 ###----------------------------------------###
@@ -1197,8 +1285,8 @@ validate_public_ip () {
         _THISHTIP="$_MY_OWNIP"
       fi
     else
-      if [ -z "$_MY_OWNIP" ] ; then
-        _LOC_DOM="$_DOMAIN"
+      if [ -z "$_MY_OWNIP" ] && [ ! -z "$_MY_HOSTN" ] ; then
+        _LOC_DOM="$_MY_HOSTN"
         find_correct_ip
         _THISHTIP="$_LOC_IP"
       else
@@ -2649,13 +2737,23 @@ else
   sed -i "s/^aegir.*//g" /etc/sudoers &> /dev/null
   deluser aegir &> /dev/null
   rm -f /usr/bin/drush
+  if [ "$_EASY_LOCALHOST" = "YES" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
+    msg "FATAL ERROR: You must enable either _EASY_HOST or _EASY_LOCALHOST mode, not both"
+    exit 1
+  fi
+  if [ "$_EASY_PUBLIC" = "YES" ] ; then
+    if [ -z "$_EASY_HOSTNAME" ] || [ "$_EASY_HOSTNAME" = "your-wildcard-enabled-hostname-here" ] ; then
+      msg "FATAL ERROR: You must define also _EASY_HOSTNAME when _EASY_HOST mode is enabled"
+      exit 1
+    fi
+  fi
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CHV"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
-    _DEBUG_MODE=YES
+    _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
@@ -2667,6 +2765,24 @@ else
     _SMTP_RELAY_TEST=NO
     _LOCAL_NETWORK_IP="127.0.1.1"
     _LOCAL_NETWORK_HN="aegir.local"
+  elif [ "$_EASY_PUBLIC" = "YES" ] ; then
+    _BUILD_FROM_SRC=NO
+    _PHP_MODERN_ONLY=YES
+    _XTRAS_LIST="PDS CSF CHV FTP"
+    _HTTP_WILDCARD=YES
+    _AUTOPILOT=YES
+    _DEBUG_MODE=NO
+    _AEGIR_VERSION=HEAD
+    _DB_SERVER=MariaDB
+    _SSH_PORT=22
+    _LOCAL_DEBIAN_MIRROR=ftp.debian.org
+    _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
+    _FORCE_GIT_MIRROR=github
+    _DNS_SETUP_TEST=YES
+    _THIS_DB_HOST=localhost
+    _SMTP_RELAY_TEST=YES
+    _MY_HOSTN="$_EASY_HOSTNAME"
+    _MY_FRONT="master.$_EASY_HOSTNAME"
   fi
   barracuda_cnf
 fi
@@ -3715,6 +3831,7 @@ st_runner "apt-get remove exim4 exim4-base exim4-config sendmail sendmail-base s
 st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
 st_runner "apt-get autoremove -y" &> /dev/null
 rm -f /etc/aliases
+rm -f -r /etc/mail
 killall sendmail &> /dev/null
 install_with_aptitude_deps
 fix_locales
