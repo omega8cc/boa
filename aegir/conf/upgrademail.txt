@@ -23,7 +23,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
 
 === NEW FEATURES
 
-* Placeholder
+* Complete list will be available online after official release.
 
   You can read about all new features, fixes and enhancements at:
 
