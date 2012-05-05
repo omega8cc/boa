@@ -2005,16 +2005,16 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
   themes_for_d7
   rm -f -r $_THIS_PRPATH/modules/contrib/redis &> /dev/null
+  sed -i "s/^dependencies.*search_api_solr.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
+  sed -i "s/^dependencies.*redis.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
+  cd $_THIS_PRPATH/modules
+  wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
+  tar -xzf panopoly_apps.tar.gz
+  rm -f panopoly_apps.tar.gz
 fi
 init_this_distro_root
 create_d7_symlinks
 patch_d7_core
-cd /opt/tmp; wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
-tar -xzf panopoly_apps.tar.gz
-mv /opt/tmp/panopoly_apps/* $_THIS_PLPATH/sites/all/modules/ &> /dev/null
-echo "control" >> $_THIS_PLPATH/sites/all/modules/apps-allow.info &> /dev/null
-chmod 664 $_THIS_PLPATH/sites/all/modules/apps-allow.info &> /dev/null
-cd $_THIS_PLPATH
 msg "DISTRO: $_F_PANOPOLY installation completed"
 mrun "sleep 1"
 else
