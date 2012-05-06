@@ -78,6 +78,6 @@ case "$1" in
   up-stable) up_stable ;;
   up-head)   up_head ;;
   *)         echo "Usage: barracuda {up-stable|up-head}"
-	         exit 1
+             exit 1
   ;;
 esac

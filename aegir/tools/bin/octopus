@@ -161,6 +161,6 @@ case "$1" in
              up_head
   ;;
   *)         echo "Usage: octopus {up-stable|up-head} {all|o1}"
-	         exit 1
+             exit 1
   ;;
 esac
