@@ -86,5 +86,22 @@
      replace "in-stable" with "in-head"
 
 
+### Installing more Octopus instances
+
+You can either run OCTOPUS.sh.txt directly or just run the same boa command
+again with new usernames - it will run Barracuda upgrade first and then
+new Octopus instance install - automatically.
+
+Example:
+
+   $ boa in-stable public server.mydomain.org my@email o2 mini
+   $ boa in-stable public server.mydomain.org my@email o3
+   $ boa in-stable public server.mydomain.org my@email o4 max
+
+
 ### NOTE: You can also configure and run BARRACUDA.sh.txt and OCTOPUS.sh.txt
           directly if you prefer to configure all available options manually.
+
+
+### Please read docs/UPGRADE.txt for simple upgrades how-to
+
