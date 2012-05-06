@@ -1,0 +1,83 @@
+#!/bin/bash
+
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
+
+_TODAY=`date +%y%m%d`
+_NOW=`date +%y%m%d-%H%M`
+_CHECK_HOST=`uname -n`
+
+up_action ()
+{
+if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
+  sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/BARRACUDA.sh.txt
+  sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"    /var/backups/BARRACUDA.sh.txt
+  sed -i "s/_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"  /var/backups/BARRACUDA.sh.txt
+  sed -i "s/_GIT_MIRROR=\"\"/_GIT_MIRROR=github/g"       /var/backups/BARRACUDA.sh.txt
+  if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.barracuda.cnf &> /dev/null
+    sed -i "s/_GIT_MIRROR=\"\"/_GIT_MIRROR=github/g"     /root/.barracuda.cnf &> /dev/null
+    sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.barracuda.cnf &> /dev/null
+  fi
+  if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      bash /var/backups/BARRACUDA.sh.txt >/var/backups/barracuda-upgrade-log-$_NOW.log 2>&1
+    else
+      bash /var/backups/BARRACUDA.sh.txt
+    fi
+  fi
+else
+  echo BARRACUDA.sh.txt download issue
+  exit 1
+fi
+}
+
+up_start ()
+{
+if test -f /var/run/boa_run.pid ; then
+  echo Another BOA installer is running probably - /var/run/boa_run.pid exists
+  exit 1
+elif test -f /var/run/boa_wait.pid ; then
+  echo Some important system task is running probably - /var/run/boa_wait.pid exists
+  exit 1
+else
+  touch /var/run/boa_run.pid
+  touch /var/run/boa_wait.pid
+  cd /var/backups
+  rm -f /var/backups/BARRACUDA.sh.txt
+fi
+}
+
+up_finish ()
+{
+  rm -f /var/run/boa_run.pid
+  rm -f /var/run/boa_wait.pid
+  echo
+  echo BARRACUDA upgrade completed
+  echo Bye
+  exit 0
+}
+
+up_head ()
+{
+  up_start
+  wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
+  up_action
+  up_finish
+}
+
+up_stable ()
+{
+  up_start
+  wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
+  up_action
+  up_finish
+}
+
+case "$1" in
+  up-stable) up_stable ;;
+  up-head)   up_head ;;
+  *)         echo "Usage: barracuda {up-stable|up-head}"
+	         exit 1
+  ;;
+esac

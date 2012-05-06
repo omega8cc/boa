@@ -7,29 +7,31 @@
   The HEAD can be occasionally broken and should be used **only** for testing!
 
 
-### To upgrade OS/libraries/services and/or optionally Aegir Master Instance to Stable:
+### To upgrade system and Aegir Master Instance to Stable:
 #
-$ wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
-$ nano BARRACUDA.sh.txt (edit your e-mail address)
-$ bash BARRACUDA.sh.txt (say Y/n on prompt for upgrade of hostmaster)
+$ barracuda up-stable
 
 
-### To upgrade OS/libraries/services and/or optionally Aegir Master Instance to HEAD:
+### To upgrade system and Aegir Master Instance to HEAD:
 #
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
-$ nano BARRACUDA.sh.txt (set _AEGIR_VERSION=HEAD, edit your e-mail address)
-$ bash BARRACUDA.sh.txt
+$ barracuda up-head
 
 
-### To upgrade any Aegir Satellite Instance to Stable and/or platforms selectively:
+### To upgrade selected Aegir Satellite Instance to Stable:
 #
-$ wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
-$ nano OCTOPUS.sh.txt (edit only your e-mail address and username of upgraded instance)
-$ bash OCTOPUS.sh.txt (say Y/n on prompts for upgrade of hostmaster and/or platforms)
+$ octopus up-stable o1
 
 
-### To upgrade any Aegir Satellite Instance to HEAD and/or platforms selectively:
+### To upgrade *all* Aegir Satellite Instances to Stable:
 #
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
-$ nano OCTOPUS.sh.txt (set _AEGIR_VERSION=HEAD, edit only your e-mail address and username)
-$ bash OCTOPUS.sh.txt (say Y/n on prompts for upgrade of hostmaster and/or platforms)
+$ octopus up-stable all
+
+
+### To upgrade selected Aegir Satellite Instance to HEAD:
+#
+$ octopus up-head o1
+
+
+### To upgrade *all* Aegir Satellite Instances to HEAD:
+#
+$ octopus up-head all

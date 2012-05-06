@@ -1,0 +1,166 @@
+#!/bin/bash
+
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
+
+_TODAY=`date +%y%m%d`
+_NOW=`date +%y%m%d-%H%M`
+_CHECK_HOST=`uname -n`
+
+up_one ()
+{
+  if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
+    cp -af /var/backups/OCTOPUS.sh.txt                     /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/_GIT_MIRROR=\"\"/_GIT_MIRROR=github/g"       /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/_USER=o1/_USER=$_THIS_HM_USER/g"             /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/_GIT_MIRROR=\"\"/_GIT_MIRROR=github/g"     /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    fi
+    if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
+      sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    fi
+    if [ -e "/data/disk/$_THIS_HM_USER/log/option.txt" ] ; then
+      _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
+      _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
+    fi
+    if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] && [ ! -e "$User/log/up-$_TODAY" ] ; then
+      bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      touch $User/log/up-$_TODAY
+    fi
+  else
+    echo OCTOPUS.sh.txt download issue
+    exit 1
+  fi
+}
+
+up_action_all ()
+{
+  for User in `find /data/disk/ -maxdepth 1 | sort`
+  do
+    NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
+    CTL_LOAD=1888
+    if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
+      if [ $NOW_LOAD -lt $CTL_LOAD ]; then
+        _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+        echo load is $NOW_LOAD while maxload is $CTL_LOAD
+        echo Octopus upgrade for User $User
+        sleep 3
+        if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+          up_one >>/var/backups/octopus-upgrade-log-$_NOW.log 2>&1
+        else
+          up_one
+        fi
+        sleep 3
+        rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+        echo Done for $User
+        if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
+          touch /var/backups/octopus-contrib-upgrade-$_NOW.log
+        fi
+      else
+        echo load is $NOW_LOAD while maxload is $CTL_LOAD
+        echo ...we have to wait...
+      fi
+      echo
+      echo
+    fi
+  done
+}
+
+up_action_one ()
+{
+  User="/data/disk/$second"
+  NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
+  CTL_LOAD=1888
+  if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
+    if [ $NOW_LOAD -lt $CTL_LOAD ]; then
+      _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
+      echo load is $NOW_LOAD while maxload is $CTL_LOAD
+      echo Octopus upgrade for User $User
+      sleep 3
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        up_one >>/var/backups/octopus-upgrade-log-$_NOW.log 2>&1
+      else
+        up_one
+      fi
+      sleep 3
+      rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      echo Done for $User
+      if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
+        touch /var/backups/octopus-contrib-upgrade-$_NOW.log
+      fi
+    else
+      echo load is $NOW_LOAD while maxload is $CTL_LOAD
+      echo try again later
+    fi
+    echo
+    echo
+  fi
+}
+
+up_start ()
+{
+  if test -f /var/run/boa_run.pid ; then
+    echo Another BOA installer is running probably - /var/run/boa_run.pid exists
+    exit 1
+  elif test -f /var/run/boa_wait.pid ; then
+    echo Some important system task is running probably - /var/run/boa_wait.pid exists
+    exit 1
+  else
+    touch /var/run/boa_run.pid
+    touch /var/run/boa_wait.pid
+    cd /var/backups
+    rm -f /var/backups/OCTOPUS.sh.txt
+  fi
+}
+
+up_finish ()
+{
+  rm -f /var/run/boa_run.pid
+  rm -f /var/run/boa_wait.pid
+  echo
+  echo OCTOPUS upgrade completed
+  echo Bye
+  exit 0
+}
+
+up_head ()
+{
+  up_start
+  wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
+up_stable ()
+{
+  up_start
+  wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
+case "$1" in
+  up-stable) second="$2"
+             up_stable
+  ;;
+  up-head)   second="$2"
+             up_head
+  ;;
+  *)         echo "Usage: octopus {up-stable|up-head} {all|o1}"
+	         exit 1
+  ;;
+esac
