@@ -5250,13 +5250,6 @@ fi
 
 
 ###--------------------###
-mkdir -p /usr/local/bin
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/bin/barracuda /usr/local/bin/ &> /dev/null
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/bin/octopus /usr/local/bin/ &> /dev/null
-chmod 700 /usr/local/bin/{barracuda,octopus} &> /dev/null
-
-
-###--------------------###
 if [ "$_FORCE_REDIS_RESTART" = "YES" ] ; then
   service redis-server stop &> /dev/null
   killall -9 redis-server &> /dev/null
