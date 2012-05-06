@@ -32,3 +32,11 @@ $ octopus up-head o1
 
 # To upgrade *all* Aegir Satellite Instances to HEAD
 $ octopus up-head all
+
+
+### NOTE: Both commands will honor configuration settings
+          stored in their config files, respectively:
+          /root/.barracuda.cnf
+          /root/.o1.octopus.cnf
+          /root/.o2.octopus.cnf
+          etc.
