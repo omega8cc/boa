@@ -81,6 +81,7 @@ init_finish ()
   echo
   echo BOA $version completed
   echo Bye
+  echo
   exit 0
 }
 
