@@ -13,17 +13,16 @@ up_one ()
     cp -af /var/backups/OCTOPUS.sh.txt                     /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/_GIT_MIRROR=\"\"/_GIT_MIRROR=github/g"       /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/_USER=o1/_USER=$_THIS_HM_USER/g"             /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER
       sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
       sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-      sed -i "s/_GIT_MIRROR=\"\"/_GIT_MIRROR=github/g"     /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
       sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
       sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/data/disk/$_THIS_HM_USER/log/option.txt" ] ; then
       _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
