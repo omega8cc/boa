@@ -2698,7 +2698,7 @@ if [ `whoami` = "root" ] ; then
   fi
   sleep 1
 else
-  msg "ERROR: This script should be ran as a root user, please `su - root` or `sudo -i` first"
+  msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
   exit 1
 fi
 
