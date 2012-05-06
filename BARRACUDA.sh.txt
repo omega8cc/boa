@@ -734,6 +734,15 @@ _NGINX_DOS_LIMIT=300
 _NGINX_EXTRA_CONF=""
 
 ###
+### Nginx version used in the apt-get based
+### installs tends to be overloaded with
+### never used modules, causing some issues
+### so we force building from sources
+### by default, while leaving you a choice.
+###
+_NGINX_FROM_SOURCES=YES
+
+###
 ### AUTO will default to values calculated
 ### on the fly and based on available RAM.
 ### You can force workers number for Nginx
@@ -2536,14 +2545,20 @@ install_upgrade_nginx () {
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include geoip module"
       fi
+      if [[ "$_NGINX_V_INSTALLED" =~ "nginx-development-kit" ]] ; then
+        _NGINX_INSTALL_REQUIRED=YES
+        msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
+      fi
     fi
     mrun "sleep 1"
   else
     _NGINX_INSTALL_REQUIRED=YES
   fi
-  if [ "$_UP_NGX" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-    _NGINX_INSTALL_REQUIRED=YES
-    msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
+  if [ "$_UP_NGX" = "YES" ] ; then
+    if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
+      _NGINX_INSTALL_REQUIRED=YES
+      msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
+    fi
   fi
   if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_NGX_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -3096,7 +3111,6 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
     _REL_VERSION="precise"
     _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
-    _PURGE_MODE=OFF
   elif [ "$_THIS_RV" = "oneiric" ] ; then
     _REL_VERSION="oneiric"
     _HTTP_WILDCARD=YES
@@ -3649,7 +3663,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
   st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
   install_latest_git
-  if [ "$_FROM_SOURCES" = "YES" ] ; then
+  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
   fi
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
@@ -3850,7 +3864,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
-  if [ "$_FROM_SOURCES" = "YES" ] ; then
+  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
   fi
 fi
@@ -3926,11 +3940,13 @@ fi
 run_apt_update_again
 install_with_aptitude_deps
 install_latest_git
-if [ "$_LENNY_TO_SQUEEZE" = "NO" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-  if [ "$_USE_MEMCACHED" = "YES" ] ; then
+if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+  if [ "$_FROM_SOURCES" = "YES" ] && [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
-  install_upgrade_nginx
+  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
+    install_upgrade_nginx
+  fi
 fi
 set_xterm
 kill_nash
