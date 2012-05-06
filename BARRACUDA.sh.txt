@@ -2436,18 +2436,20 @@ upgrade_aegir_master () {
     chmod -R 2770 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
-    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
