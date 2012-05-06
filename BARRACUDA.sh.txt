@@ -2750,6 +2750,7 @@ else
     fi
   fi
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+    msg "INFO: Easy Localhost Setup Mode Active"
     _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CHV"
@@ -2768,6 +2769,7 @@ else
     _LOCAL_NETWORK_IP="127.0.1.1"
     _LOCAL_NETWORK_HN="aegir.local"
   elif [ "$_EASY_PUBLIC" = "YES" ] ; then
+    msg "INFO: Easy Public Setup Mode Active"
     _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CSF CHV FTP"
