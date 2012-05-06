@@ -1208,7 +1208,7 @@ fi
 drupal8_install () {
 ###---### Drupal 8
 #
-#_DRUPAL8="8.0-dev-$_NOW"
+#_DRUPAL8="8.0-dev-$_TODAY"
 #
 _THIS_PRNAME="standard"
 _THIS_DISTRO="drupal-$_DRUPAL8"
