@@ -100,6 +100,8 @@ _LASTNUM=EDIT_LASTNUM
 _NOW=EDIT_NOW
 _O_CONTRIB_UP=EDIT_O_CONTRIB_UP
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
+_PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
+_PHP_MODERN_ONLY=EDIT_PHP_MODERN_ONLY
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
@@ -117,12 +119,18 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
-  _D_8_ALLOW=YES
-  _D_5_ALLOW=NO
 else
   _L_PHP_CLI=/usr/local/bin
-  _D_8_ALLOW=NO
+fi
+if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+  _D_5_ALLOW=NO
+else
   _D_5_ALLOW=YES
+fi
+if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+  _D_8_ALLOW=YES
+else
+  _D_8_ALLOW=NO
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #

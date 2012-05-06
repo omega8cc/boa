@@ -800,6 +800,7 @@ do
   sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files
   sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files
   sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
+  sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     $Files
   sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
   sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
   sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files
@@ -1371,6 +1372,8 @@ rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
+exit 0
+
 
 ###----------------------------------------###
 ###
