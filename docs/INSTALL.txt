@@ -1,28 +1,73 @@
 
 ### IMPORTANT!
-#
-* Don't run both installers via sudo. You must be logged in as root. Or sudo -i first.
-* Don't run any system updates before running Barracuda installer. You should use vanilla system.
+
+* Don't run any installer via sudo.
+  You must be logged in as root or `sudo -i` first.
+
+* Don't run any system updates before running Barracuda installer.
+  You should use vanilla system.
+
 * Please never use HEAD version on any production server. Always use Stable.
   The HEAD can be occasionally broken and should be used **only** for testing!
 
 
-### Installing Barracuda (main system and Aegir Master Instance):
-#
-$ wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt (Stable)
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt (HEAD)
-$ nano BARRACUDA.sh.txt (enter your valid e-mail address and hostname)
-$ bash BARRACUDA.sh.txt
+### Installing BOA system on a public server/VPS
+
+1. Configure your domain DNS to point its wildcard enabled A record to your
+   server IP address, and make sure it propagated on the Internet by trying
+   `host server.mydomain.org` on command line on any other host/system.
+
+   See our DNS wildcard configuration example for reference: http://bit.ly/IZqv2Q
+
+   NOTE! You shouldn't use anything like "mydomain.org" as your hostname.
+         It should be some **subdomain**, like "server.mydomain.org".
+
+   NOTE! You **don't** need to configure your hostname (on the server) before
+         running BOA installer, since BOA will do that for you, automatically.
+
+2. Please read docs/NOTES.txt for other related details.
+
+3. Download and run BOA Meta Installer.
+
+   $ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+   $ bash BOA.sh.txt
+
+4. Install Barracuda and Octopus.
+
+   NOTE: You must specify the kind of install with {in-stable|in-head},
+         location with {local|public}, your hostname and e-mail address,
+         as shown below. Specifying Octopus username is optional.
+         It will use default {o1} if empty.
+
+   # Stable on public server
+   $ boa in-stable public server.mydomain.org my@email o1
+
+   # HEAD on public server
+   $ boa in-head public server.mydomain.org my@email o1
 
 
-### Installing Octopus (Aegir Satellite Instance):
-#
-#   Optional: If in addition you want an Aegir Satellite Instance(s) preloaded with platforms
-#             you will need to run OCTOPUS.sh.txt after running BARRACUDA.sh.txt
-#             It is higly recommended because many BOA-specific enhancements are available
-#             out-of-the-box only in the Satellite Instances.
-#
-$ wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt (Stable)
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt (HEAD)
-$ nano OCTOPUS.sh.txt (enter your valid e-mail address)
-$ bash OCTOPUS.sh.txt
+### Installing BOA system on localhost
+
+1. Please read docs/NOTES.txt
+
+2. Download and run BOA Meta Installer.
+
+   $ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+   $ bash BOA.sh.txt
+
+3. Install Barracuda and Octopus.
+
+   NOTE: You must specify the kind of install with {in-stable|in-head},
+         location with {local|public}, and your e-mail address,
+         as shown below. For local installs you don't need to specify
+         hostname and Octopus username, as it is fully automated.
+
+   # Stable on localhost
+   $ boa in-stable local my@email
+
+   # HEAD on localhost
+   $ boa in-head local my@email
+
+
+### NOTE: You can also configure and run BARRACUDA.sh.txt and OCTOPUS.sh.txt
+          directly if you prefer to configure all available options manually.
