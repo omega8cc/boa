@@ -77,9 +77,8 @@ _CLIENT_CORES=4
 ###
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.3
-### _DEBUG_MODE=YES
+### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
-### _FORCE_GIT_MIRROR=github
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
 ### _REMOTE_CACHE_IP=127.0.0.1
@@ -945,11 +944,13 @@ if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
   _AEGIR_VERSION=HEAD
-  _FORCE_GIT_MIRROR=github
+  _DEBUG_MODE=NO
+  _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost
   _REMOTE_CACHE_IP=127.0.0.1
   _DOMAIN="$_USER.sub.aegir.local"
   _LOCAL_NETWORK_IP="127.0.1.1"
+  _MY_OWNIP="$_LOCAL_NETWORK_IP"
   msg "_LOCAL_NETWORK_IP is $_LOCAL_NETWORK_IP"
 fi
 #
@@ -965,7 +966,7 @@ else
 fi
 #
 #
-if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
+if [ ! -z "$_LOCAL_NETWORK_IP" ] && [ $_THIS_HOST != "aegir.local" ] ; then
   _DNS_SETUP_TEST=NO
   _DEBUG_MODE=YES
   _MY_OWNIP="$_LOCAL_NETWORK_IP"
