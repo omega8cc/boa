@@ -1,0 +1,49 @@
+
+# Notes related to Barracuda install on public server with or w/o _EASY_PUBLIC option
+
+  NOTE: 123.45.67.89 below is a placeholder for your server public, real IP address.
+
+  NOTE: f-q-d-n below is a placeholder for your real wildcard-enabled-hostname.
+        See our DNS wildcard configuration example for reference: http://bit.ly/IZqv2Q
+
+  NOTE: With _EASY_PUBLIC=YES option (default) Barracuda will install automatically
+        only services listed below:
+
+  * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
+  * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your Chive MariaDB/Percona Manager will be available at https://chive.master.f-q-d-n
+  * Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
+
+  NOTE: With _EASY_PUBLIC=NO option (default is YES) Barracuda will offer installation
+        of services listed below:
+
+  * Your Aegir Master Instance control panel will be available at https://master.f-q-d-n
+  * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your (optional) Bind9 DNS Server will listen on 123.45.67.89:53
+  * Your (optional) Chive MariaDB/Percona Manager will be available at https://chive.master.f-q-d-n
+  * Your (optional) Collectd Graph Panel will be available at https://cgp.master.f-q-d-n
+  * Your (optional) CSF/LFD Firewall will support integrated Nginx Abuse Guard.
+  * Your (optional) MultiCore Apache Solr Tomcat will listen on 127.0.0.1:8080
+  * Your (optional) SQL Buddy MariaDB/Percona Manager will be available at https://sqlbuddy.master.f-q-d-n
+  * Your (optional) Webmin Control Panel will be available at https://f-q-d-n:10000
+
+  NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
+
+  NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
+        subdomains point to your IP (we recommend using wildcard DNS to simplify it).
+        But don't worry, you can add proper DNS entries for those subdomains later,
+        if you didn't enable wildcard DNS before running Barracuda installer.
+        Only system hostname must have proper DNS configuration before installing Barracuda.
+
+
+# Notes related to Barracuda install on localhost with option _EASY_LOCALHOST=YES
+
+  NOTE: With _EASY_LOCALHOST=YES option (not enabled by default) Barracuda will configure
+        your local DNS and hostname automatically. No external DNS configuration needed.
+
+  NOTE: With _EASY_LOCALHOST=YES option (not enabled by default) Barracuda will install
+        automatically only services listed below:
+
+  * Your Aegir Master Instance control panel will be available at https://aegir.local
+  * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
+  * Your Chive MariaDB Manager will be available at https://chive.aegir.local

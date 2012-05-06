@@ -3362,24 +3362,6 @@ EOF
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
   * Your IP address appears to be $_THISHTIP - are you sure it's a valid IP?
   * Your hostname appears to be $_THISHOST - are you sure it's a valid FQDN hostname?
-
-  NOTE: If your outgoing SMTP requires using relayhost, define _SMTP_RELAY_HOST first.
-
-  * Your Aegir Master Instance control panel will be available at https://$_THIS_FRONT.
-  * Your (optional) fast DNS cache server (pdnsd) will listen on 127.0.0.1:53.
-  * Your (optional) Bind9 DNS Server will listen on $_THISHTIP:53.
-  * Your (optional) MultiCore Apache Solr Tomcat will listen on 127.0.0.1:8080.
-  * Your (optional) Chive $_DB_SERVER Manager will be available at https://chive.$_THIS_FRONT.
-  * Your (optional) SQL Buddy $_DB_SERVER Manager will be available at https://sqlbuddy.$_THIS_FRONT.
-  * Your (optional) Collectd Graph Panel will be available at https://cgp.$_THIS_FRONT.
-  * Your (optional) Webmin Control Panel will be available at https://$_THISHOST:10000.
-  * Your (optional) csf/lfd Firewall will support integrated Nginx abuse guard.
-
-  NOTE: Chive, SQL Buddy and Collectd will work only if chive. sqlbuddy. and cgp.
-        subdomains point to your IP (we recommend using wildcard DNS to simplify it).
-        But don't worry, you can add proper DNS entries for those subdomains later,
-        if you didn't enable wildcard DNS yet. Barracuda can install it all now, anyway.
-
 EOF
   echo " "
   if prompt_yes_no "Do you want to proceed with the install?" ; then
