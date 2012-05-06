@@ -17,7 +17,14 @@ octopus_install ()
     sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.txt
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /var/backups/OCTOPUS.sh.txt
     sed -i "s/^_USER=o1/_USER=$user/g"                       /var/backups/OCTOPUS.sh.txt
-    sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"             /var/backups/OCTOPUS.sh.txt
+    if [ "$mode" = "mini" ] ; then
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
+    elif [ "$mode" = "max" ] ; then
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt
+    else
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt
+    fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
     fi
@@ -88,6 +95,7 @@ init_setup ()
     wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
   fi
   if [ "$kind" = "local" ] ; then
+    mode="$email"
     email="$fqdn"
   fi
   barracuda_install
@@ -101,6 +109,7 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
+             mode="$6"
              init_setup
   ;;
   in-head)   version="$1"
@@ -108,9 +117,10 @@ case "$1" in
              fqdn="$3"
              email="$4"
              user="$5"
+             mode="$6"
              init_setup
   ;;
-  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1}"
+  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max}"
              exit 1
   ;;
 esac
