@@ -7,35 +7,22 @@
   The HEAD can be occasionally broken and should be used **only** for testing!
 
 
-### Installing Barracuda Stable (main system and Aegir Master Instance):
+### Installing Barracuda (main system and Aegir Master Instance):
 #
-$ wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
-$ nano BARRACUDA.sh.txt (edit your e-mail address, IP and hostname)
+$ wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt (Stable)
+$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt (HEAD)
+$ nano BARRACUDA.sh.txt (enter your valid e-mail address and hostname)
 $ bash BARRACUDA.sh.txt
 
 
-### Installing Barracuda HEAD (main system and Aegir Master Instance):
-#
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
-$ nano BARRACUDA.sh.txt (set _AEGIR_VERSION=HEAD, edit your e-mail address, IP and hostname)
-$ bash BARRACUDA.sh.txt
-
-
-### Installing Octopus Stable (Aegir Satellite Instance):
+### Installing Octopus (Aegir Satellite Instance):
 #
 #   Optional: If in addition you want an Aegir Satellite Instance(s) preloaded with platforms
 #             you will need to run OCTOPUS.sh.txt after running BARRACUDA.sh.txt
+#             It is higly recommended because many BOA-specific enhancements are available
+#             out-of-the-box only in the Satellite Instances.
 #
-$ wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
-$ nano OCTOPUS.sh.txt (edit your e-mail address, username and domain name)
-$ bash OCTOPUS.sh.txt
-
-
-### Installing Octopus HEAD (Aegir Satellite Instance):
-#
-#   Optional: If in addition you want an Aegir Satellite Instance(s) preloaded with platforms
-#             you will need to run OCTOPUS.sh.txt after running BARRACUDA.sh.txt
-#
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
-$ nano OCTOPUS.sh.txt (set _AEGIR_VERSION=HEAD, edit your e-mail address, username and domain name)
+$ wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt (Stable)
+$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt (HEAD)
+$ nano OCTOPUS.sh.txt (enter your valid e-mail address)
 $ bash OCTOPUS.sh.txt
