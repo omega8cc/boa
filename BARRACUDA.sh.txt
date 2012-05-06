@@ -744,9 +744,12 @@ _PHP_FPM_WORKERS=AUTO
 
 ###
 ### Max default TTL for Speed Booster Cache.
-### It will affect all Aegir Instances.
+### It will affect all Aegir Instances, but
+### it is used only for spiders and with not
+### enabled by default control file per site
+### or per platform modules/cache_hour/YES.txt
 ###
-_SPEED_VALID_MAX=300
+_SPEED_VALID_MAX=3600
 
 
 ###----------------------------------------###
@@ -1232,7 +1235,7 @@ update_global_inc_conf () {
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
     fi
-    sed -i "s/300/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
+    sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
   fi
 }
 #
@@ -1787,6 +1790,7 @@ barracuda_cnf () {
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
     fi
+    sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
     _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_PHP_FORCE_REINSTALL_TEST" =~ "_PHP_FORCE_REINSTALL" ]] ; then
       sed -i "s/.*_PHP_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
@@ -2463,7 +2467,7 @@ upgrade_aegir_master () {
     else
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
     fi
-    sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     update_redis_password
     force_advanced_nginx_config
     if [ "$_DRUSH_FAMILY" = "3" ] ; then
@@ -4666,7 +4670,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   else
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
   fi
-  sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+  sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
   update_redis_password
   force_advanced_nginx_config
   if [ "$_DRUSH_FAMILY" = "3" ] ; then
@@ -4773,7 +4777,7 @@ EOF
       mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
     fi
-    sed -i "s/300/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     update_redis_password
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
