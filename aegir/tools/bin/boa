@@ -28,6 +28,9 @@ octopus_install ()
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
     fi
+    if [[ "$_CHECK_HOST" =~ "node.us.host8.biz" ]] ; then
+      sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=SSD/g"     /var/backups/OCTOPUS.sh.txt
+    fi
     bash /var/backups/OCTOPUS.sh.txt
   else
     echo "OCTOPUS.sh.txt installer not available - try again"
