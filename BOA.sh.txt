@@ -47,6 +47,7 @@ SHELL=/bin/bash
 setup ()
 {
   mkdir -p /usr/local/bin; cd /usr/local/bin
+  rm -f /usr/local/bin/{boa*,barracuda*,octopus*}
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/boa
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
