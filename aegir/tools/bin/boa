@@ -98,6 +98,12 @@ init_setup ()
     mode="$email"
     email="$fqdn"
   fi
+  if [ "$kind" = "public" ] ; then
+    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] ; then
+      mode="$user"
+      user="o1"
+    fi
+  fi
   barracuda_install
   octopus_install
   init_finish
