@@ -1,0 +1,69 @@
+#!/bin/bash
+
+
+###----------------------------------------###
+###
+###  BOA Meta Installer
+###
+###  Copyright (C) 2010-2012 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This program is free software. You can
+###  redistribute it and/or modify it under
+###  the terms of the GNU GPL as published by
+###  the Free Software Foundation, version 2
+###  or later.
+###
+###  This program is distributed in the hope
+###  that it will be useful, but WITHOUT ANY
+###  WARRANTY; without even the implied
+###  warranty of MERCHANTABILITY or FITNESS
+###  FOR A PARTICULAR PURPOSE. See the GNU GPL
+###  for more details.
+###
+###  You should have received a copy of the
+###  GNU GPL along with this program.
+###  If not, see http://www.gnu.org/licenses/
+###
+###  Code: http://code.aegir.cc/aegir
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### HOW-TO: run it with bash, not with sh  ###
+###----------------------------------------###
+###
+###   bash BOA.sh.txt
+###
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
+
+setup ()
+{
+  mkdir -p /usr/local/bin; cd /usr/local/bin
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/boa
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
+  chmod 700 /usr/local/bin/{boa,barracuda,octopus}
+  echo
+  echo "BOA Meta Installer setup completed"
+  echo "Please check docs/INSTALL.txt and docs/UPGRADE.txt for how-to"
+  echo "Bye"
+  echo
+}
+
+###--------------------###
+if [ `whoami` = "root" ] ; then
+  setup
+  exit 0
+else
+  msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
+  exit 1
+fi
+

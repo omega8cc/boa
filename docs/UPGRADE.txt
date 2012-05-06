@@ -1,34 +1,34 @@
 
 ### IMPORTANT!
-#
-* Don't run both installers via sudo. You must be logged in as root. Or sudo -i first.
-* Don't run any system updates manually before running Barracuda upgrade.
+
+* Don't run any installer via sudo.
+  You must be logged in as root or `sudo -i` first.
+
+* Don't run any system updates before running Barracuda installer.
+  You should use vanilla system.
+
 * Please never use HEAD version on any production server. Always use Stable.
   The HEAD can be occasionally broken and should be used **only** for testing!
 
-# To upgrade system and Aegir Master Instance to Stable:
+
+# Download and run BOA Meta Installer.
+$ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+$ bash BOA.sh.txt
+
+# To upgrade system and Aegir Master Instance to Stable
 $ barracuda up-stable
 
-# To upgrade system and Aegir Master Instance to HEAD:
+# To upgrade system and Aegir Master Instance to HEAD
 $ barracuda up-head
 
-# To upgrade selected Aegir Satellite Instance to Stable:
+# To upgrade selected Aegir Satellite Instance to Stable
 $ octopus up-stable o1
 
-# To upgrade *all* Aegir Satellite Instances to Stable:
+# To upgrade *all* Aegir Satellite Instances to Stable
 $ octopus up-stable all
 
-# To upgrade selected Aegir Satellite Instance to HEAD:
+# To upgrade selected Aegir Satellite Instance to HEAD
 $ octopus up-head o1
 
-# To upgrade *all* Aegir Satellite Instances to HEAD:
+# To upgrade *all* Aegir Satellite Instances to HEAD
 $ octopus up-head all
-
-# On systems with BOA version <= 2.0.2 please install
-# upgrade scripts first - they are installed automatically
-# with BOA 2.0.3 or newer.
-#
-$ mkdir -p /usr/local/bin; cd /usr/local/bin
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/aegir/tools/bin/barracuda
-$ wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/aegir/tools/bin/octopus
-$ chmod 700 /usr/local/bin/{barracuda,octopus}
