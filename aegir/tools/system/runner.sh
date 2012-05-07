@@ -32,11 +32,5 @@ if test -f /var/run/boa_wait.pid ; then
   exit
 else
   action
-  sleep 15
-  action
-  sleep 15
-  action
-  sleep 15
-  action
 fi
 ###EOF2012###
