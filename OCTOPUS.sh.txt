@@ -1151,12 +1151,12 @@ if [ -d "$_ROOT" ] ; then
     if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
       _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
       _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
-      if [[ "$_CLIENT_EMAIL" =~ "\@" ]] ; then
+      if [[ "$_CLIENT_EMAIL" =~ "@" ]] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
         msg "EXIT: stored both in the /root/.$_USER.octopus.cnf config file **and**"
-        msg "EXIT: in the /data/disk/$_USER/log/email.txt file, where the \@ sign must be escaped"
+        msg "EXIT: in the /data/disk/$_USER/log/email.txt file"
         msg "EXIT: Bye (1)"
         exit 1
       fi
@@ -1169,7 +1169,7 @@ if [ -d "$_ROOT" ] ; then
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
         msg "EXIT: stored both in the /root/.$_USER.octopus.cnf config file **and**"
-        msg "EXIT: in the /data/disk/$_USER/log/email.txt file, where the \@ sign must be escaped"
+        msg "EXIT: in the /data/disk/$_USER/log/email.txt file"
         msg "EXIT: Bye (2)"
         exit 1
       fi
