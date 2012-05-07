@@ -71,9 +71,10 @@ init_start ()
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
+    mkdir -p /var/backups
     cd /var/backups
-    rm -f /var/backups/BARRACUDA.sh.txt
-    rm -f /var/backups/OCTOPUS.sh.txt
+    rm -f /var/backups/BARRACUDA.sh.*
+    rm -f /var/backups/OCTOPUS.sh.*
   fi
 }
 
@@ -81,6 +82,8 @@ init_finish ()
 {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
+  rm -f /var/backups/BARRACUDA.sh.*
+  rm -f /var/backups/OCTOPUS.sh.*
   echo
   echo BOA $version completed
   echo Bye

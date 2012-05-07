@@ -6,6 +6,13 @@ SHELL=/bin/bash
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
 _CHECK_HOST=`uname -n`
+_LOG_DIR="/var/backups/reports/up/barracuda/$_TODAY"
+_UP_LOG="$_LOG_DIR/barracuda-up-$_NOW.log"
+
+send_report ()
+{
+  true
+}
 
 up_action ()
 {
@@ -18,14 +25,15 @@ up_action ()
       sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.barracuda.cnf &> /dev/null
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        bash /var/backups/BARRACUDA.sh.txt >/var/backups/barracuda-upgrade-log-$_NOW.log 2>&1
+      if [ "$silent" = "log" ] ; then
+        bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
+        send_report
       else
         bash /var/backups/BARRACUDA.sh.txt
       fi
     fi
   else
-    echo BARRACUDA.sh.txt download issue
+    echo "BARRACUDA.sh.txt installer not available - try again"
     exit 1
   fi
 }
@@ -41,8 +49,9 @@ up_start ()
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
+    mkdir -p $_LOG_DIR
     cd /var/backups
-    rm -f /var/backups/BARRACUDA.sh.txt
+    rm -f /var/backups/BARRACUDA.sh.*
   fi
 }
 
@@ -50,6 +59,7 @@ up_finish ()
 {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
+  rm -f /var/backups/BARRACUDA.sh.*
   echo
   echo BARRACUDA upgrade completed
   echo Bye
@@ -73,8 +83,12 @@ up_stable ()
 }
 
 case "$1" in
-  up-stable) up_stable ;;
-  up-head)   up_head ;;
+  up-stable) silent="$2"
+             up_stable
+  ;;
+  up-head)   silent="$2"
+             up_head
+  ;;
   *)         echo "Usage: barracuda {up-stable|up-head}"
              exit 1
   ;;

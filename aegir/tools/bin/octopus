@@ -6,6 +6,13 @@ SHELL=/bin/bash
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
 _CHECK_HOST=`uname -n`
+_LOG_DIR="/var/backups/reports/up/octopus/$_TODAY"
+_UP_CONTRIB_PID="$_LOG_DIR/octopus-contrib-up.pid"
+
+send_report ()
+{
+  true
+}
 
 up_one ()
 {
@@ -20,7 +27,7 @@ up_one ()
       sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
       sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
-    if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
+    if [ ! -e "$_UP_CONTRIB_PID" ] ; then
       sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
       sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
@@ -33,7 +40,7 @@ up_one ()
       touch $User/log/up-$_TODAY
     fi
   else
-    echo OCTOPUS.sh.txt download issue
+    echo "OCTOPUS.sh.txt installer not available - try again"
     exit 1
   fi
 }
@@ -50,16 +57,18 @@ up_action_all ()
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
         echo Octopus upgrade for User $User
         sleep 3
-        if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-          up_one >>/var/backups/octopus-upgrade-log-$_NOW.log 2>&1
+        if [ "$silent" = "log" ] ; then
+          _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
+          up_one >>$_UP_LOG 2>&1
+          send_report
         else
           up_one
         fi
         sleep 3
         rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
         echo Done for $User
-        if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
-          touch /var/backups/octopus-contrib-upgrade-$_NOW.log
+        if [ ! -e "$_UP_CONTRIB_PID" ] ; then
+          touch $_UP_CONTRIB_PID
         fi
       else
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
@@ -82,16 +91,18 @@ up_action_one ()
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
       echo Octopus upgrade for User $User
       sleep 3
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        up_one >>/var/backups/octopus-upgrade-log-$_NOW.log 2>&1
+      if [ "$silent" = "log" ] ; then
+        _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
+        up_one >>$_UP_LOG 2>&1
+        send_report
       else
         up_one
       fi
       sleep 3
       rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
       echo Done for $User
-      if [ ! -e "/var/backups/octopus-contrib-upgrade-$_NOW.log" ] ; then
-        touch /var/backups/octopus-contrib-upgrade-$_NOW.log
+      if [ ! -e "$_UP_CONTRIB_PID" ] ; then
+        touch $_UP_CONTRIB_PID
       fi
     else
       echo load is $NOW_LOAD while maxload is $CTL_LOAD
@@ -113,8 +124,9 @@ up_start ()
   else
     touch /var/run/boa_run.pid
     touch /var/run/boa_wait.pid
+    mkdir -p $_LOG_DIR
     cd /var/backups
-    rm -f /var/backups/OCTOPUS.sh.txt
+    rm -f /var/backups/OCTOPUS.sh.*
   fi
 }
 
@@ -122,6 +134,7 @@ up_finish ()
 {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
+  rm -f /var/backups/OCTOPUS.sh.*
   echo
   echo OCTOPUS upgrade completed
   echo Bye
@@ -154,9 +167,11 @@ up_stable ()
 
 case "$1" in
   up-stable) second="$2"
+             silent="$3"
              up_stable
   ;;
   up-head)   second="$2"
+             silent="$3"
              up_head
   ;;
   *)         echo "Usage: octopus {up-stable|up-head} {all|o1}"
