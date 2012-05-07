@@ -6,7 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 action()
 {
   /etc/init.d/nginx stop
-  killall -9 php-fpm php-cgi nginx php wget
+  killall -9 php-fpm php-cgi drush.php nginx php wget
   bash /var/xdrago/move_sql.sh
   /etc/init.d/php-fpm start
   /etc/init.d/php53-fpm start
