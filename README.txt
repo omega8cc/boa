@@ -1,26 +1,26 @@
 
 ### README
 
-All-in-one bash scripts (see BARRACUDA.sh.txt and OCTOPUS.sh.txt)
-to install and/or upgrade Aegir Hosting Systems for Drupal.
+All-in-one bash scripts (see docs/INSTALL.txt for details)
+to install and/or upgrade high performance Aegir Hosting Systems
+for Drupal, with Nginx, PHP-FPM, MariaDB/Percona and Redis,
+now available with simple command line tools: http://bit.ly/JHpFSh
 
 
-###--------------------------------------------------------------###
-### IMPORTANT: run it as root (not via sudo!) with bash, not sh  ###
 ###--------------------------------------------------------------###
 ###
-### $ bash BARRACUDA.sh.txt
-### $ bash OCTOPUS.sh.txt
+### For BOA installation instructions see docs/INSTALL.txt
+### See also related information in docs/NOTES.txt
+### For BOA upgrade instructions see docs/UPGRADE.txt
+### For how-to on using MultiCore Solr Tomcat see docs/SOLR.txt
+### For custom Nginx rewrites how-to see docs/HINTS.txt
+### For SSL and extra IPs how-to see docs/SSL.txt
+### For sites migration between instances see docs/REMOTE.txt
 ###
 ### Please read all comments for configuration options in both
-### installers, since there is information not included in the
-### README or INSTALL and can be modified/updated with every
-### new Edition.
-###
-### For basic installation instructions see docs/INSTALL.txt
-### For the upgrade instructions see docs/UPGRADE.txt
-### For recipe on local working install see docs/HINTS.txt
-### For how-to on using MultiCore Solr Tomcat see docs/SOLR.txt
+### BARRACUDA.sh.txt and OCTOPUS.sh.txt, since there is information
+### not included in the README or INSTALL and can be modified or
+### updated with every new Edition.
 ###
 ###--------------------------------------------------------------###
 
@@ -46,7 +46,11 @@ choose the platforms you wish to install on the instance)
 and updater only. It allows to install new versions of platforms
 with clean directory structure, with code shared between all created
 instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is almost 400 MB total, is shared.
+while most of the code, which is over 1200 MB total, is shared.
+
+Sharing the code between instances is of critical importance,
+because it allows you to dramatically lower RAM and CPU usage,
+because most of the actively used code is opcode cached with APC.
 
 With multi-install system you have to remember that all of them
 will use the same Nginx server, so you could break the system
