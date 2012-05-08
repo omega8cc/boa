@@ -455,6 +455,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc11.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
