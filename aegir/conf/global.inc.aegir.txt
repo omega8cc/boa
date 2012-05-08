@@ -57,6 +57,22 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|goog|yahoo|yande
   $known_bot = 'bot';
 }
 
+// New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
+if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
+  $frags = explode("/", $_SERVER['DOCUMENT_ROOT']);
+  if ($frags[1] == 'data') {
+    $this_instance = $_SERVER['SERVER_NAME'] . ';Octopus ' . $frags[3] . ';All Instances';
+  }
+  elseif ($frags[2] == 'aegir') {
+    $this_instance = $_SERVER['SERVER_NAME'] . ';Barracuda Master;All Instances';
+  }
+  ini_set('newrelic.appname', $this_instance);
+  ini_set('newrelic.framework', 'drupal');
+  if (extension_loaded('newrelic')) {
+    newrelic_set_appname($this_instance);
+  }
+}
+
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // disable hardcoded caching
