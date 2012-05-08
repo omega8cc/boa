@@ -325,6 +325,16 @@ _XTRAS_LIST="PDS CSF CHV FTP"
 
 
 ###----------------------------------------###
+### NEW RELIC INSTALL                      ###
+###----------------------------------------###
+###
+### Enter your New Relic license key to get
+### it installed automatically.
+###
+_NEWRELIC_KEY=""
+
+
+###----------------------------------------###
 ### HTTP LISTENING MODE                    ###
 ###----------------------------------------###
 ###
