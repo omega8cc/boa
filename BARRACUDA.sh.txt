@@ -2031,6 +2031,8 @@ run_apt_update_again () {
   st_runner "aptitude update -y" &> /dev/null
   st_runner "aptitude clean -y" &> /dev/null
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  st_runner "service php5-fpm stop" &> /dev/null
+  st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 }
 #
 # Install IonCube.
@@ -2330,7 +2332,7 @@ install_php_modern () {
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     st_runner "service php5-fpm stop" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    rm -f /etc/init.d/php5-fpm*
+    ### rm -f /etc/init.d/php5-fpm* ### removing this breaks upgrade!
     ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm-dotdeb /etc/init.d/php53-fpm
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
   else
@@ -2451,6 +2453,7 @@ check_apt_updates () {
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
       *percona*)    _UP_PHP=YES ;;
+      *php5-fpm*)   _UP_PHP=YES ;;
       *)  ;;
     esac
   done
@@ -3747,6 +3750,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Installing required libraries and tools"
 else
   msg "INFO: Upgrading required libraries and tools"
+  if [ ! -e "/etc/init.d/php5-fpm" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php5-fpm-init-vanilla /etc/init.d/php5-fpm
+  fi
 fi
 msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -3782,6 +3788,8 @@ fi
 
 install_with_aptitude_deps () {
   st_runner "$_INSTAPP $_DEBDEPS" 2> /dev/null
+  st_runner "service php5-fpm stop" &> /dev/null
+  st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
