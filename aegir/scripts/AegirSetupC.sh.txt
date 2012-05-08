@@ -408,6 +408,7 @@ enable_drupal6_admin () {
 #
 # add drupal 6 translations
 add_drupal6_translations () {
+  rm -f -r $_THIS_PRPATH/translations &> /dev/null
   ln -s /data/all/000/translations $_THIS_PRPATH/translations &> /dev/null
 }
 #
@@ -564,7 +565,7 @@ _F_MARTPLUG="MartPlug 1.0-dev $_SMALLCORE7 P.$_THIS_CORE"
 _F_NODESTREAM6="NodeStream 1.5 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-a13 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENATRIUM="Open Atrium $_OPENATRIUM $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENATRIUM="Open Atrium 1.4.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.10-a1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
@@ -864,6 +865,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/Conference Organizing Distribution/Conference/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
   rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
+  add_drupal6_translations
 fi
 init_this_distro_root
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui" ] ; then
@@ -1639,10 +1641,12 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://openatrium.com/sites/openatrium.com/files/atrium_releases/atrium-1-3.tgz
-  tar -xzf atrium-1-3.tgz
-  rm -f atrium-1-3.tgz
-  mv atrium-1.3 $_THIS_DISTRO
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENATRIUM-core.tar.gz
+  rm -f $_THIS_PRNAME-$_OPENATRIUM-core.tar.gz
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENATRIUM" ] ; then
+    mv $_THIS_PRNAME-$_OPENATRIUM $_THIS_DISTRO
+  fi
   cd $_THIS_PRPATH/modules/contrib/imagecache
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
@@ -1656,12 +1660,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
   $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
   $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
-  cd $_THIS_PRPATH/modules/contrib
-  rm -f -r og
-  wget -q -U iCab http://ftp.drupal.org/files/projects/og-6.x-2.3.tar.gz
-  tar -xzf og-6.x-2.3.tar.gz
-  rm -f og-6.x-2.3.tar.gz
   create_dirs
+  add_drupal6_translations
 fi
 init_this_distro_root
 msg "DISTRO: $_F_OPENATRIUM installation completed"
