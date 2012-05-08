@@ -21,3 +21,4 @@ else
   done
   echo -en "${reset}\b"
 fi
+

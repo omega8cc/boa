@@ -58,6 +58,7 @@ up_action_all ()
         echo Octopus upgrade for User $User
         sleep 3
         if [ "$silent" = "log" ] ; then
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt
           _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
           up_one >>$_UP_LOG 2>&1
           send_report
@@ -92,6 +93,7 @@ up_action_one ()
       echo Octopus upgrade for User $User
       sleep 3
       if [ "$silent" = "log" ] ; then
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt
         _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
         up_one >>$_UP_LOG 2>&1
         send_report
@@ -135,6 +137,7 @@ up_finish ()
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
   rm -f /var/backups/OCTOPUS.sh.*
+  rm -f /root/BOA.sh.*
   echo
   echo OCTOPUS upgrade completed
   echo Bye

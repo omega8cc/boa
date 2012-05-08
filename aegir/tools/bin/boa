@@ -84,6 +84,7 @@ init_finish ()
   rm -f /var/run/boa_wait.pid
   rm -f /var/backups/BARRACUDA.sh.*
   rm -f /var/backups/OCTOPUS.sh.*
+  rm -f /root/BOA.sh.*
   echo
   echo BOA $version completed
   echo Bye

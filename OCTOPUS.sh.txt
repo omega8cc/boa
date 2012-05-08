@@ -475,6 +475,7 @@ _SMALLCORE_6_LANG=6.26
 _SMALLCORE6=6.26.1
 _SMALLCORE7=7.14.1
 _SMALLCORE8=8.0-dev
+_SPINNER=YES
 _USRG=users
 _WEBG=www-data
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -810,6 +811,7 @@ do
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
   sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files
+  sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
   sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files

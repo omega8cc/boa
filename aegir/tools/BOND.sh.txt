@@ -212,7 +212,9 @@ prompt_yes_no () {
 st_runner () {
 	CMD="$1"
 	touch busy
-	bash $_SRCDIR/spinner busy &
+	if [ "$_SPINNER" = "YES" ] ; then
+	  bash $_SRCDIR/spinner busy &
+	fi
 	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
@@ -235,7 +237,9 @@ st_runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	bash $_SRCDIR/spinner busy &
+	if [ "$_SPINNER" = "YES" ] ; then
+	  bash $_SRCDIR/spinner busy &
+	fi
 	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1

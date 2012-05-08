@@ -806,6 +806,7 @@ _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
+_SPINNER=YES
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 
@@ -884,7 +885,9 @@ not_supported_os () {
 runner () {
   CMD="$1"
   touch busy
-  bash $_SRCDIR/spinner busy &
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
   if $CMD >> $_LOG; then
     rm busy
     sleep 1
@@ -908,7 +911,9 @@ runner () {
 mrun () {
   CMD="$1"
   touch busy
-  bash $_SRCDIR/spinner busy &
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
   if $CMD >> $_LOG; then
     rm busy
     sleep 1
@@ -920,7 +925,9 @@ mrun () {
 st_runner () {
   CMD="$1"
   touch busy
-  bash $_SRCDIR/spinner busy &
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
   if $CMD >> $_LOG; then
     rm busy
     sleep 1

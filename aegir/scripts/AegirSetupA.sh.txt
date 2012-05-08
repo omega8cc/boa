@@ -110,6 +110,7 @@ _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
 _REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
+_SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
@@ -156,7 +157,9 @@ fatal () {
 st_runner () {
   CMD="$1"
   touch busy
-  bash $_SRCDIR/spinner busy &
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
   if $CMD >> $_LOG; then
     rm busy
     sleep 1
@@ -177,7 +180,9 @@ st_runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	bash $_SRCDIR/spinner busy &
+	if [ "$_SPINNER" = "YES" ] ; then
+	  bash $_SRCDIR/spinner busy &
+	fi
 	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1

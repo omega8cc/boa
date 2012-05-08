@@ -106,6 +106,7 @@ _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
 _SRCDIR=/opt/tmp/files
+_SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _TODAY=`date +%y%m%d`
@@ -190,7 +191,9 @@ fatal () {
 runner () {
 	CMD="$1"
 	touch busy
-	bash $_SRCDIR/spinner busy &
+	if [ "$_SPINNER" = "YES" ] ; then
+	  bash $_SRCDIR/spinner busy &
+	fi
 	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
@@ -211,7 +214,9 @@ runner () {
 mrun () {
 	CMD="$1"
 	touch busy
-	bash $_SRCDIR/spinner busy &
+	if [ "$_SPINNER" = "YES" ] ; then
+	  bash $_SRCDIR/spinner busy &
+	fi
 	if $CMD >> $_LOG; then
 		rm busy
 		sleep 1
