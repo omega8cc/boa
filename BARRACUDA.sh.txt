@@ -2280,7 +2280,11 @@ install_php_modern () {
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     _LOC_PHP_PATH=/usr/bin
   else
-    _LOC_PHP_PATH=/opt/local/bin
+    if [ -x "/usr/bin/phpize" ] ; then
+      _LOC_PHP_PATH=/usr/bin
+    elif [ -x "/opt/local/bin/phpize" ] ; then
+      _LOC_PHP_PATH=/opt/local/bin
+    fi
     install_php_extensions
   fi
   install_php_extensions_more
@@ -2376,7 +2380,11 @@ update_php_modern () {
     _LOC_PHP_PATH=/usr/bin
     update_php_universal_more
   else
-    _LOC_PHP_PATH=/opt/local/bin
+    if [ -x "/usr/bin/phpize" ] ; then
+      _LOC_PHP_PATH=/usr/bin
+    elif [ -x "/opt/local/bin/phpize" ] ; then
+      _LOC_PHP_PATH=/opt/local/bin
+    fi
     update_php_universal
     update_php_universal_more
   fi
