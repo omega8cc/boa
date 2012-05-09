@@ -4279,8 +4279,13 @@ fi
 if [ -x "/opt/local/bin/php" ] ; then
   _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
-    _PHP_INSTALL_REQUIRED_NEW=NO
-    msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+    if [[ "$_PHP_INSTALLED" =~ "~" ]] && [ "$_FROM_SOURCES" = "YES" ] ; then
+      _PHP_INSTALL_REQUIRED_NEW=YES
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    else
+      _PHP_INSTALL_REQUIRED_NEW=NO
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+    fi
   else
     if [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=YES
@@ -4361,6 +4366,7 @@ if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
 fi
 if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
+  _PHP_INSTALL_REQUIRED_NEW=YES
   msg "INFO: PHP rebuild required to include upgraded libs"
 fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
