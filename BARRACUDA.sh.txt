@@ -1206,6 +1206,7 @@ update_php_conf () {
   fix_php_ini_redis
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
+  rm -f /etc/php5/conf.d/{imagick.ini,suhosin.ini} &> /dev/null
 }
 #
 # Update SQL Config.
@@ -2095,19 +2096,6 @@ install_php_extensions () {
   st_runner "make --quiet install" 2> /dev/null
   echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
-  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r imagick*
-  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-  tar -xzf imagick-$_IMAGICK_VERSION.tgz
-  cd /var/opt/imagick-$_IMAGICK_VERSION
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
-  ###--------------------###
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
@@ -2132,22 +2120,23 @@ install_php_extensions () {
       fi
     fi
   fi
-  ###--------------------###
-  msg "INFO: Installing Suhosin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r suhosin*
-  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
-  tar -xzf suhosin-0.9.33.tgz
-  cd /var/opt/suhosin-0.9.33
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
 }
 #
 # Install more extensions for PHP universal
 install_php_extensions_more () {
+  ###--------------------###
+  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing MailParse for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2180,6 +2169,18 @@ install_php_extensions_more () {
   wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
   tar -xzf uploadprogress-1.0.1.tgz
   cd /var/opt/uploadprogress-1.0.1
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  ###--------------------###
+  msg "INFO: Installing Suhosin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r suhosin*
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
+  tar -xzf suhosin-0.9.33.tgz
+  cd /var/opt/suhosin-0.9.33
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -2267,7 +2268,7 @@ install_php_modern () {
     else
       _EXTRA_PHP_DEB="php5-dev"
     fi
-    _MODERN_PHP_DEB="php5-apc php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php5-sasl php5-sqlite php5-suhosin php5-xmlrpc php5-xsl"
+    _MODERN_PHP_DEB="php5-apc php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php5-sasl php5-sqlite php5-xmlrpc php5-xsl"
     st_runner "$_INSTAPP $_MODERN_PHP_DEB" 2> /dev/null
   else
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
