@@ -103,9 +103,10 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 or Percona 5.5 database server.
 * Latest version of Nginx web server with upload progress and Boost support.
-* PHP-FPM 5.3.11 with APC, phpredis, uploadprogress, suhosin and ionCube.
+* PHP-FPM 5.3.13 with APC, phpredis, uploadprogress, suhosin and ionCube.
 * PHP-FPM 5.2.17 with APC, phpredis, uploadprogress, suhosin and ionCube.
 * Redis cache server with standard DB auto-failover.
+* Entry level XSS built-in protection on the Nginx level.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr with Tomcat (optional).
