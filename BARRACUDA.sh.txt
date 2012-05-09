@@ -4287,6 +4287,7 @@ if [ -x "/opt/local/bin/php" ] ; then
     if [[ "$_PHP_INSTALLED" =~ "~" ]] && [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=YES
       msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+      fix_php_ext
     else
       _PHP_INSTALL_REQUIRED_NEW=NO
       msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
