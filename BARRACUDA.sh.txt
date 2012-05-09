@@ -2032,8 +2032,6 @@ run_apt_update_again () {
   st_runner "aptitude update -y" &> /dev/null
   st_runner "aptitude clean -y" &> /dev/null
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
-  st_runner "service php5-fpm stop" &> /dev/null
-  st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 }
 #
 # Install IonCube.
@@ -3789,8 +3787,6 @@ fi
 
 install_with_aptitude_deps () {
   st_runner "$_INSTAPP $_DEBDEPS" 2> /dev/null
-  st_runner "service php5-fpm stop" &> /dev/null
-  st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
@@ -3874,6 +3870,9 @@ install_with_aptitude_sql () {
 ###--------------------###
 st_runner "apt-get remove exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
 st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
+if [ "$_FROM_SOURCES" = "YES" ] ; then
+  st_runner "apt-get remove php5-imagick php5-suhosin -y" &> /dev/null
+fi
 st_runner "apt-get autoremove -y" &> /dev/null
 rm -f /etc/aliases
 rm -f -r /etc/mail
@@ -3960,6 +3959,8 @@ fi
 ###--------------------###
 run_apt_update_again
 install_with_aptitude_deps
+st_runner "service php5-fpm stop" &> /dev/null
+st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 install_latest_git
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   if [ "$_FROM_SOURCES" = "YES" ] && [ "$_USE_MEMCACHED" = "YES" ] ; then
