@@ -43,6 +43,7 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+_TODAY=`date +%y%m%d`
 
 setup ()
 {
@@ -51,6 +52,9 @@ setup ()
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/boa
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
+  echo "### $_TODAY ###" >> /usr/local/bin/boa
+  echo "### $_TODAY ###" >> /usr/local/bin/barracuda
+  echo "### $_TODAY ###" >> /usr/local/bin/octopus
   chmod 700 /usr/local/bin/{boa,barracuda,octopus}
   echo
   echo "BOA Meta Installer setup completed"

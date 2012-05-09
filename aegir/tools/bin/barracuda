@@ -84,6 +84,28 @@ up_stable ()
   up_finish
 }
 
+check_date ()
+{
+  _THIS_FILE="/usr/local/bin/barracuda"
+  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
+  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
+    true
+  else
+    cat <<EOF
+
+  Please upgrade installers on your system
+  using BOA Meta Installer and try again.
+
+  $ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+  $ bash BOA.sh.txt
+
+EOF
+    exit 1
+  fi
+}
+
+check_date
+
 case "$1" in
   up-stable) silent="$2"
              up_stable
