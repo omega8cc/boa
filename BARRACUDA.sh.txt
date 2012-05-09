@@ -1166,14 +1166,6 @@ update_php_conf () {
       mkdir -p /opt/local/lib/php/extensions
       ln -s /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
     fi
-    sed -i "s/^extension=/;extension=/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/^extension=/;extension=/g" /opt/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/lib/php.ini &> /dev/null
   fi
   ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
@@ -1206,7 +1198,7 @@ update_php_conf () {
   fix_php_ini_redis
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
-  rm -f /etc/php5/conf.d/{imagick.ini,suhosin.ini} &> /dev/null
+  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini} &> /dev/null
 }
 #
 # Update SQL Config.
@@ -2094,6 +2086,19 @@ install_php_extensions () {
   st_runner "make --quiet install" 2> /dev/null
   echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
+  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r imagick*
+  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
+  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
+  ###--------------------###
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
@@ -2118,23 +2123,22 @@ install_php_extensions () {
       fi
     fi
   fi
-}
-#
-# Install more extensions for PHP universal
-install_php_extensions_more () {
   ###--------------------###
-  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing Suhosin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
   cd /var/opt
-  rm -f -r imagick*
-  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-  tar -xzf imagick-$_IMAGICK_VERSION.tgz
-  cd /var/opt/imagick-$_IMAGICK_VERSION
+  rm -f -r suhosin*
+  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
+  tar -xzf suhosin-0.9.33.tgz
+  cd /var/opt/suhosin-0.9.33
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
+}
+#
+# Install more extensions for PHP universal
+install_php_extensions_more () {
   ###--------------------###
   msg "INFO: Installing MailParse for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2167,18 +2171,6 @@ install_php_extensions_more () {
   wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
   tar -xzf uploadprogress-1.0.1.tgz
   cd /var/opt/uploadprogress-1.0.1
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  ###--------------------###
-  msg "INFO: Installing Suhosin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r suhosin*
-  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
-  tar -xzf suhosin-0.9.33.tgz
-  cd /var/opt/suhosin-0.9.33
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
@@ -2266,7 +2258,7 @@ install_php_modern () {
     else
       _EXTRA_PHP_DEB="php5-dev"
     fi
-    _MODERN_PHP_DEB="php5-apc php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php5-sasl php5-sqlite php5-xmlrpc php5-xsl"
+    _MODERN_PHP_DEB="php5-apc php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php5-sasl php5-sqlite php5-suhosin php5-xmlrpc php5-xsl"
     st_runner "$_INSTAPP $_MODERN_PHP_DEB" 2> /dev/null
   else
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
@@ -2452,7 +2444,6 @@ check_apt_updates () {
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
       *percona*)    _UP_PHP=YES ;;
-      *php5-fpm*)   _UP_PHP=YES ;;
       *)  ;;
     esac
   done
@@ -3870,9 +3861,6 @@ install_with_aptitude_sql () {
 ###--------------------###
 st_runner "apt-get remove exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
 st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
-if [ "$_FROM_SOURCES" = "YES" ] ; then
-  st_runner "apt-get remove php5-imagick php5-suhosin -y" &> /dev/null
-fi
 st_runner "apt-get autoremove -y" &> /dev/null
 rm -f /etc/aliases
 rm -f -r /etc/mail
