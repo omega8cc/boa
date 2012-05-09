@@ -1112,6 +1112,32 @@ enable_purge_cruft_machine () {
   fi
 }
 #
+# Fix PHP Extensions.
+fix_php_ext () {
+  if [ "$_FROM_SOURCES" = "YES" ] ; then
+    if [ -e "/usr/lib/php5/20090626" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+      mkdir -p /var/backups/php53-20090626
+      mv -f /usr/lib/php5/20090626/*.so /var/backups/php53-20090626/ &> /dev/null
+      if [ -e "/var/backups/php53-20090626/newrelic.so" ] ; then
+        mv -f /var/backups/php53-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
+      fi
+    elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+      mkdir -p /var/backups/php53-20090626+lfs
+      mv -f /usr/lib/php5/20090626+lfs/* /var/backups/php53-20090626+lfs/ &> /dev/null
+      if [ -e "/var/backups/php53-20090626+lfs/newrelic.so" ] ; then
+        mv -f /var/backups/php53-20090626+lfs/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      fi
+    fi
+    if [ -e "/etc/php5/conf.d" ] ; then
+      mkdir -p /var/backups/php53-conf-d
+      mv -f /etc/php5/conf.d/*.ini /var/backups/php53-conf-d/ &> /dev/null
+      if [ -e "/var/backups/php53-conf-d/newrelic.ini" ] ; then
+        mv -f /var/backups/php53-conf-d/newrelic.ini /etc/php5/conf.d/ &> /dev/null
+      fi
+    fi
+  fi
+}
+#
 # Update PHP Config.
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
@@ -1165,27 +1191,6 @@ update_php_conf () {
     elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
       ln -s /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
-    fi
-  else
-    if [ -e "/usr/lib/php5/20090626" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
-      mkdir -p /var/backups/php53-20090626
-      mv -f /usr/lib/php5/20090626/*.so /var/backups/php53-20090626/ &> /dev/null
-      if [ -e "/var/backups/php53-20090626/newrelic.so" ] ; then
-        mv -f /var/backups/php53-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
-      fi
-    elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
-      mkdir -p /var/backups/php53-20090626+lfs
-      mv -f /usr/lib/php5/20090626+lfs/* /var/backups/php53-20090626+lfs/ &> /dev/null
-      if [ -e "/var/backups/php53-20090626+lfs/newrelic.so" ] ; then
-        mv -f /var/backups/php53-20090626+lfs/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
-      fi
-    fi
-    if [ -e "/etc/php5/conf.d" ] ; then
-      mkdir -p /var/backups/php53-conf-d
-      mv -f /etc/php5/conf.d/*.ini /var/backups/php53-conf-d/ &> /dev/null
-      if [ -e "/var/backups/php53-conf-d/newrelic.ini" ] ; then
-        mv -f /var/backups/php53-conf-d/newrelic.ini /etc/php5/conf.d/ &> /dev/null
-      fi
     fi
   fi
   ###
@@ -4290,6 +4295,7 @@ if [ -x "/opt/local/bin/php" ] ; then
     if [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=YES
       msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+      fix_php_ext
     fi
   fi
 else
