@@ -24,7 +24,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /newrelic-sysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
@@ -36,7 +36,7 @@ print "\n $mysqlsumar MySQL procs\t\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
 print "\n $pdnsdsumar DNS procs\t\tGLOBAL" if ($pdnsdlives);
 print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
-print "\n $postfixsumar Postfix procs\t\tGLOBAL" if ($postfixlives);
+print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
