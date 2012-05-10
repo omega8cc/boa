@@ -3721,6 +3721,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       rm -f dotdeb.gpg*
     fi
   fi
+  touch /var/log/apt-fast-install-log.txt
   cd /var/opt
 fi
 
