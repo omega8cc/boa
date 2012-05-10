@@ -23,19 +23,23 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /newrelic-sysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
 }
-print "\n $sumar ALL procs\tGLOBAL";
-print "\n $buagentsumar Backup procs\tGLOBAL" if ($buagentlives);
-print "\n $collectdsumar Collectd\tGLOBAL" if ($collectdlives);
-print "\n $dhcpcdsumar dhcpcd procs\tGLOBAL" if ($dhcpcdlives);
-print "\n $fpmsumar FPM procs\tGLOBAL" if ($fpmlives);
-print "\n $ftpsumar FTP procs\tGLOBAL" if ($ftplives);
-print "\n $mysqlsumar MySQL procs\tGLOBAL" if ($mysqlives);
-print "\n $nginxsumar Nginx procs\tGLOBAL" if ($nginxlives);
-print "\n $pdnsdsumar DNS procs\tGLOBAL" if ($pdnsdlives);
-print "\n $phpsumar PHP procs\tGLOBAL" if ($phplives);
-print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
-print "\n $redissumar Redis procs\tGLOBAL" if ($redislives);
+print "\n $sumar ALL procs\t\tGLOBAL";
+print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
+print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
+print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
+print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n $ftpsumar FTP procs\t\tGLOBAL" if ($ftplives);
+print "\n $mysqlsumar MySQL procs\t\tGLOBAL" if ($mysqlives);
+print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
+print "\n $pdnsdsumar DNS procs\t\tGLOBAL" if ($pdnsdlives);
+print "\n $phpsumar PHP procs\t\tGLOBAL" if ($phplives);
+print "\n $postfixsumar Postfix procs\t\tGLOBAL" if ($postfixlives);
+print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
+print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
+print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
 print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
@@ -48,6 +52,8 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
+`/etc/init.d/newrelic-daemon restart` if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
+`/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond");
 `/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix");
 `killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");

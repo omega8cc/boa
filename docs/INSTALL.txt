@@ -37,9 +37,13 @@
    NOTE: You must specify the kind of install with {in-stable|in-head},
          location with {local|public}, your hostname and e-mail address,
          as shown below. Specifying Octopus username is optional.
-         It will use default {o1} if empty. The last {ask|mini|max}
+         It will use default {o1} if empty. The one before last {ask|mini|max}
          part is optional, if you wish to control Octopus platforms
          install mode, as explained below - none is the same as "ask".
+         The last {newrelickey} part is optional, if you wish to install
+         and auto-magically enable both New Relic Apps and Server Monitor.
+         It must be a valid New Relic license key - even if it is their
+         free Lite option.
 
  !!! The in-stable option doesn't work yet. It is designed to be used with
      new BOA-2.0.3 stable, not yet released. You can use this meta installer

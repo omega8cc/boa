@@ -106,6 +106,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * PHP-FPM 5.3.13 with APC, phpredis, uploadprogress, suhosin and ionCube.
 * PHP-FPM 5.2.17 with APC, phpredis, uploadprogress, suhosin and ionCube.
 * Redis cache server with standard DB auto-failover.
+* New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
 * Entry level XSS built-in protection on the Nginx level.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.

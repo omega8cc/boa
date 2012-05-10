@@ -329,7 +329,7 @@ _XTRAS_LIST="PDS CSF CHV FTP"
 ###----------------------------------------###
 ###
 ### Enter your New Relic license key to get
-### it installed automatically.
+### it installed and enabled automatically.
 ###
 _NEWRELIC_KEY=""
 
@@ -1138,6 +1138,38 @@ fix_php_ext () {
   fi
 }
 #
+# Fix php.ini file to add newrelic.ini
+fix_php_ini_newrelic () {
+  _X86_64_TEST=`uname -m`
+  if [ "$_X86_64_TEST" = "x86_64" ] ; then
+    _NR_TPL="/usr/lib64/newrelic-php5/scripts/newrelic.ini.template"
+  else
+    _NR_TPL="/usr/lib/newrelic-php5/scripts/newrelic.ini.template"
+  fi
+  if [ -e "$_THIS_FILE" ] ; then
+    _NEWRELIC_INI_TEST=$(grep "extension=newrelic.so" $_THIS_FILE)
+    if [[ "$_NEWRELIC_INI_TEST" =~ "extension=newrelic.so" ]] ; then
+      true
+    else
+      cat $_NR_TPL >> $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix all php.ini files to add newrelic.ini
+fix_php_ini_newrelic_all () {
+  if [ -e "/etc/newrelic/newrelic.cfg" ] ; then
+    _THIS_FILE=/opt/etc/php.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/usr/local/lib/php.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/local/etc/php53.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/local/lib/php.ini
+    fix_php_ini_newrelic
+  fi
+}
+#
 # Update PHP Config.
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
@@ -1225,6 +1257,7 @@ update_php_conf () {
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini} &> /dev/null
+  fix_php_ini_newrelic_all
 }
 #
 # Update SQL Config.
@@ -2725,6 +2758,34 @@ update_php_cli_cron () {
   elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
     sed -i "s/^PATH=.*/PATH=\/usr\/local\/bin:\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  fi
+}
+#
+# Install New Relic
+install_newrelic () {
+  ###--------------------###
+  if [ ! -z "$_NEWRELIC_KEY" ] ; then
+    if [ ! -e "/etc/newrelic/newrelic.cfg" ] || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
+      msg "INFO: Installing New Relic Apps and Server Monitor, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+        rm -f 548C16BF.gpg*
+        wget -q -U iCab http://download.newrelic.com/548C16BF.gpg
+        _KEYS_SERVER_TEST=`grep GnuPG 548C16BF.gpg 2> /dev/null`
+        sleep 2
+      done
+      cat 548C16BF.gpg | apt-key add - &> /dev/null
+      rm -f 548C16BF.gpg*
+      echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
+      echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
+      st_runner "apt-get update -y" &> /dev/null
+      st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
+      NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+      sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+      sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/nrsysmond.cfg &> /dev/null
+    fi
   fi
 }
 
@@ -4413,6 +4474,10 @@ fi
 
 
 ###--------------------###
+install_newrelic
+
+
+###--------------------###
 if [ "$_REL_VERSION" = "lenny" ] ; then
   _PATH_BZR="/usr/bin/bzr"
 else
@@ -4593,6 +4658,36 @@ else
     st_runner "service php53-fpm restart" &> /dev/null
     st_runner "service nginx reload" &> /dev/null
   fi
+fi
+
+
+###--------------------###
+_NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
+if [ -e "$_NEWRELIC_APP_CFG" ] ; then
+  _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_APP_CFG)
+  if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
+    sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_APP_CFG &> /dev/null
+  fi
+  st_runner "service newrelic-daemon restart" &> /dev/null
+  if [ -e "/etc/init.d/php-fpm" ] ; then
+    st_runner "service php-fpm reload" &> /dev/null
+  fi
+  st_runner "service php53-fpm reload" &> /dev/null
+fi
+
+
+###--------------------###
+_NEWRELIC_SYS_CFG="/etc/newrelic/nrsysmond.cfg"
+if [ -e "$_NEWRELIC_SYS_CFG" ] ; then
+  _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_SYS_CFG)
+  if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
+    sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_SYS_CFG &> /dev/null
+  fi
+  st_runner "service newrelic-sysmond restart" &> /dev/null
+  if [ -e "/etc/init.d/php-fpm" ] ; then
+    st_runner "service php-fpm reload" &> /dev/null
+  fi
+  st_runner "service php53-fpm reload" &> /dev/null
 fi
 
 

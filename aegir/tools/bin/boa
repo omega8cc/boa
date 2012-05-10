@@ -41,15 +41,18 @@ octopus_install ()
 barracuda_install ()
 {
 if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"         /var/backups/BARRACUDA.sh.txt
-  sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/BARRACUDA.sh.txt
+  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"           /var/backups/BARRACUDA.sh.txt
+  sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                /var/backups/BARRACUDA.sh.txt
   if [ "$kind" = "local" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=NO/_EASY_LOCALHOST=YES/g"  /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=YES/_EASY_PUBLIC=NO/g"        /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=NO/_EASY_LOCALHOST=YES/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=YES/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
   elif [ "$kind" = "public" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=YES/_EASY_LOCALHOST=NO/g"  /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=NO/_EASY_PUBLIC=YES/g"        /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"  /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=YES/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=NO/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"    /var/backups/BARRACUDA.sh.txt
+  fi
+  if [ ! -z "$rkey"] ; then
+    sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"  /var/backups/BARRACUDA.sh.txt
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     bash /var/backups/BARRACUDA.sh.txt
@@ -108,6 +111,7 @@ init_setup ()
   fi
   if [ "$kind" = "public" ] ; then
     if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] ; then
+      rkey="$mode"
       mode="$user"
       user="o1"
     fi
@@ -146,6 +150,7 @@ case "$1" in
              email="$4"
              user="$5"
              mode="$6"
+             rkey="$7"
              init_setup
   ;;
   in-head)   version="$1"
@@ -154,9 +159,10 @@ case "$1" in
              email="$4"
              user="$5"
              mode="$6"
+             rkey="$7"
              init_setup
   ;;
-  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max}"
+  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max} {newrelickey}"
              exit 1
   ;;
 esac
