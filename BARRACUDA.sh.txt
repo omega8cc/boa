@@ -3978,6 +3978,8 @@ else
     _SQL_UPGRADE=YES
   elif [[ "$_DB_SERVER_TEST" =~ "5.1.49-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.7-MariaDB" ]] || [[ "$_DB_SERVER_TEST" =~ "5.2.10-MariaDB" ]] ; then
     _SQL_UPGRADE=YES
+  elif [ "$_REL_VERSION" = "squeeze" ] && [[ "$_DB_SERVER_TEST" =~ "5.3.7-MariaDB" ]] ; then
+    _SQL_UPGRADE=YES
   fi
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     _SQL_UPGRADE=NO
