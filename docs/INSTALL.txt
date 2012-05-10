@@ -110,6 +110,9 @@ Example:
 
 ### NOTE: You can also configure and run BARRACUDA.sh.txt and OCTOPUS.sh.txt
           directly if you prefer to configure all available options manually.
+          To learn more on how to customize your BOA system, please read
+          docs/NOTES.txt # Notes related to Barracuda and Octopus customized
+          install and upgrades.
 
 
 ### Please read docs/UPGRADE.txt for simple upgrades how-to

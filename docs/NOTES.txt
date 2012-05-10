@@ -47,3 +47,21 @@
   * Your Aegir Master Instance control panel will be available at https://aegir.local
   * Your Fast DNS Cache Server (pdnsd) will listen on 127.0.0.1:53
   * Your Chive MariaDB Manager will be available at https://chive.aegir.local
+
+
+# Notes related to Barracuda and Octopus customized install and upgrades
+
+  NOTE: While BOA system installed per docs/INSTALL.txt comes with many options
+        set by default to make it as easy as possible, you may want to customize
+        it further on upgrade, by editing various settings stored in the BOA config
+        files, respectively:
+
+        /root/.barracuda.cnf
+        /root/.o1.octopus.cnf
+        /root/.o2.octopus.cnf
+        etc.
+
+        It may be useful when you prefer to install Percona instead of MariaDB
+        or to always use latest version of PHP built from sources etc.
+        Please read docs/UPGRADE.txt for simple upgrades how-to.
+
