@@ -1218,9 +1218,15 @@ update_php_conf () {
     if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
       ln -s /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
+      fi
     elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
       ln -s /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      fi
     fi
   fi
   ###
