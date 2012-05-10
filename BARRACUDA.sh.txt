@@ -1149,6 +1149,7 @@ fix_php_ini_newrelic () {
       true
     else
       cat $_NR_TPL >> $_THIS_FILE
+      echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
   fi
 }
