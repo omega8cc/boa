@@ -147,7 +147,7 @@ up_finish ()
 up_head ()
 {
   up_start
-  wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else

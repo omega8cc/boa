@@ -697,7 +697,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "Please download and use new stable version:"
     msg "wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt"
     msg "You can also use (for testing) latest dev version:"
-    msg "wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt"
+    msg "wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt"
     msg "Bye"
     touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1

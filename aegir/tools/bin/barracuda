@@ -71,7 +71,7 @@ up_finish ()
 up_head ()
 {
   up_start
-  wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
   up_action
   up_finish
 }

@@ -3192,7 +3192,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "Please download and use new version:"
     msg "wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt"
     msg "You can also use (for testing) latest dev version:"
-    msg "wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt"
+    msg "wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt"
     msg "Bye"
     exit 1
   fi

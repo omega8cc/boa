@@ -99,8 +99,8 @@ init_setup ()
 {
   init_start
   if [ "$version" = "in-head" ] ; then
-    wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/BARRACUDA.sh.txt
-    wget -q -U iCab http://code.aegir.cc/aegir/barracuda-octopus/blobs/raw/master/OCTOPUS.sh.txt
+    wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
+    wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt
   elif [ "$version" = "in-stable" ] ; then
     wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
     wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt
