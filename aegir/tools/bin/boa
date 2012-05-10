@@ -51,7 +51,7 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     sed -i "s/^_EASY_PUBLIC=NO/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"    /var/backups/BARRACUDA.sh.txt
   fi
-  if [ ! -z "$rkey"] ; then
+  if [ ! -z "$rkey" ] ; then
     sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"  /var/backups/BARRACUDA.sh.txt
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
