@@ -3738,7 +3738,8 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   mrun "sleep 60"
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
-  msg "HINT: Run tail -f $_LOG in another terminal window to watch details"
+  msg "HINT: Run tail -f $_LOG"
+  msg "HINT: in another terminal window to watch details"
   mrun "sleep 1"
   if [ -e "/etc/init.d/bind" ] ; then
     rm -f /etc/init.d/bind
@@ -3961,9 +3962,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
-  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-    install_upgrade_nginx
-  fi
+fi
+if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
+  install_upgrade_nginx
 fi
 
 
@@ -4046,9 +4047,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   if [ "$_FROM_SOURCES" = "YES" ] && [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
-  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-    install_upgrade_nginx
-  fi
+fi
+if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
+  install_upgrade_nginx
 fi
 set_xterm
 kill_nash
