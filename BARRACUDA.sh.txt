@@ -1131,9 +1131,6 @@ fix_php_ext () {
     if [ -e "/etc/php5/conf.d" ] ; then
       mkdir -p /var/backups/php53-conf-d
       mv -f /etc/php5/conf.d/*.ini /var/backups/php53-conf-d/ &> /dev/null
-      if [ -e "/var/backups/php53-conf-d/newrelic.ini" ] ; then
-        mv -f /var/backups/php53-conf-d/newrelic.ini /etc/php5/conf.d/ &> /dev/null
-      fi
     fi
   fi
 }
