@@ -56,8 +56,8 @@
    # Stable on public server - no prompt with 3xD6 + 3xD7 + Atrium only
    $ boa in-stable public server.mydomain.org my@email o1 mini
 
-   # Stable on public server - no prompt with all platforms installed
-   $ boa in-stable public server.mydomain.org my@email o1 max
+   # Stable on public server - no prompt with all platforms and New Relic
+   $ boa in-stable public server.mydomain.org my@email o1 max newrelickey
 
    # To install HEAD instead of Stable, use the same commands, but
      replace "in-stable" with "in-head"
