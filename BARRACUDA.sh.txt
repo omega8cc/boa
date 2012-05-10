@@ -2375,10 +2375,11 @@ install_php_modern () {
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     _NEW_LTS=YES
   fi
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/bin/php" ] && [ "$_NEW_LTS" = "NO" ] ; then
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ ! -L "/usr/bin/php" ] && [ -f "/opt/local/bin/php" ] ; then
+    mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
     ln -s /opt/local/bin/php /usr/bin/php
   fi
-  if [ ! -x "/opt/local/bin/php" ] && [ "$_NEW_LTS" = "YES" ] ; then
+  if [ ! -x "/opt/local/bin/php" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
     mkdir -p /opt/local/bin
     ln -s /usr/bin/php /opt/local/bin/php
   fi
@@ -2386,12 +2387,8 @@ install_php_modern () {
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     st_runner "service php5-fpm stop" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    ### rm -f /etc/init.d/php5-fpm* ### removing this breaks upgrade!
-    ### cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm-dotdeb /etc/init.d/php53-fpm
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
   fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
 }
