@@ -46,3 +46,18 @@ $ octopus up-head all
           /root/.o1.octopus.cnf
           /root/.o2.octopus.cnf
           etc.
+
+### NOTE: You can append "log" as a last argument to every
+          command, and it will write the output to the file
+          instead of to the console, respectively:
+          /var/backups/reports/up/barracuda/*
+          /var/backups/reports/up/octopus/*
+
+          Examples:
+
+          $ barracuda up-head log
+          $ octopus up-head all log
+
+          Note also that detailed backend log on barracuda
+          upgrade is always stored in /var/backups/*
+

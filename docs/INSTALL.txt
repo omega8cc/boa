@@ -114,6 +114,8 @@ Example:
           docs/NOTES.txt # Notes related to Barracuda and Octopus customized
           install and upgrades.
 
+          Note also that detailed backend log on barracuda
+          install is always stored in /var/backups/*
 
 ### Please read docs/UPGRADE.txt for simple upgrades how-to
 
