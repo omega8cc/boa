@@ -4669,11 +4669,11 @@ if [ -e "$_NEWRELIC_APP_CFG" ] ; then
   if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_APP_CFG &> /dev/null
   fi
-  st_runner "service newrelic-daemon restart" &> /dev/null
   if [ -e "/etc/init.d/php-fpm" ] ; then
-    st_runner "service php-fpm reload" &> /dev/null
+    st_runner "service php-fpm restart" &> /dev/null
   fi
-  st_runner "service php53-fpm reload" &> /dev/null
+  st_runner "service php53-fpm restart" &> /dev/null
+  st_runner "service newrelic-daemon restart" &> /dev/null
 fi
 
 
@@ -4685,10 +4685,6 @@ if [ -e "$_NEWRELIC_SYS_CFG" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_SYS_CFG &> /dev/null
   fi
   st_runner "service newrelic-sysmond restart" &> /dev/null
-  if [ -e "/etc/init.d/php-fpm" ] ; then
-    st_runner "service php-fpm reload" &> /dev/null
-  fi
-  st_runner "service php53-fpm reload" &> /dev/null
 fi
 
 
