@@ -141,7 +141,7 @@ Octopus can install the platforms listed below:
  Managing News 1.2.1 ---------- http://managingnews.com
  MartPlug 1.0-alpha1 ---------- http://drupal.org/project/martplug
  NodeStream 1.5 --------------- http://nodestream.org
- NodeStream 2.0-alpha13 ------- http://nodestream.org
+ NodeStream 2.0-beta1 --------- http://nodestream.org
  Octopus Video 1.0-alpha6 ----- http://octopusvideo.org
  Open Atrium 1.4.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
