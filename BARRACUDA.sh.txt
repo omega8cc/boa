@@ -4736,6 +4736,7 @@ if [ -e "$_NEWRELIC_APP_CFG" ] ; then
   if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_APP_CFG &> /dev/null
   fi
+  sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
   if [ -e "/etc/init.d/php-fpm" ] ; then
     st_runner "service php-fpm restart" &> /dev/null
   fi
@@ -4750,9 +4751,9 @@ if [ -e "$_NEWRELIC_SYS_CFG" ] ; then
   _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_SYS_CFG)
   if [[ "$_NEWRELIC_KEY_TEST" =~ "REPLACE_WITH_REAL_KEY" ]] && [ ! -z "$_NEWRELIC_KEY" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_SYS_CFG &> /dev/null
-    sed -i "s/loglevel=.*/loglevel=error/g" $_NEWRELIC_SYS_CFG &> /dev/null
-    sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" $_NEWRELIC_SYS_CFG &> /dev/null
   fi
+  sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_SYS_CFG &> /dev/null
+  sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" $_NEWRELIC_SYS_CFG &> /dev/null
   st_runner "service newrelic-sysmond restart" &> /dev/null
 fi
 
