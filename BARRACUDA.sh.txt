@@ -4384,30 +4384,12 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mrun "sleep 1"
 fi
 if [ -x "/usr/bin/php" ] ; then
-  _PHP_INSTALLED=`/usr/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-  if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
-    if [ "$_FROM_SOURCES" = "YES" ] ; then
-      if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
-        _PHP_INSTALL_REQUIRED_NEW=YES
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-        fix_php_ext
-      fi
-    else
-      _PHP_INSTALL_REQUIRED_NEW=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
-    fi
-  else
-    if [ "$_FROM_SOURCES" = "YES" ] ; then
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-      fix_php_ext
-    fi
-  fi
-else
-  _PHP_INSTALL_REQUIRED_NEW=YES
+  _PHP_NEW_BIN="/usr/bin/php"
+elif [ -x "/opt/local/bin/php" ] ; then
+  _PHP_NEW_BIN="/opt/local/bin/php"
 fi
-if [ -x "/opt/local/bin/php" ] ; then
-  _PHP_INSTALLED=`/opt/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+if [ -x "$_PHP_NEW_BIN" ] ; then
+  _PHP_INSTALLED=`$_PHP_NEW_BIN -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
     if [ "$_FROM_SOURCES" = "YES" ] ; then
       if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
