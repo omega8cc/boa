@@ -5,7 +5,6 @@ SHELL=/bin/bash
 
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
-_CHECK_HOST=`uname -n`
 
 octopus_install ()
 {
@@ -13,6 +12,7 @@ octopus_install ()
     if [ -z "$user" ] ; then
       user="o1"
     fi
+    _CHECK_HOST=`uname -n`
     sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/OCTOPUS.sh.txt
     sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.txt
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /var/backups/OCTOPUS.sh.txt
