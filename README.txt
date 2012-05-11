@@ -145,7 +145,7 @@ Octopus can install the platforms listed below:
  Octopus Video 1.0-alpha6 ----- http://octopusvideo.org
  Open Atrium 1.4.1 ------------ http://openatrium.com
  Open Deals 1.0-beta7 --------- http://opendealsapp.com
- Open Outreach 1.0-beta8 ------ http://openoutreach.org
+ Open Outreach 1.0-rc1 -------- http://openoutreach.org
  OpenChurch 1.10-alpha1 ------- http://openchurchsite.com
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3.0-alpha8 ------- http://openpublishapp.com
