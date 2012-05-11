@@ -2690,8 +2690,7 @@ install_upgrade_nginx () {
     if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       true
     else
-      killall -9 nginx &> /dev/null
-      mrun "sleep 1"
+      service nginx stop &> /dev/null
       killall -9 nginx &> /dev/null
       mrun "sleep 1"
       service nginx start &> /dev/null
@@ -3783,7 +3782,6 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
-  service nginx stop &> /dev/null
   st_runner "apt-get -y remove libc-client2007b-dev" 2> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
@@ -4377,6 +4375,10 @@ fi
 
 
 ###--------------------###
+if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+  service nginx stop &> /dev/null
+  killall -9 nginx &> /dev/null
+fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   msg "INFO: Checking if PHP upgrade is available"
   mrun "sleep 1"
