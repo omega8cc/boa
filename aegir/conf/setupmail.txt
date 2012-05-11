@@ -50,7 +50,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
   Commerce 1.7.1 --------------- http://drupalcommerce.org
   Commons 2.6 ------------------ http://acquia.com/drupalcommons
-  MartPlug 1.0-alpha1 ---------- http://drupal.org/project/martplug
+  MartPlug 1.0-alpha2 ---------- http://drupal.org/project/martplug
   NodeStream 1.5 --------------- http://nodestream.org
   NodeStream 2.0-beta1 --------- http://nodestream.org
   Open Deals 1.0-beta7 --------- http://opendealsapp.com
