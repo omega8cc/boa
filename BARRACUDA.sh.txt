@@ -1142,11 +1142,16 @@ fix_php_ini_newrelic () {
     _NR_TPL="/usr/lib/newrelic-php5/scripts/newrelic.ini.template"
   fi
   if [ -e "$_THIS_FILE" ] ; then
-    _NEWRELIC_INI_TEST=$(grep "extension=newrelic.so" $_THIS_FILE)
-    if [[ "$_NEWRELIC_INI_TEST" =~ "extension=newrelic.so" ]] ; then
+    _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE)
+    if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
       true
     else
       cat $_NR_TPL >> $_THIS_FILE
+    fi
+    _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" $_THIS_FILE)
+    if [[ "$_NEWRELIC_INI_TEST_B" =~ "newrelic.framework.drupal.modules" ]] ; then
+      true
+    else
       echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
   fi
@@ -1258,7 +1263,7 @@ update_php_conf () {
   fix_php_ini_redis
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
-  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini} &> /dev/null
+  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
 }
 #
