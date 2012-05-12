@@ -309,10 +309,10 @@ cd
 fi
 }
 #
-# remove incompatible modules from o_contrib
+# update o_contrib
 #
-remove_incompatible_modules_001 () {
-if [ ! -e "/var/log/incompatible-modules-removed-001n.log" ] ; then
+o_contrib_update_global () {
+if [ ! -e "/var/log/o-contrib-update-009.info" ] ; then
 msg "UPGRADE A: Removing old or incompatible modules from o_contrib globally"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="cache_backport redis drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
@@ -324,28 +324,55 @@ for i in $REVISIONS; do
         msg "UPGRADE A: Removed /data/all/$i/o_contrib/$m"
       fi
     done
+    mkdir -p /data/all/000/modules
+    if [ -d "/data/all/000/modules/cache_backport" ] && [ ! -e "/data/all/000/modules/cache_backport/update-009.info" ] ; then
+      rm -f -r /data/all/000/modules/cache_backport
+      msg "UPGRADE A: Removed /data/all/000/modules/cache_backport"
+      cd /data/all/000/modules
+      wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
+      for archive in ./*.tar.gz; do
+        tar -xzf "$archive" &> /dev/null
+      done
+      rm -f *.tar.gz
+      sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
+      echo update > cache_backport/update-009.info
+    fi
+    if [ -d "/data/all/000/modules/redis" ] && [ ! -e "/data/all/000/modules/redis/update-009.info" ] ; then
+      rm -f -r /data/all/000/modules/redis
+      msg "UPGRADE A: Removed /data/all/000/modules/redis"
+      cd /data/all/000/modules
+      wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
+      #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
+      #rm -f -r redis/.git
+      for archive in ./*.tar.gz; do
+        tar -xzf "$archive" &> /dev/null
+      done
+      rm -f *.tar.gz
+      rm -f redis/redis.info
+      echo update > redis/update-009.info
+    fi
     cd /data/all/$i/o_contrib
+    if [ -e "/data/all/000/modules/cache_backport" ] && [ ! -e "/data/all/$i/o_contrib/cache_backport" ] ; then
+      ln -s /data/all/000/modules/cache_backport cache_backport
+    fi
+    if [ -e "/data/all/000/modules/redis" ] && [ ! -e "/data/all/$i/o_contrib/redis" ] ; then
+      ln -s /data/all/000/modules/redis redis
+    fi
     if [ -d "/data/all/$i/o_contrib/boost" ] ; then
       sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
       sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
-    #wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
-    git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
-    rm -f -r redis/.git
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
-    rm -f redis/redis.info
-    sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     if [ "$_PURGE_MODE" = "ON" ] ; then
       git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
       rm -f -r /data/all/$i/o_contrib/purge/.git
       rm -f -r /data/all/$i/o_contrib/expire/.git
     fi
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
     msg "UPGRADE A: New modules in /data/all/$i/o_contrib: redis cache_backport purge expire backup_migrate"
   fi
   if [ -d "/data/all/$i" ] ; then
@@ -356,15 +383,15 @@ for i in $REVISIONS; do
     done
   fi
 done
-touch /var/log/incompatible-modules-removed-001n.log
+touch /var/log/o-contrib-update-009.info
 cd
 fi
 }
 #
-# remove incompatible modules from o_contrib_seven
+# update o_contrib_seven
 #
-remove_incompatible_modules_002 () {
-if [ ! -e "/var/log/incompatible-modules-removed-002n.log" ] ; then
+o_contrib_seven_update_global () {
+if [ ! -e "/var/log/o-contrib-seven-update-009.info" ] ; then
 msg "UPGRADE A: Removing old or incompatible modules from o_contrib_seven globally"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="redis session443 cookie_cache_bypass_adv purge expire agrcache"
@@ -376,14 +403,25 @@ for i in $REVISIONS; do
         msg "UPGRADE A: Removed /data/all/$i/o_contrib_seven/$m"
       fi
     done
+    mkdir -p /data/all/000/modules
+    if [ -d "/data/all/000/modules/redis" ] && [ ! -e "/data/all/000/modules/redis/update-009.info" ] ; then
+      rm -f -r /data/all/000/modules/redis
+      msg "UPGRADE A: Removed /data/all/000/modules/redis"
+      cd /data/all/000/modules
+      wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
+      #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
+      #rm -f -r redis/.git
+      for archive in ./*.tar.gz; do
+        tar -xzf "$archive" &> /dev/null
+      done
+      rm -f *.tar.gz
+      rm -f redis/redis.info
+      echo update > redis/update-009.info
+    fi
     cd /data/all/$i/o_contrib_seven
-    #wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
-    git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
-    rm -f -r redis/.git
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
+    if [ -e "/data/all/000/modules/redis" ] && [ ! -e "/data/all/$i/o_contrib_seven/redis" ] ; then
+      ln -s /data/all/000/modules/redis redis
+    fi
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
       git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
@@ -393,7 +431,7 @@ for i in $REVISIONS; do
     msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: redis purge expire"
   fi
 done
-touch /var/log/incompatible-modules-removed-002n.log
+touch /var/log/o-contrib-seven-update-009.info
 cd
 fi
 }
@@ -429,6 +467,7 @@ download_textile () {
   cd textile
   svn export http://textpattern.googlecode.com/svn/development/4.x/textpattern/lib/classTextile.php &> /dev/null
   cp -af classTextile.php include/ &> /dev/null
+  cd ../
 }
 #
 # download_o_contrib_seven
@@ -449,9 +488,6 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
-  git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
-  rm -f -r redis/.git
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
@@ -478,8 +514,24 @@ download_o_contrib_seven () {
   done
   rm -f *.tar.gz
   touch ctrl-$_INSTALLER_VERSION
+  if [ ! -L "./redis" ] ; then
+    ln -s /data/all/000/modules/redis redis
+  fi
   download_textile
-  touch /var/log/incompatible-modules-removed-002n.log
+  if [ ! -d "/data/all/000/modules/redis" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
+    #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
+    #rm -f -r redis/.git
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+    rm -f redis/redis.info
+    echo update > redis/update-009.info
+  fi
+  touch /var/log/o-contrib-seven-update-009.info
 }
 #
 # download_o_contrib_six
@@ -490,7 +542,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/esi-6.x-2.x-dev.tar.gz
@@ -501,9 +552,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.1.tar.gz
-  #wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha8.tar.gz
-  git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
-  rm -f -r redis/.git
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
@@ -529,11 +577,39 @@ download_o_contrib_six () {
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  rm -f redis/redis.info
-  sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
   touch ctrl-$_INSTALLER_VERSION
+  if [ ! -L "./redis" ] ; then
+    ln -s /data/all/000/modules/redis redis
+  fi
+  if [ ! -L "./cache_backport" ] ; then
+    ln -s /data/all/000/modules/cache_backport cache_backport
+  fi
   download_textile
-  touch /var/log/incompatible-modules-removed-001n.log
+  if [ ! -d "/data/all/000/modules/cache_backport" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+    sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
+    echo update > cache_backport/update-009.info
+  fi
+  if [ ! -d "/data/all/000/modules/redis" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
+    #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
+    #rm -f -r redis/.git
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+    rm -f redis/redis.info
+    echo update > redis/update-009.info
+  fi
+  touch /var/log/o-contrib-update-009.info
 }
 #
 # upgrade_o_contrib
@@ -1626,8 +1702,8 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   feature_server_fix_002
-  remove_incompatible_modules_001
-  remove_incompatible_modules_002
+  o_contrib_update_global
+  o_contrib_seven_update_global
 fi
 msg "$_STATUS A: Starting the cron now"
 service cron start &> /dev/null

@@ -353,24 +353,24 @@ if (file_exists('/data/conf/override.global.inc')) {
 // Use redis caching only for d6 and d7 profiles.
 if ($use_cache && $use_redis && !$custom_cache) {
   $cache_module_path_exists = FALSE;
-  if (file_exists('./modules/o_contrib_seven/redis/redis.autoload.inc')) {
+  if (file_exists('/data/all/000/modules/redis/redis.autoload.inc')) {
     $cache_module_path_exists = TRUE;
     $cache_backport = FALSE;
-    $cache_module_path = './modules/o_contrib_seven/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib_seven/redis/redis.lock.inc';
+    $cache_module_path = '/data/all/000/modules/redis/redis.autoload.inc';
+    $cache_lock_path = '/data/all/000/modules/redis/redis.lock.inc';
   }
-  elseif (file_exists('./modules/o_contrib/redis/redis.autoload.inc') &&
-          file_exists('./modules/o_contrib/cache_backport/cache.inc')) {
+  elseif (file_exists('/data/all/000/modules/redis/redis.autoload.inc') &&
+          file_exists('/data/all/000/modules/cache_backport/cache.inc')) {
     $cache_module_path_exists = TRUE;
     $cache_backport = TRUE;
-    $cache_module_path = './modules/o_contrib/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib/redis/redis.lock.inc';
+    $cache_module_path = '/data/all/000/modules/redis/redis.autoload.inc';
+    $cache_lock_path = '/data/all/000/modules/redis/redis.lock.inc';
   }
   if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
     $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
     if ($cache_module_path_exists) {
       if ($cache_backport) {
-        $conf['cache_inc']                 = './modules/o_contrib/cache_backport/cache.inc';
+        $conf['cache_inc']                 = '/data/all/000/modules/cache_backport/cache.inc';
       }
       $conf['cache_backends'][]            = $cache_module_path;
       $conf['redis_client_interface']      = 'PhpRedis';
