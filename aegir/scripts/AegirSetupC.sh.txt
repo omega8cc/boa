@@ -2553,7 +2553,7 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ;
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_MART_PLUG" martplug $_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_MARTPLUG" martplug $_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
@@ -2589,7 +2589,7 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; the
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPEN_DEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
