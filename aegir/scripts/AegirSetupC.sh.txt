@@ -61,6 +61,7 @@ _NODESTREAM7=EDIT_NODESTREAM7
 _OCTOPUS_VIDEO=EDIT_OCTOPUS_VIDEO
 _OPENATRIUM=EDIT_OPENATRIUM
 _OPENCHURCH=EDIT_OPENCHURCH
+_OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENDEALS=EDIT_OPENDEALS
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
 _OPENOUTREACH=EDIT_OPENOUTREACH
@@ -568,7 +569,7 @@ _F_NODESTREAM7="NodeStream 2.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM="Open Atrium 1.4.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.10-a1 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENDEALS="Open Deals 1.0-b7b $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.0-rc1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1749,7 +1750,7 @@ opendeals_install () {
 ###---### Open Deals
 #
 _THIS_PRNAME="opendeals"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENDEALS-$_SMALLCORE7"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPEN_DEALS-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_ALLOW_FOUR" = "YES" ] ; then
@@ -1773,11 +1774,14 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules
-  if [ "$_OPENDEALS" = "7.x-1.0-beta7" ] ; then
-    rm -f -r $_THIS_PRPATH/modules/commerce
+  if [ "$_OPEN_DEALS" = "1.0-b7c" ] ; then
+    rm -f -r $_THIS_PRPATH/modules/{commerce,entity}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
-    tar -xzf commerce-7.x-1.3.tar.gz
-    rm -f commerce-7.x-1.3.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
   fi
   upgrade_ctools
   create_dirs
@@ -2577,9 +2581,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; the
     mrun "sleep 5"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPENDEALS-$_SMALLCORE7 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPEN_DEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi

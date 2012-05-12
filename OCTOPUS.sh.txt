@@ -503,6 +503,7 @@ _NODESTREAM7=7.x-2.0-beta1
 _OCTOPUS_VIDEO=1.0-alpha6
 _OPENATRIUM=6.x-1.4
 _OPENCHURCH=7.x-1.10-alpha1
+_OPEN_DEALS=1.0-b7c
 _OPENDEALS=7.x-1.0-beta7
 _OPENENTERPRISE=6.x-1.0-beta3
 _OPENOUTREACH=7.x-1.0-rc1
@@ -794,6 +795,7 @@ do
   sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
+  sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
   sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files
