@@ -1784,6 +1784,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules
   if [ "$_OPEN_DEALS" = "1.0-b7d" ] ; then
+    mkdir -p $_THIS_PRPATH/modules/opendeals_features
+    mv $_THIS_PRPATH/modules/features/opendeals_* $_THIS_PRPATH/modules/opendeals_features/
     rm -f -r $_THIS_PRPATH/modules/{commerce,entity}
     wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
     rm -f -r $_THIS_PRPATH/modules/{admin_menu,date,defaultcontent,features,rules,strongarm,token,views,webform}
