@@ -436,12 +436,15 @@ init_core_distro_seven_root () {
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
 }
 #
-# upgrade ctools
-upgrade_ctools () {
-  rm -f -r ctools
+# upgrade ctools and entity
+upgrade_ctools_entity () {
+  rm -f -r {ctools,entity}
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
-  tar -xzf ctools-7.x-1.0.tar.gz
-  rm -f ctools-7.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
 }
 #
 # remove default core seven profiles
@@ -924,7 +927,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     tar -xzf commerce-7.x-1.3.tar.gz
     rm -f commerce-7.x-1.3.tar.gz
   fi
-  upgrade_ctools
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -1461,10 +1464,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_THIS_PRPATH/modules/contrib
   if [ "$_MART_PLUG" = "1.0-a3" ] ; then
     rm -f -r $_THIS_PRPATH/modules/entity
-    rm -f -r $_THIS_PRPATH/modules/contrib/{block_titlelink,commerce,entity,features,job_scheduler,media,strongarm,token,views_infinite_scroll,wysiwyg}
+    rm -f -r $_THIS_PRPATH/modules/contrib/{block_titlelink,commerce,features,job_scheduler,media,strongarm,token,views_infinite_scroll,wysiwyg}
     wget -q -U iCab http://ftp.drupal.org/files/projects/block_titlelink-7.x-1.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-1.0-rc2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-7.x-2.0-alpha3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/media-7.x-1.1.tar.gz
@@ -1477,7 +1479,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     done
     rm -f *.tar.gz
   fi
-  upgrade_ctools
+  upgrade_ctools_entity
   sed -i "s/^dependencies.*martplug_sample_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   find $_THIS_PRPATH -type d -exec chmod 0755 {} \; &> /dev/null
@@ -1579,6 +1581,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -1630,6 +1634,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_THIS_PRPATH/libraries
   git clone git://github.com/zencoder/zencoder-php.git zencoder &> /dev/null
   rm -f -r zencoder/.git
+  rm -f -r $_THIS_PRPATH/modules/entity
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -1728,6 +1735,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -1776,14 +1785,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_THIS_PRPATH/modules
   if [ "$_OPEN_DEALS" = "1.0-b7c" ] ; then
     rm -f -r $_THIS_PRPATH/modules/{commerce,entity}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
   fi
-  upgrade_ctools
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -1830,7 +1838,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -1864,7 +1872,7 @@ build_openpublic () {
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools
+  upgrade_ctools_entity
   create_dirs
   cd $_THIS_PRPATH/themes
   wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
@@ -1952,7 +1960,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools
+  upgrade_ctools_entity
   create_dirs
   themes_for_d7
 fi
@@ -2246,15 +2254,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_CORE_DISTRO/profiles/testing
   sed -i "s/name = Standard/name = Vanilla Standard/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
   sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
-  rm -f -r $_THIS_PRPATH/modules/sqlsrv
-  rm -f -r $_THIS_PRPATH/modules/token
   mkdir -p $_THIS_PRPATH/libraries
   cd $_THIS_PRPATH/libraries
   wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
+  rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token}
   cd $_THIS_PRPATH/modules
-  rm -f -r ctools
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
