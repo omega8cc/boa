@@ -1462,7 +1462,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
   patch -p1 < features-1265168-19-roles.patch &> /dev/null
   cd $_THIS_PRPATH/modules/contrib
-  if [ "$_MART_PLUG" = "1.0-a3" ] ; then
+  if [ "$_MART_PLUG" = "1.0-b1b" ] ; then
     rm -f -r $_THIS_PRPATH/modules/entity
     rm -f -r $_THIS_PRPATH/modules/contrib/{block_titlelink,commerce,features,job_scheduler,media,strongarm,token,views_infinite_scroll,wysiwyg}
     wget -q -U iCab http://ftp.drupal.org/files/projects/block_titlelink-7.x-1.3.tar.gz
