@@ -1458,9 +1458,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  cd $_THIS_PRPATH/modules/contrib/features
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
-  patch -p1 < features-1265168-19-roles.patch &> /dev/null
   cd $_THIS_PRPATH/modules/contrib
   if [ "$_MART_PLUG" = "1.0-b1b" ] ; then
     rm -f -r $_THIS_PRPATH/modules/entity
@@ -1480,6 +1477,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     rm -f *.tar.gz
   fi
   upgrade_ctools_entity
+  cd $_THIS_PRPATH/modules/contrib/features
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
+  patch -p1 < features-1265168-19-roles.patch &> /dev/null
   sed -i "s/^dependencies.*martplug_sample_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   find $_THIS_PRPATH -type d -exec chmod 0755 {} \; &> /dev/null
