@@ -139,7 +139,7 @@ Octopus can install the platforms listed below:
  ELMS 1.0-alpha6 -------------- http://elms.psu.edu
  Feature Server 1.1 ----------- http://bit.ly/fserver
  Managing News 1.2.1 ---------- http://managingnews.com
- MartPlug 1.0-alpha2 ---------- http://drupal.org/project/martplug
+ MartPlug 1.0-alpha3 ---------- http://drupal.org/project/martplug
  NodeStream 1.5 --------------- http://nodestream.org
  NodeStream 2.0-beta1 --------- http://nodestream.org
  Octopus Video 1.0-alpha6 ----- http://octopusvideo.org

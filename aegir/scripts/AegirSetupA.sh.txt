@@ -54,6 +54,7 @@ _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
 _ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
+_MART_PLUG=EDIT_MART_PLUG
 _MARTPLUG=EDIT_MARTPLUG
 _NODESTREAM6=EDIT_NODESTREAM6
 _NODESTREAM7=EDIT_NODESTREAM7
@@ -1438,9 +1439,9 @@ mrun "sleep 1"
       ln -s $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/martplug-$_MARTPLUG-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/nodestream-$_NODESTREAM6-$_SMALLCORE6/sites" ] ; then

@@ -496,6 +496,7 @@ _DRUPAL7=drupal-7.14.1
 _DRUPAL8="8.0-dev-$_TODAY"
 _ELMS=6.x-1.0-alpha6
 _MANAGINGNEWS=1.2.1
+_MART_PLUG=1.0-a3
 _MARTPLUG=7.x-1.x-dev
 _NODESTREAM6=6.x-1.5
 _NODESTREAM7=7.x-2.0-beta1
@@ -784,6 +785,7 @@ do
   sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
   sed -i "s/EDIT_MARTPLUG/$_MARTPLUG/g"                   $Files
+  sed -i "s/EDIT_MART_PLUG/$_MART_PLUG/g"                 $Files
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
   sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files
   sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
