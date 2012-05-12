@@ -1076,9 +1076,9 @@ kill_nash () {
     else
       cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
       sed -i "s/exit 0//g" /etc/rc.local &> /dev/null
-      echo "killall nash-hotplug" >> /etc/rc.local
+      echo "killall -9 nash-hotplug" >> /etc/rc.local
       echo "exit 0" >> /etc/rc.local
-      killall nash-hotplug &> /dev/null
+      killall -9 nash-hotplug &> /dev/null
     fi
   fi
 }
@@ -3985,7 +3985,7 @@ st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base se
 st_runner "apt-get autoremove -y" &> /dev/null
 rm -f /etc/aliases
 rm -f -r /etc/mail
-killall sendmail &> /dev/null
+killall -9 sendmail &> /dev/null
 install_with_aptitude_deps
 fix_locales
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then

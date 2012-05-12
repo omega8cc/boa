@@ -1042,10 +1042,10 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
     update-rc.d -f redis remove &> /dev/null
     mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
     mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
-    killall redis-server &> /dev/null
+    killall -9 redis-server &> /dev/null
     rm -f /var/run/redis.pid
     mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
-    killall memcached &> /dev/null
+    killall -9 memcached &> /dev/null
   fi
 fi
 
