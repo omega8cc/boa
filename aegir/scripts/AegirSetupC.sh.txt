@@ -567,7 +567,7 @@ _F_NODESTREAM7="NodeStream 2.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM="Open Atrium 1.4.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.10-a1 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENDEALS="Open Deals 1.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENDEALS="Open Deals 1.0-b7b $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.0-rc1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1759,7 +1759,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules
+  cd $_THIS_PRPATH/modules
+  if [ "$_OPENDEALS" = "7.x-1.0-beta7" ] ; then
+    rm -f -r $_THIS_PRPATH/modules/commerce
+    wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
+    tar -xzf commerce-7.x-1.3.tar.gz
+    rm -f commerce-7.x-1.3.tar.gz
+  fi
   upgrade_ctools
   create_dirs
   themes_for_d7
@@ -1806,7 +1812,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib
+  cd $_THIS_PRPATH/modules/contrib
   upgrade_ctools
   create_dirs
   themes_for_d7
@@ -1928,7 +1934,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib
+  cd $_THIS_PRPATH/modules/contrib
   upgrade_ctools
   create_dirs
   themes_for_d7
