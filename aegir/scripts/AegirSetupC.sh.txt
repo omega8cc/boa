@@ -1783,16 +1783,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules
-  if [ "$_OPEN_DEALS" = "1.0-b7d" ] ; then
+  if [ "$_OPEN_DEALS" = "1.0-b7e" ] ; then
     mkdir -p $_THIS_PRPATH/modules/opendeals_features
     mv $_THIS_PRPATH/modules/features/opendeals_* $_THIS_PRPATH/modules/opendeals_features/
-    rm -f -r $_THIS_PRPATH/modules/{commerce,entity}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
-    rm -f -r $_THIS_PRPATH/modules/{admin_menu,date,defaultcontent,features,rules,strongarm,token,views,webform}
+    rm -f -r $_THIS_PRPATH/modules/{admin_menu,commerce,date,entity,rules,strongarm,token,views,webform}
     wget -q -U iCab http://ftp.drupal.org/files/projects/admin_menu-7.x-3.0-rc2.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/date-7.x-2.5.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/defaultcontent-7.x-1.0-alpha6.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-1.0-rc2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.1.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/strongarm-7.x-2.0-rc1.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.0.tar.gz
