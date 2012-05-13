@@ -1581,7 +1581,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  cd $_THIS_PRPATH/modules
+  cd $_THIS_PRPATH/modules/contrib
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
@@ -1881,6 +1881,17 @@ build_openpublic () {
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
+  if [ "$_OPENPUBLIC" = "beta3-build100" ] ; then
+    rm -f -r $_THIS_PRPATH/modules/{panels,password_policy,views,webform}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/panels-7.x-3.2.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/password_policy-7.x-1.0-rc3.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.3.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/webform-7.x-3.17.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+  fi
   upgrade_ctools_entity
   create_dirs
   cd $_THIS_PRPATH/themes
