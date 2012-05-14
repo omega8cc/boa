@@ -61,10 +61,10 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|goog|yahoo|yande
 if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
   $frags = explode("/", $_SERVER['DOCUMENT_ROOT']);
   if ($frags[1] == 'data') {
-    $this_instance = $_SERVER['SERVER_NAME'] . ';Octopus ' . $frags[3] . ';All Instances';
+    $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Octopus ' . $frags[3] . ';AAA All Instances';
   }
   elseif ($frags[2] == 'aegir') {
-    $this_instance = $_SERVER['SERVER_NAME'] . ';Barracuda Master;All Instances';
+    $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Barracuda Master;AAA All Instances';
   }
   ini_set('newrelic.appname', $this_instance);
   ini_set('newrelic.framework', 'drupal');
