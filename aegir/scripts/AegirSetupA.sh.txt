@@ -1292,6 +1292,11 @@ rm -f -r /data/disk/$_USER/clients/*/backups &> /dev/null
 symlinks -dr /data/disk/$_USER/clients &> /dev/null
 
 
+###---### Remove not used dot files
+#
+rm -f $_USER_HD/{.profile,.bash_logout,.bashrc}
+
+
 ###---### Reading or creating pass.txt
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
