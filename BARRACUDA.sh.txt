@@ -5463,11 +5463,13 @@ if [ "$_FORCE_REDIS_RESTART" = "YES" ] ; then
 fi
 if [ "$_STATUS" = "INIT" ] ; then
   service cron start &> /dev/null
-  echo " "
-  msg "Now waiting 2 minutes before restarting Nginx..."
-  mrun "sleep 99"
+  if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "NO" ] ; then
+    echo " "
+    msg "Now waiting 2 minutes before restarting Nginx..."
+    mrun "sleep 111"
+  fi
   force_advanced_nginx_config
-  mrun "sleep 11"
+  mrun "sleep 8"
   service nginx restart &> /dev/null
 else
   service nginx reload &> /dev/null
