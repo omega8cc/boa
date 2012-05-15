@@ -35,9 +35,18 @@ up_one ()
       _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
       _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
     fi
-    if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] && [ ! -e "$User/log/up-$_TODAY" ] ; then
-      bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      touch $User/log/up-$_TODAY
+    if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
+      if [ ! -e "$User/log/up-$_TODAY" ] ; then
+        bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+        touch $User/log/up-$_TODAY
+      else
+        echo
+        echo "This Aegir Instance is already up to date"
+        echo "By default only one upgrade daily is allowed"
+        echo "If you wish to run upgrade for $User again,"
+        echo "remove its control file $User/log/up-$_TODAY
+        echo
+      fi
     fi
   else
     echo "OCTOPUS.sh.txt installer not available - try again"
