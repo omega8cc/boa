@@ -436,6 +436,16 @@ init_core_distro_seven_root () {
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
 }
 #
+# upgrade entity only
+upgrade_entity () {
+  rm -f -r entity
+  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+}
+#
 # upgrade ctools and entity
 upgrade_ctools_entity () {
   rm -f -r {ctools,entity}
@@ -2096,7 +2106,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   tar -xzf panopoly_apps.tar.gz
   rm -f panopoly_apps.tar.gz
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools_entity
+  upgrade_entity
 fi
 init_this_distro_root
 create_d7_symlinks
