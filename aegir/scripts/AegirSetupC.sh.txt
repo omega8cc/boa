@@ -2086,9 +2086,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
   themes_for_d7
   rm -f -r $_THIS_PRPATH/modules/contrib/redis &> /dev/null
-  cd $_THIS_PRPATH/profiles
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-redis.patch ./
-  patch -p1 < panopoly-search-redis.patch &> /dev/null
+  if [ "$_PANOPOLY" = "7.x-1.0-beta3" ] ; then
+    cd $_THIS_PRPATH/profiles
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-redis.patch ./
+    patch -p1 < panopoly-search-redis.patch &> /dev/null
+  fi
   cd $_THIS_PRPATH/modules
   wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
   tar -xzf panopoly_apps.tar.gz
