@@ -1737,6 +1737,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
   upgrade_ctools_entity
+  sed -i "s/^dependencies.*openchurch_video_demo_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   create_dirs
   themes_for_d7
 fi
