@@ -1401,8 +1401,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   replace_drupal6_core
   cd $_THIS_PRPATH/modules/contrib
-  rm -f -r data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views
-  drush dl --destination=$_THIS_PRPATH/modules/contrib data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta11 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.4 views-6.x-2.13 -y &> /dev/null
+  rm -f -r boxes data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views views_rss
+  drush dl --destination=$_THIS_PRPATH/modules/contrib boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta12 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.4 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
   cd views
   # http://drupal.org/node/853864#comment-3898996
   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
@@ -1608,7 +1608,7 @@ _THIS_PRNAME="octopus_video"
 _THIS_DISTRO="$_THIS_PRNAME-$_OCTOPUS_VIDEO-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_VIDEO" = "YES" ] || [[ "$_DOMAIN" =~ "node.us.host8.biz" ]] ; then
+if [ "$_ALLOW_VIDEO" = "YES" ] || [[ "$_DOMAIN" =~ "node.us.host8.biz" ]] || [[ "$_DOMAIN" =~ "v100.nyc.host8.biz" ]] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OVO ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -2198,9 +2198,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
   cd $_THIS_PRPATH/modules
+  rm -f -r $_THIS_PRPATH/modules/{date,webform}
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin_menu-6.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cck-6.x-2.9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/date-6.x-2.9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield-6.x-3.10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-6.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/imageapi-6.x-1.10.tar.gz
@@ -2213,6 +2215,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/token-6.x-1.18.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-3.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/webform-6.x-3.18.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -2280,15 +2283,16 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
   unzip -qq colorbox.zip &> /dev/null
   rm -f colorbox.zip
-  rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token}
+  rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
   cd $_THIS_PRPATH/modules
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.3.tar.gz
   for archive in ./*.tar.gz; do
