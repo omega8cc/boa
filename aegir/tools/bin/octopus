@@ -44,7 +44,7 @@ up_one ()
         echo "This Aegir Instance is already up to date"
         echo "By default only one upgrade daily is allowed"
         echo "If you wish to run upgrade for $User again,"
-        echo "remove its control file $User/log/up-$_TODAY
+        echo "remove its control file $User/log/up-$_TODAY"
         echo
       fi
     else
