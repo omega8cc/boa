@@ -46,7 +46,7 @@ choose the platforms you wish to install on the instance)
 and updater only. It allows to install new versions of platforms
 with clean directory structure, with code shared between all created
 instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is over 1200 MB total, is shared.
+while most of the code, which is over 1600 MB total, is shared.
 
 Sharing the code between instances is of critical importance,
 because it allows you to dramatically lower RAM and CPU usage,
