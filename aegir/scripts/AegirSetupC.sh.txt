@@ -2095,6 +2095,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
   tar -xzf panopoly_apps.tar.gz
   rm -f panopoly_apps.tar.gz
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity
 fi
 init_this_distro_root
 create_d7_symlinks
