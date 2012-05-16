@@ -293,8 +293,6 @@ patch_d7_core () {
 if [ ! -e "taxonomy-7.7.patch" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.7.patch ./
   patch -p1 < taxonomy-7.7.patch &> /dev/null
-  rm -f taxonomy-7.7.patch
-  rm -f boost_stats.php
 fi
 }
 #
@@ -320,6 +318,7 @@ wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz
   done
   rm -f *.tar.gz
 cd $_CORE_DISTRO
+rm -f boost_stats.php
 }
 #
 # prepare_pressflow_core
@@ -511,10 +510,20 @@ create_drupal7_basic () {
     add_old_short_name_seven
     create_dirs
     themes_for_d7
+    patch_d7_core
   fi
   init_this_distro_root
   create_d7_symlinks
-  patch_d7_core
+}
+#
+# create civicrm symlinks
+create_civicrm_symlinks () {
+  if [ ! -L "sites/all/modules/civicrm" ] ; then
+    ln -s $_CORE_DISTRO/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
+  fi
+  if [ ! -L "sites/all/modules/contrib" ] ; then
+    ln -s $_CORE_DISTRO/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
+  fi
 }
 
 
@@ -709,6 +718,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
 fi
 init_this_distro_root
+create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM_M6 installation completed"
 mrun "sleep 1"
 else
@@ -745,10 +755,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rename_drupal7_profiles
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
+create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM_M7 installation completed"
 mrun "sleep 1"
 else
@@ -790,6 +801,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
 fi
 init_this_distro_root
+create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM6 installation completed"
 mrun "sleep 1"
 else
@@ -826,10 +838,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rename_drupal7_profiles
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
+create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM7 installation completed"
 mrun "sleep 1"
 else
@@ -940,10 +953,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_COMMERCE installation completed"
 mrun "sleep 1"
 else
@@ -1496,10 +1509,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   find $_THIS_PRPATH -type f -exec chmod 0644 {} \; &> /dev/null
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_MARTPLUG installation completed"
 mrun "sleep 1"
 else
@@ -1595,10 +1608,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_NODESTREAM7 installation completed"
 mrun "sleep 1"
 else
@@ -1649,10 +1662,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_OCTOPUS_VIDEO installation completed"
 mrun "sleep 1"
 else
@@ -1750,10 +1763,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/^dependencies.*openchurch_video_demo_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_OPENCHURCH installation completed"
 mrun "sleep 1"
 else
@@ -1814,10 +1827,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_OPENDEALS installation completed"
 mrun "sleep 1"
 else
@@ -1861,10 +1874,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_OPENOUTREACH installation completed"
 mrun "sleep 1"
 else
@@ -1905,6 +1918,7 @@ build_openpublic () {
   fi
   upgrade_ctools_entity
   create_dirs
+  patch_d7_core
   cd $_THIS_PRPATH/themes
   wget -q -U iCab http://ftp.drupal.org/files/projects/openpublic_eu-7.x-1.0.tar.gz
   tar -xzf openpublic_eu-7.x-1.0.tar.gz &> /dev/null
@@ -1950,7 +1964,6 @@ if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox"
 fi
 create_symlinks
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_OPENPUBLIC installation completed"
 mrun "sleep 1"
 else
@@ -1994,10 +2007,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   upgrade_ctools_entity
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_OPENPUBLISH installation completed"
 mrun "sleep 1"
 else
@@ -2107,10 +2120,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f panopoly_apps.tar.gz
   cd $_THIS_PRPATH/modules/contrib
   upgrade_entity
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_PANOPOLY installation completed"
 mrun "sleep 1"
 else
@@ -2316,10 +2329,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f *.tar.gz
   create_dirs
   themes_for_d7
+  patch_d7_core
 fi
 init_this_distro_root
 create_d7_symlinks
-patch_d7_core
 msg "DISTRO: $_F_UBER_CART_SEVEN installation completed"
 mrun "sleep 1"
 else
