@@ -47,10 +47,10 @@ up_one ()
         echo "remove its control file $User/log/up-$_TODAY
         echo
       fi
+    else
+      echo "OCTOPUS.sh.txt installer not available - try again"
+      exit 1
     fi
-  else
-    echo "OCTOPUS.sh.txt installer not available - try again"
-    exit 1
   fi
 }
 
