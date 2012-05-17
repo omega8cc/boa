@@ -1443,6 +1443,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   # http://drupal.org/node/1243258#comment-4850634
   wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
+  cd $_THIS_PRPATH/themes
+  rm -f -r $_THIS_PRPATH/themes/{rubik,tao}
+  drush dl --destination=$_THIS_PRPATH/themes rubik-6.x-3.0-beta3 tao-6.x-3.3 -y &> /dev/null
   enable_drupal6_contrib
   enable_drupal6_admin
   rm -f -r $_CORE_DISTRO/profiles/default
