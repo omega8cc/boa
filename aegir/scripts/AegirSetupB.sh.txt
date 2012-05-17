@@ -563,9 +563,9 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   else
     _ALLOW_CIVICRM=NO
   fi
-#   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-#     $_DRUSHCMD en hosting_civicrm_cron -y &> /dev/null
-#   fi
+  if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
+    $_DRUSHCMD en hosting_civicrm_cron -y &> /dev/null
+  fi
   $_DRUSHCMD en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect hosting_advanced_cron revision_deletion hosting_task_gc -y &> /dev/null
   $_DRUSHCMD dis syslog -y &> /dev/null
   $_DRUSHCMD dis cache -y &> /dev/null
