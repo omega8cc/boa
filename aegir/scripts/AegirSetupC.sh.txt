@@ -2110,7 +2110,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   themes_for_d7
   rm -f -r $_THIS_PRPATH/modules/contrib/redis &> /dev/null
   if [ "$_PANOPOLY" = "7.x-1.0-beta3" ] ; then
-    cd $_THIS_PRPATH/profiles
+    cd $_CORE_DISTRO/profiles
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-redis.patch ./
     patch -p1 < panopoly-search-redis.patch &> /dev/null
   fi
