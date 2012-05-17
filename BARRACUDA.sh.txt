@@ -211,6 +211,17 @@ _EASY_LOCALHOST=NO
 ### installed from sources in all supported
 ### OS flavors.
 ###
+### NOTE! We have switched to always build
+### Nginx from sources, because the packages
+### based version is really bloated, so this
+### option works as explained above only when
+### you will change _NGINX_FROM_SOURCES=YES
+### to _NGINX_FROM_SOURCES=NO in the advanced
+### config section further below. This may be
+### useful when you prefer to run system only
+### updates with apt-get instead of running
+### Barracuda.
+###
 _BUILD_FROM_SRC=NO
 
 
