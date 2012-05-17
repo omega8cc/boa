@@ -435,9 +435,9 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.0.2
+### _AEGIR_VERSION=BOA-2.0.3
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.0.3
 
 
 ###----------------------------------------###
@@ -784,7 +784,7 @@ _SPEED_VALID_MAX=3600
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.0.3-dev
+_INSTALLER_VERSION=BOA-2.0.3
 
 ###
 ### Software versions

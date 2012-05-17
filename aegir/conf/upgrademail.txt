@@ -5,7 +5,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
   https://aegir.dragon.ny.host8.biz
 
 
-=== VIDEO TUTORIALS
+=== NEW VIDEO TUTORIALS
 
   If you like video tutorials, you may start this time here:
 
@@ -21,11 +21,9 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
   http://omega8.cc/dev/ftp-tls.txt
 
 
-=== NEW FEATURES
+=== NEW FEATURES - A LONG LIST THIS TIME
 
-* Complete list will be available online after official release.
-
-  You can read about all new features, fixes and enhancements at:
+* Complete list is available on our website at:
 
   http://omega8.cc/updates
 

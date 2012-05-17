@@ -11,12 +11,6 @@
   The HEAD can be occasionally broken and should be used **only** for testing!
 
 
-  !!! The up-stable option doesn't work yet. It is designed to be used with
-      new BOA-2.0.3 stable, not yet released. You can use this meta installer
-      with up-head option to upgrade to BOA HEAD, or you have to use Barracuda
-      and Octopus installers directly to upgrade to old stable 2.0.2
-
-
 # Download and run BOA Meta Installer.
 $ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
 $ bash BOA.sh.txt

@@ -45,11 +45,6 @@
          It must be a valid New Relic license key - even if it is their
          free Lite option.
 
- !!! The in-stable option doesn't work yet. It is designed to be used with
-     new BOA-2.0.3 stable, not yet released. You can use this meta installer
-     with in-head option to install BOA HEAD, or you have to use Barracuda
-     and Octopus installers directly to install old stable 2.0.2
-
    # Stable on public server - prompt for every platform install
    $ boa in-stable public server.mydomain.org my@email o1
 
@@ -81,11 +76,6 @@
          The last {ask|mini|max} part is optional, if you wish to control
          Octopus platforms install mode, as explained below - none is
          the same as "ask".
-
- !!! The in-stable option doesn't work yet. It is designed to be used with
-     new BOA-2.0.3 stable, not yet released. You can use this meta installer
-     with in-head option to install BOA HEAD, or you have to use Barracuda
-     and Octopus installers directly to install old stable 2.0.2
 
    # Stable on localhost - prompt for every platform install
    $ boa in-stable local my@email
