@@ -46,7 +46,7 @@ choose the platforms you wish to install on the instance)
 and updater only. It allows to install new versions of platforms
 with clean directory structure, with code shared between all created
 instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is over 1600 MB total, is shared.
+while most of the code, which is over 1700 MB total, is shared.
 
 Sharing the code between instances is of critical importance,
 because it allows you to dramatically lower RAM and CPU usage,
@@ -126,7 +126,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 Octopus can install the platforms listed below:
 
- Acquia 6.26.1 (int) ---------- http://bit.ly/acquiadrupal
+ Acquia 6.26.2 (int) ---------- http://bit.ly/acquiadrupal
  CiviCRM 3.4.8-d6 ------------- http://civicrm.org
  CiviCRM 4.0.8-d7 ------------- http://civicrm.org
  CiviCRM 4.1.2-d6 ------------- http://civicrm.org
@@ -152,7 +152,7 @@ Octopus can install the platforms listed below:
  OpenScholar 2.0-beta13 ------- http://openscholar.harvard.edu
  Panopoly 1.0-beta3 ----------- http://drupal.org/project/panopoly
  Pressflow 5.23 --------------- http://pressflow.org
- Pressflow 6.26.1 (int) ------- http://pressflow.org
+ Pressflow 6.26.2 (int) ------- http://pressflow.org
  ProsePoint 0.43 -------------- http://prosepoint.org
  Ubercart 2.9.1 (int) --------- http://ubercart.org
  Ubercart 3.1.1 --------------- http://ubercart.org

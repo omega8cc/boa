@@ -9,7 +9,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.26.1.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.26.2.tar.gz"
 
 projects[cck] = 2.9
 projects[context] = 3.0
