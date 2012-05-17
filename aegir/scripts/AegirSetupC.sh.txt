@@ -518,8 +518,14 @@ create_drupal7_basic () {
 #
 # create civicrm symlinks
 create_civicrm_symlinks () {
+  if [ -d "sites/all/modules/civicrm" ] ; then
+    rm -f -r sites/all/modules/civicrm
+  fi
   if [ ! -L "sites/all/modules/civicrm" ] ; then
     ln -s $_CORE_DISTRO/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
+  fi
+  if [ -d "sites/all/modules/contrib" ] ; then
+    rm -f -r sites/all/modules/contrib
   fi
   if [ ! -L "sites/all/modules/contrib" ] ; then
     ln -s $_CORE_DISTRO/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
