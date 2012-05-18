@@ -34,7 +34,7 @@
 
   * Installing and upgrading BOA system has been greatly simplified.
     You can still configure and run both installers as before,
-    but you can also use this new, shockingly simple command line tools
+    but you can also use these new, shockingly simple command line tools
     to install Barracuda and Octopus at once, to install more Octopus
     instances, to run selective or batch upgrades of all Octopus instances etc.
     See docs/INSTALL.txt and docs/UPGRADE.txt for details.
@@ -72,6 +72,30 @@
     included in the e-mail alert message, if this will happen. If you prefer
     to not run this monitor: `rm -f /var/xdrago/monitor/check/segfault_alert`
 
+  * Previously recommended site and platforms re-verify on Clone or Migrate
+    is now fully automated. Aegir will run these extra tasks as a part
+    of Clone or Migrate task, to make sure that there are no errors
+    and that Aegir is using up-to-date information collected about
+    platforms and sites. It also automatically fixes the known problem
+    with domain aliases incorrectly written in the original and cloned sites,
+    as reported in the Aegir queue: http://drupal.org/node/1004526
+  
+  * Apps are now fully supported. If the App is not downloaded yet, installing
+    it via browser only requires write permissions, normally never available
+    for the web server user, so you need to create an empty control file, either
+    in sites/all/modules/apps-allow.info or sites/domain/modules/apps-allow.info
+    and then run 'Reset password' task. It will open write access where required
+    until the next site 'Verify' task will run . After installing the App,
+    remember to re-Verify the site to restore default, safe permissions.
+
+  * Custom local.settings.php file support uses similar logic with control file
+    sites/domain/modules/local-allow.info and also 'Reset password' task.
+    After running this task the local.settings.php file will be group writable,
+    so you will be able to edit it also when logged in as limited shell user.
+    Remember to run site Verify when done, to restore standard, safe permissions.
+    Note that this file is created automatically, but is not open for write
+    access by default.
+    
 # Notes on new and updated platforms and new Drupal core:
 
   All 6.x and 7.x platforms have been updated with latest core,
