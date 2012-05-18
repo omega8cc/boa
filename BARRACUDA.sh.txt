@@ -4722,7 +4722,9 @@ else
     if [ -e "/etc/init.d/php-fpm" ] ; then
       st_runner "service php-fpm restart" &> /dev/null
     fi
-    st_runner "service php53-fpm restart" &> /dev/null
+    st_runner "service php53-fpm stop" &> /dev/null
+    killall -9 php-fpm &> /dev/null
+    st_runner "service php53-fpm start" &> /dev/null
     st_runner "service nginx reload" &> /dev/null
   fi
 fi
@@ -4739,7 +4741,9 @@ if [ -e "$_NEWRELIC_APP_CFG" ] ; then
   if [ -e "/etc/init.d/php-fpm" ] ; then
     st_runner "service php-fpm restart" &> /dev/null
   fi
-  st_runner "service php53-fpm restart" &> /dev/null
+  st_runner "service php53-fpm stop" &> /dev/null
+  killall -9 php-fpm &> /dev/null
+  st_runner "service php53-fpm start" &> /dev/null
   st_runner "service newrelic-daemon restart" &> /dev/null
 fi
 
