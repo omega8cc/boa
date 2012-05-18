@@ -3872,7 +3872,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Installing required libraries and tools"
 else
   msg "INFO: Upgrading required libraries and tools"
-  if [ ! -e "/etc/init.d/php5-fpm" ] && [ -e "/etc/php5/conf.d" ] ; then
+  if [ ! -e "/etc/init.d/php5-fpm" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php5-fpm-init-vanilla /etc/init.d/php5-fpm
   fi
 fi
