@@ -1431,7 +1431,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal6_core
   cd $_THIS_PRPATH/modules/contrib
   rm -f -r boxes data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views views_rss
-  drush dl --destination=$_THIS_PRPATH/modules/contrib boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta12 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.4 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.8 features-6.x-1.2 feeds-6.x-1.0-beta12 imageapi-6.x-1.10 imagecache-6.x-2.0-beta12 libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.4 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
   cd views
   # http://drupal.org/node/853864#comment-3898996
   wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
@@ -1445,7 +1445,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   patch -p1 < imagecache-1243258-5.patch &> /dev/null
   cd $_THIS_PRPATH/themes
   rm -f -r $_THIS_PRPATH/themes/{rubik,tao}
-  drush dl --destination=$_THIS_PRPATH/themes rubik-6.x-3.0-beta3 tao-6.x-3.3 -y &> /dev/null
+  $_DRUSHCMD dl --destination=$_THIS_PRPATH/themes rubik-6.x-3.0-beta3 tao-6.x-3.3 -y &> /dev/null
   enable_drupal6_contrib
   enable_drupal6_admin
   rm -f -r $_CORE_DISTRO/profiles/default

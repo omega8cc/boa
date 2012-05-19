@@ -291,7 +291,7 @@ REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/fserver" ] ; then
     if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
-      cd; drush dl strongarm-6.x-2.1 --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
+      cd; /var/aegir/drush/drush dl strongarm-6.x-2.1 --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
