@@ -1398,7 +1398,7 @@ fi
 msg "8s before we will continue..."
 sleep 8
 rm -f /tmp/cache.inc
-rm -f /opt/tmp/status-AegirSetup*
+rm -f /opt/tmp/status-*
 action
 rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
