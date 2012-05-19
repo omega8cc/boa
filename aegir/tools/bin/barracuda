@@ -9,9 +9,49 @@ _CHECK_HOST=`uname -n`
 _LOG_DIR="/var/backups/reports/up/barracuda/$_TODAY"
 _UP_LOG="$_LOG_DIR/barracuda-up-$_NOW.log"
 
+send_alert ()
+{
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+    cat <<EOF | mail -e -s "ALERT: Failed Barracuda upgrade on $_CHECK_HOST" $_MY_EMAIL
+Please check all details in the upgrade log:
+
+$_UP_LOG
+
+---
+This e-mail has been sent by your BOA server upgrade monitor.
+
+EOF
+    echo "ALERT: Failed Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
+  fi
+}
+
 send_report ()
 {
-  true
+  _SEND_ALERT=NO
+  _RESULT_TEST_OK=$(grep "INFO: Test OK" $_UP_LOG)
+  if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]] ; then
+    true
+  else
+    _SEND_ALERT=YES
+  fi
+  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" $_UP_LOG)
+  if [[ "$_RESULT_APT_FAIL" =~ "Displaying the last 15 lines" ]] ; then
+    _SEND_ALERT=YES
+  fi
+  _RESULT_ENJOY=$(grep "Enjoy your Aegir Hosting System" $_UP_LOG)
+  if [[ "$_RESULT_ENJOY" =~ "Enjoy your Aegir Hosting System" ]] ; then
+    true
+  else
+    _SEND_ALERT=YES
+  fi
+  _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG)
+  if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
+    _SEND_ALERT=YES
+  fi
+  if [ "$_SEND_ALERT" = "YES" ] ; then
+    send_alert
+  fi
 }
 
 up_action ()

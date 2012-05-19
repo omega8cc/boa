@@ -9,9 +9,47 @@ _CHECK_HOST=`uname -n`
 _LOG_DIR="/var/backups/reports/up/octopus/$_TODAY"
 _UP_CONTRIB_PID="$_LOG_DIR/octopus-contrib-up.pid"
 
+send_alert ()
+{
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+    cat <<EOF | mail -e -s "ALERT: Failed Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST" $_MY_EMAIL
+Please check all details in the upgrade log:
+
+$_UP_LOG
+
+---
+This e-mail has been sent by your BOA server upgrade monitor.
+
+EOF
+    echo "ALERT: Failed Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST sent to $_MY_EMAIL"
+  fi
+}
+
 send_report ()
 {
-  true
+  _SEND_ALERT=NO
+  _RESULT_BYE=$(grep "BYE" $_UP_LOG)
+  if [[ "$_RESULT_BYE" =~ "BYE" ]] ; then
+    true
+  else
+    _SEND_ALERT=YES
+  fi
+  _RESULT_ALRT=$(grep "ALRT:" $_UP_LOG)
+  if [[ "$_RESULT_ALRT" =~ "ALRT:" ]] ; then
+    _SEND_ALERT=YES
+  fi
+  _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG)
+  if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
+    _SEND_ALERT=YES
+  fi
+  _RESULT_ALREADY=$(grep "This Aegir Instance is already up to date" $_UP_LOG)
+  if [[ "$_RESULT_ALREADY" =~ "This Aegir Instance is already up to date" ]] ; then
+    _SEND_ALERT=NO
+  fi
+  if [ "$_SEND_ALERT" = "YES" ] ; then
+    send_alert
+  fi
 }
 
 up_one ()
