@@ -3330,7 +3330,7 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
   _THIS_DB_HOST=localhost
 fi
 echo " "
-msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_AEGIR_VERSION"
+msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
 echo " "
 mrun "sleep 1"
 
