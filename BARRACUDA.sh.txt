@@ -5588,6 +5588,14 @@ mrun "sleep 3"
 echo " "
 msg "Final post-$_L_ST cleaning, please wait a moment..."
 mrun "sleep 1"
+mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
+echo > /etc/motd
+echo " Barracuda System managed by Skynet Agent v.$_INSTALLER_VERSION welcomes you aboard" >> /etc/motd
+echo >> /etc/motd
+echo > /etc/motd.tail
+echo " Barracuda System managed by Skynet Agent v.$_INSTALLER_VERSION welcomes you aboard" >> /etc/motd.tail
+echo >> /etc/motd.tail
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
