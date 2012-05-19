@@ -5065,11 +5065,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       st_runner "service tomcat start" &> /dev/null
       msg "INFO: MultiCore Apache Solr Tomcat installation completed"
       mrun "sleep 1"
-
     else
       msg "INFO: MultiCore Apache Solr Tomcat installation skipped"
       mrun "sleep 1"
-
     fi
   fi
 fi
