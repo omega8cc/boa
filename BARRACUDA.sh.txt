@@ -3646,6 +3646,7 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] ; then
     sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
     sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+    sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
   fi
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
     run_apt_update_again
@@ -3846,6 +3847,7 @@ msg "INFO: Running aptitude update, please wait..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+  sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
 else
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
 fi
