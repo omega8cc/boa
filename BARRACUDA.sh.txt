@@ -3892,9 +3892,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
   if [ "$_REL_VERSION" = "squeeze" ] ; then
     _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
   elif [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
-    _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52 libavcodec-extra-52"
+    _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
   elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    _EXTRA_APT="tree ffmpeg flvtool2 libavcodec53 libavcodec-extra-53"
+    _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
   else
     _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
   fi
