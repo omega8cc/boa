@@ -5290,11 +5290,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 1"
-
         else
         msg "INFO: Collectd Graph Panel installation skipped"
         mrun "sleep 1"
-
       fi
     fi
   fi
@@ -5545,7 +5543,6 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
       else
         msg "INFO: csf/lfd firewall installation skipped"
         mrun "sleep 1"
-
       fi
     fi
   fi
