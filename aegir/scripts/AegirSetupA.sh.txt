@@ -915,7 +915,10 @@ else
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
     mrun "sleep 1"
-    if [ "$_PLATFORMS_ONLY" = "NO" ] ; then
+    if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
+      msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
+      mrun "sleep 1"    
+    else
       msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
       mrun "sleep 1"
       rm -f /opt/tmp/testecho*
@@ -942,9 +945,6 @@ else
       chmod 0700 /data/u &> /dev/null
       chown root:root /data/u &> /dev/null
       msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
-    else
-      msg "$_STATUS A: Aegir Satellite Instance upgrade skipped"
-      mrun "sleep 1"    
     fi
   else
     msg "$_STATUS A: Aegir Satellite Instance not upgraded this time"

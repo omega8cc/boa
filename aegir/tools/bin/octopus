@@ -55,19 +55,19 @@ send_report ()
 up_one ()
 {
   if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
-    cp -af /var/backups/OCTOPUS.sh.txt                     /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/_USER=o1/_USER=$_THIS_HM_USER/g"             /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    cp -af /var/backups/OCTOPUS.sh.txt                      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"             /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-      sed -i "s/_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-      sed -i "s/_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"          /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ ! -e "$_UP_CONTRIB_PID" ] ; then
-      sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      sed -i "s/_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/data/disk/$_THIS_HM_USER/log/option.txt" ] ; then
       _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
@@ -79,8 +79,8 @@ up_one ()
         touch $User/log/up-$_TODAY
       else
         if [ ! -e "$User/log/up-$_TODAY-platforms-only" ] ; then
-          sed -i "s/_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-          sed -i "s/_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+          sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+          sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
           bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
           touch $User/log/up-$_TODAY-platforms-only
         else
@@ -88,7 +88,8 @@ up_one ()
           echo "This Aegir Instance is already up to date"
           echo "By default only one upgrade daily is allowed"
           echo "If you wish to run upgrade for $User again,"
-          echo "remove its control file $User/log/up-$_TODAY"
+          echo "remove its control files: $User/log/up-$_TODAY"
+          echo "and $User/log/up-$_TODAY-platforms-only if exists"
           echo
         fi
       fi
