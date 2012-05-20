@@ -4466,6 +4466,9 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     _NEW_LTS=YES
   fi
   if [ ! -e "/etc/php5/conf.d/geoip.ini" ] && [ "$_NEW_LTS" = "YES" ] ; then
+    if [ -x "/usr/local/bin/php" ] ; then
+      _PHP_INSTALL_REQUIRED=YES
+    fi
     _PHP_INSTALL_REQUIRED_NEW=YES
     msg "INFO: PHP rebuild required to install $_PHP_VERSION_NEW from Dotdeb.org"
     mrun "sleep 1"
