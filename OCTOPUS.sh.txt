@@ -469,13 +469,14 @@ _INSTALLER_VERSION=BOA-2.0.4-dev
 _DRUSH_FAMILY=4
 _DRUSH_VERSION=4.6-dev
 _NOW=`date +%y%m%d-%H%M`
-_TODAY=`date +%y%m%d`
+_PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _SMALLCORE_6_LANG=6.26
 _SMALLCORE6=6.26.2
 _SMALLCORE7=7.14.2
 _SMALLCORE8=8.0-dev
 _SPINNER=YES
+_TODAY=`date +%y%m%d`
 _USRG=users
 _WEBG=www-data
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -807,6 +808,7 @@ do
   sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
   sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     $Files
   sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
+  sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files
   sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
   sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files
   sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files

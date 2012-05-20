@@ -78,12 +78,19 @@ up_one ()
         bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
         touch $User/log/up-$_TODAY
       else
-        echo
-        echo "This Aegir Instance is already up to date"
-        echo "By default only one upgrade daily is allowed"
-        echo "If you wish to run upgrade for $User again,"
-        echo "remove its control file $User/log/up-$_TODAY"
-        echo
+        if [ ! -e "$User/log/up-$_TODAY-platforms-only" ] ; then
+          sed -i "s/_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+          sed -i "s/_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+          bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+          touch $User/log/up-$_TODAY-platforms-only
+        else
+          echo
+          echo "This Aegir Instance is already up to date"
+          echo "By default only one upgrade daily is allowed"
+          echo "If you wish to run upgrade for $User again,"
+          echo "remove its control file $User/log/up-$_TODAY"
+          echo
+        fi
       fi
     else
       echo "OCTOPUS.sh.txt installer not available - try again"

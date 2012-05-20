@@ -108,6 +108,7 @@ _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PHP_MODERN_ONLY=EDIT_PHP_MODERN_ONLY
 _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
+_PLATFORMS_ONLY=EDIT_PLATFORMS_ONLY
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
@@ -914,32 +915,37 @@ else
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
     mrun "sleep 1"
-    msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
-    mrun "sleep 1"
-    rm -f /opt/tmp/testecho*
-    service cron stop &> /dev/null
-    _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-    _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-    chown -R $_USER:$_USRG $_ROOT/.drush
-    chown -R $_USER:$_USRG $_ROOT/backups
-    chown -R $_USER:$_USRG $_ROOT/clients
-    chown -R $_USER:$_USRG $_ROOT/config
-    chown -R $_USER:$_USRG $_ROOT/tools
-    chown -R $_USER $_THIS_HM_ROOT
-    chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
-    chmod -R 2770 $_THIS_HM_SITE/files
-    chown root:$_USRG /data/u &> /dev/null
-    chmod 0771 /data/u &> /dev/null
-    su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
-    if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
-      msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
-      msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-      touch /opt/tmp/status-AegirSetupA-FAIL
-      exit 1
+    if [ "$_PLATFORMS_ONLY" = "NO" ] ; then
+      msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
+      mrun "sleep 1"
+      rm -f /opt/tmp/testecho*
+      service cron stop &> /dev/null
+      _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      chown -R $_USER:$_USRG $_ROOT/.drush
+      chown -R $_USER:$_USRG $_ROOT/backups
+      chown -R $_USER:$_USRG $_ROOT/clients
+      chown -R $_USER:$_USRG $_ROOT/config
+      chown -R $_USER:$_USRG $_ROOT/tools
+      chown -R $_USER $_THIS_HM_ROOT
+      chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
+      chmod -R 2770 $_THIS_HM_SITE/files
+      chown root:$_USRG /data/u &> /dev/null
+      chmod 0771 /data/u &> /dev/null
+      su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+      if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
+        msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
+        msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+        touch /opt/tmp/status-AegirSetupA-FAIL
+        exit 1
+      fi
+      chmod 0700 /data/u &> /dev/null
+      chown root:root /data/u &> /dev/null
+      msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
+    else
+      msg "$_STATUS A: Aegir Satellite Instance upgrade skipped"
+      mrun "sleep 1"    
     fi
-    chmod 0700 /data/u &> /dev/null
-    chown root:root /data/u &> /dev/null
-    msg "$_STATUS A: Aegir Satellite Instance upgrade completed"
   else
     msg "$_STATUS A: Aegir Satellite Instance not upgraded this time"
     mrun "sleep 1"
@@ -1614,11 +1620,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   fi
 else
-  _ALREADY_SENT=NO
-  if [ -e "$_ROOT/log/up-120519" ] || [ -e "$_ROOT/log/up-120520" ] ; then
-    _ALREADY_SENT=YES
-  fi
-  if [ "$_DIST_INSTALL" = "YES" ] && [ "$_ALREADY_SENT" = "NO" ] ; then
+  if [ "$_DIST_INSTALL" = "YES" ] && [ "$_PLATFORMS_ONLY" = "NO" ] ; then
     msg "$_STATUS A: Resending setup e-mail on upgrade, please wait..."
     mrun "sleep 1"
     TIME=`date`
