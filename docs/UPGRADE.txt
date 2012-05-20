@@ -36,10 +36,11 @@ $ octopus up-head all
 
 ### NOTE: Both commands will honor configuration settings
           stored in their config files, respectively:
-          /root/.barracuda.cnf
-          /root/.o1.octopus.cnf
-          /root/.o2.octopus.cnf
-          etc.
+            /root/.barracuda.cnf
+            /root/.o1.octopus.cnf
+            /root/.o2.octopus.cnf
+          However, arguments specified on command line
+          will take precedence - see upgrade mode below.
 
 ### NOTE: You can append "log" as a last argument to every
           command, and it will write the output to the file
@@ -49,9 +50,24 @@ $ octopus up-head all
 
           Examples:
 
-          $ barracuda up-head log
-          $ octopus up-head all log
+          $ barracuda up-stable log
+          $ octopus up-stable all log
 
           Note also that detailed backend log on barracuda
-          upgrade is always stored in /var/backups/*
+          upgrade is always stored directly in /var/backups/*
+
+### NOTE: It is possible to set/force the upgrade mode on the fly
+          using optional arguments: {aegir|platforms|both}
+          Note that none is similar to "both", however "both"
+          will force aegir+platforms upgrade, while none will
+          honor also settings from the octopus instance cnf file,
+          where currently only "aegir" mode is defined
+          with _HM_ONLY=YES option.
+          
+          Examples:
+
+          $ octopus up-stable o1 aegir
+          $ octopus up-stable o1 platforms log
+          $ octopus up-stable all aegir log
+          $ octopus up-stable all platforms
 

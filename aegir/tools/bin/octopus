@@ -52,46 +52,63 @@ send_report ()
   fi
 }
 
+up_mode ()
+{
+  if [ "$mcmode" = "aegir" ] ; then
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    touch $User/log/up-$_TODAY
+  elif [ "$mcmode" = "platforms" ] ; then
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    touch $User/log/up-$_TODAY
+  elif [ "$mcmode" = "both" ] ; then
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    touch $User/log/up-$_TODAY
+  else
+    bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    touch $User/log/up-$_TODAY       
+  fi
+}
+
 up_one ()
 {
   if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
-    cp -af /var/backups/OCTOPUS.sh.txt                      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"              /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"             /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    cp -af /var/backups/OCTOPUS.sh.txt                   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"          /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"            /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-      sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"  /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ ! -e "$_UP_CONTRIB_PID" ] ; then
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g"      /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-    fi
-    if [ -e "/data/disk/$_THIS_HM_USER/log/option.txt" ] ; then
-      _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
-      _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    else
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
-      if [ ! -e "$User/log/up-$_TODAY" ] ; then
-        bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-        touch $User/log/up-$_TODAY
+      if [ -e "$User/log/up-$_TODAY" ] && [ ! -z "$mcmode" ] ; then
+        echo
+        echo "This Aegir Instance is already up to date!"
+        echo "If you wish to run/force the upgrade again,"
+        echo "please specify desired upgrade mode:"
+        echo "aegir, platforms or both - as shown below"
+        echo
+        echo "Usage: octopus $cmmand $second {aegir|platforms|both}"
+        echo
       else
-        if [ ! -e "$User/log/up-$_TODAY-platforms-only" ] ; then
-          sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-          sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-          bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-          touch $User/log/up-$_TODAY-platforms-only
-        else
-          echo
-          echo "This Aegir Instance is already up to date"
-          echo "By default only one upgrade daily is allowed"
-          echo "If you wish to run upgrade for $User again,"
-          echo "remove its control files: $User/log/up-$_TODAY"
-          echo "and $User/log/up-$_TODAY-platforms-only if exists"
-          echo
-        fi
+        up_mode
       fi
     else
       echo "OCTOPUS.sh.txt installer not available - try again"
@@ -185,6 +202,12 @@ up_start ()
     cd /var/backups
     rm -f /var/backups/OCTOPUS.sh.*
   fi
+  if [ "$cmmode" = "log" ] ; then
+    silent="$cmmode"
+  fi
+  if [ ! -z "$cmmode" ] && [ "$cmmode" != "log" ] ; then
+    mcmode="$cmmode"
+  fi
 }
 
 up_finish ()
@@ -246,15 +269,19 @@ EOF
 check_date
 
 case "$1" in
-  up-stable) second="$2"
-             silent="$3"
+  up-stable) cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
              up_stable
   ;;
-  up-head)   second="$2"
-             silent="$3"
+  up-head)   cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
              up_head
   ;;
-  *)         echo "Usage: octopus {up-stable|up-head} {all|o1}"
+  *)         echo "Usage: octopus {up-stable|up-head} {all|o1} {aegir|platforms|both}"
              exit 1
   ;;
 esac
