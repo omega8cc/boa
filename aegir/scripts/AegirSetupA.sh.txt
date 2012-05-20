@@ -1614,7 +1614,11 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   fi
 else
-  if [ "$_DIST_INSTALL" = "YES" ] ; then
+  _ALREADY_SENT=NO
+  if [ -e "$_ROOT/log/up-120519" ] || [ -e "$_ROOT/log/up-120520" ] ; then
+    _ALREADY_SENT=YES
+  fi
+  if [ "$_DIST_INSTALL" = "YES" ] && [ "$_ALREADY_SENT" = "NO" ] ; then
     msg "$_STATUS A: Resending setup e-mail on upgrade, please wait..."
     mrun "sleep 1"
     TIME=`date`

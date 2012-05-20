@@ -634,23 +634,15 @@ fi
 
 
 ###---###
-if [ "$_CLIENT_CORES" -ge "2" ] && [ "$_CLIENT_OPTION" = "SSD" ] && [[ "$_DOMAIN" =~ ".host8." ]] ; then
-  _ALLOW_FOUR=YES
-  _ALLOW_CIVICRM=YES
-  _ALLOW_VIDEO=NO
-elif [ "$_CLIENT_CORES" -ge "4" ] && [ "$_CLIENT_OPTION" != "SSD" ] ; then
-  if [[ "$_DOMAIN" =~ ".host8." ]] ; then
-    _ALLOW_FOUR=YES
-    _ALLOW_CIVICRM=NO
-    _ALLOW_VIDEO=NO
-  else
-    _ALLOW_FOUR=YES
-    _ALLOW_CIVICRM=YES
-    _ALLOW_VIDEO=YES
-  fi
-else
+_ALLOW_FOUR=YES
+_ALLOW_CIVICRM=YES
+_ALLOW_VIDEO=YES
+if [ "$_CLIENT_CORES" -lt "2" ] ; then
   _ALLOW_FOUR=NO
   _ALLOW_CIVICRM=NO
+  _ALLOW_VIDEO=NO
+fi
+if [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _ALLOW_VIDEO=NO
 fi
 
