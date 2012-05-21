@@ -482,9 +482,10 @@ download_o_contrib_seven () {
     ln -s /data/all/000/modules/redis redis
   fi
   download_textile
-  if [ ! -d "/data/all/000/modules/redis" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-010.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/redis
     wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
     #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
     #rm -f -r redis/.git
@@ -549,9 +550,10 @@ download_o_contrib_six () {
     ln -s /data/all/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -d "/data/all/000/modules/cache_backport" ] ; then
+  if [ ! -e "/data/all/000/modules/cache_backport/update-010.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/cache_backport
     wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
@@ -560,9 +562,10 @@ download_o_contrib_six () {
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     echo update > cache_backport/update-010.info
   fi
-  if [ ! -d "/data/all/000/modules/redis" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-010.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/redis
     wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
     #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
     #rm -f -r redis/.git
