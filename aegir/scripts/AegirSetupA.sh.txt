@@ -315,52 +315,17 @@ fi
 # update o_contrib
 #
 o_contrib_update_global () {
-if [ ! -e "/var/log/o-contrib-update-009.info" ] ; then
-msg "UPGRADE A: Removing old or incompatible modules from o_contrib globally"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
-RMMODULES="cache_backport redis drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib" ] ; then
+  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-010.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
         msg "UPGRADE A: Removed /data/all/$i/o_contrib/$m"
       fi
     done
-    mkdir -p /data/all/000/modules
-    if [ -d "/data/all/000/modules/cache_backport" ] && [ ! -e "/data/all/000/modules/cache_backport/update-009.info" ] ; then
-      rm -f -r /data/all/000/modules/cache_backport
-      msg "UPGRADE A: Removed /data/all/000/modules/cache_backport"
-      cd /data/all/000/modules
-      wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-      sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
-      echo update > cache_backport/update-009.info
-    fi
-    if [ -d "/data/all/000/modules/redis" ] && [ ! -e "/data/all/000/modules/redis/update-009.info" ] ; then
-      rm -f -r /data/all/000/modules/redis
-      msg "UPGRADE A: Removed /data/all/000/modules/redis"
-      cd /data/all/000/modules
-      wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
-      #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
-      #rm -f -r redis/.git
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-      rm -f redis/redis.info
-      echo update > redis/update-009.info
-    fi
     cd /data/all/$i/o_contrib
-    if [ -e "/data/all/000/modules/cache_backport" ] && [ ! -e "/data/all/$i/o_contrib/cache_backport" ] ; then
-      ln -s /data/all/000/modules/cache_backport cache_backport
-    fi
-    if [ -e "/data/all/000/modules/redis" ] && [ ! -e "/data/all/$i/o_contrib/redis" ] ; then
-      ln -s /data/all/000/modules/redis redis
-    fi
     if [ -d "/data/all/$i/o_contrib/boost" ] ; then
       sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
       sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
@@ -376,7 +341,20 @@ for i in $REVISIONS; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
-    msg "UPGRADE A: New modules in /data/all/$i/o_contrib: redis cache_backport purge expire backup_migrate"
+    if [ -d "/data/all/$i/o_contrib/cache_backport" ] ; then
+      rm -f -r /data/all/$i/o_contrib/cache_backport
+    fi
+    if [ -d "/data/all/$i/o_contrib/redis" ] ; then
+      rm -f -r /data/all/$i/o_contrib/redis
+    fi
+    if [ -e "/data/all/000/modules/cache_backport" ] && [ ! -L "/data/all/$i/o_contrib/cache_backport" ] ; then
+      ln -s /data/all/000/modules/cache_backport /data/all/$i/o_contrib/cache_backport
+    fi
+    if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
+      ln -s /data/all/000/modules/redis /data/all/$i/o_contrib/redis
+    fi
+    touch /data/all/$i/o_contrib/update-010.info
+    msg "UPGRADE A: New modules in /data/all/$i/o_contrib: purge expire backup_migrate"
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -386,57 +364,39 @@ for i in $REVISIONS; do
     done
   fi
 done
-touch /var/log/o-contrib-update-009.info
 cd
-fi
 }
 #
 # update o_contrib_seven
 #
 o_contrib_seven_update_global () {
-if [ ! -e "/var/log/o-contrib-seven-update-009.info" ] ; then
-msg "UPGRADE A: Removing old or incompatible modules from o_contrib_seven globally"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
-RMMODULES="redis session443 cookie_cache_bypass_adv purge expire agrcache"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib_seven" ] ; then
+  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-010.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
         msg "UPGRADE A: Removed /data/all/$i/o_contrib_seven/$m"
       fi
     done
-    mkdir -p /data/all/000/modules
-    if [ -d "/data/all/000/modules/redis" ] && [ ! -e "/data/all/000/modules/redis/update-009.info" ] ; then
-      rm -f -r /data/all/000/modules/redis
-      msg "UPGRADE A: Removed /data/all/000/modules/redis"
-      cd /data/all/000/modules
-      wget -q -U iCab http://ftp.drupal.org/files/projects/redis-7.x-2.0-alpha9.tar.gz
-      #git clone --branch 7.x-2.x git://github.com/omega8cc/redis.git &> /dev/null
-      #rm -f -r redis/.git
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-      rm -f redis/redis.info
-      echo update > redis/update-009.info
-    fi
-    cd /data/all/$i/o_contrib_seven
-    if [ -e "/data/all/000/modules/redis" ] && [ ! -e "/data/all/$i/o_contrib_seven/redis" ] ; then
-      ln -s /data/all/000/modules/redis redis
-    fi
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
       git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
       rm -f -r /data/all/$i/o_contrib_seven/purge/.git
       rm -f -r /data/all/$i/o_contrib_seven/expire/.git
     fi
-    msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: redis purge expire"
+    if [ -d "/data/all/$i/o_contrib_seven/redis" ] ; then
+      rm -f -r /data/all/$i/o_contrib_seven/redis
+    fi
+    if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
+      ln -s /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
+    fi
+    touch /data/all/$i/o_contrib_seven/update-010.info
+    msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: purge expire"
   fi
 done
-touch /var/log/o-contrib-seven-update-009.info
 cd
-fi
 }
 #
 # Sub Force advanced Nginx configuration.
@@ -475,6 +435,7 @@ download_textile () {
 #
 # download_o_contrib_seven
 download_o_contrib_seven () {
+  touch update-010.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.3.tar.gz
@@ -532,13 +493,13 @@ download_o_contrib_seven () {
     done
     rm -f *.tar.gz
     rm -f redis/redis.info
-    echo update > redis/update-009.info
+    echo update > redis/update-010.info
   fi
-  touch /var/log/o-contrib-seven-update-009.info
 }
 #
 # download_o_contrib_six
 download_o_contrib_six () {
+  touch update-010.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
@@ -597,7 +558,7 @@ download_o_contrib_six () {
     done
     rm -f *.tar.gz
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
-    echo update > cache_backport/update-009.info
+    echo update > cache_backport/update-010.info
   fi
   if [ ! -d "/data/all/000/modules/redis" ] ; then
     mkdir -p /data/all/000/modules
@@ -610,9 +571,8 @@ download_o_contrib_six () {
     done
     rm -f *.tar.gz
     rm -f redis/redis.info
-    echo update > redis/update-009.info
+    echo update > redis/update-010.info
   fi
-  touch /var/log/o-contrib-update-009.info
 }
 #
 # upgrade_o_contrib
@@ -644,6 +604,9 @@ if [ -d "/data/all/$_LAST_ALL/o_contrib_seven" ] ; then
   fi
 fi
 if [ ! -e "$_THIS_CTRL" ] ; then
+  _O_CONTRIB_UP=YES
+fi
+if [ ! -d "/data/all/000/modules/redis" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
