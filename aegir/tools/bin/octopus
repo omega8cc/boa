@@ -98,7 +98,7 @@ up_one ()
       sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
-      if [ -e "$User/log/up-$_TODAY" ] && [ ! -z "$mcmode" ] ; then
+      if [ -e "$User/log/up-$_TODAY" ] && [ -z "$mcmode" ] ; then
         echo
         echo "This Aegir Instance is already up to date!"
         echo "If you wish to run/force the upgrade again,"
