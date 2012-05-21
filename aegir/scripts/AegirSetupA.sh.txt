@@ -609,7 +609,7 @@ fi
 if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
-if [ ! -d "/data/all/000/modules/redis" ] ; then
+if [ ! -e "/data/all/000/modules/redis/update-010.info" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
