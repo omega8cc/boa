@@ -28,7 +28,7 @@ _MODULES=YES
 _MODULES_ON_SEVEN="expire purge robotstxt"
 _MODULES_ON_SIX="expire purge path_alias_cache robotstxt"
 _MODULES_OFF_SEVEN="syslog dblog l10n_update devel performance"
-_MODULES_OFF_SIX="syslog dblog l10n_update devel performance poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass"
+_MODULES_OFF_SIX="cache syslog dblog l10n_update devel performance poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass"
 
 
 ###-------------SYSTEM-----------------###
