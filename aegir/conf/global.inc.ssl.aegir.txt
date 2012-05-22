@@ -325,10 +325,6 @@ $custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc
                        // /data/conf/override.global.inc file, because Domain Access must be included
                        // *after* any cache-related settings to work properly.
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/apachesolr/", $_SERVER['REQUEST_URI'])) {
-  $use_cache = FALSE;
-}
-
 if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
     file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt') ||
     !file_exists('/var/run/redis.pid'))) {
@@ -395,9 +391,12 @@ if ($use_cache && $use_redis && !$custom_cache) {
       else {
         $conf['page_cache_without_database'] = FALSE;
       }
-      $conf['page_cache_invoke_hooks']     = TRUE;
+      $conf['page_cache_invoke_hooks']     = FALSE;
+      $conf['omit_vary_cookie']            = TRUE;
       $conf['page_cache_maximum_age']      = 300;
+      $conf['page_cache_max_age']          = 300;
       $conf['cache_lifetime']              = 0;
+      $conf['cache_class_cache_form']      = 'DrupalDatabaseCache';
       $conf['cache_default_class']         = 'Redis_Cache';
       if ($conf['install_profile'] == 'hostmaster') {
         $conf['cache_class_cache']             = 'DrupalDatabaseCache';
