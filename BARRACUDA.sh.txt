@@ -4403,6 +4403,24 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   msg "INFO: Checking if PHP upgrade is available"
   mrun "sleep 1"
+  ###--------------------###
+  if [ -L "/usr/local/bin/php" ] ; then
+    if [ -e "/usr/local/bin/php52" ] ; then
+      rm -f /usr/local/bin/php
+      mv -f /usr/local/bin/php52 /usr/local/bin/php
+    fi
+  fi
+  ###--------------------###
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
+    if [ -f "/usr/bin/php" ] && [ -f "/opt/local/bin/php" ] && [ ! -L "/opt/local/bin/php" ] ; then
+      mv -f /opt/local/bin/php /opt/local/bin/php-old &> /dev/null
+      ln -s /usr/bin/php /opt/local/bin/php
+    fi
+    if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
+      mv -f /opt/local/bin/phpize /opt/local/bin/phpize-old &> /dev/null
+      ln -s /usr/bin/phpize /opt/local/bin/phpize
+    fi
+  fi
 fi
 if [ -x "/usr/bin/php" ] ; then
   _PHP_NEW_BIN="/usr/bin/php"
@@ -4540,15 +4558,6 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     update_php_legacy
   fi
   update_php_modern
-fi
-
-
-###--------------------###
-if [ -L "/usr/local/bin/php" ] ; then
-  if [ -e "/usr/local/bin/php52" ] ; then
-    rm -f /usr/local/bin/php
-    mv -f /usr/local/bin/php52 /usr/local/bin/php
-  fi
 fi
 
 
