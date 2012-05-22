@@ -427,6 +427,7 @@ do
           su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_queue_cron_frequency 5375462400 &> /dev/null"
           su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_cron_use_backend 1 &> /dev/null"
         fi
+        su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
       fi
       rm -f -r $User/clients/admin &> /dev/null
       rm -f -r $User/clients/omega8ccgmailcom &> /dev/null

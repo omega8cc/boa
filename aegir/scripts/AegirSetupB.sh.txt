@@ -581,6 +581,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     $_DRUSHCMD vset --always-set hosting_queue_cron_frequency 5375462400 &> /dev/null
     $_DRUSHCMD vset --always-set hosting_cron_use_backend 1 &> /dev/null
   fi
+  $_DRUSHCMD vset --always-set hosting_ignore_default_profiles 0 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_queue_tasks_items 1 &> /dev/null
   $_DRUSHCMD vset --always-set hosting_alias_automatic_no_www 1 &> /dev/null
