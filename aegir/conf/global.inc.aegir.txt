@@ -323,7 +323,7 @@ if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt
   $use_cache = FALSE;
 }
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/\/(?:nojs\/|noredis)/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
@@ -369,27 +369,31 @@ if ($use_cache && $use_redis && !$custom_cache) {
     $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
     if ($cache_redis) {
       if ($cache_backport) {
-        $conf['cache_inc']                 = $cache_backport_path;
+        $conf['cache_inc']                  = $cache_backport_path;
       }
-      $conf['cache_backends'][]            = $cache_redis_path;
-      $conf['redis_client_interface']      = 'PhpRedis';
-      $conf['redis_client_host']           = '127.0.0.1';
-      $conf['redis_client_port']           = '6379';
-      $conf['redis_client_password']       = 'isfoobared';
-      $conf['cache_prefix']                = $this_prefix;
+      $conf['cache_backends'][]             = $cache_redis_path;
+      $conf['redis_client_interface']       = 'PhpRedis';
+      $conf['redis_client_host']            = '127.0.0.1';
+      $conf['redis_client_port']            = '6379';
+      $conf['redis_client_password']        = 'isfoobared';
+      $conf['cache_prefix']                 = $this_prefix;
+      $conf['page_cache_invoke_hooks']      = FALSE;
+      $conf['omit_vary_cookie']             = TRUE;
+      $conf['page_cache_maximum_age']       = 300;
+      $conf['page_cache_max_age']           = 300;
+      $conf['cache_lifetime']               = 0;
+      $conf['cache_default_class']          = 'Redis_Cache';
+      $conf['cache_class_cache_form']       = 'DrupalDatabaseCache';
       if (isset($_COOKIE[$test_sess_name])) {
-        $conf['page_cache_without_database'] = TRUE;
+        $conf['page_cache_without_database']  = TRUE;
       }
       else {
-        $conf['page_cache_without_database'] = FALSE;
+        $conf['page_cache_without_database']  = FALSE;
+        $conf['cache_class_cache']            = 'DrupalDatabaseCache';
+        $conf['cache_class_cache_block']      = 'DrupalDatabaseCache';
+        $conf['cache_class_cache_views']      = 'DrupalDatabaseCache';
+        $conf['cache_class_cache_views_data'] = 'DrupalDatabaseCache';
       }
-      $conf['page_cache_invoke_hooks']     = FALSE;
-      $conf['omit_vary_cookie']            = TRUE;
-      $conf['page_cache_maximum_age']      = 300;
-      $conf['page_cache_max_age']          = 300;
-      $conf['cache_lifetime']              = 0;
-      $conf['cache_class_cache_form']      = 'DrupalDatabaseCache';
-      $conf['cache_default_class']         = 'Redis_Cache';
       if ($conf['install_profile'] == 'hostmaster') {
         $conf['cache_class_cache']             = 'DrupalDatabaseCache';
         $conf['cache_class_cache_path_alias']  = 'DrupalDatabaseCache';
