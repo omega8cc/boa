@@ -117,7 +117,7 @@ if (file_exists('./web.config')) {
   }
 }
 elseif (file_exists('./modules/path_alias_cache')) {
-  $conf['cache'] = 3; // enable hardcoded external caching - Pressflow 6 only
+  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   header('X-Backend: C');
