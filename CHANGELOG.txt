@@ -65,7 +65,7 @@
     the system to delete also his SSH/FTPS access in the next 5 minutes.
 
   * We have added segfault monitor for php-fpm and nginx, enabled by default.
-    It is pretty aggresive, because it disables vhost of any site causing
+    It is pretty aggressive, because it disables vhost of any site causing
     segfault errors and sends e-mail alert to the Octopus instance owner
     and server owner e-mail addresses. Simple site re-verify in Aegir enables
     the site again - but until the next segfault only, so read the info
