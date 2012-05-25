@@ -93,6 +93,7 @@ $drupal_seven = FALSE;
 $drupal_six   = FALSE;
 $drupal_five  = FALSE;
 $use_redis    = FALSE;
+$force_redis  = FALSE;
 $is_cart      = FALSE;
 
 if (file_exists('./web.config')) {
@@ -393,6 +394,14 @@ if ($use_cache && $use_redis && !$custom_cache) {
         $conf['cache_class_cache_block']      = 'DrupalDatabaseCache';
         $conf['cache_class_cache_views']      = 'DrupalDatabaseCache';
         $conf['cache_class_cache_views_data'] = 'DrupalDatabaseCache';
+      }
+      if ($force_redis) {
+        $conf['page_cache_without_database']  = TRUE;
+        $conf['cache_class_cache']            = 'Redis_Cache';
+        $conf['cache_class_cache_block']      = 'Redis_Cache';
+        $conf['cache_class_cache_views']      = 'Redis_Cache';
+        $conf['cache_class_cache_views_data'] = 'Redis_Cache';
+        header('X-Force-Redis: YES');
       }
       if ($conf['install_profile'] == 'hostmaster') {
         $conf['cache_class_cache']             = 'DrupalDatabaseCache';
