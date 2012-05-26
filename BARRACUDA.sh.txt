@@ -3742,7 +3742,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     cd /var/opt
     mrun "sleep 1"
     echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" > /etc/apt/sources.list
+    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
     echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
     echo "" >> /etc/apt/sources.list
     echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
