@@ -1537,10 +1537,11 @@ fi
 
 ###---### Remove not used cache module
 #
-if [ ! -e "/data/all/000/old_cache.out.txt" ] && [ -e "/data/all/000" ] ; then
+if [ ! -e "/data/all/000/old_cache.out2.txt" ] && [ -e "/data/all/000" ] ; then
   sed -i "s/, 'cache'//g" /data/all/*/*/profiles/*/*.profile &> /dev/null
+  sed -i "s/'cache', //g" /data/all/*/*/profiles/*/*.profile &> /dev/null
   rm -f -r /data/all/*/o_contrib/cache
-  touch /data/all/000/old_cache.out.txt
+  touch /data/all/000/old_cache.out2.txt
 fi
 
 
