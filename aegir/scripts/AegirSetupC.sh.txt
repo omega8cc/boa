@@ -713,6 +713,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal6_core
   enable_drupal6_contrib
   add_old_short_name_acquia
+  _CIVI_ENGAGE="$_CORE_DISTRO/sites/all/modules/civicrm/drupal/modules/civicrm_engage"
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/civicrm_engage.install $_CIVI_ENGAGE/civicrm_engage.install &> /dev/null
   create_dirs
 fi
 init_this_distro_root

@@ -1,0 +1,169 @@
+<?php
+/*
+ +--------------------------------------------------------------------+
+ | CiviCRM version 4.1                                                |
+ +--------------------------------------------------------------------+
+ | Copyright CiviCRM LLC (c) 2004-2011                                |
+ +--------------------------------------------------------------------+
+ | This file is a part of CiviCRM.                                    |
+ |                                                                    |
+ | CiviCRM is free software; you can copy, modify, and distribute it  |
+ | under the terms of the GNU Affero General Public License           |
+ | Version 3, 19 November 2007.                                       |
+ |                                                                    |
+ | CiviCRM is distributed in the hope that it will be useful, but     |
+ | WITHOUT ANY WARRANTY; without even the implied warranty of         |
+ | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.               |
+ | See the GNU Affero General Public License for more details.        |
+ |                                                                    |
+ | You should have received a copy of the GNU Affero General Public   |
+ | License along with this program; if not, contact CiviCRM LLC       |
+ | at info[AT]civicrm[DOT]org. If you have questions about the        |
+ | GNU Affero General Public License or the licensing of CiviCRM,     |
+ | see the CiviCRM license FAQ at http://civicrm.org/licensing        |
+ +--------------------------------------------------------------------+
+*/
+
+/**
+ *
+ * @package CRM
+ * @copyright CiviCRM LLC (c) 2004-2011
+ * $Id$
+ *
+ */
+
+/**
+ * Implementation of hook_enable().
+ *
+ */
+function civicrm_engage_enable() {
+  civicrm_initialize();
+  // functions that should run repeatedly
+  // every time the module is re-enabled.
+  civicrm_engage_add_contact_subtypes();
+}
+
+/**
+ * Implementation of hook_install().
+ *
+ */
+function civicrm_engage_install() {
+  civicrm_initialize();
+  // functions that should only run once, on install
+  civcrm_engage_enable_street_address_parsing();
+  civcrm_engage_set_autocomplete_options();
+  civicrm_engage_load_configuration();
+}
+
+/**
+ * Create contact subtypes which are referenced in the
+ * xml file that is imported to boostrap the CiviCRM
+ * Campaign component. This function is indempotent, so
+ * it's run on enable.
+ */
+function civicrm_engage_add_contact_subtypes() {
+  // parent_id : 1 is Individual, 3 is Organization
+  $create = array(
+    'Media_Contact' => array(
+      'label' => 'Media Contact',
+      'parent_id' => 1,
+      'is_active' => 1,
+      'name' => 'Media_Contact',
+    ),
+    'Funder_Contact' => array(
+      'label' => 'Funder Contact',
+      'parent_id' => 1,
+      'is_active' => 1,
+      'name' => 'Funder_Contact',
+    ),
+    'Elected_Official' => array(
+      'label' => 'Elected Official',
+      'parent_id' => 1,
+      'is_active' => 1,
+      'name' => 'Elected_Official',
+    ),
+    'Media_Outlet' => array(
+      'label' => 'Media Outlet',
+      'parent_id' => 3,
+      'is_active' => 1,
+      'name' => 'Media_Outlet',
+    ),
+    'Foundation' => array(
+      'label' => 'Foundation',
+      'parent_id' => 3,
+      'is_active' => 1,
+      'name' => 'Foundation',
+    ),
+  );
+  require_once ("CRM/Contact/BAO/ContactType.php");
+  $existing_types = CRM_Contact_BAO_ContactType::subTypeInfo();
+  while (list($k) = each($existing_types)) {
+    if (array_key_exists($k, $create)) {
+      drupal_set_message(t("Not creating @type, already exists.", array("@type" => $k)));
+      unset($create[$k]);
+    }
+  }
+  $contact_type = new CRM_Contact_BAO_ContactType();
+  while (list($k, $v) = each($create)) {
+    drupal_set_message(t("Creating %c", array('%c' => $k)));
+    $contact_type->add($v);
+  }
+}
+
+/**
+ * Street parsing is required for walk lists because it needs to
+ * sort by even/odd address numbers so, when canvassing a street
+ * in which even addresses are on one side and odd on the other, you
+ * can divide the task between two people with two different lists.
+ */
+function civcrm_engage_enable_street_address_parsing() {
+  include_once 'CRM/Core/BAO/Setting.php';
+  $address_options = CRM_Core_BAO_Setting::valueOptions(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
+    'address_options',
+    TRUE, NULL, TRUE
+  );
+  $address_options['street_address_parsing'] = 1;
+  CRM_Core_BAO_Setting::setValueOption(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
+    'address_options',
+    $address_options
+  );
+}
+
+/**
+ * Check Phone Number for auto complete. This setting doubles for batch
+ * update, and when making a phone list in CiviCampaign you really need
+ * to have the phone number included.
+ */
+function civcrm_engage_set_autocomplete_options() {
+  include_once 'CRM/Core/BAO/Setting.php';
+  $contact_autocomplete_options = CRM_Core_BAO_Setting::valueOptions(
+    CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
+    'contact_autocomplete_options',
+    TRUE, NULL, TRUE
+  );
+  $contact_autocomplete_options['phone'] = 1;
+  CRM_Core_BAO_Setting::setValueOption(
+    CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
+    'contact_autocomplete_options',
+    $contact_autocomplete_options
+  );
+}
+
+function civicrm_engage_load_configuration() {
+  drupal_set_message("Loading default civicrm_engage configuration.");
+  // we need to build the path to the CustomGroupDate.xml file
+  // shipped in the civicrm_engage directory. civicrm_engage could
+  // be installed outside of the civicrm root, so we can't rely on
+  // that contstant.
+
+  // instead... start with the drupal root
+  $root = getcwd();
+  // and then added the relative path to the module
+  $civi_engage_path = drupal_get_path('module', 'civicrm_engage');
+  $xml_file = $root . '/' . $civi_engage_path . '/CustomGroupData.xml';
+  require_once 'CRM/Utils/Migrate/Import.php';
+  $import = new CRM_Utils_Migrate_Import();
+
+  $import->run($xml_file);
+}
+
