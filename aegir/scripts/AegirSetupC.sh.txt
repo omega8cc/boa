@@ -285,6 +285,7 @@ create_d7_symlinks () {
 if [ ! -L "web.config" ] ; then
   ln -s $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
   ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
+  rm -f boost_stats.php
 fi
 }
 #
@@ -318,7 +319,6 @@ wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz
   done
   rm -f *.tar.gz
 cd $_CORE_DISTRO
-rm -f boost_stats.php
 }
 #
 # prepare_pressflow_core
