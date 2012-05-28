@@ -44,6 +44,11 @@ rm .databasesToBackup
 #Only database backups should exist in $BACKUPDIR!!!
 find $BACKUPDIR -mtime +8 -type d -exec rm -rf {} \;
 
+service redis-server stop
+sleep 3
+killall -9 redis-server
+rm -f /var/lib/redis/*
+
 echo COMPLETED ALL
 rm -f /var/run/boa_wait.pid
 touch /var/xdrago/log/last-run-backup
