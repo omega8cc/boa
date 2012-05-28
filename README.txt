@@ -219,7 +219,7 @@ Contrib:
  devel ---------------------- [D6,D7] ----------- [FD]
  entitycache ---------------- [D7] ------ [S] [B]
  esi ------------------------ [D6] ------ [S] [B]
- expire --------------------- [D6,D7] --- [S] [B] [FE]
+ expire --------------------- [D6,D7] --- [S] [B]
  fbconnect ------------------ [D6,D7] --- [S]
  fckeditor ------------------ [D6] ------ [S]
  filefield_nginx_progress --- [D6,D7] --- [S] [B]
@@ -235,7 +235,7 @@ Contrib:
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
  private_upload ------------- [D6] ------ [S] [B]
- purge ---------------------- [D6,D7] --- [S] [B] [FE]
+ purge ---------------------- [D6,D7] --- [S] [B]
  readonlymode --------------- [D6,D7] --- [S] [B]
  redis ---------------------- [D6,D7] --- [S] [B] [NA]
  responsive_images ---------- [D7] ------ [S]
@@ -261,7 +261,7 @@ Core:
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  path_alias_cache ----------- [D6] -------------- [FE]
- syslog --------------------- [D6,D7] ----------- [FD]
+ syslog --------------------- [D6,D7] ----------- [FE]
 
 Drush [E]xtensions [M]aster [S]atellite:
 
