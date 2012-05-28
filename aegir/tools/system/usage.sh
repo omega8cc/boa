@@ -426,6 +426,7 @@ do
         if [ ! -e "$User/log/custom_cron" ] ; then
           true
         fi
+        su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_queue_cron_frequency 5375462400 &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_cron_use_backend 1 &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
