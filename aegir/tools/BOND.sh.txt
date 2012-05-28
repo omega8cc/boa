@@ -433,11 +433,15 @@ restart_services () {
 }
 #
 tune_web_server_config () {
-  let "_LIM_FPM = (($_L_PHP_FPM_WORKERS / 2))"
-  if [ ! -z "$_L_PHP_FPM_WORKERS" ] ; then
-    sed -i "s/max_children\">.*</max_children\">$_L_PHP_FPM_WORKERS</g"     /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = $_L_PHP_FPM_WORKERS/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/pm.start_servers =.*/pm.start_servers = $_LIM_FPM/g"          /opt/local/etc/php53-fpm.conf &> /dev/null
+  _LIM_FPM="$_L_PHP_FPM_WORKERS"
+  if [ "$_LIM_FPM" -lt "2" ] ; then
+    _LIM_FPM=2
+  fi
+  let "_START_FPM = (($_LIM_FPM / 2))"
+  if [ ! -z "$_LIM_FPM" ] && [ "$_LIM_FPM" -ge "2" ] ; then
+    sed -i "s/max_children\">.*</max_children\">$_LIM_FPM</g"               /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = $_LIM_FPM/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/pm.start_servers =.*/pm.start_servers = $_START_FPM/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
     sed -i "s/pm.max_spare_servers =.*/pm.max_spare_servers = $_LIM_FPM/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   else
     sed -i "s/max_children\">.*</max_children\">2</g"               /opt/etc/php-fpm.conf &> /dev/null
