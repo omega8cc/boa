@@ -197,7 +197,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
   $conf['boost_normal_dir'] = $this_device;
   $conf['boost_gzip_dir'] = $this_device;
-  $this_prefix = $_SERVER['HTTP_HOST'] . '.' . $this_device . '.';
+  $this_prefix = $_SERVER['HTTP_HOST'] . '.';
 
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
