@@ -534,7 +534,7 @@ tar -xzf aegir_custom_settings-6.x-1.10.tar.gz
 rm -f aegir_custom_settings-6.x-1.10.tar.gz
 git clone --branch master http://git.drupal.org/project/hosting_civicrm_cron.git &> /dev/null
 rm -f -r hosting_civicrm_cron/.git &> /dev/null
-git clone --branch master http://git.drupal.org/project/hosting_advanced_cron.git &> /dev/null
+git clone --branch master git://github.com/omega8cc/hosting_advanced_cron.git &> /dev/null
 rm -f -r hosting_advanced_cron/.git &> /dev/null
 git clone --branch 6.x-1.x http://git.drupal.org/project/hosting_remote_import.git &> /dev/null
 rm -f -r hosting_remote_import/.git &> /dev/null
@@ -546,9 +546,9 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules hosting_task_gc-6.x-1.0-alpha1 revision_deletion-6.x-1.x-dev provision_cdn-6.x-2.x-dev strongarm-6.x-2.1 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.8 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
-  cd $_AEGIR_ROOT/sites/all/modules/hosting_advanced_cron
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/hosting_advanced_cron.patch ./
-  patch -p1 < hosting_advanced_cron.patch &> /dev/null
+#   cd $_AEGIR_ROOT/sites/all/modules/hosting_advanced_cron
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/hosting_advanced_cron.patch ./
+#   patch -p1 < hosting_advanced_cron.patch &> /dev/null
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   cp -af $_AEGIR_ROOT/sites/all/modules/provision_cdn/hosting $_AEGIR_ROOT/sites/all/modules/hosting_cdn
   rm -f -r $_AEGIR_ROOT/sites/all/modules/provision_cdn
