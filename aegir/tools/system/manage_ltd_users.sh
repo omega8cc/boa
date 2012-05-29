@@ -214,9 +214,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   echo Missing /var/xdrago/conf/lshell.conf template
   exit
 else
-  touch /var/run/boa_run.pid
-  touch /var/run/boa_wait.pid
-  sleep 1
+  sleep 3
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   add_ltd_group_if_not_exists
   sleep 1
@@ -229,7 +227,5 @@ else
   cp -af $_THIS_LTD_CONF /etc/lshell.conf
   sleep 1
   find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
-  rm -f /var/run/boa_run.pid
-  rm -f /var/run/boa_wait.pid
 fi
 ###EOF2012###
