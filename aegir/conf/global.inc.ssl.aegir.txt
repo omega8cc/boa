@@ -410,6 +410,7 @@ if ($use_cache && $use_redis && !$custom_cache) {
         $conf['cache_class_cache_views_data'] = 'Redis_Cache';
         $conf['cache_class_cache_pathsrc']    = 'Redis_Cache';
         $conf['cache_class_cache_pathdst']    = 'Redis_Cache';
+        $conf['cache_class_cache_menu']       = 'Redis_Cache';
         header('X-Force-Redis: YES');
       }
       if ($conf['install_profile'] == 'hostmaster') {
