@@ -337,6 +337,10 @@ if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/(?:nojs|styles|imagecach
   $use_redis = FALSE;
 }
 
+if (!isset($_COOKIE[$test_sess_name])) {
+  $use_redis = FALSE;
+}
+
 if ($use_cache && $use_redis) {
   header('X-Allow-Redis: YES');
 }
