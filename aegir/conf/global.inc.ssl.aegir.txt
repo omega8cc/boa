@@ -103,6 +103,7 @@ $drupal_five  = FALSE;
 $use_redis    = FALSE;
 $force_redis  = FALSE;
 $is_cart      = FALSE;
+$is_dev       = FALSE;
 
 if (file_exists('./web.config')) {
   if (file_exists('./core')) {
@@ -176,6 +177,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER[
   unset($conf['error_level']);    // stop hardcoding no errors on screen
   $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for dev.domain
   $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for dev.domain
+  $is_dev = TRUE;
 }
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST'])) {
@@ -333,16 +335,16 @@ if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt
   $use_cache = FALSE;
 }
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/(?:nojs|styles|imagecache)\/|noredis)/", $_SERVER['REQUEST_URI'])) {
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/nojs\/|noredis)/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
-if (!isset($_COOKIE[$test_sess_name])) {
-  $use_redis = FALSE;
-}
-
-if ($use_cache && $use_redis) {
+if ($use_cache && $use_redis && !$force_redis) {
   header('X-Allow-Redis: YES');
+}
+elseif ($force_redis) {
+  $use_redis = TRUE;
+  header('X-Force-Redis: YES');
 }
 else {
   header('X-Allow-Redis: NO');
@@ -375,7 +377,7 @@ if ($use_cache && $use_redis && !$custom_cache) {
     $cache_redis_path = './modules/o_contrib/redis/redis.autoload.inc';
     $cache_lock_path = './modules/o_contrib/redis/redis.lock.inc';
   }
-  if (isset($_SERVER['HTTP_HOST']) && !preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
+  if (!$is_dev) {
     $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
     if ($cache_redis) {
       if ($cache_backport) {
@@ -388,34 +390,17 @@ if ($use_cache && $use_redis && !$custom_cache) {
       $conf['redis_client_password']        = 'isfoobared';
       $conf['cache_prefix']                 = $this_prefix;
       $conf['page_cache_invoke_hooks']      = TRUE;
-      $conf['omit_vary_cookie']             = TRUE;
-      $conf['page_cache_maximum_age']       = 300;
-      $conf['page_cache_max_age']           = 300;
+      $conf['page_cache_without_database']  = FALSE;
+      $conf['page_cache_maximum_age']       = 0;
+      $conf['page_cache_max_age']           = 0;
       $conf['cache_lifetime']               = 0;
       $conf['cache_default_class']          = 'Redis_Cache';
       $conf['cache_class_cache_form']       = 'DrupalDatabaseCache';
       $conf['cache_class_cache_menu']       = 'DrupalDatabaseCache';
-      if (isset($_COOKIE[$test_sess_name]) && !$is_cart) {
-        $conf['page_cache_without_database']  = TRUE;
-      }
-      else {
-        $conf['page_cache_without_database']  = FALSE;
-        $conf['cache_class_cache']            = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_block']      = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_views']      = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_views_data'] = 'DrupalDatabaseCache';
-      }
       if ($force_redis) {
-        $conf['cache'] = 3;
         $conf['page_cache_without_database']  = TRUE;
-        $conf['cache_class_cache']            = 'Redis_Cache';
-        $conf['cache_class_cache_block']      = 'Redis_Cache';
-        $conf['cache_class_cache_views']      = 'Redis_Cache';
-        $conf['cache_class_cache_views_data'] = 'Redis_Cache';
-        $conf['cache_class_cache_pathsrc']    = 'Redis_Cache';
-        $conf['cache_class_cache_pathdst']    = 'Redis_Cache';
+        $conf['cache_class_cache_form']       = 'Redis_Cache';
         $conf['cache_class_cache_menu']       = 'Redis_Cache';
-        header('X-Force-Redis: YES');
       }
       if ($conf['install_profile'] == 'hostmaster') {
         $conf['cache_class_cache']             = 'DrupalDatabaseCache';
