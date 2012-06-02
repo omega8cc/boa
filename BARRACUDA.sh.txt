@@ -803,8 +803,8 @@ _PHP_VERSION_NEW=5.3.13
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
 _REDIS_VERSION=2.4.14
-_MARIADB_VERSION=5.5.23
-_PERCONA_VERSION=5.5.23
+_MARIADB_VERSION=5.5.24
+_PERCONA_VERSION=5.5.24
 
 ###
 ### Variables
@@ -3938,9 +3938,9 @@ install_percona_sql () {
   done
   gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
   _THIS_REL_VERSION="$_REL_VERSION"
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    _THIS_REL_VERSION="oneiric"
-  fi
+#   if [ "$_REL_VERSION" = "precise" ] ; then
+#     _THIS_REL_VERSION="oneiric"
+#   fi
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
@@ -3974,9 +3974,9 @@ install_mariadb_sql () {
     _MARIADB_SERIES=5.5
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    _THIS_REL_VERSION="oneiric"
-  fi
+#   if [ "$_REL_VERSION" = "precise" ] ; then
+#     _THIS_REL_VERSION="oneiric"
+#   fi
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
