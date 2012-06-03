@@ -175,6 +175,7 @@ _PHP_CLI_VERSION=5.2
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6
 ### OAM ----------- Open Atrium
+### OAY ----------- Open Academy
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
@@ -502,9 +503,10 @@ _MARTPLUG=7.x-1.x-dev
 _NODESTREAM6=6.x-1.5
 _NODESTREAM7=7.x-2.0-beta1
 _OCTOPUS_VIDEO=1.0-alpha6
+_OPEN_DEALS=1.0-b7e
+_OPENACADEMY=7.x-1.0-beta2
 _OPENATRIUM=6.x-1.4
 _OPENCHURCH=7.x-1.10-alpha1
-_OPEN_DEALS=1.0-b7e
 _OPENDEALS=7.x-1.0-beta7
 _OPENENTERPRISE=6.x-1.0-beta3
 _OPENOUTREACH=7.x-1.0-rc1
@@ -786,17 +788,18 @@ do
   sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files
   sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
-  sed -i "s/EDIT_MARTPLUG/$_MARTPLUG/g"                   $Files
   sed -i "s/EDIT_MART_PLUG/$_MART_PLUG/g"                 $Files
+  sed -i "s/EDIT_MARTPLUG/$_MARTPLUG/g"                   $Files
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
   sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files
   sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
   sed -i "s/EDIT_NOW/$_NOW/g"                             $Files
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
   sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files
+  sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files
+  sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files
   sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
-  sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
   sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files

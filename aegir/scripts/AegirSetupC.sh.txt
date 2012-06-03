@@ -59,9 +59,10 @@ _MARTPLUG=EDIT_MARTPLUG
 _NODESTREAM6=EDIT_NODESTREAM6
 _NODESTREAM7=EDIT_NODESTREAM7
 _OCTOPUS_VIDEO=EDIT_OCTOPUS_VIDEO
+_OPEN_DEALS=EDIT_OPEN_DEALS
+_OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM=EDIT_OPENATRIUM
 _OPENCHURCH=EDIT_OPENCHURCH
-_OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENDEALS=EDIT_OPENDEALS
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
 _OPENOUTREACH=EDIT_OPENOUTREACH
@@ -595,6 +596,7 @@ _F_MARTPLUG="MartPlug $_MART_PLUG $_SMALLCORE7 P.$_THIS_CORE"
 _F_NODESTREAM6="NodeStream 1.5 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENACADEMY="Open Academy 1.0-b2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM="Open Atrium 1.4.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.10-a1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
@@ -1682,6 +1684,72 @@ fi
 }
 
 
+openacademy_install () {
+###---### Open Academy
+#
+_THIS_PRNAME="openacademy"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENACADEMY-$_SMALLCORE7"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_THIS_PLPATH="$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO"
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAY ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENACADEMY - http://drupal.org/project/openacademy" ; then
+true
+msg "DISTRO: $_F_OPENACADEMY installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENACADEMY-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENACADEMY-core.tar.gz &> /dev/null
+  rm -f $_THIS_PRNAME-$_OPENACADEMY-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENACADEMY" ] ; then
+    mv $_THIS_PRNAME-$_OPENACADEMY $_THIS_DISTRO
+  fi
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  create_dirs
+  themes_for_d7
+  rm -f -r $_THIS_PRPATH/modules/contrib/redis &> /dev/null
+  if [ "$_OPENACADEMY" = "7.x-1.0-beta2" ] ; then
+    cd $_CORE_DISTRO/profiles
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy.patch ./
+    patch -p1 < openacademy.patch &> /dev/null
+  fi
+  cd $_THIS_PRPATH/modules
+  wget -q -U iCab http://files.aegir.cc/dev/distro/openacademy_apps.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  cd $_THIS_PRPATH/modules/contrib
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ds-7.x-1.5.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  upgrade_entity
+  patch_d7_core
+fi
+init_this_distro_root
+create_d7_symlinks
+msg "DISTRO: $_F_OPENACADEMY installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_OPENACADEMY installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
 openatrium_install () {
 ###---### Open Atrium
 #
@@ -2415,6 +2483,7 @@ martplug_install
 nodestream6_install
 nodestream7_install
 octopus_video_install
+openacademy_install
 openatrium_install
 openchurch_install
 opendeals_install
@@ -2631,6 +2700,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OCTOPUS_VIDEO" octopus_video $_ROOT/distro/$_THIS_CORE/octopus_video-$_OCTOPUS_VIDEO-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENACADEMY" openacademy $_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
