@@ -392,6 +392,7 @@ if ($use_cache && $use_redis && !$custom_cache) {
       $conf['cache_default_class']          = 'Redis_Cache';
       $conf['cache_class_cache_form']       = 'DrupalDatabaseCache';
       $conf['cache_class_cache_menu']       = 'DrupalDatabaseCache';
+      $conf['cache_class_cache_tax_image']  = 'DrupalDatabaseCache';
       if ($force_redis) {
         $conf['page_cache_without_database']  = TRUE;
         $conf['cache_class_cache_form']       = 'Redis_Cache';
