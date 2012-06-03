@@ -1606,7 +1606,11 @@ tune_web_server_config () {
   if [ "$_LIM_FPM" -lt "2" ] ; then
     _LIM_FPM=2
   fi
-  let "_START_FPM = (($_LIM_FPM / 2))"
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    _START_FPM="$_LIM_FPM"
+  else
+    let "_START_FPM = (($_LIM_FPM / 2))"
+  fi
   if [ ! -z "$_LIM_FPM" ] && [ "$_LIM_FPM" -ge "2" ] ; then
     sed -i "s/max_children\">.*</max_children\">$_LIM_FPM</g"               /opt/etc/php-fpm.conf &> /dev/null
     sed -i "s/pm.max_children =.*/pm.max_children = $_LIM_FPM/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
