@@ -3,6 +3,12 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+/etc/init.d/redis-server stop
+sleep 1
+killall -9 redis-server
+rm -f /var/lib/redis/*
+/etc/init.d/redis-server start
+
 /usr/sbin/ntpdate pool.ntp.org
 /etc/init.d/php-fpm reload
 /etc/init.d/php53-fpm reload
@@ -20,7 +26,7 @@ echo rotate > /var/log/mysql/sql-slow-query.log
 if test -f /var/run/boa_run.pid ; then
   sleep 1
 else
-  rm -f -r /tmp/*
+  rm -f /tmp/*error*
 fi
 touch /var/xdrago/log/clear.done
 ###EOF2012###

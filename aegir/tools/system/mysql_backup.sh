@@ -48,6 +48,7 @@ service redis-server stop
 sleep 3
 killall -9 redis-server
 rm -f /var/lib/redis/*
+service redis-server start
 
 echo COMPLETED ALL
 rm -f /var/run/boa_wait.pid
