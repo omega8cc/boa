@@ -25,7 +25,11 @@ action()
   rm -f -r /tmp/*
   rm -f /opt/tmp/*error*
   rm -f /opt/tomcat6/logs/*
-  rm -f -r /var/lib/nginx/speed/*
+  if test -f /root/.high_traffic.cnf ; then
+    true
+  else
+    rm -f -r /var/lib/nginx/speed/*
+  fi
   echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ] ; then
     echo rotate > /var/log/newrelic/nrsysmond.log

@@ -3,16 +3,19 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-/etc/init.d/redis-server stop
-sleep 1
-killall -9 redis-server
-rm -f /var/lib/redis/*
-/etc/init.d/redis-server start
-
 /usr/sbin/ntpdate pool.ntp.org
-/etc/init.d/php-fpm reload
-/etc/init.d/php53-fpm reload
-sleep 5
+if test -f /root/.high_traffic.cnf ; then
+  true
+else
+  /etc/init.d/redis-server stop
+  sleep 1
+  killall -9 redis-server
+  rm -f /var/lib/redis/*
+  /etc/init.d/redis-server start
+  /etc/init.d/php-fpm reload
+  /etc/init.d/php53-fpm reload
+  sleep 1
+fi
 echo rotate > /var/log/php/php-fpm-error.log
 echo rotate > /var/log/php/php-fpm-slow.log
 echo rotate > /var/log/php/php53-fpm-error.log

@@ -8,8 +8,11 @@ perl /var/xdrago/monitor/check/hackmail
 perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/scan_nginx
 perl /var/xdrago/monitor/check/sqlcheck
-perl /var/xdrago/monitor/check/segfault_alert
-
+if test -f /root/.high_traffic.cnf ; then
+  true
+else
+  perl /var/xdrago/monitor/check/segfault_alert
+fi
 killit()
 {
   if [ "$xtime" != "Time" ] && [ "$xuser" != "root" ] && [[ "$xtime" -gt "$limit" ]] ; then
