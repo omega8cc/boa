@@ -15,8 +15,9 @@ do
     echo load is $NOW_LOAD while maxload is $CTL_LOAD
     echo running $Runner
     bash $Runner
-    echo waiting 3 sec
-    sleep 3
+    n=$((RANDOM%9+2))
+    echo waiting $n sec
+    sleep $n
     echo CTL done
   else
     echo load is $NOW_LOAD while maxload is $CTL_LOAD
