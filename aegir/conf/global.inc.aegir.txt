@@ -43,6 +43,7 @@ $conf['expire_flush_menu_items'] = 0;        // default settings for expire modu
 $conf['expire_flush_cck_references'] = 0;    // default settings for expire module
 $conf['expire_include_base_url'] = 1;        // default settings for expire module
 $conf['video_ffmpeg_instances'] = 1;         // force safe default for ffmpeg
+$conf['securepages_enable'] = 1;             // force to avoid issues with SSL proxy
 
 ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
@@ -382,49 +383,46 @@ if ($use_cache && $use_redis && !$custom_cache) {
     $cache_redis_path = './modules/o_contrib/redis/redis.autoload.inc';
     $cache_lock_path = './modules/o_contrib/redis/redis.lock.inc';
   }
-  if (!$is_dev) {
-    $conf['securepages_enable'] = 1;  // force securepages_enable to avoid issues with SSL proxy
-    if ($cache_redis) {
-      if ($cache_backport) {
-        $conf['cache_inc']                  = $cache_backport_path;
-      }
-      $conf['cache_backends'][]             = $cache_redis_path;
-      $conf['redis_client_interface']       = 'PhpRedis';
-      $conf['redis_client_host']            = '127.0.0.1';
-      $conf['redis_client_port']            = '6379';
-      $conf['redis_client_password']        = 'isfoobared';
-      $conf['cache_prefix']                 = $this_prefix;
-      $conf['page_cache_invoke_hooks']      = TRUE;
-      $conf['page_cache_without_database']  = FALSE;
-      $conf['page_cache_maximum_age']       = 0;
-      $conf['page_cache_max_age']           = 0;
-      $conf['cache_lifetime']               = 0;
-      $conf['cache_default_class']          = 'Redis_Cache';
-      $conf['cache_class_cache_form']       = 'DrupalDatabaseCache';
-      $conf['cache_class_cache_menu']       = 'DrupalDatabaseCache';
-      $conf['cache_class_cache_views']      = 'DrupalDatabaseCache';
-      $conf['cache_class_cache_views_data'] = 'DrupalDatabaseCache';
-      if (!isset($_COOKIE[$test_sess_name]) || $is_cart) {
-        $conf['cache_class_cache']            = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_block']      = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_tax_image']  = 'DrupalDatabaseCache';
-      }
-      if ($force_redis) {
-        $conf['page_cache_without_database']  = TRUE;
-        $conf['omit_vary_cookie']             = TRUE;
-        $conf['cache_class_cache_form']       = 'Redis_Cache';
-        $conf['cache_class_cache_menu']       = 'Redis_Cache';
-        $conf['cache_class_cache']            = 'Redis_Cache';
-        $conf['cache_class_cache_block']      = 'Redis_Cache';
-        $conf['cache_class_cache_views']      = 'Redis_Cache';
-        $conf['cache_class_cache_views_data'] = 'Redis_Cache';
-        $conf['cache_class_cache_tax_image']  = 'Redis_Cache';
-      }
-      if ($conf['install_profile'] == 'hostmaster') {
-        $conf['cache_class_cache']             = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_path_alias']  = 'DrupalDatabaseCache';
-        $conf['cache_class_cache_path_source'] = 'DrupalDatabaseCache';
-      }
+  if ($cache_redis) {
+    if ($cache_backport) {
+      $conf['cache_inc']                    = $cache_backport_path;
+    }
+    $conf['cache_backends'][]               = $cache_redis_path;
+    $conf['redis_client_interface']         = 'PhpRedis';
+    $conf['redis_client_host']              = '127.0.0.1';
+    $conf['redis_client_port']              = '6379';
+    $conf['redis_client_password']          = 'isfoobared';
+    $conf['cache_prefix']                   = $this_prefix;
+    $conf['page_cache_invoke_hooks']        = TRUE;
+    $conf['page_cache_without_database']    = FALSE;
+    $conf['page_cache_maximum_age']         = 0;
+    $conf['page_cache_max_age']             = 0;
+    $conf['cache_lifetime']                 = 0;
+    $conf['cache_default_class']            = 'Redis_Cache';
+    $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+    $conf['cache_class_cache_menu']         = 'DrupalDatabaseCache';
+    $conf['cache_class_cache_views']        = 'DrupalDatabaseCache';
+    $conf['cache_class_cache_views_data']   = 'DrupalDatabaseCache';
+    if (!isset($_COOKIE[$test_sess_name]) || $is_cart) {
+      $conf['cache_class_cache']            = 'DrupalDatabaseCache';
+      $conf['cache_class_cache_block']      = 'DrupalDatabaseCache';
+      $conf['cache_class_cache_tax_image']  = 'DrupalDatabaseCache';
+    }
+    if ($force_redis) {
+      $conf['page_cache_without_database']  = TRUE;
+      $conf['omit_vary_cookie']             = TRUE;
+      $conf['cache_class_cache_form']       = 'Redis_Cache';
+      $conf['cache_class_cache_menu']       = 'Redis_Cache';
+      $conf['cache_class_cache']            = 'Redis_Cache';
+      $conf['cache_class_cache_block']      = 'Redis_Cache';
+      $conf['cache_class_cache_views']      = 'Redis_Cache';
+      $conf['cache_class_cache_views_data'] = 'Redis_Cache';
+      $conf['cache_class_cache_tax_image']  = 'Redis_Cache';
+    }
+    if ($conf['install_profile'] == 'hostmaster') {
+      $conf['cache_class_cache']             = 'DrupalDatabaseCache';
+      $conf['cache_class_cache_path_alias']  = 'DrupalDatabaseCache';
+      $conf['cache_class_cache_path_source'] = 'DrupalDatabaseCache';
     }
   }
 }
