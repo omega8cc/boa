@@ -1,0 +1,20 @@
+diff --git a/drush_make.drush.inc b/drush_make.drush.inc
+index 129513c..826c744 100644
+--- a/drush_make.drush.inc
++++ b/drush_make.drush.inc
+@@ -281,11 +281,11 @@ function drush_make_updatexml($project) {
+   if (!isset($project['type'])) {
+     // Determine the project type.
+     $term_map = array(
+-      'Modules' => 'module',
+-      'Themes' => 'theme',
++      'Module' => 'module',
++      'Theme' => 'theme',
+       'Drupal core' => 'core',
+-      'Installation profiles' => 'profile',
+-      'Translations' => 'translation'
++      'Installation profile' => 'profile',
++      'Translation' => 'translation'
+     );
+     // Iterate through all terms related to this project.
+     foreach ($release_history->terms->term as $term) {
