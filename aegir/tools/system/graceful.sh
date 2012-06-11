@@ -30,13 +30,15 @@ action()
   else
     rm -f -r /var/lib/nginx/speed/*
   fi
+  /etc/init.d/nginx reload
+  /etc/init.d/php-fpm reload
+  /etc/init.d/php53-fpm reload
   echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ] ; then
     echo rotate > /var/log/newrelic/nrsysmond.log
     echo rotate > /var/log/newrelic/php_agent.log
     echo rotate > /var/log/newrelic/newrelic-daemon.log
   fi
-  /etc/init.d/nginx reload
   touch /var/xdrago/log/graceful.done
 }
 
