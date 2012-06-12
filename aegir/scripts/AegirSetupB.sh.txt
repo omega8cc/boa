@@ -442,7 +442,6 @@ if [ "$_HTTP_WILDCARD" = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
 fi
 
-
 ###---### Build Aegir base
 #
 mrun "sleep 1"
@@ -505,10 +504,6 @@ else
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
   msg "$_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
-cd $_ROOT/.drush/drush_make
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/adapt-to-release-history-xml.patch ./
-patch -p1 < adapt-to-release-history-xml.patch &> /dev/null
-cd $_ROOT
 
 
 ###--------------------###
