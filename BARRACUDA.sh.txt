@@ -5292,8 +5292,11 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
-        git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
-        rm -f -r cgp/.git
+        #git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
+        #rm -f -r cgp/.git
+        wget -q -U iCab http://files.aegir.cc/dev/cgp.tar.gz
+        tar -xzf cgp.tar.gz &> /dev/null
+        rm -f cgp.tar.gz
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
         chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
