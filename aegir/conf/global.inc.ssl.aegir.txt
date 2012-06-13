@@ -155,7 +155,7 @@ if ($conf['install_profile'] == 'martplug') {
   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
 }
 
-if (isset($_SERVER['HTTP_HOST'])) {
+if (isset($_SERVER['SERVER_NAME'])) {
   if ($conf['install_profile'] == 'uberdrupal' ||
       $conf['install_profile'] == 'martplug' ||
       $conf['install_profile'] == 'commerce' ||
@@ -164,7 +164,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
       file_exists('sites/all/modules/ubercart/README.txt') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
-      file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/ubercart/README.txt')) {
+      file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/ubercart/README.txt')) {
     unset($conf['file_downloads']); // disable hardcoded public downloads
     $is_cart = TRUE;
     header('X-Is-Cart: YES');
@@ -199,7 +199,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
   }
 }
 
-if (isset($_SERVER['HTTP_HOST'])) {
+if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
     $this_device = $_SERVER['USER_DEVICE'];
@@ -209,10 +209,15 @@ if (isset($_SERVER['HTTP_HOST'])) {
   }
   $conf['boost_normal_dir'] = $this_device;
   $conf['boost_gzip_dir'] = $this_device;
-  $this_prefix = $_SERVER['HTTP_HOST'] . '.';
+  if (file_exists('sites/all/modules/domain')) {
+    $this_prefix = $_SERVER['HTTP_HOST'] . '.';
+  }
+  else {
+    $this_prefix = $_SERVER['SERVER_NAME'] . '.';
+  }
 
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/advagg/advagg_bundler/advagg_bundler.module')) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
@@ -272,7 +277,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-    $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['HTTP_HOST'] . $_SERVER['HTTP_USER_AGENT'];
+    $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BOND'. md5("$identity");
 
     if ($drupal_seven || $drupal_eight) {
@@ -286,7 +291,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
     }
 
     if (!isset($_COOKIE[$test_sess_name]) && (file_exists('sites/all/modules/cache_hour/YES.txt') ||
-        file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache_hour/YES.txt'))) {
+        file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_hour/YES.txt'))) {
       $expire_in_seconds = '3600';
     }
 
@@ -311,7 +316,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
         $expire_in_seconds = '0';
       }
     }
-    
+
     if (!empty($known_bot)) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '3600';
@@ -340,8 +345,8 @@ $custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc
                        // /data/conf/override.global.inc file, because Domain Access must be included
                        // *after* any cache-related settings to work properly.
 
-if (isset($_SERVER['HTTP_HOST']) && (file_exists('sites/all/modules/cache/NO.txt') ||
-    file_exists('sites/'. $_SERVER['HTTP_HOST'] .'/modules/cache/NO.txt') ||
+if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.txt') ||
+    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache/NO.txt') ||
     !file_exists('/var/run/redis.pid'))) {
   $use_cache = FALSE;
 }
