@@ -103,6 +103,7 @@ $drupal_six   = FALSE;
 $drupal_five  = FALSE;
 $use_redis    = FALSE;
 $force_redis  = FALSE;
+$redis_up     = FALSE;
 $is_cart      = FALSE;
 $is_dev       = FALSE;
 $high_traffic = FALSE;
@@ -209,7 +210,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   }
   $conf['boost_normal_dir'] = $this_device;
   $conf['boost_gzip_dir'] = $this_device;
-  if (file_exists('sites/all/modules/domain')) {
+  if (file_exists('sites/all/modules/domain') || $high_traffic) {
     $this_prefix = $_SERVER['HTTP_HOST'] . '.';
   }
   else {
@@ -345,9 +346,12 @@ $custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc
                        // /data/conf/override.global.inc file, because Domain Access must be included
                        // *after* any cache-related settings to work properly.
 
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.txt') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache/NO.txt') ||
-    !file_exists('/var/run/redis.pid'))) {
+if (file_exists('/var/run/redis.pid')) {
+  $redis_up = TRUE;
+}
+
+if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/no_cache/NO.txt') ||
+    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/no_cache/NO.txt'))) {
   $use_cache = FALSE;
 }
 
@@ -355,10 +359,11 @@ if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/nojs\/|noredis)/", $_SER
   $use_redis = FALSE;
 }
 
-if ($use_cache && $use_redis && !$force_redis) {
+if ($redis_up && $use_cache && $use_redis && !$force_redis) {
   header('X-Allow-Redis: YES');
 }
-elseif ($force_redis) {
+elseif ($redis_up && $force_redis) {
+  $use_cache = TRUE;
   $use_redis = TRUE;
   header('X-Force-Redis: YES');
 }
@@ -367,6 +372,11 @@ else {
     $conf['cache'] = 1; // enable standard db caching if redis is not allowed or not available
   }
   header('X-Allow-Redis: NO');
+}
+
+if (!isset($_SERVER['HTTP_USER_AGENT'])) {
+  $use_redis = FALSE;
+  $use_cache = FALSE;
 }
 
 /**
@@ -378,7 +388,7 @@ if (file_exists('/data/conf/override.global.inc')) {
 }
 
 // Use redis caching only for d6 and d7 profiles.
-if ($use_cache && $use_redis && !$custom_cache) {
+if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
   if (file_exists('./modules/o_contrib/cache_backport/cache.inc')) {
@@ -428,7 +438,6 @@ if ($use_cache && $use_redis && !$custom_cache) {
       $conf['omit_vary_cookie']               = TRUE;
       $conf['cache_class_cache_block']        = 'Redis_Cache';
       $conf['cache_class_cache_bootstrap']    = 'Redis_Cache';
-      $conf['cache_class_cache_form']         = 'Redis_Cache';
       $conf['cache_class_cache_menu']         = 'Redis_Cache';
       $conf['cache_class_cache_tax_image']    = 'Redis_Cache';
       $conf['cache_class_cache_views_data']   = 'Redis_Cache';
