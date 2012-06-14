@@ -68,8 +68,8 @@ All CiviCRM platforms are available with 2+ Aegir SSD Cores only:
 
   CiviCRM 3.4.8-d6 ------------- http://civicrm.org
   CiviCRM 4.0.8-d7 ------------- http://civicrm.org
-  CiviCRM 4.1.2-d6 ------------- http://civicrm.org
-  CiviCRM 4.1.2-d7 ------------- http://civicrm.org
+  CiviCRM 4.1.3-d6 ------------- http://civicrm.org
+  CiviCRM 4.1.3-d7 ------------- http://civicrm.org
 
 Octopus Video platform is available with 1+ Aegir Root Cores only:
 
