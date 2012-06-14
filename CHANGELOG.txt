@@ -20,15 +20,15 @@
     there is also an automatic, instant failover to standard database caching,
     just in case Redis is not available for some reason. You can also disable
     Redis cache on the fly for debugging by adding ?noredis=1 to any URL.
-    
+
   * We have added support for Drupal 8.x while still using modified
     Drush 4.6-dev version, so we can still support Drupal 5 on the same
     system, but on another Octopus instance.
-  
+
   * You can choose different PHP version for PHP-FPM (web access)
     and PHP-CLI, for even greater control over compatibility with
     various Drupal major versions.
-    
+
   * You can choose both PHP-FPM and PHP-CLI versions per Octopus instance,
     on the same system. And you can change those versions on upgrade.
 
@@ -79,7 +79,7 @@
     platforms and sites. It also automatically fixes the known problem
     with domain aliases incorrectly written in the original and cloned sites,
     as reported in the Aegir queue: http://drupal.org/node/1004526
-  
+
   * Apps are now fully supported. If the App is not downloaded yet, installing
     it via browser only requires write permissions, normally never available
     for the web server user, so you need to create an empty control file, either
@@ -95,7 +95,7 @@
     Remember to run site Verify when done, to restore standard, safe permissions.
     Note that this file is created automatically, but is not open for write
     access by default.
-    
+
 # Notes on new and updated platforms and new Drupal core:
 
   All 6.x and 7.x platforms have been updated with latest core,
@@ -172,7 +172,7 @@
   * The _SPEED_VALID_MAX used as a Speed Booster cache TTL is now configurable.
   * Ubuntu Precise 12.04 is fully supported.
   * Use nice default /root/.bashrc config.
-  
+
 # New Aegir modules or extensions:
 
   * Add hosting_advanced_cron module - enabled by default.
