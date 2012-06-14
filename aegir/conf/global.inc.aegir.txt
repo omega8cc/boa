@@ -202,7 +202,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   }
   $conf['boost_normal_dir'] = $this_device;
   $conf['boost_gzip_dir'] = $this_device;
-  if (file_exists('sites/all/modules/domain') || $high_traffic) {
+  if (file_exists('sites/all/modules/domain')) {
     $this_prefix = $_SERVER['HTTP_HOST'] . '.';
   }
   else {
@@ -283,7 +283,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
 
-    if (!isset($_COOKIE[$test_sess_name]) && (file_exists('sites/all/modules/cache_hour/YES.txt') ||
+    if (!isset($_COOKIE[$test_sess_name]) && (file_exists('sites/all/modules/cache_hour/YES.txt') || $force_redis || $high_traffic ||
         file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_hour/YES.txt'))) {
       $expire_in_seconds = '3600';
     }
@@ -342,8 +342,8 @@ if (file_exists('/var/run/redis.pid')) {
   $redis_up = TRUE;
 }
 
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/no_cache/NO.txt') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/no_cache/NO.txt'))) {
+if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.txt') ||
+    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache/NO.txt'))) {
   $use_cache = FALSE;
 }
 
