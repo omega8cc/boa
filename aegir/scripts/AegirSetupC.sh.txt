@@ -600,7 +600,7 @@ _F_OPENACADEMY="Open Academy 1.0-b2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM="Open Atrium 1.4.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.10-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals 1.0-b11 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENENTERPRISE="Open Enterprise 1.0-b3 $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENENTERPRISE="Open Enterprise 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.0-rc1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-a9 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1917,6 +1917,53 @@ fi
 }
 
 
+openenterprise_install () {
+###---### Open Enterprise
+#
+_THIS_PRNAME="openenterprise"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENENTERPRISE-$_SMALLCORE7"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENENTERPRISE - http://drupal.org/project/openenterprise" ; then
+true
+msg "DISTRO: $_F_OPENENTERPRISE installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENENTERPRISE-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_OPENENTERPRISE-core.tar.gz
+  rm -f $_THIS_PRNAME-$_OPENENTERPRISE-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_OPENENTERPRISE" ] ; then
+    mv $_THIS_PRNAME-$_OPENENTERPRISE $_THIS_DISTRO
+  fi
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools_entity
+  create_dirs
+  themes_for_d7
+  patch_d7_core
+fi
+init_this_distro_root
+create_d7_symlinks
+msg "DISTRO: $_F_OPENENTERPRISE installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_OPENENTERPRISE installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
 openoutreach_install () {
 ###---### Open Outreach
 #
@@ -2487,6 +2534,7 @@ openacademy_install
 openatrium_install
 openchurch_install
 opendeals_install
+openenterprise_install
 openoutreach_install
 openpublic_install
 openpublish_install
@@ -2727,6 +2775,12 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7" ] ; then
     mrun "sleep 5"
   fi
 fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENENTERPRISE" openenterprise $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENOUTREACH" openoutreach $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
@@ -2778,12 +2832,6 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_VIDEOLA" videola $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6 &> /dev/null
-    mrun "sleep 5"
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENENTERPRISE" openenterprise $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6 &> /dev/null
     mrun "sleep 5"
   fi
 fi

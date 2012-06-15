@@ -178,6 +178,7 @@ _PHP_CLI_VERSION=5.2
 ### OAY ----------- Open Academy
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
+### OEE ----------- Open Enterprise
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish
@@ -512,7 +513,7 @@ _OPENACADEMY=7.x-1.0-beta2
 _OPENATRIUM=6.x-1.4
 _OPENCHURCH=7.x-1.10-alpha3
 _OPENDEALS=7.x-1.0-beta11
-_OPENENTERPRISE=6.x-1.0-beta3
+_OPENENTERPRISE=7.x-1.0-rc3
 _OPENOUTREACH=7.x-1.0-rc1
 _OPENPUBLIC=beta3-build100
 _OPENPUBLISH=7.x-1.0-alpha9

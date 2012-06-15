@@ -884,7 +884,7 @@ else
     mrun "sleep 1"
     if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
       msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
-      mrun "sleep 1"    
+      mrun "sleep 1"
     else
       msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
       mrun "sleep 1"
@@ -1458,6 +1458,11 @@ mrun "sleep 1"
       ln -s $_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7
     fi
   fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE7
+    fi
+  fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
@@ -1501,11 +1506,6 @@ mrun "sleep 1"
   if [ -d "$_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/videola-$_VIDEOLA-$_SMALLCORE6
-    fi
-  fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6" ] ; then
-      ln -s $_ROOT/distro/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/openenterprise-$_OPENENTERPRISE-$_SMALLCORE6
     fi
   fi
 fi
