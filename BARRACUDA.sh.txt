@@ -818,6 +818,9 @@ _PURGE_MODE=ON
 _SPINNER=YES
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+if [ -n "${STY+x}" ]; then
+  _SPINNER=NO
+fi
 
 
 ###---### Avoid too many questions

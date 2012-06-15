@@ -482,6 +482,9 @@ _USRG=users
 _WEBG=www-data
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+if [ -n "${STY+x}" ]; then
+  _SPINNER=NO
+fi
 
 ###
 ### Distributions
