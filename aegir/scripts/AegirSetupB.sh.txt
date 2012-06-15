@@ -41,6 +41,7 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 #
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
+_CIVICRM_PN=EDIT_CIVICRM_PN
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _COD=EDIT_COD
@@ -383,7 +384,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     _ALLOW_CIVICRM=NO
   fi
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-    git clone --branch boa-testing git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+    git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 else
@@ -407,7 +408,7 @@ else
     _ALLOW_CIVICRM=NO
   fi
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-    git clone --branch boa-testing git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
+    git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm &> /dev/null
     rm -f -r $_ROOT/.drush/provision_civicrm/.git
   fi
 fi
