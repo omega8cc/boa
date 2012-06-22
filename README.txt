@@ -172,10 +172,7 @@ Other platforms are using extended and customized translations or
 require far more than just core translation, so we don't touch them.
 
 There are also some useful and/or performance related modules
-added to all 6.x and 7.x platforms and you can review the full list
-with currently used versions/releases at our website:
-
- http://omega8.cc/extra-modules-available-in-all-platforms-123
+added to all 6.x and 7.x platforms.
 
 Some core and contrib modules are either enabled or disabled
 by default, by running daily (at morning) maintenance monitor.
