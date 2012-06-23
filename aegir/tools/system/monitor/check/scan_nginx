@@ -5,6 +5,7 @@
 ###
 
 if (-e "/var/xdrago/log/fire.pid") {exit;}
+$this_filename = "scan_nginx";
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";
 exit;
@@ -12,6 +13,22 @@ exit;
 #############################################################################
 sub makeactions
 {
+  if (-e "/etc/csf/csf.deny") {
+    $this_path = "/etc/csf/csf.deny";
+    open (NOT,"<$this_path");
+    @banetable = <NOT>;
+    close (NOT);
+  }
+  else {
+    $this_path = "/var/xdrago/monitor/$this_filename";
+    if (!-e "$this_path") {
+      `echo "#!/bin/bash" >> /var/xdrago/monitor/$this_filename`;
+      `echo " " >> /var/xdrago/monitor/$this_filename`;
+    }
+    open (NOT,"<$this_path");
+    @banetable = <NOT>;
+    close (NOT);
+  }
   local(@MYARR) = `tail --lines=300 /var/log/nginx/access.log 2>&1`;
   local($maxnumber,$critnumber,$alert);
   local($sumar,$li_cnt{$VISITOR},$li_cndx{$DOMAIN});
@@ -50,10 +67,23 @@ sub makeactions
       &trash_it_action($VISITOR,$thissumar) if !$blocked;
     }
     if ($thissumar > $critnumber) {
-      `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 80 -j DROP` if (!$blocked);
-      `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 443 -j DROP` if (!$blocked);
-      &trash_it_action($VISITOR,"x$thissumar") if (!$blocked);
-      `echo "$VISITOR # [x$thissumar] $times $RESOLVED_REMOTE_HOST" >> /etc/csf/csf.deny` if (!$blocked);
+      if (-e "/etc/csf/csf.deny") {
+        if (!$blocked) {
+          `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 80 -j DROP`;
+          `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 443 -j DROP`;
+          &trash_it_action($VISITOR,"x$thissumar");
+          `echo "$VISITOR # [x$thissumar] $times $RESOLVED_REMOTE_HOST" >> /etc/csf/csf.deny`;
+        }
+      }
+      else {
+        if (!$blocked) {
+          &trash_it_action($VISITOR,"x$thissumar");
+          `echo "#-- BELOW --# $VISITOR # [x$thissumar] $times $RESOLVED_REMOTE_HOST" >> /var/xdrago/monitor/$this_filename`;
+          `echo "/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 80 -j DROP" >> /var/xdrago/monitor/$this_filename`;
+          `echo "/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 443 -j DROP" >> /var/xdrago/monitor/$this_filename`;
+          `echo " " >> /var/xdrago/monitor/$this_filename`;
+        }
+      }
     }
   }
   print "\n===[$sumar]\tGLOBAL===\n\n";
@@ -88,18 +118,29 @@ sub trash_it_action
 #############################################################################
 sub check_ip
 {
-  $this_path = "/etc/csf/csf.deny";
   local($IP) = @_;
-  open (NOT,"<$this_path");
-  @banetable = <NOT>;
-  close (NOT);
-  foreach $banerecord (@banetable) {
-    chomp ($banerecord);
-    local($ifbanned, $rest) = split(/\s+/,$banerecord);
-    $ifbanned =~ s/[^0-9\.]//g;
-    if ($ifbanned eq $IP) {
-      $blocked = 1;
-      last;
+  if (-e "/etc/csf/csf.deny") {
+    foreach $banerecord (@banetable) {
+      chomp ($banerecord);
+      local($ifbanned, $rest) = split(/\s+/,$banerecord);
+      $ifbanned =~ s/[^0-9\.]//g;
+      if ($ifbanned eq $IP) {
+        $blocked = 1;
+        last;
+      }
+    }
+  }
+  else {
+    foreach $banerecord (@banetable) {
+      chomp ($banerecord);
+      if ($banerecord =~ /(iptables)/) {
+        local($a, $b, $c, $d, $ifbanned, $g, $h) = split(/\s+/,$banerecord);
+        $ifbanned =~ s/[^0-9\.]//g;
+        if ($ifbanned eq $IP) {
+          $blocked = 1;
+          last;
+        }
+      }
     }
   }
 }
