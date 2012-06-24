@@ -3603,7 +3603,7 @@ mkdir -p /var/backups/dragon/{x,z,t}
 install_pdnsd_cache () {
   msg "INFO: Installing DNS cache pdnsd server, please wait..."
   mrun "sleep 1"
-  cp -a /etc/resolv.conf /var/backups/resolv.conf.bak
+  cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
   st_runner "$_INSTALL pdnsd resolvconf";
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
@@ -3637,7 +3637,7 @@ if [ -f "/etc/default/dhcpcd" ] ; then
   sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
-  if [ "$_INSTALL_PDNSD" = "NO" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+  if [ "$_INSTALL_PDNSD" = "NO" ] ; then
     if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "PDS" ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
