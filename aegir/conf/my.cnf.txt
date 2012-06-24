@@ -1,7 +1,7 @@
 [client]
 port                    = 3306
 socket                  = /var/run/mysqld/mysqld.sock
-character-set-server    = utf8
+default-character-set   = utf8
 
 [mysqld]
 user                    = mysql

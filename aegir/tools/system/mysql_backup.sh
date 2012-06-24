@@ -15,7 +15,7 @@ SAVELOCATION=$BACKUPDIR/$HOST-$DATE
 truncate_cache_tables() {
 TABLES="sessions cache cache_menu cache_page cache_filter cache_form cache_block cache_views_data cache_views cache_content watchdog cache_path boost_cache boost_cache_relationships"
 for i in $TABLES; do
-mysql --character-set-server=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
+mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
 TRUNCATE $i;
 EOFMYSQL
 echo $i table truncated in $line database
@@ -33,7 +33,7 @@ cat .databasesToBackup | while read line; do
   truncate_cache_tables
   #mysqlcheck --port=3306 -h localhost -r -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
   #mysqlcheck --port=3306 -h localhost -o -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
-  mysqldump -u $DATABASEUSER -p$DATABASEPASS --character-set-server=utf8 -Q -C -e --hex-blob --add-drop-table $line | gzip  > $SAVELOCATION/$line.sql.gz
+  mysqldump -u $DATABASEUSER -p$DATABASEPASS --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $line | gzip  > $SAVELOCATION/$line.sql.gz
   echo backup completed for $line database
   sleep 1
 done
