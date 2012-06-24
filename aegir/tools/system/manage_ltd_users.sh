@@ -227,5 +227,6 @@ else
   cp -af $_THIS_LTD_CONF /etc/lshell.conf
   sleep 1
   find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
+  rm -f $_TMP/*.txt
 fi
 ###EOF2012###
