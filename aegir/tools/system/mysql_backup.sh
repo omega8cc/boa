@@ -13,7 +13,7 @@ HOST=`hostname`
 SAVELOCATION=$BACKUPDIR/$HOST-$DATE
 
 truncate_cache_tables() {
-TABLES="sessions cache cache_menu cache_page cache_filter cache_form cache_block cache_views_data cache_views cache_content watchdog cache_path boost_cache boost_cache_relationships"
+TABLES="cache cache_menu cache_page cache_filter cache_form cache_block cache_views_data cache_views cache_content watchdog cache_path boost_cache boost_cache_relationships"
 for i in $TABLES; do
 mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
 TRUNCATE $i;
