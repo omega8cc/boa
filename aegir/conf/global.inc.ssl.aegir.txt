@@ -76,7 +76,7 @@ if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
 
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   if (!file_exists('/data/conf/no-https-aegir.inc')) {
-    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
     if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
       header('X-Accel-Expires: 5');
       header("HTTP/1.1 301 Moved Permanently");
@@ -259,9 +259,9 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     header('X-Purge-Level: none');
   }
 
-  if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+  if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;
-    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if ($conf['install_profile'] != 'hostmaster') {
