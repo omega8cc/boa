@@ -3607,8 +3607,8 @@ install_pdnsd_cache () {
   st_runner "$_INSTALL pdnsd resolvconf";
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  if [ -e "﻿/etc/NetworkManager/NetworkManager.conf" ] ; then
-    sed -i "s/^dns=.*/dns=pdnsd/g" ﻿/etc/NetworkManager/NetworkManager.conf &> /dev/null
+  if [ -e "/etc/NetworkManager/NetworkManager.conf" ] ; then
+    sed -i "s/^dns=.*/dns=pdnsd/g" /etc/NetworkManager/NetworkManager.conf &> /dev/null
     st_runner "service network-manager restart" &> /dev/null
   fi
   st_runner "service pdnsd stop" &> /dev/null
