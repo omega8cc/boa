@@ -4397,6 +4397,8 @@ fi
 if [ -d "/var/xdrago-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
   cp -af /var/xdrago-pre-$_INSTALLER_VERSION-$_NOW/run-* /var/xdrago/ &> /dev/null
 fi
+sed -i "s/firewall/monitor/g" /var/xdrago/minute.sh &> /dev/null
+sed -i "s/firewall/monitor/g" /var/xdrago/custom.minute.sh.local.txt &> /dev/null
 chmod -R 700 /var/xdrago/monitor/check &> /dev/null
 chmod 700 /var/xdrago/* &> /dev/null
 chmod 700 /var/xdrago &> /dev/null
@@ -4735,7 +4737,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
-  st_runner "service ssh restart" &> /dev/null
+  st_runner "service ssh reload" &> /dev/null
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
@@ -4767,6 +4769,20 @@ if [ "$_STATUS" = "INIT" ] ; then
     st_runner "service nginx start" &> /dev/null
   fi
 else
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config
+    sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config
+    sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config
+    sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config
+    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config
+    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config
+    echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+    echo "UseDNS no" >> /etc/ssh/sshd_config
+    echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
+    echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
+    st_runner "service ssh reload" &> /dev/null
+  fi
   fix_on_upgrade
   tune_memory_limits
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
