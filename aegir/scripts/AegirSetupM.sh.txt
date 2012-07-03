@@ -79,7 +79,11 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-_RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
+if [ "$AEGIR_HOST" = "aegir.local" ] ; then
+  _RESOLVEIP=`host $AEGIR_HOST 2> /dev/null`
+else
+  _RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
+fi
 
 if [ -z "$_RESOLVEIP" ] ; then
   msg "FATAL ERROR: This server does not have a hostname that resolves to an IP address"
@@ -87,7 +91,11 @@ if [ -z "$_RESOLVEIP" ] ; then
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 else
-  AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $6}'`
+  if [ "$AEGIR_HOST" = "aegir.local" ] ; then
+    AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $4}'`
+  else
+    AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $6}'`
+  fi
   true
 fi
 
