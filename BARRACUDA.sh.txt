@@ -2363,7 +2363,7 @@ install_php_modern () {
     else
       _EXTRA_PHP_APC=php5-apc
     fi
-    _MODERN_PHP_DEB="php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php5-sasl php5-sqlite php5-suhosin php5-xmlrpc php5-xsl"
+    _MODERN_PHP_DEB="php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php-pear php5-sasl php5-sqlite php5-suhosin php5-xmlrpc php5-xsl"
     st_runner "$_INSTAPP $_MODERN_PHP_DEB $_EXTRA_PHP_APC" 2> /dev/null
   else
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
