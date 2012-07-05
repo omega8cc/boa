@@ -2706,6 +2706,7 @@ install_upgrade_nginx () {
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://files.aegir.cc/dev/ngx_cache_purge-1.6.tar.gz
       tar -xzf ngx_cache_purge-1.6.tar.gz
+      mv ngx_cache_purge-1.6 ngx_cache_purge
       perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx_cache_purge/ngx_cache_purge_module.c &> /dev/null
     fi
     wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
