@@ -3660,6 +3660,12 @@ fi
 
 
 ###--------------------###
+if [ -e "/etc/init.d/buagent" ] ; then
+  mv -f /etc/init.d/buagent /var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+fi
+
+
+###--------------------###
 if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
   _APT_SOURCES_REWRITE=NO
   if [ ! -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
@@ -5674,6 +5680,9 @@ rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
 rm -f /var/run/boa_wait.pid
 chmod 700 /root
+if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
+  mv -f /var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW /etc/init.d/buagent &> /dev/null
+fi
 killall -9 memcached &> /dev/null
 service cron start   &> /dev/null
 csf -x &> /dev/null
