@@ -4055,11 +4055,16 @@ if [ "$_STATUS" = "INIT" ] ; then
   install_with_aptitude_sql
 else
   _SQL_UPGRADE=NO
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    _SQL_TEST_UPGRADE=NO
+  else
+    _SQL_TEST_UPGRADE=YES
+  fi
   if [ "$_SQL_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _SQL_UPGRADE=YES
   elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [ "$_DB_SERVER" = "Percona" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ "$_DB_SERVER_TEST" =~ "Percona" ]] && [ "$_DB_SERVER" = "MariaDB" ] ; then
+  elif [ "$_SQL_TEST_UPGRADE" = "YES" ] && [ "$_DB_SERVER" = "MariaDB" ] ; then
     _SQL_UPGRADE=YES
   elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     if [[ "$_DB_SERVER_TEST" =~ " 5.1." ]] || [[ "$_DB_SERVER_TEST" =~ " 5.2." ]] ; then
