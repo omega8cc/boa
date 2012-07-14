@@ -259,6 +259,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
       }
+      header('X-Local-Proto: https');
     }
     else {
       $base_url = 'http://' . $_SERVER['HTTP_HOST'];
