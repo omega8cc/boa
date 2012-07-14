@@ -5110,6 +5110,15 @@ fi
 
 
 ###--------------------###
+if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] && [ -d "/usr/lib/jvm/java-6-openjdk-amd64" ] ; then
+  ln -s /usr/lib/jvm/java-6-openjdk-amd64 /usr/lib/jvm/java-6-openjdk
+fi
+if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] && [ -d "/usr/lib/jvm/java-6-openjdk-i386" ] ; then
+  ln -s /usr/lib/jvm/java-6-openjdk-i386 /usr/lib/jvm/java-6-openjdk
+fi
+
+
+###--------------------###
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
   if [ ! -d "/opt/solr" ] ; then
     echo " "
