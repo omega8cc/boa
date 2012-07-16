@@ -1295,16 +1295,16 @@ update_php_conf () {
 #
 # Update SQL Config.
 update_sql_conf () {
-  if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
-    touch /var/log/check_for_crashed_tables_disabled
-  fi
+  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
     sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
     sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
     sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+    if [ ! -e "/etc/mysql/skip-name-resolve.txt" ] ; then
+      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+    fi
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
@@ -5500,12 +5500,14 @@ if [ ! -e "/root/.my.cnf" ] ; then
   echo "user=root" >> /root/.my.cnf
   echo "password=\"$PASWD\"" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf
-  if [ ! -e "/var/log/check_for_crashed_tables_disabled" ] ; then
-    sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
-    touch /var/log/check_for_crashed_tables_disabled
-    st_runner "service mysql restart" &> /dev/null
-    mrun "sleep 1"
+  if [ "$_THIS_DB_HOST" = "localhost" ] ; then
+    echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
+  else
+    sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
   fi
+  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+  st_runner "service mysql restart" &> /dev/null
+  mrun "sleep 1"
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
   mrun "sleep 1"

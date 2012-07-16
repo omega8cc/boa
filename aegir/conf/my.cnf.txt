@@ -16,6 +16,7 @@ lc_messages             = en_US
 character_set_server    = utf8
 collation_server        = utf8_general_ci
 skip-external-locking
+skip-name-resolve
 connect_timeout         = 60
 join_buffer_size        = 1M
 key_buffer              = 1M
