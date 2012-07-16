@@ -12,7 +12,7 @@
 
 
 # Download and run BOA Meta Installer.
-$ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+$ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
 $ bash BOA.sh.txt
 
 # To upgrade system and Aegir Master Instance to Stable

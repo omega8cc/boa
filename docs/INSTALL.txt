@@ -29,7 +29,7 @@
 
 3. Download and run BOA Meta Installer.
 
-   $ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+   $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
 4. Install Barracuda and Octopus.
@@ -64,7 +64,7 @@
 
 2. Download and run BOA Meta Installer.
 
-   $ wget -q -U iCab http://files.aegir.cc/versions/BOA.sh.txt
+   $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
    $ bash BOA.sh.txt
 
 3. Install Barracuda and Octopus.
