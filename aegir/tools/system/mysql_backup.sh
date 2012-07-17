@@ -43,6 +43,10 @@ rm .databasesToBackup
 #Delete all files in the backup dir 8 days or older - note: this deletes everything!
 #Only database backups should exist in $BACKUPDIR!!!
 find $BACKUPDIR -mtime +8 -type d -exec rm -rf {} \;
+chmod 600 /data/disk/arch/sql/*/*
+chmod 700 /data/disk/arch/sql/*
+chmod 700 /data/disk/arch/sql
+chmod 700 /data/disk/arch
 
 service redis-server stop
 sleep 3
