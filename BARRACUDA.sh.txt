@@ -5142,13 +5142,14 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       touch /opt/solr/fixed.log
       touch /opt/solr/fixed.init.log
       cd /var/opt
-      wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.0.tar.gz
-      tar -xzf apachesolr_attachments-7.x-1.0.tar.gz
+      wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.2.tar.gz
+      tar -xzf apachesolr_attachments-7.x-1.2.tar.gz
       cd /opt/solr/conf
       patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
       ln -s /opt/tomcat6/lib /opt/tika
       cd /opt/tika
-      wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
+      wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
+      wget -q -U iCab http://files.aegir.cc/dev/tika-app-0.10.jar
       chown -R tomcat:tomcat /opt/solr
       chown -R tomcat:tomcat /opt/tomcat6
       st_runner "update-rc.d tomcat defaults" &> /dev/null
@@ -5196,13 +5197,14 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
   fi
   if [ ! -e "/opt/tika" ] ; then
     cd /var/opt
-    wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.0.tar.gz
-    tar -xzf apachesolr_attachments-7.x-1.0.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.2.tar.gz
+    tar -xzf apachesolr_attachments-7.x-1.2.tar.gz
     cd /opt/solr/conf
     patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
     ln -s /opt/tomcat6/lib /opt/tika
     cd /opt/tika
-    wget -q -U iCab http://www.apache.org/dist/tika/tika-app-0.10.jar
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-0.10.jar
     chown -R tomcat:tomcat /opt/tika/*
     chown -R tomcat:tomcat /opt/solr/conf
     st_runner "service tomcat stop" &> /dev/null
