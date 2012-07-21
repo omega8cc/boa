@@ -1268,7 +1268,11 @@ msg "DISTRO: $_F_DRUPAL8 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone --branch 8.x http://git.drupal.org/project/drupal.git $_THIS_DISTRO &> /dev/null
+  #git clone --branch 8.x http://git.drupal.org/project/drupal.git $_THIS_DISTRO &> /dev/null
+  wget -q -U iCab http://ftp.drupal.org/files/projects/drupal-8.x-dev.tar.gz
+  tar -xzf drupal-8.x-dev.tar.gz
+  rm -f drupal-8.x-dev.tar.gz
+  mv drupal-8.x-dev $_THIS_DISTRO
   rm -f -r $_CORE_DISTRO/.git
   rm -f $_CORE_DISTRO/*.txt
   rm -f $_CORE_DISTRO/core/*.txt
