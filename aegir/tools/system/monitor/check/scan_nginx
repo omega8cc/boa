@@ -48,6 +48,7 @@ sub makeactions
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
         $li_cnt{$VISITOR}++;
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 50 if ($line =~ /(POST)/);
         $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack)/);
       }
       else {
