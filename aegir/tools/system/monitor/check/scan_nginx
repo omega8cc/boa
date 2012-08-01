@@ -48,8 +48,9 @@ sub makeactions
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
         $li_cnt{$VISITOR}++;
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 50 if ($line =~ /(POST)/);
-        $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack)/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} - 10 if ($line =~ /(googlebot)/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /(POST)/);
+        $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack|Python)/);
       }
       else {
         print "Not Supported Request Type: $line\n";
@@ -135,7 +136,7 @@ sub check_ip
     foreach $banerecord (@banetable) {
       chomp ($banerecord);
       if ($banerecord =~ /(iptables)/) {
-        local($a, $b, $c, $d, $ifbanned, $g, $h) = split(/\s+/,$banerecord);
+        local($a, $b, $c, $d, $e, $f, $ifbanned, $h, $port, $rest) = split(/\s+/,$banerecord);
         $ifbanned =~ s/[^0-9\.]//g;
         if ($ifbanned eq $IP) {
           $blocked = 1;
