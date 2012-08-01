@@ -4,9 +4,9 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 perl /var/xdrago/monitor/check/hackcheck
-perl /var/xdrago/monitor/check/hackmail
-perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/hackftp
+perl /var/xdrago/monitor/check/hackmail
 perl /var/xdrago/monitor/check/sqlcheck
 if test -f /root/.high_traffic.cnf ; then
   true
@@ -42,17 +42,25 @@ done
 
 action
 echo watcher 1
-sleep 15
+sleep 10
 
 action
 echo watcher 2
-sleep 15
+sleep 10
 
-actione
-cho watcher 3
-sleep 15
+action
+echo watcher 3
+sleep 10
 
 action
 echo watcher 4
+sleep 10
+
+action
+echo watcher 5
+sleep 10
+
+action
+echo watcher 6
 echo DONE!
 ###EOF2012###
