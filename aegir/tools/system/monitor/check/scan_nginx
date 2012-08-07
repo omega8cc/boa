@@ -1,36 +1,30 @@
 #!/usr/bin/perl
 
 ###
-### this is a httpd abuse monitor for nginx
+### This is a httpd abuse monitor for nginx.
 ###
 
-if (-e "/var/xdrago/log/fire.pid") {exit;}
+$| = 1;
 $this_filename = "scan_nginx";
+$times = `date +%y%m%d-%H%M%S`;
+$myip = `hostname -i`;
+chomp($times);
+chomp($myip);
 &makeactions;
-print " CONTROL 1 done_______________________\n ...\n";
+print "CONTROL complete for $myip\n";
 exit;
 
 #############################################################################
 sub makeactions
 {
-  if (-e "/etc/csf/csf.deny") {
-    $this_path = "/etc/csf/csf.deny";
-    open (NOT,"<$this_path");
-    @banetable = <NOT>;
-    close (NOT);
-  }
-  else {
-    $this_path = "/var/xdrago/monitor/$this_filename";
-    if (!-e "$this_path") {
-      `echo "#!/bin/bash" >> /var/xdrago/monitor/$this_filename`;
-      `echo " " >> /var/xdrago/monitor/$this_filename`;
-    }
+  if (-e "/var/xdrago/monitor/web.log") {
+    $this_path = "/var/xdrago/monitor/web.log";
     open (NOT,"<$this_path");
     @banetable = <NOT>;
     close (NOT);
   }
   local(@MYARR) = `tail --lines=300 /var/log/nginx/access.log 2>&1`;
-  local($maxnumber,$critnumber,$alert);
+  local($mininumber,$critnumber,$alert);
   local($sumar,$li_cnt{$VISITOR},$li_cndx{$DOMAIN});
   foreach $line (@MYARR) {
     local($VISITOR, $PROXY, $REAL, $RESTX) = split(/\s+/,$line);
@@ -47,10 +41,15 @@ sub makeactions
     if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
-        $li_cnt{$VISITOR}++;
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} - 10 if ($line =~ /(googlebot)/);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /(POST)/);
-        $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack|Python)/);
+        if ($line !~ /(plupload-handle)/ && $line !~ /(system\/files\/styles)/ && $line !~ /(hosting\/c)/) {
+          $li_cnt{$VISITOR}++;
+          $li_cnt{$VISITOR} = $li_cnt{$VISITOR} - 5 if ($line =~ /(googlebot)/);
+          $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /(POST)/);
+          $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack)/);
+        }
+        else {
+          print "Not Counted Request URI: $line\n";
+        }
       }
       else {
         print "Not Supported Request Type: $line\n";
@@ -60,30 +59,17 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
-    $maxnumber = 10;    ### default: 10
+    $mininumber = 10;   ### default: 10
     $critnumber = 300;  ### default: 300
-    $critnumber = 888 if ($VISITOR =~ /^(88.88.88.88)$/); ### default for server IP
+    $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### default for server IP
     local($blocked) = 0;
     &check_ip($VISITOR);
-    if ($thissumar > $maxnumber && $thissumar <= $critnumber) {
-      &trash_it_action($VISITOR,$thissumar) if !$blocked;
-    }
     if ($thissumar > $critnumber) {
-      if (-e "/etc/csf/csf.deny") {
-        if (!$blocked) {
-          `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 80 -j DROP`;
-          `/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 443 -j DROP`;
-          &trash_it_action($VISITOR,"x$thissumar");
-          `echo "$VISITOR # [x$thissumar] $times $RESOLVED_REMOTE_HOST" >> /etc/csf/csf.deny`;
-        }
-      }
-      else {
-        if (!$blocked) {
-          &trash_it_action($VISITOR,"x$thissumar");
-          `echo "#-- BELOW --# $VISITOR # [x$thissumar] $times $RESOLVED_REMOTE_HOST" >> /var/xdrago/monitor/$this_filename`;
-          `echo "/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 80 -j DROP" >> /var/xdrago/monitor/$this_filename`;
-          `echo "/sbin/iptables -A INPUT -p tcp -s $VISITOR --dport 443 -j DROP" >> /var/xdrago/monitor/$this_filename`;
-          `echo " " >> /var/xdrago/monitor/$this_filename`;
+      if (!$blocked) {
+        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/web.log`;
+        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf") {
+          `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
         }
       }
     }
@@ -93,35 +79,10 @@ sub makeactions
 }
 
 #############################################################################
-sub trash_it_action
-{
-  $times = `date +%y%m%d-%H%M%S`;
-  local(@UPTIME) = `/usr/bin/uptime 2>&1`;
-  chomp($times);
-  $LOGpliczek = "/var/xdrago/log/VISITOR_ABUSE_ONE.log";
-  open (DISKF, ">>$LOGpliczek");
-  local($ABUSER,$COUNTER) = @_;
-  local($machine) = $ABUSER;
-  $machine =~ s/^\s+|\s+$//g;
-  @bytes = split (/\./, $machine);
-  $packaddr = pack ("C4", @bytes);
-  if (!(($name, $altnames, $addrtype, $len, @addrlist) =
-    gethostbyaddr ($packaddr, 2))) {
-    $RESOLVED_REMOTE_HOST = "";
-  }
-  else {
-    $RESOLVED_REMOTE_HOST = "$name";
-  }
-  print "NORM $ABUSER [$COUNTER] recorded... $RESOLVED_REMOTE_HOST\n";
-  print DISKF "NORM $ABUSER\t[$COUNTER] $times $RESOLVED_REMOTE_HOST@UPTIME";
-  close (DISKF);
-}
-
-#############################################################################
 sub check_ip
 {
   local($IP) = @_;
-  if (-e "/etc/csf/csf.deny") {
+  if (-e "/var/xdrago/monitor/web.log") {
     foreach $banerecord (@banetable) {
       chomp ($banerecord);
       local($ifbanned, $rest) = split(/\s+/,$banerecord);
@@ -129,19 +90,6 @@ sub check_ip
       if ($ifbanned eq $IP) {
         $blocked = 1;
         last;
-      }
-    }
-  }
-  else {
-    foreach $banerecord (@banetable) {
-      chomp ($banerecord);
-      if ($banerecord =~ /(iptables)/) {
-        local($a, $b, $c, $d, $e, $f, $ifbanned, $h, $port, $rest) = split(/\s+/,$banerecord);
-        $ifbanned =~ s/[^0-9\.]//g;
-        if ($ifbanned eq $IP) {
-          $blocked = 1;
-          last;
-        }
       }
     }
   }
