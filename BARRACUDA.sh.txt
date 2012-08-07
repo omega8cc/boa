@@ -76,7 +76,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
-### _DB_SERVER=MariaDB
+### _DB_SERVER=Percona
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=YES
 ### _THIS_DB_HOST=localhost
@@ -134,7 +134,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
-### _DB_SERVER=MariaDB
+### _DB_SERVER=Percona
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
@@ -440,18 +440,16 @@ _AEGIR_VERSION=HEAD
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.5 (default)
-### or Percona 5.5.
+### You can choose Percona 5.5 (default)
+### or MariaDB 5.5.
 ###
 ### You can choose/change the DB server both
-### on Barracuda install and upgrade, but
-### the only upgrade path available is from
-### MariaDB to Percona - it will also force
-### PHP-FPM rebuild automatically.
+### on Barracuda install and upgrade - it will
+### also force PHP-FPM rebuild automatically.
 ###
-### _DB_SERVER=Percona
+### _DB_SERVER=MariaDB
 ###
-_DB_SERVER=MariaDB
+_DB_SERVER=Percona
 
 
 ###----------------------------------------###
@@ -2965,7 +2963,7 @@ else
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
-    _DB_SERVER=MariaDB
+    _DB_SERVER=Percona
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
     _THIS_DB_HOST=localhost
@@ -2981,7 +2979,7 @@ else
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
-    _DB_SERVER=MariaDB
+    _DB_SERVER=Percona
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
     _THIS_DB_HOST=localhost
