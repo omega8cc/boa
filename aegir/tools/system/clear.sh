@@ -3,7 +3,6 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-/usr/sbin/ntpdate pool.ntp.org
 if test -f /root/.high_traffic.cnf ; then
   true
 else
@@ -31,5 +30,6 @@ if test -f /var/run/boa_run.pid ; then
 else
   rm -f /tmp/*error*
 fi
+ntpdate pool.ntp.org
 touch /var/xdrago/log/clear.done
 ###EOF2012###
