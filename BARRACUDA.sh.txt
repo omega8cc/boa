@@ -494,7 +494,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=ftp.debian.org
+_LOCAL_DEBIAN_MIRROR=ftp.us.debian.org
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
@@ -3752,7 +3752,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     else
       if [ "$_AUTOPILOT" = "YES" ] ; then
         if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-          _MIRROR=ftp.debian.org
+          _MIRROR=ftp.us.debian.org
         else
           _MIRROR=$_LOCAL_DEBIAN_MIRROR
         fi
@@ -3776,7 +3776,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       fi
       if ! netcat -w 5 -z $_MIRROR 80 ; then
         msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
-        _MIRROR=ftp.debian.org
+        _MIRROR=ftp.us.debian.org
       fi
     fi
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
