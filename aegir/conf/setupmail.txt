@@ -48,7 +48,7 @@ starting with 1+ Aegir Standard or SSD Core:
 
 Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
 
-  Commerce 1.8.1 --------------- http://drupalcommerce.org
+  Commerce 1.9.1 --------------- http://drupalcommerce.org
   Commons 2.7 ------------------ http://acquia.com/drupalcommons
   MartPlug 1.0-beta1b ---------- http://drupal.org/project/martplug
   NodeStream 1.5 --------------- http://nodestream.org
