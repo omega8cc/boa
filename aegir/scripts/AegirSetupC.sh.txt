@@ -582,7 +582,7 @@ _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COD="Conference 1.0-b2 $_SMALLCORE6 P.$_THIS_CORE"
+_F_COD="Conference 1.0-rc1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.9.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS="Commons 2.9 $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
@@ -879,9 +879,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_COD" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_COD $_CORE/$_THIS_PRNAME-$_COD-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_COD.tar.gz
-  tar -xzf $_THIS_PRNAME-$_COD.tar.gz
-  rm -f $_THIS_PRNAME-$_COD.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COD-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_COD-core.tar.gz
+  rm -f $_THIS_PRNAME-$_COD-core.tar.gz
   if [ -d "$_CORE/$_THIS_PRNAME" ] ; then
     mv $_CORE/$_THIS_PRNAME $_CORE_DISTRO
   else
