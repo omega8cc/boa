@@ -136,7 +136,7 @@ Octopus can install the platforms listed below:
  Conference 1.0-rc1 ----------- http://usecod.com
  Drupal 7.15.1 ---------------- http://drupal.org/drupal-7.15
  Drupal 8.0-dev --------------- http://bit.ly/drupal-eight
- ELMS 1.0-alpha6 -------------- http://elms.psu.edu
+ ELMS 1.0-beta1 --------------- http://elms.psu.edu
  Feature Server 1.1 ----------- http://bit.ly/fserver
  Managing News 1.2.2 ---------- http://managingnews.com
  MartPlug 1.0-beta1b ---------- http://drupal.org/project/martplug
