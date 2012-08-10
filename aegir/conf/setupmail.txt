@@ -56,7 +56,7 @@ Some platforms are supported with 4+ Aegir Standard or 2+ SSD Cores:
   Open Academy 1.0-beta3 ------- http://drupal.org/project/openacademy
   Open Deals 1.0-beta11 -------- http://opendealsapp.com
   Open Enterprise 1.0-rc3 ------ http://drupal.org/project/openenterprise
-  Open Outreach 1.0-rc1 -------- http://openoutreach.org
+  Open Outreach 1.0-rc2 -------- http://openoutreach.org
   OpenChurch 1.10-alpha3 ------- http://openchurchsite.com
   OpenPublic 1.0-beta3 --------- http://openpublicapp.com
   OpenPublish 3.0-alpha9 ------- http://openpublishapp.com
