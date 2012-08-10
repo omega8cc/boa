@@ -40,7 +40,7 @@ starting with 1+ Aegir Standard or SSD Core:
   ELMS 1.0-beta1 --------------- http://elms.psu.edu
   Feature Server 1.1 ----------- http://bit.ly/fserver
   Managing News 1.2.2 ---------- http://managingnews.com
-  Open Atrium 1.4.1 ------------ http://openatrium.com
+  Open Atrium 1.5.1 ------------ http://openatrium.com
   Pressflow 5.23 --------------- http://pressflow.org
   Pressflow 6.26.2 ------------- http://pressflow.org
   ProsePoint 0.43 -------------- http://prosepoint.org
