@@ -494,7 +494,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=ftp.us.debian.org
+_LOCAL_DEBIAN_MIRROR=ftp.debian.org
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
@@ -1902,7 +1902,6 @@ barracuda_cnf () {
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
     fi
-    sed -i "s/ftp.debian.org/ftp.us.debian.org/g" /root/.barracuda.cnf &> /dev/null
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
     _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_PHP_FORCE_REINSTALL_TEST" =~ "_PHP_FORCE_REINSTALL" ]] ; then
@@ -3736,7 +3735,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     else
       if [ "$_AUTOPILOT" = "YES" ] ; then
         if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-          _MIRROR=ftp.us.debian.org
+          _MIRROR=ftp.debian.org
         else
           _MIRROR=$_LOCAL_DEBIAN_MIRROR
         fi
@@ -3760,7 +3759,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       fi
       if ! netcat -w 5 -z $_MIRROR 80 ; then
         msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
-        _MIRROR=ftp.us.debian.org
+        _MIRROR=ftp.debian.org
       fi
     fi
     msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
