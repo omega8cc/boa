@@ -1377,13 +1377,10 @@ validate_public_ip () {
   else
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     else
-      _VMFAMILY="XEN"
       _IFCONFIG="eth0"
     fi
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
@@ -1411,13 +1408,10 @@ validate_xtras_ip () {
   else
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     else
-      _VMFAMILY="XEN"
       _IFCONFIG="eth0"
     fi
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
@@ -1462,13 +1456,10 @@ validate_purge_ip () {
   else
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     else
-      _VMFAMILY="XEN"
       _IFCONFIG="eth0"
     fi
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
@@ -1513,13 +1504,10 @@ validate_local_ip () {
   else
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     else
-      _VMFAMILY="XEN"
       _IFCONFIG="eth0"
     fi
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
@@ -3379,13 +3367,10 @@ fi
 if [ "$_STATUS" = "INIT" ] ; then
   _ETH_TEST=`ifconfig 2>&1`
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-    _VMFAMILY="VZ"
     _IFCONFIG="venet0"
   elif [ -e "/proc/bean_counters" ] ; then
-    _VMFAMILY="VZ"
     _IFCONFIG="venet0"
   else
-    _VMFAMILY="XEN"
     _IFCONFIG="eth0"
   fi
   if [ ! -z "$_MY_OWNIP" ] ; then
@@ -4296,13 +4281,10 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     msg "INFO: Installing VnStat monitor, please wait..."
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     elif [ -e "/proc/bean_counters" ] ; then
-      _VMFAMILY="VZ"
       _IFCONFIG="venet0"
     else
-      _VMFAMILY="XEN"
       _IFCONFIG="eth0"
     fi
     cd /var/opt
