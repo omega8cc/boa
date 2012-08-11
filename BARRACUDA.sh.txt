@@ -4771,6 +4771,8 @@ if [ "$_STATUS" = "INIT" ] ; then
       st_runner "update-rc.d php-fpm defaults" &> /dev/null
       st_runner "service php-fpm start" &> /dev/null
     fi
+    st_runner "service php5-fpm stop" &> /dev/null
+    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     st_runner "update-rc.d php53-fpm defaults" &> /dev/null
     st_runner "service php53-fpm start" &> /dev/null
     st_runner "update-rc.d nginx defaults" &> /dev/null
@@ -4800,6 +4802,8 @@ else
     if [ -e "/etc/init.d/php-fpm" ] ; then
       st_runner "service php-fpm restart" &> /dev/null
     fi
+    st_runner "service php5-fpm stop" &> /dev/null
+    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     st_runner "service php53-fpm stop" &> /dev/null
     killall -9 php-fpm &> /dev/null
     st_runner "service php53-fpm start" &> /dev/null
