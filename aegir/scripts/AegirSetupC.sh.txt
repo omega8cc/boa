@@ -999,7 +999,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://network.acquia.com/files/marketing/commons/commons-$_COMMONS.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/distro/commons-$_COMMONS.tar.gz
   tar -xzf commons-$_COMMONS.tar.gz
   rm -f commons-$_COMMONS.tar.gz
   if [ -d "$_CORE/acquia_commons" ] ; then
