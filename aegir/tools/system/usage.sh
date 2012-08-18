@@ -63,6 +63,10 @@ read_account_data () {
     _CLIENT_CORES=`cat /data/disk/$_THIS_HM_USER/log/cores.txt`
     _CLIENT_CORES=`echo -n $_CLIENT_CORES | tr -d "\n"`
   fi
+  if [ -e "/data/disk/$_THIS_HM_USER/log/option.txt" ] ; then
+    _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
+    _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
+  fi
 }
 
 send_notice_core () {
@@ -362,7 +366,11 @@ EOF
 check_limits () {
   read_account_data
   _CLIENT_SQL_LIMIT=256
-  _CLIENT_DSK_LIMIT=2560
+  _CLIENT_DSK_LIMIT=5120
+  if [ "$_CLIENT_OPTION" = "SSD" ] ; then
+    _CLIENT_SQL_LIMIT=512
+    _CLIENT_DSK_LIMIT=10240
+  fi
   let "_CLIENT_SQL_LIMIT *= $_CLIENT_CORES"
   let "_CLIENT_DSK_LIMIT *= $_CLIENT_CORES"
   echo _CLIENT_CORES is $_CLIENT_CORES

@@ -4358,6 +4358,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
+    sed -i "s/l10n_update/l10n_update purge expire/g" /var/xdrago/usage.sh &> /dev/null
   else
     sed -i "s/600/900/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/log\/lshell/log\/lsh/g" /etc/logrotate.d/lshell &> /dev/null
@@ -4394,6 +4395,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
+    sed -i "s/l10n_update/l10n_update purge expire/g" /var/xdrago/usage.sh &> /dev/null
   else
     sed -i "s/600/900/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/rm -f -r \/tmp/#rm -f -r \/tmp/g" /var/xdrago/graceful.sh &> /dev/null

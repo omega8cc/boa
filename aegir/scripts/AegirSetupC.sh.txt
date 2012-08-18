@@ -653,16 +653,20 @@ fi
 
 
 ###---###
-_ALLOW_FOUR=YES
+_ALLOW_ALL=YES
 _ALLOW_CIVICRM=YES
 _ALLOW_VIDEO=YES
-if [ "$_CLIENT_CORES" -lt "2" ] ; then
-  _ALLOW_FOUR=NO
+if [ "$_CLIENT_CORES" -lt "1" ] ; then
+  _ALLOW_ALL=NO
   _ALLOW_CIVICRM=NO
   _ALLOW_VIDEO=NO
+  _D_8_ALLOW=NO
 fi
 if [[ "$_DOMAIN" =~ ".host8." ]] ; then
-  _ALLOW_VIDEO=NO
+  _D_8_ALLOW=NO
+fi
+if [[ "$_DOMAIN" =~ "node.us.host8.biz" ]] ; then
+  _D_8_ALLOW=YES
 fi
 
 
@@ -937,7 +941,7 @@ _THIS_PRNAME="commerce_kickstart"
 _THIS_DISTRO="commerce-$_COMMERCE-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -995,7 +999,7 @@ _THIS_PRNAME="drupal_commons"
 _THIS_DISTRO="commons-$_COMMONS-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
@@ -1487,7 +1491,7 @@ _THIS_PRNAME="martplug"
 _THIS_DISTRO="$_THIS_PRNAME-$_MART_PLUG-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MPG ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1559,7 +1563,7 @@ _THIS_PRNAME="nodestream"
 _THIS_DISTRO="$_THIS_PRNAME-$_NODESTREAM6-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NSM ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
@@ -1611,7 +1615,7 @@ _THIS_PRNAME="nodestream"
 _THIS_DISTRO="$_THIS_PRNAME-$_NODESTREAM7-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NS7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1658,7 +1662,7 @@ _THIS_PRNAME="octopus_video"
 _THIS_DISTRO="$_THIS_PRNAME-$_OCTOPUS_VIDEO-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_VIDEO" = "YES" ] || [[ "$_DOMAIN" =~ "node.us.host8.biz" ]] || [[ "$_DOMAIN" =~ "v100.nyc.host8.biz" ]] ; then
+if [ "$_ALLOW_VIDEO" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OVO ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1713,7 +1717,7 @@ _THIS_DISTRO="$_THIS_PRNAME-$_OPENACADEMY-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 _THIS_PLPATH="$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAY ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1832,7 +1836,7 @@ _THIS_PRNAME="openchurch"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPENCHURCH-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1881,7 +1885,7 @@ _THIS_PRNAME="opendeals"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPEN_DEALS-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ODS ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1946,7 +1950,7 @@ _THIS_PRNAME="openenterprise"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPENENTERPRISE-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OEE ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -1993,7 +1997,7 @@ _THIS_PRNAME="openoutreach"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPENOUTREACH-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OOH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -2087,7 +2091,7 @@ _THIS_PRNAME="openpublic"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPENPUBLIC-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -2126,7 +2130,7 @@ _THIS_PRNAME="openpublish"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPENPUBLISH-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -2173,7 +2177,7 @@ _THIS_PRNAME="openscholar"
 _THIS_DISTRO="$_THIS_PRNAME-$_OPENSCHOLAR-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/shadowbox" ] ; then
 echo " "
@@ -2229,7 +2233,7 @@ _THIS_DISTRO="$_THIS_PRNAME-$_PANOPOLY-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 _THIS_PLPATH="$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -2430,7 +2434,7 @@ _THIS_PRNAME="acquia"
 _THIS_DISTRO="ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
@@ -2496,7 +2500,7 @@ _THIS_PRNAME="videola"
 _THIS_DISTRO="$_THIS_PRNAME-$_VIDEOLA-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_FOUR" = "YES" ] ; then
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ VOA ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
