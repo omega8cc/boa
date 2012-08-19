@@ -406,8 +406,8 @@ fi
 msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
 git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/provision/remote_import &> /dev/null
 rm -f -r $_ROOT/.drush/provision/remote_import/.git &> /dev/null
-git clone --branch master git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision/provision_tasks_extra &> /dev/null
-rm -f -r $_ROOT/.drush/provision/provision_tasks_extra/.git &> /dev/null
+git clone --branch master git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra &> /dev/null
+rm -f -r $_ROOT/.drush/provision_tasks_extra/.git &> /dev/null
 wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/provision_cdn-6.x-2.x-dev.tar.gz
