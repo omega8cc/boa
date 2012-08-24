@@ -798,7 +798,7 @@ _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
 _REDIS_VERSION=2.4.16
 _MARIADB_VERSION=5.5.25
-_PERCONA_VERSION=5.5.25
+_PERCONA_VERSION=5.5.27
 
 ###
 ### Variables
@@ -1309,6 +1309,9 @@ update_sql_conf () {
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
     sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
+  fi
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
   fi
 }
 #
@@ -4112,6 +4115,9 @@ else
       sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
       sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
     fi
+    if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+      sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
+    fi
     _PHP_FORCE_REINSTALL=YES
     mrun "sleep 8"
     msg "INFO: Restarting $_DB_SERVER server, please wait..."
@@ -4758,6 +4764,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
     sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
+  fi
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
   fi
   update_php_conf
   tune_memory_limits
