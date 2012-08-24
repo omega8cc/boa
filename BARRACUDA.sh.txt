@@ -2339,7 +2339,7 @@ update_php_universal_more () {
   fi
 }
 #
-# Install PHP 5.3.11
+# Install PHP 5.3.16
 install_php_modern () {
   ###--------------------###
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -2382,6 +2382,26 @@ install_php_modern () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
   fi
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+  fi
+  _NEW_LTS=NO
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
+    _NEW_LTS=YES
+  fi
+  if [ -f "/usr/bin/php" ] && [ "$_FROM_SOURCES" = "YES" ] && [ -f "/opt/local/bin/php" ] ; then
+    mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
+    ln -s /opt/local/bin/php /usr/bin/php
+    if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
+      mv -f /usr/bin/phpize /usr/bin/phpize-old &> /dev/null
+      ln -s /opt/local/bin/phpize /usr/bin/phpize
+    fi
+  fi
+  if [ ! -x "/opt/local/bin/php" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
+    mkdir -p /opt/local/bin
+    ln -s /usr/bin/php /opt/local/bin/php
+  fi
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     _LOC_PHP_PATH=/usr/bin
@@ -2399,22 +2419,6 @@ install_php_modern () {
     echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
   else
     echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
-  fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-  fi
-  _NEW_LTS=NO
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    _NEW_LTS=YES
-  fi
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ -f "/opt/local/bin/php" ] ; then
-    mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
-    ln -s /opt/local/bin/php /usr/bin/php
-  fi
-  if [ ! -x "/opt/local/bin/php" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
-    mkdir -p /opt/local/bin
-    ln -s /usr/bin/php /opt/local/bin/php
   fi
   rm -f /etc/init.d/php53-fpm*
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -2476,7 +2480,7 @@ install_php_legacy () {
   chmod 755 /usr/local/sbin/php-fpm &> /dev/null
 }
 #
-# Update PHP 5.3.11
+# Update PHP 5.3.16
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
   if [ "$_FROM_SOURCES" = "NO" ] ; then
