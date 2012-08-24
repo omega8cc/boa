@@ -79,7 +79,7 @@ sub global_action
 {
   local(@MYARR) = `ps auxf 2>&1`;
   foreach $line (@MYARR) {
-    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND) = split(/\s+/,$line);
+    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
     {
@@ -96,6 +96,11 @@ sub global_action
       else {
         $li_cnt{$COMMAND}++;
       }
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /(Zs)/ && $B =~ /(php-fpm)/ && $K =~ /(defunct)/)
+    {
+      `kill $PID`;
+      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
     }
   }
 }
