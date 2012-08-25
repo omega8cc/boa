@@ -215,14 +215,14 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/advagg/advagg_bundler/advagg_bundler.module')) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
-    $conf['advagg_aggregate_mode'] = 2;
-    $conf['advagg_async_generation'] = 1;
+    $conf['advagg_aggregate_mode'] = 1;
+    $conf['advagg_async_generation'] = 0;
     $conf['advagg_checksum_mode'] = "md5";
     $conf['advagg_closure'] = 1;
     $conf['advagg_css_compress_agg_files'] = 1;
     $conf['advagg_css_compress_compressor_level'] = "sane";
     $conf['advagg_css_compress_inline'] = 1;
-    $conf['advagg_css_compressor'] = 1;
+    $conf['advagg_css_compressor'] = 2;
     $conf['advagg_debug'] = 0;
     $conf['advagg_dir_htaccess'] = 0;
     $conf['advagg_enabled'] = 1;
@@ -231,11 +231,10 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_js_compress_callback'] = 1;
     $conf['advagg_js_compress_inline'] = 1;
     $conf['advagg_js_compress_packer_enable'] = 0;
-    $conf['advagg_js_compressor'] = 0;
-    $conf['advagg_page_cache_mode'] = 1;
+    $conf['advagg_js_compressor'] = 1;
+    $conf['advagg_page_cache_mode'] = 0;
     $conf['advagg_rebuild_on_flush'] = 0;
     $conf['advagg_server_addr'] = "-1";
-    $conf['advagg_socket_timeout'] = 1;
   }
 
   if (file_exists('./modules/o_contrib/purge/purge.inc')) {
