@@ -5503,7 +5503,7 @@ if [ ! -e "/root/.my.cnf" ] ; then
   mrun "sleep 1"
   echo "[client]" >> /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
-  echo "password=\"$PASWD\"" >> /root/.my.cnf
+  echo "password=$PASWD" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf
   if [ "$_THIS_DB_HOST" = "localhost" ] ; then
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
@@ -5516,6 +5516,8 @@ if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
   mrun "sleep 1"
+else
+  sed -i "s/\"//g" /root/.my.cnf
 fi
 
 
