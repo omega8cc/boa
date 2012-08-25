@@ -22,7 +22,6 @@ action()
   rm -f /opt/tmp/sess*
   rm -f /tmp/*error*
   rm -f /tmp/sess*
-  rm -f -r /tmp/*
   rm -f /opt/tmp/*error*
   rm -f /opt/tomcat6/logs/*
   if test -f /root/.high_traffic.cnf ; then
