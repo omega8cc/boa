@@ -454,7 +454,6 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.1.tar.gz
@@ -519,7 +518,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/seckit-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-6.x-1.3.tar.gz
