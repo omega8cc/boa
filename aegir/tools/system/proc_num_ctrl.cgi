@@ -101,6 +101,9 @@ sub global_action
     {
       `kill $PID`;
       `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
     }
   }
 }
