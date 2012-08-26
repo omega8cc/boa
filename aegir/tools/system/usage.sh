@@ -45,7 +45,7 @@ fix_boost_cache()
 {
 if [ -e "$Plr/cache" ] ; then
   rm -f -r $Plr/cache/*
-  mkdir -p $Plr/cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
+  mkdir -p $Plr/cache/{normal,perm}
   chown -R $_THIS_HM_USER:www-data $Plr/cache
   chmod -R 777 $Plr/cache
 fi

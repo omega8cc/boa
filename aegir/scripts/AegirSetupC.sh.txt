@@ -234,7 +234,7 @@ mrun () {
 create_dirs () {
   cd $_CORE_DISTRO
   mkdir -p ./sites/default/files
-  mkdir -p ./cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
+  mkdir -p ./cache/{normal,perm}
   chmod -R 777 ./cache &> /dev/null
   if [ -e "./sites/default/default.settings.php" ] ; then
     cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
@@ -352,7 +352,7 @@ prepare_pressflow_core () {
 # create standard D8 directories
 create_d8_dirs () {
   mkdir -p ./sites/default/files
-  mkdir -p ./cache/{normal,perm,mobile-tablet,mobile-smart,mobile-other}
+  mkdir -p ./cache/{normal,perm}
   chmod -R 777 ./cache &> /dev/null
   if [ -e "./sites/default/default.settings.php" ] ; then
     cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null

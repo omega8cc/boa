@@ -107,6 +107,7 @@ $redis_up     = FALSE;
 $is_cart      = FALSE;
 $is_dev       = FALSE;
 $high_traffic = FALSE;
+$da_inc       = FALSE;
 
 /**
  * Optional extra settings
@@ -208,9 +209,18 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   else {
     $this_device = 'normal';
   }
-  $conf['boost_normal_dir'] = $this_device;
-  $conf['boost_gzip_dir'] = $this_device;
-  if (file_exists('sites/all/modules/domain')) {
+
+  if (file_exists('sites/all/modules/domain/settings.inc')) {
+    $da_inc = 'sites/all/modules/domain/settings.inc';
+  }
+  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
+    $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
+  }
+  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
+    $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  }
+
+  if ($da_inc) {
     $this_prefix = $_SERVER['HTTP_HOST'] . '.';
   }
   else {
@@ -484,13 +494,7 @@ if (!$custom_fb) {
  *
  */
 if (!$custom_da) {
-  if (file_exists('sites/all/modules/domain/settings.inc')) {
-    require_once "sites/all/modules/domain/settings.inc";
-  }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
-    require_once 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
-  }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
-    require_once 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  if ($da_inc) {
+    require_once $da_inc;
   }
 }
