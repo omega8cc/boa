@@ -2260,6 +2260,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_CORE_DISTRO/profiles
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-redis.patch ./
     patch -p1 < panopoly-search-redis.patch &> /dev/null
+  else
+    cd $_CORE_DISTRO/profiles
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-off.patch ./
+    patch -p1 < panopoly-search-off.patch &> /dev/null
   fi
   cd $_THIS_PRPATH/modules
   wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz

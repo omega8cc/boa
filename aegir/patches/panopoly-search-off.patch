@@ -1,0 +1,37 @@
+diff -urp a/panopoly.info b/panopoly.info
+--- a/panopoly.info	2012-06-21 16:21:56.000000000 +0000
++++ b/panopoly.info	2012-08-27 09:08:43.000000000 +0000
+@@ -68,14 +68,6 @@ dependencies[] = simplified_menu_admin
+ dependencies[] = references_dialog 
+ dependencies[] = backports
+ 
+-; Panopoly - Contrib - Search 
+-dependencies[] = facetapi
+-dependencies[] = search_api
+-dependencies[] = search_api_solr
+-dependencies[] = search_api_facetapi
+-dependencies[] = search_api_views
+-dependencies[] = search_api_db
+-
+ ; Panopoly - Contrib - Products
+ dependencies[] = apps 
+ dependencies[] = features
+diff -urp a/panopoly.profile b/panopoly.profile
+--- a/panopoly.profile	2012-08-18 18:57:09.000000000 +0000
++++ b/panopoly.profile	2012-08-27 09:14:04.000000000 +0000
+@@ -31,7 +31,6 @@ function panopoly_install_tasks($install
+       'panopoly_images',
+       'panopoly_magic',
+       'panopoly_pages',
+-      'panopoly_search',
+       'panopoly_theme',
+       'panopoly_users',
+       'panopoly_widgets',
+@@ -43,7 +42,6 @@ function panopoly_install_tasks($install
+       'panopoly_images',      
+       'panopoly_magic',             
+       'panopoly_pages',                   
+-      'panopoly_search',                        
+       'panopoly_theme',                               
+       'panopoly_users',                                     
+       'panopoly_widgets',                                         
