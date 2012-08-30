@@ -450,7 +450,6 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
@@ -512,7 +511,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/esi-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
