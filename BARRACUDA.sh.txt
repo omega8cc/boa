@@ -2277,6 +2277,7 @@ install_php_extensions_more () {
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
+  echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
 }
 #
 # Update PHP universal
