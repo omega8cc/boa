@@ -48,7 +48,7 @@ sub makeactions
           $li_cnt{$VISITOR}++;
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1 if ($line =~ /(POST)/);
-        $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack)/);
+        $li_cnt{$VISITOR} = "555" if ($line =~ /(HTTrack|LWP|BrokenLinkCheck)/);
       }
       else {
         print "Not Supported Request Type: $line\n";
