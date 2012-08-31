@@ -181,6 +181,7 @@ if [ "$_MODULES" = "YES" ] ; then
           elif [ -e "$Plr/modules/o_contrib" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
             su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
+            su -s /bin/bash $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
           elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
             su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
             su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
