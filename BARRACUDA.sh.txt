@@ -2213,18 +2213,6 @@ install_php_extensions () {
       fi
     fi
   fi
-  ###--------------------###
-  msg "INFO: Installing Suhosin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r suhosin*
-  wget -q -U iCab http://files.aegir.cc/dev/suhosin-0.9.33.tgz
-  tar -xzf suhosin-0.9.33.tgz
-  cd /var/opt/suhosin-0.9.33
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
 }
 #
 # Install more extensions for PHP universal
@@ -2396,7 +2384,7 @@ install_php_modern () {
     else
       _EXTRA_PHP_APC=php5-apc
     fi
-    _MODERN_PHP_DEB="php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php-pear php5-sqlite php5-suhosin php5-xmlrpc php5-xsl"
+    _MODERN_PHP_DEB="php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php-pear php5-sqlite php5-xmlrpc php5-xsl"
     st_runner "$_INSTAPP $_MODERN_PHP_DEB $_EXTRA_PHP_APC" 2> /dev/null
   else
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
@@ -2404,10 +2392,7 @@ install_php_modern () {
     cd /var/opt
     rm -f -r /var/opt/php*
     wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
     tar -xzf php-$_PHP_VERSION_NEW.tar.gz
-    gunzip -q suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch.gz
-    cat suhosin-patch-$_PHP_VERSION_BUILD-0.9.10.patch | patch -d php-$_PHP_VERSION_NEW -p1 &> /dev/null
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
     mrun "sleep 1"
     cd /var/opt/php-$_PHP_VERSION_NEW
@@ -2482,13 +2467,10 @@ install_php_legacy () {
   rm -f -r /var/opt/php*
   rm -f /etc/init.d/php-fpm*
   wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/suhosin-patch-5.2.16-0.9.7.patch.gz
   wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
   tar -xzf php-$_PHP_VERSION.tar.gz
   gunzip -q php-$_PHP_VERSION-fpm-0.5.14.diff.gz
-  gunzip -q suhosin-patch-5.2.16-0.9.7.patch.gz
   cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
-  cat suhosin-patch-5.2.16-0.9.7.patch | patch -d php-$_PHP_VERSION -p1 &> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
   mrun "sleep 1"
   cd /var/opt/php-$_PHP_VERSION
@@ -4648,8 +4630,8 @@ if [ "$_REL_VERSION" = "precise" ] && [ ! -e "/var/log/precise-apc-fixed.log" ] 
   st_runner "$_INSTAPP php-apc" 2> /dev/null
   touch /var/log/precise-apc-fixed.log
 fi
-st_runner "apt-get remove php5-sasl -y" &> /dev/null
-st_runner "apt-get purge php5-sasl -y" &> /dev/null
+st_runner "apt-get remove php5-sasl php5-suhosin -y" &> /dev/null
+st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 
 
 ###--------------------###
