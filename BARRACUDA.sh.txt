@@ -972,6 +972,28 @@ find_correct_ip () {
   fi
 }
 #
+# Fix php.ini files to remove suhosin.so
+fix_php_ini_suhosin () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
+    if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
+      sed -i "s/.*suhosin.*//g" $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix php.ini files to add jsmin.so
+fix_php_ini_jsmin () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE)
+    if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
+      true
+    else
+      echo "extension=jsmin.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
 # Fix php.ini files to add redis.so
 fix_php_ini_redis () {
   if [ -e "$_THIS_FILE" ] ; then
@@ -1270,12 +1292,20 @@ update_php_conf () {
   ###
   _THIS_FILE=/opt/etc/php.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   _THIS_FILE=/usr/local/lib/php.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   _THIS_FILE=/opt/local/etc/php53.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
