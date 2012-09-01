@@ -378,13 +378,17 @@ check_limits () {
   echo _CLIENT_SQL_LIMIT is $_CLIENT_SQL_LIMIT
   echo _CLIENT_DSK_LIMIT is $_CLIENT_DSK_LIMIT
   if [ "$SumDatH" -gt "$_CLIENT_SQL_LIMIT" ] ; then
-    send_notice_sql
+    if [ ! -e "$User/log/CANCELLED" ] ; then
+      send_notice_sql
+    fi
     echo SQL Usage for $_THIS_HM_USER above limits
   else
     echo SQL Usage for $_THIS_HM_USER below limits
   fi
   if [ "$HomSizH" -gt "$_CLIENT_DSK_LIMIT" ] ; then
-    send_notice_disk
+    if [ ! -e "$User/log/CANCELLED" ] ; then
+      send_notice_disk
+    fi
     echo Disk Usage for $_THIS_HM_USER above limits
   else
     echo Disk Usage for $_THIS_HM_USER below limits
