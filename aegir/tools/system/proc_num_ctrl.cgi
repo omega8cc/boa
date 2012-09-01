@@ -81,6 +81,20 @@ sub global_action
   foreach $line (@MYARR) {
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
+    if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
+    {
+      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+    }
+    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /(Zs)/ && $B =~ /(php-fpm)/ && $K =~ /(defunct)/)
+    {
+      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+    }
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
     {
       if ($COMMAND =~ /nginx/) {
@@ -96,22 +110,6 @@ sub global_action
       else {
         $li_cnt{$COMMAND}++;
       }
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /(Zs)/ && $B =~ /(php-fpm)/ && $K =~ /(defunct)/)
-    {
-      `kill $PID`;
-      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
-    }
-    elsif ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
-    {
-      `kill $PID`;
-      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
     }
   }
 }
