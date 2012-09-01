@@ -105,6 +105,14 @@ sub global_action
        chomp($timedate);
       `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
     }
+    elsif ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
+    {
+      `kill $PID`;
+      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+    }
   }
 }
 ###EOF2012###
