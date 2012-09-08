@@ -4756,7 +4756,7 @@ fi
 
 ###--------------------###
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
-  if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing latest Pure-FTPd server, please wait..."
     mrun "sleep 1"
     if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
@@ -4788,7 +4788,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     mrun "sleep 1"
     st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
     cd /var/opt
-    echo "pure-ftpd-$_PURE_FTPD_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION.log
+    echo "pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
   fi
 fi
 
