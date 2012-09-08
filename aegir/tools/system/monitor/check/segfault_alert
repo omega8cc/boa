@@ -42,7 +42,7 @@ immediately, to protect your web server availability.
 INTROX
 ;
     `echo "$intro" >> $this_path`;
-    `echo "$intrx" >> $this_path`;
+    #`echo "$intrx" >> $this_path`;
   }
   $this_archive="/var/xdrago/monitor/segfault_alert_archive";
   open (NOT,"<$this_archive");
@@ -142,13 +142,13 @@ sub find_domain
     $dislb = "/data/disk/$rx/config/server_master/nginx/vhost.d/www.$d";
     `mkdir -p /var/backups/segfault`;
     if (-f "$disla" && $rx !~ /^$/) {
-      `mv -f $disla /var/backups/segfault/`;
-      `service nginx reload`;
+      #`mv -f $disla /var/backups/segfault/`;
+      #`service nginx reload`;
       $disl = $disla;
     }
     elsif (-f "$dislb" && $rx !~ /^$/) {
-      `mv -f $dislb /var/backups/segfault/`;
-      `service nginx reload`;
+      #`mv -f $dislb /var/backups/segfault/`;
+      #`service nginx reload`;
       $disl = $dislb;
     }
     $ngxl =~ s/([";])/\\$1/g;
