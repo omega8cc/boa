@@ -40,7 +40,7 @@ print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
-print "\n $tomcatsumar Tomcat procs\tGLOBAL" if ($tomcatlives);
+print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
@@ -79,7 +79,7 @@ sub global_action
 {
   local(@MYARR) = `ps auxf 2>&1`;
   foreach $line (@MYARR) {
-    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K) = split(/\s+/,$line);
+    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
     if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
     {
@@ -94,6 +94,13 @@ sub global_action
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
       `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+    }
+    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME !~ /(0:0)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
     {
