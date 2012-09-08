@@ -2921,6 +2921,7 @@ if [ `whoami` = "root" ] ; then
   sleep 3
   chmod a+rw /dev/null
   rm -f -r /opt/tmp/*
+  rm -f -r /tmp/drush_make_tmp*
   rm -f /tmp/cache.inc
   service cron stop &> /dev/null
   touch /var/run/boa_run.pid
@@ -5754,6 +5755,7 @@ mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
 rm -f /tmp/cache.inc
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
+rm -f -r /tmp/drush_make_tmp*
 rm -f /var/run/boa_run.pid
 rm -f /var/run/boa_wait.pid
 chmod 700 /root
