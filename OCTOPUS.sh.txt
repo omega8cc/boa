@@ -1399,14 +1399,16 @@ fi
 
 msg "8s before we will continue..."
 sleep 8
-rm -f /tmp/cache.inc
+rm -f /tmp/cache.inc*
 rm -f /opt/tmp/status-*
 rm -f -r /tmp/drush_make_tmp*
+rm -f /tmp/pm-updatecode*
 action
-rm -f /tmp/cache.inc
+rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f -r /tmp/drush_make_tmp*
+rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid
 exit 0
 
