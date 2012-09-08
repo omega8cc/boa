@@ -4021,6 +4021,9 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
+  st_runner "apt-get remove mytop -y"        &> /dev/null
+  st_runner "apt-get purge mytop -y"         &> /dev/null
+  rm -f /usr/bin/mytop
   st_runner "apt-get autoremove -y"          &> /dev/null
   st_runner "apt-get remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y"  &> /dev/null
@@ -4028,9 +4031,9 @@ install_percona_sql () {
   st_runner "apt-get update -y"              &> /dev/null
   SQLDEB="percona-server-server-5.5"
   if [ "$_REL_VERSION" = "squeeze" ] ; then
-    SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit mytop"
+    SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit"
   else
-    SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl mytop"
+    SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
   fi
 }
 install_mariadb_sql () {
@@ -4057,6 +4060,9 @@ install_mariadb_sql () {
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  st_runner "apt-get remove mytop -y"                     &> /dev/null
+  st_runner "apt-get purge mytop -y"                      &> /dev/null
+  rm -f /usr/bin/mytop
   st_runner "apt-get autoremove -y"                       &> /dev/null
   st_runner "apt-get remove mysql-common -y"              &> /dev/null
   st_runner "apt-get purge mysql-common -y"               &> /dev/null
@@ -4065,7 +4071,7 @@ install_mariadb_sql () {
   st_runner "apt-get autoremove -y"                       &> /dev/null
   st_runner "apt-get update -y"                           &> /dev/null
   SQLDEB="mariadb-server-$_MARIADB_SERIES mariadb-client-$_MARIADB_SERIES mariadb-common"
-  SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl mytop"
+  SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
@@ -4076,6 +4082,7 @@ install_with_aptitude_sql () {
   msg "INFO: Installing $_DB_SERVER, please wait..."
   if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
     install_percona_sql
+    st_runner "$_INSTAPP mytop" 2> /dev/null
   else
     install_mariadb_sql
   fi
