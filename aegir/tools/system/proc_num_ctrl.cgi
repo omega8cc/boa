@@ -95,7 +95,7 @@ sub global_action
        chomp($timedate);
       `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
     }
-    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME !~ /(0:0)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
+    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME !~ /(0:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
