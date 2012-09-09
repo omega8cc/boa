@@ -1935,16 +1935,6 @@ barracuda_cnf () {
       _PHP_CLI_VERSION=5.3
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
-    _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL /root/.barracuda.cnf)
-    if [[ "$_PHP_FORCE_REINSTALL_TEST" =~ "_PHP_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_PHP_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
-      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
-    fi
-    _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL /root/.barracuda.cnf)
-    if [[ "$_SQL_FORCE_REINSTALL_TEST" =~ "_SQL_FORCE_REINSTALL" ]] ; then
-      sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
-      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
-    fi
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
       sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Enabled by default/g" /root/.barracuda.cnf &> /dev/null
@@ -2118,6 +2108,21 @@ barracuda_cnf () {
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
+    fi
+    _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_NGX_FORCE_REINSTALL_TEST" =~ "_NGX_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_NGX_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _PHP_FORCE_REINSTALL_TEST=$(grep _PHP_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_PHP_FORCE_REINSTALL_TEST" =~ "_PHP_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_PHP_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_SQL_FORCE_REINSTALL_TEST" =~ "_SQL_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
