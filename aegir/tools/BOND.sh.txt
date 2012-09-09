@@ -258,11 +258,36 @@ fix_php_ini_redis () {
   fi
 }
 #
+# Fix php.ini files to remove suhosin.so
+fix_php_ini_suhosin () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
+    if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
+      sed -i "s/.*suhosin.*//g" $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix php.ini files to add jsmin.so
+fix_php_ini_jsmin () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE)
+    if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
+      true
+    else
+      echo "extension=jsmin.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
     _THISHTIP="$_LOC_IP"
+  fi
+  if [ ! -e "/opt/etc" ] ; then
+    mkdir -p /opt/etc
   fi
   if [ ! -e "/opt/local/etc/php53.ini" ] ; then
     mkdir -p /opt/local/etc
@@ -284,7 +309,7 @@ update_php_conf () {
     cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
       mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
@@ -304,15 +329,16 @@ update_php_conf () {
     if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
       ln -s /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
+      fi
+    elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+      mkdir -p /opt/local/lib/php/extensions
+      ln -s /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      fi
     fi
-    sed -i "s/^extension=/;extension=/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/^extension=/;extension=/g" /opt/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=mailparse.so.*/extension=mailparse.so/g" /opt/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=redis.so.*/extension=redis.so/g" /opt/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=uploadprogress.so.*/extension=uploadprogress.so/g" /opt/local/lib/php.ini &> /dev/null
   fi
   ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
@@ -339,12 +365,39 @@ update_php_conf () {
   ###
   _THIS_FILE=/opt/etc/php.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   _THIS_FILE=/usr/local/lib/php.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   _THIS_FILE=/opt/local/etc/php53.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  fix_php_ini_newrelic_all
+  if [[ "$_THISHOST" =~ "test.host8." ]] ; then
+    true
+  else
+    sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
+    sed -i "s/,shell_exec//g" /opt/local/etc/php53.ini &> /dev/null
+  fi
+  #
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/lib/php.ini &> /dev/null
+  #
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
+  #
 }
 #
 restore_default_php () {

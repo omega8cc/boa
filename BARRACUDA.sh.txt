@@ -1308,7 +1308,7 @@ update_php_conf () {
   fix_php_ini_suhosin
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ "test.host8." ]] ; then
     true
   else
     sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
