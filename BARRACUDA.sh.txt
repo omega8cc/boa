@@ -1314,6 +1314,17 @@ update_php_conf () {
     sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
     sed -i "s/,shell_exec//g" /opt/local/etc/php53.ini &> /dev/null
   fi
+  ###
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/lib/php.ini &> /dev/null
+  ###
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
+  ###
 }
 #
 # Update SQL Config.
