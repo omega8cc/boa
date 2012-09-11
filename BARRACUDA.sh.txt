@@ -2164,14 +2164,8 @@ run_apt_update_again () {
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     st_runner "apt-get remove mytop -y" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
-    rm -f /usr/bin/mytop
   fi
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    true
-  else
-    st_runner "$_INSTAPP mytop" 2> /dev/null
-  fi
 }
 #
 # Install IonCube.
@@ -4044,15 +4038,9 @@ install_percona_sql () {
   done
   gpg -a --export CD2EFD2A | apt-key add - &> /dev/null
   _THIS_REL_VERSION="$_REL_VERSION"
-#   if [ "$_REL_VERSION" = "precise" ] ; then
-#     _THIS_REL_VERSION="oneiric"
-#   fi
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
-  st_runner "apt-get remove mytop -y"        &> /dev/null
-  st_runner "apt-get purge mytop -y"         &> /dev/null
-  rm -f /usr/bin/mytop
   st_runner "apt-get autoremove -y"          &> /dev/null
   st_runner "apt-get remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y"  &> /dev/null
@@ -4083,9 +4071,6 @@ install_mariadb_sql () {
     _MARIADB_SERIES=5.5
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
-#   if [ "$_REL_VERSION" = "precise" ] ; then
-#     _THIS_REL_VERSION="oneiric"
-#   fi
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
