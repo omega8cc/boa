@@ -1,0 +1,36 @@
+diff -urp a/openacademy.info b/openacademy.info
+--- a/openacademy.info	2012-07-20 21:37:28.000000000 +0000
++++ b/openacademy.info	2012-09-02 00:03:45.000000000 +0000
+@@ -69,13 +69,6 @@ dependencies[] = simplified_menu_admin
+ dependencies[] = references_dialog 
+ dependencies[] = backports
+ 
+-; Panopoly - Contrib - Search 
+-dependencies[] = search_api
+-dependencies[] = search_api_solr
+-dependencies[] = facetapi
+-dependencies[] = search_api_facetapi
+-dependencies[] = search_api_views
+-
+ ; Panopoly - Contrib - Products
+ dependencies[] = apps 
+ dependencies[] = features
+diff -urp a/openacademy.profile b/openacademy.profile
+--- a/openacademy.profile	2012-08-18 18:57:09.000000000 +0000
++++ b/openacademy.profile	2012-09-02 00:02:54.000000000 +0000
+@@ -30,7 +30,6 @@ function openacademy_install_tasks($inst
+       'panopoly_images',
+       'panopoly_magic',
+       'panopoly_pages',
+-      'panopoly_search',
+       'panopoly_theme',
+       'panopoly_users',
+       'panopoly_widgets',
+@@ -42,7 +41,6 @@ function openacademy_install_tasks($inst
+       'panopoly_images',      
+       'panopoly_magic',             
+       'panopoly_pages',                   
+-      'panopoly_search',                        
+       'panopoly_theme',                               
+       'panopoly_users',                                     
+       'panopoly_widgets',                                         

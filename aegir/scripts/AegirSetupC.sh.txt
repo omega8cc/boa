@@ -435,6 +435,25 @@ init_core_distro_seven_root () {
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
 }
 #
+# get panopoly apps
+get_panopoly_apps () {
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_admin-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_core-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_demo-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_images-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_magic-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_pages-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_search-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_theme-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_users-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_widgets-7.x-1.0-beta5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_wysiwyg-7.x-1.0-beta5.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+}
+#
 # upgrade entity only
 upgrade_entity () {
   rm -f -r entity
@@ -447,8 +466,9 @@ upgrade_entity () {
 #
 # upgrade ctools and entity
 upgrade_ctools_entity_more () {
-  rm -f -r {ctools,entity,facetapi,features,fontyourface,module_filter,libraries,pathauto,search_api,taxonomy_menu}
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.1.tar.gz
+  rm -f -r {ctools,email,entity,facetapi,features,fontyourface,module_filter,libraries,pathauto,search_api,taxonomy_menu}
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/email-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/facetapi-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-1.0.tar.gz
@@ -1744,14 +1764,20 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_CORE_DISTRO/profiles
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy.patch ./
     patch -p1 < openacademy.patch &> /dev/null
+  else
+    cd $_CORE_DISTRO/profiles/openacademy
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy-search-off.patch ./
+    patch -p1 < openacademy-search-off.patch &> /dev/null
   fi
   cd $_THIS_PRPATH/modules
   wget -q -U iCab http://files.aegir.cc/dev/distro/openacademy_apps.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  mkdir -p $_THIS_PRPATH/modules/panopoly_apps
+  cd $_THIS_PRPATH/modules/panopoly_apps
+  get_panopoly_apps
   cd $_THIS_PRPATH/modules/contrib
   wget -q -U iCab http://ftp.drupal.org/files/projects/ds-7.x-1.5.tar.gz
   for archive in ./*.tar.gz; do
@@ -2261,14 +2287,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-redis.patch ./
     patch -p1 < panopoly-search-redis.patch &> /dev/null
   else
-    cd $_CORE_DISTRO/profiles
+    cd $_CORE_DISTRO/profiles/panopoly
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-off.patch ./
     patch -p1 < panopoly-search-off.patch &> /dev/null
   fi
-  cd $_THIS_PRPATH/modules
-  wget -q -U iCab http://files.aegir.cc/dev/distro/panopoly_apps.tar.gz
-  tar -xzf panopoly_apps.tar.gz
-  rm -f panopoly_apps.tar.gz
+  mkdir -p $_THIS_PRPATH/modules/panopoly_apps
+  cd $_THIS_PRPATH/modules/panopoly_apps
+  get_panopoly_apps
   cd $_THIS_PRPATH/modules/contrib
   #upgrade_entity
   upgrade_ctools_entity_more
@@ -2466,7 +2491,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
   cd $_THIS_PRPATH/modules
   wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
