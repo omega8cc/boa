@@ -4102,6 +4102,7 @@ install_with_aptitude_sql () {
     st_runner "$_INSTAPP mytop" 2> /dev/null
   else
     install_mariadb_sql
+    echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
   fi
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
   st_runner "$_INSTAPP $SQLADD" 2> /dev/null
