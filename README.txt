@@ -209,6 +209,7 @@ Contrib:
  blockcache_alter ----------- [D6,D7] --- [S] [B]
  boost ---------------------- [D6,D7] --- [S] [B]
  cache_backport ------------- [D6] ------ [S] [B] [NA]
+ cdn ------------------------ [D6,D7] --- [S] [B]
  ckeditor ------------------- [D6,D7] --- [S]
  config_perms --------------- [D6,D7] --- [S] [B]
  core_library --------------- [D7] ------ [S] [B]
