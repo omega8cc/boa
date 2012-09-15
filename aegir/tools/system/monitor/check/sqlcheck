@@ -21,6 +21,9 @@ local(@MYARR) = `tail --lines=200 /var/log/syslog 2>&1`;
     if ($line =~ /(Checking table)/i) {
       $status="ERROR";
     }
+    if ($line =~ /(is marked as crashed)/i) {
+      $status="ERROR";
+    }
   }
 }
 ###EOF2012###
