@@ -1045,7 +1045,7 @@ install_redis_src () {
       st_runner "adduser --system --group redis" 2> /dev/null
     fi
     cd /var/opt
-    rm -f -r /var/opt/redis*
+    rm -f -r redis*
     wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
     tar -xzf redis-$_REDIS_VERSION.tar.gz
     cd redis-$_REDIS_VERSION
@@ -2182,6 +2182,7 @@ install_ioncube () {
       msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
       mrun "sleep 1"
       cd /var/opt
+      rm -f -r ioncube_loaders*
       wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86-64.tar.gz
       tar -xzf ioncube_loaders_lin_x86-64.tar.gz
     else
@@ -2189,6 +2190,7 @@ install_ioncube () {
       msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
       mrun "sleep 1"
       cd /var/opt
+      rm -f -r ioncube_loaders*
       wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86.tar.gz
       tar -xzf ioncube_loaders_lin_x86.tar.gz
     fi
@@ -2203,6 +2205,7 @@ install_libmemcached () {
     msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
     mrun "sleep 1"
     cd /var/opt
+    rm -f -r libmemcached*
     wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
     tar -xzf libmemcached-0.53.tar.gz
     if [ -e "/var/opt/libmemcached-0.53" ] ; then
@@ -2330,6 +2333,7 @@ update_php_universal () {
     msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
+    rm -f -r APC*
     wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
     tar -xzf APC-$_APC_VERSION.tgz
     cd /var/opt/APC-$_APC_VERSION
@@ -2445,7 +2449,7 @@ install_php_modern () {
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
     msg "NOTE! This step may take longer than 8 minutes, please wait..."
     cd /var/opt
-    rm -f -r /var/opt/php*
+    rm -f -r php*
     wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
     tar -xzf php-$_PHP_VERSION_NEW.tar.gz
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
@@ -2519,7 +2523,7 @@ install_php_legacy () {
   msg "NOTE! This step may take longer than 8 minutes, please wait..."
   mrun "sleep 1"
   cd /var/opt
-  rm -f -r /var/opt/php*
+  rm -f -r php*
   rm -f /etc/init.d/php-fpm*
   wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
@@ -2592,7 +2596,7 @@ install_latest_git () {
     else
       msg "INFO: Installing latest Git from sources, please wait..."
       cd /var/opt
-      rm -f -r /var/opt/git*
+      rm -f -r git*
       wget -q -U iCab http://files.aegir.cc/dev/git-$_GIT_VERSION.tar.gz
       tar -xzf git-$_GIT_VERSION.tar.gz
       cd /var/opt/git-$_GIT_VERSION
@@ -2822,16 +2826,16 @@ install_upgrade_nginx () {
 install_upgrade_libevent () {
   if [ ! -f "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing libevent, please wait..."
-    rm -f -r /var/opt/libevent*
     cd /var/opt
+    rm -f -r libevent*
     wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
     tar -xzf libevent-2.0.11-stable.tar.gz
     cd /var/opt/libevent-2.0.11-stable
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    rm -f -r /var/opt/libevent*
     cd /var/opt
+    rm -f -r libevent*
     wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
     tar -xzf libevent-2.0.11-stable.tar.gz
     cd /var/opt/libevent-2.0.11-stable
@@ -2853,6 +2857,7 @@ install_wkhtmltopdf () {
       msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version, please wait..."
       mrun "sleep 1"
       cd /var/opt
+      rm -f -r wkhtmltopdf*
       wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.11.0_rc1-static-amd64.tar.gz
       tar -xzf wkhtmltopdf-0.11.0_rc1-static-amd64.tar.gz
       cp -af wkhtmltopdf-amd64 /usr/bin/wkhtmltopdf &> /dev/null
@@ -2863,6 +2868,7 @@ install_wkhtmltopdf () {
       msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version, please wait..."
       mrun "sleep 1"
       cd /var/opt
+      rm -f -r wkhtmltopdf*
       wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.11.0_rc1-static-i386.tar.gz
       tar -xzf wkhtmltopdf-0.11.0_rc1-static-i386.tar.gz
       cp -af wkhtmltopdf-i386 /usr/bin/wkhtmltopdf &> /dev/null
@@ -4376,6 +4382,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
       _IFCONFIG="eth0"
     fi
     cd /var/opt
+    rm -f -r vnstat*
     wget -q -U iCab http://files.aegir.cc/dev/vnstat-1.10.tar.gz
     tar -xzf vnstat-1.10.tar.gz
     cd vnstat-1.10
@@ -4503,6 +4510,7 @@ if [ "$_USE_MEMCACHED" = "YES" ] ; then
     msg "INFO: Installing Memcached server, please wait..."
     mrun "sleep 1"
     cd /var/opt
+    rm -f -r memcached*
     rm -f /opt/bin/memcached
     rm -f /usr/bin/memcached
     rm -f /usr/local/bin/memcached
@@ -4709,6 +4717,7 @@ if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FU
   msg "INFO: Installing bzr, please wait..."
   mrun "sleep 1"
   cd /var/opt
+  rm -f -r bzr*
   wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
   tar -xzf bzr-$_BZR_VERSION.tar.gz
   cd /var/opt/bzr-$_BZR_VERSION
@@ -4733,6 +4742,7 @@ if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ 
   fi
   mrun "sleep 1"
   cd /var/opt
+  rm -f -r lshell*
   if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
     wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
     tar -xzf lshell-$_LSHELL_VERSION.tar.gz
@@ -4798,8 +4808,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     st_runner "openssl req -x509 -nodes -days 7300 -newkey rsa:2048 -keyout /etc/ssl/private/pure-ftpd.pem -out /etc/ssl/private/pure-ftpd.pem -batch" 2> /dev/null
     chmod 600 /etc/ssl/private/pure-ftpd.pem &> /dev/null
     cd /var/opt
-    mkdir -p /usr/local/etc
     rm -f -r pure-ftpd*
+    mkdir -p /usr/local/etc
     wget -q -U iCab http://files.aegir.cc/dev/pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
     tar -xzf pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
     cd pure-ftpd-$_PURE_FTPD_VERSION
@@ -5229,6 +5239,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       touch /opt/solr/fixed.log
       touch /opt/solr/fixed.init.log
       cd /var/opt
+      rm -f -r apachesolr_attachments*
       wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.2.tar.gz
       tar -xzf apachesolr_attachments-7.x-1.2.tar.gz
       cd /opt/solr/conf
@@ -5267,6 +5278,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
   fi
   if [ ! -e "/opt/solr/conf/apachesolr-6.x-1.6.log" ] ; then
     cd /var/opt
+    rm -f -r apachesolr*
     wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr-6.x-1.6.tar.gz
     tar -xzf apachesolr-6.x-1.6.tar.gz &> /dev/null
     rm -f apachesolr-6.x-1.6.tar.gz
@@ -5284,6 +5296,7 @@ if [ -d "/opt/solr" ] && [ -e "/etc/init.d/tomcat" ] ; then
   fi
   if [ ! -e "/opt/tika" ] ; then
     cd /var/opt
+    rm -f -r apachesolr_attachments*
     wget -q -U iCab http://ftp.drupal.org/files/projects/apachesolr_attachments-7.x-1.2.tar.gz
     tar -xzf apachesolr_attachments-7.x-1.2.tar.gz
     cd /opt/solr/conf
