@@ -408,8 +408,9 @@ git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.d
 rm -f -r $_ROOT/.drush/provision/remote_import/.git &> /dev/null
 git clone --branch master git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra &> /dev/null
 rm -f -r $_ROOT/.drush/provision_tasks_extra/.git &> /dev/null
+git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
+rm -f -r $_ROOT/.drush/registry_rebuild/.git &> /dev/null
 wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
-wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/provision_cdn-6.x-2.x-dev.tar.gz
 for archive in ./*.tar.gz; do
   tar -xzf "$archive" &> /dev/null

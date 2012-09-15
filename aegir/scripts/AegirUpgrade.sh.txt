@@ -160,9 +160,10 @@ hostmaster_go_up () {
       rm -f provision-$_AEGIR_VERSION.tar.gz
     fi
     msg "INFO: Downloading Drush and Provision extensions, please wait..."
+    git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
+    rm -f -r $_ROOT/.drush/registry_rebuild/.git &> /dev/null
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.3.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/registry_rebuild-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/provision_cdn-6.x-2.x-dev.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
