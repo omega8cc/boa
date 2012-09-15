@@ -761,8 +761,7 @@ fi
 if [ -d "/data/all/000" ] ; then
   if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     _USE_CURRENT=NO
-    echo "$_SMALLCORE6" > /data/all/000/core.$_SMALLCORE6.txt
-    echo "$_SMALLCORE7" > /data/all/000/core.$_SMALLCORE7.txt
+    _HOT_SAUCE=YES
   fi
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
@@ -907,6 +906,12 @@ if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
   echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
 fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
+if [ -d "/data/all/000" ] ; then
+  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
+    echo "$_SMALLCORE6" > /data/all/000/core.$_SMALLCORE6.txt
+    echo "$_SMALLCORE7" > /data/all/000/core.$_SMALLCORE7.txt
+  fi
+fi
 }
 
 
