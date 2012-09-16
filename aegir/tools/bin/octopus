@@ -64,7 +64,9 @@ up_mode ()
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "both" ] ; then
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
   else
