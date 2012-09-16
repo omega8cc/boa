@@ -52,6 +52,7 @@ _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
+_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
 _ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _MART_PLUG=EDIT_MART_PLUG
@@ -629,7 +630,8 @@ _F_COMMONS="Commons 2.9 $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
-_F_DRUPAL8="Drupal $_DRUPAL8"
+_F_DRUPAL8="Drupal $_DRUPAL8 P.$_THIS_CORE"
+_F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_ELMS="ELMS 1.0-b1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
@@ -1297,8 +1299,6 @@ fi
 drupal8_install () {
 ###---### Drupal 8
 #
-#_DRUPAL8="8.0-dev-$_TODAY"
-#
 _THIS_PRNAME="standard"
 _THIS_DISTRO="drupal-$_DRUPAL8"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
@@ -1313,11 +1313,9 @@ msg "DISTRO: $_F_DRUPAL8 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  #git clone --branch 8.x http://git.drupal.org/project/drupal.git $_THIS_DISTRO &> /dev/null
-  wget -q -U iCab http://ftp.drupal.org/files/projects/drupal-8.x-dev.tar.gz
-  tar -xzf drupal-8.x-dev.tar.gz
-  rm -f drupal-8.x-dev.tar.gz
-  mv drupal-8.x-dev $_THIS_DISTRO
+  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_DISTRO.tar.gz
+  tar -xzf $_THIS_DISTRO.tar.gz
+  rm -f $_THIS_DISTRO.tar.gz
   rm -f -r $_CORE_DISTRO/.git
   rm -f $_CORE_DISTRO/*.txt
   rm -f $_CORE_DISTRO/core/*.txt
@@ -1333,6 +1331,52 @@ msg "DISTRO: $_F_DRUPAL8 installation completed"
 mrun "sleep 1"
 else
   msg "DISTRO: $_F_DRUPAL8 installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
+drupal_edge_8_install () {
+###---### Drupal Edge 8
+#
+#_DRUPAL_EDGE_8="8.0-dev-$_TODAY"
+#
+_THIS_PRNAME="standard"
+_THIS_DISTRO="drupal-$_DRUPAL_EDGE_8"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+if [ "$_D_8_ALLOW" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8E ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+echo " "
+if prompt_yes_no "$_F_DRUPAL_EDGE_8 - http://drupal.org" ; then
+true
+msg "DISTRO: $_F_DRUPAL_EDGE_8 installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/drupal-8.x-dev.tar.gz
+  tar -xzf drupal-8.x-dev.tar.gz
+  rm -f drupal-8.x-dev.tar.gz
+  mv drupal-8.x-dev $_THIS_DISTRO
+  rm -f -r $_CORE_DISTRO/.git
+  rm -f $_CORE_DISTRO/*.txt
+  rm -f $_CORE_DISTRO/core/*.txt
+  cd $_CORE_DISTRO
+  rename_drupal8_profiles
+  create_d8_dirs
+fi
+mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
+create_d8_symlinks
+rm -f boost_stats.php
+msg "DISTRO: $_F_DRUPAL_EDGE_8 installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_DRUPAL_EDGE_8 installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -2583,6 +2627,7 @@ drupal5_install
 drupal6_install
 drupal7_install
 drupal8_install
+drupal_edge_8_install
 elms_install
 fserver_install
 managingnews_install
@@ -2766,6 +2811,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL_EDGE_8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8 &> /dev/null
     mrun "sleep 5"
   fi
 fi

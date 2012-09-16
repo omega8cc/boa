@@ -52,6 +52,7 @@ _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
+_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
 _ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _MART_PLUG=EDIT_MART_PLUG
@@ -1407,6 +1408,11 @@ mrun "sleep 1"
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL8
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/elms-$_ELMS-$_SMALLCORE6/sites" ] ; then

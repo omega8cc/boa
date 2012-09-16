@@ -156,7 +156,8 @@ _PHP_CLI_VERSION=5.2
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8D ----------- Drupal 8 dev
+### D8D ----------- Drupal 8 dev-tested
+### D8E ----------- Drupal 8 dev-edge
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### D5P ----------- Pressflow 5
@@ -500,7 +501,8 @@ _COMMERCE=7.x-1.9
 _COMMONS=6.x-2.9
 _DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.15.2
-_DRUPAL8="8.0-dev-$_TODAY"
+_DRUPAL8="8.0-dev-120915"
+_DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _ELMS=6.x-1.0-beta1
 _MANAGINGNEWS=1.2.2
 _MART_PLUG=1.0-b1b
@@ -789,6 +791,7 @@ do
   sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
   sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files
+  sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files
   sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
   sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files
