@@ -359,16 +359,19 @@ create_d8_dirs () {
   fi
   chmod a+rw ./sites/default/settings.php &> /dev/null
   chmod a+rwx ./sites/default/files &> /dev/null
+  mkdir -p ./profiles
   mkdir -p ./sites/all/modules
   mkdir -p ./sites/all/libraries
   mkdir -p ./sites/all/themes
   rm -f ./core/modules/*.txt
   rm -f ./core/themes/*.txt
   rm -f ./sites/all/*.txt
+  echo empty > ./profiles/EMPTY.txt
   echo empty > ./sites/all/EMPTY.txt
   echo empty > ./sites/all/modules/EMPTY.txt
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
+  chmod 02775 ./profiles &> /dev/null
   chmod 0751 ./sites &> /dev/null
   chmod 0751 ./sites/all &> /dev/null
   chmod 02775 ./sites/all/{modules,libraries,themes} &> /dev/null
@@ -386,6 +389,7 @@ if [ ! -L "core" ] ; then
   ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
   cp -af $_CORE_DISTRO/cache ./
   cp -af $_CORE_DISTRO/sites ./
+  cp -af $_CORE_DISTRO/profiles ./
 fi
 }
 #
