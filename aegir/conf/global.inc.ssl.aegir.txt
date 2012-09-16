@@ -88,6 +88,7 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
   ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
   if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST'])) {
     if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
+        preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
         preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
       header('X-Accel-Expires: 5');
       header("HTTP/1.1 301 Moved Permanently");
