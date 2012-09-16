@@ -762,6 +762,7 @@ if [ -d "/data/all/000" ] ; then
   if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     _USE_CURRENT=NO
     _HOT_SAUCE=YES
+    _HM_ONLY=NO
   fi
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
