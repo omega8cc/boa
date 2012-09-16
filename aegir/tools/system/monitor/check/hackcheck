@@ -40,6 +40,14 @@ sub makeactions
         $li_cnt{$VISITOR}++;
       }
     }
+    elsif ($line =~ /(Failed password for)/i && $line !~ /(invalid user)/i) {
+      local($a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $VISITOR, $rest) = split(/\s+/,$line);
+      $VISITOR =~ s/[^0-9\.]//g;
+      if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
+        chomp($line);
+        $li_cnt{$VISITOR}++;
+      }
+    }
   }
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
