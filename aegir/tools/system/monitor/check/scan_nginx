@@ -41,7 +41,7 @@ sub makeactions
     if ($VISITOR !~ /^$/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
-        if ($line =~ /POST \/batch|((GET|POST) \/(system|admin|app)\/|files\/(imagecache|styles)|plupload|api\/rest|GET \/hosting|\/(ajax|autocomplete)\/)/) {
+        if ($line =~ /POST \/([a-z]{2}\/)?batch|((GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|files\/(imagecache|styles)|plupload|api\/rest|GET \/hosting|\/(ajax|autocomplete)\/)/) {
           print "Not Counted Request URI: $line\n";
         }
         else {
