@@ -231,6 +231,15 @@ mrun () {
 # stop on error
 # set -e ### disabled for debugging
 #
+# Download and extract from dev/distro, then delete.
+get_distro_ext () {
+  if [ ! -z $1 ] ; then
+    wget -q -U iCab http://files.aegir.cc/dev/distro/$1
+    tar -xzf $1
+    rm -f $1
+  fi
+}
+#
 # create standard directories
 create_dirs () {
   cd $_CORE_DISTRO
@@ -1038,9 +1047,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/commons-$_COMMONS.tar.gz
-  tar -xzf commons-$_COMMONS.tar.gz
-  rm -f commons-$_COMMONS.tar.gz
+  get_distro_ext "commons-$_COMMONS.tar.gz" &> /dev/null
   if [ -d "$_CORE/acquia_commons" ] ; then
     mv $_CORE/acquia_commons $_CORE_DISTRO
   elif [ -d "$_CORE/commons-$_COMMONS" ] ; then
@@ -1569,9 +1576,7 @@ msg "DISTRO: $_F_MARTPLUG installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_MARTPLUG-core.tar.gz
-  tar -xzf $_THIS_PRNAME-$_MARTPLUG-core.tar.gz
-  rm -f $_THIS_PRNAME-$_MARTPLUG-core.tar.gz
+  get_distro_ext "$_THIS_PRNAME-$_MARTPLUG-core.tar.gz" &> /dev/null
   rename_drupal7_distro_directory
   if [ -d "$_CORE/$_THIS_PRNAME-$_MARTPLUG" ] ; then
     mv $_THIS_PRNAME-$_MARTPLUG $_THIS_DISTRO
@@ -1740,9 +1745,7 @@ msg "DISTRO: $_F_OCTOPUS_VIDEO installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz
-  tar -xzf $_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz &> /dev/null
-  rm -f $_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz
+  get_distro_ext "$_THIS_PRNAME-$_OCTOPUS_VIDEO.tar.gz" &> /dev/null
   mv $_THIS_PRNAME-$_OCTOPUS_VIDEO $_THIS_DISTRO
   replace_drupal7_core
   init_core_distro_seven_root
@@ -1818,11 +1821,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < openacademy-search-off.patch &> /dev/null
   fi
   cd $_THIS_PRPATH/modules
-  wget -q -U iCab http://files.aegir.cc/dev/distro/openacademy_apps.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
+  get_distro_ext "openacademy_apps.tar.gz" &> /dev/null
   mkdir -p $_THIS_PRPATH/modules/panopoly_apps
   cd $_THIS_PRPATH/modules/panopoly_apps
   get_panopoly_apps
@@ -2267,9 +2266,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_OPENSCHOLAR" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/scholar/$_THIS_PRNAME-$_OPENSCHOLAR.tar.gz
-  tar -xzf $_THIS_PRNAME-$_OPENSCHOLAR.tar.gz
-  rm -f $_THIS_PRNAME-$_OPENSCHOLAR.tar.gz
+  get_distro_ext "$_THIS_PRNAME-$_OPENSCHOLAR.tar.gz" &> /dev/null
   mv $_THIS_PRNAME-$_OPENSCHOLAR $_THIS_DISTRO
   if [ -d "$_CORE/$_THIS_PRNAME-$_OPENSCHOLAR-old" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR-old $_CORE/$_THIS_PRNAME-$_OPENSCHOLAR
@@ -2435,9 +2432,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_DINAME-$_UBERCART" ] ; then
     mv $_CORE/$_THIS_DINAME-$_UBERCART $_CORE/$_THIS_DINAME-$_UBERCART-old
   fi
-  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_DINAME-$_UBERCART.tar.gz
-  tar -xzf $_THIS_DINAME-$_UBERCART.tar.gz
-  rm -f $_THIS_DINAME-$_UBERCART.tar.gz
+  get_distro_ext "$_THIS_DINAME-$_UBERCART.tar.gz" &> /dev/null
   mv $_THIS_DINAME-$_UBERCART $_THIS_DISTRO
   if [ -d "$_CORE/$_THIS_DINAME-$_UBERCART-old" ] ; then
     mv $_CORE/$_THIS_DINAME-$_UBERCART-old $_CORE/$_THIS_DINAME-$_UBERCART

@@ -285,7 +285,7 @@ Hostmaster [E]xtensions [S]atellite:
  hosting_advanced_cron ------ [D6] ------ [S] [B] [FE] [ES]
  hosting_backup_gc ---------- [D6] ------ [S] [B]      [ES]
  hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
- hosting_cdn ---------------- [D6] ------ [S] [B]      [ES]
+ hosting_cdn ---------------- [D6] ------ [S] [B] [SE] [ES]
  hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D6] ------ [S] [B]      [ES]
  hosting_task_gc ------------ [D6] ------ [S] [B] [FE] [ES]

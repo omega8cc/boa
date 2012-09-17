@@ -81,6 +81,14 @@ update_php_cli_drush () {
   fi
 }
 #
+get_dev_ext () {
+  if [ ! -z $1 ] ; then
+    wget -q -U iCab http://files.aegir.cc/dev/$1
+    tar -xzf $1
+    rm -f $1
+  fi
+}
+#
 hostmaster_dr_up () {
   msg "INFO: Downloading drush, please wait..."
   mkdir -p $_ROOT/backups/system
@@ -91,8 +99,7 @@ hostmaster_dr_up () {
     git clone http://git.drupal.org/project/drush.git &> /dev/null
     rm -f -r $_ROOT/drush/.git &> /dev/null
   elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
-    git clone --branch 4.x-8.1 git://github.com/omega8cc/drush_4x.git drush &> /dev/null
-    rm -f -r $_ROOT/drush/.git &> /dev/null
+    get_dev_ext "drush4.tar.gz" &> /dev/null
   else
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
     tar -xzf drush-$_DRUSH_VERSION.tar.gz
@@ -140,6 +147,7 @@ hostmaster_go_up () {
     mkdir -p $_ROOT/.drush
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+      cd $_ROOT/.drush
       if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
         _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
         git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
@@ -153,36 +161,24 @@ hostmaster_go_up () {
         sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
         rm -f -r $_ROOT/.drush/provision/.git
       fi
+      msg "INFO: Downloading Drush and Provision extensions, please wait..."
+      git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
+      rm -f -r $_ROOT/.drush/registry_rebuild/.git
+      git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn       &> /dev/null
+      rm -f -r $_ROOT/.drush/provision_cdn/.git
+      git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost   &> /dev/null
+      rm -f -r $_ROOT/.drush/provision_boost/.git
     else
       cd $_ROOT/.drush
       wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
       rm -f provision-$_AEGIR_VERSION.tar.gz
+      msg "INFO: Downloading Drush and Provision extensions, please wait..."
+      get_dev_ext "registry_rebuild.tar.gz" &> /dev/null
+      get_dev_ext "provision_cdn.tar.gz"    &> /dev/null
+      get_dev_ext "provision_boost.tar.gz"  &> /dev/null
     fi
-    msg "INFO: Downloading Drush and Provision extensions, please wait..."
-    git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
-    rm -f -r $_ROOT/.drush/registry_rebuild/.git &> /dev/null
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush_make-6.x-2.3.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/provision_boost.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/provision_cdn-6.x-2.x-dev.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
-    mv -f $_ROOT/.drush/provision_cdn $_ROOT/.drush/provision_cdn_src &> /dev/null
-    cp -af $_ROOT/.drush/provision_cdn_src/provision $_ROOT/.drush/provision_cdn &> /dev/null
-    rm -f -r $_ROOT/.drush/provision_cdn_src
-    if [ -d "$_ROOT/.drush/provision_cdn" ] ; then
-      _CDN_IP_TEST=$(grep "ip_addresses as" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php)
-      if [[ "$_CDN_IP_TEST" =~ "ip_addresses as" ]] ; then
-        true
-      else
-        cd $_ROOT/.drush/provision_cdn
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/patch_commit_fa47bad85589.patch ./
-        patch -p1 < patch_commit_fa47bad85589.patch &> /dev/null
-        cd $_ROOT/.drush
-      fi
-    fi
+    get_dev_ext "drush_make-6.x-2.3.tar.gz" &> /dev/null
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
