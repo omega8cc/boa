@@ -2624,6 +2624,7 @@ check_apt_updates () {
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
       *percona*)    _UP_PHP=YES ;;
+      *php5*)       _UP_FPM=YES ;;
       *)  ;;
     esac
   done
@@ -3989,6 +3990,7 @@ else
   _UP_PHP=NO
   _UP_NGX=NO
   _UP_JDK=NO
+  _UP_FPM=NO
   check_apt_updates
 fi
 
@@ -4000,6 +4002,12 @@ else
   msg "INFO: Upgrading required libraries and tools"
   if [ ! -e "/etc/init.d/php5-fpm" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php5-fpm-init-vanilla /etc/init.d/php5-fpm
+  fi
+  if [ "$_UP_FPM" = "YES" ] ; then
+    msg "INFO: Now waiting 60 seconds for php-fpm pre-upgrade shutdown..."
+    mrun "sleep 60"
+    st_runner "service php53-fpm stop" &> /dev/null
+    killall -9 php-fpm &> /dev/null
   fi
 fi
 msg "NOTE! This step may take a few minutes, please wait..."
