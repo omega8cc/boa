@@ -18,117 +18,117 @@ php_fpm_PID=/var/run/php53-fpm.pid
 php_opts="--fpm-config $php_fpm_CONF -c /opt/local/etc/php53.ini"
 
 wait_for_pid () {
-	try=0
+  try=0
 
-	while test $try -lt 35 ; do
+  while test $try -lt 8 ; do
 
-		case "$1" in
-			'created')
-			if [ -f "$2" ] ; then
-				try=''
-				break
-			fi
-			;;
+    case "$1" in
+      'created')
+      if [ -f "$2" ] ; then
+        try=''
+        break
+      fi
+      ;;
 
-			'removed')
-			if [ ! -f "$2" ] ; then
-				try=''
-				break
-			fi
-			;;
-		esac
+      'removed')
+      if [ ! -f "$2" ] ; then
+        try=''
+        break
+      fi
+      ;;
+    esac
 
-		echo -n .
-		try=`expr $try + 1`
-		sleep 1
+    echo -n .
+    try=`expr $try + 1`
+    sleep 1
 
-	done
+  done
 
 }
 
 case "$1" in
-	start)
-		echo -n "Starting php53-fpm "
+  start)
+    echo -n "Starting php53-fpm.."
 
-		$php_fpm_BIN $php_opts
+    $php_fpm_BIN $php_opts
 
-		if [ "$?" != 0 ] ; then
-			echo " failed"
-			exit 1
-		fi
+    if [ -z "$?" ] ; then
+      echo " continue.."
+      exit 1
+    fi
 
-		wait_for_pid created $php_fpm_PID
+    wait_for_pid created $php_fpm_PID
 
-		if [ -n "$try" ] ; then
-			echo " failed"
-			exit 1
-		else
-			echo " done"
-		fi
-	;;
+    if [ -n "$try" ] ; then
+      echo " failed try $try"
+      exit 1
+    else
+      echo " done"
+    fi
+  ;;
 
-	stop)
-		echo -n "Gracefully shutting down php53-fpm "
+  stop)
+    echo -n "Gracefully shutting down php53-fpm.."
 
-		if [ ! -r $php_fpm_PID ] ; then
-			echo "warning, no pid file found - php53-fpm is not running ?"
-			exit 1
-		fi
+    if [ ! -r $php_fpm_PID ] ; then
+      echo "warning, no pid file found - php53-fpm not running ?"
+      exit 1
+    fi
 
-		kill -QUIT `cat $php_fpm_PID`
+    kill -QUIT `cat $php_fpm_PID`
 
-		wait_for_pid removed $php_fpm_PID
+    wait_for_pid removed $php_fpm_PID
 
-		if [ -n "$try" ] ; then
-			echo " failed. Use force-quit"
-			exit 1
-		else
-			echo " done"
-		fi
-	;;
+    if [ -n "$try" ] ; then
+      echo " failed. Use force-quit"
+      exit 1
+    else
+      echo " done"
+    fi
+  ;;
 
-	force-quit)
-		echo -n "Terminating php53-fpm "
+  force-quit)
+    echo -n "Terminating php53-fpm.."
 
-		if [ ! -r $php_fpm_PID ] ; then
-			echo "warning, no pid file found - php53-fpm is not running ?"
-			exit 1
-		fi
+    if [ ! -r $php_fpm_PID ] ; then
+      echo "warning, no pid file found - php53-fpm not running ?"
+      exit 1
+    fi
 
-		kill -TERM `cat $php_fpm_PID`
+    kill -TERM `cat $php_fpm_PID`
 
-		wait_for_pid removed $php_fpm_PID
+    wait_for_pid removed $php_fpm_PID
 
-		if [ -n "$try" ] ; then
-			echo " failed"
-			exit 1
-		else
-			echo " done"
-		fi
-	;;
+    if [ -n "$try" ] ; then
+      echo " failed"
+      exit 1
+    else
+      echo " done"
+    fi
+  ;;
 
-	restart)
-		$0 stop
-		$0 start
-	;;
+  restart)
+    $0 stop
+    $0 start
+  ;;
 
-	reload)
+  reload)
 
-		echo -n "Reload service php53-fpm "
+    echo -n "Reload service php53-fpm.."
 
-		if [ ! -r $php_fpm_PID ] ; then
-			echo "warning, no pid file found - php53-fpm is not running ?"
-			exit 1
-		fi
+    if [ ! -r $php_fpm_PID ] ; then
+      echo "warning, no pid file found - php53-fpm not running ?"
+      exit 1
+    fi
 
-		kill -USR2 `cat $php_fpm_PID`
+    kill -USR2 `cat $php_fpm_PID`
 
-		echo " done"
-	;;
+    echo " done"
+  ;;
 
-	*)
-		echo "Usage: $0 {start|stop|force-quit|restart|reload}"
-		exit 1
-	;;
+  *)
+    echo "Usage: $0 {start|stop|force-quit|restart|reload}"
+    exit 1
+  ;;
 
 esac
