@@ -519,7 +519,7 @@ tune_web_server_config () {
   sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 300s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/process_control_timeout =.*/process_control_timeout = 5s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
     sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
