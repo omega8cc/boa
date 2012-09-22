@@ -890,7 +890,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm4.make ./
-  $_ROOT/tools/drush/drush make civicrm4.make $_THIS_DISTRO &> /dev/null
+  $_ROOT/tools/drush/drush make civicrm-4.2-d7.make $_THIS_DISTRO &> /dev/null
   rm -f civicrm4.make
   init_core_distro_seven_root
   rename_drupal7_profiles
