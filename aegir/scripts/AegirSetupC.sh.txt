@@ -44,6 +44,7 @@ _CIVICRM_M7=EDIT_CIVICRM_M7
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _COD=EDIT_COD
+_COM_MERCE=EDIT_COM_MERCE
 _COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
@@ -634,6 +635,7 @@ _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM7="CiviCRM $_CIVICRM7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-rc1 $_SMALLCORE6 P.$_THIS_CORE"
+_F_COM_MERCE="Commerce 2.0-rc1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.10.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS="Commons 2.9 $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
@@ -969,8 +971,8 @@ fi
 }
 
 
-commerce_install () {
-###---### Commerce 7.x
+commerce_1_install () {
+###---### Commerce 7.x-1.x
 #
 _THIS_PRNAME="commerce_kickstart"
 _THIS_DISTRO="commerce-$_COMMERCE-$_SMALLCORE7"
@@ -1019,6 +1021,58 @@ msg "DISTRO: $_F_COMMERCE installation completed"
 mrun "sleep 1"
 else
   msg "DISTRO: $_F_COMMERCE installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
+commerce_2_install () {
+###---### Commerce 7.x-2.x
+#
+_THIS_PRNAME="commerce_kickstart"
+_THIS_DISTRO="commerce-$_COM_MERCE-$_SMALLCORE7"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CME ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+echo " "
+if prompt_yes_no "$_F_COM_MERCE - http://drupalcommerce.org" ; then
+true
+msg "DISTRO: $_F_COM_MERCE installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COM_MERCE-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_COM_MERCE-core.tar.gz
+  rm -f $_THIS_PRNAME-$_COM_MERCE-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/commerce-$_COM_MERCE" ] ; then
+    mv commerce-$_COM_MERCE $_THIS_DISTRO
+  elif [ -d "$_CORE/$_THIS_PRNAME-$_COM_MERCE" ] ; then
+    mv $_THIS_PRNAME-$_COM_MERCE $_THIS_DISTRO
+  fi
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_THIS_PRPATH
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
+  patch -p1 < $_THIS_PRNAME.patch &> /dev/null
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools_entity_more
+  create_dirs
+  themes_for_d7
+  patch_d7_core
+fi
+init_this_distro_root
+create_d7_symlinks
+msg "DISTRO: $_F_COM_MERCE installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_COM_MERCE installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -2616,7 +2670,8 @@ civicrm_m7_install
 civicrm3_install
 civicrm4_install
 cod_install
-commerce_install
+commerce_1_install
+commerce_2_install
 commons_install
 drupal5_install
 drupal6_install
@@ -2734,6 +2789,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COM_MERCE" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi

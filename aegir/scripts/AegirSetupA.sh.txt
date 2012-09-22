@@ -44,6 +44,7 @@ _CIVICRM_M7=EDIT_CIVICRM_M7
 _CIVICRM6=EDIT_CIVICRM6
 _CIVICRM7=EDIT_CIVICRM7
 _COD=EDIT_COD
+_COM_MERCE=EDIT_COM_MERCE
 _COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
 _DRUPAL5=EDIT_DRUPAL5
@@ -1347,6 +1348,11 @@ mrun "sleep 1"
   if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
       ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7" ] ; then
+      ln -s $_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS-$_SMALLCORE6/sites" ] ; then
