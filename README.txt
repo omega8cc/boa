@@ -149,7 +149,7 @@ Octopus can install the platforms listed below:
  Open Atrium 1.5.1 ------------ http://openatrium.com
  Open Deals 1.1 --------------- http://opendealsapp.com
  Open Enterprise 1.0-rc3 ------ http://drupal.org/project/openenterprise
- Open Outreach 1.0-rc2 -------- http://openoutreach.org
+ Open Outreach 1.0-rc5 -------- http://openoutreach.org
  OpenChurch 1.10-alpha7 ------- http://openchurchsite.com
  OpenPublic 1.0-beta3 --------- http://openpublicapp.com
  OpenPublish 3.0-beta2 -------- http://openpublishapp.com
