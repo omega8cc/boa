@@ -134,7 +134,7 @@ Octopus can install the platforms listed below:
  Commerce 1.10.1 -------------- http://drupalcommerce.org
  Commerce 2.0-rc1 ------------- http://drupalcommerce.org
  Commons 2.10 ----------------- http://acquia.com/drupalcommons
- Conference 1.0-rc1 ----------- http://usecod.com
+ Conference 1.0-rc2 ----------- http://usecod.com
  Drupal 7.15.2 ---------------- http://drupal.org/drupal-7.15
  Drupal 8.0-dev-edge ---------- http://bit.ly/drupal-eight
  Drupal 8.0-dev-tested -------- http://bit.ly/drupal-eight
