@@ -2665,7 +2665,7 @@ openchurch_install
 opendeals_install
 openenterprise_install
 openoutreach_install
-openpublic_install
+#openpublic_install
 openpublish_install
 openscholar_install
 panopoly_install
