@@ -2486,9 +2486,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/imagefield-6.x-3.10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-6.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/lightbox2-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-6.x-1.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/skinr-6.x-1.6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-6.x-1.18.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-6.x-1.19.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-3.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/webform-6.x-3.18.tar.gz
