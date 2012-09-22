@@ -164,8 +164,8 @@ _PHP_CLI_VERSION=5.2
 ### AQ6 ----------- Acquia D6
 ### CC3 ----------- CiviCRM 3.4.8 D6
 ### CC4 ----------- CiviCRM 4.0.8 D7
-### CM6 ----------- CiviCRM 4.1.5 D6
-### CM7 ----------- CiviCRM 4.1.5 D7
+### CM6 ----------- CiviCRM 4.1.6 D6
+### CM7 ----------- CiviCRM 4.1.6 D7
 ### COD ----------- Conference
 ### DCE ----------- Commerce
 ### DCS ----------- Commons
@@ -491,8 +491,8 @@ fi
 ###
 ### Distributions
 ###
-_CIVICRM_M6=4.1.5
-_CIVICRM_M7=4.1.5
+_CIVICRM_M6=4.1.6
+_CIVICRM_M7=4.1.6
 _CIVICRM_PN=boa-2.0.4-dev
 _CIVICRM6=3.4.8
 _CIVICRM7=4.0.8

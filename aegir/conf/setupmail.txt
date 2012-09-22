@@ -35,8 +35,8 @@ Drupal platforms ready to deploy:
   Acquia 6.26.2 ---------------- http://bit.ly/acquiadrupal
   CiviCRM 3.4.8-d6 ------------- http://civicrm.org
   CiviCRM 4.0.8-d7 ------------- http://civicrm.org
-  CiviCRM 4.1.5-d6 ------------- http://civicrm.org
-  CiviCRM 4.1.5-d7 ------------- http://civicrm.org
+  CiviCRM 4.1.6-d6 ------------- http://civicrm.org
+  CiviCRM 4.1.6-d7 ------------- http://civicrm.org
   Commerce 1.9.1 --------------- http://drupalcommerce.org
   Commons 2.9 ------------------ http://acquia.com/drupalcommons
   Conference 1.0-rc1 ----------- http://usecod.com
