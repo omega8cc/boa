@@ -2528,7 +2528,7 @@ fi
 
 
 ubercart7_install () {
-###---### Ubercart 3.1.1
+###---### Ubercart 3.2.1
 #
 _THIS_PRNAME="acquia"
 _THIS_DISTRO="ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
@@ -2566,11 +2566,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.5.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
