@@ -4459,7 +4459,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/600/300/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
-    sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx &> /dev/null
+    sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/.*ntpdate.*//g" /var/xdrago/clear.sh &> /dev/null
     sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" /var/xdrago/purge_binlogs.sh &> /dev/null
     rm -f /etc/logrotate.d/lshell
@@ -4496,7 +4496,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/600/300/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
-    sed -i "s/rotate 52/rotate 1/g" /etc/logrotate.d/nginx &> /dev/null
+    sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
