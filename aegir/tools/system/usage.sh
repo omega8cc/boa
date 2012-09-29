@@ -212,7 +212,7 @@ if [ "$_PERMISSIONS" = "YES" ] ; then
       find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
       chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
       chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
-      chown -L -R $_THIS_HM_USER:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+      chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
 fi
 }
 
