@@ -535,6 +535,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   $_DRUSHCMD dl --destination=$_AEGIR_ROOT/sites/all/modules hosting_task_gc-6.x-1.0-alpha1 revision_deletion-6.x-1.x-dev strongarm-6.x-2.2 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.9 hosting_backup_gc-6.x-1.2 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
+  sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/sites/all/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   if [ "$_CLIENT_CORES" -ge "1" ] ; then
     _ALLOW_CIVICRM=YES
