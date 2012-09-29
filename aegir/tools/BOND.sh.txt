@@ -448,7 +448,7 @@ tune_sql () {
 restore_default_nginx () {
   msg "INFO: Restoring default Nginx configuration"
   cd /var/xdrago/monitor/check
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/firewall/check/scan_nginx ./
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/monitor/check/scan_nginx ./
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
     for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
     do
