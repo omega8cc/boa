@@ -1866,6 +1866,7 @@ barracuda_cnf () {
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
         true
         _BUILD_FROM_SRC=YES
+        _DB_SERVER=MariaDB
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
@@ -2108,6 +2109,8 @@ barracuda_cnf () {
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
         true
+        _BUILD_FROM_SRC=YES
+        _DB_SERVER=MariaDB
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: stored in the /root/.barracuda.cnf config file"
