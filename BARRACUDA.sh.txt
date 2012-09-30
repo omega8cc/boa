@@ -1865,6 +1865,7 @@ barracuda_cnf () {
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
         true
+        _BUILD_FROM_SRC=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
