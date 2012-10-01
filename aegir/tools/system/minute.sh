@@ -25,7 +25,7 @@ killit()
 
 action()
 {
-limit=600
+limit=1800
 xkill=null
 for each in `mysqladmin proc | awk '{print $2, $4, $8, $12}' | awk '{print $1}'`;
 do
@@ -35,7 +35,7 @@ do
     limit=60
     killit
   else
-    limit=600
+    limit=1800
   fi;
 done
 }
