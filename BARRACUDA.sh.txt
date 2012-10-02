@@ -2459,8 +2459,10 @@ install_php_modern () {
     mrun "sleep 1"
     cd /var/opt/php-$_PHP_VERSION_NEW
     if [ "$_PHP_VERSION_NEW" = "5.3.15" ] || [ "$_PHP_VERSION_NEW" = "5.3.16" ] || [ "$_PHP_VERSION_NEW" = "5.3.17" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/remove_usr1_usr2_fpm_unix.patch ./
-      patch -p1 < remove_usr1_usr2_fpm_unix.patch &> /dev/null
+      ### _FPM_PATCH=remove_usr1_usr2_fpm_unix.patch
+      _FPM_PATCH=bug62886.patch
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_FPM_PATCH ./
+      patch -p1 < $_FPM_PATCH &> /dev/null
     fi
     st_runner "sh ./buildconf --force" 2> /dev/null
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
