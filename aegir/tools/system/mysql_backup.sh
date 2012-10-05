@@ -48,11 +48,11 @@ chmod 700 /data/disk/arch/sql/*
 chmod 700 /data/disk/arch/sql
 chmod 700 /data/disk/arch
 
-service redis-server stop
+/etc/init.d/redis-server stop
 sleep 3
 killall -9 redis-server
 rm -f /var/lib/redis/*
-service redis-server start
+/etc/init.d/redis-server start
 
 echo COMPLETED ALL
 rm -f /var/run/boa_wait.pid
