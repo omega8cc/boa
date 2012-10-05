@@ -1119,7 +1119,7 @@ kill_nash () {
 #
 # Fix FTPS access on Squeeze.
 fix_ftps_squeeze () {
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
       true
