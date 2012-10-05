@@ -38,6 +38,7 @@ do
     killit
   else
     limit=1800
+    killit
   fi;
 done
 }
