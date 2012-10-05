@@ -11,6 +11,9 @@ else
   killall -9 redis-server
   rm -f /var/lib/redis/*
   /etc/init.d/redis-server start
+  if test -f /etc/init.d/tomcat ; then
+    /etc/init.d/tomcat restart
+  fi
 fi
 echo rotate > /var/log/php/php-fpm-error.log
 echo rotate > /var/log/php/php-fpm-slow.log
