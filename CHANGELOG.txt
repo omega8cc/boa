@@ -781,7 +781,7 @@
   * New _XTRAS_LIST Barracuda option to define extras to be used.
   * Scripts to add extra ftp or lshell standard or lshell master users.
   * New _PLATFORMS_LIST Octopus option to configure the list of platforms.
-  * You can migrate sites between some install profiles by default:
+  * You can migrate sites between some installation profiles by default:
     Drupal/Pressflow -> Acquia
     Acquia -> Drupal/Pressflow
     Acquia -> CiviCRM 3
