@@ -114,6 +114,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
 * Webmin Control Panel (optional).
+* Compass Tools (optional).
 * Firewall csf/lfd integrated with Nginx abuse guard (optional).
 * Chive database manager in "chive." subdomain (optional).
 * SQL Buddy database manager in "sqlbuddy." subdomain (optional).

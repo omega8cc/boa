@@ -313,6 +313,7 @@ _PHP_CLI_VERSION=5.2
 ### CGP --- Collectd Graph Panel
 ### CHV --- Chive DB Manager
 ### CSF --- csf/lfd Firewall
+### CSS --- Compass Tools
 ### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
 ### GIT --- Latest Git from sources
@@ -5380,11 +5381,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       touch /var/log/chive_$_CHIVE_VERSION.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
       mrun "sleep 1"
-
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
       mrun "sleep 1"
-
     fi
   fi
 fi
@@ -5458,11 +5457,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       echo >> $_SQLBUDDY_VHOST
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
       mrun "sleep 1"
-
     else
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
       mrun "sleep 1"
-
     fi
   fi
 fi
@@ -5510,7 +5507,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 1"
-        else
+      else
         msg "INFO: Collectd Graph Panel installation skipped"
         mrun "sleep 1"
       fi
@@ -5550,11 +5547,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
       update-rc.d webmin defaults &> /dev/null
       msg "INFO: Webmin Control Panel installation completed"
       mrun "sleep 1"
-
-      else
+    else
       msg "INFO: Webmin Control Panel installation skipped"
       mrun "sleep 1"
-
     fi
   fi
 fi
@@ -5594,11 +5589,36 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
       msg "INFO: Bind9 DNS Server installation completed"
       mrun "sleep 1"
-
     else
       msg "INFO: Bind9 DNS Server installation skipped"
       mrun "sleep 1"
+    fi
+  fi
+fi
 
+
+###--------------------###
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSS" ]] ; then
+  if [ "$_STATUS" = "INIT" ] ; then
+    _L_ST="install"
+  else
+    _L_ST="upgrade"
+  fi
+  if [ ! -e "/var/log/compass-$_INSTALLER_VERSION.log" ] ; then
+    echo " "
+    if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
+      true
+      msg "INFO: Running Compass Tools $_L_ST, please wait..."
+      mrun "sleep 1"
+      st_runner "apt-get update -y --force-yes" &> /dev/null
+      st_runner "$_INSTAPP rubygems" 2> /dev/null
+      st_runner "gem install compass" 2> /dev/null
+      echo "compass-$_INSTALLER_VERSION" > /var/log/compass-$_INSTALLER_VERSION.log
+      msg "INFO: Compass Tools $_L_ST completed"
+      mrun "sleep 1"
+    else
+      msg "INFO: Compass Tools $_L_ST skipped"
+      mrun "sleep 1"
     fi
   fi
 fi
