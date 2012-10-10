@@ -1865,7 +1865,6 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        true
         _BUILD_FROM_SRC=YES
         _DB_SERVER=MariaDB
       else
@@ -2109,7 +2108,6 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        true
         _BUILD_FROM_SRC=YES
         _DB_SERVER=MariaDB
       else
