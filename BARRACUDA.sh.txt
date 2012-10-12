@@ -4387,7 +4387,6 @@ if [ "$_FROM_SOURCES" = "NO" ] ; then
 else
   _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
   if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
-    true
     sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
   else
     mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
