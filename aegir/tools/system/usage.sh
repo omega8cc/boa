@@ -446,9 +446,11 @@ do
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_cron_use_backend 1 &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
       fi
-      rm -f -r $User/clients/admin &> /dev/null
-      rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
-      rm -f -r $User/clients/nocomega8cc &> /dev/null
+      if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+        rm -f -r $User/clients/admin &> /dev/null
+        rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
+        rm -f -r $User/clients/nocomega8cc &> /dev/null
+      fi
       rm -f -r $User/clients/*/backups &> /dev/null
       symlinks -dr $User/clients &> /dev/null
       if [ -e "/home/$_THIS_HM_USER.ftp" ] ; then
