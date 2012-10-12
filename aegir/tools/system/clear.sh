@@ -12,10 +12,15 @@ else
   rm -f /var/lib/redis/*
   /etc/init.d/redis-server start
   if test -f /etc/init.d/tomcat ; then
-    /etc/init.d/tomcat restart
+    /etc/init.d/tomcat stop
+    sleep 3
+    killall -9 java
   fi
-fi
-echo rotate > /var/log/php/php-fpm-error.log
+  /etc/init.d/php53-fpm reload
+  if test -f /etc/init.d/php-fpm ; then
+    /etc/init.d/php-fpm reload
+  fi
+fiecho rotate > /var/log/php/php-fpm-error.log
 echo rotate > /var/log/php/php-fpm-slow.log
 echo rotate > /var/log/php/php53-fpm-error.log
 echo rotate > /var/log/php/php53-fpm-slow.log
