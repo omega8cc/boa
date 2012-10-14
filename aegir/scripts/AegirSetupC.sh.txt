@@ -659,7 +659,7 @@ _F_OPENOUTREACH="Open Outreach 1.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 2.0-rc1 $_SMALLCORE6 P.$_THIS_CORE"
-_F_PANOPOLY="Panopoly 1.0-b5 $_SMALLCORE7 P.$_THIS_CORE"
+_F_PANOPOLY="Panopoly 1.0-b6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart $_UBERCART $_SMALLCORE6 P.$_THIS_CORE"
@@ -2359,21 +2359,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   remove_default_core_seven_profiles
   create_dirs
   themes_for_d7
-  rm -f -r $_THIS_PRPATH/modules/contrib/redis &> /dev/null
-  if [ "$_PANOPOLY" = "7.x-1.0-beta3" ] ; then
-    cd $_CORE_DISTRO/profiles
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-redis.patch ./
-    patch -p1 < panopoly-search-redis.patch &> /dev/null
-  else
-    cd $_CORE_DISTRO/profiles/panopoly
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/panopoly-search-off.patch ./
-    patch -p1 < panopoly-search-off.patch &> /dev/null
+  if [ -d "$_CORE_DISTRO/sites/all/modules/panopoly_demo" ] && [ ! -d "$_THIS_PRPATH/modules/panopoly/panopoly_demo" ] ; then
+    mv -f $_CORE_DISTRO/sites/all/modules/panopoly_demo $_THIS_PRPATH/modules/panopoly/ &> /dev/null
   fi
-  mkdir -p $_THIS_PRPATH/modules/panopoly_apps
-  cd $_THIS_PRPATH/modules/panopoly_apps
-  get_panopoly_apps
-  cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools_entity_more
+  #cd $_THIS_PRPATH/modules/contrib
+  #upgrade_ctools_entity_more
   patch_d7_core
 fi
 init_this_distro_root
