@@ -1869,6 +1869,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy-search-off.patch ./
     patch -p1 < openacademy-search-off.patch &> /dev/null
   fi
+  cd $_THIS_PRPATH/modules/contrib/apps
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
+  patch -p1 < apps_msg.patch &> /dev/null
   cd $_THIS_PRPATH/modules
   get_distro_ext "openacademy_apps.tar.gz" &> /dev/null
   mkdir -p $_THIS_PRPATH/modules/panopoly_apps
