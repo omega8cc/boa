@@ -1865,7 +1865,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy.patch ./
     patch -p1 < openacademy.patch &> /dev/null
   else
-    cd $_CORE_DISTRO/profiles/openacademy
+    cd $_THIS_PRPATH
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy-search-off.patch ./
     patch -p1 < openacademy-search-off.patch &> /dev/null
   fi
