@@ -20,7 +20,8 @@ else
   if test -f /etc/init.d/php-fpm ; then
     /etc/init.d/php-fpm reload
   fi
-fiecho rotate > /var/log/php/php-fpm-error.log
+fi
+echo rotate > /var/log/php/php-fpm-error.log
 echo rotate > /var/log/php/php-fpm-slow.log
 echo rotate > /var/log/php/php53-fpm-error.log
 echo rotate > /var/log/php/php53-fpm-slow.log
