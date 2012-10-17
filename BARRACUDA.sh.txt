@@ -2788,7 +2788,7 @@ install_upgrade_nginx () {
     if [ "$_REL_VERSION" = "incompatible" ] ; then
       true
     else
-      git clone --branch v0.8.4 $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
+      git clone --branch v0.8.3 $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
     fi
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://files.aegir.cc/dev/ngx_cache_purge-1.6.tar.gz
