@@ -443,9 +443,6 @@ add_old_short_name_acquia () {
 # init distro seven root
 init_core_distro_seven_root () {
   cd $_CORE_DISTRO
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/patch_commit_6fabd31b0f81.patch ./
-  patch -p1 < patch_commit_6fabd31b0f81.patch &> /dev/null
-  rm -f patch_commit_6fabd31b0f81.patch
   rm -f $_CORE_DISTRO/*.txt
   ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
 }
