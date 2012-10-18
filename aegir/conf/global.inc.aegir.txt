@@ -194,6 +194,55 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
   }
 }
 
+$use_cache = TRUE;     // Standard Redis integration for 6.x and 7.x core is enabled by default.
+
+$custom_cache = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Redis configuration.
+
+$custom_fb = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Drupal for Facebook (fb) configuration.
+
+$custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Domain Access configuration,
+                       // so you can define your own, custom configuration in the included below
+                       // /data/conf/override.global.inc file. NOTE: if set to TRUE, then you
+                       // must set to TRUE also $custom_cache and copy all its logic in your
+                       // /data/conf/override.global.inc file, because Domain Access must be included
+                       // *after* any cache-related settings to work properly.
+
+if (file_exists('/var/run/redis.pid')) {
+  $redis_up = TRUE;
+}
+
+if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.txt') ||
+    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache/NO.txt'))) {
+  $use_cache = FALSE;
+}
+
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/nojs\/|noredis)/", $_SERVER['REQUEST_URI'])) {
+  $use_redis = FALSE;
+}
+
+if ($redis_up && $use_cache && $use_redis && !$force_redis) {
+  header('X-Allow-Redis: YES');
+}
+elseif ($redis_up && $force_redis) {
+  $use_cache = TRUE;
+  $use_redis = TRUE;
+  header('X-Force-Redis: YES');
+}
+else {
+  if (!$is_dev) {
+    $conf['cache'] = 1; // enable standard db caching if redis is not allowed or not available
+  }
+  header('X-Allow-Redis: NO');
+}
+
+if (!isset($_SERVER['HTTP_USER_AGENT'])) {
+  $use_redis = FALSE;
+  $use_cache = FALSE;
+}
+
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
@@ -319,10 +368,24 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         $expire_in_seconds = '1';
       }
 
+      if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
+        $expire_in_seconds = '0';
+        $use_redis = FALSE;
+        $use_cache = FALSE;
+      }
+
+      if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
+        $expire_in_seconds = '0';
+        $use_redis = FALSE;
+        $use_cache = FALSE;
+      }
+
       if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_COOKIE[OctopusNoCacheID])) {
         $lifetime = '15';
         setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         $expire_in_seconds = '0';
+        $use_redis = FALSE;
+        $use_cache = FALSE;
       }
     }
 
@@ -336,55 +399,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
   }
-}
-
-$use_cache = TRUE;     // Standard Redis integration for 6.x and 7.x core is enabled by default.
-
-$custom_cache = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
-                       // it will disable default Redis configuration.
-
-$custom_fb = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
-                       // it will disable default Drupal for Facebook (fb) configuration.
-
-$custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
-                       // it will disable default Domain Access configuration,
-                       // so you can define your own, custom configuration in the included below
-                       // /data/conf/override.global.inc file. NOTE: if set to TRUE, then you
-                       // must set to TRUE also $custom_cache and copy all its logic in your
-                       // /data/conf/override.global.inc file, because Domain Access must be included
-                       // *after* any cache-related settings to work properly.
-
-if (file_exists('/var/run/redis.pid')) {
-  $redis_up = TRUE;
-}
-
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.txt') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache/NO.txt'))) {
-  $use_cache = FALSE;
-}
-
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/nojs\/|noredis)/", $_SERVER['REQUEST_URI'])) {
-  $use_redis = FALSE;
-}
-
-if ($redis_up && $use_cache && $use_redis && !$force_redis) {
-  header('X-Allow-Redis: YES');
-}
-elseif ($redis_up && $force_redis) {
-  $use_cache = TRUE;
-  $use_redis = TRUE;
-  header('X-Force-Redis: YES');
-}
-else {
-  if (!$is_dev) {
-    $conf['cache'] = 1; // enable standard db caching if redis is not allowed or not available
-  }
-  header('X-Allow-Redis: NO');
-}
-
-if (!isset($_SERVER['HTTP_USER_AGENT'])) {
-  $use_redis = FALSE;
-  $use_cache = FALSE;
 }
 
 /**
