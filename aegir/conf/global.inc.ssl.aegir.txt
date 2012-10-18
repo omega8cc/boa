@@ -379,21 +379,20 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
         $use_redis = FALSE;
-        $use_cache = FALSE;
       }
 
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
         $use_redis = FALSE;
-        $use_cache = FALSE;
       }
 
-      if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_COOKIE[OctopusNoCacheID])) {
-        $lifetime = '15';
-        setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+      if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
+        if (!isset($_COOKIE[OctopusNoCacheID])) {
+          $lifetime = '15';
+          setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+        }
         $expire_in_seconds = '0';
         $use_redis = FALSE;
-        $use_cache = FALSE;
       }
     }
 
