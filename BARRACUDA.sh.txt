@@ -2278,18 +2278,6 @@ install_php_extensions () {
 # Install more extensions for PHP universal
 install_php_extensions_more () {
   ###--------------------###
-  msg "INFO: Installing MailParse for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r mailparse*
-  wget -q -U iCab http://files.aegir.cc/dev/mailparse-2.1.5.tgz
-  tar -xzf mailparse-2.1.5.tgz
-  cd /var/opt/mailparse-2.1.5
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
   cd /var/opt
