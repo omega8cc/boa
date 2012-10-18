@@ -972,6 +972,16 @@ find_correct_ip () {
   fi
 }
 #
+# Fix php.ini files to remove mailparse.so
+fix_php_ini_mailparse () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
+    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
+      sed -i "s/.*mailparse.*//g" $_THIS_FILE
+    fi
+  fi
+}
+#
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin () {
   if [ -e "$_THIS_FILE" ] ; then
@@ -1294,18 +1304,22 @@ update_php_conf () {
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   _THIS_FILE=/usr/local/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   _THIS_FILE=/opt/local/etc/php53.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
