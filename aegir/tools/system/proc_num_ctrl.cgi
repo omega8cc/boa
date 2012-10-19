@@ -64,7 +64,7 @@ if (-f "/usr/local/sbin/pure-config.pl") {
   `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
 }
 if ($mysqlsumar > 0) {
-  $resultmysql5 = `/usr/bin/mysqladmin -u root --password=NdKBu34erty325r6mUHxWy -h localhost --port=3306 flush-hosts 2>&1`;
+  $resultmysql5 = `/usr/bin/mysqladmin flush-hosts 2>&1`;
   print "\n MySQL hosts flushed...\n";
 }
 if ($dhcpcdlives) {

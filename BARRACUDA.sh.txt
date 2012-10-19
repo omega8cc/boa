@@ -5846,6 +5846,7 @@ mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
 rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
+rm -f /var/xdrago/monitor/acrashsql.sh
 rm -f -r /tmp/drush_make_tmp*
 rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid

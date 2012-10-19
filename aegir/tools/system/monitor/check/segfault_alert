@@ -6,7 +6,7 @@
 
 $| = 1;
 $this_filename = "segfault_alert";
-$s=`hostname`;
+$s=`uname -n`;
 chomp($s);
 &makeactions;
 print " CONTROL 1 done_______________________\n ...\n";

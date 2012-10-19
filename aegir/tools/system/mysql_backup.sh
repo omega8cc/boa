@@ -2,59 +2,66 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-
-touch /var/run/boa_wait.pid
-sleep 180
-DATABASEUSER=root
-DATABASEPASS=NdKBu34erty325r6mUHxWy
 BACKUPDIR=/data/disk/arch/sql
+HOST=`uname -n`
 DATE=`date +%y%m%d-%H%M`
-HOST=`hostname`
 SAVELOCATION=$BACKUPDIR/$HOST-$DATE
 
-truncate_cache_tables() {
-TABLES="cache cache_menu cache_page cache_filter cache_form cache_block cache_views_data cache_views cache_content watchdog cache_path boost_cache boost_cache_relationships"
-for i in $TABLES; do
-mysql --default-character-set=utf8 --password=$DATABASEPASS -h localhost --port=3306 -u $DATABASEUSER $line<<EOFMYSQL
-TRUNCATE $i;
+truncate_cache_tables () {
+  TABLES=`mysql $DB -e "show tables" -s | grep ^cache | uniq | sort`
+  for C in $TABLES; do
+mysql --default-character-set=utf8 $DB<<EOFMYSQL
+TRUNCATE $C;
 EOFMYSQL
-echo $i table truncated in $line database
-done
+  done
 }
 
-#Check if location to save exists, if not create it
-[ ! -a $SAVELOCATION ] &&  mkdir -p $SAVELOCATION ;
+optimize_this_database () {
+  TABLES=`mysql $DB -e "show tables" -s | uniq | sort`
+  for T in $TABLES; do
+mysql --default-character-set=utf8 $DB<<EOFMYSQL
+OPTIMIZE TABLE $T;
+EOFMYSQL
+  done
+}
 
-#Get a list of databases to backup
-mysql -u $DATABASEUSER -p$DATABASEPASS -e "show databases" -s > .databasesToBackup;
+backup_this_database () {
+  mysqldump --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $DB | gzip > $SAVELOCATION/$DB.sql.gz
+}
 
-#Parse the list of databases and then backup using mysqldump
-cat .databasesToBackup | while read line; do
-  truncate_cache_tables
-  #mysqlcheck --port=3306 -h localhost -r -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
-  #mysqlcheck --port=3306 -h localhost -o -u $DATABASEUSER --password=$DATABASEPASS $line &> /dev/null
-  mysqldump -u $DATABASEUSER -p$DATABASEPASS --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $line | gzip  > $SAVELOCATION/$line.sql.gz
-  echo backup completed for $line database
-  sleep 1
+[ ! -a $SAVELOCATION ] && mkdir -p $SAVELOCATION ;
+
+for DB in `mysql -e "show databases" -s | uniq | sort`
+do
+  if [ "$DB" != "Database" ] && [ "$DB" != "information_schema" ] && [ "$DB" != "performance_schema" ] ; then
+    if [ "$DB" != "mysql" ] ; then
+      truncate_cache_tables &> /dev/null
+      echo "All cache tables truncated in $DB"
+      optimize_this_database &> /dev/null
+      echo "Optimize completed for $DB"
+    fi
+    backup_this_database &> /dev/null
+    echo "Backup completed for $DB"
+    echo " "
+  fi
 done
 
-rm .databasesToBackup
-
-#Delete all files in the backup dir 8 days or older - note: this deletes everything!
-#Only database backups should exist in $BACKUPDIR!!!
 find $BACKUPDIR -mtime +8 -type d -exec rm -rf {} \;
+echo "Backups older than 8 days deleted"
+
 chmod 600 /data/disk/arch/sql/*/*
 chmod 700 /data/disk/arch/sql/*
 chmod 700 /data/disk/arch/sql
 chmod 700 /data/disk/arch
+echo "Permissions fixed"
 
 /etc/init.d/redis-server stop
 sleep 3
 killall -9 redis-server
 rm -f /var/lib/redis/*
 /etc/init.d/redis-server start
+echo "Redis server restarted"
 
-echo COMPLETED ALL
-rm -f /var/run/boa_wait.pid
 touch /var/xdrago/log/last-run-backup
+echo "COMPLETED ALL"
 ###EOF2012###

@@ -6,24 +6,23 @@ if (-f "/var/run/boa_wait.pid") {
 }
 $mailx_test = `mail -V 2>&1`;
 $status="CLEAN";
-$this_filename = "acrashsql.sh";
-$this_path = "/var/xdrago/$this_filename";
-`rm -f $this_path`;
-$server=`hostname`;
+$fixfile = "/var/xdrago/acrashsql.sh";
+`rm -f $fixfile`;
+$server=`uname -n`;
 chomp($server);
 $timedate=`date +%y%m%d-%H%M`;
 chomp($timedate);
 $logfile="/var/xdrago/log/mysqlcheck.log";
 `touch /var/run/boa_wait.pid`;
 sleep(90);
-`/usr/bin/mysqlcheck --port=3306 -h localhost -Aa -u root --password=NdKBu34erty325r6mUHxWy > $logfile`;
+`/usr/bin/mysqlcheck -Aa > $logfile`;
 &makeactions;
 `rm -f /var/run/boa_wait.pid`;
 `touch /var/xdrago/log/last-run-acrashsql`;
 if ($mailx_test =~ /(invalid)/i) {
   if ($status ne "CLEAN") {
     `cat $logfile | mail -a "From: notify\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" notify\@omega8.cc`;
-    `sh $this_path | mail -a "From: notify\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;
+    `sh $fixfile | mail -a "From: notify\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;
   }
   if ($status ne "ERROR") {
     `cat $logfile | mail -e -a "From: notify\@omega8.cc" -s "SQL check CLEAN [$server] $timedate" notify\@omega8.cc`;
@@ -32,22 +31,23 @@ if ($mailx_test =~ /(invalid)/i) {
 else {
   if ($status ne "CLEAN") {
     `cat $logfile | mail -r notify\@omega8.cc -e -s "SQL check ERROR [$server] $timedate" notify\@omega8.cc`;
-    `sh $this_path | mail -r notify\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;
+    `sh $fixfile | mail -r notify\@omega8.cc -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;
   }
   if ($status ne "ERROR") {
     `cat $logfile | mail -e -r notify\@omega8.cc -s "SQL check CLEAN [$server] $timedate" notify\@omega8.cc`;
   }
 }
+`rm -f $logfile`;
 exit;
 
 #############################################################################
 sub makeactions
 {
-  if (!-e "$this_path") {
-    `echo "#!/bin/bash" > /var/xdrago/$this_filename`;
-    `echo " " >> /var/xdrago/monitor/$this_filename`;
+  if (!-e "$fixfile") {
+    `echo "#!/bin/bash" > $fixfile`;
+    `echo " " >> $fixfile`;
   }
-  open (NOT,"<$this_path");
+  open (NOT,"<$fixfile");
   @rectable = <NOT>;
   close (NOT);
   local(@MYARR) = `tail --lines=999999999 $logfile 2>&1`;
@@ -83,10 +83,10 @@ sub repair_this_action
 {
   local($FIXTABLE,$COUNTER) = @_;
   print "$FIXTABLE [$COUNTER] recorded... $REMOTE_HOST\n";
-  `echo "#-- BELOW --# $FIXTABLE [$COUNTER] recorded..." >> /var/xdrago/$this_filename`;
-  `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -r -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
-  `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -o -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
-  `echo "/usr/bin/mysqlcheck --port=3306 -h localhost -a -u root --password=NdKBu34erty325r6mUHxWy $FIXTABLE" >> /var/xdrago/$this_filename`;
-  `echo " " >> /var/xdrago/$this_filename`;
+  `echo "#-- BELOW --# $FIXTABLE [$COUNTER] recorded..." >> $fixfile`;
+  `echo "/usr/bin/mysqlcheck -r $FIXTABLE" >> $fixfile`;
+  `echo "/usr/bin/mysqlcheck -o $FIXTABLE" >> $fixfile`;
+  `echo "/usr/bin/mysqlcheck -a $FIXTABLE" >> $fixfile`;
+  `echo " " >> $fixfile`;
 }
 ###EOF2012###

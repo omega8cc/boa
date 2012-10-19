@@ -18,10 +18,7 @@ sub makeactions
 {
 local(@MYARR) = `tail --lines=200 /var/log/syslog 2>&1`;
   foreach $line (@MYARR) {
-    if ($line =~ /(Checking table)/i) {
-      $status="ERROR";
-    }
-    if ($line =~ /(is marked as crashed)/i) {
+    if ($line =~ /(Checking table)/i || $line =~ /(is marked as crashed)/i) {
       $status="ERROR";
     }
   }
