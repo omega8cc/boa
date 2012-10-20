@@ -1,0 +1,11 @@
+--- includes/menu.inc.orig	2010-11-15 07:55:27.000000000 -0500
++++ includes/menu.inc	2010-11-15 13:38:36.000000000 -0500
+@@ -3367,7 +3367,7 @@ function _menu_router_build($callbacks) 
+       $sort[$path] = $number_parts;
+     }
+   }
+-  array_multisort($sort, SORT_NUMERIC, $menu);
++  array_multisort($sort, SORT_NUMERIC, $menu, SORT_STRING);
+   // Apply inheritance rules.
+   foreach ($menu as $path => $v) {
+     $item = &$menu[$path];
