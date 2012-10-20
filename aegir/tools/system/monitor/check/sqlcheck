@@ -3,10 +3,12 @@
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
 $status="CLEAN";
+$now_is=`date +%b:%e:%H:%M`;
+chomp($now_is);
+sleep(55);
 &makeactions;
 if ($status ne "CLEAN") {
   `perl /var/xdrago/checksql.cgi`;
-  `touch /var/xdrago/log/last-sqlcheck-found-problem`;
 }
 else {
   `touch /var/xdrago/log/last-sqlcheck-clean`;
@@ -16,10 +18,24 @@ exit;
 #############################################################################
 sub makeactions
 {
-local(@MYARR) = `tail --lines=100 /var/log/syslog 2>&1`;
+local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     if ($line =~ /(Checking table)/i || $line =~ /(is marked as crashed)/i) {
-      $status="ERROR";
+      local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
+      chomp($TIMEX);
+      $TIMEX =~ s/[^0-9\:]//g;
+      if ($TIMEX =~ /^[0-9]/) {
+        local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
+        $log_is="$MONTX:$DAYX:$HOUR:$MIN";
+        if ($now_is eq $log_is) {
+          $status="ERROR";
+          print "\n===[$now_is]\t[$log_is]===";
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-y-problem`;
+        }
+        else {
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-n-problem`;
+        }
+      }
     }
   }
 }
