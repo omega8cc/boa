@@ -1,25 +1,28 @@
 #!/usr/bin/perl
 
+###
+### This is an auth abuse monitor for smtp.
+###
+
 $| = 1;
 $this_filename = "hackmail";
+$times = `date +%y%m%d-%H%M%S`;
+chomp($times);
 &makeactions;
-print " CONTROL hack1 done_______________________\n ...\n";
+print "CONTROL complete\n";
 exit;
 
 #############################################################################
 sub makeactions
 {
-  $this_path = "/var/xdrago/monitor/$this_filename";
-  if (!-e "$this_path") {
-    `echo "#!/bin/bash" >> /var/xdrago/monitor/$this_filename`;
-    `echo " " >> /var/xdrago/monitor/$this_filename`;
+  if (-e "/var/xdrago/monitor/smtp.log") {
+    $this_path = "/var/xdrago/monitor/smtp.log";
+    open (NOT,"<$this_path");
+    @banetable = <NOT>;
+    close (NOT);
   }
-  open (NOT,"<$this_path");
-  @banetable = <NOT>;
-  close (NOT);
   local(@MYARR) = `tail --lines=999 /var/log/mail.log 2>&1`;
-  local($maxnumber,$critnumber,$alert);
-  local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
+  local($sumar,$maxnumber);
   foreach $line (@MYARR) {
     if ($line =~ /(Failed)|(identification)|(authentication)/i) {
       local($a, $b, $c, $d, $e, $f, $VISITORX, $rest) = split(/\s+/,$line) if ($line =~ /(failure)/i);
@@ -38,8 +41,14 @@ sub makeactions
     $maxnumber = 10;
     local($blocked) = 0;
     &check_ip($VISITOR);
-    if ($thissumar > $maxnumber && !$blocked) {
-      &trash_it_action($VISITOR,$thissumar);
+    if ($thissumar > $maxnumber) {
+      if (!$blocked) {
+        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/smtp.log`;
+        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf") {
+          `/usr/sbin/csf -td $VISITOR 3600 -p 25`;
+        }
+      }
     }
   }
   print "\n===[$sumar]\tGLOBAL===\n\n";
@@ -47,43 +56,15 @@ sub makeactions
 }
 
 #############################################################################
-sub trash_it_action
-{
-  local($ABUSER,$COUNTER) = @_;
-  local($proxy_host) = 0;
-  local($REMOTE_HOST) = $ABUSER;
-  local($machine) = $ABUSER;
-  $machine =~ s/^\s+|\s+$//g;
-  @bytes = split (/\./, $machine);
-  $packaddr = pack ("C4", @bytes);
-  if (!(($name, $altnames, $addrtype, $len, @addrlist) =
-    gethostbyaddr ($packaddr, 2))) {
-    $REMOTE_HOST = "";
-  }
-  else {
-    $REMOTE_HOST = "$name";
-  }
-  if ($REMOTE_HOST !~ /(my-white-listed-host)/)
-  {
-    $now_is = `date +%y%m%d-%H%M%S`;
-    chomp($now_is);
-    print "$ABUSER [$COUNTER] recorded... $REMOTE_HOST\n";
-    `/sbin/iptables -A INPUT -p tcp -s $ABUSER --dport 25 -j DROP` if (!$blocked);
-    `echo "#-- BELOW --# $ABUSER [$COUNTER] recorded... [$now_is] $REMOTE_HOST" >> /var/xdrago/monitor/$this_filename`;
-    `echo "/sbin/iptables -A INPUT -s $ABUSER -j DROP" >> /var/xdrago/monitor/$this_filename`;
-    `echo " " >> /var/xdrago/monitor/$this_filename`;
-  }
-}
-
-#############################################################################
 sub check_ip
 {
   local($IP) = @_;
-  foreach $line (@banetable) {
-    chomp ($line);
-    if ($line =~ /(iptables)/) {
-      local($a, $b, $c, $d, $EXISTS, $g, $h) = split(/\s+/,$line);
-      if ($EXISTS eq $IP) {
+  if (-e "/var/xdrago/monitor/smtp.log") {
+    foreach $banerecord (@banetable) {
+      chomp ($banerecord);
+      local($ifbanned, $rest) = split(/\s+/,$banerecord);
+      $ifbanned =~ s/[^0-9\.]//g;
+      if ($ifbanned eq $IP) {
         $blocked = 1;
         last;
       }
