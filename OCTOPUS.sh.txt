@@ -561,6 +561,30 @@ else
 fi
 }
 #
+# Make sure that username is unique and not restricted.
+check_id () {
+  _ID_EXISTS=$(id $_USER 2>&1)
+  if [[ "$_ID_EXISTS" =~ "No such user" ]] ; then
+    true
+  else
+    msg "ERROR: $_USER username is already taken"
+    msg "Please choose different _USER"
+    exit 1
+  fi
+  if [ "$_USER" = "admin" ] ; then
+    msg "ERROR: $_USER is a restricted username, please choose different _USER"
+    exit 1
+  elif [ "$_USER" = "hostmaster" ] ; then
+    msg "ERROR: $_USER is a restricted username, please choose different _USER"
+    exit 1
+  fi
+  _REGEX="^[[:digit:]]"
+  if [[ "$_USER" =~ "$_REGEX" ]] ; then
+    msg "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
+    exit 1
+  fi
+}
+#
 # Find correct IP.
 find_correct_ip () {
   _FQDN_TEST=$(host $_LOC_DOM)
@@ -877,13 +901,8 @@ fi
 if [ -z "$_LOCAL_THISHTIP" ] ; then
   _LOCAL_THISHTIP=all
 fi
-if [ "$_STATUS" = "INIT" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
-  chmod 700 /var/xdrago/run-$_USER &> /dev/null
-else
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
-  chmod 700 /var/xdrago/run-$_USER &> /dev/null
-fi
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
+chmod 700 /var/xdrago/run-$_USER &> /dev/null
 force_advanced_nginx_config_main
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
 bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
@@ -954,8 +973,28 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
 fi
 
 
-###---### init
+###--------------------###
+_LASTNUM=001
+_LAST_HMR=001
+_LAST_ALL=001
+_DISTRO=001
+_HM_DISTRO=001
+_ALL_DISTRO=001
+_STATUS=INIT
+
+
+###---### START
 #
+# Make sure it is running as root
+if [ `whoami` = "root" ] ; then
+  true
+else
+  msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
+  msg "Bye"
+  exit 1
+fi
+#
+# Restart pdnsd server
 touch /var/run/boa_run.pid
 if [ -d "/var/cache/pdnsd" ] ; then
   service pdnsd stop &> /dev/null
@@ -965,16 +1004,22 @@ if [ -d "/var/cache/pdnsd" ] ; then
   service pdnsd start &> /dev/null
 fi
 #
-# Sanitize _USER
+# Sanitize _USER and check the status
   _USER=${_USER//[^a-zA-Z0-9-.]/}
   _USER=`echo -n $_USER | tr A-Z a-z`
   _ROOT="/data/disk/$_USER"
+  if [ -d "$_ROOT" ] ; then
+    _STATUS=UPGRADE
+  fi
+  if [ "$_STATUS" = "INIT" ] ; then
+    check_id
+  fi
   echo " "
   msg "BOA Skynet welcomes you aboard!"
   echo " "
   sleep 3
 #
-#
+# Some auto-magic for localhost install
 _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
@@ -1076,15 +1121,6 @@ fi
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 #
 #
-if [ `whoami` = "root" ] ; then
-  true
-else
-  msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
-  msg "Bye"
-  exit 1
-fi
-#
-#
 if [ ! -f "/var/aegir/config/includes/barracuda_log.txt" ] ; then
   msg "ERROR: This script should be used only when the same version of BARRACUDA was used before"
   msg "Your system has to be configured/upgraded by BARRACUDA version $_INSTALLER_VERSION first"
@@ -1145,20 +1181,9 @@ chmod 646 $_LOG
 _SILENT=/opt/tmp/silent.log
 #
 #
-_LASTNUM=001
-_LAST_HMR=001
-_LAST_ALL=001
-_DISTRO=001
-_HM_DISTRO=001
-_ALL_DISTRO=001
-_STATUS=INIT
-#
-#
 if [ -d "$_ROOT" ] ; then
-  _STATUS=UPGRADE
   msg "UPGRADE in progress..."
   if [ -d "$_ROOT/distro" ] ; then
-    #msg "UPGRADE v.2 in progress..."
     if [ -e "$_ROOT/log/domain.txt" ] ; then
       _DOMAIN=`cat $_ROOT/log/domain.txt`
       _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
@@ -1171,7 +1196,6 @@ if [ -d "$_ROOT" ] ; then
       msg "ALERT! _USER is e-m-p-t-y, exit now"
       exit 1
     fi
-    #msg "_DOMAIN is $_DOMAIN"
     _CHECK_HOST=`uname -n`
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [ -e "/data/disk/$_USER/log/amazing_upgrade.txt" ] && [ ! -e "/data/disk/$_USER/log/amazing_upgrade_complete.txt" ] ; then
@@ -1224,104 +1248,59 @@ if [ -d "$_ROOT" ] ; then
         exit 1
       fi
     fi
-#
-# Check for last distro nr
+    #
+    # Check for last distro nr
     if [ -d "$_ROOT/distro" ] ; then
       cd $_ROOT/distro
       list=([0-9]*)
       last=${list[@]: -1}
       _LASTNUM=$last
-      #msg "_LASTNUM is $last"
       nextnum=00$((10#${last%%[^0-9]*} + 1))
       nextnum=${nextnum: -3}
       _DISTRO=${nextnum}
-    else
-      true
-      #msg "_LASTNUM is $_LASTNUM"
     fi
-    #msg "_DISTRO is $_DISTRO"
-#
-# Check for last hm nr
+    #
+    # Check for last hm nr
     if [ -d "$_ROOT/aegir/distro" ] ; then
       cd $_ROOT/aegir/distro
       listx=([0-9]*)
       lastx=${listx[@]: -1}
       _LAST_HMR=$lastx
-      #msg "_LAST_HMR is $lastx"
       nextnumx=00$((10#${lastx%%[^0-9]*} + 1))
       nextnumx=${nextnumx: -3}
       _HM_DISTRO=${nextnumx}
-    else
-      true
-      #msg "_LAST_HMR is $_LAST_HMR"
     fi
-    #msg "_HM_DISTRO is $_HM_DISTRO"
-#
-# Check for last all nr
+    #
+    # Check for last all nr
     if [ -d "/data/all" ] ; then
       cd /data/all
       listl=([0-9]*)
       lastl=${listl[@]: -1}
       _LAST_ALL=$lastl
-      #msg "_LAST_ALL is $lastl"
       nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
       nextnuml=${nextnuml: -3}
       _ALL_DISTRO=${nextnuml}
-    else
-      true
-      #msg "_LAST_ALL is $_LAST_ALL"
     fi
-    #msg "_ALL_DISTRO is $_ALL_DISTRO"
-#
-#
+  #
+  #
   elif [ ! -d "$_ROOT/distro" ] ; then
-    #msg "UPGRADE v.1 in progress..."
-    #msg "_DISTRO is $_DISTRO"
     if [ -e "$_ROOT/log/domain.txt" ] ; then
       _DOMAIN=`cat $_ROOT/log/domain.txt`
       _DOMAIN=`echo -n $_DOMAIN | tr -d "\n"`
     fi
-    #msg "_DOMAIN is $_DOMAIN"
   fi
 else
-msg "NEW Aegir Satellite Instance setup in progress..."
-#
-# Check for last all nr
+  msg "NEW Aegir Satellite Instance setup in progress..."
+  #
+  # Check for last all nr
   if [ -d "/data/all" ] ; then
     cd /data/all
     listl=([0-9]*)
     lastl=${listl[@]: -1}
     _LAST_ALL=$lastl
-    #msg "_LAST_ALL is $lastl"
     nextnuml=00$((10#${lastl%%[^0-9]*} + 1))
     nextnuml=${nextnuml: -3}
     _ALL_DISTRO=${nextnuml}
-  else
-    true
-    #msg "_LAST_ALL is $_LAST_ALL"
-  fi
-  #msg "_ALL_DISTRO is $_ALL_DISTRO"
-  #msg "_DISTRO is $_DISTRO"
-  #msg "_DOMAIN is $_DOMAIN"
-#
-#
-  if [ "$_USER" = "admin" ] ; then
-    msg "ERROR: $_USER is a restricted username, please choose different _USER"
-    exit 1
-  elif [ "$_USER" = "hostmaster" ] ; then
-    msg "ERROR: $_USER is a restricted username, please choose different _USER"
-    exit 1
-  fi
-  _REGEX="^[[:digit:]]"
-  if [[ "$_USER" =~ "$_REGEX" ]] ; then
-    msg "ERROR: $_USER is a wrong username, it should start with a letter, not digit"
-    exit 1
-  fi
-  _FREEID=`cat /etc/passwd | cut -d: -f1 | awk '{ print $1}' | grep $_USER`
-  if [ ! -z "$_FREEID" ] ; then
-    msg "ERROR: $_USER is already used or too similar to an existing username"
-    msg "Please choose different _USER"
-    exit 1
   fi
 fi
 #
