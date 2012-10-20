@@ -5,7 +5,6 @@ if (-f "/var/run/boa_wait.pid") {exit;}
 $status="CLEAN";
 $now_is=`date +%b:%e:%H:%M`;
 chomp($now_is);
-sleep(55);
 &makeactions;
 if ($status ne "CLEAN") {
   `perl /var/xdrago/checksql.cgi`;
