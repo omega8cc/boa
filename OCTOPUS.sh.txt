@@ -787,7 +787,7 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
   _MY_OWNIP="$_LOC_IP"
 fi
 if [ -d "/data/all/000" ] ; then
-  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
+  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     _USE_CURRENT=NO
     _HOT_SAUCE=YES
     _HM_ONLY=NO
@@ -933,7 +933,7 @@ if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
 fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ -d "/data/all/000" ] ; then
-  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
+  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     echo "$_SMALLCORE6" > /data/all/000/core.$_SMALLCORE6.txt
     echo "$_SMALLCORE7" > /data/all/000/core.$_SMALLCORE7.txt
   fi
