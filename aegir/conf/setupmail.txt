@@ -54,7 +54,7 @@ Drupal platforms ready to deploy:
   Open Deals 1.5 --------------- http://opendealsapp.com
   Open Enterprise 1.0-rc3 ------ http://drupal.org/project/openenterprise
   Open Outreach 1.0-rc6 -------- http://openoutreach.org
-  OpenChurch 1.11-beta1 -------- http://openchurchsite.com
+  OpenChurch 1.11-beta3 -------- http://openchurchsite.com
   OpenPublish 3.0-beta6 -------- http://openpublishapp.com
   OpenScholar 2.0-rc1 ---------- http://openscholar.harvard.edu
   Panopoly 1.0-rc1 ------------- http://drupal.org/project/panopoly
