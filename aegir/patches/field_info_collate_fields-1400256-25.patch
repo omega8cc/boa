@@ -1,0 +1,36 @@
+diff --git a/modules/field/field.info.inc b/modules/field/field.info.inc
+index 9e7ab93..30c7cb1 100644
+--- a/modules/field/field.info.inc
++++ b/modules/field/field.info.inc
+@@ -183,10 +183,13 @@ function _field_info_collate_types($reset = FALSE) {
+  */
+ function _field_info_collate_fields($reset = FALSE) {
+   static $info;
++  static $rebuilding = FALSE;
+ 
+   if ($reset) {
+-    $info = NULL;
+-    cache_clear_all('field_info_fields', 'cache_field');
++    if(!$rebuilding) {
++      $info = NULL;
++      cache_clear_all('field_info_fields', 'cache_field');
++    }
+     return;
+   }
+ 
+@@ -195,6 +198,7 @@ function _field_info_collate_fields($reset = FALSE) {
+       $info = $cached->data;
+     }
+     else {
++      $rebuilding = TRUE;
+       $definitions = array(
+         'field_ids' => field_read_fields(array(), array('include_deleted' => 1)),
+         'instances' => field_read_instances(),
+@@ -244,6 +248,7 @@ function _field_info_collate_fields($reset = FALSE) {
+       }
+ 
+       cache_set('field_info_fields', $info, 'cache_field');
++      $rebuilding = FALSE;
+     }
+   }
+ 

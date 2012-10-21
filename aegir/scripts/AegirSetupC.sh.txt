@@ -315,6 +315,10 @@ if [ ! -e "object_conversion_menu_router_build-972536-1.patch" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/object_conversion_menu_router_build-972536-1.patch ./
   patch -p0 < object_conversion_menu_router_build-972536-1.patch &> /dev/null
 fi
+if [ ! -e "field_info_collate_fields-1400256-25.patch" ] ; then
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/field_info_collate_fields-1400256-25.patch ./
+  patch -p1 < field_info_collate_fields-1400256-25.patch &> /dev/null
+fi
 }
 #
 # themes_for_d6
