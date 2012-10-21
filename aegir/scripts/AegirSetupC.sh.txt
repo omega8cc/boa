@@ -304,8 +304,8 @@ fi
 # patch d7 core
 patch_d7_core () {
 if [ ! -e "taxonomy-7.7.patch" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.7.patch ./
-  patch -p1 < taxonomy-7.7.patch &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.12.patch ./
+  patch -p0 < taxonomy-7.12.patch &> /dev/null
 fi
 if [ ! -e "992540-3-reset_flood_limit_on_password_reset-drush.patch" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/992540-3-reset_flood_limit_on_password_reset-drush.patch ./
@@ -355,8 +355,8 @@ prepare_pressflow_core () {
   rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/*.txt
   rm -f -r /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/cookie_cache_bypass
   rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/themes/*.txt
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.20.patch ./
-  patch -p1 < taxonomy-6.20.patch &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch ./
+  patch -p0 < taxonomy-6.26.patch &> /dev/null
   rm -f taxonomy-6.20.patch
   rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/taxonomy/taxonomy.module.orig
   themes_for_d6

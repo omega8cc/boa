@@ -1,0 +1,22 @@
+--- modules/taxonomy/taxonomy.module.orig	2012-02-29 17:44:11.000000000 +0100
++++ modules/taxonomy/taxonomy.module	2012-03-14 18:46:54.000000000 +0100
+@@ -846,6 +846,9 @@
+  *   Results are statically cached.
+  */
+ function taxonomy_get_tree($vid, $parent = 0, $depth = -1, $max_depth = NULL) {
++  if (function_exists('taxonomy_edge_get_tree')) {
++    return taxonomy_edge_get_tree($vid, $parent, $depth, $max_depth);
++  }
+   static $children, $parents, $terms;
+ 
+   // We cache trees, so it's not CPU-intensive to call get_tree() on a term
+@@ -1181,6 +1184,9 @@
+  *   A resource identifier pointing to the query results.
+  */
+ function taxonomy_select_nodes($tids = array(), $operator = 'or', $depth = 0, $pager = TRUE, $order = 'n.sticky DESC, n.created DESC') {
++  if (function_exists('taxonomy_edge_select_nodes')) {
++    return taxonomy_edge_select_nodes($tids, $operator, $depth, $pager, $order);
++  }
+   if (count($tids) > 0) {
+     // For each term ID, generate an array of descendant term IDs to the right depth.
+     $descendant_tids = array();

@@ -321,7 +321,7 @@ o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
 RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache httprl"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-011.info" ] ; then
+  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-012.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
@@ -356,7 +356,7 @@ for i in $REVISIONS; do
     if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
       ln -s /data/all/000/modules/redis /data/all/$i/o_contrib/redis
     fi
-    touch /data/all/$i/o_contrib/update-011.info
+    touch /data/all/$i/o_contrib/update-012.info
     msg "UPGRADE A: New modules in /data/all/$i/o_contrib: purge expire backup_migrate"
   fi
   if [ -d "/data/all/$i" ] ; then
@@ -374,9 +374,9 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-011.info" ] ; then
+  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-012.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
@@ -389,14 +389,20 @@ for i in $REVISIONS; do
       rm -f -r /data/all/$i/o_contrib_seven/purge/.git
       rm -f -r /data/all/$i/o_contrib_seven/expire/.git
     fi
+    cd /data/all/$i/o_contrib_seven
+    wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
     if [ -d "/data/all/$i/o_contrib_seven/redis" ] ; then
       rm -f -r /data/all/$i/o_contrib_seven/redis
     fi
     if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
       ln -s /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
     fi
-    touch /data/all/$i/o_contrib_seven/update-011.info
-    msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: purge expire"
+    touch /data/all/$i/o_contrib_seven/update-012.info
+    msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: filefield_nginx_progress purge expire"
   fi
 done
 cd
@@ -438,27 +444,27 @@ download_textile () {
 #
 # download_o_contrib_seven
 download_o_contrib_seven () {
-  touch update-011.info
+  touch update-012.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta12.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/esi-7.x-3.0-alpha1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0-beta1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc11.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha10.tar.gz
@@ -484,7 +490,7 @@ download_o_contrib_seven () {
     ln -s /data/all/000/modules/redis redis
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/redis/update-011.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-012.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
@@ -496,20 +502,20 @@ download_o_contrib_seven () {
     done
     rm -f *.tar.gz
     rm -f redis/redis.info
-    echo update > redis/update-011.info
+    echo update > redis/update-012.info
   fi
 }
 #
 # download_o_contrib_six
 download_o_contrib_six () {
-  touch update-011.info
+  touch update-012.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-6.x-2.5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/esi-6.x-2.x-dev.tar.gz
@@ -522,7 +528,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-6.x-1.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
@@ -551,7 +557,7 @@ download_o_contrib_six () {
     ln -s /data/all/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/cache_backport/update-011.info" ] ; then
+  if [ ! -e "/data/all/000/modules/cache_backport/update-012.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
@@ -561,9 +567,9 @@ download_o_contrib_six () {
     done
     rm -f *.tar.gz
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
-    echo update > cache_backport/update-011.info
+    echo update > cache_backport/update-012.info
   fi
-  if [ ! -e "/data/all/000/modules/redis/update-011.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-012.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
@@ -575,7 +581,7 @@ download_o_contrib_six () {
     done
     rm -f *.tar.gz
     rm -f redis/redis.info
-    echo update > redis/update-011.info
+    echo update > redis/update-012.info
   fi
 }
 #
@@ -610,7 +616,7 @@ fi
 if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
-if [ ! -e "/data/all/000/modules/redis/update-011.info" ] ; then
+if [ ! -e "/data/all/000/modules/redis/update-012.info" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then

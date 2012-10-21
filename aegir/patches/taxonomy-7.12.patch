@@ -1,0 +1,12 @@
+--- modules/taxonomy/taxonomy.module.orig	2012-02-01 23:03:14.000000000 +0100
++++ modules/taxonomy/taxonomy.module	2012-03-18 19:24:09.000000000 +0100
+@@ -968,6 +968,9 @@
+  *   depending on the $load_entities parameter.
+  */
+ function taxonomy_get_tree($vid, $parent = 0, $max_depth = NULL, $load_entities = FALSE) {
++  if (function_exists('taxonomy_edge_get_tree')) {
++    return taxonomy_edge_get_tree($vid, $parent, $max_depth, $load_entities);
++  }
+   $children = &drupal_static(__FUNCTION__, array());
+   $parents = &drupal_static(__FUNCTION__ . ':parents', array());
+   $terms = &drupal_static(__FUNCTION__ . ':terms', array());
