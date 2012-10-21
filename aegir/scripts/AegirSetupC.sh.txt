@@ -2675,7 +2675,7 @@ openacademy_install
 openatrium_install
 openchurch_install
 opendeals_install
-openenterprise_install
+#openenterprise_install
 openoutreach_install
 #openpublic_install
 openpublish_install
