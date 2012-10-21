@@ -1058,7 +1058,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   elif [ -d "$_CORE/$_THIS_PRNAME-$_COM_MERCE" ] ; then
     mv $_THIS_PRNAME-$_COM_MERCE $_THIS_DISTRO
   fi
-  replace_drupal7_core
+  #replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
@@ -1983,7 +1983,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_OPENCHURCH" ] ; then
     mv $_THIS_PRNAME-$_OPENCHURCH $_THIS_DISTRO
   fi
-  replace_drupal7_core
+  #replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
@@ -2032,7 +2032,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_OPENDEALS" ] ; then
     mv $_THIS_PRNAME-$_OPENDEALS $_THIS_DISTRO
   fi
-  replace_drupal7_core
+  #replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   #cd $_THIS_PRPATH/modules
@@ -2126,7 +2126,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_OPENOUTREACH" ] ; then
     mv $_THIS_PRNAME-$_OPENOUTREACH $_THIS_DISTRO
   fi
-  replace_drupal7_core
+  #replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   #cd $_THIS_PRPATH/modules/contrib
@@ -2259,7 +2259,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_OPENPUBLISH" ] ; then
     mv $_THIS_PRNAME-$_OPENPUBLISH $_THIS_DISTRO
   fi
-  replace_drupal7_core
+  #replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   #cd $_THIS_PRPATH/modules/contrib
@@ -2360,7 +2360,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_PANOPOLY" ] ; then
     mv $_THIS_PRNAME-$_PANOPOLY $_THIS_DISTRO
   fi
-  replace_drupal7_core
+  #replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   create_dirs
