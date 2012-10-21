@@ -656,7 +656,7 @@ _F_ELMS="ELMS 1.0-b1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_MARTPLUG="MartPlug $_MART_PLUG $_SMALLCORE7 P.$_THIS_CORE"
-_F_NODESTREAM6="NodeStream 1.5 $_SMALLCORE6 P.$_THIS_CORE"
+_F_NODESTREAM6="NodeStream 1.5.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-b5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1723,6 +1723,18 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ $_NODESTREAM6 = "6.x-1.5" ] ; then
     sed -i "s/libraries\/profiler/modules\/profiler/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
   fi
+  cd $_THIS_PRPATH/modules
+  rm -f -r {imagecache,ctools,rules,strongarm,token,views_rss}
+  wget -q -U iCab http://ftp.drupal.org/files/projects/imagecache-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-6.x-1.9.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-6.x-1.5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/strongarm-6.x-2.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-6.x-1.19.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views_rss-6.x-2.0-rc3.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
   create_dirs
 fi
 init_this_distro_root
