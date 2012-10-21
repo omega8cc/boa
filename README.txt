@@ -143,7 +143,6 @@ Octopus can install the platforms listed below:
  Managing News 1.2.2 ---------- http://managingnews.com
  NodeStream 1.5 --------------- http://nodestream.org
  NodeStream 2.0-beta4 --------- http://nodestream.org
- Octopus Video 1.0-alpha6 ----- http://octopusvideo.org
  Open Atrium 1.5.1 ------------ http://openatrium.com
  Open Deals 1.5 --------------- http://opendealsapp.com
  Open Outreach 1.0-rc6 -------- http://openoutreach.org
@@ -174,12 +173,12 @@ latest D8-tested platform to every release.
 The platforms listed below can be re-added when their maintainers
 will fix all critical issues and/or apply required updates:
 
- Drupal 8.0-dev-edge ---------- http://bit.ly/drupal-eight
  MartPlug --------------------- http://drupal.org/project/martplug
+ Octopus Video ---------------- http://octopusvideo.org
  Open Academy ----------------- http://drupal.org/project/openacademy
  Open Enterprise -------------- http://drupal.org/project/openenterprise
  OpenPublic ------------------- http://openpublicapp.com
- Videola 1.0-alpha3 ----------- http://videola.tv
+ Videola ---------------------- http://videola.tv
 
 All D5/D6 platforms have been enhanced using Pressflow Drupal core.
 

@@ -2658,7 +2658,7 @@ managingnews_install
 #martplug_install
 nodestream6_install
 nodestream7_install
-octopus_video_install
+#octopus_video_install
 #openacademy_install
 openatrium_install
 openchurch_install

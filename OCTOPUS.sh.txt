@@ -185,7 +185,7 @@ _PHP_CLI_VERSION=5.2
 ### OPC ----------- OpenPublic (off)
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
-### OVO ----------- Octopus Video
+### OVO ----------- Octopus Video (off)
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart D7
