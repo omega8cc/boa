@@ -142,7 +142,7 @@ Octopus can install the platforms listed below:
  Feature Server 1.1 ----------- http://bit.ly/fserver
  Managing News 1.2.2 ---------- http://managingnews.com
  NodeStream 1.5 --------------- http://nodestream.org
- NodeStream 2.0-beta4 --------- http://nodestream.org
+ NodeStream 2.0-beta5 --------- http://nodestream.org
  Open Atrium 1.5.1 ------------ http://openatrium.com
  Open Deals 1.5 --------------- http://opendealsapp.com
  Open Outreach 1.0-rc6 -------- http://openoutreach.org
