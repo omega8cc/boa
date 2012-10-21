@@ -157,7 +157,7 @@ _PHP_CLI_VERSION=5.2
 ### using the symbols listed below.
 ###
 ### D8D ----------- Drupal 8 dev-tested
-### D8E ----------- Drupal 8 dev-edge
+### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### D5P ----------- Pressflow 5
@@ -173,16 +173,16 @@ _PHP_CLI_VERSION=5.2
 ### ELS ----------- ELMS
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
-### MPG ----------- MartPlug
+### MPG ----------- MartPlug (off)
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6
 ### OAM ----------- Open Atrium
-### OAY ----------- Open Academy
+### OAY ----------- Open Academy (off)
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
-### OEE ----------- Open Enterprise
+### OEE ----------- Open Enterprise (off)
 ### OOH ----------- Open Outreach
-### OPC ----------- OpenPublic
+### OPC ----------- OpenPublic (off)
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
 ### OVO ----------- Octopus Video
@@ -190,12 +190,12 @@ _PHP_CLI_VERSION=5.2
 ### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
-### VOA ----------- Videola
+### VOA ----------- Videola (off)
 ###
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="D7P D6P OAM MNS NS7 MPG"
+### _PLATFORMS_LIST="D7P D6P OAM MNS NS7 OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D OAM"
 

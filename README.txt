@@ -137,12 +137,10 @@ Octopus can install the platforms listed below:
  Commons 2.10 ----------------- http://acquia.com/drupalcommons
  Conference 1.0-rc2 ----------- http://usecod.com
  Drupal 7.16.1 ---------------- http://drupal.org/drupal-7.16
- Drupal 8.0-dev-edge ---------- http://bit.ly/drupal-eight
  Drupal 8.0-dev-tested -------- http://bit.ly/drupal-eight
  ELMS 1.0-beta1 --------------- http://elms.psu.edu
  Feature Server 1.1 ----------- http://bit.ly/fserver
  Managing News 1.2.2 ---------- http://managingnews.com
- MartPlug 1.0-beta1b ---------- http://drupal.org/project/martplug
  NodeStream 1.5 --------------- http://nodestream.org
  NodeStream 2.0-beta4 --------- http://nodestream.org
  Octopus Video 1.0-alpha6 ----- http://octopusvideo.org
@@ -158,6 +156,29 @@ Octopus can install the platforms listed below:
  ProsePoint 0.43 -------------- http://prosepoint.org
  Ubercart 2.10.1 (int) -------- http://ubercart.org
  Ubercart 3.2.1 --------------- http://ubercart.org
+
+There are also platforms temporarily disabled for new installs,
+because they are either outdated, with numerous security updates
+not applied by maintainer, or sometimes no longer possible to use
+with Drush based install because of fatal errors, or even abandoned
+with no development for months and no issues fixed in the meantime.
+
+Note that we still support some semi-abandoned distros listed above,
+but at some point we may no longer be able to maintain their security
+and version updates, and they may be moved to the second list below.
+
+We also removed D8-edge platform, since it is broken too often
+because of D8 own critical bugs. We will keep debugging it to add
+latest D8-tested platform to every release.
+
+The platforms listed below can be re-added when their maintainers
+will fix all critical issues and/or apply required updates:
+
+ Drupal 8.0-dev-edge ---------- http://bit.ly/drupal-eight
+ MartPlug --------------------- http://drupal.org/project/martplug
+ Open Academy ----------------- http://drupal.org/project/openacademy
+ Open Enterprise -------------- http://drupal.org/project/openenterprise
+ OpenPublic ------------------- http://openpublicapp.com
  Videola 1.0-alpha3 ----------- http://videola.tv
 
 All D5/D6 platforms have been enhanced using Pressflow Drupal core.

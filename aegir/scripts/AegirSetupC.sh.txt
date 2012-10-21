@@ -2655,7 +2655,7 @@ drupal_edge_8_install
 elms_install
 fserver_install
 managingnews_install
-martplug_install
+#martplug_install
 nodestream6_install
 nodestream7_install
 octopus_video_install
@@ -2672,7 +2672,7 @@ panopoly_install
 prosepoint_install
 ubercart6_install
 ubercart7_install
-videola_install
+#videola_install
 
 
 ###---### remove some module and themes for all
