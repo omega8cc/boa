@@ -303,6 +303,7 @@ fi
 #
 # patch d7 core
 patch_d7_core () {
+cd $_CORE_DISTRO
 if [ ! -e "taxonomy-7.7.patch" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.12.patch ./
   patch -p0 < taxonomy-7.12.patch &> /dev/null
@@ -513,6 +514,10 @@ upgrade_ctools_entity_more () {
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  cd apps
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
+  patch -p1 < apps_msg.patch &> /dev/null
+  cd ../
 }
 #
 # remove default core seven profiles
@@ -1885,9 +1890,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/openacademy-search-off.patch ./
     patch -p1 < openacademy-search-off.patch &> /dev/null
   fi
-  cd $_THIS_PRPATH/modules/contrib/apps
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
-  patch -p1 < apps_msg.patch &> /dev/null
   cd $_THIS_PRPATH/modules
   get_distro_ext "openacademy_apps.tar.gz" &> /dev/null
   mkdir -p $_THIS_PRPATH/modules/panopoly_apps
