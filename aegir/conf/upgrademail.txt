@@ -5,13 +5,6 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
   https://aegir.dragon.ny.host8.biz
 
 
-=== NEW VIDEO TUTORIALS
-
-  If you like video tutorials, you may start this time here:
-
-  http://bit.ly/aegir8cc
-
-
 === IMPORTANT CHANGES IN THIS RELEASE
 
 * While your Aegir instance comes with FTPS/SSH/SFTP access,
@@ -21,14 +14,14 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
   http://omega8.cc/dev/ftp-tls.txt
 
 
-=== NEW FEATURES - A LONG LIST THIS TIME
+=== NEW FEATURES - A LONG LIST AGAIN
 
 * Complete list is available on our website at:
 
   http://omega8.cc/updates
 
 
-=== RECOMMENDED ARTICLES
+=== RECOMMENDED (some updated) ARTICLES
 
   http://omega8.cc/the-biggest-misunderstanding-ever-122
   http://omega8.cc/the-best-recipes-for-disaster-139
@@ -36,7 +29,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
 
   http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
   http://omega8.cc/how-to-add-custom-platform-properly-140
-  http://omega8.cc/managing-your-code-in-the-aegir-style-110
+  http://omega8.cc/managing-your-code-in-the-aegir-style-110 (video)
 
   http://omega8.cc/speed-booster-redis-boost-and-advagg-108
 
