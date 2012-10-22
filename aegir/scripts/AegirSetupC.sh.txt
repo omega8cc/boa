@@ -1999,9 +1999,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
-  rm -f -r $_THIS_PRPATH/modules/contrib/backup_migrate
   #upgrade_ctools_entity_more
-  sed -i "s/^dependencies.*openchurch_video_demo_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   create_dirs
   themes_for_d7
   patch_d7_core
