@@ -384,7 +384,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
           setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '0';
-        $use_redis = FALSE;
       }
     }
 
