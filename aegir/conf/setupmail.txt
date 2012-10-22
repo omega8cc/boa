@@ -171,8 +171,10 @@ http://omega8.cc/the-best-recipes-for-disaster-139
 http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
 
 http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
+http://omega8.cc/how-to-add-custom-platform-properly-140
 http://omega8.cc/managing-your-code-in-the-aegir-style-110
-http://omega8.cc/speed-booster-cache-boost-and-advagg-108
+
+http://omega8.cc/speed-booster-redis-boost-and-advagg-108
 
 http://omega8.cc/how-to-disable-all-caching-and-aggregation-115
 http://omega8.cc/extra-modules-available-in-all-platforms-123
