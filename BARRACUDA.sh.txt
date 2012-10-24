@@ -1180,12 +1180,7 @@ fix_php_ext () {
 #
 # Fix php.ini file to add newrelic.ini
 fix_php_ini_newrelic () {
-  _X86_64_TEST=`uname -m`
-  if [ "$_X86_64_TEST" = "x86_64" ] ; then
-    _NR_TPL="/usr/lib64/newrelic-php5/scripts/newrelic.ini.template"
-  else
-    _NR_TPL="/usr/lib/newrelic-php5/scripts/newrelic.ini.template"
-  fi
+  _NR_TPL="/opt/tmp/$_BOA_REPO_NAME/aegir/conf/newrelic.ini"
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
@@ -1199,6 +1194,7 @@ fix_php_ini_newrelic () {
     else
       echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
+    sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_THIS_FILE &> /dev/null
   fi
 }
 #
@@ -2113,6 +2109,22 @@ barracuda_cnf () {
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     sleep 1
+    _CHECK_HOST=`uname -n`
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf
+      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf
+      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf
+      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf
+      sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf
+      sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf
+      sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf
+      sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf
+      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf
+      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf
+      echo 5.3 > /data/disk/*/log/cli.txt
+      echo 5.2 > /data/disk/*/log/fpm.txt
+    fi
     echo " "
     while read line ; do
       echo "$line"
@@ -2948,7 +2960,15 @@ install_newrelic () {
       st_runner "apt-get update -y" &> /dev/null
       st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
       NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
-      sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+      if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
+        echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
+        echo "license_key=$_NEWRELIC_KEY" >> /etc/newrelic/newrelic.cfg
+        echo "pidfile=/var/run/newrelic-daemon.pid" >> /etc/newrelic/newrelic.cfg
+        echo "logfile=/var/log/newrelic/newrelic-daemon.log" >> /etc/newrelic/newrelic.cfg
+        echo "loglevel=error" >> /etc/newrelic/newrelic.cfg
+      else
+        sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+      fi
       sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/nrsysmond.cfg &> /dev/null
     fi
   fi
