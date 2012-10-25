@@ -2775,6 +2775,12 @@ install_upgrade_nginx () {
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
+      if [[ "$_NGINX_V_INSTALLED" =~ "http_flv_module" ]] && [[ "$_NGINX_V_INSTALLED" =~ "http_mp4_module" ]] ; then
+        true
+      else
+        _NGINX_INSTALL_REQUIRED=YES
+        msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include pseudo-streaming support"
+      fi
     fi
     mrun "sleep 1"
   else
