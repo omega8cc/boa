@@ -2274,6 +2274,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   remove_default_core_seven_profiles
   #cd $_THIS_PRPATH/modules/contrib
   #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  rm -f -r feeds
+  wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-7.x-2.0-alpha7.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
   create_dirs
   themes_for_d7
   patch_d7_core
