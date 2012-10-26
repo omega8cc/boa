@@ -1942,6 +1942,7 @@ barracuda_cnf () {
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
+    echo "_NEWRELIC_KEY=\"$_NEWRELIC_KEY\"" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -2107,6 +2108,14 @@ barracuda_cnf () {
     if [[ "$_USE_RESTRICTED_WWW_SHELL_TEST" =~ "_USE_RESTRICTED_WWW_SHELL" ]] ; then
       sed -i "s/.*_USE_RESTRICTED_WWW_SHELL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY /root/.barracuda.cnf)
+    if [[ "$_NEWRELIC_KEY_TEST" =~ "_NEWRELIC_KEY" ]] ; then
+      true
+    else
+      if [ ! -z "$_NEWRELIC_KEY" ] ; then
+        echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
+      fi
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
