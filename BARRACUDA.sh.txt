@@ -4064,14 +4064,11 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   _APT_SQUEEZE="openjdk-6-jdk"
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    if [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-      st_runner "apt-get remove nginx-extras -y" &> /dev/null
-    fi
-  else
-    st_runner "apt-get remove nginx -y" &> /dev/null
-  fi
+  st_runner "apt-get remove nginx-extras -y" &> /dev/null
+  st_runner "apt-get remove nginx -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get clean -y --force-yes" &> /dev/null
 fi
 if [ "$_USE_MEMCACHED" = "YES" ] ; then
   _EXTRA_LIB_APT="libmcrypt-dev libmemcache-dev"
