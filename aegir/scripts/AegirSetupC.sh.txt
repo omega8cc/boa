@@ -2674,7 +2674,7 @@ drupal5_install
 drupal6_install
 drupal7_install
 drupal8_install
-drupal_edge_8_install
+#drupal_edge_8_install
 elms_install
 fserver_install
 managingnews_install
