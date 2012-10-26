@@ -1,17 +1,134 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.0.3
+Your Aegir Hosting System has been upgraded to version BOA-2.0.4
 
   https://aegir.dragon.ny.host8.biz
 
 
+=== GREAT NEWS ABOUT OUR AEGIR HOSTED SERVICE
+
+* As you probably know already from our online announcements,
+  we have introduced some amazing new feature, which allows us
+  to host all your sites on the fastest possible hardware setup,
+  while providing much more disk space than before.
+
+  Your sites are powered by Hybrid Storage, which is transparently
+  built from SSD and SAS drives. You have got it a few months
+  before some well known company introduced its "Fusion Drive"
+  powered iMachines ;)
+
+  Here is how it works in our setup. The operating system powering
+  your Aegir instance runs on the SSD (Solid-State Drive) exclusively.
+  Also all daemons and all their related files, caches and logs
+  are running/are stored on the SSD space.
+
+  This makes your databases and also Speed Booster caching really,
+  really fast. But there is more: also all built-in Drupal platforms
+  files live on the super-fast SSD space - which is yet another
+  reason to use them instead of custom platforms, if possible.
+
+  Only the files you will upload or your sites will create, plus
+  all databases and files backups created by BOA system or Aegir
+  tasks will use SAS (Serial Attached SCSI) drives space, glued
+  with your SSD space transparently behind the scenes.
+
+  This setup allows us to maximize the speed of your sites, but also
+  to offer much more space for your files - both static files, like
+  images, and your custom code you will upload to extend built-in
+  platforms and to create your custom platforms.
+
+  You could think that the PHP code stored on SAS space is slower
+  than that stored on SSD, and it is, but only on the first read,
+  since later it is stored/read from RAM memory anyway, optimized
+  with APC, so effectively it almost always offers the same speed.
+
+  This advanced technology is currently used in all our locations:
+  California, Texas, New York, Netherlands and Singapore, and all
+  existing Aegir instances we host are powered by the same magic,
+  developed to make your sites faster than the blink of an eye.
+
+
 === IMPORTANT CHANGES IN THIS RELEASE
 
-* While your Aegir instance comes with FTPS/SSH/SFTP access,
-  there is no longer plain, unencrypted FTP access available.
-  Compatible FTP-SSL/TLS clients are listed here:
+* All newer Aegir instances with only PHP 5.3 version installed,
+  received also PHP 5.2.17 version, ready to use for Drupal 6 based
+  sites, especially when you still use modules which are not fully
+  compatible with PHP 5.3 - please read below for more details.
 
-  http://omega8.cc/dev/ftp-tls.txt
+  We are changing also default PHP-FPM version used by all D6 sites
+  to the old PHP-FPM 5.2.17, but we can set it to latest 5.3.18,
+  on request submitted via: http://omega8.cc/support
+
+  NOTE: Only Aegir instances we host or manage remotely are
+        affected by this change, while self-hosted instances
+        are not automatically re-configured. Note also that
+        this change is effective only for newer instances,
+        since it was a default setup on older instances anyway.
+
+* At the same time we are changing the default Aegir PHP-CLI backend
+  to the latest 5.3.18 version from previous default 5.2.17
+
+  This step is required before we will introduce newest Drush 5
+  as a default version on all servers (we still use our modified
+  4.6 version, which supports also Drupal 8), since Drush 5
+  requires PHP 5.3 or newer.
+
+  NOTE: Only Aegir instances we host or manage remotely are
+        affected by this change, while self-hosted instances
+        are not automatically re-configured.
+
+  If you didn't know, the old instances used PHP-CLI 5.2 in the
+  backend for all Drupal versions, while forcing PHP-FPM 5.2.17
+  for all D5 and D6 based sites and PHP-FPM 5.3 for all D7 sites
+  and the Aegir control panel, which is still D6 based, but running
+  already on a modern PHP-FPM 5.3 frontend.
+
+  Now any Drupal 5 based site you host will still use
+  its only compatible 5.2.17 PHP-FPM version for web access,
+  but you will not be able to run any Aegir tasks on them.
+
+  Yes, we are about to drop Drupal 5 support in the near future.
+
+  If you still need the support for Drupal 5 in the Aegir backend,
+  please submit a support request via http://omega8.cc/support,
+  but please be aware that reverting your backend to PHP-CLI 5.2.17
+  will break support for some newer distros, which use modules
+  depending on PHP 5.3 or newer.
+
+  NOTE: You may wonder why we are changing Aegir backend to
+        PHP-CLI 5.3, while changing frontend version for D6 sites
+        to PHP-FPM 5.2 on instances already using 5.3 - The reason
+        is simple: 5.2 is still more safe to use with Drupal 6
+        and we want all instances to use the same setup before
+        we will introduce next changes in the near future, to make
+        this process consistent and avoid breaking any D6 based
+        sites, just in case some of them still use code not yet
+        compatible with PHP-FPM 5.3, and at the same time, by
+        using PHP-CLI 5.3 in the backend, we are providing you
+        a safer method to reveal possible issues without affecting
+        your visitors, to help you make your D6 sites fully
+        compatible with newer PHP 5.3 version.
+
+* We plan to shorten BOA system release and upgrades cycle
+  to 1-2 months max, so we have decided to remove support for some
+  outdated distros. We have tried to manage both security and version
+  updates for some abandoned or semi-abandoned distros, to keep them
+  useful for you, but since it involves increasing amount of work
+  because of cascades of no longer compatible patches and various
+  dependencies, we have decided that it is time to stop doing it,
+  if their original maintainers no longer care about their users.
+
+  Here is a list of distros we no longer support:
+
+  MartPlug ------------ http://drupal.org/project/martplug
+  Octopus Video ------- http://octopusvideo.org
+  Open Academy -------- http://drupal.org/project/openacademy
+  Open Enterprise ----- http://drupal.org/project/openenterprise
+  OpenPublic ---------- http://openpublicapp.com
+  Videola ------------- http://videola.tv
+
+  The platforms listed above can be re-added when their maintainers
+  will fix all critical issues and/or apply required updates.
 
 
 === NEW FEATURES - A LONG LIST AGAIN
@@ -21,7 +138,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.3
   http://omega8.cc/updates
 
 
-=== RECOMMENDED (some updated) ARTICLES
+=== RECOMMENDED (including some updated) ARTICLES
 
   http://omega8.cc/the-biggest-misunderstanding-ever-122
   http://omega8.cc/the-best-recipes-for-disaster-139
