@@ -248,7 +248,7 @@ Contrib:
  imagecache_external -------- [D6,D7] --- [S]
  javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
- login_security ------------- [D6] ------ [S] [B]
+ login_security ------------- [D6,D7] --- [S] [B]
  nocurrent_pass ------------- [D7] ------ [S] [B]
  performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]

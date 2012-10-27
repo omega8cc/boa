@@ -458,6 +458,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.x-dev.tar.gz
