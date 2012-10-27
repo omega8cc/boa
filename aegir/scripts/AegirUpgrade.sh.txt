@@ -83,7 +83,7 @@ update_php_cli_drush () {
 #
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://files.aegir.cc/dev/$1
+    wget -q -U iCab http://files.aegir.cc/dev/$_AEGIR_VERSION/$1
     tar -xzf $1
     rm -f $1
   fi

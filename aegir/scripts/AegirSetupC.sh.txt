@@ -1335,7 +1335,7 @@ msg "DISTRO: $_F_DRUPAL8 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/distro/$_THIS_DISTRO.tar.gz
+  get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
   tar -xzf $_THIS_DISTRO.tar.gz
   rm -f $_THIS_DISTRO.tar.gz
   rm -f -r $_CORE_DISTRO/.git
