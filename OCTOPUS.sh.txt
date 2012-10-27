@@ -1373,19 +1373,36 @@ else
 fi
 #
 #
+if [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
+  _FPM_USED="both for D6 and D7 sites"
+else
+  _FPM_USED="for D6 and 5.3 for D7 sites"
+fi
 echo " "
 msg "START -> checkpoint: "
-cat <<EOF
+if [ "$_STATUS" = "INIT" ] ; then
+  cat <<EOF
 
   * Your e-mail address appears to be $_MY_EMAIL - is that correct?
   * Your client e-mail address appears to be $_CLIENT_EMAIL - is that correct?
   * Your Aegir control panel for this instance will be available at https://$_DOMAIN.
   * Your Aegir system user for this instance will be $_USER.
-  * This Octopus instance will use PHP-FPM $_PHP_FPM_VERSION and PHP-CLI $_PHP_CLI_VERSION
-  * This Octopus instance platforms: $_PLATFORMS_LIST
-  * This Octopus instance options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
+  * This Octopus will use PHP-CLI $_PHP_CLI_VERSION and PHP-FPM $_PHP_FPM_VERSION $_FPM_USED
+  * This Octopus includes platforms: $_PLATFORMS_LIST / Unsupported: $_ALLOW_UNSUPPORTED
+  * This Octopus options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
 
 EOF
+else
+  cat <<EOF
+
+  * Your Aegir control panel for this instance is available at https://$_DOMAIN.
+  * Your Aegir system user for this instance is $_USER.
+  * This Octopus will use PHP-CLI $_PHP_CLI_VERSION and PHP-FPM $_PHP_FPM_VERSION $_FPM_USED
+  * This Octopus includes platforms: $_PLATFORMS_LIST / Unsupported: $_ALLOW_UNSUPPORTED
+  * This Octopus options are listed as $_CLIENT_OPTION / $_CLIENT_SUBSCR / $_CLIENT_CORES C
+
+EOF
+fi
 echo " "
 if prompt_yes_no "Do you want to proceed?" ; then
   true
