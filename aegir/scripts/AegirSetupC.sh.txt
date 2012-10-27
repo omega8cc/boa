@@ -414,12 +414,12 @@ replace_drupal6_core () {
 #
 # enable drupal 6 contrib
 enable_drupal6_contrib () {
-  sed -i "s/'dblog',/'robotstxt', 'path_alias_cache',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
 }
 #
 # enable drupal 6 admin
 enable_drupal6_admin () {
-  sed -i "s/'path_alias_cache',/'path_alias_cache', 'admin',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
 }
 #
 # add drupal 6 translations
