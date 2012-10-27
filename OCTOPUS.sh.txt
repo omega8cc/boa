@@ -200,6 +200,17 @@ _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D OAM"
 
 
 ###----------------------------------------###
+### UNSUPPORTED (off) DISTROS INSTALL      ###
+###----------------------------------------###
+###
+### If you wish to install also distros listed
+### above as (off), change the option below
+### to: _ALLOW_UNSUPPORTED=YES
+###
+_ALLOW_UNSUPPORTED=NO
+
+
+###----------------------------------------###
 ### AUTOPILOT MODE                         ###
 ###----------------------------------------###
 ###
@@ -625,6 +636,7 @@ octopus_cnf () {
     echo "_USER=\"$_USER\"" >> /root/.$_USER.octopus.cnf
     echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.$_USER.octopus.cnf
     echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\"" >> /root/.$_USER.octopus.cnf
+    echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.$_USER.octopus.cnf
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.$_USER.octopus.cnf
     echo "_HM_ONLY=$_HM_ONLY" >> /root/.$_USER.octopus.cnf
     echo "_O_CONTRIB_UP=$_O_CONTRIB_UP" >> /root/.$_USER.octopus.cnf
@@ -693,6 +705,12 @@ octopus_cnf () {
       fi
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
+    fi
+    _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.$_USER.octopus.cnf)
+    if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
+      true
+    else
+      echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.$_USER.octopus.cnf
     fi
     msg "NOTE! Please review all config options displayed below"
     sleep 3
@@ -795,6 +813,7 @@ for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
   sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
   sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
+  sed -i "s/EDIT_ALLOW_UNSUPPORTED/$_ALLOW_UNSUPPORTED/g" $Files
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files

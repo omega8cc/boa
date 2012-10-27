@@ -85,6 +85,7 @@ _VIDEOLA=EDIT_VIDEOLA
 #
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _ALL_DISTRO=EDIT_ALL_DISTRO
+_ALLOW_UNSUPPORTED=EDIT_ALLOW_UNSUPPORTED
 _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
@@ -2630,28 +2631,32 @@ drupal5_install
 drupal6_install
 drupal7_install
 drupal8_install
-#drupal_edge_8_install
 elms_install
 fserver_install
 managingnews_install
-#martplug_install
 nodestream6_install
 nodestream7_install
-#octopus_video_install
-#openacademy_install
 openatrium_install
 openchurch_install
 opendeals_install
-#openenterprise_install
 openoutreach_install
-#openpublic_install
 openpublish_install
 openscholar_install
 panopoly_install
 prosepoint_install
 ubercart6_install
 ubercart7_install
-#videola_install
+
+
+if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
+  drupal_edge_8_install
+  martplug_install
+  octopus_video_install
+  openacademy_install
+  openenterprise_install
+  openpublic_install
+  videola_install
+fi
 
 
 ###---### remove some module and themes for all
