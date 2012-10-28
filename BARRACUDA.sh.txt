@@ -1236,16 +1236,24 @@ update_php_conf () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-    cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
+      true
+    else
+      cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+      cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+    fi
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-    cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+      true
+    else
+      cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+      cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    fi
   fi
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
@@ -1346,13 +1354,17 @@ update_php_conf () {
 update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
-    sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
-    sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
-    sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
-    if [ ! -e "/etc/mysql/skip-name-resolve.txt" ] ; then
-      sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
+      true
+    else
+      cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
+      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
+      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
+      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+      if [ ! -e "/etc/mysql/skip-name-resolve.txt" ] ; then
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+      fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
@@ -1816,16 +1828,20 @@ tune_memory_limits () {
   sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf
   sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
-    sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
-    sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf
-    sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf
-    sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
-    sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
-    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
-    sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
-    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
+      true
+    else
+      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
+      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
+      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf
+      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf
+      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
+      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
+      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
+      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
+      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
+      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
+    fi
   fi
   tune_web_server_config
 }
@@ -1880,8 +1896,12 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        _BUILD_FROM_SRC=YES
-        _DB_SERVER=MariaDB
+        if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+          true
+        else
+          _BUILD_FROM_SRC=YES
+          _DB_SERVER=MariaDB
+        fi
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: Bye (1)"
@@ -2132,19 +2152,23 @@ barracuda_cnf () {
     sleep 1
     _CHECK_HOST=`uname -n`
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf
-      sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf
-      sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf
-      sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf
-      sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf
-      sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf
-      sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf
-      sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf
-      sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf
-      echo 5.3 > /data/disk/*/log/cli.txt
-      echo 5.2 > /data/disk/*/log/fpm.txt
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+        true
+      else
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf
+        sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf
+        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf
+        echo 5.3 > /data/disk/*/log/cli.txt
+        echo 5.2 > /data/disk/*/log/fpm.txt
+      fi
     fi
     echo " "
     while read line ; do
@@ -2155,8 +2179,12 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        _BUILD_FROM_SRC=YES
-        _DB_SERVER=MariaDB
+        if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+          true
+        else
+          _BUILD_FROM_SRC=YES
+          _DB_SERVER=MariaDB
+        fi
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: stored in the /root/.barracuda.cnf config file"
@@ -2512,8 +2540,12 @@ install_php_modern () {
     st_runner "make --quiet install" 2> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+      true
+    else
+      cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+    fi
   fi
   _NEW_LTS=NO
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -5857,7 +5889,11 @@ if [ -e "/usr/sbin/csf" ] ; then
     true
   else
     if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-      csf_install
+      if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
+        true
+      else
+        csf_install
+      fi
     fi
   fi
   if [ -e "/var/xdrago/log/lastFire" ] ; then

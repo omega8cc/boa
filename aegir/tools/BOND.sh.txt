@@ -298,16 +298,24 @@ update_php_conf () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-    cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
+      true
+    else
+      cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
+      cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+    fi
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-    cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+      true
+    else
+      cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+      cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    fi
   fi
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
@@ -435,7 +443,11 @@ restore_default_sql () {
   cd /var/xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/1800/900/g" /var/xdrago/minute.sh &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
+      true
+    else
+      sed -i "s/1800/900/g" /var/xdrago/minute.sh &> /dev/null
+    fi
   fi
   chmod 700 /var/xdrago/minute.sh
 }
@@ -523,8 +535,12 @@ tune_web_server_config () {
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
+      true
+    else
+      sed -i "s/300s/180s/g"                                                   /opt/etc/php-fpm.conf &> /dev/null
+      sed -i "s/300s/180s/g"                                                   /opt/local/etc/php53-fpm.conf &> /dev/null
+    fi
   fi
 }
 #
@@ -658,16 +674,20 @@ tune_memory_limits () {
   sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf
   sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
-    sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
-    sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf
-    sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf
-    sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
-    sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
-    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
-    sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
-    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
-    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
+    if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
+      true
+    else
+      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
+      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
+      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf
+      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf
+      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
+      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
+      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
+      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
+      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
+      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
+    fi
   fi
   tune_web_server_config
 }
