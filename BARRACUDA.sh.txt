@@ -1090,12 +1090,14 @@ install_redis_src () {
         true
       else
         if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
+          cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
         fi
       fi
     fi
   else
     if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
+      cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
     fi
   fi
