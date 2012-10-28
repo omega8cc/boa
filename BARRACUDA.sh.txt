@@ -1089,13 +1089,15 @@ install_redis_src () {
       if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
         true
       else
-        true
-        #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+        fi
       fi
     fi
   else
-    true
-    #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+    if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+    fi
   fi
   update_redis_password
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
@@ -4954,19 +4956,30 @@ fi
 
 
 ###--------------------###
-_REDIS_INSTALL_REQUIRED=NO
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
   if [ "$_REDIS_V_INSTALLED" = "$_REDIS_VERSION" ] ; then
-    _REDIS_INSTALL_REQUIRED=NO
+    _REDIS_INSTALL_MISMATCH=NO
     msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, no upgrade/rebuild required"
   else
-    _REDIS_INSTALL_REQUIRED=YES
+    _REDIS_INSTALL_MISMATCH=YES
     msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, upgrade/rebuild required"
   fi
   mrun "sleep 1"
+else
+  if [ -x "/usr/local/bin/redis-server" ] || [ -x "/usr/bin/redis-server" ] ; then
+    _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
+    if [ "$_REDIS_V_INSTALLED" = "$_REDIS_VERSION" ] ; then
+      _REDIS_INSTALL_MISMATCH=NO
+      msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, no rebuild required"
+    else
+      _REDIS_INSTALL_MISMATCH=YES
+      msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, rebuild required"
+    fi
+    mrun "sleep 1"
+  fi
 fi
-if [ "$_REDIS_INSTALL_REQUIRED" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
