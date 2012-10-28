@@ -1048,7 +1048,7 @@ update_redis_password () {
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
   mrun "sleep 1"
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
+  if [ "$_REL_VERSION" = "dummy" ] ; then
     st_runner "$_INSTAPP redis-server" 2> /dev/null
   else
     if [ ! -e "/var/lib/redis" ] ; then
@@ -1086,10 +1086,16 @@ install_redis_src () {
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+      if [[ "$_THISHOST" =~ "node.us.host8." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
+        true
+      else
+        true
+        #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+      fi
     fi
   else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
+    true
+    #cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
   fi
   update_redis_password
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
@@ -4948,7 +4954,19 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+_REDIS_INSTALL_REQUIRED=NO
+if [ "$_STATUS" = "UPGRADE" ] ; then
+  _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
+  if [ "$_REDIS_V_INSTALLED" = "$_REDIS_VERSION" ] ; then
+    _REDIS_INSTALL_REQUIRED=NO
+    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, no upgrade/rebuild required"
+  else
+    _REDIS_INSTALL_REQUIRED=YES
+    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, upgrade/rebuild required"
+  fi
+  mrun "sleep 1"
+fi
+if [ "$_REDIS_INSTALL_REQUIRED" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
