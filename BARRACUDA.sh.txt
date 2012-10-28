@@ -795,7 +795,7 @@ _NGINX_VERSION=1.3.7
 _PHP_VERSION_NEW=5.3.18
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.35
-_REDIS_VERSION=2.4.17
+_REDIS_VERSION=2.6.2
 _MARIADB_VERSION=5.5.28
 _PERCONA_VERSION=5.5.27
 
@@ -1096,8 +1096,10 @@ install_redis_src () {
       fi
     fi
   else
-    if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
-      cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
+    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
+      if [ -e "/etc/redis/redis.conf" ] ; then
+        cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
+      fi
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
     fi
   fi
@@ -4960,6 +4962,9 @@ fi
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
+  if [[ "$_REDIS_V_INSTALLED" =~ "sha" ]] ; then
+    _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | tr -d "v=" | cut -d" " -f3 | awk '{ print $1}'`
+  fi
   if [ "$_REDIS_V_INSTALLED" = "$_REDIS_VERSION" ] ; then
     _REDIS_INSTALL_MISMATCH=NO
     msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, no upgrade/rebuild required"
@@ -4971,6 +4976,9 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 else
   if [ -x "/usr/local/bin/redis-server" ] || [ -x "/usr/bin/redis-server" ] ; then
     _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
+    if [[ "$_REDIS_V_INSTALLED" =~ "sha" ]] ; then
+      _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | tr -d "v=" | cut -d" " -f3 | awk '{ print $1}'`
+    fi
     if [ "$_REDIS_V_INSTALLED" = "$_REDIS_VERSION" ] ; then
       _REDIS_INSTALL_MISMATCH=NO
       msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, no rebuild required"
