@@ -9,7 +9,9 @@ else
   /etc/init.d/redis-server stop
   sleep 1
   killall -9 redis-server
+  rm -f /var/run/redis.pid
   rm -f /var/lib/redis/*
+  sleep 1
   /etc/init.d/redis-server start
   if test -f /etc/init.d/tomcat ; then
     /etc/init.d/tomcat stop

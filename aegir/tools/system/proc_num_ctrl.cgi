@@ -4,6 +4,7 @@
 ### this is a monitor for this server
 ###
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
+`/etc/init.d/redis-server start` if (!-f "/var/run/redis.pid");
 &global_action;
 foreach $USER (sort keys %li_cnt) {
   print " $li_cnt{$USER}\t$USER\n";
@@ -22,7 +23,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /php-fpm/) {$fpmlives = "YES"; $fpmsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /postfix/) {$postfixlives = "YES"; $postfixsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pure-ftpd/) {$ftplives = "YES"; $ftpsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /redis/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
 }
