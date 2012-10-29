@@ -1336,8 +1336,6 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
-  tar -xzf $_THIS_DISTRO.tar.gz
-  rm -f $_THIS_DISTRO.tar.gz
   rm -f -r $_CORE_DISTRO/.git
   rm -f $_CORE_DISTRO/*.txt
   rm -f $_CORE_DISTRO/core/*.txt
