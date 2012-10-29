@@ -1042,13 +1042,6 @@ update_redis_password () {
     chown redis:redis /etc/redis/redis.conf
     chmod 0600 /etc/redis/redis.conf
   fi
-  _REDIS_SYS_TEST=$(grep "vm.overcommit_memory" /etc/sysctl.conf)
-  if [[ "$_REDIS_SYS_TEST" =~ "vm.overcommit_memory" ]] ; then
-    true
-  else
-    echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
-    sysctl vm.overcommit_memory=1 &> /dev/null
-  fi
 }
 #
 # Install Redis from sources.
