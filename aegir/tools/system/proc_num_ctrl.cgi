@@ -13,6 +13,7 @@ foreach $USER (sort keys %li_cnt) {
   if ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
 }
 foreach $COMMAND (sort keys %li_cnt) {
+  if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
@@ -28,6 +29,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\t\tGLOBAL";
+print "\n $namedsumar Bind procs\t\tGLOBAL" if ($buagentlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
@@ -42,6 +44,7 @@ print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
 print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
+`/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
