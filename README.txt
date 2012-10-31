@@ -146,7 +146,7 @@ Octopus can install the platforms listed below:
  Open Deals 1.9 --------------- http://opendealsapp.com
  Open Outreach 1.0-rc6 -------- http://openoutreach.org
  OpenChurch 1.11-beta3 -------- http://openchurchsite.com
- OpenPublish 3.0-beta6 -------- http://openpublishapp.com
+ OpenPublish 3.0-beta7 -------- http://openpublishapp.com
  OpenScholar 2.0-rc1 ---------- http://openscholar.harvard.edu
  Panopoly 1.0-rc1 ------------- http://drupal.org/project/panopoly
  Pressflow 5.23 --------------- http://pressflow.org
