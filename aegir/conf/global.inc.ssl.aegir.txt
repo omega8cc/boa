@@ -246,9 +246,13 @@ else {
   header('X-Allow-Redis: NO');
 }
 
-if (!isset($_SERVER['HTTP_USER_AGENT'])) {
-  $use_redis = FALSE;
-  $use_cache = FALSE;
+if (function_exists('drush_get_command')) {
+  $command = drush_get_command();
+  $command = explode(" ", $command['command']);
+  if (preg_match("/^provision-install/", $command[0])) {
+    $use_redis = FALSE;
+    $use_cache = FALSE;
+  }
 }
 
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
