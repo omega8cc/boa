@@ -734,8 +734,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     prepare_pressflow_core
   fi
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/1.x-6.x.git $_CORE_DISTRO &> /dev/null
-  rm -f -r $_CORE_DISTRO/.git
+  get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
   replace_drupal6_core
   enable_drupal6_contrib
   sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
