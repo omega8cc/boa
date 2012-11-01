@@ -4913,7 +4913,11 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
-  sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
+  if [ "$_REL_VERSION" = "lenny" ] ; then
+    true
+  else
+    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
+  fi
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
   st_runner "service ssh restart" &> /dev/null
   touch /var/log/umask_fixed_shell_sftp.log
