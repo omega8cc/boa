@@ -2522,8 +2522,7 @@ msg "DISTRO: $_F_UBER_CART_SEVEN installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  git clone git://git.acquia.com/drupal/branches/7.x.git $_CORE_DISTRO &> /dev/null
-  rm -f -r $_CORE_DISTRO/.git
+  get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
   replace_drupal7_core
   init_core_distro_seven_root
   sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_THIS_PRPATH/acquia.info &> /dev/null
