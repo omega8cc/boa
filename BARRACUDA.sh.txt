@@ -5217,6 +5217,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_USE_STOCK" = "YES" ] ; then
+    su -s /bin/bash aegir -c "drush cache-clear drush >/var/aegir/install.log 2>&1"
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
     else
@@ -5242,6 +5243,9 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+  fi
+  if [ "$_USE_STOCK" = "YES" ] ; then
+    su -s /bin/bash aegir -c "drush cache-clear drush &> /dev/null"
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."
   su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"

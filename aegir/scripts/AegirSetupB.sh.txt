@@ -439,6 +439,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   AEGIR_HOST=`uname -n`
   msg "$_STATUS B: Running hostmaster-install, please wait..."
   if [ "$_USE_STOCK" = "YES" ] ; then
+    $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
     else
@@ -462,6 +463,9 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
+  if [ "$_USE_STOCK" = "YES" ] ; then
+    $_DRUSHCMD cache-clear drush &> /dev/null
+  fi
   msg "$_STATUS B: Running hosting-dispatch (1/3), please wait..."
   drush '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
