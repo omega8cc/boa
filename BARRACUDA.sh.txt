@@ -4948,7 +4948,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
-  if [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     true
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
