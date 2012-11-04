@@ -3,7 +3,7 @@
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
 $status="CLEAN";
-$now_is=`date +%b:%e:%H:%M`;
+$now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);
 &makeactions;
 if ($status ne "CLEAN") {
@@ -21,6 +21,12 @@ local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     if ($line =~ /(Checking table)/i || $line =~ /(is marked as crashed)/i) {
       local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
+      if ($DAYX =~ /^\s+/) {
+        $DAYX =~ s/[^0-9]//g;
+      }
+      if ($DAYX !~ /^0/ && $DAYX =~ /[1-9]{1,1}/) {
+        $DAYX = "0$DAYX";
+      }
       chomp($TIMEX);
       $TIMEX =~ s/[^0-9\:]//g;
       if ($TIMEX =~ /^[0-9]/) {
