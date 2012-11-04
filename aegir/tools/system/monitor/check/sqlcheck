@@ -37,9 +37,9 @@ local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
           print "\n===[$now_is]\t[$log_is]===";
           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-y-problem`;
         }
-        else {
-          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-n-problem`;
-        }
+#         else {
+#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-n-problem`;
+#         }
       }
     }
   }

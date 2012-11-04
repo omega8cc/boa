@@ -48,9 +48,9 @@ local(@MYARR) = `grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&
           print "\n===[$now_is]\t[$log_is]===";
           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-fpmcheck-y-problem`;
         }
-        else {
-          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-fpmcheck-n-problem`;
-        }
+#         else {
+#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-fpmcheck-n-problem`;
+#         }
       }
     }
   }
@@ -77,9 +77,9 @@ local(@MYARR) = `grep "Apache Solr.*timed out" /var/log/syslog | tail --lines=99
           print "\n===[$now_is]\t[$log_is]===";
           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-y-problem`;
         }
-        else {
-          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-n-problem`;
-        }
+#         else {
+#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-n-problem`;
+#         }
       }
     }
   }
