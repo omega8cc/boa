@@ -5,6 +5,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 perl /var/xdrago/monitor/check/hackcheck
 perl /var/xdrago/monitor/check/scan_nginx
+perl /var/xdrago/monitor/check/locked
 perl /var/xdrago/monitor/check/hackftp
 perl /var/xdrago/monitor/check/hackmail
 

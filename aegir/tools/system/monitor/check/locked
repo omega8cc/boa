@@ -1,0 +1,87 @@
+#!/usr/bin/perl
+
+$| = 1;
+if (-f "/var/run/boa_wait.pid") {exit;}
+$fpm_status="CLEAN";
+$tomcat_status="CLEAN";
+$now_is=`date +%b:%d:%H:%M`;
+chomp($now_is);
+&fpmcheck;
+&tomcatcheck;
+if ($fpm_status ne "CLEAN") {
+  `/etc/init.d/php-fpm restart`;
+  `/etc/init.d/php53-fpm restart`;
+}
+if ($tomcat_status ne "CLEAN") {
+  `/etc/init.d/tomcat stop`;
+  sleep(3);
+  `killall -9 java`;
+  `/etc/init.d/tomcat start`;
+}
+exit;
+
+#############################################################################
+sub fpmcheck
+{
+local(@MYARR) = `grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&1`;
+  foreach $line (@MYARR) {
+    if ($line =~ /( 499 0 )/i) {
+      local($a, $DATESTAMPX) = split(/\[/,$line);
+      chomp($DATESTAMPX);
+      local($DATESTAMP, $b) = split(/\s+/,$DATESTAMPX);
+      chomp($DATESTAMP);
+      $DATESTAMP =~ s/[^A-Za-z0-9\:\/]//g; ### 28/Oct/2012:16:07:11
+      local($DAYX, $MONTX, $TIMEX) = split(/\//,$DATESTAMP);
+      if ($DAYX =~ /^\s+/) {
+        $DAYX =~ s/[^0-9]//g;
+      }
+      if ($DAYX !~ /^0/ && $DAYX =~ /[1-9]{1,1}/) {
+        $DAYX = "0$DAYX";
+      }
+      chomp($TIMEX);
+      $TIMEX =~ s/[^0-9\:]//g;
+      if ($TIMEX =~ /^[0-9]/) {
+        local($YEAR, $HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
+        $log_is="$MONTX:$DAYX:$HOUR:$MIN";
+        if ($now_is eq $log_is) {
+          $fpm_status="ERROR";
+          print "\n===[$now_is]\t[$log_is]===";
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-fpmcheck-y-problem`;
+        }
+        else {
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-fpmcheck-n-problem`;
+        }
+      }
+    }
+  }
+}
+sub tomcatcheck
+{
+local(@MYARR) = `grep "Apache Solr.*timed out" /var/log/syslog | tail --lines=999 2>&1`;
+  foreach $line (@MYARR) {
+    if ($line =~ /(Apache Solr)/i && $line =~ /(timed out)/i) {
+      local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
+      if ($DAYX =~ /^\s+/) {
+        $DAYX =~ s/[^0-9]//g;
+      }
+      if ($DAYX !~ /^0/ && $DAYX =~ /[1-9]{1,1}/) {
+        $DAYX = "0$DAYX";
+      }
+      chomp($TIMEX);
+      $TIMEX =~ s/[^0-9\:]//g;
+      if ($TIMEX =~ /^[0-9]/) {
+        local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
+        $log_is="$MONTX:$DAYX:$HOUR:$MIN";
+        if ($now_is eq $log_is) {
+          $tomcat_status="ERROR";
+          print "\n===[$now_is]\t[$log_is]===";
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-y-problem`;
+        }
+        else {
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-n-problem`;
+        }
+      }
+    }
+  }
+}
+###EOF2012###
