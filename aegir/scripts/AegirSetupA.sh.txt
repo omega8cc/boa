@@ -121,6 +121,7 @@ _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _THISHTIP=EDIT_THISHTIP
 _USE_CURRENT=EDIT_USE_CURRENT
+_USE_STOCK=EDIT_USE_STOCK
 _USRG=EDIT_USRG
 _WEBG=EDIT_WEBG
 #
@@ -411,7 +412,11 @@ cd
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
+      if [ "$_USE_STOCK" = "NO" ] ; then
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      else
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+      fi
     fi
   fi
 }
@@ -423,13 +428,15 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config
-  if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
-    rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-    ln -s /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-  fi
-  if [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
-    rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
-    ln -s /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
+  if [ -e "/data/disk/$_USER/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
+    if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
+      rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+      ln -s /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+    fi
+    if [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
+      rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
+      ln -s /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
+    fi
   fi
 }
 #

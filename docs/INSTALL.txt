@@ -37,9 +37,11 @@
    NOTE: You must specify the kind of install with {in-stable|in-head},
          location with {local|public}, your hostname and e-mail address,
          as shown below. Specifying Octopus username is optional.
-         It will use default {o1} if empty. The one before last {ask|mini|max}
-         part is optional, if you wish to control Octopus platforms
-         install mode, as explained below. Note that none === "ask" (default).
+         It will use default {o1} if empty. The one before last part
+         {ask|mini|max|stock} is optional, if you wish to control Octopus
+         platforms install mode, as explained below. Note that none === "ask"
+         which is default. The special "stock" option allows you to install
+         non-BOA, vanilla Aegir 2.x version, useful for testing/debugging.
          The last {newrelickey} part is optional, if you wish to install
          and auto-magically enable both New Relic Apps and Server Monitor.
          It must be a valid New Relic license key - even if it is their

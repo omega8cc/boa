@@ -37,6 +37,7 @@ _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PHP_MODERN_ONLY=EDIT_PHP_MODERN_ONLY
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
+_USE_STOCK=EDIT_USE_STOCK
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
 else
@@ -187,18 +188,22 @@ else
   mkdir -p $AEGIR_HOME/.drush
   if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd $AEGIR_HOME/.drush
-    if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
-      _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
-      git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $AEGIR_HOME/.drush/provision &> /dev/null
-      _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
-      sed -i "s/hostmaster.git/1074912.git/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
-      rm -f -r $AEGIR_HOME/.drush/provision/.git
+    if [ "$_USE_STOCK" = "YES" ] ; then
+      git clone --branch 6.x-2.x http://git.drupal.org/project/provision.git $AEGIR_HOME/.drush/provision &> /dev/null
     else
-      git clone $_BOA_REPO_GIT_URL/provision.git $AEGIR_HOME/.drush/provision
-      _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
-      rm -f -r $AEGIR_HOME/.drush/provision/.git
+      if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
+        _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
+        git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $AEGIR_HOME/.drush/provision &> /dev/null
+        _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+        sed -i "s/hostmaster.git/1074912.git/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+        rm -f -r $AEGIR_HOME/.drush/provision/.git
+      else
+        git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
+        _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+        rm -f -r $AEGIR_HOME/.drush/provision/.git
+      fi
     fi
     msg "INFO: Downloading Drush and Provision extensions, please wait..."
     git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $AEGIR_HOME/.drush/registry_rebuild &> /dev/null

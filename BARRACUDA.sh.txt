@@ -775,6 +775,19 @@ _SPEED_VALID_MAX=3600
 
 
 ###----------------------------------------###
+### STOCK AEGIR TESTING                    ###
+###----------------------------------------###
+###
+### Change to YES to try Stock Aegir 2.x with
+### Drush 5.x - without any BOA specific
+### modifications or improvements. This option
+### is enabled on command line when you type
+### "stock" instead of "mini", "max" or "ask".
+###
+_USE_STOCK=NO
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -798,6 +811,10 @@ _PURE_FTPD_VERSION=1.0.35
 _REDIS_VERSION=2.6.2
 _MARIADB_VERSION=5.5.28
 _PERCONA_VERSION=5.5.28
+if [ "$_USE_STOCK" = "YES" ] ; then
+  _DRUSH_VERSION=7.x-5.7
+  _DRUSH_FAMILY=5
+fi
 
 ###
 ### Variables
@@ -1630,11 +1647,17 @@ validate_local_ip () {
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-    sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+    if [ "$_USE_STOCK" = "NO" ] ; then
+      sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
+      sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+      sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+    fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      if [ "$_USE_STOCK" = "NO" ] ; then
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      else
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+      fi
     fi
   fi
 }
@@ -1651,13 +1674,15 @@ force_advanced_nginx_config () {
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     sed -i "s/9000/9090/g" /var/aegir/config/includes/nginx_compact_include.conf &> /dev/null
   fi
-  if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
-    rm -f /var/aegir/config/includes/nginx_advanced_include.conf
-    ln -s /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
-  fi
-  if [ ! -L "/var/aegir/config/includes/nginx_simple_include.conf" ] ; then
-    rm -f /var/aegir/config/includes/nginx_simple_include.conf
-    ln -s /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
+  if [ -e "/var/aegir/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
+    if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
+      rm -f /var/aegir/config/includes/nginx_advanced_include.conf
+      ln -s /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
+    fi
+    if [ ! -L "/var/aegir/config/includes/nginx_simple_include.conf" ] ; then
+      rm -f /var/aegir/config/includes/nginx_simple_include.conf
+      ln -s /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
+    fi
   fi
   chown aegir:aegir /var/aegir/config/includes/*
   chown aegir:aegir /var/aegir/.drush/provision/http/Provision/Config/Nginx/*
@@ -1980,6 +2005,7 @@ barracuda_cnf () {
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
+    echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -2161,6 +2187,12 @@ barracuda_cnf () {
         fi
       fi
     fi
+    _USE_STOCK_TEST=$(grep _USE_STOCK /root/.barracuda.cnf)
+    if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
+      true
+    else
+      echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
+    fi
     sleep 1
     _CHECK_HOST=`uname -n`
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
@@ -2175,9 +2207,11 @@ barracuda_cnf () {
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf
         sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf
         echo 5.3 > /data/disk/*/log/cli.txt
         echo 5.2 > /data/disk/*/log/fpm.txt
       fi
@@ -2754,6 +2788,7 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -5169,19 +5204,16 @@ if [ "$_STATUS" = "INIT" ] ; then
   update_nginx_conf
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
-  if [ "$_AEGIR_VERSION" = "TEST" ] ; then
-    _DRUSH_VERSION=All-Versions-HEAD
-    _DRUSH_FAMILY=5
-  fi
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
     sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
+    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -5224,7 +5256,9 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
-  if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] ; then
+  if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] && [ "$_USE_STOCK" = "NO" ] ; then
+    true
+  elif [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
     true
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"

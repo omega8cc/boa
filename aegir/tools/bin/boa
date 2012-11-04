@@ -19,11 +19,17 @@ octopus_install ()
     sed -i "s/^_USER=o1/_USER=$user/g"                       /var/backups/OCTOPUS.sh.txt
     if [ "$mode" = "mini" ] ; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt
     elif [ "$mode" = "max" ] ; then
       sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
       sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt
+    elif [ "$mode" = "stock" ] ; then
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"             /var/backups/OCTOPUS.sh.txt
     else
       sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
@@ -51,6 +57,13 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     sed -i "s/^_EASY_LOCALHOST=YES/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_PUBLIC=NO/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt
     sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"    /var/backups/BARRACUDA.sh.txt
+  fi
+  if [ "$mode" = "stock" ] ; then
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /root/.barracuda.cnf
+  else
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /root/.barracuda.cnf
   fi
   if [ ! -z "$rkey" ] ; then
     sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"  /var/backups/BARRACUDA.sh.txt
@@ -111,7 +124,7 @@ init_setup ()
     email="$fqdn"
   fi
   if [ "$kind" = "public" ] ; then
-    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] ; then
+    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] || [ "$user" = "stock" ] ; then
       rkey="$mode"
       mode="$user"
       user="o1"
@@ -163,7 +176,7 @@ case "$1" in
              rkey="$7"
              init_setup
   ;;
-  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max} {newrelickey}"
+  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max|stock} {newrelickey}"
              exit 1
   ;;
 esac

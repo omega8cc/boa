@@ -472,6 +472,19 @@ _LOCAL_NETWORK_IP=""
 
 
 ###----------------------------------------###
+### STOCK AEGIR TESTING                    ###
+###----------------------------------------###
+###
+### Change to YES to try Stock Aegir 2.x with
+### Drush 5.x - without any BOA specific
+### modifications or improvements. This option
+### is enabled on command line when you type
+### "stock" instead of "mini", "max" or "ask".
+###
+_USE_STOCK=NO
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -497,6 +510,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
+fi
+if [ "$_USE_STOCK" = "YES" ] ; then
+  _DRUSH_VERSION=7.x-5.7
+  _DRUSH_FAMILY=5
 fi
 
 ###
@@ -651,6 +668,7 @@ octopus_cnf () {
     echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.$_USER.octopus.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
+    echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf
     echo "### NOTE: the group of settings displayed bellow will be *overriden*" >> /root/.$_USER.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.$_USER.octopus.cnf
@@ -712,6 +730,12 @@ octopus_cnf () {
     else
       echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.$_USER.octopus.cnf
     fi
+    _USE_STOCK_TEST=$(grep _USE_STOCK /root/.$_USER.octopus.cnf)
+    if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
+      true
+    else
+      echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
+    fi
     msg "NOTE! Please review all config options displayed below"
     sleep 3
     echo " "
@@ -755,14 +779,20 @@ octopus_cnf () {
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config_main () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
-    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
-    sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
-    sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-    sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
-    sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
+    if [ "$_USE_STOCK" = "NO" ] ; then
+      sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
+      sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
+      sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
+      sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
+    fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
-      sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
+      if [ "$_USE_STOCK" = "NO" ] ; then
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+      else
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+      fi
     fi
   fi
 }
@@ -773,7 +803,7 @@ force_advanced_nginx_config_main () {
   sub_force_advanced_nginx_config_main
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config_main
-  if [ -e "/data/disk/$_USER/config/includes" ] ; then
+  if [ -e "/data/disk/$_USER/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
       rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
       ln -s /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
@@ -831,10 +861,10 @@ do
   sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files
   sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
   sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
+  sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files
   sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
   sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files
-  sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files
   sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
   sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files
@@ -885,6 +915,7 @@ do
   sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files
   sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
+  sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 $Files
   sed -i "s/EDIT_USER/$_USER/g"                           $Files
   sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
   sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files

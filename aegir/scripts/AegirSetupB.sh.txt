@@ -109,6 +109,7 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
+_USE_STOCK=EDIT_USE_STOCK
 _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
@@ -366,18 +367,22 @@ msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
 cd $_ROOT/.drush
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
-    _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
-    git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
-    _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-    sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
-    sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
-    rm -f -r $_ROOT/.drush/provision/.git
+  if [ "$_USE_STOCK" = "YES" ] ; then
+    git clone --branch 6.x-2.x http://git.drupal.org/project/provision.git $_ROOT/.drush/provision &> /dev/null
   else
-    git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
-    _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-    sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
-    rm -f -r $_ROOT/.drush/provision/.git
+    if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
+      _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
+      git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
+      _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
+      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
+      sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
+      rm -f -r $_ROOT/.drush/provision/.git
+    else
+      git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
+      _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
+      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
+      rm -f -r $_ROOT/.drush/provision/.git
+    fi
   fi
   if [ "$_STATUS" = "UPGRADE" ] ; then
     get_dev_ext "drush_make-6.x-2.3.tar.gz" &> /dev/null
