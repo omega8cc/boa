@@ -143,7 +143,7 @@ Octopus can install the platforms listed below:
  NodeStream 1.5.1 ------------- http://nodestream.org
  NodeStream 2.0-beta5 --------- http://nodestream.org
  Open Atrium 1.6.1 ------------ http://openatrium.com
- Open Deals 1.9 --------------- http://opendealsapp.com
+ Open Deals 1.10 -------------- http://opendealsapp.com
  Open Outreach 1.0-rc6 -------- http://openoutreach.org
  OpenChurch 1.11-beta3 -------- http://openchurchsite.com
  OpenPublish 3.0-beta7 -------- http://openpublishapp.com
