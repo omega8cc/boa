@@ -416,12 +416,12 @@ replace_drupal6_core () {
 #
 # enable drupal 6 contrib
 enable_drupal6_contrib () {
-  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
 # enable drupal 6 admin
 enable_drupal6_admin () {
-  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
 # add drupal 6 translations
@@ -439,7 +439,7 @@ init_this_distro_root () {
 #
 # add old short name acquia
 add_old_short_name_acquia () {
-  sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
 # init distro seven root
@@ -531,9 +531,9 @@ replace_drupal7_core () {
 rename_drupal7_profiles () {
   for Files in `find $_CORE_DISTRO/profiles -type f`
   do
-    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files
+    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
+    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
+    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
   done
 }
 #
@@ -541,9 +541,9 @@ rename_drupal7_profiles () {
 rename_drupal8_profiles () {
   for Files in `find $_CORE_DISTRO/core/profiles -type f`
   do
-    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files
-    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files
+    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
+    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
+    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
   done
 }
 #
@@ -738,7 +738,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
   replace_drupal6_core
   enable_drupal6_contrib
-  sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
   rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
   add_drupal6_translations
@@ -917,7 +917,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   replace_drupal6_core
   enable_drupal6_contrib
-  sed -i "s/Conference Organizing Distribution/Conference/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/Conference Organizing Distribution/Conference/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
   rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
   add_drupal6_translations
@@ -1677,7 +1677,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal6_core
   rm -f -r $_CORE_DISTRO/profiles/default
   if [ $_NODESTREAM6 = "6.x-1.5" ] ; then
-    sed -i "s/libraries\/profiler/modules\/profiler/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+    sed -i "s/libraries\/profiler/modules\/profiler/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
   fi
   cd $_THIS_PRPATH/modules
   rm -f -r {imagecache,ctools,rules,strongarm,token,views_rss}
@@ -2291,7 +2291,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   replace_drupal6_core
   rm -f -r $_THIS_PRPATH/modules/contrib/memcache &> /dev/null
-  sed -i "s/'features',/'features', 'robotstxt', 'path_alias_cache',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile
+  sed -i "s/'features',/'features', 'robotstxt', 'path_alias_cache',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
   rm -f -r $_CORE_DISTRO/profiles/default
   create_dirs
 fi

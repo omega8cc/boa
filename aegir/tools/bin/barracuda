@@ -57,9 +57,9 @@ send_report ()
 up_action ()
 {
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"   /var/backups/BARRACUDA.sh.txt &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
         true
@@ -70,7 +70,7 @@ up_action ()
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
       if [ "$silent" = "log" ] ; then
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               /var/backups/BARRACUDA.sh.txt
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g"               /var/backups/BARRACUDA.sh.txt &> /dev/null
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         send_report
       else

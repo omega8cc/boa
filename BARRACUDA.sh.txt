@@ -994,7 +994,7 @@ fix_php_ini_mailparse () {
   if [ -e "$_THIS_FILE" ] ; then
     _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
     if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
-      sed -i "s/.*mailparse.*//g" $_THIS_FILE
+      sed -i "s/.*mailparse.*//g" $_THIS_FILE &> /dev/null
     fi
   fi
 }
@@ -1004,7 +1004,7 @@ fix_php_ini_suhosin () {
   if [ -e "$_THIS_FILE" ] ; then
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
-      sed -i "s/.*suhosin.*//g" $_THIS_FILE
+      sed -i "s/.*suhosin.*//g" $_THIS_FILE &> /dev/null
     fi
   fi
 }
@@ -1166,7 +1166,7 @@ fix_ftps_squeeze () {
     else
       echo "/usr/bin/lshell" >> /etc/shells
       ### we don't need this replace, so it is here just for reference:
-      ### sed -i "s/usr\/bin\/lshell/usr\/local\/bin\/lshell/g" /etc/passwd
+      ### sed -i "s/usr\/bin\/lshell/usr\/local\/bin\/lshell/g" /etc/passwd &> /dev/null
     fi
   fi
 }
@@ -1388,26 +1388,26 @@ update_sql_conf () {
     else
       cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
-      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf
-      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf
-      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf
+      sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
       if [ ! -e "/etc/mysql/skip-name-resolve.txt" ] ; then
-        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf
+        sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
       fi
     fi
   fi
   mv -f /etc/mysql/my.cnf-pre* /var/backups/dragon/t/ &> /dev/null
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
     true
   else
-    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
+    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
   fi
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
   fi
 }
 #
@@ -1862,22 +1862,22 @@ tune_memory_limits () {
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf
+  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
   sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
       true
     else
-      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
-      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
-      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf
-      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf
-      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
-      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
-      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
-      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
-      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
-      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
+      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf &> /dev/null
     fi
   fi
   tune_web_server_config
@@ -2199,19 +2199,19 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
         true
       else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf
-        sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf
-        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         echo 5.3 > /data/disk/*/log/cli.txt
         echo 5.2 > /data/disk/*/log/fpm.txt
       fi
@@ -2774,21 +2774,21 @@ upgrade_aegir_master () {
     chmod -R 2770 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt
-    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -3610,9 +3610,9 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
         if [ "$_EASY_LOCALHOST" = "YES" ] ; then
-          sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
+          sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts &> /dev/null
         else
-          sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts
+          sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts &> /dev/null
           echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN $_S_E" >> /etc/hosts
         fi
       fi
@@ -4346,8 +4346,8 @@ else
       st_runner "apt-get clean -y --force-yes" &> /dev/null
     fi
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
-    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+    sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
     rm -f /var/lib/mysql/debian-*.flag &> /dev/null
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
@@ -4355,11 +4355,11 @@ else
     if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
       true
     else
-      sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-      sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
+      sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
     fi
     if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-      sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
+      sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
     fi
     _PHP_FORCE_REINSTALL=YES
     mrun "sleep 8"
@@ -4903,8 +4903,8 @@ if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ 
     git clone --branch $_LSHELL_VERSION git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
   fi
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
-    sed -i "s/kicked/logged/g" $Files
-    sed -i "s/Kicked/Logged/g" $Files
+    sed -i "s/kicked/logged/g" $Files &> /dev/null
+    sed -i "s/Kicked/Logged/g" $Files &> /dev/null
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
   st_runner "python setup.py install" 2> /dev/null
@@ -5044,17 +5044,17 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "service ssh reload" &> /dev/null
   cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
     true
   else
-    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf
-    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf
+    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
   fi
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
   fi
   update_php_conf
   tune_memory_limits
@@ -5079,12 +5079,12 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config
-    sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config
-    sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config
-    sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config
-    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config
-    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config
+    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
     echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
     echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
     echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -5156,8 +5156,8 @@ if [ -e "/root/.my.pass.txt" ] ; then
   PXSWD=`cat /root/.my.pass.txt`
   PASWD=`echo -n $PXSWD | tr -d "\n"`
   for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f` ; do
-    sed -i "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files
-    sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files
+    sed -i "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files &> /dev/null
+    sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
   done
   if [ "$_STATUS" = "INIT" ] ; then
     msg "INFO: OS and services installation completed"
@@ -5205,15 +5205,15 @@ if [ "$_STATUS" = "INIT" ] ; then
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
   for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files
-    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files
-    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
+    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_USE_STOCK" = "YES" ] ; then
@@ -5830,16 +5830,16 @@ if [ ! -e "/root/.my.cnf" ] ; then
   if [ "$_THIS_DB_HOST" = "localhost" ] ; then
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
   else
-    sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf
+    sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
   fi
-  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start
+  sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   st_runner "service mysql restart" &> /dev/null
   mrun "sleep 1"
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
   mrun "sleep 1"
 else
-  sed -i "s/\"//g" /root/.my.cnf
+  sed -i "s/\"//g" /root/.my.cnf &> /dev/null
 fi
 
 

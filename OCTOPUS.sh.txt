@@ -841,85 +841,85 @@ if [ -d "/data/all/000" ] ; then
 fi
 for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
 do
-  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files
-  sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files
-  sed -i "s/EDIT_ALLOW_UNSUPPORTED/$_ALLOW_UNSUPPORTED/g" $Files
-  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files
-  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files
-  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files
-  sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files
-  sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files
-  sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files
-  sed -i "s/EDIT_CIVICRM6/$_CIVICRM6/g"                   $Files
-  sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files
-  sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files
-  sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files
-  sed -i "s/EDIT_COD/$_COD/g"                             $Files
-  sed -i "s/EDIT_COM_MERCE/$_COM_MERCE/g"                 $Files
-  sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files
-  sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files
-  sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files
-  sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files
-  sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files
-  sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files
-  sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files
-  sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files
-  sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files
-  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files
-  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files
-  sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files
-  sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files
-  sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files
-  sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files
-  sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files
-  sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files
-  sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files
-  sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files
-  sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files
-  sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files
-  sed -i "s/EDIT_MART_PLUG/$_MART_PLUG/g"                 $Files
-  sed -i "s/EDIT_MARTPLUG/$_MARTPLUG/g"                   $Files
-  sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files
-  sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files
-  sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files
-  sed -i "s/EDIT_NOW/$_NOW/g"                             $Files
-  sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files
-  sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files
-  sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files
-  sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files
-  sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files
-  sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files
-  sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files
-  sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files
-  sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files
-  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files
-  sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files
-  sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files
-  sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files
-  sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files
-  sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files
-  sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     $Files
-  sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files
-  sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files
-  sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files
-  sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files
-  sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files
-  sed -i "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files
-  sed -i "s/EDIT_SMALLCORE_6_LANG/$_SMALLCORE_6_LANG/g"   $Files
-  sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files
-  sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files
-  sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files
-  sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files
-  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files
-  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files
-  sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files
-  sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files
-  sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files
-  sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 $Files
-  sed -i "s/EDIT_USER/$_USER/g"                           $Files
-  sed -i "s/EDIT_USRG/$_USRG/g"                           $Files
-  sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files
-  sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files
+  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
+  sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
+  sed -i "s/EDIT_ALLOW_UNSUPPORTED/$_ALLOW_UNSUPPORTED/g" $Files &> /dev/null
+  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
+  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
+  sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
+  sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
+  sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files &> /dev/null
+  sed -i "s/EDIT_CIVICRM6/$_CIVICRM6/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
+  sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
+  sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
+  sed -i "s/EDIT_COD/$_COD/g"                             $Files &> /dev/null
+  sed -i "s/EDIT_COM_MERCE/$_COM_MERCE/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_COMMERCE/$_COMMERCE/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_COMMONS/$_COMMONS/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
+  sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
+  sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
+  sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files &> /dev/null
+  sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files &> /dev/null
+  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
+  sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files &> /dev/null
+  sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         $Files &> /dev/null
+  sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files &> /dev/null
+  sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
+  sed -i "s/EDIT_MART_PLUG/$_MART_PLUG/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_MARTPLUG/$_MARTPLUG/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files &> /dev/null
+  sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files &> /dev/null
+  sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
+  sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
+  sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files &> /dev/null
+  sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
+  sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
+  sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files &> /dev/null
+  sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
+  sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files &> /dev/null
+  sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
+  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
+  sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
+  sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
+  sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
+  sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
+  sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     $Files &> /dev/null
+  sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files &> /dev/null
+  sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files &> /dev/null
+  sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files &> /dev/null
+  sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
+  sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
+  sed -i "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files &> /dev/null
+  sed -i "s/EDIT_SMALLCORE_6_LANG/$_SMALLCORE_6_LANG/g"   $Files &> /dev/null
+  sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
+  sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
+  sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
+  sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
+  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files &> /dev/null
+  sed -i "s/EDIT_UBERCART/$_UBERCART/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
+  sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
+  sed -i "s/EDIT_USRG/$_USRG/g"                           $Files &> /dev/null
+  sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files &> /dev/null
 done
 _THISHOST=`cat /etc/hostname`
 _THISHOST=`echo -n $_THISHOST | tr -d "\n"`

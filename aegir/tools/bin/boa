@@ -13,29 +13,29 @@ octopus_install ()
       user="o1"
     fi
     _CHECK_HOST=`uname -n`
-    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/OCTOPUS.sh.txt
-    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.txt
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /var/backups/OCTOPUS.sh.txt
-    sed -i "s/^_USER=o1/_USER=$user/g"                       /var/backups/OCTOPUS.sh.txt
+    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/OCTOPUS.sh.txt &> /dev/null
+    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.txt &> /dev/null
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /var/backups/OCTOPUS.sh.txt &> /dev/null
+    sed -i "s/^_USER=o1/_USER=$user/g"                       /var/backups/OCTOPUS.sh.txt &> /dev/null
     if [ "$mode" = "mini" ] ; then
-      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
     elif [ "$mode" = "max" ] ; then
-      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
     elif [ "$mode" = "stock" ] ; then
-      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"             /var/backups/OCTOPUS.sh.txt
+      sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
     else
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt
+      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
         true
       else
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.txt
+        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
       fi
     fi
     bash /var/backups/OCTOPUS.sh.txt
@@ -48,25 +48,25 @@ octopus_install ()
 barracuda_install ()
 {
 if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"           /var/backups/BARRACUDA.sh.txt
-  sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                /var/backups/BARRACUDA.sh.txt
+  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"           /var/backups/BARRACUDA.sh.txt &> /dev/null
+  sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                /var/backups/BARRACUDA.sh.txt &> /dev/null
   if [ "$kind" = "local" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=NO/_EASY_LOCALHOST=YES/g"    /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=YES/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=NO/_EASY_LOCALHOST=YES/g"    /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_EASY_PUBLIC=YES/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt &> /dev/null
   elif [ "$kind" = "public" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=YES/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_PUBLIC=NO/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_LOCALHOST=YES/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_EASY_PUBLIC=NO/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"    /var/backups/BARRACUDA.sh.txt &> /dev/null
   fi
   if [ "$mode" = "stock" ] ; then
-    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /root/.barracuda.cnf
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /root/.barracuda.cnf &> /dev/null
   else
-    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /var/backups/BARRACUDA.sh.txt
-    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /root/.barracuda.cnf
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /root/.barracuda.cnf &> /dev/null
   fi
   if [ ! -z "$rkey" ] ; then
-    sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"  /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"  /var/backups/BARRACUDA.sh.txt &> /dev/null
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     bash /var/backups/BARRACUDA.sh.txt

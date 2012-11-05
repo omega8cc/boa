@@ -55,17 +55,17 @@ send_report ()
 up_mode ()
 {
   if [ "$mcmode" = "aegir" ] ; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "platforms" ] ; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "both" ] ; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
@@ -79,24 +79,24 @@ up_one ()
 {
   if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
     cp -af /var/backups/OCTOPUS.sh.txt                   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
+    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
         true
       else
-        sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+        sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
         sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
         sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
         sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
       fi
     fi
     if [ ! -e "$_UP_CONTRIB_PID" ] ; then
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
       sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     else
-      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
       sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
@@ -132,7 +132,7 @@ up_action_all ()
         echo Octopus upgrade for User $User
         sleep 3
         if [ "$silent" = "log" ] ; then
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
           _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
           up_one >>$_UP_LOG 2>&1
           send_report
@@ -167,7 +167,7 @@ up_action_one ()
       echo Octopus upgrade for User $User
       sleep 3
       if [ "$silent" = "log" ] ; then
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
         _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
         up_one >>$_UP_LOG 2>&1
         send_report

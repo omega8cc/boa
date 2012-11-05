@@ -263,7 +263,7 @@ fix_php_ini_suhosin () {
   if [ -e "$_THIS_FILE" ] ; then
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
-      sed -i "s/.*suhosin.*//g" $_THIS_FILE
+      sed -i "s/.*suhosin.*//g" $_THIS_FILE &> /dev/null
     fi
   fi
 }
@@ -438,8 +438,8 @@ restore_default_sql () {
   else
     _DB_SERVER=Percona
   fi
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   cd /var/xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
@@ -466,7 +466,7 @@ restore_default_nginx () {
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
     for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
     do
-      sed -i "s/#limit_conn/limit_conn/g" $Files
+      sed -i "s/#limit_conn/limit_conn/g" $Files &> /dev/null
     done
   fi
   su -s /bin/bash aegir -c "drush @server_master provision-verify &> /dev/null"
@@ -483,7 +483,7 @@ tune_nginx () {
     if [ -d "$_TUNE_HOSTMASTER" ] ; then
       for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
       do
-        sed -i "s/limit_conn/#limit_conn/g" $Files
+        sed -i "s/limit_conn/#limit_conn/g" $Files &> /dev/null
       done
     fi
   fi
@@ -671,22 +671,22 @@ tune_memory_limits () {
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf
+  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
   sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
       true
     else
-      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf
-      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf
-      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf
-      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf
-      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf
-      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf
-      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf
-      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf
-      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf
-      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf
+      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf &> /dev/null
     fi
   fi
   tune_web_server_config
