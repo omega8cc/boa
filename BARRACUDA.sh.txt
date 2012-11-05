@@ -2539,7 +2539,7 @@ update_php_universal_more () {
   fi
 }
 #
-# Install PHP 5.3.17
+# Install PHP 5.3.18
 install_php_modern () {
   ###--------------------###
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -2684,7 +2684,7 @@ install_php_legacy () {
   chmod 755 /usr/local/sbin/php-fpm &> /dev/null
 }
 #
-# Update PHP 5.3.17
+# Update PHP 5.3.18
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
   if [ "$_FROM_SOURCES" = "NO" ] ; then
