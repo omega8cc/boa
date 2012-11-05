@@ -5733,10 +5733,10 @@ fi
 ###--------------------###
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   if [ "$_XTRAS_LIST" = "ALL" ] ; then
-    _XTRAS_LIST="BDD CGP CHV CSF FMG FTP GIT PDS SLR WMN"
+    _XTRAS_LIST="BDD CGP CHV CSF CSS FMG FTP GIT PDS SLR WMN"
   fi
   if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
-    _XTRAS_LIST="PDS CHV CSF CGP WMN"
+    _XTRAS_LIST="PDS CSF CGP CHV FTP WMN"
   fi
 fi
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
@@ -5773,7 +5773,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSS" ]] ; then
+if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
   if [ "$_STATUS" = "INIT" ] ; then
     _L_ST="install"
   else
