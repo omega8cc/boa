@@ -137,37 +137,6 @@ _AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
-### FORCE PREFERRED GIT REPOSITORY         ###
-###----------------------------------------###
-###
-### Use this when you are experiencing issues
-### trying to connect to the default github
-### repository. Valid options:
-###
-### _FORCE_GIT_MIRROR=github
-### _FORCE_GIT_MIRROR=drupal
-### _FORCE_GIT_MIRROR=gitorious
-###
-### Note: with forced mirror the script will
-### not try to connect and then switch to
-### alternate mirror. It will simply fail
-### if the forced mirror doesn't respond.
-###
-### We recommend github as it is much faster,
-### often 10x than drupal and gitorious.
-###
-_FORCE_GIT_MIRROR=""
-
-
-###----------------------------------------###
-### ADVANCED CONFIGURATION OPTIONS         ###
-###----------------------------------------###
-
-_NGINX_WORKERS=AUTO
-_PHP_FPM_WORKERS=AUTO
-
-
-###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -175,85 +144,101 @@ _INSTALLER_VERSION=BOA-2.0.4-dev
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
-
-SHELL=/bin/bash
+_SPINNER=YES
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
+if [ -n "${STY+x}" ]; then
+  _SPINNER=NO
+fi
 
 
 ###---### Functions
 #
-# Noticeable messages
+# Noticeable messages.
 msg () {
   echo "Tuner [`date`] ==> $*"
 }
-# Simple prompt
+# Simple prompt.
 prompt_yes_no () {
+if [ "$_AUTOPILOT" = "YES" ] ; then
+  return 0
+else
   while true ; do
-    printf "$* [Y/n] "
-    read answer
-    if [ -z "$answer" ] ; then
-      return 0
-    fi
-    case $answer in
-      [Yy]|[Yy][Ee][Ss])
-        return 0
-        ;;
-      [Nn]|[Nn][Oo])
-        return 1
-        ;;
-      *)
-        echo "Please answer yes or no"
-        ;;
-    esac
+  printf "$* [Y/n] "
+  read answer
+  if [ -z "$answer" ] ; then
+    return 0
+  fi
+  case $answer in
+    [Yy]|[Yy][Ee][Ss])
+    return 0
+    ;;
+    [Nn]|[Nn][Oo])
+    return 1
+    ;;
+    *)
+    echo "Please answer yes or no"
+    ;;
+  esac
  done
+fi
 }
 #
-# Silent runner
+# Silent runner.
 st_runner () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	else
-		rm busy
-		sleep 1
-		echo "$CMD failed.  Error (if any): $?"
-		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem"
-		echo "If you see any error with advice to run 'dpkg --configure -a', run this"
-		echo "command first and choose default answer, then run this installer again"
-		echo " "
-		tail -15 $_LOG
-		return 1
-	fi
+  CMD="$1"
+  touch busy
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  else
+    rm busy
+    sleep 1
+    echo "$CMD failed.  Error (if any): $?"
+    echo " "
+    echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem"
+    echo "If you see any error with advice to run 'dpkg --configure -a', run this"
+    echo "command first and choose default answer, then run this installer again"
+    echo " "
+    tail -15 $_LOG
+    return 1
+  fi
 }
 #
-# Small spinner
+# Small spinner.
 mrun () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	fi
+  CMD="$1"
+  touch busy
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  fi
 }
 #
-fix_php_ini_redis () {
+# Find correct IP.
+find_correct_ip () {
+  _FQDN_TEST=$(host $_LOC_DOM)
+  if [[ "$_FQDN_TEST" =~ "is an alias for" ]] ; then
+    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
+  else
+    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
+  fi
+}
+#
+# Fix php.ini files to remove mailparse.so
+fix_php_ini_mailparse () {
   if [ -e "$_THIS_FILE" ] ; then
-    _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
-    if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
-      true
-    else
-      echo "extension=redis.so" >> $_THIS_FILE
+    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
+    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
+      sed -i "s/.*mailparse.*//g" $_THIS_FILE &> /dev/null
     fi
   fi
 }
@@ -280,6 +265,64 @@ fix_php_ini_jsmin () {
   fi
 }
 #
+# Fix php.ini files to add redis.so
+fix_php_ini_redis () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
+    if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
+      true
+    else
+      echo "extension=redis.so" >> $_THIS_FILE
+    fi
+    _REDIS_PID_TEST=$(grep "/var/run:" $_THIS_FILE)
+    if [[ "$_REDIS_PID_TEST" =~ "/var/run:" ]] ; then
+      true
+    else
+      sed -i "s/:\/var\/www/:\/var\/run:\/var\/www/g" $_THIS_FILE &> /dev/null
+    fi
+  fi
+}
+#
+# Fix php.ini file to add newrelic.ini
+fix_php_ini_newrelic () {
+  _NR_TPL="/opt/tmp/$_BOA_REPO_NAME/aegir/conf/newrelic.ini"
+  if [ -e "$_THIS_FILE" ] ; then
+    _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE)
+    if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
+      true
+    else
+      cat $_NR_TPL >> $_THIS_FILE
+    fi
+    _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" $_THIS_FILE)
+    if [[ "$_NEWRELIC_INI_TEST_B" =~ "newrelic.framework.drupal.modules" ]] ; then
+      true
+    else
+      echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
+    fi
+    sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_THIS_FILE &> /dev/null
+    sed -i "s/license_key=//g" $_THIS_FILE &> /dev/null
+  fi
+}
+#
+# Fix all php.ini files to add newrelic.ini
+fix_php_ini_newrelic_all () {
+  if [ -e "/etc/newrelic/newrelic.cfg" ] ; then
+    if [ -z "$_NEWRELIC_KEY" ] ; then
+      _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
+      _NEWRELIC_KEY=`echo -n $_NEWRELIC_KEY | tr -d "\n"`
+    fi
+    _THIS_FILE=/opt/etc/php.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/usr/local/lib/php.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/local/etc/php53.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/local/lib/php.ini
+    fix_php_ini_newrelic
+  fi
+}
+#
+# Update PHP Config.
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
@@ -375,18 +418,22 @@ update_php_conf () {
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   _THIS_FILE=/usr/local/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   _THIS_FILE=/opt/local/etc/php53.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   _THIS_FILE=/opt/local/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
+  fix_php_ini_mailparse
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
@@ -395,17 +442,17 @@ update_php_conf () {
     sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
     sed -i "s/,shell_exec//g" /opt/local/etc/php53.ini &> /dev/null
   fi
-  #
+  ###
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/lib/php.ini &> /dev/null
-  #
+  ###
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
-  #
+  ###
 }
 #
 restore_default_php () {
@@ -428,10 +475,14 @@ tune_php () {
 #
 restore_default_sql () {
   msg "INFO: Restoring default SQL configuration"
-  cd /etc/mysql
-  mv -f my.cnf my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt ./
-  mv -f my.cnf.txt my.cnf
+  mv -f /etc/mysql/my.cnf /etc/mysql/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
+  sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
+  if [ ! -e "/etc/mysql/skip-name-resolve.txt" ] ; then
+    sed -i "s/.*skip-name-resolve/#skip-name-resolve/g"   /etc/mysql/my.cnf &> /dev/null
+  fi
   _DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     _DB_SERVER=MariaDB
@@ -440,6 +491,15 @@ restore_default_sql () {
   fi
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
+  if [[ "$_DB_SERVER_TEST" =~ "5.5." ]] ; then
+    true
+  else
+    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
+  fi
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
+  fi
   cd /var/xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
@@ -466,10 +526,10 @@ restore_default_nginx () {
   if [ -d "$_TUNE_HOSTMASTER" ] ; then
     for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
     do
-      sed -i "s/#limit_conn/limit_conn/g" $Files &> /dev/null
+      sed -i "s/#limit_conn /limit_conn /g" $Files &> /dev/null
     done
   fi
-  su -s /bin/bash aegir -c "drush @server_master provision-verify &> /dev/null"
+  su -s /bin/bash - aegir -c "drush @server_master provision-verify &> /dev/null"
   mrun "sleep 8"
 }
 #
@@ -479,11 +539,11 @@ tune_nginx () {
   sed -i "s/300/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   sed -i "s/180/$_TUNE_NGINX_TIMEOUT/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   if [ "$_TUNE_NGINX_CONNECT" = "OFF" ] ; then
-    sed -i "s/limit_conn/#limit_conn/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+    sed -i "s/limit_conn /#limit_conn /g" /var/aegir/config/server_master/nginx.conf &> /dev/null
     if [ -d "$_TUNE_HOSTMASTER" ] ; then
       for Files in `find $_TUNE_HOSTMASTER/config/server_master/nginx/vhost.d -type f`
       do
-        sed -i "s/limit_conn/#limit_conn/g" $Files &> /dev/null
+        sed -i "s/limit_conn /#limit_conn /g" $Files &> /dev/null
       done
     fi
   fi
@@ -495,7 +555,6 @@ restart_services () {
   st_runner "service php53-fpm reload"   &> /dev/null
   st_runner "service mysql restart"      &> /dev/null
   st_runner "service nginx reload"       &> /dev/null
-  st_runner "bash /var/xdrago/FireStart" &> /dev/null
   st_runner "csf -q"                     &> /dev/null
 }
 #
@@ -535,12 +594,8 @@ tune_web_server_config () {
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
-      true
-    else
-      sed -i "s/300s/180s/g"                                                   /opt/etc/php-fpm.conf &> /dev/null
-      sed -i "s/300s/180s/g"                                                   /opt/local/etc/php53-fpm.conf &> /dev/null
-    fi
+    sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
   fi
 }
 #
@@ -847,15 +902,16 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   mrun "sleep 30"
   msg "INFO: Tuning in progress, please wait..."
   mrun "sleep 1"
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+  fi
   restore_default_php
+  update_php_conf
   tune_php
   restore_default_sql
   tune_sql
   restore_default_nginx
   tune_nginx
-  if [ -e "/root/.barracuda.cnf" ] ; then
-    source /root/.barracuda.cnf
-  fi
   tune_memory_limits
   restart_services
   msg "INFO: Tuning completed"
@@ -864,13 +920,13 @@ else
   msg "INFO: We will stop cron and then wait 30 seconds..."
   service cron stop &> /dev/null
   mrun "sleep 30"
-  restore_default_php
-  restore_default_sql
-  restore_default_nginx
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi
+  restore_default_php
   update_php_conf
+  restore_default_sql
+  restore_default_nginx
   tune_memory_limits
   restart_services
   msg "INFO: Tuning stopped and default settings restored"
