@@ -45,10 +45,12 @@ fix_boost_cache()
 {
 if [ -e "$Plr/cache" ] ; then
   rm -f -r $Plr/cache/*
-  mkdir -p $Plr/cache/{normal,perm}
-  chown -R $_THIS_HM_USER:www-data $Plr/cache
-  chmod -R 777 $Plr/cache
+  rm -f $Plr/cache/{.boost,.htaccess}
+else
+  mkdir -p $Plr/cache
 fi
+chown $_THIS_HM_USER:www-data $Plr/cache
+chmod 770 $Plr/cache
 if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ] ; then
   rm -f $Plr/robots.txt
 fi
@@ -168,51 +170,58 @@ fi
 fix_modules()
 {
 if [ "$_MODULES" = "YES" ] ; then
-      searchStringA="pressflow-5.23.50"
-      case $Dir in
-        *"$searchStringA"*) ;;
-        *)
-        if [ -e "$Dir/drushrc.php" ] ; then
-          cd $Dir
-          if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
-            su -s /bin/bash $_THIS_HM_USER -c "drush dis cache syslog dblog -y &> /dev/null"
-            echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
-            chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
-          elif [ -e "$Plr/modules/o_contrib" ] ; then
-            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
-            su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
-            su -s /bin/bash $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
-          elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
-            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
-            su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
-          fi
-        fi
-        ;;
-      esac
+  searchStringA="pressflow-5.23.50"
+  case $Dir in
+    *"$searchStringA"*) ;;
+    *)
+    if [ -e "$Dir/drushrc.php" ] ; then
+      cd $Dir
+      if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
+    su -s /bin/bash $_THIS_HM_USER -c "drush dis cache syslog dblog -y &> /dev/null"
+    echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
+    chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
+      elif [ -e "$Plr/modules/o_contrib" ] ; then
+    su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
+    su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
+    su -s /bin/bash $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
+      elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
+    su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+    su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
+      fi
+    fi
+    ;;
+  esac
 fi
 }
 
 fix_permissions()
 {
 if [ "$_PERMISSIONS" = "YES" ] ; then
-      chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
-      chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
-      find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
-      chown -L -R $_THIS_HM_USER:www-data $Dir/files &> /dev/null
-      find $Dir/files/* -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Dir/files/* -type f -exec chmod 0664 {} \; &> /dev/null
-      chmod 02775 $Dir/files &> /dev/null
-      chown -L -R $_THIS_HM_USER:www-data $Dir/private &> /dev/null
-      find $Dir/private -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
-      chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
-      chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-      find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
-      find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
-      chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
-      chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
-      chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+  ### modules,themes,libraries - site level
+  chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
+  chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+  find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+  find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+  ### modules,themes,libraries - platform level
+  chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
+  chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+  find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+  find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+  ### known exceptions
+  chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
+  chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+  chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+  ### files - site level
+  chown -L -R www-data:www-data $Dir/files &> /dev/null
+  find $Dir/files/* -type d -exec chmod 02775 {} \; &> /dev/null
+  find $Dir/files/* -type f -exec chmod 0664 {} \; &> /dev/null
+  chmod 02775 $Dir/files &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/files &> /dev/null
+  ### private - site level
+  chown -L -R www-data:www-data $Dir/private &> /dev/null
+  find $Dir/private -type d -exec chmod 02775 {} \; &> /dev/null
+  find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/private &> /dev/null
 fi
 }
 
@@ -220,45 +229,45 @@ count()
 {
 for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
 do
-    #echo Counting Site $Site
-    Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    echo Dom is $Dom
-    if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
-      Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      fix_o_contrib_symlink
-      fix_boost_cache
-      fix_permissions
-      fix_clear_cache
-      searchStringD="dev."
-      searchStringF="devel."
-      case $Dom in
-        *"$searchStringD"*) ;;
-        *"$searchStringF"*) ;;
-        *)
-        fix_modules
-        ;;
-      esac
-      #echo Dir is $Dir
-      if [ -e "$Dir/drushrc.php" ] ; then
-        Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        #echo Dat is $Dat
-        if [ -e "$Dir" ] ; then
-          DirSize=`du -s $Dir`
-          DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
-          SumDir=$(($SumDir + $DirSize))
-          echo DirSize of $Dom is $DirSize
-        fi
-        if [ -e "/var/lib/mysql/$Dat" ] ; then
-          DatSize=`du -s /var/lib/mysql/$Dat`
-          DatSize=`echo "$DatSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
-          SumDat=$(($SumDat + $DatSize))
-          echo DatSize of $Dat is $DatSize
-        else
-          echo Database $Dat does not exist
-        fi
-      fi
+  #echo Counting Site $Site
+  Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
+  echo Dom is $Dom
+  if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+    Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    fix_o_contrib_symlink
+    fix_boost_cache
+    fix_permissions
+    fix_clear_cache
+    searchStringD="dev."
+    searchStringF="devel."
+    case $Dom in
+    *"$searchStringD"*) ;;
+    *"$searchStringF"*) ;;
+    *)
+    fix_modules
+    ;;
+    esac
+    #echo Dir is $Dir
+    if [ -e "$Dir/drushrc.php" ] ; then
+    Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
+    #echo Dat is $Dat
+    if [ -e "$Dir" ] ; then
+      DirSize=`du -s $Dir`
+      DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+      SumDir=$(($SumDir + $DirSize))
+      echo DirSize of $Dom is $DirSize
     fi
+    if [ -e "/var/lib/mysql/$Dat" ] ; then
+      DatSize=`du -s /var/lib/mysql/$Dat`
+      DatSize=`echo "$DatSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+      SumDat=$(($SumDat + $DatSize))
+      echo DatSize of $Dat is $DatSize
+    else
+      echo Database $Dat does not exist
+    fi
+    fi
+  fi
 done
 }
 
