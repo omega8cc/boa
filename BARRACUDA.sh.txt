@@ -2789,7 +2789,7 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    su -s /bin/bash aegir -c "bash AegirUpgrade.sh.txt"
+    su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
@@ -5217,17 +5217,17 @@ if [ "$_STATUS" = "INIT" ] ; then
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_USE_STOCK" = "YES" ] ; then
-    su -s /bin/bash aegir -c "drush cache-clear drush >/var/aegir/install.log 2>&1"
+    su -s /bin/bash - aegir -c "drush cache-clear drush >/var/aegir/install.log 2>&1"
     if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
     else
-      su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
     fi
   else
     if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
     else
-      su -s /bin/bash aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
     fi
   fi
   mrun "sleep 1"
@@ -5245,16 +5245,16 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
   fi
   if [ "$_USE_STOCK" = "YES" ] ; then
-    su -s /bin/bash aegir -c "drush cache-clear drush &> /dev/null"
+    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."
-  su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   mrun "sleep 5"
   msg "INFO: Running hosting-dispatch (2/3), please wait..."
-  su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   mrun "sleep 5"
   msg "INFO: Running hosting-dispatch (3/3), please wait..."
-  su -s /bin/bash aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
+  su -s /bin/bash - aegir -c "drush '@hostmaster' hosting-dispatch &> /dev/null"
   if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
   fi
