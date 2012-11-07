@@ -148,7 +148,7 @@ check_date ()
   else
     cat <<EOF
 
-  Please upgrade installers on your system
+  Please update installers on your system
   using BOA Meta Installer and try again.
 
   $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
