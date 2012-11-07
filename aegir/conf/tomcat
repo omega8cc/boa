@@ -32,14 +32,14 @@ export CATALINA_OPTS="-Xms64m -Xmx256m"
 
 case $1 in
 start)
-  su -s /bin/bash tomcat -c "sh /opt/tomcat6/bin/startup.sh"
+  su -s /bin/bash - tomcat -c "sh /opt/tomcat6/bin/startup.sh"
   ;;
 stop)
-  su -s /bin/bash tomcat -c "sh /opt/tomcat6/bin/shutdown.sh"
+  su -s /bin/bash - tomcat -c "sh /opt/tomcat6/bin/shutdown.sh"
   ;;
 restart)
-  su -s /bin/bash tomcat -c "sh /opt/tomcat6/bin/shutdown.sh"
-  su -s /bin/bash tomcat -c "sh /opt/tomcat6/bin/startup.sh"
+  su -s /bin/bash - tomcat -c "sh /opt/tomcat6/bin/shutdown.sh"
+  su -s /bin/bash - tomcat -c "sh /opt/tomcat6/bin/startup.sh"
   ;;
 esac
 exit 0

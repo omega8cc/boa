@@ -304,7 +304,7 @@ for i in $REVISIONS; do
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
-        su -s /bin/bash $_USER -c "drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
+        su -s /bin/bash - $_USER -c "drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
       fi
       msg "UPGRADE A: Missing strongarm added to /data/all/$i/fserver"
     fi
@@ -888,7 +888,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f /opt/tmp/testecho*
   chown root:$_USRG /data/u &> /dev/null
   chmod 0771 /data/u &> /dev/null
-  su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+  su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
   if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -923,7 +923,7 @@ else
       chmod -R 2770 $_THIS_HM_SITE/files
       chown root:$_USRG /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
-      su -s /bin/bash $_USER -c "/bin/bash AegirSetupB.sh.txt"
+      su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
         msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -1079,7 +1079,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Switching user and running Platforms build"
   mrun "sleep 1"
   cd $_ROOT
-  su -s /bin/bash $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
+  su -s /bin/bash - $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
   if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
     msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
@@ -1102,7 +1102,7 @@ else
       msg "$_STATUS A: Switching user and running Platforms build"
       mrun "sleep 1"
       cd $_ROOT
-      su -s /bin/bash $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
+      su -s /bin/bash - $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
         msg "$_STATUS A: FATAL ERROR: AegirSetupC installer failed"
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"

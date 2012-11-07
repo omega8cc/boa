@@ -10,7 +10,7 @@ CTL_LOAD=288
 if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
   echo load is $NOW_LOAD while maxload is $CTL_LOAD
   echo ... now doing CTL...
-  su -s /bin/bash EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
+  su -s /bin/bash - EDIT_USER -c "bash /data/disk/EDIT_USER/aegir.sh"
   touch /var/xdrago/log/last-run-EDIT_USER
   echo CTL done
 else
