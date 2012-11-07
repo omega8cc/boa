@@ -39,7 +39,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
   }
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
-    if ($request_type == "SSL" && !preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI'])) {
+    if ($request_type == "SSL" && !preg_match("/(?:x-progress-id|ahah|filefield_nginx_progress\/*|tinybrowser|f?ckeditor|tinymce|autocomplete|ajax|batch|js\/.*)/", $_SERVER['REQUEST_URI'])) {
       header('X-Accel-Expires: 1');
       // Note: never use header('X-Accel-Expires: 0'); to disable Speed Booster completely.
       // You always want that one second or you will be vulnerable to DoS attacks.
