@@ -125,14 +125,14 @@ if (file_exists('./web.config')) {
     header('X-Backend: A');
   }
   else {
-    $conf['cache'] = 0; // disable standard db caching - Drupal 7
+    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7
     $drupal_seven = TRUE;
     $use_redis = TRUE;
     header('X-Backend: B');
   }
 }
 elseif (file_exists('./modules/path_alias_cache')) {
-  $conf['cache'] = 0; // disable standard db caching - Pressflow 6
+  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   header('X-Backend: C');
