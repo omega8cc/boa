@@ -488,7 +488,7 @@ upgrade_ctools_entity_more () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/email-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/facetapi-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-1.1-alpha2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-beta1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fontyourface-7.x-2.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_filter-7.x-1.7.tar.gz
@@ -1603,7 +1603,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     rm -f -r $_THIS_PRPATH/modules/contrib/{block_titlelink,commerce,features,job_scheduler,media,strongarm,token,views_infinite_scroll,wysiwyg}
     wget -q -U iCab http://ftp.drupal.org/files/projects/block_titlelink-7.x-1.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.4.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-1.1-alpha2.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-beta1.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-7.x-2.0-alpha3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/media-7.x-1.2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
