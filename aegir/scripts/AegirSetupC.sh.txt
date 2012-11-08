@@ -1954,14 +1954,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  cd $_THIS_PRPATH/modules/contrib
+  #cd $_THIS_PRPATH/modules/contrib
   #upgrade_ctools_entity_more
-  rm -f -r filefield_sources
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_sources-7.x-1.6.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
   create_dirs
   themes_for_d7
   patch_d7_core
