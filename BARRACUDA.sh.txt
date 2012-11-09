@@ -4164,6 +4164,9 @@ else
   st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get clean -y --force-yes" &> /dev/null
+  if [ -L "/usr/local/bin/redis-server" ] ; then
+    rm -f /usr/local/bin/redis-server
+  fi
 fi
 if [ "$_USE_MEMCACHED" = "YES" ] ; then
   _EXTRA_LIB_APT="libmcrypt-dev libmemcache-dev"
