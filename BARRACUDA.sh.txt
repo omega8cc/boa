@@ -5035,7 +5035,7 @@ else
     mrun "sleep 1"
   fi
 fi
-if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/local/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
