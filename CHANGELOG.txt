@@ -89,7 +89,7 @@
   * Percona 5.5.28
   * PHP 5.3.18
   * Pure-FTPd 1.0.36
-  * Redis 2.6.2
+  * Redis 2.6.4
   * Remove not supported httprl module and disable if enabled.
   * The filefield_nginx_progress is forced-enabled in all D7 sites, again.
   * Use PHP-FPM 5.3 for Chive, Collectd and other non-Drupal sites.
