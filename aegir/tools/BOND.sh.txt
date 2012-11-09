@@ -131,16 +131,16 @@ _TUNE_PHP_TIMEOUT=3600
 ###----------------------------------------###
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.0.3
+### _AEGIR_VERSION=BOA-2.0.4
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.0.4
 
 
 ###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.0.4-dev
+_INSTALLER_VERSION=BOA-2.0.4
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
