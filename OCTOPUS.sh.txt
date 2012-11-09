@@ -293,7 +293,7 @@ _MY_OWNIP=""
 ### _AEGIR_VERSION=HEAD
 ### _AEGIR_VERSION=BOA-2.0.4
 ###
-_AEGIR_VERSION=BOA-2.0.4
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -488,7 +488,7 @@ _USE_STOCK=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.0.4
+_INSTALLER_VERSION=BOA-2.0.5-dev
 
 ###
 ### Variables
