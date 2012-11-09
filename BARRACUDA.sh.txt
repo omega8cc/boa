@@ -5777,27 +5777,31 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
-  if [ "$_STATUS" = "INIT" ] ; then
-    _L_ST="install"
-  else
-    _L_ST="upgrade"
-  fi
-  if [ ! -e "/var/log/compass-$_INSTALLER_VERSION.log" ] ; then
-    echo " "
-    if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
-      true
-      msg "INFO: Running Compass Tools $_L_ST, please wait..."
-      mrun "sleep 1"
-      st_runner "apt-get update -y --force-yes" &> /dev/null
-      st_runner "$_INSTAPP rubygems" 2> /dev/null
-      st_runner "gem install compass" 2> /dev/null
-      echo "compass-$_INSTALLER_VERSION" > /var/log/compass-$_INSTALLER_VERSION.log
-      msg "INFO: Compass Tools $_L_ST completed"
-      mrun "sleep 1"
+if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+  true
+else
+  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+    if [ "$_STATUS" = "INIT" ] ; then
+      _L_ST="install"
     else
-      msg "INFO: Compass Tools $_L_ST skipped"
-      mrun "sleep 1"
+      _L_ST="upgrade"
+    fi
+    if [ ! -e "/var/log/compass-$_INSTALLER_VERSION.log" ] ; then
+      echo " "
+      if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
+        true
+        msg "INFO: Running Compass Tools $_L_ST, please wait..."
+        mrun "sleep 1"
+        st_runner "apt-get update -y --force-yes" &> /dev/null
+        st_runner "$_INSTAPP rubygems" 2> /dev/null
+        st_runner "gem install compass" 2> /dev/null
+        echo "compass-$_INSTALLER_VERSION" > /var/log/compass-$_INSTALLER_VERSION.log
+        msg "INFO: Compass Tools $_L_ST completed"
+        mrun "sleep 1"
+      else
+        msg "INFO: Compass Tools $_L_ST skipped"
+        mrun "sleep 1"
+      fi
     fi
   fi
 fi
