@@ -1014,7 +1014,7 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
   fi
   msg "ALRT: $_DB_SERVER server not running!"
   msg "EXIT: We can't proceed and will exit now"
-  msg "HINT: Please start $_DB_SERVER server and then run Octopus installer again"
+  msg "HINT: Please (re)start $_DB_SERVER server and then run Octopus installer again"
   msg "Bye"
   exit 1
 fi
