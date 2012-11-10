@@ -3400,9 +3400,9 @@ rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
   if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
-    if [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
+    if [ "$_FORCE_GIT_MIRROR" = "test" ] ; then
       cd /opt/tmp/$_BOA_REPO_NAME
-      git checkout 2.0.4-dev &> /dev/null
+      git checkout 2.0.5-dev &> /dev/null
       cd /opt/tmp
     else
       true
