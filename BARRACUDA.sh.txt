@@ -2010,6 +2010,28 @@ barracuda_cnf () {
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
+    _CHECK_HOST=`uname -n`
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+        true
+      else
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
+        echo 5.3 > /data/disk/*/log/cli.txt
+        echo 5.2 > /data/disk/*/log/fpm.txt
+      fi
+    fi
   else
     msg "INFO: Reading your /root/.barracuda.cnf config file"
     sleep 1
