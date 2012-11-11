@@ -5335,8 +5335,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   chmod 0711 /var/aegir/config/includes &> /dev/null
   chmod 0711 /var/aegir/config &> /dev/null
-  chmod 0755 /var/aegir/host_master/*/profiles/* &> /dev/null
-  chmod 0755 /var/aegir/*/profiles/* &> /dev/null
+  find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+  find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+  find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+  find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
   chown -R aegir:aegir /var/aegir/.drush &> /dev/null
   find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
   find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
