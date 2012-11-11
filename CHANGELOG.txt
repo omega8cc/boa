@@ -5,7 +5,7 @@
 
 # New Octopus platforms:
 
-  Commerce 2.0-rc3 ------------- http://drupalcommerce.org
+  Commerce 2.0-rc4 ------------- http://drupalcommerce.org
 
 # Updated Octopus platforms:
 
