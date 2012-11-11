@@ -2847,7 +2847,13 @@ upgrade_aegir_master () {
         rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
       fi
     fi
-    chmod 711 /var/aegir/.drush &> /dev/null
+    chmod 0755 /var/aegir/host_master/*/profiles/* &> /dev/null
+    chmod 0755 /var/aegir/*/profiles/* &> /dev/null
+    chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+    find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+    chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+    chmod 0711 /var/aegir/.drush &> /dev/null
     msg "INFO: Aegir Master Instance upgrade completed"
   else
     msg "INFO: Aegir Master Instance not upgraded this time"
@@ -5291,9 +5297,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
   chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
   rm -f /var/aegir/$_AEGIR_SCRIPT
-  chmod 711 /var/aegir/config/includes &> /dev/null
-  chmod 711 /var/aegir/config &> /dev/null
-  chmod 711 /var/aegir/.drush &> /dev/null
 
 
 ###--------------------###
@@ -5328,6 +5331,15 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
   fi
+  chmod 0711 /var/aegir/config/includes &> /dev/null
+  chmod 0711 /var/aegir/config &> /dev/null
+  chmod 0755 /var/aegir/host_master/*/profiles/* &> /dev/null
+  chmod 0755 /var/aegir/*/profiles/* &> /dev/null
+  chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+  find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+  find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+  chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+  chmod 0711 /var/aegir/.drush &> /dev/null
   cd /var/aegir
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default

@@ -1058,11 +1058,16 @@ fi
 ###---### Set permissions for all
 #
 chmod 0755 $_AEGIR_ROOT &> /dev/null
-chmod 0711 $_ROOT/config
-chmod 0711 $_ROOT/config/includes
-chmod 0750 $_ROOT/backups
-chmod 0750 $_ROOT/clients
-chmod 0711 $_ROOT/.drush
+chmod 0711 $_ROOT/config &> /dev/null
+chmod 0711 $_ROOT/config/includes &> /dev/null
+chmod 0750 $_ROOT/backups &> /dev/null
+chmod 0750 $_ROOT/clients &> /dev/null
+chmod 0755 $_ROOT/aegir/distro/*/profiles/* &> /dev/null
+chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
+find $_ROOT/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+find $_ROOT/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+chmod 0440 $_ROOT/.drush/*.php &> /dev/null
+chmod 0711 $_ROOT/.drush &> /dev/null
 
 
 ###---### Platforms [Y/n]
