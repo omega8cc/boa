@@ -16,21 +16,9 @@ echo rotate > /var/log/mysql/sql-slow-query.log
 if test -f /root/.high_traffic.cnf ; then
   echo rotate > /var/log/nginx/access.log
 else
-  /etc/init.d/redis-server stop
-  sleep 1
-  killall -9 redis-server
-  rm -f /var/run/redis.pid
-  rm -f /var/lib/redis/*
-  sleep 1
-  /etc/init.d/redis-server start
   /etc/init.d/php53-fpm reload
   if test -f /etc/init.d/php-fpm ; then
     /etc/init.d/php-fpm reload
-  fi
-  if test -f /etc/init.d/tomcat ; then
-    /etc/init.d/tomcat stop
-    sleep 3
-    killall -9 java
   fi
 fi
 if test -f /var/run/boa_run.pid ; then
