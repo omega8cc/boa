@@ -1062,7 +1062,8 @@ chmod 0711 $_ROOT/config &> /dev/null
 chmod 0711 $_ROOT/config/includes &> /dev/null
 chmod 0750 $_ROOT/backups &> /dev/null
 chmod 0750 $_ROOT/clients &> /dev/null
-chmod 0755 $_ROOT/aegir/distro/*/profiles/* &> /dev/null
+find $_ROOT/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+find $_ROOT/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
 chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
 find $_ROOT/.drush -type d -exec chmod 0755 {} \; &> /dev/null
 find $_ROOT/.drush -type f -exec chmod 0644 {} \; &> /dev/null
