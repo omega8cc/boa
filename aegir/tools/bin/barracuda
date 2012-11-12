@@ -69,11 +69,13 @@ up_action ()
           sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /root/.barracuda.cnf &> /dev/null
         fi
       fi
-      _THIS_RV=`lsb_release -sc`
-      if [ "$_THIS_RV" = "lenny" ] && [ -e "/root/.barracuda.cnf" ] ; then
-        sed -i "s/.*_LENNY_TO_SQUEEZE.*//g" /root/.barracuda.cnf &> /dev/null
-        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
-        echo "_LENNY_TO_SQUEEZE=YES" >> /root/.barracuda.cnf
+      if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+        _THIS_RV=`lsb_release -sc`
+        if [ "$_THIS_RV" = "lenny" ] && [ -e "/root/.barracuda.cnf" ] ; then
+          sed -i "s/.*_LENNY_TO_SQUEEZE.*//g" /root/.barracuda.cnf &> /dev/null
+          sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+          echo "_LENNY_TO_SQUEEZE=YES" >> /root/.barracuda.cnf
+        fi
       fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
