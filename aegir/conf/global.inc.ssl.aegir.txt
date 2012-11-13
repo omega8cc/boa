@@ -382,12 +382,10 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
-        $use_redis = FALSE;
       }
 
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
-        $use_redis = FALSE;
       }
 
       if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -459,7 +457,6 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     $conf['cache_class_cache_pulled_tweets']  = 'DrupalDatabaseCache';
     $conf['cache_class_cache_views_data']     = 'DrupalDatabaseCache';
     $conf['cache_class_cache_views']          = 'DrupalDatabaseCache';
-    $conf['cache_class_cache_field']          = 'DrupalDatabaseCache';
     if (!isset($_COOKIE[$test_sess_name]) || $is_cart) {
       $conf['cache_class_cache_block']        = 'DrupalDatabaseCache';
       $conf['cache_class_cache_bootstrap']    = 'DrupalDatabaseCache';
