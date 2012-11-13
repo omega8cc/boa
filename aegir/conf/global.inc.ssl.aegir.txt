@@ -459,6 +459,7 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     $conf['cache_class_cache_pulled_tweets']  = 'DrupalDatabaseCache';
     $conf['cache_class_cache_views_data']     = 'DrupalDatabaseCache';
     $conf['cache_class_cache_views']          = 'DrupalDatabaseCache';
+    $conf['cache_class_cache_field']          = 'DrupalDatabaseCache';
     if (!isset($_COOKIE[$test_sess_name]) || $is_cart) {
       $conf['cache_class_cache_block']        = 'DrupalDatabaseCache';
       $conf['cache_class_cache_bootstrap']    = 'DrupalDatabaseCache';
