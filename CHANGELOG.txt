@@ -152,7 +152,7 @@
   * Issue #1614162 - CRON Not Running on Octopus Satellites and Sites.
   * Issue #1643616 - APC is missing in the Ubuntu Precise based install.
   * Issue #1659452 - Add support for Aegir HTTPS header in the Speed Booster.
-  * Issue #1663262 - fix FMG install on Ubuntu Precise.
+  * Issue #1663262 - Fix FMG install on Ubuntu Precise.
   * Issue #1679114 - New user name check in Octopus is too restrictive.
   * Issue #1689656 - Avoid caching /civicrm* and known webform requests.
   * Issue #1716004 - The zlib.output_compression should be disabled in 5.3
@@ -170,6 +170,7 @@
   * Issue #1825630 - Remove duplicate code causing false alarm.
   * Issue #1825992 - Redis cache is never cleared via php-cli.
   * Issue #1825998 - Improved auto-healing for Redis.
+  * Issue #1835796 - Default cache headers break CloudFlare Always Online.
   * Make sure that path_alias_cache module takes precedence.
   * Make sure that PHP 5.2 is re-installed if required.
   * Monitor and kill too long running sites cron tasks.
