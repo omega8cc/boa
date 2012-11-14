@@ -36,8 +36,7 @@ _MODULES_OFF_SIX="cache dblog l10n_update devel performance poormanscron supercr
 fix_clear_cache()
 {
 if [ -e "$Plr/profiles/hostmaster" ] ; then
-  cd $Dir
-  su -s /bin/bash - $_THIS_HM_USER -c "drush cc all &> /dev/null"
+  su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
 fi
 }
 
@@ -177,16 +176,16 @@ if [ "$_MODULES" = "YES" ] ; then
     if [ -e "$Dir/drushrc.php" ] ; then
       cd $Dir
       if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
-        su -s /bin/bash - $_THIS_HM_USER -c "drush dis cache syslog dblog -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush @hostmaster dis cache syslog dblog -y &> /dev/null"
         echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
         chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
       elif [ -e "$Plr/modules/o_contrib" ] ; then
-        su -s /bin/bash - $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
       elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
-        su -s /bin/bash - $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
       fi
     fi
     ;;
@@ -446,15 +445,15 @@ do
       if [ -e "$_THIS_HM_SITE" ] ; then
         read_account_data
         cd $_THIS_HM_SITE
-        su -s /bin/bash - $_THIS_HM_USER -c "drush vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> C' &> /dev/null"
+        su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Daily Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> C' &> /dev/null"
         if [ ! -e "$User/log/custom_cron" ] ; then
           true
         fi
-        su -s /bin/bash - $_THIS_HM_USER -c "drush vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush vset --always-set hosting_queue_advanced_cron_frequency 1 &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush vset --always-set hosting_queue_cron_frequency 53222400 &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush vset --always-set hosting_cron_use_backend 1 &> /dev/null"
-        su -s /bin/bash - $_THIS_HM_USER -c "drush vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
+        su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null"
+        su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1 &> /dev/null"
+        su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_queue_cron_frequency 53222400 &> /dev/null"
+        su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_cron_use_backend 1 &> /dev/null"
+        su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
       fi
       if [[ "$_VM_TEST" =~ ".host8." ]] ; then
         rm -f -r $User/clients/admin &> /dev/null
