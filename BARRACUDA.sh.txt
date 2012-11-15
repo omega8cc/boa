@@ -3566,7 +3566,7 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
   elif [ "$_THIS_RV" = "lenny" ] ; then
     _REL_VERSION="lenny"
     _DB_SERVER=MariaDB
-    _MARIADB_VERSION=5.3.9
+    _MARIADB_VERSION=5.3.10
   else
     not_supported_os
   fi
