@@ -555,7 +555,9 @@ restart_services () {
   st_runner "service php53-fpm reload"   &> /dev/null
   st_runner "service mysql restart"      &> /dev/null
   st_runner "service nginx reload"       &> /dev/null
-  st_runner "csf -q"                     &> /dev/null
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
+    st_runner "csf -q"                   &> /dev/null
+  fi
 }
 #
 tune_web_server_config () {
