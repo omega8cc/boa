@@ -14,6 +14,13 @@
 # The 'source-host' is your source instance FQDN hostname,
 # and 'target-host' is your target instance FQDN hostname.
 
+### On source server
+#
+# You must remove remote_import extension so it will exist
+# only on the target server, or weird things will happen.
+#
+$ mv /data/disk/o1/.drush/provision/remote_import /tmp/
+
 ### On target and source server
 $ chsh -s /bin/bash o1
 $ su o1
