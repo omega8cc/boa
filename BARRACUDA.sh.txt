@@ -5975,6 +5975,21 @@ fi
 
 
 ###--------------------###
+#
+# Fix csf.fignore file to whitelist /tmp/drush_*
+fix_lfd_whitelist () {
+  _THIS_FILE=/etc/csf/csf.fignore
+  if [ -e "$_THIS_FILE" ] ; then
+    _CSF_WHITELIST_TEST=$(grep "drush_" $_THIS_FILE)
+    if [[ "$_CSF_WHITELIST_TEST" =~ "drush_" ]] ; then
+      true
+    else
+      echo "/tmp/drush_tmp.*" >> $_THIS_FILE
+      echo "/tmp/drush_make_tmp.*" >> $_THIS_FILE
+    fi
+  fi
+}
+#
 csf_install () {
   msg "INFO: Installing csf/lfd firewall, please wait..."
   mrun "sleep 1"
@@ -6044,6 +6059,7 @@ if [ -e "/usr/sbin/csf" ] ; then
     st_runner "csf -q" &> /dev/null
   fi
 fi
+fix_lfd_whitelist
 
 
 ###--------------------###
