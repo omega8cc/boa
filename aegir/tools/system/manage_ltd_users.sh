@@ -161,7 +161,10 @@ do
     add_user_if_not_exists
     echo Done for $Client at $User
   else
-    echo Empty $Client at $User
+    echo Empty $Client at $User - deleting now
+    if [ -e "$Client" ] ; then
+      rmdir $Client
+    fi
   fi
 done
 }
