@@ -589,12 +589,16 @@ fi
 #
 # Make sure that username is unique and not restricted.
 check_id () {
-  _ID_EXISTS=$(id $_USER 2>&1)
-  if [[ "$_ID_EXISTS" =~ "No such user" ]] ; then
+  _ID_EXISTS=$(getent passwd $_USER 2>&1)
+  if [ -z "$_ID_EXISTS" ] ; then
     true
-  else
+  elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
     msg "ERROR: $_USER username is already taken"
     msg "Please choose different _USER"
+    exit 1
+  else
+    msg "ERROR: $_USER username check failed"
+    msg "Please try different _USER"
     exit 1
   fi
   if [ "$_USER" = "admin" ] ; then
@@ -613,12 +617,7 @@ check_id () {
 #
 # Find correct IP.
 find_correct_ip () {
-  _FQDN_TEST=$(host $_LOC_DOM)
-  if [[ "$_FQDN_TEST" =~ "is an alias for" ]] ; then
-    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
-  else
-    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
-  fi
+  _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
 }
 #
 # Read or create Octopus cnf file.

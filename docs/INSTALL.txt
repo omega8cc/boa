@@ -15,7 +15,8 @@
 
 1. Configure your domain DNS to point its wildcard enabled A record to your
    server IP address, and make sure it propagated on the Internet by trying
-   `host server.mydomain.org` on command line on any other host/system.
+   `host server.mydomain.org` or `getent hosts server.mydomain.org` command
+   on any other server/system.
 
    See our DNS wildcard configuration example for reference: http://bit.ly/UM2nRb
 

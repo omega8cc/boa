@@ -844,23 +844,14 @@ fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
 AEGIR_HOST=`uname -n`
-if [ "$AEGIR_HOST" = "aegir.local" ] ; then
-  _RESOLVEIP=`host $AEGIR_HOST 2> /dev/null`
-else
-  _RESOLVEIP=`resolveip $AEGIR_HOST 2> /dev/null`
-fi
+_RESOLVEIP=`echo $(getent ahostsv4 $AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
 if [ -z "$_RESOLVEIP" ] ; then
   msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
   msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
   exit 1
 else
-  if [ "$AEGIR_HOST" = "aegir.local" ] ; then
-    AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $4}'`
-  else
-    AEGIR_HOST_IP=`echo $_RESOLVEIP | cut -d: -f2 | awk '{ print $6}'`
-  fi
-  true
+  AEGIR_HOST_IP="$_RESOLVEIP"
 fi
 /usr/bin/mysql -h localhost --port=3306 -u root mysql<<EOFMYSQL
 FLUSH PRIVILEGES;

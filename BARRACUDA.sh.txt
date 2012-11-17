@@ -981,12 +981,7 @@ basic_single_escape () {
 #
 # Find correct IP.
 find_correct_ip () {
-  _FQDN_TEST=$(host $_LOC_DOM)
-  if [[ "$_FQDN_TEST" =~ "is an alias for" ]] ; then
-    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $10}'`
-  else
-    _LOC_IP=`echo $_FQDN_TEST | cut -d: -f2 | awk '{ print $4}'`
-  fi
+  _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
 }
 #
 # Fix php.ini files to remove mailparse.so

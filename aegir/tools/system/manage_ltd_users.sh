@@ -9,8 +9,10 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 #
 # Add ltd-shell group if not exists.
 add_ltd_group_if_not_exists () {
-  _LTD_EXISTS=$(id -g ltd-shell 2>&1)
-  if [[ "$_LTD_EXISTS" =~ "No such user" ]] ; then
+  _LTD_EXISTS=$(getent group ltd-shell 2>&1)
+  if [[ "$_LTD_EXISTS" =~ "ltd-shell" ]] ; then
+    true
+  else
     addgroup --system ltd-shell &> /dev/null
   fi
 }
@@ -19,7 +21,7 @@ add_ltd_group_if_not_exists () {
 kill_zombies () {
 for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`
 do
-  _SEC_IDY=$(id $Existing 2>&1)
+  _SEC_IDY=$(id -nG $Existing 2>&1)
   if [[ "$_SEC_IDY" =~ "ltd-shell" ]] ; then
     _PAR_OWN=`echo $Existing | cut -d. -f1 | awk '{ print $1}'`
     _PAR_DIR="/data/disk/$_PAR_OWN/clients"
@@ -115,10 +117,11 @@ ok_update_user()
 #
 # Add user if not exists.
 add_user_if_not_exists () {
-  _ID_EXISTS=$(id $_USER_LTD 2>&1)
-  if [[ "$_ID_EXISTS" =~ "No such user" ]] ; then
+  _ID_EXISTS=$(getent passwd $_USER_LTD 2>&1)
+  _ID_SHELLS=$(id -nG $_USER_LTD 2>&1)
+  if [ -z "$_ID_EXISTS" ] ; then
     ok_create_user
-  elif [[ "$_ID_EXISTS" =~ "ltd-shell" ]] ; then
+  elif [[ "$_ID_EXISTS" =~ "$_USER_LTD" ]] && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
     ok_update_user
   fi
 }
@@ -132,7 +135,9 @@ do
   _PATH_DOM=`readlink -n $Domain`
   _PATH_DOM=`echo -n $_PATH_DOM | tr -d "\n"`
   _ALLD_DIR="$_ALLD_DIR, '$_PATH_DOM'"
-  let "_ALLD_NUM += 1"
+  if [ -e "$_PATH_DOM" ] ; then
+    let "_ALLD_NUM += 1"
+  fi
   echo Done for $Domain at $Client
 done
 }
