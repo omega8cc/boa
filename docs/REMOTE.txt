@@ -104,11 +104,7 @@ $ drush en hosting_remote_import -y
 # after every step or run it manually with:
 $ bash /var/xdrago/run-o1
 #
-1. Add new remote server - see screenshots:
-
-   https://skitch.com/omega8cc/8tihq/fullscreen-272
-   https://skitch.com/omega8cc/8tih4/fullscreen-273
-
+1. Add new remote server - see screenshots: http://bit.ly/ZNBvpF
 2. Go to "Import remote sites" tab on the just added server node.
 3. Click on the "Retrieve a list of remote sites" button and run cron.
 4. Choose the site to import from the list.

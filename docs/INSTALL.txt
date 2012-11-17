@@ -17,7 +17,7 @@
    server IP address, and make sure it propagated on the Internet by trying
    `host server.mydomain.org` on command line on any other host/system.
 
-   See our DNS wildcard configuration example for reference: http://bit.ly/IZqv2Q
+   See our DNS wildcard configuration example for reference: http://bit.ly/UM2nRb
 
    NOTE! You shouldn't use anything like "mydomain.org" as your hostname.
          It should be some **subdomain**, like "server.mydomain.org".

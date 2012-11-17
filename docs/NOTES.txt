@@ -4,7 +4,7 @@
   NOTE: 123.45.67.89 below is a placeholder for your server public, real IP address.
 
   NOTE: f-q-d-n below is a placeholder for your real wildcard-enabled-hostname.
-        See our DNS wildcard configuration example for reference: http://bit.ly/IZqv2Q
+        See our DNS wildcard configuration example for reference: http://bit.ly/UM2nRb
 
   NOTE: With _EASY_PUBLIC=YES option (default) Barracuda will install automatically
         only services listed below:

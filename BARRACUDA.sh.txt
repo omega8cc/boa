@@ -97,7 +97,7 @@ _EASY_PUBLIC=YES
 ### so you may need to wait for propagation
 ### on the Internet before it will work.
 ###
-### See for reference: http://bit.ly/IZqv2Q
+### See for reference: http://bit.ly/UM2nRb
 ###
 ### NOTE! You shouldn't use "mydomain.org"
 ### as your hostname. It should be some
