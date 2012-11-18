@@ -5473,9 +5473,9 @@ fi
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
   if [ ! -d "/opt/solr" ] ; then
     echo " "
-    if prompt_yes_no "Do you want to install MultiCore Apache Solr Tomcat?" ; then
+    if prompt_yes_no "Do you want to install MultiCore Apache Solr 1.4 with Tomcat 6?" ; then
       true
-      msg "INFO: Installing MultiCore Apache Solr Tomcat, please wait..."
+      msg "INFO: Installing MultiCore Apache Solr 1.4 with Tomcat 6, please wait..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r apachesolr*
@@ -5506,10 +5506,10 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "SLR" ]] ; then
       chown -R tomcat:tomcat /opt/tomcat6
       st_runner "update-rc.d tomcat defaults" &> /dev/null
       st_runner "service tomcat start" &> /dev/null
-      msg "INFO: MultiCore Apache Solr Tomcat installation completed"
+      msg "INFO: MultiCore Apache Solr 1.4 with Tomcat 6 installation completed"
       mrun "sleep 1"
     else
-      msg "INFO: MultiCore Apache Solr Tomcat installation skipped"
+      msg "INFO: MultiCore Apache Solr 1.4 with Tomcat 6 installation skipped"
       mrun "sleep 1"
     fi
   fi

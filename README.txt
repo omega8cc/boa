@@ -110,7 +110,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * Entry level XSS built-in protection on the Nginx level.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
-* MultiCore Apache Solr with Tomcat (optional).
+* MultiCore Apache Solr 1.4 with Tomcat 6 (optional).
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
 * Webmin Control Panel (optional).

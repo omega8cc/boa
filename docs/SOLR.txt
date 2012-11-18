@@ -1,14 +1,29 @@
 
- To enable Apache Solr Search for any site on your server,
- please download and enable Apache Solr Search Integration module
- with required third party library, as explained in its readme.
+ To enable Apache Solr Search feature for any site on your BOA server,
+ please download and enable either Apache Solr Search Integration
+ module with required third party library, as explained in its readme,
+ or download and enable Search API Solr search module (D7 only).
 
  http://drupal.org/project/apachesolr
+ http://drupal.org/project/search_api_solr
 
- Your server is configured by default for version 6.x-1.6,
- but you can configure each core separately to use 7.x-1.0 version
- by uploading required solrconfig.xml, schema.xml and protwords.txt
- files to the solr/site_00*/conf directory.
+ BOA system supports both Apache Solr Search Integration module
+ and Search API Solr search module, but since it comes with
+ Solr 1.4 to provide compatibility with both Drupal 6 and Drupal 7,
+ you must remember to use correct, compatible configuration files
+ when configuring your Solr core(s), or it will not work.
+
+ Both modules come with required solrconfig.xml, schema.xml and
+ protwords.txt files in the solr-conf/solr-1.4 directory.
+
+ You should configure each core separately to use correct version
+ by uploading respective solrconfig.xml, schema.xml and protwords.txt
+ files to the solr/site_00*/conf directory and restarting Tomcat
+ with command `service tomcat restart`.
+
+ NOTE: If your site was already configured to use any of those
+       modules, you must delete its search index (not just rebuild it)
+       or the site and the search indexing will fail to work properly.
 
  In your Solr configuration there are ready to use 8 separate
  cores, since you need to use one core per site to avoid
@@ -53,14 +68,9 @@
    </cores>
 
 
-### NOTE: to turn off Apache Solr Search server type as root:
+ To disable Apache Solr Search completely, type as root:
 
-    $ service tomcat stop
-
-
-### NOTE: to disable Apache Solr Search completely, type as root:
-
-    $ service tomcat stop
-    $ update-rc.d -f tomcat remove
-    $ mv /etc/init.d/tomcat /etc/init.d/offtomcat
+ $ service tomcat stop
+ $ update-rc.d -f tomcat remove
+ $ mv /etc/init.d/tomcat /etc/init.d/offtomcat
 
