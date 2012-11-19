@@ -4,8 +4,8 @@
  module with required third party library, as explained in its readme,
  or download and enable Search API Solr search module (D7 only).
 
- http://drupal.org/project/apachesolr
- http://drupal.org/project/search_api_solr
+ http://drupal.org/project/apachesolr (6.x-1.7 or newer)
+ http://drupal.org/project/search_api_solr (7.x-1.0-rc2 only)
 
  BOA system supports both Apache Solr Search Integration module
  and Search API Solr search module, but since it comes with
@@ -14,7 +14,8 @@
  when configuring your Solr core(s), or it will not work.
 
  Both modules come with required solrconfig.xml, schema.xml and
- protwords.txt files in the solr-conf/solr-1.4 directory.
+ protwords.txt files either in the solr-conf/solr-1.4 subdirectory
+ for newer versions, or in the module directory directly.
 
  You should configure each core separately to use correct version
  by uploading respective solrconfig.xml, schema.xml and protwords.txt
