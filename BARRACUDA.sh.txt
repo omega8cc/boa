@@ -1643,9 +1643,9 @@ validate_local_ip () {
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
     if [ "$_USE_STOCK" = "NO" ] ; then
-      sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-      sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-      sed -i "s/data\/disk\/EDIT_USER/var\/aegir/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+      sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
+      sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+      sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
     fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then

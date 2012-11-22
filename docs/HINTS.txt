@@ -1,33 +1,45 @@
 
-### How to customize standard rewrites and locations in Nginx
+### How to customize/override standard rewrites and locations in Nginx
 #
-# You can include your custom rewrites configuration file
+# NOTE: Since BOA-2.0.4 all listed below options are available
+#       both for Satellite and Master Aegir Instances.
+#
+# You can include your custom rewrites/locations configuration
 # to modify or add some custom settings taking precedence
-# over other rules in the main Nginx configuration below.
+# over other rules in the main Nginx configuration.
+#
+# Note that some locations will require using parent literal location
+# to stop searching for / using other regex based locations.
+#
+# To learn more please read: http://wiki.nginx.org/HttpCoreModule#location
 #
 # Your custom include file should have filename: nginx_vhost_include.conf
-# and Nginx will look for this file in the include directory
-# specified below:
+# for standard overrides and/or nginx_force_include.conf for high level
+# overrides. The difference between both options is only the point
+# where the extra config file is included, thus nginx_force_include.conf
+# can override more than nginx_vhost_include.conf file.
 #
-# include /data/disk/EDIT_USER/config/server_master/nginx/post.d/nginx_vhost_include*;
+# Both include points: http://bit.ly/WlOQRy and http://bit.ly/UrfDwu
 #
-# This file will be included if exists and will never be modified
-# or touched by Aegir provision backend system.
+# Nginx will look for both files in the include directory specified below:
 #
-# You could use this feature to map some legacy static files
-# like images, downloads and other static htm/html content
-# to the drupal sites/domain/files directory, to avoid
-# using drupal root directory and make your site compatible
-# with drupal multisite setup used in Aegir to migrate sites
-# between platforms (different drupal root directories).
-# See the example of config lines below.
+# For Satellite Instances:
+# /data/disk/EDIT_USER/config/server_master/nginx/post.d/
+#
+# For Master Instance:
+# /var/aegir/config/includes/
+#
+# These files will be included if exist and will never be modified
+# or touched by Aegir Provision backend system.
 #
 # Note: your custom rewrite rules will apply to *all* sites
-# on the same Aegir Satellite Instance.
+# on the same Aegir Satellite Instance, unless you will use
+# site/domain specific if{} embedded locations, as shown below.
 #
-# Custom configuration in the nginx_vhost_include.conf file - includes
-# example custom rewrite rules to map legacy content to the drupal multisite.
-#
+
+###
+### Example custom rewrites to map legacy content to the Drupal multisite.
+###
 location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   access_log off;
   expires    30d;
@@ -40,4 +52,17 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   rewrite    ^/legacy/(.*)$    /sites/$server_name/files/legacy/$1 last;
   try_files  $uri =404;
 }
-#
+
+###
+### Example site specific 301 redirect with parent literal location
+### to stop searching for / using other regex based locations.
+###
+location ^~ /some-literal-path/no-regex-here {
+  location ~* ^/some-path/or-regex-here {
+    if ($host ~* ^(www\.)?(domain\.com)$) {
+      rewrite ^ $scheme://$host/destination/url permanent;
+    }
+    try_files $uri @cache;
+  }
+}
+
