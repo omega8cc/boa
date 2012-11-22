@@ -5396,6 +5396,8 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
   cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
   mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f uc.html index.html &> /dev/null
+  rm -f /etc/nginx/sites-available/default
+  rm -f /etc/nginx/sites-enabled/default
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     st_runner "service nginx reload" &> /dev/null
   fi
