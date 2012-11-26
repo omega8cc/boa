@@ -25,10 +25,12 @@ $ mv /data/disk/o1/.drush/provision/remote_import /tmp/
 $ chsh -s /bin/bash o1
 $ su o1
 $ mkdir -p ~/.ssh
+$ chmod 700 ~/.ssh
 
 ### On target server
 $ su o1
 $ ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
+$ chmod 600 ~/.ssh/*
 
 ### On source server
 $ su o1
