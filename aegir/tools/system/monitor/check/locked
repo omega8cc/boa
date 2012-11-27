@@ -9,15 +9,18 @@ chomp($now_is);
 &fpmcheck;
 &tomcatcheck;
 if ($fpm_status ne "CLEAN") {
+  `killall -9 java`;
   `/etc/init.d/php-fpm restart`;
   `/etc/init.d/php53-fpm restart`;
+  sleep(2);
 }
 if ($tomcat_status ne "CLEAN") {
   `/etc/init.d/tomcat stop`;
-  sleep(3);
+  sleep(2);
   `killall -9 java`;
   `/etc/init.d/tomcat start`;
 }
+`touch /var/xdrago/log/last-run-locked`;
 exit;
 
 #############################################################################
