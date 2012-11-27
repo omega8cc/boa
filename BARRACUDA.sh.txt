@@ -805,7 +805,7 @@ _GIT_VERSION=1.8.0
 _IMAGICK_VERSION=3.1.0RC2
 _LSHELL_VERSION=0.9.15.1-sec-noreload
 _NGINX_VERSION=1.3.8
-_PHP_VERSION_NEW=5.3.18
+_PHP_VERSION_NEW=5.3.19
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.6.4
@@ -2556,7 +2556,7 @@ update_php_universal_more () {
   fi
 }
 #
-# Install PHP 5.3.18
+# Install PHP 5.3.19
 install_php_modern () {
   ###--------------------###
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -2701,7 +2701,7 @@ install_php_legacy () {
   chmod 755 /usr/local/sbin/php-fpm &> /dev/null
 }
 #
-# Update PHP 5.3.18
+# Update PHP 5.3.19
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
   if [ "$_FROM_SOURCES" = "NO" ] ; then

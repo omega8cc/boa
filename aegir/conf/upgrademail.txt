@@ -56,7 +56,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.4
   compatible with PHP 5.3 - please read below for more details.
 
   We are changing also default PHP-FPM version used by all D6 sites
-  to the old PHP-FPM 5.2.17, but we can set it to latest 5.3.18,
+  to the old PHP-FPM 5.2.17, but we can set it to latest 5.3.19,
   on request submitted via: http://omega8.cc/support
 
   NOTE: Only Aegir instances we host or manage remotely are
@@ -66,7 +66,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.4
         since it was a default setup on older instances anyway.
 
 * At the same time we are changing the default Aegir PHP-CLI backend
-  to the latest 5.3.18 version from previous default 5.2.17
+  to the latest 5.3.19 version from previous default 5.2.17
 
   This step is required before we will introduce newest Drush 5
   as a default version on all servers (we still use our modified
