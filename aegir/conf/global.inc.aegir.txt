@@ -248,6 +248,16 @@ if (function_exists('drush_get_command')) {
   }
 }
 
+if (file_exists('sites/all/modules/domain/settings.inc')) {
+  $da_inc = 'sites/all/modules/domain/settings.inc';
+}
+elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
+  $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
+}
+elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
+  $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+}
+
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
@@ -255,16 +265,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   }
   else {
     $this_device = 'normal';
-  }
-
-  if (file_exists('sites/all/modules/domain/settings.inc')) {
-    $da_inc = 'sites/all/modules/domain/settings.inc';
-  }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
-    $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
-  }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
-    $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
   }
 
   if ($da_inc) {
@@ -508,6 +508,6 @@ if (!$custom_fb) {
  */
 if (!$custom_da) {
   if ($da_inc) {
-    require_once $da_inc;
+    require_once($da_inc);
   }
 }
