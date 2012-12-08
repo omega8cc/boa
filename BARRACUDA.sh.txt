@@ -4187,6 +4187,8 @@ else
   _APT_ELSE="netcat"
   st_runner "apt-get remove nginx-extras -y" &> /dev/null
   st_runner "apt-get remove nginx -y" &> /dev/null
+  st_runner "apt-get remove nginx-common -y" &> /dev/null
+  st_runner "apt-get remove nginx-full -y" &> /dev/null
   st_runner "apt-get remove redis-server -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
