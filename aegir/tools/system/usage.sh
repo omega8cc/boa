@@ -49,7 +49,7 @@ else
   mkdir -p $Plr/cache
 fi
 chown $_THIS_HM_USER:www-data $Plr/cache
-chmod 770 $Plr/cache
+chmod 02770 $Plr/cache
 if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ] ; then
   rm -f $Plr/robots.txt
 fi
