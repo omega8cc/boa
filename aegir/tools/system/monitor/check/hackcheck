@@ -59,7 +59,7 @@ sub makeactions
       if (!$blocked) {
         `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/ssh.log`;
         `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf") {
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/opt/fire.sh") {
           `/usr/sbin/csf -td $VISITOR 3600 -p 22`;
         }
       }
