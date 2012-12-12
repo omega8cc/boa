@@ -55,6 +55,9 @@ sub makeactions
         if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|((GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|files\/(imagecache|styles|progress)|plupload|api\/rest|GET \/hosting|\/(ajax|autocomplete)\/)/) {
           print "Not Counted Request URI: $line\n";
         }
+        elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
+          print "Not Counted Request URI: $line\n";
+        }
         else {
           $li_cnt{$VISITOR}++;
         }
@@ -69,6 +72,9 @@ sub makeactions
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
         if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|((GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|files\/(imagecache|styles|progress)|plupload|api\/rest|GET \/hosting|\/(ajax|autocomplete)\/)/) {
+          print "Not Counted Request URI: $line\n";
+        }
+        elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
           print "Not Counted Request URI: $line\n";
         }
         else {
