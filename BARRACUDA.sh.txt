@@ -4681,6 +4681,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/1800/900/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
     sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
+    sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
