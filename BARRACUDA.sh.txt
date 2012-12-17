@@ -1785,8 +1785,8 @@ tune_memory_limits () {
         _L_NGINX_WORKERS=$_NGINX_WORKERS
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
-      _USE_PHP=512
       if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+        _USE_PHP=1024
         _USE_APC=1024
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=8
@@ -1799,6 +1799,7 @@ tune_memory_limits () {
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
       else
+        _USE_PHP=512
         _USE_APC=256
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=2
