@@ -115,7 +115,7 @@ _TUNE_NGINX_FIREWALL=300
 
 
 ###----------------------------------------###
-### Database server timeout - default 300
+### Database server timeout - default 3600
 ###
 _TUNE_SQL_TIMEOUT=3600
 
@@ -501,7 +501,7 @@ restore_default_sql () {
     if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
       true
     else
-      sed -i "s/1800/900/g" /var/xdrago/minute.sh &> /dev/null
+      sed -i "s/3600/3599/g" /var/xdrago/minute.sh &> /dev/null
     fi
   fi
   chmod 700 /var/xdrago/minute.sh
@@ -509,9 +509,8 @@ restore_default_sql () {
 #
 tune_sql () {
   msg "INFO: Tuning SQL configuration"
-  sed -i "s/1800/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf     &> /dev/null
-  sed -i "s/1800/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh &> /dev/null
-  sed -i "s/600/$_TUNE_SQL_TIMEOUT/g"  /var/xdrago/minute.sh &> /dev/null
+  sed -i "s/3600/$_TUNE_SQL_TIMEOUT/g" /etc/mysql/my.cnf     &> /dev/null
+  sed -i "s/3600/$_TUNE_SQL_TIMEOUT/g" /var/xdrago/minute.sh &> /dev/null
 }
 #
 restore_default_nginx () {
