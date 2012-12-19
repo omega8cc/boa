@@ -34,11 +34,12 @@
 #
 # Note: your custom rewrite rules will apply to *all* sites
 # on the same Aegir Satellite Instance, unless you will use
-# site/domain specific if{} embedded locations, as shown below.
+# site/domain specific if{} embedded locations, as shown
+# in the examples below.
 #
 
 ###
-### Example custom rewrites to map legacy content to the Drupal multisite.
+### Custom rewrites to map legacy content to the Drupal multisite.
 ###
 location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   access_log off;
@@ -54,8 +55,8 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
 }
 
 ###
-### Example site specific 301 redirect with parent literal location
-### to stop searching for / using other regex based locations.
+### Site specific 301 redirect with parent literal location
+### to stop searching for (and using) other regex based locations.
 ###
 location ^~ /some-literal-path/no-regex-here {
   location ~* ^/some-path/or-regex-here {
