@@ -48,3 +48,28 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
     }
   }
 }
+
+// Redis optional overrides - they may fix some issues, but also
+// add some confusion - see: http://drupal.org/node/1867264#comment-6859234
+$conf['cache_class_cache_menu']           = 'DrupalDatabaseCache';
+$conf['cache_class_cache_pulled_tweets']  = 'DrupalDatabaseCache';
+$conf['cache_class_cache_views_data']     = 'DrupalDatabaseCache';
+$conf['cache_class_cache_views']          = 'DrupalDatabaseCache';
+if (!isset($_COOKIE[$test_sess_name]) || $is_cart) {
+  $conf['cache_class_cache_block']        = 'DrupalDatabaseCache';
+  $conf['cache_class_cache_bootstrap']    = 'DrupalDatabaseCache';
+  $conf['cache_class_cache_tax_image']    = 'DrupalDatabaseCache';
+  $conf['cache_class_cache']              = 'DrupalDatabaseCache';
+}
+if ($force_redis) {
+  $conf['page_cache_without_database']    = TRUE;
+  $conf['omit_vary_cookie']               = TRUE;
+  $conf['cache_class_cache_block']        = 'Redis_Cache';
+  $conf['cache_class_cache_bootstrap']    = 'Redis_Cache';
+  $conf['cache_class_cache_menu']         = 'Redis_Cache';
+  $conf['cache_class_cache_tax_image']    = 'Redis_Cache';
+  $conf['cache_class_cache_views_data']   = 'Redis_Cache';
+  $conf['cache_class_cache_views']        = 'Redis_Cache';
+  $conf['cache_class_cache']              = 'Redis_Cache';
+}
+

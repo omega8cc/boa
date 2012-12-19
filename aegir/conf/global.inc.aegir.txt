@@ -446,27 +446,6 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     $conf['cache_lifetime']                   = 0;
     $conf['cache_default_class']              = 'Redis_Cache';
     $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
-    $conf['cache_class_cache_menu']           = 'DrupalDatabaseCache';
-    $conf['cache_class_cache_pulled_tweets']  = 'DrupalDatabaseCache';
-    $conf['cache_class_cache_views_data']     = 'DrupalDatabaseCache';
-    $conf['cache_class_cache_views']          = 'DrupalDatabaseCache';
-    if (!isset($_COOKIE[$test_sess_name]) || $is_cart) {
-      $conf['cache_class_cache_block']        = 'DrupalDatabaseCache';
-      $conf['cache_class_cache_bootstrap']    = 'DrupalDatabaseCache';
-      $conf['cache_class_cache_tax_image']    = 'DrupalDatabaseCache';
-      $conf['cache_class_cache']              = 'DrupalDatabaseCache';
-    }
-    if ($force_redis) {
-      $conf['page_cache_without_database']    = TRUE;
-      $conf['omit_vary_cookie']               = TRUE;
-      $conf['cache_class_cache_block']        = 'Redis_Cache';
-      $conf['cache_class_cache_bootstrap']    = 'Redis_Cache';
-      $conf['cache_class_cache_menu']         = 'Redis_Cache';
-      $conf['cache_class_cache_tax_image']    = 'Redis_Cache';
-      $conf['cache_class_cache_views_data']   = 'Redis_Cache';
-      $conf['cache_class_cache_views']        = 'Redis_Cache';
-      $conf['cache_class_cache']              = 'Redis_Cache';
-    }
     if ($conf['install_profile'] == 'hostmaster') {
       $conf['cache_class_cache']              = 'DrupalDatabaseCache';
       $conf['cache_class_cache_path_alias']   = 'DrupalDatabaseCache';
