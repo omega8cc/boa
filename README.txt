@@ -256,6 +256,7 @@ Contrib:
  purge ---------------------- [D6,D7] --- [S] [B]
  readonlymode --------------- [D6,D7] --- [S] [B]
  redis ---------------------- [D6,D7] --- [S] [B] [NA]
+ reroute_email -------------- [D6,D7] --- [S] [B]
  responsive_images ---------- [D7] ------ [S]
  robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
  rubik ---------------------- [D6,D7] --- [S] [B] [SE]
