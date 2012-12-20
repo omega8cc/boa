@@ -287,6 +287,7 @@ Drush [E]xtensions [M]aster [S]atellite:
 
 Provision [E]xtensions [M]aster [S]atellite:
 
+ clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
  provision_boost ------------ [D6,D7] --- [S] [B] [EM,ES]
  provision_cdn -------------- [D6,D7] --- [S] [B] [EM,ES]
  provision_civicrm ---------- [D6,D7] --- [S] [B] [ES]
