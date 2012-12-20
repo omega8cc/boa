@@ -151,7 +151,7 @@ Octopus can install the platforms listed below:
  Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
  Pressflow 5.23 --------------- http://pressflow.org
  Pressflow 6.27.1 (int) ------- http://pressflow.org
- ProsePoint 0.43 -------------- http://prosepoint.org
+ ProsePoint 0.45 -------------- http://prosepoint.org
  Ubercart 2.11.1 (int) -------- http://ubercart.org
  Ubercart 3.3.1 --------------- http://ubercart.org
 
