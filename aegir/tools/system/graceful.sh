@@ -5,6 +5,14 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 action()
 {
+  find /data/disk/*/distro/*/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/distro/*/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/static/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/static/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/static/*/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/static/*/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/static/*/*/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
+  find /data/disk/*/static/*/*/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   cd /tmp
