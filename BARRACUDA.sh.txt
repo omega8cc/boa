@@ -3047,23 +3047,51 @@ update_php_cli_cron () {
 # Update New Relic
 update_newrelic () {
   ###--------------------###
-  if [ -e "/etc/newrelic/newrelic.cfg" ] && [ -e "/etc/newrelic/nrsysmond.cfg" ] ; then
-    _UPDATE_NR=NO
-    _PHP_EXT_DIR_52="/usr/local/lib/php/extensions/no-debug-non-zts-20060613"
-    _PHP_EXT_DIR_53="/opt/local/lib/php/extensions/no-debug-non-zts-20090626"
-    if [ -e "$_PHP_EXT_DIR_52" ] && [ ! -e "$_PHP_EXT_DIR_52/newrelic.so" ] ; then
+  if [ ! -z "$_NEWRELIC_KEY" ] ; then
+    if [ -e "/etc/newrelic/newrelic.cfg" ] || [ -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
+      msg "INFO: Uninstalling previous version of New Relic Apps, please wait..."
+      cd /var/opt
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+        rm -f 548C16BF.gpg*
+        wget -q -U iCab http://download.newrelic.com/548C16BF.gpg
+        _KEYS_SERVER_TEST=`grep GnuPG 548C16BF.gpg 2> /dev/null`
+        sleep 2
+      done
+      cat 548C16BF.gpg | apt-key add - &> /dev/null
+      rm -f 548C16BF.gpg*
+      st_runner "apt-get -f -y remove newrelic-php5" &> /dev/null
+      st_runner "apt-get -f -y remove newrelic-php5-common" &> /dev/null
+      st_runner "apt-get -f -y remove newrelic-daemon" &> /dev/null
+      st_runner "apt-get -f -y remove newrelic-sysmond" &> /dev/null
+      st_runner "apt-get autoremove -y" &> /dev/null
+      mkdir -p /var/backups/nr
+      mv -f /etc/newrelic /var/backups/nr/etc-newrelic-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       _UPDATE_NR=YES
-    elif [ -e "$_PHP_EXT_DIR_53" ] && [ ! -e "$_PHP_EXT_DIR_53/newrelic.so" ] ; then
-      _UPDATE_NR=YES
-    fi
-    if [ "$_UPDATE_NR" = "YES" ] ; then
-      msg "INFO: Updating New Relic Apps, please wait..."
-      mrun "sleep 1"
-      st_runner "apt-get update -y" &> /dev/null
-      st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5" 2> /dev/null
-      NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
-      if [ ! -z "$_NEWRELIC_KEY" ] ; then
-        sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+      _PHP_EXT_DIR_52="/usr/local/lib/php/extensions/no-debug-non-zts-20060613"
+      _PHP_EXT_DIR_53="/opt/local/lib/php/extensions/no-debug-non-zts-20090626"
+      if [ -e "$_PHP_EXT_DIR_52" ] && [ ! -e "$_PHP_EXT_DIR_52/newrelic.so" ] ; then
+        _UPDATE_NR=YES
+      elif [ -e "$_PHP_EXT_DIR_53" ] && [ ! -e "$_PHP_EXT_DIR_53/newrelic.so" ] ; then
+        _UPDATE_NR=YES
+      fi
+      if [ "$_UPDATE_NR" = "YES" ] ; then
+        msg "INFO: Installing latest version of New Relic Apps, please wait..."
+        mrun "sleep 1"
+        echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
+        echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
+        st_runner "apt-get update -y" &> /dev/null
+        st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
+        NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
+          echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
+          echo "license_key=$_NEWRELIC_KEY" >> /etc/newrelic/newrelic.cfg
+          echo "pidfile=/var/run/newrelic-daemon.pid" >> /etc/newrelic/newrelic.cfg
+          echo "logfile=/var/log/newrelic/newrelic-daemon.log" >> /etc/newrelic/newrelic.cfg
+          echo "loglevel=error" >> /etc/newrelic/newrelic.cfg
+        else
+          sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+        fi
         sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/nrsysmond.cfg &> /dev/null
       fi
     fi
@@ -4900,8 +4928,8 @@ fi
 
 
 ###--------------------###
-install_newrelic
 update_newrelic
+install_newrelic
 
 
 ###--------------------###
