@@ -51,7 +51,6 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
 
 // Redis optional overrides - they may fix some issues, but also
 // add some confusion - see: http://drupal.org/node/1867264#comment-6859234
-$conf['cache_class_cache_menu']           = 'DrupalDatabaseCache';
 $conf['cache_class_cache_pulled_tweets']  = 'DrupalDatabaseCache';
 $conf['cache_class_cache_views_data']     = 'DrupalDatabaseCache';
 $conf['cache_class_cache_views']          = 'DrupalDatabaseCache';
