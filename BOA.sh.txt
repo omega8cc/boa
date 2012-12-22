@@ -58,7 +58,7 @@ setup ()
   chmod 700 /usr/local/bin/{boa,barracuda,octopus}
   echo
   echo "BOA Meta Installer setup completed"
-  echo "Please check docs/INSTALL.txt and docs/UPGRADE.txt for how-to"
+  echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs for how-to"
   echo "Bye"
   echo
 }
