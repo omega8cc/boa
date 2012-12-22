@@ -785,6 +785,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/civicrm_engage.install $_CIVI_ENGAGE/civicrm_engage.install &> /dev/null
   create_dirs
 fi
+if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
+  mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
+fi
 init_this_distro_root
 create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM_M6 installation completed"
@@ -824,6 +827,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   create_dirs
   themes_for_d7
   patch_d7_core
+fi
+if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
+  mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
 fi
 init_this_distro_root
 create_d7_symlinks
@@ -867,6 +873,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   enable_drupal6_contrib
   add_old_short_name_acquia
   create_dirs
+fi
+if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
+  mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
 fi
 init_this_distro_root
 create_civicrm_symlinks
