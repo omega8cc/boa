@@ -2304,7 +2304,7 @@ run_apt_update_again () {
   st_runner "aptitude clean -y" &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ ! -e "/var/log/fixed-mytop-mariadb.log" ] ; then
-    st_runner "apt-get remove mytop -y" &> /dev/null
+    st_runner "aptitude remove mytop -y" &> /dev/null
     st_runner "apt-get purge mytop -y" &> /dev/null
     rm -f /usr/bin/mytop
     echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
@@ -3060,10 +3060,7 @@ update_newrelic () {
       done
       cat 548C16BF.gpg | apt-key add - &> /dev/null
       rm -f 548C16BF.gpg*
-      st_runner "apt-get -f -y remove newrelic-php5" &> /dev/null
-      st_runner "apt-get -f -y remove newrelic-php5-common" &> /dev/null
-      st_runner "apt-get -f -y remove newrelic-daemon" &> /dev/null
-      st_runner "apt-get -f -y remove newrelic-sysmond" &> /dev/null
+      st_runner "aptitude remove newrelic-php5 newrelic-php5-common newrelic-daemon newrelic-sysmond -y" &> /dev/null
       st_runner "apt-get autoremove -y" &> /dev/null
       mkdir -p /var/backups/nr
       mv -f /etc/newrelic /var/backups/nr/etc-newrelic-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -4169,6 +4166,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   st_runner "aptitude autoclean -y" &> /dev/null
 else
+  if [ "$_FROM_SOURCES = "YES" ] ; then
+    st_runner "aptitude remove php-pear php5 php5-cgi php5-curl php5-dev php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
+    st_runner "apt-get autoremove -y" &> /dev/null
+  fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
   service cron stop &> /dev/null
@@ -4195,7 +4196,7 @@ else
   if [ ! -e "/etc/init.d/php5-fpm" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php5-fpm-init-vanilla /etc/init.d/php5-fpm
   fi
-  if [ "$_UP_FPM" = "YES" ] ; then
+  if [ "$_FROM_SOURCES" = "NO" ] && [ "$_UP_FPM" = "YES" ] ; then
     msg "INFO: Now waiting 60 seconds for php-fpm pre-upgrade shutdown..."
     mrun "sleep 60"
     st_runner "service php53-fpm stop" &> /dev/null
@@ -4214,14 +4215,14 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   _APT_SQUEEZE="openjdk-6-jdk"
   _APT_ELSE="netcat"
-  st_runner "apt-get remove nginx-extras -y" &> /dev/null
-  st_runner "apt-get remove nginx -y" &> /dev/null
-  st_runner "apt-get remove nginx-common -y" &> /dev/null
-  st_runner "apt-get remove nginx-full -y" &> /dev/null
-  st_runner "apt-get remove redis-server -y" &> /dev/null
-  st_runner "apt-get autoremove -y" &> /dev/null
-  st_runner "apt-get update -y" &> /dev/null
-  st_runner "apt-get clean -y --force-yes" &> /dev/null
+  st_runner "aptitude remove nginx-extras -y" &> /dev/null
+  st_runner "aptitude remove nginx -y"        &> /dev/null
+  st_runner "aptitude remove nginx-common -y" &> /dev/null
+  st_runner "aptitude remove nginx-full -y"   &> /dev/null
+  st_runner "aptitude remove redis-server -y" &> /dev/null
+  st_runner "apt-get autoremove -y"           &> /dev/null
+  st_runner "apt-get update -y"               &> /dev/null
+  st_runner "apt-get clean -y --force-yes"    &> /dev/null
   if [ -L "/usr/local/bin/redis-server" ] ; then
     rm -f /usr/local/bin/redis-server
   fi
@@ -4269,7 +4270,7 @@ install_percona_sql () {
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   st_runner "apt-get autoremove -y"          &> /dev/null
-  st_runner "apt-get remove mysql-common -y" &> /dev/null
+  st_runner "aptitude remove mysql-common -y" &> /dev/null
   st_runner "apt-get purge mysql-common -y"  &> /dev/null
   st_runner "apt-get autoremove -y"          &> /dev/null
   st_runner "apt-get update -y"              &> /dev/null
@@ -4301,16 +4302,16 @@ install_mariadb_sql () {
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  st_runner "apt-get remove mytop -y"                     &> /dev/null
-  st_runner "apt-get purge mytop -y"                      &> /dev/null
+  st_runner "aptitude remove mytop -y"                     &> /dev/null
+  st_runner "apt-get purge mytop -y"                       &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "apt-get autoremove -y"                       &> /dev/null
-  st_runner "apt-get remove mysql-common -y"              &> /dev/null
-  st_runner "apt-get purge mysql-common -y"               &> /dev/null
-  st_runner "apt-get remove percona-server-common-5.5 -y" &> /dev/null
-  st_runner "apt-get purge percona-server-common-5.5 -y"  &> /dev/null
-  st_runner "apt-get autoremove -y"                       &> /dev/null
-  st_runner "apt-get update -y"                           &> /dev/null
+  st_runner "apt-get autoremove -y"                        &> /dev/null
+  st_runner "aptitude remove mysql-common -y"              &> /dev/null
+  st_runner "apt-get purge mysql-common -y"                &> /dev/null
+  st_runner "aptitude remove percona-server-common-5.5 -y" &> /dev/null
+  st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
+  st_runner "apt-get autoremove -y"                        &> /dev/null
+  st_runner "apt-get update -y"                            &> /dev/null
   SQLDEB="mariadb-server-$_MARIADB_SERIES mariadb-client-$_MARIADB_SERIES mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
@@ -4336,7 +4337,7 @@ install_with_aptitude_sql () {
 
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
-  st_runner "apt-get remove exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
+  st_runner "aptitude remove exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
   st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
   rm -f /etc/aliases
@@ -4919,7 +4920,7 @@ if [ "$_REL_VERSION" = "precise" ] && [ ! -e "/var/log/precise-apc-fixed.log" ] 
   st_runner "$_INSTAPP php-apc" 2> /dev/null
   touch /var/log/precise-apc-fixed.log
 fi
-st_runner "apt-get remove php5-sasl php5-suhosin -y" &> /dev/null
+st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
 st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 if [ ! -L "/usr/bin/php-cli" ] ; then
   mv -f /usr/bin/php-cli /usr/bin/off-php-cli &> /dev/null
