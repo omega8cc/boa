@@ -4167,8 +4167,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude autoclean -y" &> /dev/null
 else
   if [ "$_FROM_SOURCES" = "YES" ] ; then
+    touch /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
     st_runner "aptitude remove php-pear php5 php5-cgi php5-curl php5-dev php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
     st_runner "apt-get autoremove -y" &> /dev/null
+    rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
