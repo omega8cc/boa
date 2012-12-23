@@ -55,6 +55,7 @@
   * Check for existence of host_master and not host_master/001 directory.
   * Compass is not available on older OS versions.
   * Delete ltd-shell extra user/client if there is no site associated/owned.
+  * Delete old symlinks in the client directory for no longer associated sites.
   * Fix broken usage.sh script - it does not enable/disable modules.
   * Fix date formatting also in the sqlcheck script.
   * Fix for some really old installs without .barracuda.cnf file.
