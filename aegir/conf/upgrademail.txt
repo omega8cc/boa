@@ -1,170 +1,45 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.0.4
+Your Aegir Hosting System has been upgraded to version BOA-2.0.5
 
   https://aegir.dragon.ny.host8.biz
 
 
-=== GREAT NEWS ABOUT OUR AEGIR HOSTED SERVICE
+=== UPDATED OCTOPUS PLATFORMS
 
-* As you probably know already from our online announcements,
-  we have introduced some amazing new feature, which allows us
-  to host all your sites on the fastest possible hardware setup,
-  while providing much more disk space than before.
+  Commerce 1.12.1 -------------- http://drupalcommerce.org
+  Commerce 2.0 ----------------- http://drupalcommerce.org
+  Commons 2.11 ----------------- http://acquia.com/drupalcommons
+  Drupal 7.18.1 ---------------- http://drupal.org/drupal-7.18
+  Open Deals 1.14 -------------- http://opendealsapp.com
+  Open Outreach 1.0-rc7 -------- http://openoutreach.org
+  OpenChurch 1.11-beta7 -------- http://openchurchsite.com
+  Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
+  Pressflow 6.27.1 ------------- http://pressflow.org
+  ProsePoint 0.45 -------------- http://prosepoint.org
+  Ubercart 2.11.1 -------------- http://ubercart.org
+  Ubercart 3.3.1 --------------- http://ubercart.org
 
-  Your sites are powered by Hybrid Storage, which is transparently
-  built from SSD and SAS drives. You have got it a few months
-  before some well known company introduced its "Fusion Drive"
-  powered iMachines ;)
-
-  Here is how it works in our setup. The operating system powering
-  your Aegir instance runs on the SSD (Solid-State Drive) exclusively.
-  Also all daemons and all their related files, caches and logs
-  are running/are stored on the SSD space.
-
-  This makes your databases and also Speed Booster caching really,
-  really fast. But there is more: also all built-in Drupal platforms
-  files live on the super-fast SSD space - which is yet another
-  reason to use them instead of custom platforms, if possible.
-
-  Only the files you will upload or your sites will create, plus
-  all databases and files backups created by BOA system or Aegir
-  tasks will use SAS (Serial Attached SCSI) drives space, glued
-  with your SSD space transparently behind the scenes.
-
-  This setup allows us to maximize the speed of your sites, but also
-  to offer much more space for your files - both static files, like
-  images, and your custom code you will upload to extend built-in
-  platforms and to create your custom platforms.
-
-  You could think that the PHP code stored on SAS space is slower
-  than that stored on SSD, and it is, but only on the first read,
-  since later it is stored/read from RAM memory anyway, optimized
-  with APC, so effectively it almost always offers the same speed.
-
-  This advanced technology is currently used in all our locations:
-  California, Texas, New York, Netherlands and Singapore, and all
-  existing Aegir instances we host are powered by the same magic,
-  developed to make your sites faster than the blink of an eye.
+  All other not listed above platforms are available with latest
+  D6 or D7 core, even if there were no new distro version released.
 
 
-=== IMPORTANT CHANGES IN THIS RELEASE
-
-* All newer Aegir instances with only PHP 5.3 version installed,
-  received also PHP 5.2.17 version, ready to use for Drupal 6 based
-  sites, especially when you still use modules which are not fully
-  compatible with PHP 5.3 - please read below for more details.
-
-  We are changing also default PHP-FPM version used by all D6 sites
-  to the old PHP-FPM 5.2.17, but we can set it to latest 5.3.20,
-  on request submitted via: http://omega8.cc/support
-
-  NOTE: Only Aegir instances we host or manage remotely are
-        affected by this change, while self-hosted instances
-        are not automatically re-configured. Note also that
-        this change is effective only for newer instances,
-        since it was a default setup on older instances anyway.
-
-* At the same time we are changing the default Aegir PHP-CLI backend
-  to the latest 5.3.20 version from previous default 5.2.17
-
-  This step is required before we will introduce newest Drush 5
-  as a default version on all servers (we still use our modified
-  4.6 version, which supports also Drupal 8), since Drush 5
-  requires PHP 5.3 or newer.
-
-  NOTE: Only Aegir instances we host or manage remotely are
-        affected by this change, while self-hosted instances
-        are not automatically re-configured.
-
-  If you didn't know, the old instances used PHP-CLI 5.2 in the
-  backend for all Drupal versions, while forcing PHP-FPM 5.2.17
-  for all D5 and D6 based sites and PHP-FPM 5.3 for all D7 sites
-  and the Aegir control panel, which is still D6 based, but running
-  already on a modern PHP-FPM 5.3 frontend.
-
-  Now any Drupal 5 based site you host will still use
-  its only compatible 5.2.17 PHP-FPM version for web access,
-  but you will not be able to run any Aegir tasks on them.
-
-  Yes, we are about to drop Drupal 5 support in the near future.
-
-  If you still need the support for Drupal 5 in the Aegir backend,
-  please submit a support request via http://omega8.cc/support,
-  but please be aware that reverting your backend to PHP-CLI 5.2.17
-  will break support for some newer distros, which use modules
-  depending on PHP 5.3 or newer.
-
-  NOTE: You may wonder why we are changing Aegir backend to
-        PHP-CLI 5.3, while changing frontend version for D6 sites
-        to PHP-FPM 5.2 on instances already using 5.3 - The reason
-        is simple: 5.2 is still more safe to use with Drupal 6
-        and we want all instances to use the same setup before
-        we will introduce next changes in the near future, to make
-        this process consistent and avoid breaking any D6 based
-        sites, just in case some of them still use code not yet
-        compatible with PHP-FPM 5.3, and at the same time, by
-        using PHP-CLI 5.3 in the backend, we are providing you
-        a safer method to reveal possible issues without affecting
-        your visitors, to help you make your D6 sites fully
-        compatible with newer PHP 5.3 version.
-
-* We plan to shorten BOA system release and upgrades cycle
-  to 1-2 months max, so we have decided to remove support for some
-  outdated distros. We have tried to manage both security and version
-  updates for some abandoned or semi-abandoned distros, to keep them
-  useful for you, but since it involves increasing amount of work
-  because of cascades of no longer compatible patches and various
-  dependencies, we have decided that it is time to stop doing it,
-  if their original maintainers no longer care about their users.
-
-  Here is a list of distros we no longer support:
-
-  MartPlug ------------ http://drupal.org/project/martplug
-  Octopus Video ------- http://octopusvideo.org
-  Open Academy -------- http://drupal.org/project/openacademy
-  Open Enterprise ----- http://drupal.org/project/openenterprise
-  OpenPublic ---------- http://openpublicapp.com
-  Videola ------------- http://videola.tv
-
-  The platforms listed above can be re-added when their maintainers
-  will fix all critical issues and/or apply required updates.
-
-
-=== NEW FEATURES - A LONG LIST AGAIN
+=== FIXES AND CHANGES
 
 * Complete list is available on our website at:
 
   http://omega8.cc/updates
 
 
-=== RECOMMENDED (including some updated) ARTICLES
-
-  http://omega8.cc/the-biggest-misunderstanding-ever-122
-  http://omega8.cc/the-best-recipes-for-disaster-139
-  http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
-
-  http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
-  http://omega8.cc/how-to-add-custom-platform-properly-140
-  http://omega8.cc/managing-your-code-in-the-aegir-style-110 (video)
-
-  http://omega8.cc/speed-booster-redis-boost-and-advagg-108
-
-  http://omega8.cc/how-to-disable-all-caching-and-aggregation-115
-  http://omega8.cc/extra-modules-available-in-all-platforms-123
-  http://omega8.cc/modules-enabled-or-disabled-automatically-117
-
-  http://omega8.cc/running-scheduled-sites-cron-in-aegir-118
-  http://omega8.cc/where-is-the-rename-task-129
-  http://omega8.cc/how-to-manage-aliases-and-redirects-127
-
-There are more helpful articles available in our library at:
+=== RECOMMENDED ARTICLES
 
   http://omega8.cc/library/good-to-know
   http://omega8.cc/library/performance
   http://omega8.cc/library/development
   http://omega8.cc/library/tips-and-tricks
   http://omega8.cc/library/problems-solutions
+  http://omega8.cc/compare
+
 
 When you need our assistance, please use our support request form at:
 

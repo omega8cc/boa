@@ -3,7 +3,7 @@ Hello,
 Welcome to your new Aegir control panel for easy Drupal
 multi-sites deployment, development and management.
 
-Your Aegir control panel [version BOA-2.0.4] is available at:
+Your Aegir control panel [version BOA-2.0.5] is available at:
 
   https://aegir.dragon.ny.host8.biz
 
@@ -183,6 +183,8 @@ http://omega8.cc/modules-enabled-or-disabled-automatically-117
 http://omega8.cc/running-scheduled-sites-cron-in-aegir-118
 http://omega8.cc/where-is-the-rename-task-129
 http://omega8.cc/how-to-manage-aliases-and-redirects-127
+
+http://omega8.cc/compare
 
 
 Questions? Comments? Please contact us:
