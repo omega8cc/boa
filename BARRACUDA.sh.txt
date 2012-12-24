@@ -5262,10 +5262,10 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-    msg "ALRT: $_DB_SERVER server not running!"
+    msg "ALRT: $_DB_SERVER server not running properly!"
     msg "EXIT: We can't proceed with installation and will exit now"
-    msg "HINT: Please check $_LOG for more information"
-    msg "HINT: on errors occured and then run Barracuda installer again"
+    msg "HINT: Please check $_LOG for more information,"
+    msg "HINT: (re)start $_DB_SERVER server and then run installer again"
     msg "Bye"
     rm -f /root/.my.pass.txt
     mkdir -p /var/aegir
@@ -5412,10 +5412,10 @@ else
     st_runner "service mysql restart" &> /dev/null
     mrun "sleep 60"
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-      msg "ALRT: $_DB_SERVER server not running!"
+      msg "ALRT: $_DB_SERVER server not running properly!"
       msg "EXIT: We can't proceed with upgrade and will exit now"
-      msg "HINT: Please check $_LOG for more information"
-      msg "HINT: on errors occured and then run Barracuda installer again"
+      msg "HINT: Please check $_LOG for more information,"
+      msg "HINT: (re)start $_DB_SERVER server and then run installer again"
       msg "Bye"
       exit 1
     fi
