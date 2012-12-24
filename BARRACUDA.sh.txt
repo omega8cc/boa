@@ -5408,6 +5408,9 @@ else
     msg "INFO: Aegir Master Instance upgrade skipped"
     echo " "
   else
+    msg "INFO: Restarting $_DB_SERVER server, please wait..."
+    st_runner "service mysql restart" &> /dev/null
+    mrun "sleep 60"
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
       msg "ALRT: $_DB_SERVER server not running!"
       msg "EXIT: We can't proceed with upgrade and will exit now"
