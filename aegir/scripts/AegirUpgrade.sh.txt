@@ -111,7 +111,7 @@ hostmaster_dr_up () {
   if $_DRUSHCMD help > /dev/null ; then
     msg "INFO: Drush seems to be functioning properly"
   else
-    msg "FATAL ERROR: Drush is broken ($DRUSH help failed)"
+    msg "FATAL ERROR: Drush is broken ($_DRUSHCMD help failed)"
     msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
     touch /opt/tmp/status-AegirUpgrade-FAIL
     exit 1
