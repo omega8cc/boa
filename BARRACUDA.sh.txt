@@ -3049,7 +3049,7 @@ update_newrelic () {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
     if [ -e "/etc/newrelic/newrelic.cfg" ] || [ -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
-      msg "INFO: Uninstalling previous version of New Relic Apps, please wait..."
+      msg "INFO: Uninstalling previous version of New Relic Apps and Server Monitor, please wait..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
@@ -3073,7 +3073,7 @@ update_newrelic () {
         _UPDATE_NR=YES
       fi
       if [ "$_UPDATE_NR" = "YES" ] ; then
-        msg "INFO: Installing latest version of New Relic Apps, please wait..."
+        msg "INFO: Installing latest version of New Relic Apps and Server Monitor, please wait..."
         mrun "sleep 1"
         echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
