@@ -98,6 +98,7 @@ _DISTRO=EDIT_DISTRO
 _DOMAIN=EDIT_DOMAIN
 _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
+_EASY_LOCALHOST=EDIT_EASY_LOCALHOST
 _HM_DISTRO=EDIT_HM_DISTRO
 _HM_ONLY=EDIT_HM_ONLY
 _HOT_SAUCE=EDIT_HOT_SAUCE
@@ -845,8 +846,13 @@ if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
 fi
 AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 AGRPASWD=`echo -n $AGRPXSWD | tr -d "\n"`
-AEGIR_HOST=`uname -n`
-_RESOLVEIP=`echo $(getent ahostsv4 $AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+  _AEGIR_HOST="aegir.local"
+  _RESOLVEIP="127.0.1.1"
+else
+  _AEGIR_HOST=`uname -n`
+  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+fi
 if [ -z "$_RESOLVEIP" ] ; then
   msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
   msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"

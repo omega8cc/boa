@@ -38,6 +38,7 @@ _PHP_MODERN_ONLY=EDIT_PHP_MODERN_ONLY
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_STOCK=EDIT_USE_STOCK
+_EASY_LOCALHOST=EDIT_EASY_LOCALHOST
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
 else
@@ -79,7 +80,6 @@ SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 AEGIR_HOME="$HOME"
-AEGIR_HOST=`uname -n`
 DRUSH="$AEGIR_HOME/drush/drush.php"
 
 if [ `whoami` = "root" ] ; then
@@ -89,7 +89,13 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-_RESOLVEIP=`echo $(getent ahostsv4 $AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+  _AEGIR_HOST="aegir.local"
+  _RESOLVEIP="127.0.1.1"
+else
+  _AEGIR_HOST=`uname -n`
+  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+fi
 
 if [ -z "$_RESOLVEIP" ] ; then
   msg "FATAL ERROR: This server does not have a hostname that resolves to an IP address"
