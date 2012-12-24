@@ -21,8 +21,8 @@
 ########################################################################
 # This script takes the following steps:
 #
-# 1. downloads drush in $AEGIR_HOME
-# 2. downloads provision in $AEGIR_HOME/.drush
+# 1. downloads drush in $_AEGIR_HOME
+# 2. downloads provision in $_AEGIR_HOME/.drush
 # 3. delegate the rest of the install to hostmaster-install
 ########################################################################
 # basic variables, change before release
@@ -79,9 +79,6 @@ get_dev_ext () {
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
-AEGIR_HOME="$HOME"
-DRUSH="$AEGIR_HOME/drush/drush.php"
-
 if [ `whoami` = "root" ] ; then
   msg "FATAL ERROR: This script should be ran as a non-root user"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
@@ -97,22 +94,25 @@ else
   _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
 fi
 
+_AEGIR_HOME="$HOME"
+_DRUSH="$_AEGIR_HOME/drush/drush.php"
+
 if [ -z "$_RESOLVEIP" ] ; then
   msg "FATAL ERROR: This server does not have a hostname that resolves to an IP address"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 else
-  AEGIR_HOST_IP="$_RESOLVEIP"
+  _AEGIR_HOST_IP="$_RESOLVEIP"
 fi
 
-_MYSQLTEST=`mysql -h$AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/null | cat`
+_MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/null | cat`
 
 if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
-  msg  "MySQL is listening on $AEGIR_HOST_IP."
+  msg  "MySQL is listening on $_AEGIR_HOST_IP."
   true
 else
-  msg "FATAL ERROR: MySQL is not configured to listen on $AEGIR_HOST_IP"
+  msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
@@ -124,36 +124,36 @@ cat <<EOF
  * you are running as your "aegir" user
 EOF
 
-AEGIR_DB_USER=aegir_root
+_AEGIR_DB_USER=aegir_root
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
-  AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5 | awk '{ print $2}'`
+  _AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$_AEGIR_HOST | openssl md5 | awk '{ print $2}'`
 else
-  AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$AEGIR_HOST | openssl md5`
+  _AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$_AEGIR_HOST | openssl md5`
 fi
 
 msg "Aegir will now generate a mysql super user password for you: "
 cat <<EOF
-  Username : $AEGIR_DB_USER
-  Password : $AEGIR_DB_PASS
-  Hostname : $AEGIR_HOST ($AEGIR_HOST_IP)
+  Username : $_AEGIR_DB_USER
+  Password : $_AEGIR_DB_PASS
+  Hostname : $_AEGIR_HOST ($_AEGIR_HOST_IP)
 EOF
 
 mysql -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'$AEGIR_HOST_IP' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$AEGIR_DB_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_AEGIR_DB_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_AEGIR_DB_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_AEGIR_DB_PASS' WITH GRANT OPTION;
 EOFMYSQL
 
 # we need to check both because some platforms (like SunOS) return 0 even if the binary is not found
 if which drush 2> /dev/null && which drush | grep -v 'no drush in' > /dev/null; then
   msg "Drush is in the path, good"
-  DRUSH=drush
-elif [ -x $DRUSH ] ; then
-  msg "Drush found in $DRUSH, good"
-  DRUSH="$_L_PHP_CLI/php $AEGIR_HOME/drush/drush.php"
+  _DRUSH=drush
+elif [ -x $_DRUSH ] ; then
+  msg "Drush found in $_DRUSH, good"
+  _DRUSH="$_L_PHP_CLI/php $_AEGIR_HOME/drush/drush.php"
 else
-  msg "Installing drush in $AEGIR_HOME"
-  cd $AEGIR_HOME
+  msg "Installing drush in $_AEGIR_HOME"
+  cd $_AEGIR_HOME
   if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
     git clone http://git.drupal.org/project/drush.git &> /dev/null
     rm -f -r drush/.git
@@ -164,54 +164,54 @@ else
     tar -xzf drush-$_DRUSH_VERSION.tar.gz
     rm -f drush-$_DRUSH_VERSION.tar.gz
   fi
-  DRUSH="$_L_PHP_CLI/php $AEGIR_HOME/drush/drush.php"
+  _DRUSH="$_L_PHP_CLI/php $_AEGIR_HOME/drush/drush.php"
 fi
 
 update_php_cli_drush
 
-if $DRUSH help > /dev/null ; then
+if $_DRUSH help > /dev/null ; then
   msg "Drush seems to be functioning properly"
 else
-  msg "FATAL ERROR: Drush is broken ($DRUSH help failed)"
+  msg "FATAL ERROR: Drush is broken ($_DRUSH help failed)"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
   touch /opt/tmp/status-AegirSetupM-FAIL
   exit 1
 fi
 
-if $DRUSH help | grep "^ provision-install" > /dev/null ; then
+if $_DRUSH help | grep "^ provision-install" > /dev/null ; then
   msg "Provision already seems to be installed"
 else
-  msg "Installing provision backend in $AEGIR_HOME/.drush"
-  mkdir -p $AEGIR_HOME/.drush
+  msg "Installing provision backend in $_AEGIR_HOME/.drush"
+  mkdir -p $_AEGIR_HOME/.drush
   if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-    cd $AEGIR_HOME/.drush
+    cd $_AEGIR_HOME/.drush
     if [ "$_USE_STOCK" = "YES" ] ; then
-      git clone --branch 6.x-2.x http://git.drupal.org/project/provision.git $AEGIR_HOME/.drush/provision &> /dev/null
+      git clone --branch 6.x-2.x http://git.drupal.org/project/provision.git $_AEGIR_HOME/.drush/provision &> /dev/null
     else
       if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
         _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
-        git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $AEGIR_HOME/.drush/provision &> /dev/null
+        git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_AEGIR_HOME/.drush/provision &> /dev/null
         _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
-        sed -i "s/hostmaster.git/1074912.git/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
-        rm -f -r $AEGIR_HOME/.drush/provision/.git
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+        sed -i "s/hostmaster.git/1074912.git/g" $_AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+        rm -f -r $_AEGIR_HOME/.drush/provision/.git
       else
         git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
         _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
-        rm -f -r $AEGIR_HOME/.drush/provision/.git
+        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
+        rm -f -r $_AEGIR_HOME/.drush/provision/.git
       fi
     fi
     msg "INFO: Downloading Drush and Provision extensions, please wait..."
-    git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $AEGIR_HOME/.drush/registry_rebuild &> /dev/null
-    rm -f -r $AEGIR_HOME/.drush/registry_rebuild/.git
-    git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $AEGIR_HOME/.drush/provision_cdn       &> /dev/null
-    rm -f -r $AEGIR_HOME/.drush/provision_cdn/.git
-    git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $AEGIR_HOME/.drush/provision_boost   &> /dev/null
-    rm -f -r $AEGIR_HOME/.drush/provision_boost/.git
+    git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_AEGIR_HOME/.drush/registry_rebuild &> /dev/null
+    rm -f -r $_AEGIR_HOME/.drush/registry_rebuild/.git
+    git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_AEGIR_HOME/.drush/provision_cdn       &> /dev/null
+    rm -f -r $_AEGIR_HOME/.drush/provision_cdn/.git
+    git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_AEGIR_HOME/.drush/provision_boost   &> /dev/null
+    rm -f -r $_AEGIR_HOME/.drush/provision_boost/.git
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
   else
-    cd $AEGIR_HOME/.drush
+    cd $_AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
     gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
     rm -f provision-$_AEGIR_VERSION.tar.gz
@@ -224,5 +224,5 @@ else
 fi
 
 msg "Installing the frontend"
-AEGIROOT="$AEGIR_HOME/hostmaster-$_AEGIR_VERSION"
-$DRUSH hostmaster-install --aegir_host=$AEGIR_HOST --aegir_db_user=$AEGIR_DB_USER --aegir_db_pass=$AEGIR_DB_PASS --aegir_root=$AEGIR_HOME --root=$AEGIROOT --version=$_AEGIR_VERSION $@
+_AEGIROOT="$_AEGIR_HOME/hostmaster-$_AEGIR_VERSION"
+$_DRUSH hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_AEGIR_DB_PASS --aegir_root=$_AEGIR_HOME --root=$_AEGIROOT --version=$_AEGIR_VERSION $@
