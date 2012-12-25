@@ -66,7 +66,9 @@ to the standard production settings.
 ### SUPPORTED PARENT SYSTEMS
 
 * Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
-* VirtualBox VM for localhost install - best with Ubuntu Precise.
+* VirtualBox VM for localhost install - check the how-to for:
+  Ubuntu Precise: http://bit.ly/boa-precise
+  Debian Squeeze: http://bit.ly/boa-squeeze
 
 
 ### SUPPORTED LTS OS (32/64bit minimal, fresh install)
