@@ -39,6 +39,8 @@ octopus_install ()
       fi
     fi
     bash /var/backups/OCTOPUS.sh.txt
+    sed -i "s/^127.0.1.1.*//g" /etc/hosts
+    sed -i "/^$/d" /etc/hosts
   else
     echo "OCTOPUS.sh.txt installer not available - try again"
     exit 1
@@ -53,6 +55,8 @@ if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
   if [ "$kind" = "local" ] ; then
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"    /var/backups/BARRACUDA.sh.txt &> /dev/null
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"           /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^127.0.1.1.*//g" /etc/hosts
+    echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
   elif [ "$kind" = "public" ] ; then
     sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"     /var/backups/BARRACUDA.sh.txt &> /dev/null
     sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt &> /dev/null
