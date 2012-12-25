@@ -38,7 +38,7 @@ _PHP_MODERN_ONLY=EDIT_PHP_MODERN_ONLY
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_STOCK=EDIT_USE_STOCK
-_EASY_LOCALHOST=EDIT_EASY_LOCALHOST
+_LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
 else
@@ -86,7 +86,7 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-if [ "$_EASY_LOCALHOST" = "YES" ] ; then
+if [ "$_LOCAL_NETWORK_IP" = "127.0.1.1" ] ; then
   _AEGIR_HOST="aegir.local"
   _RESOLVEIP="127.0.1.1"
 else

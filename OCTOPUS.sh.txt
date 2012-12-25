@@ -866,7 +866,6 @@ do
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
-  sed -i "s/EDIT_EASY_LOCALHOST/$_EASY_LOCALHOST/g"       $Files &> /dev/null
   sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files &> /dev/null
   sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null

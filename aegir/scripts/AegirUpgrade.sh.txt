@@ -51,7 +51,6 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_STOCK=EDIT_USE_STOCK
-_EASY_LOCALHOST=EDIT_EASY_LOCALHOST
 if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
 else

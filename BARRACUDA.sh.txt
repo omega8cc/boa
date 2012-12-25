@@ -2807,7 +2807,6 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_EASY_LOCALHOST/$_EASY_LOCALHOST/g"       /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -5290,7 +5289,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files &> /dev/null
-    sed -i "s/EDIT_EASY_LOCALHOST/$_EASY_LOCALHOST/g"      $Files &> /dev/null
+    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_USE_STOCK" = "YES" ] ; then
