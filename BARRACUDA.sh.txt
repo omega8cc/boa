@@ -3875,6 +3875,10 @@ install_pdnsd_cache () {
     sed -i "s/^dns=.*/dns=pdnsd/g" /etc/NetworkManager/NetworkManager.conf &> /dev/null
     st_runner "service network-manager restart" &> /dev/null
   fi
+  if [ -f "/etc/resolv.conf" ] && [ -f "/etc/resolvconf/run/resolv.conf" ] ; then
+    mv -f /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW-forced
+    ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
+  fi
   sed -i "s/^search.*//g" /etc/resolv.conf &> /dev/null
   st_runner "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
