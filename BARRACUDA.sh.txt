@@ -5973,7 +5973,9 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_alert &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
-  st_runner "sh /usr/sbin/apticron"
+  if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
+    st_runner "sh /usr/sbin/apticron"
+  fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     true
   else
