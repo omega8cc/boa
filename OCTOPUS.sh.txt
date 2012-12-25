@@ -1095,7 +1095,6 @@ fi
 #
 if [ ! -z "$_LOCAL_NETWORK_IP" ] && [ $_THIS_HOST != "aegir.local" ] ; then
   _DNS_SETUP_TEST=NO
-  _DEBUG_MODE=YES
   _MY_OWNIP="$_LOCAL_NETWORK_IP"
 fi
 #

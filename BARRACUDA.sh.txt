@@ -3634,7 +3634,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     else
       _DNS_SETUP_TEST=NO
       _SMTP_RELAY_TEST=NO
-      _DEBUG_MODE=YES
       _MY_OWNIP="$_LOCAL_NETWORK_IP"
       _MY_HOSTN="$_LOCAL_NETWORK_HN"
       _MY_FRONT="$_LOCAL_NETWORK_HN"
