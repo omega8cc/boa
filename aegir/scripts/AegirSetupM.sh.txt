@@ -86,14 +86,8 @@ if [ `whoami` = "root" ] ; then
   exit 1
 fi
 
-if [ "$_LOCAL_NETWORK_IP" = "127.0.1.1" ] ; then
-  _AEGIR_HOST="aegir.local"
-  _RESOLVEIP="127.0.1.1"
-else
-  _AEGIR_HOST=`uname -n`
-  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-fi
-
+_AEGIR_HOST=`uname -n`
+_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
 _AEGIR_HOME="$HOME"
 _DRUSH="$_AEGIR_HOME/drush/drush.php"
 

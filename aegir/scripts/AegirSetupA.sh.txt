@@ -845,13 +845,8 @@ if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
 fi
 _AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
 _AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
-if [ "$_THISHTIP" = "127.0.1.1" ] ; then
-  _AEGIR_HOST="aegir.local"
-  _RESOLVEIP="127.0.1.1"
-else
-  _AEGIR_HOST=`uname -n`
-  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-fi
+_AEGIR_HOST=`uname -n`
+_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
 if [ -z "$_RESOLVEIP" ] ; then
   msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
   msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
