@@ -136,6 +136,7 @@ EOF
 fix_o_contrib_symlink()
 {
 if [ "$_O_CONTRIB" != "NO" ] && [ ! -e "$Plr/core" ] ; then
+  symlinks -d $Plr/modules
   if [ -e "$Plr/web.config" ] ; then
     if [ ! -e "$Plr/modules/o_contrib_seven" ] ; then
       ln -s $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven
