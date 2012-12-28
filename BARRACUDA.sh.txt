@@ -5409,8 +5409,11 @@ else
     echo " "
   else
     msg "INFO: Restarting $_DB_SERVER server, please wait..."
+    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     st_runner "service mysql restart" &> /dev/null
-    mrun "sleep 60"
+    mrun "sleep 8"
+    msg "INFO: Upgrading $_DB_SERVER tables if necessary, please wait 3 minutes..."
+    mrun "sleep 180"
     if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
       msg "ALRT: $_DB_SERVER server not running properly!"
       msg "EXIT: We can't proceed with upgrade and will exit now"
