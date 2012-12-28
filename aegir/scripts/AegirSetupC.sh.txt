@@ -828,8 +828,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   themes_for_d7
   patch_d7_core
 fi
-if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
-  mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
+if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrml10n/l10n" ] ; then
+  mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrml10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
 fi
 init_this_distro_root
 create_d7_symlinks
