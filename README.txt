@@ -67,11 +67,11 @@ to the standard production settings.
 
 * Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
 * VirtualBox VM for localhost install - check the how-to for:
-  Ubuntu Precise: http://bit.ly/boa-precise
-  Debian Squeeze: http://bit.ly/boa-squeeze
+  Ubuntu Precise desktop image install: http://bit.ly/boa-precise
+  Debian Squeeze desktop image install: http://bit.ly/boa-squeeze
 
 
-### SUPPORTED LTS OS (32/64bit minimal, fresh install)
+### SUPPORTED LTS OS 32/64bit - minimal on server or desktop on localhost
 
 * Debian 6.0 Squeeze (recommended) - 12 min install, 3 min upgrade
 * Ubuntu Precise 12.04 - 12 min install, 3 min upgrade
