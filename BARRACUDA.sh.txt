@@ -3005,7 +3005,7 @@ install_upgrade_libevent () {
 # Install wkhtmltopdf.
 install_wkhtmltopdf () {
   ###--------------------###
-  if [ ! -x "/usr/bin/wkhtmltopdf" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/wkhtmltopdf-fix10" ] || [ ! -x "/usr/bin/wkhtmltopdf" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       SYSTEMARCH="x86_64"
@@ -3013,8 +3013,8 @@ install_wkhtmltopdf () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltopdf*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.11.0_rc1-static-amd64.tar.gz
-      tar -xzf wkhtmltopdf-0.11.0_rc1-static-amd64.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2
+      tar -xvjf wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2
       cp -af wkhtmltopdf-amd64 /usr/bin/wkhtmltopdf &> /dev/null
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
@@ -3024,19 +3024,20 @@ install_wkhtmltopdf () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltopdf*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.11.0_rc1-static-i386.tar.gz
-      tar -xzf wkhtmltopdf-0.11.0_rc1-static-i386.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2
+      tar -xvjf wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2
       cp -af wkhtmltopdf-i386 /usr/bin/wkhtmltopdf &> /dev/null
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
     fi
+    touch /var/log/wkhtmltopdf-fix10
   fi
 }
 #
 # Install wkhtmltoimage.
 install_wkhtmltoimage () {
   ###--------------------###
-  if [ ! -x "/usr/bin/wkhtmltoimage" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/wkhtmltoimage-fix10" ] || [ ! -x "/usr/bin/wkhtmltoimage" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       SYSTEMARCH="x86_64"
@@ -3044,8 +3045,8 @@ install_wkhtmltoimage () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltoimage*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.11.0_rc1-static-amd64.tar.gz
-      tar -xzf wkhtmltoimage-0.11.0_rc1-static-amd64.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2
+      tar -xvjf wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2
       cp -af wkhtmltoimage-amd64 /usr/bin/wkhtmltoimage &> /dev/null
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
@@ -3055,12 +3056,13 @@ install_wkhtmltoimage () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltoimage*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.11.0_rc1-static-i386.tar.gz
-      tar -xzf wkhtmltoimage-0.11.0_rc1-static-i386.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2
+      tar -xvjf wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2
       cp -af wkhtmltoimage-i386 /usr/bin/wkhtmltoimage &> /dev/null
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
     fi
+    touch /var/log/wkhtmltoimage-fix10
   fi
 }
 #
