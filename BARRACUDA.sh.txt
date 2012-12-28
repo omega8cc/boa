@@ -4440,8 +4440,6 @@ else
     mrun "sleep 8"
     msg "INFO: Restarting $_DB_SERVER server, please wait..."
     st_runner "service mysql restart" &> /dev/null
-    mrun "sleep 8"
-    st_runner "service mysql restart" &> /dev/null
     st_runner "service nginx start" &> /dev/null
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
       st_runner "csf -e" &> /dev/null
