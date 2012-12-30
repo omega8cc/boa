@@ -2025,8 +2025,10 @@ barracuda_cnf () {
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
-        echo 5.3 > /data/disk/*/log/cli.txt
-        echo 5.2 > /data/disk/*/log/fpm.txt
+        if [ -e "/data/disk" ] ; then
+          echo 5.3 > /data/disk/*/log/cli.txt
+          echo 5.2 > /data/disk/*/log/fpm.txt
+        fi
       fi
     fi
   else
@@ -2231,8 +2233,10 @@ barracuda_cnf () {
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
-        echo 5.3 > /data/disk/*/log/cli.txt
-        echo 5.2 > /data/disk/*/log/fpm.txt
+        if [ -e "/data/disk" ] ; then
+          echo 5.3 > /data/disk/*/log/cli.txt
+          echo 5.2 > /data/disk/*/log/fpm.txt
+        fi
       fi
     fi
     echo " "
