@@ -29,6 +29,7 @@
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
+_DRUSH_CC_REQ=NO
 _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _FROM_SOURCES=EDIT_FROM_SOURCES
@@ -151,12 +152,14 @@ else
   if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
     git clone http://git.drupal.org/project/drush.git &> /dev/null
     rm -f -r drush/.git
+    _DRUSH_CC_REQ=YES
   elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
     get_dev_ext "drush4.tar.gz" &> /dev/null
   else
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
     tar -xzf drush-$_DRUSH_VERSION.tar.gz
     rm -f drush-$_DRUSH_VERSION.tar.gz
+    _DRUSH_CC_REQ=YES
   fi
   _DRUSH="$_L_PHP_CLI/php $_AEGIR_HOME/drush/drush.php"
 fi
@@ -218,5 +221,8 @@ else
 fi
 
 msg "Installing the frontend"
+if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
+  $_DRUSH cache-clear drush >$_AEGIR_HOME/install.log 2>&1
+fi
 _AEGIROOT="$_AEGIR_HOME/hostmaster-$_AEGIR_VERSION"
 $_DRUSH hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_AEGIR_DB_PASS --aegir_root=$_AEGIR_HOME --root=$_AEGIROOT --version=$_AEGIR_VERSION $@

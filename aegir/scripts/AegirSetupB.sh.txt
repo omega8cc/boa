@@ -92,6 +92,7 @@ _CLIENT_OPTION=EDIT_CLIENT_OPTION
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DISTRO=EDIT_DISTRO
 _DOMAIN=EDIT_DOMAIN
+_DRUSH_CC_REQ=NO
 _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _HM_DISTRO=EDIT_HM_DISTRO
@@ -309,12 +310,14 @@ msg "$_STATUS B: Downloading drush, please wait..."
 if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
   git clone http://git.drupal.org/project/drush.git &> /dev/null
   rm -f -r $_ROOT/tools/drush/.git &> /dev/null
+  _DRUSH_CC_REQ=YES
 elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
   get_dev_ext "drush4.tar.gz" &> /dev/null
 else
   wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
+  _DRUSH_CC_REQ=YES
 fi
 if [ "$_DRUSH_FAMILY" = "3" ] ; then
   cd $_ROOT/tools/drush
@@ -323,13 +326,15 @@ if [ "$_DRUSH_FAMILY" = "3" ] ; then
 fi
 if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
   sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null
-  update_php_cli_drush
 fi
 # if [ "$_DRUSH_VERSION" = "7.x-4.6" ] ; then
 #   cd $_ROOT/tools/drush
 #   wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
 #   patch -R -p1 < alias-name-drush4.patch &> /dev/null
 # fi
+
+update_php_cli_drush
+
 if $_DRUSHCMD help > /dev/null ; then
   msg "$_STATUS B: Drush seems to be functioning properly"
 else
@@ -440,8 +445,10 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
   _AEGIR_HOST=`uname -n`
   msg "$_STATUS B: Running hostmaster-install, please wait..."
-  if [ "$_USE_STOCK" = "YES" ] ; then
+  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush >$_ROOT/log/install.log 2>&1
+  fi
+  if [ "$_USE_STOCK" = "YES" ] ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_AEGIR_ROOT --http_service_type=nginx --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION -y -d
     else
@@ -465,7 +472,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
   ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
-  if [ "$_USE_STOCK" = "YES" ] ; then
+  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
   msg "$_STATUS B: Running hosting-dispatch (1/3), please wait..."
