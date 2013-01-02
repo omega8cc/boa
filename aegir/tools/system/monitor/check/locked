@@ -87,4 +87,4 @@ local(@MYARR) = `grep "Apache Solr.*timed out" /var/log/syslog | tail --lines=99
     }
   }
 }
-###EOF2012###
+###EOF2013###

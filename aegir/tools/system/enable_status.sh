@@ -23,4 +23,4 @@ else
   action
   rm -f /var/run/boa_wait.pid
 fi
-###EOF2012###
+###EOF2013###

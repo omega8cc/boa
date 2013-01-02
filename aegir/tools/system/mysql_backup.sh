@@ -64,4 +64,4 @@ echo "Redis server restarted"
 
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
-###EOF2012###
+###EOF2013###

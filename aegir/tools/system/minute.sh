@@ -69,4 +69,4 @@ action
 echo watcher 6
 perl /var/xdrago/monitor/check/sqlcheck
 echo DONE!
-###EOF2012###
+###EOF2013###

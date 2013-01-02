@@ -532,4 +532,4 @@ EOF
   echo "INFO: Update notice sent: OK"
   fi
 fi
-###EOF2012###
+###EOF2013###

@@ -28,4 +28,4 @@ else
 fi
 ntpdate pool.ntp.org
 touch /var/xdrago/log/clear.done
-###EOF2012###
+###EOF2013###

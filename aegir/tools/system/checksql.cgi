@@ -89,4 +89,4 @@ sub repair_this_action
   `echo "/usr/bin/mysqlcheck -a $FIXTABLE" >> $fixfile`;
   `echo " " >> $fixfile`;
 }
-###EOF2012###
+###EOF2013###

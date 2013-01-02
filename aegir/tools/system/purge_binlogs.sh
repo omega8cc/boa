@@ -29,4 +29,4 @@ else
   action
   touch /var/xdrago/log/last-run-purge
 fi
-###EOF2012###
+###EOF2013###

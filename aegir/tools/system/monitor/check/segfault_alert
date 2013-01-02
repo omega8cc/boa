@@ -188,4 +188,4 @@ sub send_alert
   `rm -f /var/xdrago/monitor/segfault_alert`;
 }
 
-###EOF2012###
+###EOF2013###
