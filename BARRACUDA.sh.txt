@@ -2953,6 +2953,11 @@ install_upgrade_nginx () {
     wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
     tar -xzf nginx-$_NGINX_VERSION.tar.gz
     sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h &> /dev/null
+    if [ "$_NGINX_VERSION" = "1.3.10" ] ; then
+      cd /var/opt/nginx-$_NGINX_VERSION
+      wget -q -U iCab https://trac.nginx.org/nginx/raw-attachment/ticket/268/fix_valgirnd_error.patch
+      patch -p1 < fix_valgirnd_error.patch &> /dev/null
+    fi
     if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
       _NGINX_EXTRA="--add-module=/var/opt/ngx_cache_purge/"
     elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then
