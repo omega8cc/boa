@@ -123,7 +123,13 @@ _TUNE_SQL_TIMEOUT=3600
 ###----------------------------------------###
 ### PHP-FPM server timeout - default 300
 ###
-_TUNE_PHP_TIMEOUT=3600
+_TUNE_PHP_FPM_TIMEOUT=3600
+
+
+###----------------------------------------###
+### PHP-CLI server timeout - default 3600
+###
+_TUNE_PHP_CLI_TIMEOUT=7200
 
 
 ###----------------------------------------###
@@ -462,10 +468,14 @@ restore_default_php () {
 #
 tune_php () {
   msg "INFO: Tuning PHP configuration"
-  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php.ini              &> /dev/null
-  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/etc/php-fpm.conf         &> /dev/null
-  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/local/etc/php53.ini      &> /dev/null
-  sed -i "s/300/$_TUNE_PHP_TIMEOUT/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/etc/php.ini              &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/etc/php-fpm.conf         &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/local/etc/php53.ini      &> /dev/null
+  sed -i "s/300/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /opt/local/lib/php.ini &> /dev/null
 }
 #
 restore_default_sql () {
@@ -888,7 +898,8 @@ cat <<EOF
   * Nginx server fastcgi timeout will be set to $_TUNE_NGINX_TIMEOUT seconds
   * Nginx firewall limit of allowed requests will be set to $_TUNE_NGINX_FIREWALL/300
   * Database server timeout will be set to $_TUNE_SQL_TIMEOUT seconds
-  * PHP server timeout will be set to $_TUNE_PHP_TIMEOUT seconds
+  * PHP-FPM server timeout will be set to $_TUNE_PHP_FPM_TIMEOUT seconds
+  * PHP-CLI drush timeout will be set to $_TUNE_PHP_CLI_TIMEOUT seconds
 
 EOF
 echo " "
