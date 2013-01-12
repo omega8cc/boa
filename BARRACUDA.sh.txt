@@ -1154,7 +1154,7 @@ kill_nash () {
 }
 #
 # Fix FTPS access on Squeeze.
-fix_ftps_squeeze () {
+fix_ftps_squeeze_lucid () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
@@ -1448,7 +1448,7 @@ fix_on_upgrade () {
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   set_xterm
   kill_nash
-  fix_ftps_squeeze
+  fix_ftps_squeeze_lucid
   enable_purge_cruft_machine
   update_php_conf
   update_sql_conf
@@ -4517,7 +4517,7 @@ if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
 fi
 set_xterm
 kill_nash
-fix_ftps_squeeze
+fix_ftps_squeeze_lucid
 enable_purge_cruft_machine
 install_wkhtmltopdf
 install_wkhtmltoimage
