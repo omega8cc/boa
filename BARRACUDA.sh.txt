@@ -1153,6 +1153,18 @@ kill_nash () {
   fi
 }
 #
+# Fix FTPS PAM where required.
+fix_ftps_pam () {
+  if [ ! -e "/etc/ftpusers" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/ftpusers /etc/ftpusers
+  fi
+  if [ "$_REL_VERSION" = "lenny" ] ; then
+    true
+  else
+    sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
+  fi
+}
+#
 # Fix FTPS access on Squeeze.
 fix_ftps_squeeze_lucid () {
   if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] ; then
@@ -1449,6 +1461,7 @@ fix_on_upgrade () {
   set_xterm
   kill_nash
   fix_ftps_squeeze_lucid
+  fix_ftps_pam
   enable_purge_cruft_machine
   update_php_conf
   update_sql_conf
@@ -5115,6 +5128,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     mv -f pure-config.pl.txt pure-config.pl &> /dev/null
     chmod 755 /usr/local/sbin/pure-config.pl &> /dev/null
     cp -af /var/opt/pure-ftpd-$_PURE_FTPD_VERSION/pam/pure-ftpd /etc/pam.d/
+    fix_ftps_pam
     cd /usr/local/etc
     rm -f pure-ftpd.conf
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pure-ftpd.conf ./
