@@ -1162,6 +1162,7 @@ fix_ftps_pam () {
     true
   else
     sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
+    sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
   fi
 }
 #
