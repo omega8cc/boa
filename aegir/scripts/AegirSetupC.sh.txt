@@ -2419,7 +2419,7 @@ fi
 
 
 ubercart6_install () {
-###---### Ubercart
+###---### Ubercart 2
 #
 _THIS_PRNAME="uberdrupal"
 _THIS_DINAME="ubercart"
@@ -2512,7 +2512,7 @@ fi
 
 
 ubercart7_install () {
-###---### Ubercart 3.2.1
+###---### Ubercart 3
 #
 _THIS_PRNAME="acquia"
 _THIS_DISTRO="ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
