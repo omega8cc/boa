@@ -239,15 +239,6 @@ else {
   header('X-Allow-Redis: NO');
 }
 
-if (function_exists('drush_get_command')) {
-  $command = drush_get_command();
-  $command = explode(" ", $command['command']);
-  if (preg_match("/^provision-install/", $command[0])) {
-    $use_redis = FALSE;
-    $use_cache = FALSE;
-  }
-}
-
 if (file_exists('sites/all/modules/domain/settings.inc')) {
   $da_inc = 'sites/all/modules/domain/settings.inc';
 }
@@ -256,6 +247,16 @@ elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/se
 }
 elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
   $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+}
+
+if (function_exists('drush_get_command')) {
+  $command = drush_get_command();
+  $command = explode(" ", $command['command']);
+  if (preg_match("/^provision-install/", $command[0])) {
+    $use_redis = FALSE;
+    $use_cache = FALSE;
+    $da_inc    = FALSE;
+  }
 }
 
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
