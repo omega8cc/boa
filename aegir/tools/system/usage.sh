@@ -46,10 +46,14 @@ if [ -e "$Plr/cache" ] ; then
   rm -f -r $Plr/cache/*
   rm -f $Plr/cache/{.boost,.htaccess}
 else
-  mkdir -p $Plr/cache
+  if [ -e "$Plr/drushrc.php" ] ; then
+    mkdir -p $Plr/cache
+  fi
 fi
-chown $_THIS_HM_USER:www-data $Plr/cache
-chmod 02770 $Plr/cache
+if [ -e "$Plr/cache" ] ; then
+  chown $_THIS_HM_USER:www-data $Plr/cache
+  chmod 02770 $Plr/cache
+fi
 if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ] ; then
   rm -f $Plr/robots.txt
 fi
