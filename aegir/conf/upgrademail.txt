@@ -16,7 +16,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
   OpenChurch 1.11-beta7 -------- http://openchurchsite.com
   Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
   Pressflow 6.28.1 ------------- http://pressflow.org
-  ProsePoint 0.45 -------------- http://prosepoint.org
+  ProsePoint 0.46 -------------- http://prosepoint.org
   Ubercart 2.11.1 -------------- http://ubercart.org
   Ubercart 3.3.1 --------------- http://ubercart.org
 
