@@ -8,7 +8,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
 === UPDATED OCTOPUS PLATFORMS
 
   Commerce 1.13.1 -------------- http://drupalcommerce.org
-  Commerce 2.0 ----------------- http://drupalcommerce.org
+  Commerce 2.1 ----------------- http://drupalcommerce.org
   Commons 2.11 ----------------- http://acquia.com/drupalcommons
   Drupal 7.19.1 ---------------- http://drupal.org/drupal-7.19
   Open Deals 1.14 -------------- http://opendealsapp.com
