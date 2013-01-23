@@ -4079,6 +4079,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
     echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
     echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
     echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
   elif [ "$_THIS_OS" = "Debian" ] ; then
     _MIRROR_CHECK=NO
     if [ "$_REL_VERSION" = "lenny" ] ; then
@@ -4135,7 +4136,7 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
       echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
       echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences.txt /etc/apt/preferences
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt /etc/apt/preferences
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
         rm -f dotdeb.gpg*
@@ -4150,6 +4151,14 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
   touch /var/log/apt-fast-install-log.txt
   cd /var/opt
 fi
+if [ ! -e "/etc/apt/preferences" ] ; then
+  if [ "$_THIS_OS" = "Ubuntu" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt /etc/apt/preferences
+  fi
+fi
+
 
 
 ###--------------------###

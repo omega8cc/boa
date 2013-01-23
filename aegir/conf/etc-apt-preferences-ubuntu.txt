@@ -1,0 +1,7 @@
+Package: *
+Pin: origin repo.percona.com
+Pin-Priority: 1003
+
+Package: *
+Pin: origin ftp.osuosl.org
+Pin-Priority: 1002
