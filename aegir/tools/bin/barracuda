@@ -158,7 +158,29 @@ EOF
   fi
 }
 
+set_pin_priority ()
+{
+  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue" ] ; then
+    cd
+    _THIS_OS=$(grep "Debian" /etc/issue)
+    if [[ "$_THIS_OS" =~ "Debian" ]] ; then
+      _THIS_OS=Debian
+    else
+      _THIS_OS=Ubuntu
+    fi
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt
+      cp -af etc-apt-preferences-debian.txt /etc/apt/preferences
+    elif [ "$_THIS_OS" = "Ubuntu" ] ; then
+      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt
+      cp -af etc-apt-preferences-ubuntu.txt /etc/apt/preferences
+    fi
+    rm -f etc-apt-preferences-*
+  fi
+}
+
 check_date
+set_pin_priority
 
 case "$1" in
   up-stable) silent="$2"
