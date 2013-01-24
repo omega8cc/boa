@@ -3931,17 +3931,19 @@ install_pdnsd_cache () {
   st_runner "$_INSTALL pdnsd resolvconf";
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  rm -f /etc/resolvconf/run/interface/*
-  echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
-  sed -i "s/^search.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
-  sed -i "s/^domain.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
-  sed -i "s/^nameserver.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
-  echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/resolv.conf
-  sed -i "/^$/d" /etc/resolvconf/run/resolv.conf &> /dev/null
-  rm -f /etc/resolv.conf
-  ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
-  rm -f /etc/resolvconf/run/interface/eth*
-  resolvconf -u &> /dev/null
+  if [ -e "/etc/resolvconf/run" ] ; then
+    rm -f /etc/resolvconf/run/interface/*
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    sed -i "s/^search.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
+    sed -i "s/^domain.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
+    sed -i "s/^nameserver.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
+    echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/resolv.conf
+    sed -i "/^$/d" /etc/resolvconf/run/resolv.conf &> /dev/null
+    rm -f /etc/resolv.conf
+    ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
+    rm -f /etc/resolvconf/run/interface/eth*
+    resolvconf -u &> /dev/null
+  fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ] ; then
     sed -i "s/^dns=.*/dns=pdnsd/g" /etc/NetworkManager/NetworkManager.conf &> /dev/null
     st_runner "service network-manager restart" &> /dev/null
