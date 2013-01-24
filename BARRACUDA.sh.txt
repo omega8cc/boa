@@ -3929,6 +3929,8 @@ install_pdnsd_cache () {
   mrun "sleep 1"
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
   st_runner "aptitude remove pdnsd resolvconf -y" &> /dev/null
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
