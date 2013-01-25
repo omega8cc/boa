@@ -335,9 +335,10 @@ for i in $REVISIONS; do
     fi
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.6.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
+      wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
+      ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
-      rm -f -r /data/all/$i/o_contrib/purge/.git
+      ### rm -f -r /data/all/$i/o_contrib/purge/.git
       rm -f -r /data/all/$i/o_contrib/expire/.git
     fi
     for archive in ./*.tar.gz; do
@@ -384,9 +385,11 @@ for i in $REVISIONS; do
       fi
     done
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
-      git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
+      cd /data/all/$i/o_contrib_seven
+      wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.6.tar.gz
+      ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
       git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
-      rm -f -r /data/all/$i/o_contrib_seven/purge/.git
+      ### rm -f -r /data/all/$i/o_contrib_seven/purge/.git
       rm -f -r /data/all/$i/o_contrib_seven/expire/.git
     fi
     cd /data/all/$i/o_contrib_seven
@@ -482,8 +485,9 @@ download_o_contrib_seven () {
     git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r expire/.git
     rm -f -r purge*
-    git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
-    rm -f -r purge/.git
+    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.6.tar.gz
+    ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
+    ### rm -f -r purge/.git
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
@@ -547,8 +551,9 @@ download_o_contrib_six () {
     git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r expire/.git
     rm -f -r purge*
-    git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git &> /dev/null
-    rm -f -r purge/.git
+    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
+    ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git &> /dev/null
+    ### rm -f -r purge/.git
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
