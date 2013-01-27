@@ -19,4 +19,4 @@ projects[civicrml10n][download][type] = "get"
 projects[civicrml10n][download][url] = "http://sourceforge.net/projects/civicrm/files/civicrm-stable/4.0.8/civicrm-4.0.8-l10n.tar.gz/download?use_mirror=autoselect"
 
 projects[admin_menu][subdir] = "contrib"
-projects[admin_menu][version] = "3.0-rc2"
+projects[admin_menu][version] = "3.0-rc3"
