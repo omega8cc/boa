@@ -449,7 +449,7 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     if ($conf['install_profile'] == 'openchurch' && isset($_SERVER['HTTP_USER_AGENT'])) {
       $conf['cache_class_cache_menu']         = 'DrupalDatabaseCache';
     }
-    if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
+    if ($conf['install_profile'] == 'hostmaster') {
       $conf['cache_class_cache']              = 'DrupalDatabaseCache';
     }
   }
