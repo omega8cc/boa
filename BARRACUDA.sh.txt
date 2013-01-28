@@ -5992,6 +5992,15 @@ else
     fi
   fi
 fi
+fix_compass_path () {
+  if [ ! -e "/usr/local/bin/compass" ] && [ -x "/var/lib/gems/1.8/bin/compass" ] ; then
+    ln -s /var/lib/gems/1.8/bin/compass /usr/local/bin/compass &> /dev/null
+    ln -s /var/lib/gems/1.8/bin/sass /usr/local/bin/sass &> /dev/null
+    ln -s /var/lib/gems/1.8/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
+    ln -s /var/lib/gems/1.8/bin/scss /usr/local/bin/scss &> /dev/null
+  fi
+}
+fix_compass_path
 
 
 ###--------------------###
