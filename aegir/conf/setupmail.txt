@@ -145,6 +145,10 @@ standard Drupal 7 core.
 #5. ARTICLES & VIDEO TUTORIALS
 ----------------------------------------
 
+=== AEGIR BASICS
+
+http://omega8.cc/library/aegir-basics
+
 === VIDEO TUTORIALS
 
 http://bit.ly/aegir8cc
