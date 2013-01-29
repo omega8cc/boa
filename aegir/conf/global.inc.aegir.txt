@@ -151,6 +151,11 @@ if ($conf['install_profile'] == 'martplug') {
   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
 }
 
+// Prevent turning the feature server site into a spam machine
+if ($conf['install_profile'] == 'feature_server') {
+  $conf['user_register'] = 0; // force "Only site administrators can create new user accounts"
+}
+
 if (isset($_SERVER['SERVER_NAME'])) {
   if ($conf['install_profile'] == 'uberdrupal' ||
       $conf['install_profile'] == 'martplug' ||
