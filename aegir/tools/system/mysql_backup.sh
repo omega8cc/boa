@@ -26,7 +26,7 @@ EOFMYSQL
 }
 
 backup_this_database () {
-  mysqldump --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $DB | gzip > $SAVELOCATION/$DB.sql.gz
+  mysqldump --default-character-set=utf8 -Q -C -e --hex-blob --add-drop-table $DB | gzip --rsyncable -c > $SAVELOCATION/$DB.sql.gz
 }
 
 [ ! -a $SAVELOCATION ] && mkdir -p $SAVELOCATION ;
