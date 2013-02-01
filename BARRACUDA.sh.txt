@@ -2774,6 +2774,7 @@ check_apt_updates () {
   for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
+      *linux-*)     _UP_LNX=YES ;;
       *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _UP_PHP=YES ;;
@@ -4282,6 +4283,7 @@ else
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
   done
+  _UP_LNX=NO
   _UP_PHP=NO
   _UP_NGX=NO
   _UP_JDK=NO
@@ -6231,6 +6233,17 @@ mrun "sleep 5"
 msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
 mrun "sleep 3"
 echo " "
+if [ "$_UP_LNX" = "YES" ] ; then
+  msg "ALRT: Your OS kernel has been upgraded!"
+  if [ ! -e "/usr/sbin/uptrack-upgrade" ] ; then
+    msg "ALRT: You *must* reboot immediately to make it active and stay secure!"
+  else
+    msg "NOTE: You have Ksplice rebootless kernel updates installed"
+    msg "HINT: Run `uptrack-upgrade -y` to make sure that all upgrades are fully applied"
+  fi
+  echo " "
+  mrun "sleep 8"
+fi
 msg "Final post-$_L_ST cleaning, please wait a moment..."
 mrun "sleep 1"
 mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
