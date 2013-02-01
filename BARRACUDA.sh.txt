@@ -6086,6 +6086,10 @@ sed -i "s/root/$_MY_EMAIL/g"               /etc/apticron/apticron.conf &> /dev/n
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_alert &> /dev/null
+if [ -e "/usr/sbin/apticron" ] ; then
+  sed -i "s/aptitude full-upgrade/barracuda up-stable/g" /usr/sbin/apticron &> /dev/null
+  sed -i "s/apt-get dist-upgrade/barracuda up-stable/g" /usr/sbin/apticron &> /dev/null
+fi
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
     st_runner "sh /usr/sbin/apticron"
