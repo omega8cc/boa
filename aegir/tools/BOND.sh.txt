@@ -621,6 +621,15 @@ tune_memory_limits () {
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
+  _CPU_MX=`nproc`
+  let "_CPU_TG = (($_CPU_MX / 2))"
+  if [ "$_CPU_TG" -lt "4" ] ; then
+    _CPU_TG=4
+  fi
+  let "_CPU_VM = (($_CPU_MX / 6))"
+  if [ "$_CPU_VM" -lt "4" ] ; then
+    _CPU_VM=4
+  fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
@@ -641,7 +650,7 @@ tune_memory_limits () {
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
     if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-      _L_NGINX_WORKERS=4
+      _L_NGINX_WORKERS=$_CPU_MX
     else
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
@@ -655,7 +664,7 @@ tune_memory_limits () {
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
       if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-        _L_NGINX_WORKERS=8
+        _L_NGINX_WORKERS=$_CPU_MX
       else
         _L_NGINX_WORKERS=$_NGINX_WORKERS
       fi
@@ -669,7 +678,7 @@ tune_memory_limits () {
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-          _L_NGINX_WORKERS=8
+          _L_NGINX_WORKERS=$_CPU_TG
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
@@ -682,7 +691,7 @@ tune_memory_limits () {
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-          _L_NGINX_WORKERS=4
+          _L_NGINX_WORKERS=$_CPU_VM
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
@@ -696,7 +705,7 @@ tune_memory_limits () {
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
       if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-        _L_NGINX_WORKERS=4
+        _L_NGINX_WORKERS=$_CPU_MX
       else
         _L_NGINX_WORKERS=$_NGINX_WORKERS
       fi
@@ -710,7 +719,7 @@ tune_memory_limits () {
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
     if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-      _L_NGINX_WORKERS=4
+      _L_NGINX_WORKERS=$_CPU_MX
     else
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
