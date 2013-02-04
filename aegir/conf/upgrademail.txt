@@ -15,6 +15,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
   Open Atrium 1.7.1 ------------ http://openatrium.com
   Open Deals 1.16 -------------- http://opendealsapp.com
   Open Outreach 1.0-rc8 -------- http://openoutreach.org
+  OpenChurch 1.11-beta8 -------- http://openchurchsite.com
   Pressflow 6.28.1 ------------- http://pressflow.org
   ProsePoint 0.46 -------------- http://prosepoint.org
   Ubercart 2.11.1 -------------- http://ubercart.org
