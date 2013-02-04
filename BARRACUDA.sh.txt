@@ -2512,7 +2512,7 @@ install_php_extensions_more () {
       wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
       tar -xvjf geos-3.3.7.tar.bz2
       cd geos-3.3.7
-      st_runner "sh ./configure --prefix=/opt/local --enable-php" 2> /dev/null
+      st_runner "sh ./configure --enable-php" 2> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
       st_runner "make --quiet" 2> /dev/null
@@ -2637,7 +2637,7 @@ update_php_universal_more () {
       wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
       tar -xvjf geos-3.3.7.tar.bz2
       cd geos-3.3.7
-      st_runner "sh ./configure --prefix=/opt/local --enable-php" 2> /dev/null
+      st_runner "sh ./configure --enable-php" 2> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
       st_runner "make --quiet" 2> /dev/null
