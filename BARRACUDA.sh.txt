@@ -6133,6 +6133,11 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 8"
   service nginx restart &> /dev/null
 else
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] && [ ! -e "/var/log/nginx-ssl-fixed-$_INSTALLER_VERSION" ] ; then
+    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    touch /var/log/nginx-ssl-fixed-$_INSTALLER_VERSION
+  fi
   service nginx reload &> /dev/null
 fi
 
