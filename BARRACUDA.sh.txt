@@ -2510,7 +2510,7 @@ install_php_extensions_more () {
       cd /var/opt
       rm -f -r geos*
       wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
-      tar -xvjf geos-3.3.7.tar.bz2
+      tar -xjf geos-3.3.7.tar.bz2
       cd geos-3.3.7
       st_runner "sh ./configure --enable-php" 2> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
@@ -2635,7 +2635,7 @@ update_php_universal_more () {
       cd /var/opt
       rm -f -r geos*
       wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
-      tar -xvjf geos-3.3.7.tar.bz2
+      tar -xjf geos-3.3.7.tar.bz2
       cd geos-3.3.7
       st_runner "sh ./configure --enable-php" 2> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
@@ -3113,7 +3113,7 @@ install_wkhtmltopdf () {
       cd /var/opt
       rm -f -r wkhtmltopdf*
       wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2
-      tar -xvjf wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2 &> /dev/null
+      tar -xjf wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2
       cp -af wkhtmltopdf-amd64 /usr/bin/wkhtmltopdf &> /dev/null
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
@@ -3124,7 +3124,7 @@ install_wkhtmltopdf () {
       cd /var/opt
       rm -f -r wkhtmltopdf*
       wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2
-      tar -xvjf wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2 &> /dev/null
+      tar -xjf wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2
       cp -af wkhtmltopdf-i386 /usr/bin/wkhtmltopdf &> /dev/null
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
@@ -3145,7 +3145,7 @@ install_wkhtmltoimage () {
       cd /var/opt
       rm -f -r wkhtmltoimage*
       wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2
-      tar -xvjf wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2 &> /dev/null
+      tar -xjf wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2
       cp -af wkhtmltoimage-amd64 /usr/bin/wkhtmltoimage &> /dev/null
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
@@ -3156,7 +3156,7 @@ install_wkhtmltoimage () {
       cd /var/opt
       rm -f -r wkhtmltoimage*
       wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2
-      tar -xvjf wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2 &> /dev/null
+      tar -xjf wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2
       cp -af wkhtmltoimage-i386 /usr/bin/wkhtmltoimage &> /dev/null
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
