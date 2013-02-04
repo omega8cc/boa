@@ -71,7 +71,7 @@ _MY_EMAIL="notify@omega8.cc"
 ###
 ### _BUILD_FROM_SRC=NO
 ### _PHP_MODERN_ONLY=YES
-### _XTRAS_LIST="PDS CSF CHV FTP"
+### _XTRAS_LIST="PDS CSF CHV FTP GEO"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
@@ -312,12 +312,13 @@ _PHP_CLI_VERSION=5.2
 ### BND --- Bind9 DNS Server
 ### CGP --- Collectd Graph Panel
 ### CHV --- Chive DB Manager
-### CSF --- csf/lfd Firewall
+### CSF --- Firewall
 ### CSS --- Compass Tools
 ### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
+### GEO --- GEOS PHP extension
 ### GIT --- Latest Git from sources
-### PDS --- fast DNS cache server (pdnsd)
+### PDS --- Fast DNS Cache Server (pdnsd)
 ### SLR --- MultiCore Apache Solr Tomcat
 ### WMN --- Webmin Control Panel
 ###
@@ -801,16 +802,17 @@ _BZR_VERSION=2.3.4
 _CHIVE_VERSION=1.2
 _DRUSH_FAMILY=4
 _DRUSH_VERSION=4.6-dev
+_GEOS_VERSION=3.3.7
 _GIT_VERSION=1.8.0.2
 _IMAGICK_VERSION=3.1.0RC2
 _LSHELL_VERSION=0.9.15.1-sec-noreload
+_MARIADB_VERSION=5.5.29
 _NGINX_VERSION=1.3.11
+_PERCONA_VERSION=5.5.29
 _PHP_VERSION_NEW=5.3.21
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.6.9
-_MARIADB_VERSION=5.5.29
-_PERCONA_VERSION=5.5.29
 if [ "$_USE_STOCK" = "YES" ] ; then
   _DRUSH_VERSION=7.x-5.8
   _DRUSH_FAMILY=5
@@ -1255,6 +1257,28 @@ fix_php_ini_newrelic_all () {
   fi
 }
 #
+# Fix php.ini file to add geos.so
+fix_php_ini_geos () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE)
+    if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
+      true
+    else
+      echo "extension=geos.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix 5.3 php.ini files to add geos.so
+fix_php_ini_geos_all () {
+  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+    _THIS_FILE=/opt/local/etc/php53.ini
+    fix_php_ini_geos
+    _THIS_FILE=/opt/local/lib/php.ini
+    fix_php_ini_geos
+  fi
+}
+#
 # Update PHP Config.
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
@@ -1369,6 +1393,7 @@ update_php_conf () {
   fix_php_ini_mailparse
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
+  fix_php_ini_geos_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
     true
   else
@@ -2472,6 +2497,29 @@ install_php_extensions_more () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
+  ###--------------------###
+  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing GEOS PHP extension for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      if [ ! -e "/var/log/geos-$_INSTALLER_VERSION.log" ] ; then
+        st_runner "apt-get update -y --force-yes" &> /dev/null
+        st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        echo "geos-$_INSTALLER_VERSION" > /var/log/geos-$_INSTALLER_VERSION.log
+      fi
+      cd /var/opt
+      rm -f -r geos*
+      wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
+      tar -xvjf geos-3.3.7.tar.bz2
+      cd geos-3.3.7
+      st_runner "sh ./configure --prefix=/opt/local --enable-php" 2> /dev/null
+      find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
+      find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/log/php-geos-$_LOC_PHP_VERSION.log
+    fi
+  fi
 }
 #
 # Update PHP universal
@@ -2573,6 +2621,29 @@ update_php_universal_more () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
+  fi
+  ###--------------------###
+  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing GEOS PHP extension upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      if [ ! -e "/var/log/geos-$_INSTALLER_VERSION.log" ] ; then
+        st_runner "apt-get update -y --force-yes" &> /dev/null
+        st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
+        echo "geos-$_INSTALLER_VERSION" > /var/log/geos-$_INSTALLER_VERSION.log
+      fi
+      cd /var/opt
+      rm -f -r geos*
+      wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
+      tar -xvjf geos-3.3.7.tar.bz2
+      cd geos-3.3.7
+      st_runner "sh ./configure --prefix=/opt/local --enable-php" 2> /dev/null
+      find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
+      find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/log/php-geos-$_LOC_PHP_VERSION.log
+    fi
   fi
 }
 #
@@ -3303,7 +3374,7 @@ else
     msg "INFO: Easy Public Setup Mode Active"
     _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
-    _XTRAS_LIST="PDS CSF CHV FTP"
+    _XTRAS_LIST="PDS CSF CHV FTP GEO"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
@@ -5926,7 +5997,7 @@ fi
 ###--------------------###
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   if [ "$_XTRAS_LIST" = "ALL" ] ; then
-    _XTRAS_LIST="BDD CGP CHV CSF CSS FMG FTP GIT PDS SLR WMN"
+    _XTRAS_LIST="BDD CGP CHV CSF CSS FMG FTP GIT PDS SLR WMN GEO"
   fi
   if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
     _XTRAS_LIST="PDS CSF CGP CHV FTP WMN"
