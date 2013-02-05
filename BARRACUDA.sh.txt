@@ -1498,6 +1498,11 @@ fix_on_upgrade () {
 #
 # Validate server public IP.
 validate_public_ip () {
+  if [ "$_VMFAMILY" = "AWS" ] ; then
+    _LOC_DOM="$_MY_HOSTN"
+    find_correct_ip
+    _MY_OWNIP="$_LOC_IP"
+  fi
   if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
     if [ -z "$_LOCAL_NETWORK_HN" ] ; then
       msg "FATAL ERROR: you must specify also _LOCAL_NETWORK_HN"
@@ -1537,6 +1542,11 @@ validate_public_ip () {
 #
 # Validate server IP for xtras.
 validate_xtras_ip () {
+  if [ "$_VMFAMILY" = "AWS" ] ; then
+    _LOC_DOM="$_MY_HOSTN"
+    find_correct_ip
+    _MY_OWNIP="$_LOC_IP"
+  fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     _XTRAS_THISHTIP="*"
   else
@@ -1786,6 +1796,9 @@ tune_memory_limits () {
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+    _VMFAMILY="AWS"
+  fi
   _CPU_MX=`nproc`
   let "_CPU_TG = (($_CPU_MX / 2))"
   if [ "$_CPU_TG" -lt "4" ] ; then
@@ -1820,7 +1833,7 @@ tune_memory_limits () {
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
   elif [ "$_USE" -ge "1024" ] ; then
-    if [ "$_VMFAMILY" = "XEN" ] ; then
+    if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
       _USE_APC=1024
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
@@ -3286,6 +3299,13 @@ if [ `whoami` = "root" ] ; then
   rm -f /tmp/cache.inc*
   service cron stop &> /dev/null
   touch /var/run/boa_run.pid
+  _AWS_TEST_A=$(grep cloudimg /etc/fstab)
+  _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+    _VMFAMILY="AWS"
+    _HTTP_WILDCARD=YES
+    _THIS_DB_HOST=localhost
+  fi
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
@@ -3752,14 +3772,6 @@ if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
 else
   _FROM_SOURCES=YES
 fi
-_AWS_TEST_A=$(grep cloudimg /etc/fstab)
-_AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
-  _VMFAMILY="AWS"
-  _IFCONFIG="eth0"
-  _HTTP_WILDCARD=YES
-  _THIS_DB_HOST=localhost
-fi
 echo " "
 msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
 echo " "
@@ -3785,6 +3797,11 @@ fi
 
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
+  if [ "$_VMFAMILY" = "AWS" ] ; then
+    _LOC_DOM="$_MY_HOSTN"
+    find_correct_ip
+    _MY_OWNIP="$_LOC_IP"
+  fi
   _ETH_TEST=`ifconfig 2>&1`
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
     _IFCONFIG="venet0"
