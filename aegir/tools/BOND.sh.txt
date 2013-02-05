@@ -607,6 +607,8 @@ tune_web_server_config () {
 #
 tune_memory_limits () {
   msg "INFO: Default Memory Tuning"
+  _AWS_TEST_A=$(grep cloudimg /etc/fstab)
+  _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
@@ -621,14 +623,21 @@ tune_memory_limits () {
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
   fi
-  _CPU_MX=`nproc`
-  let "_CPU_TG = (($_CPU_MX / 2))"
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+    _VMFAMILY="AWS"
+  fi
+  _CPU_IS=`nproc`
+  let "_CPU_MX = (($_CPU_IS * 2))"
+  if [ "$_CPU_MX" -lt "4" ] ; then
+    _CPU_MX=4
+  fi
+  let "_CPU_TG = (($_CPU_IS / 2))"
   if [ "$_CPU_TG" -lt "4" ] ; then
     _CPU_TG=4
   fi
-  let "_CPU_VM = (($_CPU_MX / 6))"
-  if [ "$_CPU_VM" -lt "4" ] ; then
-    _CPU_VM=4
+  let "_CPU_VS = (($_CPU_IS / 12))"
+  if [ "$_CPU_VS" -lt "2" ] ; then
+    _CPU_VS=2
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
@@ -655,7 +664,7 @@ tune_memory_limits () {
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
   elif [ "$_USE" -ge "1024" ] ; then
-    if [ "$_VMFAMILY" = "XEN" ] ; then
+    if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
       _USE_APC=1024
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
@@ -691,7 +700,7 @@ tune_memory_limits () {
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
         if [ "$_NGINX_WORKERS" = "AUTO" ] ; then
-          _L_NGINX_WORKERS=$_CPU_VM
+          _L_NGINX_WORKERS=$_CPU_VS
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
