@@ -85,26 +85,28 @@ sub global_action
   foreach $line (@MYARR) {
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
-    if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(pool)/ && $K =~ /(www)/)
-    {
-      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
-    }
-    if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
-    {
-      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
-    }
-    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /(Zs)/ && $B =~ /(php-fpm)/ && $K =~ /(defunct)/)
-    {
-      `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+    if (!-f "/var/run/fmp_wait.pid") {
+      if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(pool)/ && $K =~ /(www)/)
+      {
+        `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+         $timedate=`date +%y%m%d-%H%M`;
+         chomp($timedate);
+        `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+      }
+      if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
+      {
+        `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+         $timedate=`date +%y%m%d-%H%M`;
+         chomp($timedate);
+        `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+      }
+      if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /(Zs)/ && $B =~ /(php-fpm)/ && $K =~ /(defunct)/)
+      {
+        `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
+         $timedate=`date +%y%m%d-%H%M`;
+         chomp($timedate);
+        `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
+      }
     }
     if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME !~ /(0:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
     {

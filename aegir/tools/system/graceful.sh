@@ -38,8 +38,11 @@ action()
     rm -f -r /var/lib/nginx/speed/*
   fi
   /etc/init.d/nginx reload
+  touch /var/run/fmp_wait.pid
   /etc/init.d/php-fpm reload
   /etc/init.d/php53-fpm reload
+  sleep 8
+  rm -f /var/run/fmp_wait.pid
   echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ] ; then
     echo rotate > /var/log/newrelic/nrsysmond.log
