@@ -4393,7 +4393,7 @@ else
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
     csf -x &> /dev/null
   fi
-  until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
+  until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
   done
@@ -4502,7 +4502,7 @@ install_percona_sql () {
 install_mariadb_sql () {
   cd /var/opt
   _KEYS_SERVER_TEST=FALSE
-  until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
+  until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]] ; do
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
   done
@@ -4626,7 +4626,7 @@ else
       rm -f /etc/apt/sources.list.d/percona.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
       _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "Monty" ]] ; do
+      until [[ "$_KEYS_SERVER_TEST" =~ "MariaDB" ]] ; do
         _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
         sleep 2
       done
