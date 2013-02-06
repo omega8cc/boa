@@ -748,6 +748,12 @@ _NGINX_DOS_LIMIT=300
 _NGINX_EXTRA_CONF=""
 
 ###
+### Use this only when you need to always
+### compile in some extra PHP extension.
+###
+_PHP_EXTRA_CONF=""
+
+###
 ### Nginx version used in the apt-get based
 ### installs tends to be overloaded with
 ### never used modules, causing some issues
@@ -2050,6 +2056,7 @@ barracuda_cnf () {
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
+    echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
     echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
@@ -2278,6 +2285,12 @@ barracuda_cnf () {
       true
     else
       echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
+    fi
+    _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF /root/.barracuda.cnf)
+    if [[ "$_PHP_EXTRA_CONF_TEST" =~ "_PHP_EXTRA_CONF" ]] ; then
+      true
+    else
+      echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
@@ -5099,6 +5112,9 @@ if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _PHP_EXTRA=""
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
+fi
+if [ ! -z "$_PHP_EXTRA_CONF" ] ; then
+  _PHP_EXTRA="$_PHP_EXTRA $_PHP_EXTRA_CONF"
 fi
 if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
