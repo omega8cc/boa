@@ -4356,8 +4356,15 @@ fi
 if [ -d "/etc/webmin" ] ; then
   if [ ! -e "/var/log/webmin_new_apt.log" ] ; then
     cd /var/opt
-    wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
-    apt-key add jcameron-key.asc &> /dev/null
+    _KEYS_SERVER_TEST=FALSE
+    until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+      rm -f jcameron-key.asc*
+      wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
+      _KEYS_SERVER_TEST=`grep GnuPG jcameron-key.asc 2> /dev/null`
+      sleep 2
+    done
+    cat jcameron-key.asc | apt-key add - &> /dev/null
+    rm -f jcameron-key.asc*
     touch /var/log/webmin_new_apt.log
   fi
 fi
@@ -6024,8 +6031,15 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
       mrun "sleep 1"
       cd /var/opt
       echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
-      wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
-      apt-key add jcameron-key.asc &> /dev/null
+      _KEYS_SERVER_TEST=FALSE
+      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+        rm -f jcameron-key.asc*
+        wget -q -U iCab http://files.aegir.cc/dev/jcameron-key.asc
+        _KEYS_SERVER_TEST=`grep GnuPG jcameron-key.asc 2> /dev/null`
+        sleep 2
+      done
+      cat jcameron-key.asc | apt-key add - &> /dev/null
+      rm -f jcameron-key.asc*
       touch /var/log/webmin_new_apt.log
       st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "$_INSTAPP webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
