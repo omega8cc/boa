@@ -362,14 +362,19 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
 
-    if (!isset($_COOKIE[$test_sess_name]) && (file_exists('sites/all/modules/cache_quarter/YES.txt') ||
-        file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_quarter/YES.txt'))) {
-      $expire_in_seconds = '900';
-    }
-
-    if (!isset($_COOKIE[$test_sess_name]) && (file_exists('sites/all/modules/cache_hour/YES.txt') || $force_redis || $high_traffic ||
-        file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_hour/YES.txt'))) {
-      $expire_in_seconds = '3600';
+    if (!isset($_COOKIE[$test_sess_name])) {
+      if (file_exists('sites/all/modules/cache_quarter/YES.txt') ||
+          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_quarter/YES.txt')) {
+        $expire_in_seconds = '900';
+      }
+      elseif (file_exists('sites/all/modules/cache_hour/YES.txt') || $force_redis || $high_traffic ||
+          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_hour/YES.txt')) {
+        $expire_in_seconds = '3600';
+      }
+      elseif (file_exists('sites/all/modules/cache_day/YES.txt') ||
+          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_day/YES.txt')) {
+        $expire_in_seconds = '86400';
+      }
     }
 
     if (empty($known_bot) && !$high_traffic) {
