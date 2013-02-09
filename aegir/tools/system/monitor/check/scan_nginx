@@ -99,7 +99,7 @@ sub makeactions
       if (!$blocked) {
         `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/web.log`;
         `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/opt/fire.sh") {
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
           `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
         }
       }
@@ -117,7 +117,7 @@ sub makeactions
       if (!$blocked) {
         `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/web.log`;
         `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/opt/fire.sh") {
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
           `/usr/sbin/csf -td $PROXY 3600 -p 80`;
         }
       }

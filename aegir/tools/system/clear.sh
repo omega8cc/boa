@@ -29,6 +29,5 @@ else
   rm -f /tmp/*error*
 fi
 rm -f /var/run/fmp_wait.pid
-ntpdate pool.ntp.org
 touch /var/xdrago/log/clear.done
 ###EOF2013###

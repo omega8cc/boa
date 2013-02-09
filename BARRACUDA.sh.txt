@@ -4897,7 +4897,6 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/2 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
     sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-    sed -i "s/.*ntpdate.*//g" /var/xdrago/clear.sh &> /dev/null
     sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" /var/xdrago/purge_binlogs.sh &> /dev/null
     rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
@@ -6409,6 +6408,20 @@ rm -f /var/run/boa_wait.pid
 chmod 700 /root
 if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
   mv -f /var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW /etc/init.d/buagent &> /dev/null
+fi
+if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] && [ -e "/var/xdrago/guest-fire.sh" ] && [ -e "/var/xdrago/guest-water.sh" ] ; then
+  sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+  sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    if [ -e "/opt/fire.sh" ] && [ -e "/opt/water.sh" ] ; then
+      echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
+  else
+    echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+  fi
+  sed -i "/^$/d" /etc/crontab &> /dev/null
 fi
 killall -9 memcached &> /dev/null
 service cron start   &> /dev/null
