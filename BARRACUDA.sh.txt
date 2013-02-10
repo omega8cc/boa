@@ -1805,7 +1805,12 @@ tune_memory_limits () {
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
   fi
-  _CPU_IS=`nproc`
+  _NPROC_TEST=$(which nproc)
+  if [ -z "$_NPROC_TEST" ] ; then
+    _CPU_IS=$(grep -c processor /proc/cpuinfo)
+  else
+    _CPU_IS=`nproc`
+  fi
   let "_CPU_MX = (($_CPU_IS * 2))"
   if [ "$_CPU_MX" -lt "4" ] ; then
     _CPU_MX=4
