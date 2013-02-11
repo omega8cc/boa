@@ -71,7 +71,7 @@ _MY_EMAIL="notify@omega8.cc"
 ###
 ### _BUILD_FROM_SRC=NO
 ### _PHP_MODERN_ONLY=YES
-### _XTRAS_LIST="PDS CSF CHV FTP GEO"
+### _XTRAS_LIST="PDS CSF CHV FTP"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
@@ -316,7 +316,7 @@ _PHP_CLI_VERSION=5.2
 ### CSS --- Compass Tools
 ### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
-### GEO --- GEOS PHP extension
+### GEO --- GEOS PHP extension - experimental!
 ### GIT --- Latest Git from sources
 ### PDS --- Fast DNS Cache Server (pdnsd)
 ### SLR --- MultiCore Apache Solr Tomcat
@@ -1277,7 +1277,7 @@ fix_php_ini_geos () {
 #
 # Fix 5.3 php.ini files to add geos.so
 fix_php_ini_geos_all () {
-  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     _THIS_FILE=/opt/local/etc/php53.ini
     fix_php_ini_geos
     _THIS_FILE=/opt/local/lib/php.ini
@@ -2542,7 +2542,7 @@ install_php_extensions_more () {
   st_runner "make --quiet install" 2> /dev/null
   echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
   ###--------------------###
-  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
@@ -2667,7 +2667,7 @@ update_php_universal_more () {
     echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
@@ -3425,7 +3425,7 @@ else
     msg "INFO: Easy Public Setup Mode Active"
     _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
-    _XTRAS_LIST="PDS CSF CHV FTP GEO"
+    _XTRAS_LIST="PDS CSF CHV FTP"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
@@ -4884,7 +4884,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    _NGINX_DOS_LIMIT=199
+    _NGINX_DOS_LIMIT=259
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
@@ -4927,7 +4927,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    _NGINX_DOS_LIMIT=199
+    _NGINX_DOS_LIMIT=259
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
@@ -6061,7 +6061,7 @@ fi
 ###--------------------###
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   if [ "$_XTRAS_LIST" = "ALL" ] ; then
-    _XTRAS_LIST="BDD CGP CHV CSF CSS FMG FTP GIT PDS SLR WMN GEO"
+    _XTRAS_LIST="BDD CGP CHV CSF CSS FMG FTP GIT PDS SLR WMN"
   fi
   if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
     _XTRAS_LIST="PDS CSF CGP CHV FTP WMN"
