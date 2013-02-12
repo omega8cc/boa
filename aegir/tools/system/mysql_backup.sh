@@ -6,6 +6,11 @@ BACKUPDIR=/data/disk/arch/sql
 HOST=`uname -n`
 DATE=`date +%y%m%d-%H%M`
 SAVELOCATION=$BACKUPDIR/$HOST-$DATE
+if [ -e "/root/.my.optimize.cnf" ] ; then
+  OPTIM=YES
+else
+  OPTIM=NO
+fi
 
 truncate_cache_tables () {
   TABLES=`mysql $DB -e "show tables" -s | grep ^cache | uniq | sort`
@@ -37,8 +42,10 @@ do
     if [ "$DB" != "mysql" ] ; then
       truncate_cache_tables &> /dev/null
       echo "All cache tables truncated in $DB"
-      optimize_this_database &> /dev/null
-      echo "Optimize completed for $DB"
+      if [ "$OPTIM" = "YES" ] ; then
+        optimize_this_database &> /dev/null
+        echo "Optimize completed for $DB"
+      fi
     fi
     backup_this_database &> /dev/null
     echo "Backup completed for $DB"
