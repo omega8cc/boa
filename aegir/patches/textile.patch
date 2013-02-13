@@ -1,0 +1,15 @@
+Only in b/textile: classTextile.php
+Only in b/textile/include: classTextile.php
+diff -urp a/textile/textile.install b/textile/textile.install
+--- a/textile/textile.install	2010-07-02 15:02:11.000000000 +0800
++++ b/textile/textile.install	2012-12-25 10:58:59.000000000 +0800
+@@ -24,7 +24,8 @@ function textile_requirements($phase) {
+       $textile = new Textile();
+       $requirements['textile'] = array(
+         'severity' => REQUIREMENT_OK,
+-        'value' => $textile->ver,
++        //'value' => $textile->ver,
++        'value' => '2.5.1',
+       );
+     }
+ 

@@ -449,6 +449,7 @@ download_textile () {
   svn export http://textpattern.googlecode.com/svn/development/4.x/textpattern/lib/classTextile.php &> /dev/null
   cp -af classTextile.php include/ &> /dev/null
   cd ../
+  patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/textile.patch &> /dev/null
 }
 #
 # download_o_contrib_seven
