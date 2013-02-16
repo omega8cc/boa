@@ -9,7 +9,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
 
   Acquia 6.28.1 ---------------- http://bit.ly/acquiadrupal
   Commerce 1.14.1 -------------- http://drupalcommerce.org
-  Commerce 2.2 ----------------- http://drupalcommerce.org
+  Commerce 2.3 ----------------- http://drupalcommerce.org
   Commons 2.12 ----------------- http://acquia.com/drupalcommons
   Drupal 7.19.1 ---------------- http://drupal.org/drupal-7.19
   Open Atrium 1.7.1 ------------ http://openatrium.com
