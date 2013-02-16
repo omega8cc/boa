@@ -1980,6 +1980,8 @@ tune_memory_limits () {
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     if [ "$_DB_BINARY_LOG" = "NO" ] ; then
+      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root &> /dev/null
+      sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
