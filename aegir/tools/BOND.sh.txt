@@ -774,6 +774,15 @@ tune_memory_limits () {
       sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf &> /dev/null
     fi
   fi
+  if [ "$_DB_BINARY_LOG" = "NO" ] ; then
+    sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+  elif [ "$_DB_BINARY_LOG" = "YES" ] ; then
+    sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+  fi
   tune_web_server_config
 }
 

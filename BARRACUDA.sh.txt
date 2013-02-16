@@ -721,6 +721,31 @@ _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_REDIS=NO
 
 ###
+### CiviCRM 4.2 and newer requires more SQL
+### privileges (the SUPER which can't be added
+### for obvious security reasons) or binary
+### logging disabled. Otherwise almost all
+### Aegir tasks against any site with CiviCRM
+### system active will fail, so we disable
+### binary logging by default. It will also
+### improve system performance on servers
+### with slower/lower disks I/O.
+###
+### You can still enable it, if you prefer,
+### by changing it to _DB_BINARY_LOG=YES
+### below or in the /root/.barracuda.cnf file,
+### but you must first stop mysql service
+### and delete or move away all existing files
+### from the /var/log/mysql/ directory, so it
+### will start fresh logs after it has been
+### disabled during previous system upgrade.
+###
+### Note: this option is ignored if the option
+### _CUSTOM_CONFIG_SQL is set to YES.
+###
+_DB_BINARY_LOG=NO
+
+###
 ### Set max 1 min load before disabling Nginx
 ### temporarily, until the load stabilizes.
 ###
@@ -1953,6 +1978,17 @@ tune_memory_limits () {
       sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf &> /dev/null
     fi
   fi
+  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
+    if [ "$_DB_BINARY_LOG" = "NO" ] ; then
+      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+    elif [ "$_DB_BINARY_LOG" = "YES" ] ; then
+      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
+    fi
+  fi
   tune_web_server_config
 }
 #
@@ -2054,6 +2090,7 @@ barracuda_cnf () {
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
     echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
+    echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
     echo "_SSH_PORT=$_SSH_PORT" >> /root/.barracuda.cnf
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
@@ -2296,6 +2333,12 @@ barracuda_cnf () {
       true
     else
       echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    fi
+    _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG /root/.barracuda.cnf)
+    if [[ "$_DB_BINARY_LOG_TEST" =~ "_DB_BINARY_LOG" ]] ; then
+      true
+    else
+      echo "_DB_BINARY_LOG=\"$_DB_BINARY_LOG\"" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
