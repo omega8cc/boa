@@ -265,10 +265,16 @@ elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/d
 if (function_exists('drush_get_command')) {
   $command = drush_get_command();
   $command = explode(" ", $command['command']);
-  if (preg_match("/^provision-install/", $command[0])) {
+  if (preg_match("/^provision-/", $command[0])) {
     $use_redis = FALSE;
     $use_cache = FALSE;
-    $da_inc    = FALSE;
+    if (preg_match("/^provision-install/", $command[0])) {
+      $da_inc = FALSE;
+    }
+    if (preg_match("/^provision-verify/", $command[0])) {
+      $use_redis = TRUE;
+      $use_cache = TRUE;
+    }
   }
 }
 
