@@ -323,6 +323,50 @@ fix_php_ini_newrelic_all () {
   fi
 }
 #
+# Fix php.ini file to add geos.so
+fix_php_ini_geos () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE)
+    if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
+      true
+    else
+      echo "extension=geos.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix 5.3 php.ini files to add geos.so
+fix_php_ini_geos_all () {
+  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
+    _THIS_FILE=/opt/local/etc/php53.ini
+    fix_php_ini_geos
+    _THIS_FILE=/opt/local/lib/php.ini
+    fix_php_ini_geos
+  fi
+}
+#
+# Fix php.ini file to add mongo.so
+fix_php_ini_mongo () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _GEOS_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
+    if [[ "$_GEOS_INI_TEST" =~ "extension=mongo.so" ]] ; then
+      true
+    else
+      echo "extension=mongo.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix 5.3 php.ini files to add mongo.so
+fix_php_ini_mongo_all () {
+  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+    _THIS_FILE=/opt/local/etc/php53.ini
+    fix_php_ini_mongo
+    _THIS_FILE=/opt/local/lib/php.ini
+    fix_php_ini_mongo
+  fi
+}
+#
 # Update PHP Config.
 update_php_conf () {
   if [ -z "$_THISHTIP" ] ; then
@@ -437,6 +481,8 @@ update_php_conf () {
   fix_php_ini_mailparse
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
+  fix_php_ini_geos_all
+  fix_php_ini_mongo_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
     true
   else
