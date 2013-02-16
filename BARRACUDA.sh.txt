@@ -2364,7 +2364,7 @@ barracuda_cnf () {
     if [[ "$_DB_BINARY_LOG_TEST" =~ "_DB_BINARY_LOG" ]] ; then
       true
     else
-      echo "_DB_BINARY_LOG=\"$_DB_BINARY_LOG\"" >> /root/.barracuda.cnf
+      echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
