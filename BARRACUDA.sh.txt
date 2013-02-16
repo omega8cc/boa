@@ -316,8 +316,9 @@ _PHP_CLI_VERSION=5.2
 ### CSS --- Compass Tools
 ### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
-### GEO --- GEOS PHP extension - experimental!
+### GEO --- GEOS PHP 5.3 only extension
 ### GIT --- Latest Git from sources
+### MNG --- MongoDB PHP 5.3 only driver
 ### PDS --- Fast DNS Cache Server (pdnsd)
 ### SLR --- MultiCore Apache Solr Tomcat
 ### WMN --- Webmin Control Panel
@@ -2609,6 +2610,23 @@ install_php_extensions_more () {
       echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/log/php-geos-$_LOC_PHP_VERSION.log
     fi
   fi
+  ###--------------------###
+  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r mongo*
+      wget -q -U iCab http://files.aegir.cc/dev/mongo-1.3.4.tgz
+      tar -xzf mongo-1.3.4.tgz
+      cd /var/opt/mongo-1.3.4
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/log/php-mongo-$_LOC_PHP_VERSION.log
+    fi
+  fi
 }
 #
 # Update PHP universal
@@ -2732,6 +2750,23 @@ update_php_universal_more () {
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/log/php-geos-$_LOC_PHP_VERSION.log
+    fi
+  fi
+  ###--------------------###
+  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r mongo*
+      wget -q -U iCab http://files.aegir.cc/dev/mongo-1.3.4.tgz
+      tar -xzf mongo-1.3.4.tgz
+      cd /var/opt/mongo-1.3.4
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/log/php-mongo-$_LOC_PHP_VERSION.log
     fi
   fi
 }
