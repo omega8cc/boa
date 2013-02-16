@@ -2624,7 +2624,6 @@ fi
 acquia_install
 civicrm_m6_install
 civicrm_m7_install
-civicrm3_install
 cod_install
 commerce_1_install
 commerce_2_install
@@ -2651,6 +2650,7 @@ ubercart7_install
 
 
 if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
+  civicrm3_install
   drupal_edge_8_install
   martplug_install
   octopus_video_install

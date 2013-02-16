@@ -129,7 +129,6 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 Octopus can install the platforms listed below:
 
  Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
- CiviCRM 3.4.8-d6 ------------- http://civicrm.org
  CiviCRM 4.1.6-d6 ------------- http://civicrm.org
  CiviCRM 4.2.6-d7 ------------- http://civicrm.org
  Commerce 1.14.1 -------------- http://drupalcommerce.org
