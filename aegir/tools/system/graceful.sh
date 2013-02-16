@@ -28,9 +28,8 @@ action()
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  rm -f /tmp/*error*
-  rm -f /tmp/sess*
-  rm -f /opt/tmp/*error*
+  rm -f /tmp/{*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,ns*,superfish*,context*,.htaccess}
+  rm -f -r /tmp/{drush*,mapshape*}
   rm -f /opt/tomcat6/logs/*
   if test -f /root/.high_traffic.cnf ; then
     true
