@@ -768,6 +768,14 @@ _LOAD_LIMIT_TWO=888
 _NGINX_DOS_LIMIT=300
 
 ###
+### Experimental LDAP support is available
+### via third-party Nginx module. To enable
+### change this option to _NGINX_LDAP=YES
+### below or in the /root/.barracuda.cnf file.
+###
+_NGINX_LDAP=NO
+
+###
 ### Use this only when you need to always
 ### compile in some extra/custom module(s).
 ###
@@ -2139,6 +2147,7 @@ barracuda_cnf () {
     echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
+    echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
@@ -2365,6 +2374,12 @@ barracuda_cnf () {
       true
     else
       echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
+    fi
+    _NGINX_LDAP_TEST=$(grep _NGINX_LDAP /root/.barracuda.cnf)
+    if [[ "$_NGINX_LDAP_TEST" =~ "_NGINX_LDAP" ]] ; then
+      true
+    else
+      echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
@@ -3202,6 +3217,13 @@ install_upgrade_nginx () {
     fi
     if [ -e "/var/opt/nginx-upload-progress-module" ] ; then
       _NGINX_EXTRA="--add-module=/var/opt/nginx-upload-progress-module/ $_NGINX_EXTRA"
+    fi
+    if [ "$_NGINX_LDAP" = "YES" ] ; then
+      cd /var/opt
+      git clone --branch master git://github.com/omega8cc/nginx-auth-ldap &> /dev/null
+      if [ -e "/var/opt/nginx-auth-ldap" ] ; then
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ $_NGINX_EXTRA"
+      fi
     fi
     cd /var/opt/nginx-$_NGINX_VERSION
     st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-ipv6 --with-http_geoip_module --with-debug $_NGINX_EXTRA" 2> /dev/null
