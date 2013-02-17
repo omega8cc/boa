@@ -90,9 +90,14 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
+    local($isloggedin) = 0;
+    &check_who($VISITOR);
     $mininumber = 10;   ### default: 10
     $critnumber = 300;  ### default: 300
-    $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### default for server IP
+    $critnumber = 399 if ($isloggedin); ### don't block logged in users
+    $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
+    print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
+    print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
     local($blocked) = 0;
     &check_ip($VISITOR);
     if ($thissumar > $critnumber) {
@@ -108,9 +113,14 @@ sub makeactions
   foreach $PROXY (sort keys %px_cnt) {
     $sumarpx = $sumarpx + $px_cnt{$PROXY};
     local($thissumarpx) = $px_cnt{$PROXY};
+    local($isloggedin) = 0;
+    &check_who($PROXY);
     $mininumber = 10;   ### default: 10
     $critnumber = 300;  ### default: 300
-    $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### default for server IP
+    $critnumber = 399 if ($isloggedin); ### don't block logged in users
+    $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
+    print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
+    print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
     local($blocked) = 0;
     &check_ip($PROXY);
     if ($thissumarpx > $critnumber) {
@@ -123,8 +133,8 @@ sub makeactions
       }
     }
   }
-  print "\n===[$sumar]\tGLOBAL===";
-  print "\n===[$sumarpx]\tGLOBAL===\n";
+  print "\n===[$sumar] sumar===";
+  print "\n===[$sumarpx] sumarpx===\n";
   undef (%li_cnt);
   undef (%px_cnt);
 }
@@ -142,6 +152,21 @@ sub check_ip
         $blocked = 1;
         last;
       }
+    }
+  }
+}
+#############################################################################
+sub check_who
+{
+  local($IP) = @_;
+  @whotable = `who --ips | awk '{print $5}'`;
+  foreach $whorecord (@whotable) {
+    chomp ($whorecord);
+    local($a, $b, $c, $d, $whoip) = split(/\s+/,$whorecord);
+    $whoip =~ s/[^0-9\.]//g;
+    if ($whoip eq $IP) {
+      $isloggedin = 1;
+      last;
     }
   }
 }
