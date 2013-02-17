@@ -3163,6 +3163,14 @@ install_upgrade_nginx () {
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include pseudo-streaming support"
       fi
+      if [ "$_NGINX_LDAP" = "YES" ] ; then
+        if [[ "$_NGINX_V_INSTALLED" =~ "nginx-auth-ldap" ]] ; then
+          true
+        else
+          _NGINX_INSTALL_REQUIRED=YES
+          msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include LDAP support"
+        fi
+      fi
     fi
     mrun "sleep 1"
   else
