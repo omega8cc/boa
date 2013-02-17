@@ -4,6 +4,14 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 touch /var/run/fmp_wait.pid
+if [ -e "/etc/cron.daily/logrotate" ] ; then
+  _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
+  if [[ "$_SYSLOG_SIZE_TEST" =~ "G" ]] ; then
+    echo $_SYSLOG_SIZE_TEST too big
+    bash /etc/cron.daily/logrotate
+    echo system logs rotated
+  fi
+fi
 echo rotate > /var/log/php/php-fpm-error.log
 echo rotate > /var/log/php/php-fpm-slow.log
 echo rotate > /var/log/php/php53-fpm-error.log
