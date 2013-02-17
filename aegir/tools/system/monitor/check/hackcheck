@@ -52,7 +52,7 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
-    $maxnumber = 10;
+    $maxnumber = 21;
     local($blocked) = 0;
     &check_ip($VISITOR);
     if ($thissumar > $maxnumber) {

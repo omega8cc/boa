@@ -22,7 +22,7 @@ for i in `dir -d /vservers/*` ; do
           echo "$_IP already denied or allowed on port 22"
         else
           echo "Deny $_IP permanently $_NR_TEST"
-          csf -d $_IP
+          csf -d $_IP Brute force SSH Server $_NR_TEST attacks
         fi
         sleep 1
       fi
@@ -40,7 +40,43 @@ for i in `dir -d /vservers/*` ; do
           echo "$_IP already denied or allowed on port 80"
         else
           echo "Deny $_IP permanently $_NR_TEST"
-          csf -d $_IP
+          csf -d $_IP Brute force Web Server $_NR_TEST attacks
+        fi
+        sleep 1
+      fi
+    done
+  fi
+  if [ -e "$i/$_FA" ] ; then
+    for _IP in `cat $i/$_FA | cut -d '#' -f1 | sort | uniq`
+    do
+      _NR_TEST="0"
+      _NR_TEST=$(tr -s ' ' '\n' < $i/$_FA | grep -c $_IP 2>&1)
+      echo $_IP $_NR_TEST
+      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
+        _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
+        if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
+          echo "$_IP already denied or allowed on port 21"
+        else
+          echo "Deny $_IP permanently $_NR_TEST"
+          csf -d $_IP Brute force FTP Server $_NR_TEST attacks
+        fi
+        sleep 1
+      fi
+    done
+  fi
+  if [ -e "$i/$_SA" ] ; then
+    for _IP in `cat $i/$_SA | cut -d '#' -f1 | sort | uniq`
+    do
+      _NR_TEST="0"
+      _NR_TEST=$(tr -s ' ' '\n' < $i/$_SA | grep -c $_IP 2>&1)
+      echo $_IP $_NR_TEST
+      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
+        _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
+        if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
+          echo "$_IP already denied or allowed on port 25"
+        else
+          echo "Deny $_IP permanently $_NR_TEST"
+          csf -d $_IP Brute force SMTP Server $_NR_TEST attacks
         fi
         sleep 1
       fi
@@ -51,9 +87,13 @@ done
 if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   _HA=var/xdrago/monitor/hackcheck.archive.log
   _WA=var/xdrago/monitor/scan_nginx.archive.log
+  _FA=var/xdrago/monitor/hackftp.archive.log
+  _SA=var/xdrago/monitor/hackmail.archive.log
   guard_stats
   rm -f /vservers/*/var/xdrago/monitor/ssh.log
   rm -f /vservers/*/var/xdrago/monitor/web.log
+  rm -f /vservers/*/var/xdrago/monitor/ftp.log
+  rm -f /vservers/*/var/xdrago/monitor/smtp.log
   csf -q
 fi
 ntpdate pool.ntp.org

@@ -24,7 +24,7 @@ sub makeactions
   local(@MYARR) = `tail --lines=999 /var/log/messages 2>&1`;
   local($sumar,$maxnumber);
   foreach $line (@MYARR) {
-    if ($line =~ /(Authentication failed for user)/i) {
+    if ($line =~ /(Authentication failed for user)/i || $line =~ /(Sorry, cleartext sessions are not accepted)/i) {
       local($a, $b, $c, $d, $e, $VISITORX, $rest) = split(/\s+/,$line);
       chomp($VISITORX);
       local($a, $VISITOR) = split(/\@/,$VISITORX);
@@ -38,7 +38,7 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
-    $maxnumber = 10;
+    $maxnumber = 21;
     local($blocked) = 0;
     &check_ip($VISITOR);
     if ($thissumar > $maxnumber) {
