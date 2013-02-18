@@ -367,6 +367,9 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ -e "$_ROOT/.drush/provision_tasks_extra" ] ; then
     mv -f $_ROOT/.drush/provision_tasks_extra $_ROOT/backups/system/provision_tasks_extra-pre-$_DISTRO-$_NOW &> /dev/null
   fi
+  if [ -e "$_ROOT/.drush/clean_missing_modules" ] ; then
+    mv -f $_ROOT/.drush/clean_missing_modules $_ROOT/backups/system/clean_missing_modules-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
 fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
