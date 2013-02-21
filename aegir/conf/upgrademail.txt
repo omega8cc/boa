@@ -20,7 +20,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
   Pressflow 6.28.1 ------------- http://pressflow.org
   ProsePoint 0.46 -------------- http://prosepoint.org
   Ubercart 2.11.1 -------------- http://ubercart.org
-  Ubercart 3.3.1 --------------- http://ubercart.org
+  Ubercart 3.4.1 --------------- http://ubercart.org
 
   All other not listed above platforms are available with latest
   D6 or D7 core, even if there were no new distro version released.

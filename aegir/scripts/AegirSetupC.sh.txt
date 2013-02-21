@@ -2552,7 +2552,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.5.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
