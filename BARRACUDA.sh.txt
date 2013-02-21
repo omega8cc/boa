@@ -316,9 +316,7 @@ _PHP_CLI_VERSION=5.2
 ### CSS --- Compass Tools
 ### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
-### GEO --- GEOS PHP 5.3 only extension
 ### GIT --- Latest Git from sources
-### MNG --- MongoDB PHP 5.3 only driver
 ### PDS --- Fast DNS Cache Server (pdnsd)
 ### SLR --- MultiCore Apache Solr Tomcat
 ### WMN --- Webmin Control Panel
@@ -786,6 +784,20 @@ _NGINX_EXTRA_CONF=""
 ### compile in some extra PHP extension.
 ###
 _PHP_EXTRA_CONF=""
+
+###
+### Change to YES to always compile in
+### MongoDB driver. Works for PHP 5.3 only.
+###
+_PHP_MONGODB=NO
+
+###
+### Change to YES to always compile in
+### GEOS extension. Works for PHP 5.3 only.
+### Warning: experimental only! See issue:
+### http://drupal.org/node/1913488
+###
+_PHP_GEOS=NO
 
 ###
 ### Nginx version used in the apt-get based
@@ -1311,7 +1323,7 @@ fix_php_ini_geos () {
 #
 # Fix 5.3 php.ini files to add geos.so
 fix_php_ini_geos_all () {
-  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
+  if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     _THIS_FILE=/opt/local/etc/php53.ini
     fix_php_ini_geos
     _THIS_FILE=/opt/local/lib/php.ini
@@ -1322,8 +1334,8 @@ fix_php_ini_geos_all () {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo () {
   if [ -e "$_THIS_FILE" ] ; then
-    _GEOS_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
-    if [[ "$_GEOS_INI_TEST" =~ "extension=mongo.so" ]] ; then
+    _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
+    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
       true
     else
       echo "extension=mongo.so" >> $_THIS_FILE
@@ -1333,7 +1345,7 @@ fix_php_ini_mongo () {
 #
 # Fix 5.3 php.ini files to add mongo.so
 fix_php_ini_mongo_all () {
-  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+  if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     _THIS_FILE=/opt/local/etc/php53.ini
     fix_php_ini_mongo
     _THIS_FILE=/opt/local/lib/php.ini
@@ -2122,6 +2134,7 @@ barracuda_cnf () {
     echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.barracuda.cnf
     echo "_XTRAS_LIST=\"$_XTRAS_LIST\"" >> /root/.barracuda.cnf
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
+    echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
     echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
@@ -2130,14 +2143,18 @@ barracuda_cnf () {
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
     echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
-    echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
-    echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
-    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+    echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
     echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
+    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+    echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
+    echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
+    echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
+    echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
     echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
@@ -2146,9 +2163,6 @@ barracuda_cnf () {
     echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
-    echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
-    echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
-    echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
@@ -2380,6 +2394,18 @@ barracuda_cnf () {
       true
     else
       echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
+    fi
+    _PHP_GEOS_TEST=$(grep _PHP_GEOS /root/.barracuda.cnf)
+    if [[ "$_PHP_GEOS_TEST" =~ "_PHP_GEOS" ]] ; then
+      true
+    else
+      echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
+    fi
+    _PHP_MONGODB_TEST=$(grep _PHP_MONGODB /root/.barracuda.cnf)
+    if [[ "$_PHP_MONGODB_TEST" =~ "_PHP_MONGODB" ]] ; then
+      true
+    else
+      echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
@@ -2626,7 +2652,7 @@ install_php_extensions_more () {
   st_runner "make --quiet install" 2> /dev/null
   echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
   ###--------------------###
-  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
+  if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
@@ -2649,7 +2675,7 @@ install_php_extensions_more () {
     fi
   fi
   ###--------------------###
-  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+  if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
@@ -2768,7 +2794,7 @@ update_php_universal_more () {
     echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
+  if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
@@ -2791,7 +2817,7 @@ update_php_universal_more () {
     fi
   fi
   ###--------------------###
-  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+  if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"

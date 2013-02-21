@@ -337,7 +337,7 @@ fix_php_ini_geos () {
 #
 # Fix 5.3 php.ini files to add geos.so
 fix_php_ini_geos_all () {
-  if [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
+  if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
     _THIS_FILE=/opt/local/etc/php53.ini
     fix_php_ini_geos
     _THIS_FILE=/opt/local/lib/php.ini
@@ -348,8 +348,8 @@ fix_php_ini_geos_all () {
 # Fix php.ini file to add mongo.so
 fix_php_ini_mongo () {
   if [ -e "$_THIS_FILE" ] ; then
-    _GEOS_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
-    if [[ "$_GEOS_INI_TEST" =~ "extension=mongo.so" ]] ; then
+    _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
+    if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
       true
     else
       echo "extension=mongo.so" >> $_THIS_FILE
@@ -359,7 +359,7 @@ fix_php_ini_mongo () {
 #
 # Fix 5.3 php.ini files to add mongo.so
 fix_php_ini_mongo_all () {
-  if [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
+  if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     _THIS_FILE=/opt/local/etc/php53.ini
     fix_php_ini_mongo
     _THIS_FILE=/opt/local/lib/php.ini
