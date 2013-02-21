@@ -503,7 +503,11 @@ upgrade_ctools_entity_more () {
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  cd apps
+  cd views
+  # http://drupal.org/node/1766338#comment-6445882
+  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+  cd ../apps
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
   patch -p1 < apps_msg.patch &> /dev/null
   cd ../
@@ -2150,6 +2154,10 @@ build_openpublic () {
     done
     rm -f *.tar.gz
   fi
+  cd $_THIS_PRPATH/modules/contrib/views
+  # http://drupal.org/node/1766338#comment-6445882
+  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   upgrade_ctools_entity_more
   create_dirs
   patch_d7_core
@@ -2559,6 +2567,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  cd $_THIS_PRPATH/modules/views
+  # http://drupal.org/node/1766338#comment-6445882
+  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   create_dirs
   themes_for_d7
   patch_d7_core
