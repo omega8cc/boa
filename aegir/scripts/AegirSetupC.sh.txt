@@ -2539,12 +2539,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
   mkdir -p $_THIS_PRPATH/libraries
   cd $_THIS_PRPATH/libraries
-  wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
-  unzip -qq colorbox.zip &> /dev/null
-  rm -f colorbox.zip
+  wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
+  unzip -qq colorbox-master.zip &> /dev/null
+  rm -f colorbox-master.zip
+  mv -f colorbox-master colorbox
   rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
   cd $_THIS_PRPATH/modules
-  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-1.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.3.tar.gz
