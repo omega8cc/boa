@@ -10,6 +10,7 @@ $times = `date +%y%m%d-%H%M%S`;
 $myip = `hostname -i`;
 chomp($times);
 chomp($myip);
+$critnumber = 300; ### default: 300
 &makeactions;
 print "CONTROL complete for $myip\n";
 exit;
@@ -26,6 +27,7 @@ sub makeactions
   local(@MYARR) = `tail --lines=300 /var/log/nginx/access.log 2>&1`;
   local($mininumber,$critnumber,$alert);
   local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
+  local($im_sumar,$im_li_cnt{$VISITOR},$im_sumarpx,$im_px_cnt{$PROXY});
   foreach $line (@MYARR) {
     local($VISITOR, $PROXY, $XREAL, $YREAL, $ZREAL, $RESTX) = split(/\s+/,$line);
     $VISITOR =~ s/[^0-9\.]//g;
@@ -52,8 +54,12 @@ sub makeactions
     if ($VISITOR !~ /^((192.168.)|(172.16.)|(10.)|(127.0.))/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
-        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete)\/|files\/(imagecache|styles|progress)|plupload|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
+        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete)\/|files\/progress|plupload|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
           print "Not Counted Dynamic Request URI: $line\n";
+        }
+        elsif ($line =~ /files\/(imagecache|styles)/) {
+          print "Monitored Dynamic Request URI: $line\n";
+          $im_li_cnt{$VISITOR}++;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
           print "Not Counted Static Request URI: $line\n";
@@ -71,8 +77,12 @@ sub makeactions
     if ($PROXY ne $VISITOR && $PROXY !~ /^((192.168.)|(172.16.)|(10.)|(127.0.))/ && $PROXY =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
-        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete)\/|files\/(imagecache|styles|progress)|plupload|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
+        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete)\/|files\/progress|plupload|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
           print "Not Counted Dynamic Request URI: $line\n";
+        }
+        elsif ($line =~ /files\/(imagecache|styles)/) {
+          print "Monitored Dynamic Request URI: $line\n";
+          $im_px_cnt{$PROXY}++;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
           print "Not Counted Static Request URI: $line\n";
@@ -93,7 +103,6 @@ sub makeactions
     local($isloggedin) = 0;
     &check_who($VISITOR);
     $mininumber = 10;   ### default: 10
-    $critnumber = 300;  ### default: 300
     $critnumber = 399 if ($isloggedin); ### don't block logged in users
     $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
     print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
@@ -116,7 +125,6 @@ sub makeactions
     local($isloggedin) = 0;
     &check_who($PROXY);
     $mininumber = 10;   ### default: 10
-    $critnumber = 300;  ### default: 300
     $critnumber = 399 if ($isloggedin); ### don't block logged in users
     $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
     print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
@@ -133,8 +141,56 @@ sub makeactions
       }
     }
   }
+  foreach $VISITOR (sort keys %im_li_cnt) {
+    $im_sumar = $im_sumar + $im_li_cnt{$VISITOR};
+    local($thisim_sumar) = $im_li_cnt{$VISITOR};
+    local($isloggedin) = 0;
+    &check_who($VISITOR);
+    $mininumber = 10;   ### default: 10
+    $critnumber = $critnumber - 50 if ($critnumber > 250);
+    $critnumber = 399 if ($isloggedin); ### don't block logged in users
+    $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
+    print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
+    print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
+    local($blocked) = 0;
+    &check_ip($VISITOR);
+    if ($thisim_sumar > $critnumber) {
+      if (!$blocked) {
+        `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/web.log`;
+        `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
+          `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
+        }
+      }
+    }
+  }
+  foreach $PROXY (sort keys %im_px_cnt) {
+    $im_sumarpx = $im_sumarpx + $im_px_cnt{$PROXY};
+    local($thisim_sumarpx) = $im_px_cnt{$PROXY};
+    local($isloggedin) = 0;
+    &check_who($PROXY);
+    $mininumber = 10;   ### default: 10
+    $critnumber = $critnumber - 50 if ($critnumber > 250);
+    $critnumber = 399 if ($isloggedin); ### don't block logged in users
+    $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
+    print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
+    print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
+    local($blocked) = 0;
+    &check_ip($PROXY);
+    if ($thisim_sumarpx > $critnumber) {
+      if (!$blocked) {
+        `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/web.log`;
+        `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
+          `/usr/sbin/csf -td $PROXY 3600 -p 80`;
+        }
+      }
+    }
+  }
   print "\n===[$sumar] sumar===";
   print "\n===[$sumarpx] sumarpx===\n";
+  print "\n===[$im_sumar] im_sumar===";
+  print "\n===[$im_sumarpx] im_sumarpx===\n";
   undef (%li_cnt);
   undef (%px_cnt);
 }
