@@ -71,7 +71,13 @@ sub makeactions
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1 if ($line =~ /(POST)/);
       }
       else {
-        print "Not Supported Request Type: $line\n";
+        if ($line =~ /0.000/) {
+          print "Not Counted Not Supported Request Type: $line\n";
+        }
+        else {
+          $li_cnt{$VISITOR}++;
+          print "Counted Not Supported Request Type: $line\n";
+        }
       }
     }
     $PROXY =~ s/[^0-9\.]//g;
@@ -94,7 +100,13 @@ sub makeactions
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1 if ($line =~ /(POST)/);
       }
       else {
-        print "Not Supported Request Type: $line\n";
+        if ($line =~ /0.000/) {
+          print "Not Counted Not Supported Request Type: $line\n";
+        }
+        else {
+          $px_cnt{$PROXY}++;
+          print "Counted Not Supported Request Type: $line\n";
+        }
       }
     }
   }
