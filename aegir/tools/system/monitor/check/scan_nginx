@@ -10,7 +10,6 @@ $times = `date +%y%m%d-%H%M%S`;
 $myip = `hostname -i`;
 chomp($times);
 chomp($myip);
-$critnumber = 300; ### default: 300
 &makeactions;
 print "CONTROL complete for $myip\n";
 exit;
@@ -25,7 +24,9 @@ sub makeactions
     close (NOT);
   }
   local(@MYARR) = `tail --lines=300 /var/log/nginx/access.log 2>&1`;
-  local($mininumber,$critnumber,$alert);
+  local($critnumber) = 300;
+  local($mininumber) = $critnumber / 2;
+  print "\n===[$mininumber] mininumber===\n";
   local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
   local($im_sumar,$im_li_cnt{$VISITOR},$im_sumarpx,$im_px_cnt{$PROXY});
   foreach $line (@MYARR) {
