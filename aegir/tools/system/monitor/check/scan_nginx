@@ -113,21 +113,22 @@ sub makeactions
   foreach $VISITOR (sort keys %li_cnt) {
     $sumar = $sumar + $li_cnt{$VISITOR};
     local($thissumar) = $li_cnt{$VISITOR};
-    local($isloggedin) = 0;
-    &check_who($VISITOR);
-    $mininumber = 10;   ### default: 10
-    $critnumber = 399 if ($isloggedin); ### don't block logged in users
-    $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
-    print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
-    print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
-    local($blocked) = 0;
-    &check_ip($VISITOR);
-    if ($thissumar > $critnumber) {
-      if (!$blocked) {
-        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/web.log`;
-        `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-          `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
+    if ($thissumar > $mininumber) {
+      local($isloggedin) = 0;
+      &check_who($VISITOR);
+      $critnumber = 399 if ($isloggedin); ### don't block logged in users
+      $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
+      print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
+      print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
+      local($blocked) = 0;
+      &check_ip($VISITOR);
+      if ($thissumar > $critnumber) {
+        if (!$blocked) {
+          `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/web.log`;
+          `echo "$VISITOR # [x$thissumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
+            `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
+          }
         }
       }
     }
@@ -135,21 +136,22 @@ sub makeactions
   foreach $PROXY (sort keys %px_cnt) {
     $sumarpx = $sumarpx + $px_cnt{$PROXY};
     local($thissumarpx) = $px_cnt{$PROXY};
-    local($isloggedin) = 0;
-    &check_who($PROXY);
-    $mininumber = 10;   ### default: 10
-    $critnumber = 399 if ($isloggedin); ### don't block logged in users
-    $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
-    print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
-    print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
-    local($blocked) = 0;
-    &check_ip($PROXY);
-    if ($thissumarpx > $critnumber) {
-      if (!$blocked) {
-        `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/web.log`;
-        `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-          `/usr/sbin/csf -td $PROXY 3600 -p 80`;
+    if ($thissumarpx > $mininumber) {
+      local($isloggedin) = 0;
+      &check_who($PROXY);
+      $critnumber = 399 if ($isloggedin); ### don't block logged in users
+      $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
+      print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
+      print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
+      local($blocked) = 0;
+      &check_ip($PROXY);
+      if ($thissumarpx > $critnumber) {
+        if (!$blocked) {
+          `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/web.log`;
+          `echo "$PROXY # [x$thissumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
+            `/usr/sbin/csf -td $PROXY 3600 -p 80`;
+          }
         }
       }
     }
@@ -157,22 +159,23 @@ sub makeactions
   foreach $VISITOR (sort keys %im_li_cnt) {
     $im_sumar = $im_sumar + $im_li_cnt{$VISITOR};
     local($thisim_sumar) = $im_li_cnt{$VISITOR};
-    local($isloggedin) = 0;
-    &check_who($VISITOR);
-    $mininumber = 10;   ### default: 10
-    $critnumber = $critnumber - 50 if ($critnumber > 250);
-    $critnumber = 399 if ($isloggedin); ### don't block logged in users
-    $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
-    print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
-    print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
-    local($blocked) = 0;
-    &check_ip($VISITOR);
-    if ($thisim_sumar > $critnumber) {
-      if (!$blocked) {
-        `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/web.log`;
-        `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-          `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
+    if ($thisim_sumar > $mininumber) {
+      local($isloggedin) = 0;
+      &check_who($VISITOR);
+      $critnumber = $critnumber - 50 if ($critnumber > 250);
+      $critnumber = 399 if ($isloggedin); ### don't block logged in users
+      $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
+      print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
+      print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
+      local($blocked) = 0;
+      &check_ip($VISITOR);
+      if ($thisim_sumar > $critnumber) {
+        if (!$blocked) {
+          `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/web.log`;
+          `echo "$VISITOR # [x$thisim_sumar] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
+            `/usr/sbin/csf -td $VISITOR 3600 -p 80`;
+          }
         }
       }
     }
@@ -180,22 +183,23 @@ sub makeactions
   foreach $PROXY (sort keys %im_px_cnt) {
     $im_sumarpx = $im_sumarpx + $im_px_cnt{$PROXY};
     local($thisim_sumarpx) = $im_px_cnt{$PROXY};
-    local($isloggedin) = 0;
-    &check_who($PROXY);
-    $mininumber = 10;   ### default: 10
-    $critnumber = $critnumber - 50 if ($critnumber > 250);
-    $critnumber = 399 if ($isloggedin); ### don't block logged in users
-    $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
-    print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
-    print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
-    local($blocked) = 0;
-    &check_ip($PROXY);
-    if ($thisim_sumarpx > $critnumber) {
-      if (!$blocked) {
-        `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/web.log`;
-        `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
-        if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
-          `/usr/sbin/csf -td $PROXY 3600 -p 80`;
+    if ($thisim_sumarpx > $mininumber) {
+      local($isloggedin) = 0;
+      &check_who($PROXY);
+      $critnumber = $critnumber - 50 if ($critnumber > 250);
+      $critnumber = 399 if ($isloggedin); ### don't block logged in users
+      $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
+      print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
+      print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
+      local($blocked) = 0;
+      &check_ip($PROXY);
+      if ($thisim_sumarpx > $critnumber) {
+        if (!$blocked) {
+          `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/web.log`;
+          `echo "$PROXY # [x$thisim_sumarpx] $times" >> /var/xdrago/monitor/$this_filename.archive.log`;
+          if (-e "/etc/csf/csf.deny" && -e "/usr/sbin/csf" && !-e "/var/xdrago/guest-fire.sh") {
+            `/usr/sbin/csf -td $PROXY 3600 -p 80`;
+          }
         }
       }
     }
