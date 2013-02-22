@@ -201,11 +201,13 @@ sub makeactions
     }
   }
   print "\n===[$sumar] sumar===";
-  print "\n===[$sumarpx] sumarpx===\n";
+  print "\n===[$sumarpx] sumarpx===";
   print "\n===[$im_sumar] im_sumar===";
   print "\n===[$im_sumarpx] im_sumarpx===\n";
   undef (%li_cnt);
   undef (%px_cnt);
+  undef (%im_li_cnt);
+  undef (%im_px_cnt);
 }
 
 #############################################################################
