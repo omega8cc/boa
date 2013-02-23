@@ -58,6 +58,7 @@ guest_guard()
       fi
       sleep 1
     done
+  fi
   sleep 1
   if [ -e "/var/xdrago/monitor/smtp.log" ] ; then
     for _IP in `cat /var/xdrago/monitor/smtp.log | cut -d '#' -f1 | sort`
@@ -75,7 +76,6 @@ guest_guard()
       sleep 1
     done
   fi
-  echo Completed for $i
 }
 if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   guest_guard
