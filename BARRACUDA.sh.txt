@@ -1221,8 +1221,8 @@ fix_ftps_pam () {
 }
 #
 # Fix FTPS access on Squeeze.
-fix_ftps_squeeze_lucid () {
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+fix_ftps_modern () {
+  if [ "$_REL_VERSION" != "lenny" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
       true
@@ -1561,7 +1561,7 @@ fix_on_upgrade () {
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   set_xterm
   kill_nash
-  fix_ftps_squeeze_lucid
+  fix_ftps_modern
   fix_ftps_pam
   enable_purge_cruft_machine
   update_php_conf
@@ -4849,7 +4849,7 @@ if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
 fi
 set_xterm
 kill_nash
-fix_ftps_squeeze_lucid
+fix_ftps_modern
 enable_purge_cruft_machine
 install_wkhtmltopdf
 install_wkhtmltoimage
