@@ -1220,7 +1220,7 @@ fix_ftps_pam () {
   fi
 }
 #
-# Fix FTPS access on Squeeze.
+# Fix FTPS access on modern systems.
 fix_ftps_modern () {
   if [ "$_REL_VERSION" != "lenny" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
