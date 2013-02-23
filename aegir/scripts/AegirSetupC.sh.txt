@@ -2548,8 +2548,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   mkdir -p $_THIS_PRPATH/libraries
   cd $_THIS_PRPATH/libraries
   wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
-  unzip -qq colorbox-master.zip &> /dev/null
-  rm -f colorbox-master.zip
+  unzip -qq master.zip &> /dev/null
+  rm -f master.zip
   mv -f colorbox-master colorbox
   rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
   cd $_THIS_PRPATH/modules
