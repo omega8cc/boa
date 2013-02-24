@@ -2,17 +2,6 @@
 
 error_reporting(0); // disable reporting errors by default - enable later only for "dev" subdomains
 
-if (isset($_SERVER['HTTP_HOST']) && empty($cookie_domain)) {
-  $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
-  if (count(explode('.', $domain)) > 2) {
-    @ini_set('session.cookie_domain', $domain);
-    $cookie_domain = $domain;
-  }
-}
-
-$cookie_domain = str_replace('..', '.', $cookie_domain);
-header("X-Cookie-Domain: " . $cookie_domain);
-
 // Fix for Mollom, CloudFlare and others running via Proxy.
 if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
@@ -274,11 +263,19 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   }
 
   if ($da_inc) {
-    $this_prefix = $_SERVER['HTTP_HOST'] . '.';
+    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
-    $this_prefix = $_SERVER['SERVER_NAME'] . '.';
+    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
   }
+  $domain = str_replace('..', '.', $domain);
+  if (count(explode('.', $domain)) > 2) {
+    @ini_set('session.cookie_domain', $domain);
+  }
+  $cookie_domain = $domain;
+  header("X-Cookie-Domain: " . $cookie_domain);
+  $this_prefix = $_SERVER['SERVER_NAME'] . '.';
+  header("X-Server-Prefix: " . $this_prefix);
 
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
