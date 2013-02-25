@@ -3060,15 +3060,16 @@ check_apt_updates () {
 # Generate new secure password.
 main_dbuser_reborn () {
   _ADBU=aegir_root
+  _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
   _ESC_APASS=$(randpass 32 esc)
   if [ -z "$_ESC_APASS" ] ; then
     _ESC_APASS=`pwgen -v -s -1`
     _ESC_APASS=`basic_single_escape "$_ESC_APASS"`
   fi
   _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  echo "$_ESC_APASS" > /var/aegir/.$_ADBU.pass.txt
-  chown aegir:aegir /var/aegir/.$_ADBU.pass.txt &> /dev/null
-  chmod 0600 /var/aegir/.$_ADBU.pass.txt
+  echo "$_ESC_APASS" > $_L_SYS
+  chown aegir:aegir $_L_SYS &> /dev/null
+  chmod 0600 $_L_SYS
   _AEGIR_HOST=`uname -n`
   _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
   if [ -z "$_RESOLVEIP" ] ; then
@@ -3134,20 +3135,15 @@ upgrade_aegir_master () {
       touch /opt/tmp/status-Barracuda-FAIL
       exit 1
     else
-      _L_SYS=/var/aegir/backups/system
-      if [ ! -e "$_L_SYS/.$_ADBU.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
-        mv -f $_L_SYS/.$_ADBU.pass.txt $_L_SYS/.$_ADBU.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-        main_dbuser_reborn
-        if [ ! -z "$_ESC_APASS" ] ; then
-          if [ "$_DEBUG_MODE" = "YES" ] ; then
-            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\""
-          else
-            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
-          fi
-          mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-          mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
-          mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-        fi
+      mv -f $_L_SYS/.$_ADBU.pass.txt $_L_SYS/.$_ADBU.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      main_dbuser_reborn
+      if [ ! -z "$_ESC_APASS" ] ; then
+        su -s /bin/bash aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
+        mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+        mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
+        mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+        su -s /bin/bash - aegir -c "drush @server_localhost provision-verify &> /dev/null"
+        su -s /bin/bash - aegir -c "drush @server_master provision-verify &> /dev/null"
       fi
     fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null

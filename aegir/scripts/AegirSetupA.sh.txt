@@ -885,14 +885,12 @@ else
   if [ ! -e "$_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
     mv -f $_ROOT/.$_USER.pass.txt $_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     main_dbuser_reborn
-    if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash - $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\""
-    else
-      su -s /bin/bash - $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
-    fi
+    su -s /bin/bash $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    su -s /bin/bash - $_USER -c "drush @server_localhost provision-verify &> /dev/null"
+    su -s /bin/bash - $_USER -c "drush @server_master provision-verify &> /dev/null"
   fi
 fi
 mrun "sleep 1"
