@@ -1091,18 +1091,27 @@ fix_php_ini_redis () {
 #
 # Set or update Redis password..
 update_redis_password () {
-  if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
+  if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] && [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
     msg "INFO: Generating random password for Redis server"
     touch /root/.redis.pass.txt
     chmod 0600 /root/.redis.pass.txt &> /dev/null
-    _ESC_RPASS=`pwgen -v -s -1`
-    _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+    _ESC_RPASS=$(randpass 32 alnum)
+    if [ -z "$_ESC_RPASS" ] ; then
+      _ESC_RPASS=`pwgen -v -s -1`
+      _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+    fi
+    _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     echo "$_ESC_RPASS" > /root/.redis.pass.txt
+    touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
     _FORCE_REDIS_RESTART=YES
   fi
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    RPASS=`cat /root/.redis.pass.txt`
-    RPASS=`echo -n $RPASS | tr -d "\n"`
+    if [ -z "$_ESC_RPASS" ] ; then
+      RPASS=`cat /root/.redis.pass.txt`
+      RPASS=`echo -n $RPASS | tr -d "\n"`
+    else
+      RPASS="$_ESC_RPASS"
+    fi
     sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
     sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
     sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
