@@ -208,10 +208,10 @@ hostmaster_mi_up () {
   fi
   export DEBIAN_FRONTEND=text
   mkdir -p $_ROOT/backups/system/old_hostmaster
-  chmod 700 $_ROOT/backups/old_hostmaster
+  chmod 700 $_ROOT/backups/system/old_hostmaster
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/*host8* $_ROOT/backups/system/old_hostmaster/ &> /dev/null
-  chmod 600 $_ROOT/backups/old_hostmaster/* &> /dev/null
+  chmod 600 $_ROOT/backups/system/old_hostmaster/* &> /dev/null
 }
 
 ###--------------------###
