@@ -3059,16 +3059,16 @@ check_apt_updates () {
 #
 # Generate new secure password.
 main_dbuser_reborn () {
-  _AEGIR_DB_USER=aegir_root
+  _ADBU=aegir_root
   _ESC_APASS=$(randpass 32 esc)
   if [ -z "$_ESC_APASS" ] ; then
     _ESC_APASS=`pwgen -v -s -1`
     _ESC_APASS=`basic_single_escape "$_ESC_APASS"`
   fi
   _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  echo "$_ESC_APASS" > /var/aegir/.$_AEGIR_DB_USER.pass.txt
-  chown aegir:aegir /var/aegir/.$_AEGIR_DB_USER.pass.txt &> /dev/null
-  chmod 0600 /var/aegir/.$_AEGIR_DB_USER.pass.txt
+  echo "$_ESC_APASS" > /var/aegir/.$_ADBU.pass.txt
+  chown aegir:aegir /var/aegir/.$_ADBU.pass.txt &> /dev/null
+  chmod 0600 /var/aegir/.$_ADBU.pass.txt
   _AEGIR_HOST=`uname -n`
   _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
   if [ -z "$_RESOLVEIP" ] ; then
@@ -3080,9 +3080,9 @@ main_dbuser_reborn () {
     _AEGIR_HOST_IP="$_RESOLVEIP"
   fi
 mysql -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_ADBU'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
 }
 #
@@ -3134,17 +3134,18 @@ upgrade_aegir_master () {
       touch /opt/tmp/status-Barracuda-FAIL
       exit 1
     else
-      if [ ! -e "/var/aegir/.$_AEGIR_DB_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
-        mv -f /var/aegir/.$_AEGIR_DB_USER.pass.txt /var/aegir/.$_AEGIR_DB_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      _L_SYS=/var/aegir/backups/system
+      if [ ! -e "$_L_SYS/.$_ADBU.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
+        mv -f $_L_SYS/.$_ADBU.pass.txt $_L_SYS/.$_ADBU.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
         main_dbuser_reborn
         if [ ! -z "$_ESC_APASS" ] ; then
           if [ "$_DEBUG_MODE" = "YES" ] ; then
-            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_AEGIR_DB_USER'\""
+            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\""
           else
-            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_AEGIR_DB_USER'\" &> /dev/null"
+            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
           fi
           mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-          mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_AEGIR_DB_USER';" &> /dev/null
+          mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
           mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
         fi
       fi
