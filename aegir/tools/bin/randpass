@@ -15,7 +15,7 @@ randpass() {
     cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n"
   elif [ "$kind" = "esc" ] ; then
     CHAR="[:graph:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n" | sed 's/\(['"'"'\]\)/\\\1/g'
+    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n" | sed 's/[\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
   elif [ "$kind" = "hash" ] ; then
     CHAR="[:alnum:]"
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
