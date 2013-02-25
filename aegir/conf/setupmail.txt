@@ -13,8 +13,9 @@ The following topics are covered within this email:
 1. Logging into your Aegir control panel
 2. Deploying Aegir default web sites
 3. Adding modules & themes
-4. Advanced user information
-5. Articles and video tutorials
+4. Managing your databases
+5. Advanced user information
+6. Articles and video tutorials
 
 Please read this e-mail in its entirety. It contains
 important information required to properly leverage
@@ -97,15 +98,29 @@ Make sure you are adding modules and themes to your expected
 platform. If you experience issues, you can contact our
 support department.
 
+
+----------------------------------------
+#4. MANAGING YOUR DATABASES
+----------------------------------------
+
 You can manage your databases via Chive Manager web interface,
 using access credentials (dbhost, dbname and dbpass) available
 in every site settings.php file.
 
 Chive Manager URL: https://166.84.6.231
 
+You can also use any desktop SQL manager you prefer, if it
+supports tunneling over standard SSH port 22, since there is
+no remote access over mysql port 3306 available, for security and
+performance reasons.
+
+You can also manage your databases on command line, either
+with supported Drush commands or directly with tools like
+mysql and mysqldump.
+
 
 ----------------------------------------
-#4. ADVANCED USER INFORMATION
+#5. ADVANCED USER INFORMATION
 ----------------------------------------
 
 === IMPORTANT DIRECTORY INFORMATION
@@ -142,7 +157,7 @@ standard Drupal 7 core.
 
 
 ----------------------------------------
-#5. ARTICLES & VIDEO TUTORIALS
+#6. ARTICLES & VIDEO TUTORIALS
 ----------------------------------------
 
 === AEGIR BASICS
