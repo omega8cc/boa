@@ -928,6 +928,12 @@ else
         msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
         touch /opt/tmp/status-AegirSetupA-FAIL
         exit 1
+      else
+        mkdir -p $_ROOT/backups/system/old_hostmaster
+        chmod 700 $_ROOT/backups/old_hostmaster
+        chmod 700 $_ROOT/backups/system
+        mv -f $_ROOT/backups/*host8* $_ROOT/backups/system/old_hostmaster/ &> /dev/null
+        chmod 600 $_ROOT/backups/old_hostmaster/* &> /dev/null
       fi
       chmod 0700 /data/u &> /dev/null
       chown root:root /data/u &> /dev/null
