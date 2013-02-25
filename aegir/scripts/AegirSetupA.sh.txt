@@ -848,35 +848,53 @@ chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 
 ###---### Run standard pre-install
 #
-if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
+main_dbuser_reborn () {
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
-  _ESC_PASS=`pwgen -v -s -1`
-  _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  _ESC_PASS=$(randpass 32 esc)
+  if [ -z "$_ESC_PASS" ] ; then
+    _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  fi
+  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   echo "$_ESC_PASS" > $_ROOT/.$_USER.pass.txt
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
-  echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-fi
-_AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
-_AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
-_AEGIR_HOST=`uname -n`
-_RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
-if [ -z "$_RESOLVEIP" ] ; then
-  msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
-  msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
-  touch /opt/tmp/status-AegirSetupA-FAIL
-  exit 1
-else
-  _AEGIR_HOST_IP="$_RESOLVEIP"
-fi
+  _AEGIR_HOST=`uname -n`
+  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  if [ -z "$_RESOLVEIP" ] ; then
+    msg "$_STATUS A: FATAL ERROR: This server does not have a hostname that resolves to an IP address"
+    msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    touch /opt/tmp/status-AegirSetupA-FAIL
+    exit 1
+  else
+    _AEGIR_HOST_IP="$_RESOLVEIP"
+  fi
 /usr/bin/mysql -h localhost --port=3306 -u root mysql<<EOFMYSQL
 FLUSH PRIVILEGES;
-GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_DOMAIN' IDENTIFIED BY '$_AGRPASWD' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_AGRPASWD' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_AGRPASWD' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'localhost' IDENTIFIED BY '$_AGRPASWD' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_DOMAIN' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 EOFMYSQL
+}
+if [ ! -e "$_ROOT/.$_USER.pass.txt" ] ; then
+  main_dbuser_reborn
+  echo "$_USER ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+else
+  if [ ! -e "$_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
+    mv -f $_ROOT/.$_USER.pass.txt $_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    main_dbuser_reborn
+    if [ "$_DEBUG_MODE" = "YES" ] ; then
+      su -s /bin/bash - $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\""
+    else
+      su -s /bin/bash - $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
+    fi
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+  fi
+fi
 mrun "sleep 1"
 /usr/bin/mysqladmin -u root -h localhost --port=3306 reload
 cd $_ROOT
