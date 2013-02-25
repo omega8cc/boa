@@ -1227,7 +1227,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     touch $_ROOT/log/pass.txt
     chmod 0600 $_ROOT/log/pass.txt
     # generate a nice secure password and put it in a file
-    pwgen -v -s -1 > $_ROOT/log/pass.txt
+    _ESC_LUPASS=$(randpass 32 alnum)
+    if [ -z "$_ESC_LUPASS" ] ; then
+      _ESC_LUPASS=`pwgen -v -s -1`
+      _ESC_LUPASS=`basic_single_escape "$_ESC_LUPASS"`
+    fi
+    _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+    echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     # get the password hash
     ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
     # Set the password
@@ -1335,24 +1341,30 @@ rm -f $_USER_HD/{.profile,.bash_logout,.bashrc}
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
 else
-if [ -e "$_ROOT/pass.txt" ] ; then
- _PASWD=`cat $_ROOT/pass.txt`
- _PASWD=`echo -n $_PASWD | tr -d "\n"`
- mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
-elif [ -e "$_ROOT/log/pass.txt" ] ; then
- _PASWD=`cat $_ROOT/log/pass.txt`
- _PASWD=`echo -n $_PASWD | tr -d "\n"`
- rm -f $_ROOT/pass.txt
-else
- cd $_ROOT/log
- touch $_ROOT/log/pass.txt
- chmod 0600 $_ROOT/log/pass.txt
- pwgen -v -s -1 > $_ROOT/log/pass.txt
- ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
- usermod -p $ph $_USERFTP &> /dev/null
- _PASWD=`cat $_ROOT/log/pass.txt`
- _PASWD=`echo -n $_PASWD | tr -d "\n"`
-fi
+  if [ -e "$_ROOT/pass.txt" ] ; then
+    _PASWD=`cat $_ROOT/pass.txt`
+    _PASWD=`echo -n $_PASWD | tr -d "\n"`
+    mv -f $_ROOT/pass.txt $_ROOT/log/pass.txt &> /dev/null
+  elif [ -e "$_ROOT/log/pass.txt" ] ; then
+    _PASWD=`cat $_ROOT/log/pass.txt`
+    _PASWD=`echo -n $_PASWD | tr -d "\n"`
+    rm -f $_ROOT/pass.txt
+  else
+    cd $_ROOT/log
+    touch $_ROOT/log/pass.txt
+    chmod 0600 $_ROOT/log/pass.txt
+    _ESC_LUPASS=$(randpass 32 alnum)
+    if [ -z "$_ESC_LUPASS" ] ; then
+      _ESC_LUPASS=`pwgen -v -s -1`
+      _ESC_LUPASS=`basic_single_escape "$_ESC_LUPASS"`
+    fi
+    _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+    echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
+    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
+    usermod -p $ph $_USERFTP &> /dev/null
+    _PASWD=`cat $_ROOT/log/pass.txt`
+    _PASWD=`echo -n $_PASWD | tr -d "\n"`
+  fi
 fi
 
 

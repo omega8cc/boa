@@ -7,6 +7,17 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ##    Manage ltd shell users    ##
 ###----------------------------###
 #
+# Escape borrowed from mysql_secure_installation.
+basic_single_escape () {
+  # The quoting on this sed command is a bit complex.  Single-quoted strings
+  # don't allow *any* escape mechanism, so they cannot contain a single
+  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
+  #
+  # Inside a character class, \ and ' are not special, so the ['\] character
+  # class is balanced and contains two characters.
+  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+}
+#
 # Add ltd-shell group if not exists.
 add_ltd_group_if_not_exists () {
   _LTD_EXISTS=$(getent group ltd-shell 2>&1)
@@ -75,7 +86,13 @@ ok_create_user()
     adduser $_USER_LTD $_WEBG
     touch $_TMP/$_USER_LTD.txt
     chmod 0600 $_TMP/$_USER_LTD.txt
-    pwgen -v -s -1 > $_TMP/$_USER_LTD.txt
+    _ESC_LUPASS=$(randpass 32 alnum)
+    if [ -z "$_ESC_LUPASS" ] ; then
+      _ESC_LUPASS=`pwgen -v -s -1`
+      _ESC_LUPASS=`basic_single_escape "$_ESC_LUPASS"`
+    fi
+    _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+    echo "$_ESC_LUPASS" > $_TMP/$_USER_LTD.txt
     ph=$(makepasswd --clearfrom=$_TMP/$_USER_LTD.txt --crypt-md5 |awk '{print $2}')
     usermod -p $ph $_USER_LTD
     passwd -w 7 -x 90 $_USER_LTD
