@@ -74,6 +74,17 @@ get_dev_ext () {
   fi
 }
 #
+# Escape borrowed from mysql_secure_installation.
+basic_single_escape () {
+  # The quoting on this sed command is a bit complex.  Single-quoted strings
+  # don't allow *any* escape mechanism, so they cannot contain a single
+  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
+  #
+  # Inside a character class, \ and ' are not special, so the ['\] character
+  # class is balanced and contains two characters.
+  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+}
+#
 ########################################################################
 # Main script
 
@@ -119,24 +130,27 @@ cat <<EOF
  * you are running as your "aegir" user
 EOF
 
-_AEGIR_DB_USER=aegir_root
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
-  _AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$_AEGIR_HOST | openssl md5 | awk '{ print $2}'`
-else
-  _AEGIR_DB_PASS=`echo $RANDOM:\`date\`:$_AEGIR_HOST | openssl md5`
-fi
-
 msg "Aegir will now generate a mysql super user password for you: "
+
+_AEGIR_DB_USER=aegir_root
+
+_ESC_APASS=$(randpass 32 esc)
+if [ -z "$_ESC_APASS" ] ; then
+  _ESC_APASS=`pwgen -v -s -1`
+  _ESC_APASS=`basic_single_escape "$_ESC_APASS"`
+fi
+_ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+
 cat <<EOF
   Username : $_AEGIR_DB_USER
-  Password : $_AEGIR_DB_PASS
+  Password : $_ESC_APASS
   Hostname : $_AEGIR_HOST ($_AEGIR_HOST_IP)
 EOF
 
 mysql -uroot mysql<<EOFMYSQL
-GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_AEGIR_DB_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_AEGIR_DB_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_AEGIR_DB_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
 
 # we need to check both because some platforms (like SunOS) return 0 even if the binary is not found
@@ -225,4 +239,8 @@ if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
   $_DRUSH cache-clear drush >$_AEGIR_HOME/install.log 2>&1
 fi
 _AEGIROOT="$_AEGIR_HOME/hostmaster-$_AEGIR_VERSION"
-$_DRUSH hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_AEGIR_DB_PASS --aegir_root=$_AEGIR_HOME --root=$_AEGIROOT --version=$_AEGIR_VERSION $@
+$_DRUSH hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_ESC_APASS --aegir_root=$_AEGIR_HOME --root=$_AEGIROOT --version=$_AEGIR_VERSION $@
+
+touch $_AEGIR_HOME/.$_AEGIR_DB_USER.pass.txt
+chmod 0600 $_AEGIR_HOME/.$_AEGIR_DB_USER.pass.txt
+echo "$_ESC_APASS" > $_AEGIR_HOME/.$_AEGIR_DB_USER.pass.txt
