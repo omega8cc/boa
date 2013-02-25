@@ -292,6 +292,7 @@ Provision [E]xtensions [M]aster [S]atellite:
  provision_boost ------------ [D6,D7] --- [S] [B] [EM,ES]
  provision_cdn -------------- [D6,D7] --- [S] [B] [EM,ES]
  provision_civicrm ---------- [D6,D7] --- [S] [B] [ES]
+ provision_site_backup ------ [D6,D7] --- [S] [B] [ES]
  provision_tasks_extra ------ [D6,D7] --- [S] [B] [ES]
  remote_import -------------- [D6,D7] --- [S] [B] [ES]
 
@@ -308,6 +309,7 @@ Hostmaster [E]xtensions [S]atellite:
  hosting_cdn ---------------- [D6] ------ [S] [B] [SE] [ES]
  hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [ES]
  hosting_remote_import ------ [D6] ------ [S] [B]      [ES]
+ hosting_site_backup -------- [D6] ------ [S] [B] [FE] [ES]
  hosting_task_gc ------------ [D6] ------ [S] [B] [FE] [ES]
  hosting_tasks_extra -------- [D6] ------ [S] [B] [FE] [ES]
  protect_critical_users ----- [D6] ------ [S] [B] [FE] [ES]
