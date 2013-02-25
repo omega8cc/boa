@@ -3683,7 +3683,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 
   echo "[client]" > /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
-  echo "password=your_SQL_ROOT_password" >> /root/.my.cnf
+  echo "password='your_SQL_ROOT_password'" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf
 
 EOF
@@ -5665,15 +5665,16 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
   mrun "sleep 1"
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=`pwgen -v -s -1`
-  _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  _ESC_PASS=$(randpass 32 esc)
+  if [ -z "$_ESC_PASS" ] ; then
+    _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  fi
+  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   echo "$_ESC_PASS" > /root/.my.pass.txt
 fi
 if [ -e "/root/.my.pass.txt" ] ; then
-  PXSWD=`cat /root/.my.pass.txt`
-  PASWD=`echo -n $PXSWD | tr -d "\n"`
   for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f` ; do
-    sed -i "s/NdKBu34erty325r6mUHxWy/$PASWD/g" $Files &> /dev/null
     sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
   done
   if [ "$_STATUS" = "INIT" ] ; then
@@ -5686,10 +5687,10 @@ else
   msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
   cat <<EOF
 
-  It appears you don't have required file with your root sql password.
+  It appears that you don't have required file with your root sql password.
   Create this file first and run this script again:
 
-  echo "your_SQL_ROOT_password" > /root/.my.pass.txt
+  echo "your_working_SQL_ROOT_password" > /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt
 
 EOF
@@ -6366,7 +6367,11 @@ if [ ! -e "/root/.my.cnf" ] ; then
   # - reload privileges table
   #
   if [ -e "/root/.my.pass.txt" ] ; then
-    PXSWD=`cat /root/.my.pass.txt`
+    if [ -z "$_ESC_PASS" ] ; then
+      PXSWD=`cat /root/.my.pass.txt`
+    else
+      PXSWD="$_ESC_PASS"
+    fi
     PASWD=`echo -n $PXSWD | tr -d "\n"`
     mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
     mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
@@ -6376,9 +6381,9 @@ if [ ! -e "/root/.my.cnf" ] ; then
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
   fi
   mrun "sleep 1"
-  echo "[client]" >> /root/.my.cnf
+  echo "[client]" > /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
-  echo "password=$PASWD" >> /root/.my.cnf
+  echo "password='$PASWD'" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf
   if [ "$_THIS_DB_HOST" = "localhost" ] ; then
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
@@ -6392,7 +6397,33 @@ if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
   mrun "sleep 1"
 else
-  sed -i "s/\"//g" /root/.my.cnf &> /dev/null
+  mv -f /root/.my.cnf-pre-* /var/backups/ &> /dev/null
+  mv -f /root/.my.pass.txt-pre-* /var/backups/ &> /dev/null
+  touch /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt &> /dev/null
+  _ESC_PASS=$(randpass 32 esc)
+  if [ -z "$_ESC_PASS" ] ; then
+    _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+  fi
+  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+  if [ ! -z "$_ESC_PASS" ] ; then
+    cp -af /root/.my.cnf /root/.my.cnf-pre-$_INSTALLER_VERSION-$_NOW
+    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-$_INSTALLER_VERSION-$_NOW
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+    mysql -u root -e "DROP DATABASE test;" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='root';" &> /dev/null
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    echo "[client]" > /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password='$_ESC_PASS'" >> /root/.my.cnf
+    chmod 0600 /root/.my.cnf
+    echo "$_ESC_PASS" > /root/.my.pass.txt
+    msg "INFO: New secure random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+    mrun "sleep 1"
+  fi
 fi
 
 
