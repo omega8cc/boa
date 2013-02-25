@@ -12,20 +12,20 @@ randpass() {
   fi
   if [ "$kind" = "graph" ] ; then
     CHAR="[:graph:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32} | tr -d "\n"
+    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n"
   elif [ "$kind" = "esc" ] ; then
     CHAR="[:graph:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32} | tr -d "\n" | sed 's/\(['"'"'\]\)/\\\1/g'
+    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n" | sed 's/\(['"'"'\]\)/\\\1/g'
   elif [ "$kind" = "hash" ] ; then
     CHAR="[:alnum:]"
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
-      cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32} | openssl md5 | awk '{ print $2}' | tr -d "\n"
+      cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | awk '{ print $2}' | tr -d "\n"
     else
-      cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32} | openssl md5 | tr -d "\n"
+      cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | openssl md5 | tr -d "\n"
     fi
   else
     CHAR="[:alnum:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32} | tr -d "\n"
+    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-$rkey} | tr -d "\n"
   fi
   echo
 }
