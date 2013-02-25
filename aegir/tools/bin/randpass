@@ -25,7 +25,7 @@ randpass() {
     fi
   else
     CHAR="[:alnum:]"
-    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32}
+    cat /dev/urandom | tr -cd "$CHAR" | head -c ${1:-32} | tr -d "\n"
   fi
   echo
 }
