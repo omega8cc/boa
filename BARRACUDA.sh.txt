@@ -3057,6 +3057,35 @@ check_apt_updates () {
   done
 }
 #
+# Generate new secure password.
+main_dbuser_reborn () {
+  _AEGIR_DB_USER=aegir_root
+  _ESC_APASS=$(randpass 32 esc)
+  if [ -z "$_ESC_APASS" ] ; then
+    _ESC_APASS=`pwgen -v -s -1`
+    _ESC_APASS=`basic_single_escape "$_ESC_APASS"`
+  fi
+  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+  echo "$_ESC_APASS" > /var/aegir/.$_AEGIR_DB_USER.pass.txt
+  chown aegir:aegir /var/aegir/.$_AEGIR_DB_USER.pass.txt &> /dev/null
+  chmod 0600 /var/aegir/.$_AEGIR_DB_USER.pass.txt
+  _AEGIR_HOST=`uname -n`
+  _RESOLVEIP=`echo $(getent ahostsv4 $_AEGIR_HOST) | cut -d: -f2 | awk '{ print $1}' 2> /dev/null`
+  if [ -z "$_RESOLVEIP" ] ; then
+    msg "FATAL ERROR:: This server does not have a hostname that resolves to an IP address"
+    msg "FATAL ERROR:: Aborting Barracuda installer NOW!"
+    touch /opt/tmp/status-Barracuda-FAIL
+    exit 1
+  else
+    _AEGIR_HOST_IP="$_RESOLVEIP"
+  fi
+mysql -uroot mysql<<EOFMYSQL
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
+EOFMYSQL
+}
+#
 # Upgrade Aegir Master Instance.
 upgrade_aegir_master () {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
@@ -3104,6 +3133,21 @@ upgrade_aegir_master () {
       msg "FATAL ERROR: Aborting Barracuda installer NOW!"
       touch /opt/tmp/status-Barracuda-FAIL
       exit 1
+    else
+      if [ ! -e "$_ROOT/.$_AEGIR_DB_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
+        mv -f /var/aegir/.$_AEGIR_DB_USER.pass.txt /var/aegir/.$_AEGIR_DB_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+        main_dbuser_reborn
+        if [ ! -z "$_ESC_APASS" ] ; then
+          if [ "$_DEBUG_MODE" = "YES" ] ; then
+            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_AEGIR_DB_USER'\""
+          else
+            su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_AEGIR_DB_USER'\" &> /dev/null"
+          fi
+          mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+          mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_AEGIR_DB_USER';" &> /dev/null
+          mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+        fi
+      fi
     fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
