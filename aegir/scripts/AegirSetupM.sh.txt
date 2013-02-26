@@ -241,6 +241,8 @@ fi
 _AEGIROOT="$_AEGIR_HOME/hostmaster-$_AEGIR_VERSION"
 $_DRUSH hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_ESC_APASS --aegir_root=$_AEGIR_HOME --root=$_AEGIROOT --version=$_AEGIR_VERSION $@
 
-touch $_AEGIR_HOME/.$_AEGIR_DB_USER.pass.txt
-chmod 0600 $_AEGIR_HOME/.$_AEGIR_DB_USER.pass.txt
-echo "$_ESC_APASS" > $_AEGIR_HOME/.$_AEGIR_DB_USER.pass.txt
+mkdir -p /var/aegir/backups/system
+chmod 700 /var/aegir/backups/system
+_L_SYS="/var/aegir/backups/system/.$_AEGIR_DB_USER.pass.txt"
+echo "$_ESC_APASS" > $_L_SYS
+chmod 0600 $_L_SYS
