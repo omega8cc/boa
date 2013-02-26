@@ -3059,8 +3059,6 @@ check_apt_updates () {
 #
 # Generate new secure password.
 main_dbuser_reborn () {
-  _ADBU=aegir_root
-  _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
   _ESC_APASS=$(randpass 32 esc)
   if [ -z "$_ESC_APASS" ] ; then
     _ESC_APASS=`pwgen -v -s -1`
@@ -3135,6 +3133,8 @@ upgrade_aegir_master () {
       touch /opt/tmp/status-Barracuda-FAIL
       exit 1
     else
+      _ADBU=aegir_root
+      _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
       mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       main_dbuser_reborn
       if [ ! -z "$_ESC_APASS" ] ; then
