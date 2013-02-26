@@ -891,10 +891,6 @@ else
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     if [ -e "$_ROOT/.drush/server_localhost.alias.drushrc.php" ] ; then
       su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
-    else
-      if [ -e "$_ROOT/.drush/server_master.alias.drushrc.php" ] ; then
-        su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
-      fi
     fi
   fi
 fi
