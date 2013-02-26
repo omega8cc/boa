@@ -46,6 +46,7 @@ _COD=EDIT_COD
 _COM_MERCE=EDIT_COM_MERCE
 _COMMERCE=EDIT_COMMERCE
 _COMMONS=EDIT_COMMONS
+_D7COMMONS=EDIT_D7COMMONS
 _DRUPAL5=EDIT_DRUPAL5
 _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL7D="EDIT_DRUPAL7-dev"
@@ -553,7 +554,7 @@ rename_drupal8_profiles () {
 #
 # rename drupal7 distro directory
 rename_drupal7_distro_directory () {
-  _REVISIONS="10 11 12 13 14 15 16 17 18 19"
+  _REVISIONS="10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26"
   for i in $_REVISIONS; do
     if [ -d "$_CORE/drupal-7.$i" ] && [ ! -e "$_CORE_DISTRO" ] ; then
       mv $_CORE/drupal-7.$i $_CORE_DISTRO
@@ -651,11 +652,12 @@ _F_COD="Conference 1.0-rc2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.14.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS="Commons 2.12 $_SMALLCORE6 P.$_THIS_CORE"
+_F_D7COMMONS="Commons 3.0 $_SMALLCORE7 P.$_THIS_CORE"
+_F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL8="Drupal $_DRUPAL8 P.$_THIS_CORE"
-_F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_ELMS="ELMS 1.0-b1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
@@ -951,7 +953,7 @@ fi
 }
 
 
-commerce_1_install () {
+commerce_6_install () {
 ###---### Commerce 7.x-1.x
 #
 _THIS_PRNAME="commerce_kickstart"
@@ -1003,7 +1005,7 @@ fi
 }
 
 
-commerce_2_install () {
+commerce_7_install () {
 ###---### Commerce 7.x-2.x
 #
 _THIS_PRNAME="commerce_kickstart"
@@ -1055,8 +1057,8 @@ fi
 }
 
 
-commons_install () {
-###---### Commons
+commons_6_install () {
+###---### Commons 6.x
 #
 _THIS_PRNAME="drupal_commons"
 _THIS_DISTRO="commons-$_COMMONS-$_SMALLCORE6"
@@ -1109,6 +1111,52 @@ msg "DISTRO: $_F_COMMONS installation completed"
 mrun "sleep 1"
 else
   msg "DISTRO: $_F_COMMONS installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
+commons_7_install () {
+###---### Commons 7.x
+#
+_THIS_PRNAME="commons"
+_THIS_DISTRO="commons-$_D7COMMONS-$_SMALLCORE7"
+_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
+_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CS7 ]] ; then
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+echo " "
+if prompt_yes_no "$_F_D7COMMONS - http://acquia.com/drupalcommons" ; then
+true
+msg "DISTRO: $_F_D7COMMONS installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_CORE_DISTRO" ] ; then
+  cd $_CORE
+  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_D7COMMONS-core.tar.gz
+  tar -xzf $_THIS_PRNAME-$_D7COMMONS-core.tar.gz
+  rm -f $_THIS_PRNAME-$_D7COMMONS-core.tar.gz
+  rename_drupal7_distro_directory
+  if [ -d "$_CORE/$_THIS_PRNAME-$_D7COMMONS" ] ; then
+    mv $_THIS_PRNAME-$_D7COMMONS $_THIS_DISTRO
+  fi
+  replace_drupal7_core
+  init_core_distro_seven_root
+  remove_default_core_seven_profiles
+  cd $_THIS_PRPATH
+  create_dirs
+  themes_for_d7
+  patch_d7_core
+fi
+init_this_distro_root
+create_d7_symlinks
+msg "DISTRO: $_F_D7COMMONS installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_D7COMMONS installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -2638,9 +2686,10 @@ acquia_install
 civicrm_m6_install
 civicrm_m7_install
 cod_install
-commerce_1_install
-commerce_2_install
-commons_install
+commerce_6_install
+commerce_7_install
+commons_6_install
+commons_7_install
 drupal5_install
 drupal6_install
 drupal7_install
@@ -2768,6 +2817,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS-$_SMALLCORE6/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMONS" drupal_commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS-$_SMALLCORE6 &> /dev/null
+    mrun "sleep 5"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_D7COMMONS" commons $_ROOT/distro/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7 &> /dev/null
     mrun "sleep 5"
   fi
 fi
