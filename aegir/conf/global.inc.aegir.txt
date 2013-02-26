@@ -34,6 +34,7 @@ $conf['expire_include_base_url'] = 1;        // default settings for expire modu
 $conf['video_ffmpeg_instances'] = 1;         // force safe default for ffmpeg
 $conf['securepages_enable'] = 1;             // force to avoid issues with SSL proxy
 $conf['drupal_http_request_fails'] = FALSE;  // avoid false alarm
+$conf['image_allow_insecure_derivatives'] = TRUE; // enable to avoid known issues: http://drupal.org/drupal-7.20-release-notes
 
 ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
