@@ -3138,12 +3138,17 @@ upgrade_aegir_master () {
       mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       main_dbuser_reborn
       if [ ! -z "$_ESC_APASS" ] ; then
-        su -s /bin/bash aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
+        su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
         mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-        su -s /bin/bash - aegir -c "drush @server_localhost provision-verify &> /dev/null"
-        su -s /bin/bash - aegir -c "drush @server_master provision-verify &> /dev/null"
+        if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
+          su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
+        else
+          if [ -e "/var/aegir/.drush/server_master.alias.drushrc.php" ] ; then
+            su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
+          fi
+        fi
       fi
     fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null

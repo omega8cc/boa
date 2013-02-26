@@ -885,12 +885,17 @@ else
   if [ ! -e "$_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
     mv -f $_ROOT/.$_USER.pass.txt $_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     main_dbuser_reborn
-    su -s /bin/bash $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
+    su -s /bin/bash - $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-    su -s /bin/bash - $_USER -c "drush @server_localhost provision-verify &> /dev/null"
-    su -s /bin/bash - $_USER -c "drush @server_master provision-verify &> /dev/null"
+    if [ -e "$_ROOT/.drush/server_localhost.alias.drushrc.php" ] ; then
+      su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
+    else
+      if [ -e "$_ROOT/.drush/server_master.alias.drushrc.php" ] ; then
+        su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
+      fi
+    fi
   fi
 fi
 mrun "sleep 1"
