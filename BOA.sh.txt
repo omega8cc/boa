@@ -53,6 +53,9 @@ setup ()
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/randpass
+  if [ ! -e "/opt/local/bin/randpass" ] ; then
+    mkdir -p /opt/local/bin; ln -s /usr/local/bin/randpass /opt/local/bin/randpass
+  fi
   echo "### $_TODAY ###" >> /usr/local/bin/boa
   echo "### $_TODAY ###" >> /usr/local/bin/barracuda
   echo "### $_TODAY ###" >> /usr/local/bin/octopus
