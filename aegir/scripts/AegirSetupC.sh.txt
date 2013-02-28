@@ -1032,6 +1032,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_COM_MERCE $_THIS_DISTRO
   fi
   replace_drupal7_core
+  if [ $_COM_MERCE = "7.x-2.4" ] ; then
+    cd $_THIS_PRPATH/modules/contrib
+    rm -f -r {message_notify}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.x-dev.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+  fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
@@ -1144,6 +1153,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_D7COMMONS $_THIS_DISTRO
   fi
   replace_drupal7_core
+  if [ $_D7COMMONS = "7.x-3.0" ] ; then
+    cd $_THIS_PRPATH/modules/contrib
+    rm -f -r {message_notify}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.x-dev.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+  fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
