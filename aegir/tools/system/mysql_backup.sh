@@ -21,6 +21,15 @@ EOFMYSQL
   done
 }
 
+truncate_accesslog_tables () {
+  TABLES=`mysql $DB -e "show tables" -s | grep ^accesslog$`
+  for A in $TABLES; do
+mysql --default-character-set=utf8 $DB<<EOFMYSQL
+TRUNCATE $A;
+EOFMYSQL
+  done
+}
+
 optimize_this_database () {
   TABLES=`mysql $DB -e "show tables" -s | uniq | sort`
   for T in $TABLES; do
@@ -41,6 +50,10 @@ do
   if [ "$DB" != "Database" ] && [ "$DB" != "information_schema" ] && [ "$DB" != "performance_schema" ] ; then
     if [ "$DB" != "mysql" ] ; then
       truncate_cache_tables &> /dev/null
+      if [[ "$HOST" =~ ".host8." ]] ; then
+        truncate_accesslog_tables &> /dev/null
+        echo "Truncated not used accesslog for $DB"
+      fi
       echo "All cache tables truncated in $DB"
       if [ "$OPTIM" = "YES" ] ; then
         optimize_this_database &> /dev/null
