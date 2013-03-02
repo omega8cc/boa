@@ -48,19 +48,23 @@ _TODAY=`date +%y%m%d`
 setup ()
 {
   mkdir -p /usr/local/bin; cd /usr/local/bin
-  rm -f /usr/local/bin/{boa*,barracuda*,octopus*,randpass*}
+  rm -f /usr/local/bin/{boa*,barracuda*,octopus*,randpass*,sqlmagic*}
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/boa
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/randpass
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/sqlmagic
   if [ ! -e "/opt/local/bin/randpass" ] ; then
     mkdir -p /opt/local/bin; ln -s /usr/local/bin/randpass /opt/local/bin/randpass
+  fi
+  if [ ! -e "/opt/local/bin/sqlmagic" ] ; then
+    mkdir -p /opt/local/bin; ln -s /usr/local/bin/sqlmagic /opt/local/bin/sqlmagic
   fi
   echo "### $_TODAY ###" >> /usr/local/bin/boa
   echo "### $_TODAY ###" >> /usr/local/bin/barracuda
   echo "### $_TODAY ###" >> /usr/local/bin/octopus
   chmod 700 /usr/local/bin/{boa,barracuda,octopus}
-  chmod 755 /usr/local/bin/randpass
+  chmod 755 /usr/local/bin/{randpass,sqlmagic}
   echo
   echo "BOA Meta Installer setup completed"
   echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs for how-to"
