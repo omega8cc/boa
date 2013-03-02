@@ -253,5 +253,6 @@ else
   sleep 1
   find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
   rm -f $_TMP/*.txt
+  chmod 700 /home/* &> /dev/null
 fi
 ###EOF2013###
