@@ -3,7 +3,7 @@ index 10dccaa..d3a3e10 100644
 --- mysql_service.inc
 +++ mysql_service.inc
 @@ -113,6 +113,13 @@ class provisionService_db_mysql extends provisionService_db_pdo {
-     $cmd = sprintf('mysqldump --defaults-file=/dev/fd/3 -r%s/database.sql %s', escapeshellcmd(d()->site_path), escapeshellcmd(drush_get_option('db_name'))); 
+     $cmd = sprintf('mysqldump --opt --skip-lock-tables --order-by-primary --single-transaction --default-character-set=utf8 -Q --hex-blob --defaults-file=/dev/fd/3 -r%s/database.sql %s', escapeshellcmd(d()->site_path), escapeshellcmd(drush_get_option('db_name')));
      $success = $this->safe_shell_exec($cmd, drush_get_option('db_host'), urldecode(drush_get_option('db_user')), urldecode(drush_get_option('db_passwd')));
  
 +    $cmd = sprintf('sed \'s|/\*!50001 CREATE ALGORITHM=UNDEFINED \*/|/\*!50001 CREATE \*/|g\' %s/database.sql > %s/database_temp.sql', escapeshellcmd(d()->site_path), escapeshellcmd(d()->site_path));
