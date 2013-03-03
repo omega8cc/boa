@@ -245,6 +245,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
   else
     _DEBUG_MODE=YES
     msg "INFO: Testing previous install... OPS, zombie found, moving it to backups..."
+    sleep 1
     mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
@@ -255,12 +256,14 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     _DISTRO=${nextnum}
     _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
     msg "INFO: Testing previous install again after removing zombie..."
+    sleep 1
     if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
       _DISTRO=${nextnum}
       _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
     else
       _DEBUG_MODE=YES
       msg "INFO: Testing previous install... OPS, another zombie found, moving it to backups..."
+      sleep 1
       mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW-sec &> /dev/null
       cd $_ROOT/host_master
       list=([0-9]*)
@@ -271,6 +274,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
       _DISTRO=${nextnum}
       _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
       msg "INFO: Testing previous install again after removing second zombie..."
+      sleep 1
       if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
         _DISTRO=${nextnum}
         _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
