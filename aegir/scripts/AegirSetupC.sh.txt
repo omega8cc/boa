@@ -1109,6 +1109,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
   rm -f -r $_CORE_DISTRO/profiles/default
   enable_drupal6_contrib
+  sed -i "s/'Commons'/'Commons 2'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
   create_dirs
 fi
 init_this_distro_root
@@ -1165,6 +1166,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
+  sed -i "s/name = Commons/name = Commons 3/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
   create_dirs
   themes_for_d7
   patch_d7_core
