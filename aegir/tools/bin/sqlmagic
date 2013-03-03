@@ -21,17 +21,30 @@ sqlmagic_convert() {
   fi
   if drush status | grep "Successful" > /dev/null && [ -e "$HOME/static" ] ; then
     echo "It may take a long time, please wait..."
-    if [ "$kind" = "to-myisam" ] ; then
-      drush sql-query "SHOW TABLES" | tail -n +2 | xargs -I '{}' echo "ALTER TABLE {} ENGINE=MYISAM;" > $HOME/static/to_myisam_alter_table.sql
+    if [ "$kind" = "to-myisam" ] || [ -e "./modules/to-myisam.info" ] ; then
+      if [ -e "./modules/to-innodb.info" ] ; then
+        echo "ERROR: remove ./modules/to-innodb.info first, if you want to run conversion to-myisam"
+        exit 1
+      fi
+      _THIS_DB=`drush status | grep "Database name" | cut -d: -f2 | awk '{ print $1}'`
+      _THIS_SHOW="select TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '$_THIS_DB' and TABLE_TYPE = 'BASE TABLE'"
+      drush sql-query "$_THIS_SHOW" | tail -n +2 | xargs -I '{}' echo "ALTER TABLE {} ENGINE=MYISAM;" > $HOME/static/to_myisam_alter_table.sql
+      perl -p -i -e 's/((cache_[a-z_]+|sessions|users|watchdog) ENGINE=)MYISAM/\1INNODB/g' $HOME/static/to_myisam_alter_table.sql
       drush sqlc < $HOME/static/to_myisam_alter_table.sql
       echo "This site database has been converted to MyISAM"
       rm -f $HOME/static/to_myisam_alter_table.sql
       exit 0
-    elif [ "$kind" = "to-innodb" ] ; then
-      drush sql-query "SHOW TABLES" | tail -n +2 | xargs -I '{}' echo "ALTER TABLE {} ENGINE=INNODB;" > $HOME/static/to_innodb_alter_table.sql
+    elif [ "$kind" = "to-innodb" ] || [ -e "./modules/to-innodb.info" ] ; then
+      if [ -e "./modules/to-myisam.info" ] ; then
+        echo "ERROR: remove ./modules/to-myisam.info first, if you want to run conversion to-innodb"
+        exit 1
+      fi
+      _THIS_DB=`drush status | grep "Database name" | cut -d: -f2 | awk '{ print $1}'`
+      _THIS_SHOW="select TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '$_THIS_DB' and TABLE_TYPE = 'BASE TABLE'"
+      drush sql-query "$_THIS_SHOW" | tail -n +2 | xargs -I '{}' echo "ALTER TABLE {} ENGINE=INNODB;" > $HOME/static/to_innodb_alter_table.sql
       perl -p -i -e 's/(search_[a-z_]+ ENGINE=)INNODB/\1MYISAM/g' $HOME/static/to_innodb_alter_table.sql
       drush sqlc < $HOME/static/to_innodb_alter_table.sql
-      echo "This site database has been converted to InnoDB and only search* tables still use MyISAM"
+      echo "This site database has been converted to InnoDB"
       rm -f $HOME/static/to_innodb_alter_table.sql
       exit 0
     else
