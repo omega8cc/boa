@@ -2404,7 +2404,7 @@ _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 _THIS_PLPATH="$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPY ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
 echo " "
 if prompt_yes_no "$_F_PANOPOLY - http://drupal.org/project/panopoly" ; then
