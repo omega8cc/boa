@@ -15,8 +15,8 @@ sqlmagic_fix() {
 }
 
 sqlmagic_convert() {
-  if [ ! -e "$HOME/static" ] ; then
-    echo "ERROR: and you must be logged in as a limited shell user"
+  if [ ! -L "$HOME/static" ] ; then
+    echo "ERROR: you must be logged in as a limited shell user, typically o1.ftp"
     exit 1
   fi
   if drush status | grep "Successful" > /dev/null && [ -e "$HOME/static" ] ; then
