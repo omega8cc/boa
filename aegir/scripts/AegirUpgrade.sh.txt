@@ -261,7 +261,7 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     else
       _DEBUG_MODE=YES
       msg "INFO: Testing previous install... OPS, another zombie found, moving it to backups..."
-      mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW &> /dev/null
+      mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW-sec &> /dev/null
       cd $_ROOT/host_master
       list=([0-9]*)
       last=${list[@]: -1}

@@ -512,7 +512,7 @@ else
     if [ ! -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       _DEBUG_MODE=YES
       msg "$_STATUS B: Testing previous install... OPS, another zombie found, moving it to backups..."
-      mv -f $_PREV_AEGIR_ROOT $_ROOT/backups/system/empty-host-master-$_LAST_HMR-$_NOW &> /dev/null
+      mv -f $_PREV_AEGIR_ROOT $_ROOT/backups/system/empty-host-master-$_L_HM_DISTRO-$_NOW-sec &> /dev/null
       cd $_ROOT/aegir/distro
       list=([0-9]*)
       last=${list[@]: -1}
