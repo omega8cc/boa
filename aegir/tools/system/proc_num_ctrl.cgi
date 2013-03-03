@@ -108,13 +108,13 @@ sub global_action
         `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
       }
     }
-    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /(3:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
+    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /(2:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
     {
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.watch.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /(5:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /(3:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
