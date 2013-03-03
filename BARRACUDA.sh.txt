@@ -745,6 +745,27 @@ _CUSTOM_CONFIG_REDIS=NO
 _DB_BINARY_LOG=NO
 
 ###
+### BOA already outsources most of cache*
+### tables to Redis, disables accesslog and
+### dblog by default, so for most of typical
+### Drupal sites MyISAM will provide better
+### speed and much lower memory usage -
+### typically only 1/3 of memory and binary
+### space used by InnoDB.
+###
+### InnoDB should be used as a default engine
+### for high traffic or high load sites. Note
+### that it is used by default in Drupal 7.
+###
+### You can easily convert any site to-MyISAM
+### or to-InnoDB with `sqlmagic` tool.
+###
+### Note: this option is ignored if the option
+### _CUSTOM_CONFIG_SQL is set to YES.
+###
+_DB_ENGINE=MyISAM
+
+###
 ### Set max 1 min load before disabling Nginx
 ### temporarily, until the load stabilizes.
 ###
@@ -2043,6 +2064,9 @@ tune_memory_limits () {
       sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
       sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
     fi
+    if [ "$_DB_ENGINE" = "MyISAM" ] || [ "$_DB_ENGINE" = "InnoDB" ] ; then
+      sed -i "s/^default_storage_engine.*/default_storage_engine  = $_DB_ENGINE/g" /etc/mysql/my.cnf &> /dev/null
+    fi
   fi
   tune_web_server_config
 }
@@ -2147,6 +2171,7 @@ barracuda_cnf () {
     echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
     echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
+    echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
     echo "_SSH_PORT=$_SSH_PORT" >> /root/.barracuda.cnf
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
@@ -2397,6 +2422,12 @@ barracuda_cnf () {
       true
     else
       echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
+    fi
+    _DB_ENGINE_TEST=$(grep _DB_ENGINE /root/.barracuda.cnf)
+    if [[ "$_DB_ENGINE_TEST" =~ "_DB_ENGINE" ]] ; then
+      true
+    else
+      echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
     fi
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP /root/.barracuda.cnf)
     if [[ "$_NGINX_LDAP_TEST" =~ "_NGINX_LDAP" ]] ; then

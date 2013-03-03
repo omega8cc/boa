@@ -829,6 +829,9 @@ tune_memory_limits () {
     sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
     sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
   fi
+  if [ "$_DB_ENGINE" = "MyISAM" ] || [ "$_DB_ENGINE" = "InnoDB" ] ; then
+    sed -i "s/^default_storage_engine.*/default_storage_engine  = $_DB_ENGINE/g" /etc/mysql/my.cnf &> /dev/null
+  fi
   tune_web_server_config
 }
 
