@@ -1202,9 +1202,7 @@ msg "DISTRO: $_F_DRUPAL5 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://launchpad.net/pressflow/5.x/$_DRUPAL5/+download/$_THIS_DISTRO.tar.gz
-  tar -xzf $_THIS_DISTRO.tar.gz
-  rm -f $_THIS_DISTRO.tar.gz
+  get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
   rm -f $_CORE_DISTRO/*.txt
   create_dirs
 fi
