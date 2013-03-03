@@ -3175,9 +3175,8 @@ upgrade_aegir_master () {
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
         if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
           su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
-        else
-          su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
         fi
+        su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
         msg "INFO: Running hosting-dispatch (1/3), please wait..."
         su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
         mrun "sleep 5"
