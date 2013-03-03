@@ -494,8 +494,39 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS B: Running hosting-dispatch (3/3), please wait..."
   drush '@hostmaster' hosting-dispatch &> /dev/null
 else
+  msg "$_STATUS B: Testing previous install..."
+  if [ ! -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+    _DEBUG_MODE=YES
+    msg "$_STATUS B: Testing previous install... OPS, zombie found, moving it to backups..."
+    mv -f $_PREV_AEGIR_ROOT $_ROOT/backups/system/empty-host-master-$_LAST_HMR-$_NOW &> /dev/null
+    cd $_ROOT/aegir/distro
+    list=([0-9]*)
+    last=${list[@]: -1}
+    _L_LAST_HMR=$last
+    nextnum=00$((10#${last%%[^0-9]*} + 1))
+    nextnum=${nextnum: -3}
+    _L_HM_DISTRO=${nextnum}
+    _AEGIR_ROOT="$_ROOT/aegir/distro/$_L_HM_DISTRO"
+    _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_L_LAST_HMR"
+    msg "$_STATUS B: Testing previous install again after removing zombie..."
+    if [ ! -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+      _DEBUG_MODE=YES
+      msg "$_STATUS B: Testing previous install... OPS, another zombie found, moving it to backups..."
+      mv -f $_PREV_AEGIR_ROOT $_ROOT/backups/system/empty-host-master-$_LAST_HMR-$_NOW &> /dev/null
+      cd $_ROOT/aegir/distro
+      list=([0-9]*)
+      last=${list[@]: -1}
+      _L_LAST_HMR=$last
+      nextnum=00$((10#${last%%[^0-9]*} + 1))
+      nextnum=${nextnum: -3}
+      _L_HM_DISTRO=${nextnum}
+      _AEGIR_ROOT="$_ROOT/aegir/distro/$_L_HM_DISTRO"
+      _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_L_LAST_HMR"
+      msg "$_STATUS B: Let's hope there are no more zombies left..."
+    fi
+  fi
   if [ -d "$_AEGIR_ROOT" ] ; then
-    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exists!"
+    msg "$_STATUS B: FATAL ERROR: $_AEGIR_ROOT already exists - too many zombies to delete!"
     msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
     touch /opt/tmp/status-AegirSetupB-FAIL
     exit 1
