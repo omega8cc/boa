@@ -396,10 +396,11 @@ for i in $REVISIONS; do
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       cd /data/all/$i/o_contrib_seven
       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.6.tar.gz
+      wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.0-beta1.tar.gz
       ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
-      git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
+      ### git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
       ### rm -f -r /data/all/$i/o_contrib_seven/purge/.git
-      rm -f -r /data/all/$i/o_contrib_seven/expire/.git
+      ### rm -f -r /data/all/$i/o_contrib_seven/expire/.git
     fi
     cd /data/all/$i/o_contrib_seven
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
