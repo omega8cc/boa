@@ -3175,8 +3175,9 @@ upgrade_aegir_master () {
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
         if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
           su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
+        else
+          su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
         fi
-        su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
       fi
     fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
