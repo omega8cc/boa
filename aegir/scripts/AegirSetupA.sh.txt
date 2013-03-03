@@ -896,6 +896,14 @@ else
     else
       su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
     fi
+    msg "$_STATUS A: Running hosting-dispatch (1/3), please wait..."
+    drush '@hostmaster' hosting-dispatch &> /dev/null
+    mrun "sleep 5"
+    msg "$_STATUS A: Running hosting-dispatch (2/3), please wait..."
+    drush '@hostmaster' hosting-dispatch &> /dev/null
+    mrun "sleep 5"
+    msg "$_STATUS A: Running hosting-dispatch (3/3), please wait..."
+    drush '@hostmaster' hosting-dispatch &> /dev/null
   fi
 fi
 mrun "sleep 1"

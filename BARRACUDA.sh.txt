@@ -3178,6 +3178,14 @@ upgrade_aegir_master () {
         else
           su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
         fi
+        msg "INFO: Running hosting-dispatch (1/3), please wait..."
+        su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+        mrun "sleep 5"
+        msg "INFO: Running hosting-dispatch (2/3), please wait..."
+        su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+        mrun "sleep 5"
+        msg "INFO: Running hosting-dispatch (3/3), please wait..."
+        su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
       fi
     fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
