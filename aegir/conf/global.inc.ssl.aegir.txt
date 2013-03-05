@@ -271,12 +271,13 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if ($da_inc) {
+  if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cookie_domain.info')) {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
   }
+
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2) {
     @ini_set('session.cookie_domain', $domain);
