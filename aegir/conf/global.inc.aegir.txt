@@ -215,7 +215,7 @@ if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.t
   $use_cache = FALSE;
 }
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:\/nojs\/|noredis)/", $_SERVER['REQUEST_URI'])) {
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
