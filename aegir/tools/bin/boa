@@ -32,7 +32,7 @@ octopus_install ()
       sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null

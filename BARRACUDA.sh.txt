@@ -2121,7 +2121,7 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+        if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
           true
         else
           _BUILD_FROM_SRC=YES
@@ -2206,7 +2206,7 @@ barracuda_cnf () {
     echo "###" >> /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
@@ -2450,7 +2450,7 @@ barracuda_cnf () {
     sleep 1
     _CHECK_HOST=`uname -n`
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
@@ -2481,7 +2481,7 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+        if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
           true
         else
           _BUILD_FROM_SRC=YES

@@ -83,7 +83,7 @@ up_one ()
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
       else
         sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"         /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
