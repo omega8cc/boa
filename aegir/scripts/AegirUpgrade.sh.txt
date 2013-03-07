@@ -220,8 +220,7 @@ _NOW=`date +%y%m%d-%H%M`
 _LASTNUM=001
 _DISTRO=001
 _ROOT="/var/aegir"
-_AEGIR_DIRN=`ls -l $_ROOT | grep hostmaster | cut -d: -f2 | awk '{ print $2}'`
-_PREV_AEGIR_ROOT="$_ROOT/$_AEGIR_DIRN"
+_PREV_AEGIR_ROOT=`find $_ROOT -maxdepth 1 -type d | grep hostmaster`
 
 if [ -d "$_ROOT/host_master" ] ; then
   if [ ! -d "$_ROOT/host_master/000" ] ; then
