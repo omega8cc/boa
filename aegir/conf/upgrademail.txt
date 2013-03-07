@@ -17,7 +17,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
   Commerce 1.14.1 -------------- http://drupalcommerce.org
   Commerce 2.4 ----------------- http://drupalcommerce.org
   Commons 2.12 ----------------- http://acquia.com/drupalcommons
-  Drupal 7.20.2 ---------------- http://drupal.org/drupal-7.20
+  Drupal 7.21.1 ---------------- http://drupal.org/drupal-7.21
   Open Atrium 1.7.1 ------------ http://openatrium.com
   Open Deals 1.18 -------------- http://opendealsapp.com
   Open Outreach 1.0-rc9 -------- http://openoutreach.org
