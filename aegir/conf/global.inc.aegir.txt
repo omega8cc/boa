@@ -269,13 +269,13 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   else {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
   }
-
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2) {
     @ini_set('session.cookie_domain', $domain);
+    $cookie_domain = $domain;
+    header("X-Cookie-Domain: " . $cookie_domain);
   }
-  $cookie_domain = $domain;
-  header("X-Cookie-Domain: " . $cookie_domain);
+
   $this_prefix = $_SERVER['SERVER_NAME'] . '.';
   header("X-Server-Prefix: " . $this_prefix);
 
