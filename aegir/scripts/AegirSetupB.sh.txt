@@ -577,7 +577,7 @@ fi
 msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mrun "sleep 1"
 mkdir -p $_AEGIR_ROOT/sites/all/{modules,themes,libraries}
-cd $_AEGIR_ROOT/sites/all/modules
+cd $_AEGIR_ROOT/profiles/hostmaster/modules
 get_dev_ext "aegir_custom_settings-6.x-1.12.tar.gz" &> /dev/null
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_civicrm_cron.git  &> /dev/null
@@ -607,7 +607,7 @@ cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
-  sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/sites/all/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
+  sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   sed -i "s/Base path/Platforms path/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   cd $_AEGIR_ROOT/sites/$_DOMAIN
