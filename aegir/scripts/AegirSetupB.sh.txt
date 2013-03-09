@@ -619,7 +619,9 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
   fi
-  $_DRUSHCMD @hostmaster en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra hosting_cdn hosting_site_backup -y &> /dev/null
+  $_DRUSHCMD @hostmaster en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect -y &> /dev/null
+  $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra hosting_cdn -y &> /dev/null
+  $_DRUSHCMD @hostmaster en hosting_site_backup -y &> /dev/null
   $_DRUSHCMD @hostmaster dis path_alias_cache syslog dblog -y &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_register_user 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_admin_client 1 &> /dev/null
