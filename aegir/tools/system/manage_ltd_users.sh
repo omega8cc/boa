@@ -93,7 +93,7 @@ ok_create_user()
     fi
     _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_TMP/$_USER_LTD.txt
-    ph=$(makepasswd --clearfrom=$_TMP/$_USER_LTD.txt --crypt-md5 |awk '{print $2}')
+    ph=$(makepasswd --clearfrom=$_TMP/$_USER_LTD.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
     usermod -p $ph $_USER_LTD
     passwd -w 7 -x 90 $_USER_LTD
     usermod -aG lshellg $_USER_LTD

@@ -1247,7 +1247,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     # get the password hash
-    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
+    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
     # Set the password
     usermod -p $ph $_USERFTP &> /dev/null
     passwd -w 7 -x 90 $_USERFTP &> /dev/null
@@ -1372,7 +1372,7 @@ else
     fi
     _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
-    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 |awk '{print $2}')
+    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
     usermod -p $ph $_USERFTP &> /dev/null
     _PASWD=`cat $_ROOT/log/pass.txt`
     _PASWD=`echo -n $_PASWD | tr -d "\n"`
