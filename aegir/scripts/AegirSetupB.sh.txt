@@ -609,6 +609,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
+  sed -i "s/Backup schedule settings/Backup schedule/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_queue/hosting_backup_queue.module &> /dev/null
   sed -i "s/Base path/Platforms path/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   if [[ "$_DOMAIN" =~ "test.host8." ]] ; then
     $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
