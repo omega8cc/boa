@@ -610,6 +610,11 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   sed -i "s/Base path/Platforms path/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
+  if [[ "$_DOMAIN" =~ "test.host8." ]] ; then
+    $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
+    $_DRUSHCMD @hostmaster pm-uninstall hosting_backup_queue -y &> /dev/null
+    rm -f -r $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_queue
+  fi
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   if [ "$_CLIENT_CORES" -ge "1" ] ; then
     _ALLOW_CIVICRM=YES
@@ -619,10 +624,12 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
   fi
+  $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
+  rm -f -r $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_gc
+  $_DRUSHCMD @hostmaster rr &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra hosting_cdn -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_site_backup_manager -y &> /dev/null
-  $_DRUSHCMD @hostmaster dis path_alias_cache syslog dblog -y &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_register_user 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_admin_client 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_send_welcome 1 &> /dev/null
@@ -645,6 +652,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster vset --always-set hosting_upload_platform_path "/data/disk/$_USER/static" &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_upload_upload_path "sites/$_DOMAIN/files/deployment" &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_platform_pathauto_base_path "/data/disk/$_USER/static/" &> /dev/null
+  $_DRUSHCMD @hostmaster vset --always-set hosting_site_backup_manager_base_path "/data/disk/$_USER" &> /dev/null
   $_DRUSHCMD @hostmaster en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
