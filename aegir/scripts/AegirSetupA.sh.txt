@@ -328,7 +328,7 @@ fi
 #
 o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache httprl"
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache httprl boost"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-017.info" ] ; then
     for m in $RMMODULES; do
@@ -338,10 +338,8 @@ for i in $REVISIONS; do
       fi
     done
     cd /data/all/$i/o_contrib
-    if [ -d "/data/all/$i/o_contrib/boost" ] ; then
-      sed -i "s/is_dir(\$cache_directory/\!is_dir(\$cache_directory/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
-      sed -i "s/\!\!is_dir/\!is_dir/g" /data/all/$i/o_contrib/boost/boost.install &> /dev/null
-    fi
+    git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib/boost &> /dev/null
+    rm -f -r /data/all/$i/o_contrib/boost/.git
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.6.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
@@ -384,7 +382,7 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-017.info" ] ; then
     for m in $RMMODULES; do
@@ -403,6 +401,8 @@ for i in $REVISIONS; do
       ### rm -f -r /data/all/$i/o_contrib_seven/expire/.git
     fi
     cd /data/all/$i/o_contrib_seven
+    git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
+    rm -f -r /data/all/$i/o_contrib_seven/boost/.git
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
@@ -469,7 +469,6 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/core_library-7.x-1.0-beta12.tar.gz
@@ -504,6 +503,8 @@ download_o_contrib_seven () {
     rm -f -r purge*
     rm -f -r expire*
   fi
+  git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git &> /dev/null
+  rm -f -r boost/.git
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -537,7 +538,6 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/boost-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
@@ -570,6 +570,8 @@ download_o_contrib_six () {
     rm -f -r purge*
     rm -f -r expire*
   fi
+  git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git &> /dev/null
+  rm -f -r boost/.git
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
