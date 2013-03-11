@@ -6655,7 +6655,7 @@ if [ "$_UP_LNX" = "YES" ] ; then
     msg "ALRT: You *must* reboot immediately to make it active and stay secure!"
   else
     msg "NOTE: You have Ksplice rebootless kernel updates installed"
-    msg "HINT: Run `uptrack-upgrade -y` to make sure that all upgrades are fully applied"
+    msg "HINT: Run uptrack-upgrade -y to make sure that all upgrades are fully applied"
   fi
   echo " "
   mrun "sleep 8"
