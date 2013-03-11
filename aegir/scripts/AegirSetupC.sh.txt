@@ -953,7 +953,7 @@ fi
 }
 
 
-commerce_6_install () {
+commerce_7_1_install () {
 ###---### Commerce 7.x-1.x
 #
 _THIS_PRNAME="commerce_kickstart"
@@ -1005,7 +1005,7 @@ fi
 }
 
 
-commerce_7_install () {
+commerce_7_2_install () {
 ###---### Commerce 7.x-2.x
 #
 _THIS_PRNAME="commerce_kickstart"
@@ -2704,8 +2704,8 @@ acquia_install
 civicrm_m6_install
 civicrm_m7_install
 cod_install
-commerce_6_install
-commerce_7_install
+commerce_7_1_install
+commerce_7_2_install
 commons_6_install
 commons_7_install
 drupal5_install
