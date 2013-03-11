@@ -6311,7 +6311,7 @@ fi
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
   if [ ! -e "/usr/sbin/named" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     echo " "
-    if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
+    if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
       true
       msg "INFO: Installing Bind9 DNS Server, please wait..."
       mrun "sleep 1"
@@ -6328,8 +6328,8 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       if [ ! -e "/etc/init.d/bind" ] ; then
         ln -s /etc/init.d/bind9 /etc/init.d/bind
       fi
-      echo "aegir ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
-      echo "aegir ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
+      sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
+      sed -i "/^$/d" /etc/sudoers &> /dev/null
       msg "INFO: Bind9 DNS Server installation completed"
       mrun "sleep 1"
     else

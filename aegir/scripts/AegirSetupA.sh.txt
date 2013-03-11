@@ -1088,17 +1088,6 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
 fi
 
 
-###---### Add sudo for named if exists
-#
-if [ -e "/usr/sbin/named" ] ; then
-  if [ ! -e "$_ROOT/log/named_sudo_exist.txt" ] ; then
-    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind9" >> /etc/sudoers
-    echo "$_USER ALL=NOPASSWD: /etc/init.d/bind" >> /etc/sudoers
-    touch $_ROOT/log/named_sudo_exist.txt
-  fi
-fi
-
-
 ###---### Set permissions for all
 #
 chmod 0755 $_AEGIR_ROOT &> /dev/null
