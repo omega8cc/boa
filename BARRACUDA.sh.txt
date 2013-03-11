@@ -6310,7 +6310,7 @@ if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   fi
 fi
 if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
-  if [ ! -e "/usr/sbin/named" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
+  if [ ! -e "/usr/sbin/named" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server? (experimental only - not recommended)" ; then
       true
