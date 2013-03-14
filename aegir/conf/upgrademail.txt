@@ -14,7 +14,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
 
   Acquia 6.28.1 ---------------- http://bit.ly/acquiadrupal
   CiviCRM 4.2.8-d7 ------------- http://civicrm.org
-  Commerce 1.14.1 -------------- http://drupalcommerce.org
+  Commerce 1.16.1 -------------- http://drupalcommerce.org
   Commerce 2.4 ----------------- http://drupalcommerce.org
   Commons 2.12 ----------------- http://acquia.com/drupalcommons
   Drupal 7.21.1 ---------------- http://drupal.org/drupal-7.21
