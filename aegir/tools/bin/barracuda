@@ -13,8 +13,10 @@ send_report ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
-    cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST" $_MY_EMAIL
-    echo "REPORT: Successful Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
+    if [ ! -z "$_MY_EMAIL" ] ; then
+      cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
+      echo "REPORT: Successful Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
+    fi
   fi
 }
 
@@ -22,17 +24,10 @@ send_alert ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
-    cat <<EOF | mail -e -s "ALERT: Failed Barracuda upgrade on $_CHECK_HOST" $_MY_EMAIL
-Please check all details in the upgrade log:
-
-$_UP_LOG
-Server: $_CHECK_HOST
-
----
-This e-mail has been sent by your BOA server upgrade monitor.
-
-EOF
-    echo "ALERT: Failed Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
+    if [ ! -z "$_MY_EMAIL" ] ; then
+      cat $_UP_LOG | mail -e -s "ALERT: Failed Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
+      echo "ALERT: Failed Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
+    fi
   fi
 }
 
