@@ -137,7 +137,9 @@ up_action_all ()
         _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
         echo Octopus upgrade for User $User
-        sleep 3
+        n=$((RANDOM%9+2))
+        echo waiting $n sec
+        sleep $n
         if [ "$silent" = "log" ] ; then
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
           _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
@@ -146,7 +148,9 @@ up_action_all ()
         else
           up_one
         fi
-        sleep 3
+        n=$((RANDOM%9+2))
+        echo waiting $n sec
+        sleep $n
         rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
         echo Done for $User
         if [ ! -e "$_UP_CONTRIB_PID" ] ; then
