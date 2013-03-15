@@ -9,6 +9,15 @@ _CHECK_HOST=`uname -n`
 _LOG_DIR="/var/backups/reports/up/octopus/$_TODAY"
 _UP_CONTRIB_PID="$_LOG_DIR/octopus-contrib-up.pid"
 
+send_report ()
+{
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+    cat $_UP_LOG | mail -e -s "REPORT: Successful Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST" $_MY_EMAIL
+    echo "REPORT: Successful Octopus upgrade for $_THIS_HM_USER on $_CHECK_HOST sent to $_MY_EMAIL"
+  fi
+}
+
 send_alert ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
@@ -17,6 +26,8 @@ send_alert ()
 Please check all details in the upgrade log:
 
 $_UP_LOG
+Instance: $_THIS_HM_USER
+Server: $_CHECK_HOST
 
 ---
 This e-mail has been sent by your BOA server upgrade monitor.
@@ -26,7 +37,7 @@ EOF
   fi
 }
 
-send_report ()
+check_report ()
 {
   _SEND_ALERT=NO
   _RESULT_BYE=$(grep "BYE" $_UP_LOG)
@@ -49,6 +60,8 @@ send_report ()
   fi
   if [ "$_SEND_ALERT" = "YES" ] ; then
     send_alert
+  else
+    send_report
   fi
 }
 
@@ -135,7 +148,7 @@ up_action_all ()
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
           _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
           up_one >>$_UP_LOG 2>&1
-          send_report
+          check_report
         else
           up_one
         fi
@@ -170,7 +183,7 @@ up_action_one ()
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
         _UP_LOG="$_LOG_DIR/octopus-up-$_THIS_HM_USER-$_NOW.log"
         up_one >>$_UP_LOG 2>&1
-        send_report
+        check_report
       else
         up_one
       fi

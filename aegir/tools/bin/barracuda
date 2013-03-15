@@ -9,6 +9,15 @@ _CHECK_HOST=`uname -n`
 _LOG_DIR="/var/backups/reports/up/barracuda/$_TODAY"
 _UP_LOG="$_LOG_DIR/barracuda-up-$_NOW.log"
 
+send_report ()
+{
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+    cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST" $_MY_EMAIL
+    echo "REPORT: Successful Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
+  fi
+}
+
 send_alert ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
@@ -17,6 +26,7 @@ send_alert ()
 Please check all details in the upgrade log:
 
 $_UP_LOG
+Server: $_CHECK_HOST
 
 ---
 This e-mail has been sent by your BOA server upgrade monitor.
@@ -26,7 +36,7 @@ EOF
   fi
 }
 
-send_report ()
+check_report ()
 {
   _SEND_ALERT=NO
   _RESULT_TEST_OK=$(grep "INFO: Test OK" $_UP_LOG)
@@ -51,6 +61,8 @@ send_report ()
   fi
   if [ "$_SEND_ALERT" = "YES" ] ; then
     send_alert
+  else
+    send_report
   fi
 }
 
@@ -82,7 +94,7 @@ up_action ()
       if [ "$silent" = "log" ] ; then
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
-        send_report
+        check_report
       else
         bash /var/backups/BARRACUDA.sh.txt
       fi
