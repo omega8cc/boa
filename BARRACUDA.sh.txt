@@ -1927,12 +1927,12 @@ tune_memory_limits () {
   let "_USE = (($_RAM / 4))"
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-      let "_USE_SQL = (($_RAM / 32))"
+      let "_USE_SQL = (($_RAM / 48))"
     else
-      let "_USE_SQL = (($_RAM / 6))"
+      let "_USE_SQL = (($_RAM / 8))"
     fi
   else
-    let "_USE_SQL = (($_RAM / 4))"
+    let "_USE_SQL = (($_RAM / 8))"
   fi
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
