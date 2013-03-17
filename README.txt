@@ -138,7 +138,7 @@ Octopus can install the platforms listed below:
  Conference 1.0-rc2 ----------- http://usecod.com
  Drupal 7.21.1 ---------------- http://drupal.org/drupal-7.21
  Feature Server 1.1 ----------- http://bit.ly/fserver
- Managing News 1.2.2 ---------- http://managingnews.com
+ Managing News 1.2.3 ---------- http://managingnews.com
  NodeStream 2.0-rc4 ----------- http://nodestream.org
  Open Atrium 1.7.1 ------------ http://openatrium.com
  Open Deals 1.18 -------------- http://opendealsapp.com
