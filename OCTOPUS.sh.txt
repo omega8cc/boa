@@ -156,7 +156,7 @@ _PHP_CLI_VERSION=5.2
 ### control which platforms will be installed,
 ### using the symbols listed below.
 ###
-### D8D ----------- Drupal 8 dev-tested
+### D8D ----------- Drupal 8 dev-tested (off)
 ### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
