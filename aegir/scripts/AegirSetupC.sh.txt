@@ -2722,7 +2722,6 @@ openchurch_install
 opendeals_install
 openoutreach_install
 openpublish_install
-openscholar_install
 panopoly_install
 prosepoint_install
 ubercart6_install
@@ -2737,6 +2736,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   openacademy_install
   openenterprise_install
   openpublic_install
+  openscholar_install
   videola_install
 fi
 

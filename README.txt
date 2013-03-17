@@ -148,7 +148,6 @@ Octopus can install the platforms listed below:
  Open Outreach 1.0-rc10 ------- http://openoutreach.org
  OpenChurch 1.11-beta8 -------- http://openchurchsite.com
  OpenPublish 3.0-beta7 -------- http://openpublishapp.com
- OpenScholar 2.0-rc1 ---------- http://openscholar.harvard.edu
  Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
  Pressflow 5.23 --------------- http://pressflow.org
  Pressflow 6.28.1 (int) ------- http://pressflow.org
@@ -178,6 +177,7 @@ will fix all critical issues and/or apply required updates:
  Open Academy ----------------- http://drupal.org/project/openacademy
  Open Enterprise -------------- http://drupal.org/project/openenterprise
  OpenPublic ------------------- http://openpublicapp.com
+ OpenScholar ------------------ http://openscholar.harvard.edu
  Videola ---------------------- http://videola.tv
 
 All D5/D6 platforms have been enhanced using Pressflow Drupal core.
