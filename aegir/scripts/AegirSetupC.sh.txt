@@ -2467,7 +2467,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE/$_THIS_PRNAME-$_PROSEPOINT" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old
   fi
-  wget -q -U iCab http://launchpad.net/$_THIS_PRNAME/trunk/$_PROSEPOINT/+download/$_THIS_PRNAME-$_PROSEPOINT.tar.gz
+  get_distro_ext "$_THIS_PRNAME-$_PROSEPOINT.tar.gz" &> /dev/null
   tar -xzf $_THIS_PRNAME-$_PROSEPOINT.tar.gz
   rm -f $_THIS_PRNAME-$_PROSEPOINT.tar.gz
   mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE_DISTRO
