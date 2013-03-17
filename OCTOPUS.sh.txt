@@ -170,7 +170,7 @@ _PHP_CLI_VERSION=5.2
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
-### ELS ----------- ELMS
+### ELS ----------- ELMS (off)
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
 ### MPG ----------- MartPlug (off)

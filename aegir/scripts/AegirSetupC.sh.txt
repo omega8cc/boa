@@ -2710,7 +2710,6 @@ commons_6_install
 commons_7_install
 drupal6_install
 drupal7_install
-elms_install
 fserver_install
 managingnews_install
 nodestream7_install
@@ -2730,6 +2729,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   drupal_edge_8_install
   drupal5_install
   drupal8_install
+  elms_install
   martplug_install
   nodestream6_install
   octopus_video_install
