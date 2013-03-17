@@ -160,7 +160,7 @@ _PHP_CLI_VERSION=5.2
 ### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
-### D5P ----------- Pressflow 5
+### D5P ----------- Pressflow 5 (off)
 ### AQ6 ----------- Acquia D6
 ### CC3 ----------- CiviCRM 3.4.8 D6 (off)
 ### CM6 ----------- CiviCRM 4.1.6 D6

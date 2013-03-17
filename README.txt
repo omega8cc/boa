@@ -149,7 +149,6 @@ Octopus can install the platforms listed below:
  OpenChurch 1.11-beta8 -------- http://openchurchsite.com
  OpenPublish 3.0-beta7 -------- http://openpublishapp.com
  Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
- Pressflow 5.23 --------------- http://pressflow.org
  Pressflow 6.28.1 (int) ------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
  Ubercart 2.11.1 (int) -------- http://ubercart.org

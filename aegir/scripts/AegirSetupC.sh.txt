@@ -2708,7 +2708,6 @@ commerce_7_1_install
 commerce_7_2_install
 commons_6_install
 commons_7_install
-drupal5_install
 drupal6_install
 drupal7_install
 drupal8_install
@@ -2731,6 +2730,7 @@ ubercart7_install
 if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   civicrm3_install
   drupal_edge_8_install
+  drupal5_install
   martplug_install
   octopus_video_install
   openacademy_install
