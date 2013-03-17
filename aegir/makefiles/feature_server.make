@@ -12,12 +12,12 @@ projects[pressflow][download][type] = "get"
 projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.28.1.tar.gz"
 
 projects[cck] = 2.9
-projects[context] = 3.0
+projects[context] = 3.1
 projects[ctools] = 1.10
 projects[features] = 1.2
 projects[filefield] = 3.10
 projects[install_profile_api] = 2.2
-projects[strongarm] = 2.1
+projects[strongarm] = 2.2
 projects[views] = 2.16
 projects[nodereference_url] = 1.11
 
