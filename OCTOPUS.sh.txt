@@ -175,7 +175,7 @@ _PHP_CLI_VERSION=5.2
 ### MNS ----------- Managing News
 ### MPG ----------- MartPlug (off)
 ### NS7 ----------- NodeStream D7
-### NSM ----------- NodeStream D6
+### NSM ----------- NodeStream D6 (off)
 ### OAM ----------- Open Atrium
 ### OAY ----------- Open Academy (off)
 ### OCH ----------- OpenChurch
