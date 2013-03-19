@@ -180,10 +180,10 @@ if [ "$_MODULES" = "YES" ] ; then
     *)
     if [ -e "$Dir/drushrc.php" ] ; then
       cd $Dir
-      if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.txt" ] ; then
+      if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
         su -s /bin/bash $_THIS_HM_USER -c "drush @hostmaster dis cache syslog dblog -y &> /dev/null"
-        echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.txt
-        chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.txt
+        echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
+        chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
       elif [ -e "$Plr/modules/o_contrib" ] ; then
         su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
@@ -198,23 +198,43 @@ if [ "$_MODULES" = "YES" ] ; then
 fi
 }
 
+fix_static_permissions()
+{
+if [ "$_PERMISSIONS" = "YES" ] && [ ! -f "$Plr/profiles/permissions-fix.info" ] ; then
+  chown -R $_THIS_HM_USER.ftp:users $Plr/profiles &> /dev/null
+  find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
+  find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
+  echo fixed > $Plr/profiles/permissions-fix.info
+fi
+}
+
 fix_permissions()
 {
 if [ "$_PERMISSIONS" = "YES" ] ; then
+  ### modules,themes,libraries - profile level in ~/static
+  searchStringG="/static/"
+  case $Plr in
+  *"$searchStringG"*)
+  fix_static_permissions
+  ;;
+  esac
+  ### modules,themes,libraries - platform level
+  if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
+    chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
+    chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+    find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+    find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+    ### known exceptions
+    chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
+    chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+    chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
+    echo fixed > $Plr/sites/all/permissions-fix-$_NOW.info
+  fi
   ### modules,themes,libraries - site level
   chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
   chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
   find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
   find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
-  ### modules,themes,libraries - platform level
-  chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
-  chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-  find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
-  find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
-  ### known exceptions
-  chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
-  chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
-  chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
   ### files - site level
   chown -L -R www-data:www-data $Dir/files &> /dev/null
   find $Dir/files/* -type d -exec chmod 02775 {} \; &> /dev/null
@@ -511,6 +531,11 @@ else
   sleep 60
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
 fi
+#
+find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
+find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
+find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
+find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
 
 ###--------------------###
 echo "INFO: Checking BARRACUDA version..."
