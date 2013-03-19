@@ -2468,8 +2468,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old
   fi
   get_distro_ext "$_THIS_PRNAME-$_PROSEPOINT.tar.gz" &> /dev/null
-  tar -xzf $_THIS_PRNAME-$_PROSEPOINT.tar.gz
-  rm -f $_THIS_PRNAME-$_PROSEPOINT.tar.gz
   mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE_DISTRO
   if [ -d "$_CORE/$_THIS_PRNAME-$_PROSEPOINT-old" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old $_CORE/$_THIS_PRNAME-$_PROSEPOINT
