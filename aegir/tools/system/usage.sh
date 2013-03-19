@@ -221,11 +221,14 @@ if [ "$_PERMISSIONS" = "YES" ] ; then
   find $Dir/files/* -type f -exec chmod 0664 {} \; &> /dev/null
   chmod 02775 $Dir/files &> /dev/null
   chown $_THIS_HM_USER:www-data $Dir/files &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/files/{tmp,images,pictures,css,js,advagg_css,advagg_js,ctools,ctools/css,imagecache,locations,xmlsitemap,deployment,styles,private} &> /dev/null
   ### private - site level
   chown -L -R www-data:www-data $Dir/private &> /dev/null
   find $Dir/private -type d -exec chmod 02775 {} \; &> /dev/null
   find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
   chown $_THIS_HM_USER:www-data $Dir/private &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/private/{files,temp} &> /dev/null
+  chown -L -R $_THIS_HM_USER:www-data $Dir/private/config &> /dev/null
 fi
 }
 
