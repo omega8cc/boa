@@ -289,7 +289,7 @@ _PHP_FPM_VERSION=5.2
 ### option set to _PHP_MODERN_ONLY=NO, which
 ### is not default.
 ###
-_PHP_CLI_VERSION=5.2
+_PHP_CLI_VERSION=5.3
 
 
 ###----------------------------------------###
