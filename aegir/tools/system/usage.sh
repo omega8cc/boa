@@ -25,7 +25,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON_SEVEN="syslog robotstxt filefield_nginx_progress"
+_MODULES_ON_SEVEN="syslog robotstxt"
 _MODULES_ON_SIX="syslog path_alias_cache robotstxt"
 _MODULES_OFF_SEVEN="dblog l10n_update devel performance"
 _MODULES_OFF_SIX="cache dblog l10n_update devel performance poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass"
