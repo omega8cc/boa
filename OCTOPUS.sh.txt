@@ -759,6 +759,11 @@ octopus_cnf () {
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
     fi
+    if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+      _DRUSH_CC_REQ=NO
+    else
+      _DRUSH_CC_REQ=YES
+    fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
@@ -867,6 +872,7 @@ do
   sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_DRUSH_CC_REQ/$_DRUSH_CC_REQ/g"           $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
   sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files &> /dev/null

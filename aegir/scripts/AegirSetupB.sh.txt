@@ -486,13 +486,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
   msg "$_STATUS B: Running hosting-dispatch (1/3), please wait..."
-  drush '@hostmaster' hosting-dispatch &> /dev/null
+  $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
   msg "$_STATUS B: Running hosting-dispatch (2/3), please wait..."
-  drush '@hostmaster' hosting-dispatch &> /dev/null
+  $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
   msg "$_STATUS B: Running hosting-dispatch (3/3), please wait..."
-  drush '@hostmaster' hosting-dispatch &> /dev/null
+  $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."
   if [ ! -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then

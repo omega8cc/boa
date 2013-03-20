@@ -782,7 +782,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.1-d6.make ./
-  $_ROOT/tools/drush/drush make civicrm-4.1-d6.make $_THIS_DISTRO &> /dev/null
+  $_DRUSHCMD make civicrm-4.1-d6.make $_THIS_DISTRO &> /dev/null
   rm -f civicrm-4.1-d6.make
   replace_drupal6_core
   enable_drupal6_contrib
@@ -826,7 +826,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.2-d7.make ./
-  $_ROOT/tools/drush/drush make civicrm-4.2-d7.make $_THIS_DISTRO &> /dev/null
+  $_DRUSHCMD make civicrm-4.2-d7.make $_THIS_DISTRO &> /dev/null
   rm -f civicrm-4.2-d7.make
   init_core_distro_seven_root
   rename_drupal7_profiles
@@ -873,7 +873,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm3.make ./
-  $_ROOT/tools/drush/drush make civicrm3.make $_THIS_DISTRO &> /dev/null
+  $_DRUSHCMD make civicrm3.make $_THIS_DISTRO &> /dev/null
   rm -f civicrm3.make
   replace_drupal6_core
   enable_drupal6_contrib
@@ -1563,7 +1563,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   echo "projects[$_THIS_PRNAME][type] = \"profile\"" >> fserver.make
   echo "projects[$_THIS_PRNAME][download][type] = \"git\"" >> fserver.make
   echo "projects[$_THIS_PRNAME][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/$_THIS_PRNAME.git\"" >> fserver.make
-  $_ROOT/tools/drush/drush make fserver.make $_THIS_DISTRO &> /dev/null
+  $_DRUSHCMD make fserver.make $_THIS_DISTRO &> /dev/null
   rm -f fserver.make
   replace_drupal6_core
   rm -f -r $_CORE_DISTRO/profiles/default
@@ -2674,7 +2674,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   cd $_CORE
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/$_THIS_PRNAME.make ./
-  $_ROOT/tools/drush/drush make $_THIS_PRNAME.make $_THIS_DISTRO &> /dev/null
+  $_DRUSHCMD make $_THIS_PRNAME.make $_THIS_DISTRO &> /dev/null
   rm -f $_THIS_PRNAME.make
   replace_drupal6_core
   if [ $_VIDEOLA = "6.x-1.0-alpha2" ] ; then

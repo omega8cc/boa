@@ -2524,6 +2524,11 @@ barracuda_cnf () {
       sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
+    if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+      _DRUSH_CC_REQ=NO
+    else
+      _DRUSH_CC_REQ=YES
+    fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
@@ -3181,6 +3186,9 @@ upgrade_aegir_master () {
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
         mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+        if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
+          su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+        fi
         if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
           su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
         else
@@ -5815,7 +5823,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
   fi
-  if [ "$_USE_STOCK" = "YES" ] ; then
+  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   fi
   msg "INFO: Running hosting-dispatch (1/3), please wait..."

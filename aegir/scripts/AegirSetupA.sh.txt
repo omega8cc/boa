@@ -54,6 +54,7 @@ _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
 _DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
+_DRUSH_CC_REQ=EDIT_DRUSH_CC_REQ
 _ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _MART_PLUG=EDIT_MART_PLUG
@@ -136,6 +137,8 @@ if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
 else
   _L_PHP_CLI=/usr/local/bin
 fi
+_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
+#
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -304,7 +307,7 @@ REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/fserver" ] ; then
     if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
-      cd; /var/aegir/drush/drush dl strongarm-6.x-2.2 --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
+      cd; $_DRUSHCMD dl strongarm-6.x-2.2 --destination=/data/all/$i/fserver/profiles/feature_server/modules &> /dev/null
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
@@ -313,7 +316,7 @@ for i in $REVISIONS; do
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
-        su -s /bin/bash - $_USER -c "drush --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
+        su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
       fi
       msg "UPGRADE A: Missing strongarm added to /data/all/$i/fserver"
     fi
@@ -889,23 +892,26 @@ else
   if [ ! -e "$_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
     mv -f $_ROOT/.$_USER.pass.txt $_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     main_dbuser_reborn
-    su -s /bin/bash - $_USER -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
+    su -s /bin/bash - $_USER -c "$_DRUSHCMD @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
+      $_DRUSHCMD cache-clear drush &> /dev/null
+    fi
     if [ -e "$_ROOT/.drush/server_localhost.alias.drushrc.php" ] ; then
-      su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
+      su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
     else
-      su -s /bin/bash $_USER -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
+      su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster hosting-task @server_master verify --force &> /dev/null"
     fi
     msg "$_STATUS A: Running hosting-dispatch (1/3), please wait..."
-    drush '@hostmaster' hosting-dispatch &> /dev/null
+    $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
     mrun "sleep 5"
     msg "$_STATUS A: Running hosting-dispatch (2/3), please wait..."
-    drush '@hostmaster' hosting-dispatch &> /dev/null
+    $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
     mrun "sleep 5"
     msg "$_STATUS A: Running hosting-dispatch (3/3), please wait..."
-    drush '@hostmaster' hosting-dispatch &> /dev/null
+    $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   fi
 fi
 mrun "sleep 1"

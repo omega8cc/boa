@@ -39,6 +39,7 @@ _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DOMAIN=EDIT_DOMAIN
+_DRUSH_CC_REQ=NO
 _DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _FROM_SOURCES=EDIT_FROM_SOURCES
@@ -99,12 +100,14 @@ hostmaster_dr_up () {
   if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
     git clone http://git.drupal.org/project/drush.git &> /dev/null
     rm -f -r $_ROOT/drush/.git &> /dev/null
+    _DRUSH_CC_REQ=YES
   elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
     get_dev_ext "drush4.tar.gz" &> /dev/null
   else
     wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
     tar -xzf drush-$_DRUSH_VERSION.tar.gz
     rm -f drush-$_DRUSH_VERSION.tar.gz
+    _DRUSH_CC_REQ=YES
   fi
   update_php_cli_drush
   if $_DRUSHCMD help > /dev/null ; then
@@ -201,6 +204,9 @@ hostmaster_go_up () {
 hostmaster_mi_up () {
   msg "INFO: Running hostmaster-migrate, please wait..."
   export DEBIAN_FRONTEND=noninteractive
+  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
+    $_DRUSHCMD cache-clear drush &> /dev/null
+  fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y -d
   else
