@@ -898,7 +898,6 @@ _REDIS_VERSION=2.6.11
 if [ "$_USE_STOCK" = "YES" ] ; then
   _DRUSH_VERSION=7.x-5.8
   _DRUSH_FAMILY=5
-  _HTTP_WILDCARD=NO
 fi
 
 ###
