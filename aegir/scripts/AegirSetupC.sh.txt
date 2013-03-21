@@ -649,7 +649,7 @@ _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COD="Conference 1.0-rc2 $_SMALLCORE6 P.$_THIS_CORE"
-_F_COM_MERCE="Commerce 2.4 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COM_MERCE="Commerce 2.5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.16 $_SMALLCORE7 P.$_THIS_CORE"
 _F_D6COMMONS="Commons 2.12 $_SMALLCORE6 P.$_THIS_CORE"
 _F_D7COMMONS="Commons 3.0 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1032,7 +1032,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_COM_MERCE $_THIS_DISTRO
   fi
   replace_drupal7_core
-  if [ $_COM_MERCE = "7.x-2.4" ] ; then
+  if [ $_COM_MERCE = "7.x-2.4" ] || [ $_COM_MERCE = "7.x-2.5" ] ; then
     cd $_THIS_PRPATH/modules/contrib
     rm -f -r {message_notify}
     wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.4.tar.gz
