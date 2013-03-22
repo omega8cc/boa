@@ -128,28 +128,33 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 Octopus can install the platforms listed below:
 
- Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
- CiviCRM 4.1.6-d6 ------------- http://civicrm.org
- CiviCRM 4.2.8-d7 ------------- http://civicrm.org
+### Drupal 7
+
+ CiviCRM 4.2.8 ---------------- http://civicrm.org
  Commerce 1.16 ---------------- http://drupalcommerce.org
  Commerce 2.5 ----------------- http://drupalcommerce.org
- Commons 2.12 ----------------- http://acquia.com/drupalcommons
  Commons 3.0 ------------------ http://acquia.com/drupalcommons
- Conference 1.0-rc2 ----------- http://usecod.com
  Drupal 7.21.1 ---------------- http://drupal.org/drupal-7.21
- Feature Server 1.2 ----------- http://bit.ly/fserver
- Managing News 1.2.3 ---------- http://managingnews.com
  NodeStream 2.0-rc4 ----------- http://nodestream.org
- Open Atrium 1.7.1 ------------ http://openatrium.com
  Open Deals 1.18 -------------- http://opendealsapp.com
  Open Outreach 1.0-rc10 ------- http://openoutreach.org
  OpenChurch 1.11-beta8 -------- http://openchurchsite.com
  OpenPublish 3.0-beta7 -------- http://openpublishapp.com
  Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
+ Ubercart 3.4.1 --------------- http://ubercart.org
+
+### Pressflow 6
+
+ Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
+ CiviCRM 4.1.6 ---------------- http://civicrm.org
+ Commons 2.12 ----------------- http://acquia.com/drupalcommons
+ Conference 1.0-rc2 ----------- http://usecod.com
+ Feature Server 1.2 ----------- http://bit.ly/fserver
+ Managing News 1.2.3 ---------- http://managingnews.com
+ Open Atrium 1.7.1 ------------ http://openatrium.com
  Pressflow 6.28.1 (int) ------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
  Ubercart 2.11.1 (int) -------- http://ubercart.org
- Ubercart 3.4.1 --------------- http://ubercart.org
 
 There are also platforms temporarily disabled for new installs,
 because they are either outdated, with numerous security updates
@@ -177,7 +182,7 @@ will fix all critical issues and/or apply required updates:
  OpenScholar ------------------ http://openscholar.harvard.edu
  Videola ---------------------- http://videola.tv
 
-All D5/D6 platforms have been enhanced using Pressflow Drupal core.
+All D6 platforms have been enhanced using Pressflow Drupal core.
 
 All D7 platforms include some hotfixes published between latest
 Drupal core release and latest BOA release.
