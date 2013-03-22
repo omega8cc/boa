@@ -15,6 +15,11 @@ if (isset($_SERVER['REMOTE_ADDR'])) {
   }
 }
 
+// Required for proper Redis support on command line / via Drush
+if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
+}
+
 $conf['page_compression'] = 0;    // required in Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
 $conf['cron_safe_threshold'] = 0; // disable poormanscron
@@ -252,10 +257,6 @@ if (function_exists('drush_get_command')) {
     $use_cache = FALSE;
     $da_inc    = FALSE;
   }
-}
-
-if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
-  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
 }
 
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
