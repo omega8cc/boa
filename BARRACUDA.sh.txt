@@ -1116,7 +1116,7 @@ fix_php_ini_redis () {
   fi
 }
 #
-# Set or update Redis password..
+# Set or update Redis password.
 update_redis_password () {
   if [ -e "/etc/redis/redis.conf" ] ; then
     if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
@@ -2607,7 +2607,7 @@ install_libmemcached () {
   fi
 }
 #
-# Install extensions for PHP universal
+# Install extensions for PHP universal.
 install_php_extensions () {
   ###--------------------###
   msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -2662,7 +2662,7 @@ install_php_extensions () {
   fi
 }
 #
-# Install more extensions for PHP universal
+# Install more extensions for PHP universal.
 install_php_extensions_more () {
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -2743,7 +2743,7 @@ install_php_extensions_more () {
   fi
 }
 #
-# Update PHP universal
+# Update PHP universal.
 update_php_universal () {
   ###--------------------###
   if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
@@ -2812,7 +2812,7 @@ update_php_universal () {
   fi
 }
 #
-# Update PHP universal more
+# Update PHP universal more.
 update_php_universal_more () {
   ###--------------------###
   if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
@@ -3477,7 +3477,7 @@ update_php_cli_cron () {
   fi
 }
 #
-# Update New Relic
+# Update New Relic.
 update_newrelic () {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
@@ -3528,7 +3528,7 @@ update_newrelic () {
   fi
 }
 #
-# Install New Relic
+# Install New Relic.
 install_newrelic () {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
