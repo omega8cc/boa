@@ -94,7 +94,6 @@ _DEBUG_MODE=EDIT_DEBUG_MODE
 _DISTRO=EDIT_DISTRO
 _DOMAIN=EDIT_DOMAIN
 _DRUSH_CC_REQ=NO
-_DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _HM_DISTRO=EDIT_HM_DISTRO
 _HM_ONLY=EDIT_HM_ONLY
@@ -319,11 +318,6 @@ else
   tar -xzf drush-$_DRUSH_VERSION.tar.gz
   rm -f drush-$_DRUSH_VERSION.tar.gz
   _DRUSH_CC_REQ=YES
-fi
-if [ "$_DRUSH_FAMILY" = "3" ] ; then
-  cd $_ROOT/tools/drush
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-  patch -p0 < user.drush.inc.patch &> /dev/null
 fi
 if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
   sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null
@@ -670,13 +664,8 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     mv -f make_home.php.txt make_home.php &> /dev/null
     $_DRUSHCMD php-script make_home &> /dev/null
     rm -f make_home.php
-    if [ "$_DRUSH_FAMILY" = "3" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client_3.php.txt ./
-      mv -f make_client_3.php.txt make_client.php &> /dev/null
-    else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
-      mv -f make_client.php.txt make_client.php &> /dev/null
-    fi
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_client.php.txt ./
+    mv -f make_client.php.txt make_client.php &> /dev/null
     if [ "$_THIS_DB_HOST" = "localhost" ] ; then
       $_DRUSHCMD @hostmaster sqlq "UPDATE hosting_platform SET status=-1 WHERE nid=7" &> /dev/null
     else

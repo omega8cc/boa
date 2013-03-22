@@ -882,7 +882,6 @@ _INSTALLER_VERSION=BOA-2.0.6-dev
 _APC_VERSION=3.1.13
 _BZR_VERSION=2.3.4
 _CHIVE_VERSION=1.2
-_DRUSH_FAMILY=4
 _DRUSH_VERSION=4.6-dev
 _GEOS_VERSION=3.3.7
 _GIT_VERSION=1.8.1.3
@@ -897,7 +896,6 @@ _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.6.11
 if [ "$_USE_STOCK" = "YES" ] ; then
   _DRUSH_VERSION=7.x-5.8
-  _DRUSH_FAMILY=5
 fi
 
 ###
@@ -3159,7 +3157,6 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -3212,12 +3209,6 @@ upgrade_aegir_master () {
     sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
     update_redis_password
     force_advanced_nginx_config
-    if [ "$_DRUSH_FAMILY" = "3" ] ; then
-      cd /var/aegir/drush
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch ./
-      patch -p0 < user.drush.inc.patch &> /dev/null
-      chown -R aegir:aegir /var/aegir/drush &> /dev/null
-    fi
     if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
       sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
     fi
@@ -5785,7 +5776,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
-    sed -i "s/EDIT_DRUSH_FAMILY/$_DRUSH_FAMILY/g"          $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
     sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
@@ -5864,11 +5854,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
   update_redis_password
   force_advanced_nginx_config
-  if [ "$_DRUSH_FAMILY" = "3" ] ; then
-    cd /var/aegir/drush
-    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/user.drush.inc.patch &> /dev/null
-    chown -R aegir:aegir /var/aegir/drush &> /dev/null
-  fi
   if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
     sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
   fi

@@ -95,7 +95,6 @@ _CLIENT_OPTION=EDIT_CLIENT_OPTION
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DISTRO=EDIT_DISTRO
 _DOMAIN=EDIT_DOMAIN
-_DRUSH_FAMILY=EDIT_DRUSH_FAMILY
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _HM_DISTRO=EDIT_HM_DISTRO
 _HM_ONLY=EDIT_HM_ONLY
@@ -2779,13 +2778,8 @@ else
   #msg "_THIS_HOSTMASTER is $_THIS_HOSTMASTER (2)"
   cd $_THIS_HOSTMASTER
 fi
-if [ $_DRUSH_FAMILY = "3" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform_3.php.txt ./
-  mv -f make_platform_3.php.txt make_platform.php &> /dev/null
-else
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
-  mv -f make_platform.php.txt make_platform.php &> /dev/null
-fi
+cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
+mv -f make_platform.php.txt make_platform.php &> /dev/null
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6 &> /dev/null
