@@ -3614,6 +3614,8 @@ get_drush_versions () {
   if [ ! -L "/usr/bin/drush6" ] && [ -e "/opt/tools/drush/6/drush/drush" ] ; then
     ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
   fi
+  chmod 755 /opt/tools/drush/*/drush/drush
+  chmod 755 /opt/tools/drush/*/drush/drush.php
   cd /opt/tmp
 }
 
