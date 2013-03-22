@@ -480,7 +480,7 @@ upgrade_entity () {
 #
 # upgrade ctools and entity
 upgrade_ctools_entity_more () {
-  rm -f -r {apps,calendar,ctools,date,email,entity,facetapi,features,fontyourface,libraries,module_filter,pathauto,search_api,simple_gmap,taxonomy_menu,token,views,views_bulk_operations}
+  rm -f -r {apps,calendar,ctools,date,email,entity,facetapi,features,fontyourface,libraries,module_filter,panels_breadcrumbs,pathauto,search_api,simple_gmap,taxonomy_menu,token,views,views_bulk_operations}
   wget -q -U iCab http://ftp.drupal.org/files/projects/apps-7.x-1.0-beta7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/calendar-7.x-3.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.2.tar.gz
@@ -492,6 +492,7 @@ upgrade_ctools_entity_more () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/fontyourface-7.x-2.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_filter-7.x-1.7.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/panels_breadcrumbs-7.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/search_api-7.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/simple_gmap-7.x-1.0.tar.gz
@@ -984,8 +985,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_THIS_PRPATH
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
   patch -p1 < $_THIS_PRNAME.patch &> /dev/null
-  #cd $_THIS_PRPATH/modules
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1045,8 +1046,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_THIS_PRPATH
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
   patch -p1 < $_THIS_PRNAME.patch &> /dev/null
-  #cd $_THIS_PRPATH/modules
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1166,6 +1167,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
   sed -i "s/name = Commons/name = Commons 3/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1810,8 +1813,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2030,8 +2033,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2077,8 +2080,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2171,8 +2174,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2308,8 +2311,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity_more
   cd $_THIS_PRPATH/modules/contrib
   rm -f -r feeds filefield_sources google_analytics
   wget -q -U iCab http://ftp.drupal.org/files/projects/feeds-7.x-2.0-alpha7.tar.gz
@@ -2423,8 +2426,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ -d "$_CORE_DISTRO/sites/all/modules/panopoly_demo" ] && [ ! -d "$_THIS_PRPATH/modules/panopoly/panopoly_demo" ] ; then
     mv -f $_CORE_DISTRO/sites/all/modules/panopoly_demo $_THIS_PRPATH/modules/panopoly/ &> /dev/null
   fi
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_ctools_entity_more
   patch_d7_core
 fi
 init_this_distro_root
