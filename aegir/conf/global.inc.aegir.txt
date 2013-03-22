@@ -254,6 +254,10 @@ if (function_exists('drush_get_command')) {
   }
 }
 
+if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
+  $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
+}
+
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
@@ -276,8 +280,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = $_SERVER['SERVER_NAME'] . '.';
-  header("X-Server-Prefix: " . $this_prefix);
+  $this_prefix = $_SERVER['SERVER_NAME'] . '_';
+  header("X-Redis-Prefix: " . $this_prefix);
 
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
