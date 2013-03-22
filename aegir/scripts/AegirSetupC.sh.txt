@@ -1608,10 +1608,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   cd $_CORE
   _MANAGINGNEWS_DL=1.2
-  get_distro_ext "$_THIS_PRNAME-$_MANAGINGNEWS_DL.tar.gz" &> /dev/null
   if [ -d "$_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old
   fi
+  get_distro_ext "$_THIS_PRNAME-$_MANAGINGNEWS_DL.tar.gz" &> /dev/null
   mv $_THIS_PRNAME-$_MANAGINGNEWS_DL $_THIS_DISTRO
   if [ -d "$_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
     mv $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL
