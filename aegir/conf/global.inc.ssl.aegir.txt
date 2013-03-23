@@ -456,7 +456,9 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    $conf['lock_inc']                         = $cache_lock_path;
+    if (file_exists($cache_lock_path)) {
+      $conf['lock_inc']                       = $cache_lock_path;
+    }
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
     $conf['redis_client_host']                = '127.0.0.1';
