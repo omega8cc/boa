@@ -425,7 +425,7 @@ if (file_exists('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
 }
 
-// Use redis caching only for d6 and d7 profiles.
+// Use Redis caching and lock support only for d6 and d7 profiles.
 if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
@@ -442,12 +442,13 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   elseif (file_exists('./modules/o_contrib/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_redis_path = './modules/o_contrib/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib/redis/redis.lock.inc';
+    $cache_lock_path = './modules/o_contrib/redis/redis.lock.d6.inc';
   }
   if ($cache_redis) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
+    $conf['lock_inc']                         = $cache_lock_path;
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
     $conf['redis_client_host']                = '127.0.0.1';
