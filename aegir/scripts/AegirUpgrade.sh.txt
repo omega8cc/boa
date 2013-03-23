@@ -90,6 +90,32 @@ get_dev_ext () {
   fi
 }
 #
+hostmaster_mv_up () {
+  msg "INFO: Moving old directories"
+  mkdir -p $_ROOT/backups/system
+  chmod 700 $_ROOT/backups/system
+  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/provision_cdn-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
+  mv -f $_ROOT/.drush/provision $_ROOT/backups/system/provision-pre-$_DISTRO-$_NOW &> /dev/null
+  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/system/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
+  if [ -e "$_ROOT/.drush/provision_boost" ] ; then
+    mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+  if [ -e "$_ROOT/.drush/provision_cdn" ] ; then
+    mv -f $_ROOT/.drush/provision_cdn $_ROOT/backups/system/provision_cdn-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+  if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
+    mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+  if [ -e "$_ROOT/.drush/clean_missing_modules" ] ; then
+    mv -f $_ROOT/.drush/clean_missing_modules $_ROOT/backups/system/clean_missing_modules-pre-$_DISTRO-$_NOW &> /dev/null
+  fi
+}
+#
 hostmaster_dr_up () {
   msg "INFO: Downloading drush, please wait..."
   mkdir -p $_ROOT/backups/system
@@ -116,32 +142,6 @@ hostmaster_dr_up () {
     msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
     touch /opt/tmp/status-AegirUpgrade-FAIL
     exit 1
-  fi
-}
-#
-hostmaster_mv_up () {
-  msg "INFO: Moving old directories"
-  mkdir -p $_ROOT/backups/system
-  chmod 700 $_ROOT/backups/system
-  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision_cdn-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/system/provision-pre-$_DISTRO-$_NOW &> /dev/null
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/system/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
-  if [ -e "$_ROOT/.drush/provision_boost" ] ; then
-    mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_cdn" ] ; then
-    mv -f $_ROOT/.drush/provision_cdn $_ROOT/backups/system/provision_cdn-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
-    mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/clean_missing_modules" ] ; then
-    mv -f $_ROOT/.drush/clean_missing_modules $_ROOT/backups/system/clean_missing_modules-pre-$_DISTRO-$_NOW &> /dev/null
   fi
 }
 #
@@ -305,8 +305,8 @@ if [ ! -d "/var/aegir/.drush/provision/http" ] ; then
 fi
 if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
-  hostmaster_dr_up
   hostmaster_mv_up
+  hostmaster_dr_up
   hostmaster_go_up
   hostmaster_mi_up
 else

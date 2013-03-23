@@ -322,22 +322,9 @@ fi
 if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
   sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null
 fi
-# if [ "$_DRUSH_VERSION" = "7.x-4.6" ] ; then
-#   cd $_ROOT/tools/drush
-#   wget -q -U iCab http://drupal.org/files/issues/alias-name-drush4.patch
-#   patch -R -p1 < alias-name-drush4.patch &> /dev/null
-# fi
 
 update_php_cli_drush
 
-if $_DRUSHCMD help > /dev/null ; then
-  msg "$_STATUS B: Drush seems to be functioning properly"
-else
-  msg "$_STATUS B: FATAL ERROR: Drush is broken ($DRUSH help failed)"
-  msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
-  touch /opt/tmp/status-AegirSetupB-FAIL
-  exit 1
-fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
@@ -368,6 +355,15 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ -e "$_ROOT/.drush/provision_site_backup" ] ; then
     mv -f $_ROOT/.drush/provision_site_backup $_ROOT/backups/system/provision_site_backup-pre-$_DISTRO-$_NOW &> /dev/null
   fi
+fi
+
+if $_DRUSHCMD help > /dev/null ; then
+  msg "$_STATUS B: Drush seems to be functioning properly"
+else
+  msg "$_STATUS B: FATAL ERROR: Drush is broken ($DRUSH help failed)"
+  msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
+  touch /opt/tmp/status-AegirSetupB-FAIL
+  exit 1
 fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush
