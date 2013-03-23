@@ -400,7 +400,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r $_ROOT/.drush/provision/remote_import/.git
   git clone --branch master git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra  &> /dev/null
   rm -f -r $_ROOT/.drush/provision_tasks_extra/.git
-  git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild           &> /dev/null
+  git clone --branch 7.x-1.x-o8 git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild           &> /dev/null
   rm -f -r $_ROOT/.drush/registry_rebuild/.git
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn                 &> /dev/null
   rm -f -r $_ROOT/.drush/provision_cdn/.git
