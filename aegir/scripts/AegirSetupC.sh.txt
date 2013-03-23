@@ -1104,18 +1104,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_CORE/commons $_CORE_DISTRO
   fi
   replace_drupal6_core
-  if [ $_D6COMMONS = "6.x-1.3" ] ; then
-    cd $_THIS_PRPATH
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1045778-fix-aegir-installs.patch ./
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons-1060250-aegir-infinite-loop.patch ./
-    patch -p1 < commons-1045778-fix-aegir-installs.patch &> /dev/null
-    mrun "sleep 1"
-    patch -p1 < commons-1060250-aegir-infinite-loop.patch &> /dev/null
-    cd $_CORE_DISTRO
+  if [ $_D6COMMONS = "6.x-2.12" ] ; then
+    cd $_THIS_PRPATH/modules/contrib/og
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
+    patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
   fi
-  cd $_THIS_PRPATH/modules/contrib/og
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
-  patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
   rm -f -r $_CORE_DISTRO/profiles/default
   enable_drupal6_contrib
   sed -i "s/'Commons'/'Commons 2'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
