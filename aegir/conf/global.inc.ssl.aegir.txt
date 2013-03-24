@@ -416,7 +416,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
     if (!empty($known_bot)) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
-        $expire_in_seconds = '3600';
+        $expire_in_seconds = '86400';
       }
     }
 
