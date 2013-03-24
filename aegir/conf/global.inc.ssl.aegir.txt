@@ -224,8 +224,8 @@ if (file_exists('/var/run/redis.pid')) {
   $redis_up = TRUE;
 }
 
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/cache/NO.txt') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache/NO.txt'))) {
+if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/redis_cache_disable.info') ||
+    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_cache_disable.info'))) {
   $use_cache = FALSE;
 }
 
@@ -368,16 +368,16 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     }
 
     if (!isset($_COOKIE[$test_sess_name])) {
-      if (file_exists('sites/all/modules/cache_quarter/YES.txt') ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_quarter/YES.txt')) {
+      if (file_exists('sites/all/modules/nginx_cache_quarter.info') ||
+          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_quarter.info')) {
         $expire_in_seconds = '900';
       }
-      elseif (file_exists('sites/all/modules/cache_hour/YES.txt') || $force_redis || $high_traffic ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_hour/YES.txt')) {
+      elseif (file_exists('sites/all/modules/nginx_cache_hour.info') || $force_redis || $high_traffic ||
+          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_hour.info')) {
         $expire_in_seconds = '3600';
       }
-      elseif (file_exists('sites/all/modules/cache_day/YES.txt') ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cache_day/YES.txt')) {
+      elseif (file_exists('sites/all/modules/nginx_cache_day.info') ||
+          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_day.info')) {
         $expire_in_seconds = '86400';
       }
     }
