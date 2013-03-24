@@ -97,6 +97,7 @@ $is_cart      = FALSE;
 $is_dev       = FALSE;
 $high_traffic = FALSE;
 $da_inc       = FALSE;
+$redis_lock   = FALSE;
 
 /**
  * Optional extra settings
@@ -448,7 +449,11 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if (file_exists($cache_lock_path)) {
+    if (file_exists('sites/all/modules/redis_lock_enable.info') ||
+        file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_lock_enable.info')) {
+      $redis_lock = TRUE;
+    }
+    if (file_exists($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
     }
     $conf['cache_backends'][]                 = $cache_redis_path;
