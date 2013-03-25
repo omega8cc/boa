@@ -13,6 +13,8 @@ check_generate () {
   if [ -e "$_L_SYS" ] ; then
     _ESC_APASS=`cat $_L_SYS`
   else
+    echo "INFO: Expected file $_L_SYS does not exist"
+    echo "INFO: We will generate new random secure password"
     _ESC_APASS=$(randpass 32 esc)
     echo "$_ESC_APASS" > $_L_SYS
   fi
@@ -20,6 +22,8 @@ check_generate () {
   _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
   _LEN_APASS=$(echo ${#_ESC_APASS})
   if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
+     echo "WARN: The random password=$_ESC_APASS does not look good"
+     echo "INFO: We will generate new random password using pwgen tool"
     _ESC_APASS=`pwgen -v -s -1`
     _ESC_APASS=`sanitize_string "$_ESC_APASS"`
     _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
@@ -40,7 +44,9 @@ do_syncpass () {
       su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='aegir_root'\" &> /dev/null"
       sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
       sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
-      echo "Fixed Aegir Master Instance system user=aegir_root with new system password=$_ESC_APASS encoded=$_ENC_APASS"
+      echo "INFO: Fixed Aegir Master Instance system user=aegir_root"
+      echo "INFO: New system password=$_ESC_APASS encoded=$_ENC_APASS"
+      echo "BYE!"
     else
       if [ -e "/data/disk/$uname" ] ; then
         _L_SYS="/data/disk/$uname/.$uname.pass.txt"
@@ -51,15 +57,17 @@ do_syncpass () {
         su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$uname'\" &> /dev/null"
         sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_localhost.alias.drushrc.php &> /dev/null
         sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_master.alias.drushrc.php &> /dev/null
-        echo "Fixed Aegir Satellite Instance system user=$uname with new system password=$_ESC_APASS encoded=$_ENC_APASS"
+        echo "INFO: Fixed Aegir Satellite Instance system user=$uname"
+        echo "INFO: New system password=$_ESC_APASS encoded=$_ENC_APASS"
+        echo "BYE!"
       else
-        echo "You must specify the existing Aegir instance username to fix"
+        echo "ERROR: You must specify the existing Aegir instance username to fix"
         exit 1
       fi
     fi
     exit 0
   else
-    echo "You must specify the existing Aegir instance username to fix"
+    echo "ERROR: You must specify the existing Aegir instance username to fix"
     exit 1
   fi
 }
