@@ -64,6 +64,18 @@ do_syncpass () {
   fi
 }
 
+check_root ()
+{
+  if [ `whoami` = "root" ] ; then
+    true
+  else
+    echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
+    exit 1
+  fi
+}
+
+check_root
+
 case "$1" in
   fix) uname="$2"
        do_syncpass

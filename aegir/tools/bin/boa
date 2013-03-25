@@ -190,6 +190,17 @@ set_pin_priority ()
   fi
 }
 
+check_root ()
+{
+  if [ `whoami` = "root" ] ; then
+    true
+  else
+    echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
+    exit 1
+  fi
+}
+
+check_root
 check_date
 set_pin_priority
 
