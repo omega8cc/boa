@@ -843,12 +843,15 @@ main_dbuser_reborn () {
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
   _ESC_PASS=$(randpass 32 esc)
+  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+  _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
   _LEN_PASS=$(echo ${#_ESC_PASS})
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+    _ENC_PASS="$_ESC_PASS"
   fi
-  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   echo "$_ESC_PASS" > $_ROOT/.$_USER.pass.txt
   chown $_USER:$_USRG $_ROOT/.$_USER.pass.txt &> /dev/null
   _AEGIR_HOST=`uname -n`
@@ -881,6 +884,8 @@ else
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" /data/disk/$_USER/.drush/server_localhost.alias.drushrc.php &> /dev/null
+    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" /data/disk/$_USER/.drush/server_master.alias.drushrc.php &> /dev/null
     if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
       $_DRUSHCMD cache-clear drush &> /dev/null
     fi

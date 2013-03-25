@@ -25,8 +25,8 @@ check_generate () {
      echo "WARN: The random password=$_ESC_APASS does not look good"
      echo "INFO: We will generate new random password using pwgen tool"
     _ESC_APASS=`pwgen -v -s -1`
-    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
     _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
     _ENC_APASS="$_ESC_APASS"
     echo "$_ESC_APASS" > $_L_SYS
     chmod 0600 $_L_SYS

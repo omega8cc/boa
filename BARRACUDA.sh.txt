@@ -3098,12 +3098,15 @@ check_apt_updates () {
 # Generate new secure password.
 main_dbuser_reborn () {
   _ESC_APASS=$(randpass 32 esc)
+  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+  _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
   _LEN_APASS=$(echo ${#_ESC_APASS})
   if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
     _ESC_APASS=`pwgen -v -s -1`
+    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
     _ESC_APASS=`sanitize_string "$_ESC_APASS"`
+    _ENC_APASS="$_ESC_APASS"
   fi
-  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
   echo "$_ESC_APASS" > $_L_SYS
   chown aegir:aegir $_L_SYS &> /dev/null
   chmod 0600 $_L_SYS
@@ -3180,6 +3183,8 @@ upgrade_aegir_master () {
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
         mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
         mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+        sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
+        sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
         if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
           su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
         fi
