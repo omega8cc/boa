@@ -7,15 +7,9 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ##    Manage ltd shell users    ##
 ###----------------------------###
 #
-# Escape borrowed from mysql_secure_installation.
-basic_single_escape () {
-  # The quoting on this sed command is a bit complex.  Single-quoted strings
-  # don't allow *any* escape mechanism, so they cannot contain a single
-  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
-  #
-  # Inside a character class, \ and ' are not special, so the ['\] character
-  # class is balanced and contains two characters.
-  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+# Remove dangerous stuff from the string.
+sanitize_string () {
+  echo "$1" | sed 's/[\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
 }
 #
 # Add ltd-shell group if not exists.
@@ -87,9 +81,10 @@ ok_create_user()
     touch $_TMP/$_USER_LTD.txt
     chmod 0600 $_TMP/$_USER_LTD.txt
     _ESC_LUPASS=$(randpass 32 alnum)
-    if [ -z "$_ESC_LUPASS" ] ; then
+    _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
-      _ESC_LUPASS=`basic_single_escape "$_ESC_LUPASS"`
+      _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
     _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_TMP/$_USER_LTD.txt

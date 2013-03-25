@@ -225,27 +225,22 @@ else
 fi
 }
 #
-# Escape borrowed from mysql_secure_installation.
-basic_single_escape () {
-  # The quoting on this sed command is a bit complex.  Single-quoted strings
-  # don't allow *any* escape mechanism, so they cannot contain a single
-  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
-  #
-  # Inside a character class, \ and ' are not special, so the ['\] character
-  # class is balanced and contains two characters.
-  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+# Remove dangerous stuff from the string.
+sanitize_string () {
+  echo "$1" | sed 's/[\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
 }
 #
-# Set or update Redis password..
+# Set or update Redis password.
 update_redis_password () {
   if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
     msg "INIT A: Generate random password for Redis server"
     touch /root/.redis.pass.txt
     chmod 0600 /root/.redis.pass.txt &> /dev/null
     _ESC_RPASS=$(randpass 32 alnum)
-    if [ -z "$_ESC_RPASS" ] ; then
+    _LEN_RPASS=$(echo ${#_ESC_RPASS})
+    if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
       _ESC_RPASS=`pwgen -v -s -1`
-      _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+      _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
     fi
     _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     echo "$_ESC_RPASS" > /root/.redis.pass.txt
@@ -848,9 +843,10 @@ main_dbuser_reborn () {
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
   _ESC_PASS=$(randpass 32 esc)
-  if [ -z "$_ESC_PASS" ] ; then
+  _LEN_PASS=$(echo ${#_ESC_PASS})
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
   fi
   _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   echo "$_ESC_PASS" > $_ROOT/.$_USER.pass.txt
@@ -1226,9 +1222,10 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     chmod 0600 $_ROOT/log/pass.txt
     # generate a nice secure password and put it in a file
     _ESC_LUPASS=$(randpass 32 alnum)
-    if [ -z "$_ESC_LUPASS" ] ; then
+    _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
-      _ESC_LUPASS=`basic_single_escape "$_ESC_LUPASS"`
+      _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
     _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
@@ -1352,9 +1349,10 @@ else
     touch $_ROOT/log/pass.txt
     chmod 0600 $_ROOT/log/pass.txt
     _ESC_LUPASS=$(randpass 32 alnum)
-    if [ -z "$_ESC_LUPASS" ] ; then
+    _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
-      _ESC_LUPASS=`basic_single_escape "$_ESC_LUPASS"`
+      _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
     _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt

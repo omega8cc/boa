@@ -1052,15 +1052,9 @@ st_runner () {
   fi
 }
 #
-# Escape borrowed from mysql_secure_installation.
-basic_single_escape () {
-  # The quoting on this sed command is a bit complex.  Single-quoted strings
-  # don't allow *any* escape mechanism, so they cannot contain a single
-  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
-  #
-  # Inside a character class, \ and ' are not special, so the ['\] character
-  # class is balanced and contains two characters.
-  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+# Remove dangerous stuff from the string.
+sanitize_string () {
+  echo "$1" | sed 's/[\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
 }
 #
 # Find correct IP.
@@ -1126,9 +1120,10 @@ update_redis_password () {
       touch /root/.redis.pass.txt
       chmod 0600 /root/.redis.pass.txt &> /dev/null
       _ESC_RPASS=$(randpass 32 alnum)
-      if [ -z "$_ESC_RPASS" ] ; then
+      _LEN_RPASS=$(echo ${#_ESC_RPASS})
+      if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
         _ESC_RPASS=`pwgen -v -s -1`
-        _ESC_RPASS=`basic_single_escape "$_ESC_RPASS"`
+        _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
       fi
       _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
       echo "$_ESC_RPASS" > /root/.redis.pass.txt
@@ -3103,9 +3098,10 @@ check_apt_updates () {
 # Generate new secure password.
 main_dbuser_reborn () {
   _ESC_APASS=$(randpass 32 esc)
-  if [ -z "$_ESC_APASS" ] ; then
+  _LEN_APASS=$(echo ${#_ESC_APASS})
+  if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
     _ESC_APASS=`pwgen -v -s -1`
-    _ESC_APASS=`basic_single_escape "$_ESC_APASS"`
+    _ESC_APASS=`sanitize_string "$_ESC_APASS"`
   fi
   _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
   echo "$_ESC_APASS" > $_L_SYS
@@ -5777,9 +5773,10 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=$(randpass 32 esc)
-  if [ -z "$_ESC_PASS" ] ; then
+  _LEN_PASS=$(echo ${#_ESC_PASS})
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
   fi
   _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   echo "$_ESC_PASS" > /root/.my.pass.txt
@@ -6505,9 +6502,10 @@ else
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
   _ESC_PASS=$(randpass 32 esc)
-  if [ -z "$_ESC_PASS" ] ; then
+  _LEN_PASS=$(echo ${#_ESC_PASS})
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`basic_single_escape "$_ESC_PASS"`
+    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
   fi
   _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   if [ ! -z "$_ESC_PASS" ] ; then

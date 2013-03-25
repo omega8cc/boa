@@ -73,15 +73,9 @@ get_dev_ext () {
   fi
 }
 #
-# Escape borrowed from mysql_secure_installation.
-basic_single_escape () {
-  # The quoting on this sed command is a bit complex.  Single-quoted strings
-  # don't allow *any* escape mechanism, so they cannot contain a single
-  # quote.  The string sed gets (as argv[1]) is:  s/\(['\]\)/\\\1/g
-  #
-  # Inside a character class, \ and ' are not special, so the ['\] character
-  # class is balanced and contains two characters.
-  echo "$1" | sed 's/\(['"'"'\]\)/\\\1/g'
+# Remove dangerous stuff from the string.
+sanitize_string () {
+  echo "$1" | sed 's/[\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
 }
 #
 ########################################################################
@@ -134,9 +128,10 @@ msg "Aegir will now generate a mysql super user password for you: "
 _AEGIR_DB_USER=aegir_root
 
 _ESC_APASS=$(randpass 32 esc)
-if [ -z "$_ESC_APASS" ] ; then
+_LEN_APASS=$(echo ${#_ESC_APASS})
+if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
   _ESC_APASS=`pwgen -v -s -1`
-  _ESC_APASS=`basic_single_escape "$_ESC_APASS"`
+  _ESC_APASS=`sanitize_string "$_ESC_APASS"`
 fi
 _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
 
