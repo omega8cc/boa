@@ -1,0 +1,50 @@
+#!/bin/bash
+
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
+_NOW=`date +%y%m%d-%H%M`
+
+syncpwd() {
+  if [ ! -z "$uname" ] ; then
+    if [ "$uname" = "aegir" ] && [ -e "/var/aegir/backups/system/.aegir_root.pass.txt" ] ; then
+      cp /var/aegir/.drush/server_localhost.alias.drushrc.php /var/backups/server_localhost.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
+      cp /var/aegir/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
+      _ESC_APASS=`cat /var/aegir/backups/system/.aegir_root.pass.txt`
+      _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+      su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='aegir_root'\" &> /dev/null"
+      _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
+      sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
+      sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
+      echo "Fixed Aegir Master Instance."
+    else
+      if [ -e "/data/disk/$uname" ] && [ -e "/data/disk/$uname/.$uname.pass.txt" ] ; then
+        cp /data/disk/$uname/.drush/server_localhost.alias.drushrc.php /var/backups/server_localhost.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
+        cp /data/disk/$uname/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
+        _ESC_APASS=`cat /data/disk/$uname/.$uname.pass.txt`
+        _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+        su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$uname'\" &> /dev/null"
+        _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
+        sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_localhost.alias.drushrc.php &> /dev/null
+        sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_master.alias.drushrc.php &> /dev/null
+        echo "Fixed Aegir Satellite Instance $uname."
+      else
+        echo "You must specify the existing Aegir instance username to fix."
+        exit 1
+      fi
+    fi
+    exit 0
+  else
+    echo "You must specify the existing Aegir instance username to fix."
+    exit 1
+  fi
+}
+
+case "$1" in
+  fix) uname="$2"
+       syncpwd
+  ;;
+  *)   echo "Usage: syncpwd fix {aegir|o1}"
+       exit 1
+  ;;
+esac
+
