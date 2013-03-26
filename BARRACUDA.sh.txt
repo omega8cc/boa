@@ -5698,12 +5698,6 @@ fi
 
 
 ###--------------------###
-msg "INFO: Installing extra Drush versions"
-mrun "sleep 1"
-get_drush_versions
-
-
-###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
   msg "INFO: Updating init scripts"
   mrun "sleep 1"
@@ -6096,6 +6090,12 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
     touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
   fi
 fi
+
+
+###--------------------###
+msg "INFO: Installing extra Drush versions"
+mrun "sleep 1"
+get_drush_versions
 
 
 ###--------------------###
