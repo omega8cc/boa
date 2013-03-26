@@ -6615,7 +6615,13 @@ if [ ! -e "/var/log/sysctl.conf.tuned.log" ] ; then
   sysctl vm.swappiness=10 &> /dev/null
   sysctl kernel.randomize_va_space=2 &> /dev/null
   sysctl net.ipv4.tcp_syncookies=1 &> /dev/null
-  touch /var/log/sysctl.conf.tuned.log
+  touch /var/log/sysctl.conf.swap.tuned.log
+  if [ -e "/boot/grub/menu.lst" ] ; then
+    msg "INFO: Cleaning up system swap, it may take a moment, please wait..."
+    mrun "sleep 1"
+    st_runner "swapoff -a" &> /dev/null
+    st_runner "swapon -a" &> /dev/null
+  fi
 fi
 APTEMAIL=${_MY_EMAIL//\@/\\\@}
 XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
