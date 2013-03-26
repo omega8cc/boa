@@ -3643,7 +3643,7 @@ get_drush_versions () {
   cd /opt/tools/drush/6/drush/lib
   get_dev_ext "Console_Table-1.1.3.tgz" &> /dev/null
   msg "INFO: Drush 6 installation complete"
-  find /opt/tools -type d -exec chmod 0711 {} \; &> /dev/null
+  find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   if [ ! -L "/usr/bin/drush4" ] && [ -e "/opt/tools/drush/4/drush/drush" ] ; then
     ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
