@@ -36,6 +36,7 @@ _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PHP_MODERN_ONLY=EDIT_PHP_MODERN_ONLY
 _REL_VERSION=`lsb_release -sc`
+_STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_STOCK=EDIT_USE_STOCK
 _LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
@@ -126,14 +127,20 @@ EOF
 msg "Aegir will now generate a mysql super user password for you: "
 
 _AEGIR_DB_USER=aegir_root
+_ESC_APASS=""
+_LEN_APASS=0
 
-_ESC_APASS=$(randpass 32 esc)
-_LEN_APASS=$(echo ${#_ESC_APASS})
+if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+  _ESC_APASS=$(randpass 32 esc)
+  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+  _LEN_APASS=$(echo ${#_ESC_APASS})
+fi
+
 if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
   _ESC_APASS=`pwgen -v -s -1`
+  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
   _ESC_APASS=`sanitize_string "$_ESC_APASS"`
 fi
-_ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
 
 cat <<EOF
   Username : $_AEGIR_DB_USER

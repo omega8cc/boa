@@ -704,6 +704,19 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
+### Use YES only if both "randpass 32 esc"
+### and "randpass 32 alnum" commands produce
+### well looking, strong passwords and not
+### some binary garbage, which is typically
+### a sign of unreliable /dev/urandom.
+### See: http://drupal.org/node/1952042
+###
+### By default new passwords are generated
+### with "pwgen -v -s -1" command.
+###
+_STRONG_PASSWORDS=NO
+
+###
 ### Extra packages to install. Useful to
 ### specify packages not included by default
 ### which could be otherwise removed because
@@ -1119,13 +1132,18 @@ update_redis_password () {
       msg "INFO: Generating random password for Redis server"
       touch /root/.redis.pass.txt
       chmod 0600 /root/.redis.pass.txt &> /dev/null
-      _ESC_RPASS=$(randpass 32 alnum)
-      _LEN_RPASS=$(echo ${#_ESC_RPASS})
+      _ESC_RPASS=""
+      _LEN_RPASS=0
+      if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+        _ESC_RPASS=$(randpass 32 alnum)
+        _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+        _LEN_RPASS=$(echo ${#_ESC_RPASS})
+      fi
       if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
         _ESC_RPASS=`pwgen -v -s -1`
+        _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
         _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
       fi
-      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
       echo "$_ESC_RPASS" > /root/.redis.pass.txt
       touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
       _FORCE_REDIS_RESTART=YES
@@ -2196,6 +2214,7 @@ barracuda_cnf () {
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
     echo "_EXTRA_PACKAGES=$_EXTRA_PACKAGES" >> /root/.barracuda.cnf
+    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -2418,6 +2437,12 @@ barracuda_cnf () {
       true
     else
       echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    fi
+    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf)
+    if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
+      true
+    else
+      echo "_STRONG_PASSWORDS=\"$_STRONG_PASSWORDS\"" >> /root/.barracuda.cnf
     fi
     _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG /root/.barracuda.cnf)
     if [[ "$_DB_BINARY_LOG_TEST" =~ "_DB_BINARY_LOG" ]] ; then
@@ -3097,10 +3122,14 @@ check_apt_updates () {
 #
 # Generate new secure password.
 main_dbuser_reborn () {
-  _ESC_APASS=$(randpass 32 esc)
-  _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
-  _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
-  _LEN_APASS=$(echo ${#_ESC_APASS})
+  _ESC_APASS=""
+  _LEN_APASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_APASS=$(randpass 32 esc)
+    _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
+    _ENC_APASS=$(python -c "import urllib; print urllib.quote('''$_ESC_APASS''')")
+    _LEN_APASS=$(echo ${#_ESC_APASS})
+  fi
   if [ -z "$_ESC_APASS" ] || [ $_LEN_APASS -lt 19 ] ; then
     _ESC_APASS=`pwgen -v -s -1`
     _ESC_APASS=`echo -n $_ESC_APASS | tr -d "\n"`
@@ -3165,6 +3194,7 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
@@ -5213,6 +5243,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
   sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh &> /dev/null
+  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
   if [ -e "/var/xdrago/cron/custom.txt" ] ; then
@@ -5256,6 +5287,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/=1444/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
   sed -i "s/=888/=$_LOAD_LIMIT_TWO/g"    /var/xdrago/second.sh &> /dev/null
+  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     sed -i "s/3600/3599/g" /var/xdrago/minute.sh &> /dev/null
@@ -5782,13 +5814,18 @@ if [ ! -e "/root/.my.pass.txt" ] ; then
   mrun "sleep 1"
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=$(randpass 32 esc)
-  _LEN_PASS=$(echo ${#_ESC_PASS})
+  _ESC_PASS=""
+  _LEN_PASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_PASS=$(randpass 32 esc)
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _LEN_PASS=$(echo ${#_ESC_PASS})
+  fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ESC_PASS=`sanitize_string "$_ESC_PASS"`
   fi
-  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   echo "$_ESC_PASS" > /root/.my.pass.txt
 fi
 if [ -e "/root/.my.pass.txt" ] ; then
@@ -6511,13 +6548,18 @@ else
   mv -f /root/.my.pass.txt-pre-* /var/backups/ &> /dev/null
   touch /root/.my.pass.txt
   chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=$(randpass 32 esc)
-  _LEN_PASS=$(echo ${#_ESC_PASS})
+  _ESC_PASS=""
+  _LEN_PASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_PASS=$(randpass 32 esc)
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _LEN_PASS=$(echo ${#_ESC_PASS})
+  fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
     _ESC_PASS=`sanitize_string "$_ESC_PASS"`
   fi
-  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
   if [ ! -z "$_ESC_PASS" ] ; then
     cp -af /root/.my.cnf /root/.my.cnf-pre-$_INSTALLER_VERSION-$_NOW
     cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-$_INSTALLER_VERSION-$_NOW

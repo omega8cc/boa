@@ -915,6 +915,7 @@ do
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
   sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
+  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
   sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files &> /dev/null

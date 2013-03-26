@@ -2,6 +2,7 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+_STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 
 ###----------------------------###
 ##    Manage ltd shell users    ##
@@ -80,13 +81,18 @@ ok_create_user()
     adduser $_USER_LTD $_WEBG
     touch $_TMP/$_USER_LTD.txt
     chmod 0600 $_TMP/$_USER_LTD.txt
-    _ESC_LUPASS=$(randpass 32 alnum)
-    _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    _ESC_LUPASS=""
+    _LEN_LUPASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _ESC_LUPASS=$(randpass 32 alnum)
+      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+      _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
+      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
-    _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_TMP/$_USER_LTD.txt
     ph=$(makepasswd --clearfrom=$_TMP/$_USER_LTD.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
     usermod -p $ph $_USER_LTD

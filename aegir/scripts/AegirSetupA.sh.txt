@@ -118,6 +118,7 @@ _REL_VERSION=`lsb_release -sc`
 _REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
+_STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _THISHTIP=EDIT_THISHTIP
@@ -236,13 +237,18 @@ update_redis_password () {
     msg "INIT A: Generate random password for Redis server"
     touch /root/.redis.pass.txt
     chmod 0600 /root/.redis.pass.txt &> /dev/null
-    _ESC_RPASS=$(randpass 32 alnum)
-    _LEN_RPASS=$(echo ${#_ESC_RPASS})
+    _ESC_RPASS=""
+    _LEN_RPASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _ESC_RPASS=$(randpass 32 alnum)
+      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+      _LEN_RPASS=$(echo ${#_ESC_RPASS})
+    fi
     if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
       _ESC_RPASS=`pwgen -v -s -1`
+      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
       _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
     fi
-    _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
     echo "$_ESC_RPASS" > /root/.redis.pass.txt
   fi
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
@@ -842,10 +848,14 @@ chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 main_dbuser_reborn () {
   touch $_ROOT/.$_USER.pass.txt
   chmod 0600 $_ROOT/.$_USER.pass.txt
-  _ESC_PASS=$(randpass 32 esc)
-  _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-  _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
-  _LEN_PASS=$(echo ${#_ESC_PASS})
+  _ESC_PASS=""
+  _LEN_PASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_PASS=$(randpass 32 esc)
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _ENC_PASS=$(python -c "import urllib; print urllib.quote('''$_ESC_PASS''')")
+    _LEN_PASS=$(echo ${#_ESC_PASS})
+  fi
   if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
     _ESC_PASS=`pwgen -v -s -1`
     _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
@@ -1226,13 +1236,18 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     touch $_ROOT/log/pass.txt
     chmod 0600 $_ROOT/log/pass.txt
     # generate a nice secure password and put it in a file
-    _ESC_LUPASS=$(randpass 32 alnum)
-    _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    _ESC_LUPASS=""
+    _LEN_LUPASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _ESC_LUPASS=$(randpass 32 alnum)
+      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+      _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
+      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
-    _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     # get the password hash
     ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
@@ -1353,13 +1368,18 @@ else
     cd $_ROOT/log
     touch $_ROOT/log/pass.txt
     chmod 0600 $_ROOT/log/pass.txt
-    _ESC_LUPASS=$(randpass 32 alnum)
-    _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    _ESC_LUPASS=""
+    _LEN_LUPASS=0
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      _ESC_LUPASS=$(randpass 32 alnum)
+      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
+      _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
+    fi
     if [ -z "$_ESC_LUPASS" ] || [ $_LEN_LUPASS -lt 19 ] ; then
       _ESC_LUPASS=`pwgen -v -s -1`
+      _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
-    _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
     usermod -p $ph $_USERFTP &> /dev/null
