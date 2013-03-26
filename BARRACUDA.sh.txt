@@ -2444,7 +2444,7 @@ barracuda_cnf () {
     if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
       true
     else
-      echo "_STRONG_PASSWORDS=\"$_STRONG_PASSWORDS\"" >> /root/.barracuda.cnf
+      echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
     fi
     _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG /root/.barracuda.cnf)
     if [[ "$_DB_BINARY_LOG_TEST" =~ "_DB_BINARY_LOG" ]] ; then
