@@ -138,7 +138,7 @@ Octopus can install the platforms listed below:
  NodeStream 2.0-rc4 ----------- http://nodestream.org
  Open Deals 1.18 -------------- http://opendealsapp.com
  Open Outreach 1.0-rc10 ------- http://openoutreach.org
- OpenChurch 1.11-beta8 -------- http://openchurchsite.com
+ OpenChurch 1.11-beta9 -------- http://openchurchsite.com
  OpenPublish 3.0-beta7 -------- http://openpublishapp.com
  Panopoly 1.0-rc3 ------------- http://drupal.org/project/panopoly
  Ubercart 3.4.1 --------------- http://ubercart.org
