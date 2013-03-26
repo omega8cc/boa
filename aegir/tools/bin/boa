@@ -36,6 +36,7 @@ octopus_install ()
         true
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
       fi
     fi
     bash /var/backups/OCTOPUS.sh.txt

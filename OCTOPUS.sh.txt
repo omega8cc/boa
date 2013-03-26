@@ -486,6 +486,23 @@ _USE_STOCK=NO
 
 
 ###----------------------------------------###
+### STRONG PASSWORDS                       ###
+###----------------------------------------###
+###
+### Use YES only if both "randpass 32 esc"
+### and "randpass 32 alnum" commands produce
+### well looking, strong passwords and not
+### some binary garbage, which is typically
+### a sign of unreliable /dev/urandom.
+### See: http://drupal.org/node/1952042
+###
+### By default new passwords are generated
+### with "pwgen -v -s -1" command.
+###
+_STRONG_PASSWORDS=NO
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -668,6 +685,7 @@ octopus_cnf () {
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
+    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf
     echo "### NOTE: the group of settings displayed bellow will be *overriden*" >> /root/.$_USER.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.$_USER.octopus.cnf
@@ -734,6 +752,15 @@ octopus_cnf () {
       true
     else
       echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
+    fi
+    if [ "$_LD_DOM" = "YES" ] ; then
+      _STRONG_PASSWORDS=YES
+    fi
+    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.$_USER.octopus.cnf)
+    if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
+      true
+    else
+      echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
     fi
     msg "NOTE! Please review all config options displayed below"
     sleep 3
