@@ -695,7 +695,7 @@ tune_memory_limits () {
     _USE_PHP=512
     _USE_APC=512
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=4
+      _L_PHP_FPM_WORKERS=6
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
@@ -709,7 +709,7 @@ tune_memory_limits () {
       _USE_PHP=512
       _USE_APC=1024
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _L_PHP_FPM_WORKERS=8
+        _L_PHP_FPM_WORKERS=12
       else
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
@@ -723,7 +723,7 @@ tune_memory_limits () {
         _USE_PHP=1024
         _USE_APC=1024
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=8
+          _L_PHP_FPM_WORKERS=12
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
@@ -736,7 +736,7 @@ tune_memory_limits () {
         _USE_PHP=512
         _USE_APC=256
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=2
+          _L_PHP_FPM_WORKERS=4
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
@@ -750,7 +750,7 @@ tune_memory_limits () {
       _USE_PHP=256
       _USE_APC=128
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _L_PHP_FPM_WORKERS=2
+        _L_PHP_FPM_WORKERS=4
       else
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
@@ -764,7 +764,7 @@ tune_memory_limits () {
     _USE_PHP="$_USE"
     _USE_APC="$_USE"
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=2
+      _L_PHP_FPM_WORKERS=4
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
