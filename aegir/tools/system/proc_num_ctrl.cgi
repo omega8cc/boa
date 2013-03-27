@@ -121,6 +121,13 @@ sub global_action
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
+    if ($PID ne "PID" && $USER =~ /tomcat/ && $COMMAND =~ /java/ && $TIME !~ /^(0:)/ && $STAT =~ /(Sl)/ && $CPU > 10)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $TIME $CPU $MEM $STAT" >> /var/xdrago/log/tomcat-java.kill.log`;
+    }
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
     {
       if ($COMMAND =~ /nginx/) {
