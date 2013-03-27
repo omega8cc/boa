@@ -570,7 +570,7 @@ msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mrun "sleep 1"
 mkdir -p $_AEGIR_ROOT/sites/all/{modules,themes,libraries}
 cd $_AEGIR_ROOT/profiles/hostmaster/modules
-get_dev_ext "aegir_custom_settings-6.x-1.12.tar.gz" &> /dev/null
+get_dev_ext "aegir_custom_settings.tar.gz" &> /dev/null
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_civicrm_cron.git  &> /dev/null
   rm -f -r hosting_civicrm_cron/.git
