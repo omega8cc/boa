@@ -190,6 +190,7 @@ hostmaster_go_up () {
     fi
     get_dev_ext "drush_make-6.x-2.3.tar.gz"    &> /dev/null
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
+    get_dev_ext "drush_ecl-7.x-1.1.tar.gz"     &> /dev/null
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null

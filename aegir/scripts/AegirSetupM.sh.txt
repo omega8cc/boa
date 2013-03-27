@@ -222,6 +222,7 @@ else
     git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_AEGIR_HOME/.drush/provision_boost   &> /dev/null
     rm -f -r $_AEGIR_HOME/.drush/provision_boost/.git
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
+    get_dev_ext "drush_ecl-7.x-1.1.tar.gz"     &> /dev/null
   else
     cd $_AEGIR_HOME/.drush
     wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
@@ -232,6 +233,7 @@ else
     get_dev_ext "provision_cdn.tar.gz"         &> /dev/null
     get_dev_ext "provision_boost.tar.gz"       &> /dev/null
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
+    get_dev_ext "drush_ecl-7.x-1.1.tar.gz"     &> /dev/null
   fi
 fi
 

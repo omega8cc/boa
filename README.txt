@@ -286,6 +286,7 @@ Core:
 
 Drush [E]xtensions [M]aster [S]atellite:
 
+ drush_ecl ------------------ [D6,D7] --- [S] [B] [EM,ES]
  drush_make ----------------- [D6,D7] --- [S] [B] [EM,ES]
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
 
