@@ -468,19 +468,25 @@ get_panopoly_apps () {
   rm -f *.tar.gz
 }
 #
-# upgrade entity only
-upgrade_entity () {
-  rm -f -r entity
-  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
+# upgrade contrib less
+upgrade_contrib_less () {
+  rm -f -r {rules,views}
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
+  cd views
+  # http://drupal.org/node/1766338#comment-6445882
+  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+  cd ../
 }
 #
-# upgrade ctools and entity
-upgrade_ctools_entity_more () {
-  rm -f -r {apps,calendar,ctools,date,email,entity,facetapi,features,fontyourface,libraries,module_filter,panels_breadcrumbs,pathauto,search_api,simple_gmap,taxonomy_menu,token,views,views_bulk_operations}
+# upgrade contrib more
+upgrade_contrib_more () {
+  rm -f -r {apps,calendar,ctools,date,email,entity,facetapi,features,fontyourface,libraries,module_filter,panels_breadcrumbs,pathauto,rules,search_api,simple_gmap,taxonomy_menu,token,views,views_bulk_operations}
   wget -q -U iCab http://ftp.drupal.org/files/projects/apps-7.x-1.0-beta7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/calendar-7.x-3.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.2.tar.gz
@@ -494,12 +500,13 @@ upgrade_ctools_entity_more () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_filter-7.x-1.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/panels_breadcrumbs-7.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/search_api-7.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/simple_gmap-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_menu-7.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_bulk_operations-7.x-3.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
@@ -508,6 +515,10 @@ upgrade_ctools_entity_more () {
   # http://drupal.org/node/1766338#comment-6445882
   wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+  cd ../ctools
+  # http://drupal.org/node/1494860#comment-6204438
+  wget -q -U iCab http://drupal.org/files/ctools-dependent-js-broken-with-jquery-1.7-1494860-30.patch
+  patch -p1 < ctools-dependent-js-broken-with-jquery-1.7-1494860-30.patch &> /dev/null
   cd ../apps
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
   patch -p1 < apps_msg.patch &> /dev/null
@@ -980,22 +991,15 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_COMMERCE $_THIS_DISTRO
   fi
   replace_drupal7_core
-  if [ $_COMMERCE = "7.x-1.16" ] ; then
-    cd $_THIS_PRPATH/modules
-    rm -f -r {views}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
-  fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
   patch -p1 < $_THIS_PRNAME.patch &> /dev/null
-  #cd $_THIS_PRPATH/modules
-  #upgrade_ctools_entity_more
+  if [ $_COMMERCE = "7.x-1.16" ] ; then
+    cd $_THIS_PRPATH/modules
+    upgrade_contrib_less
+  fi
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1041,7 +1045,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_COM_MERCE $_THIS_DISTRO
   fi
   replace_drupal7_core
-  if [ $_COM_MERCE = "7.x-2.4" ] || [ $_COM_MERCE = "7.x-2.5" ] ; then
+  if [ $_COM_MERCE = "7.x-2.5" ] ; then
     cd $_THIS_PRPATH/modules/contrib
     rm -f -r {message_notify}
     wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.4.tar.gz
@@ -1049,14 +1053,13 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
+    upgrade_contrib_less
   fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
   patch -p1 < $_THIS_PRNAME.patch &> /dev/null
-  #cd $_THIS_PRPATH/modules
-  #upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1156,24 +1159,22 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_D7COMMONS $_THIS_DISTRO
   fi
   replace_drupal7_core
-  if [ $_D7COMMONS = "7.x-3.0" ] ; then
+  if [ $_D7COMMONS = "7.x-3.1" ] ; then
     cd $_THIS_PRPATH/modules/contrib
-    rm -f -r {libraries,message_notify,title,votingapi}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.4.tar.gz
+    rm -f -r {commons_groups,commons_wikis,title}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/commons_groups-7.x-3.1.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/commons_wikis-7.x-3.1.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/title-7.x-1.0-alpha7.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/votingapi-7.x-2.11.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
+    #upgrade_contrib_less
   fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH
   sed -i "s/name = Commons/name = Commons 3/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1700,7 +1701,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     done
     rm -f *.tar.gz
   fi
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   cd $_THIS_PRPATH/modules/contrib/features
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
   patch -p1 < features-1265168-19-roles.patch &> /dev/null
@@ -1819,7 +1820,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1871,7 +1872,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   rm -f -r zencoder/.git
   rm -f -r $_THIS_PRPATH/modules/entity
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -1941,7 +1942,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   patch_d7_core
 fi
 init_this_distro_root
@@ -2038,8 +2039,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules/contrib
+  upgrade_contrib_less
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2094,8 +2095,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules
-  #upgrade_ctools_entity_more
+  cd $_THIS_PRPATH/modules
+  upgrade_contrib_less
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2142,7 +2143,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2196,11 +2197,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
+    #upgrade_contrib_less
   fi
   init_core_distro_seven_root
   remove_default_core_seven_profiles
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
   create_dirs
   themes_for_d7
   patch_d7_core
@@ -2249,7 +2249,7 @@ build_openpublic () {
   # http://drupal.org/node/1766338#comment-6445882
   wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   create_dirs
   patch_d7_core
   cd $_THIS_PRPATH/themes
@@ -2355,9 +2355,8 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
+    #upgrade_contrib_less
   fi
-  #cd $_THIS_PRPATH/modules/contrib
-  #upgrade_ctools_entity_more
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   create_dirs
@@ -2465,7 +2464,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv -f $_CORE_DISTRO/sites/all/modules/panopoly_demo $_THIS_PRPATH/modules/panopoly/ &> /dev/null
   fi
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_ctools_entity_more
+  upgrade_contrib_more
   patch_d7_core
 fi
 init_this_distro_root
@@ -2661,7 +2660,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
