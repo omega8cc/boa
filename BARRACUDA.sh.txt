@@ -6570,7 +6570,11 @@ else
     echo "password='$_ESC_PASS'" >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
     echo "$_ESC_PASS" > /root/.my.pass.txt
-    msg "INFO: New secure random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      msg "INFO: New secure random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+    else
+      msg "INFO: New random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+    fi
     mrun "sleep 1"
   fi
 fi
