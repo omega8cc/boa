@@ -133,7 +133,7 @@ Octopus can install the platforms listed below:
  CiviCRM 4.2.8 ---------------- http://civicrm.org
  Commerce 1.16 ---------------- http://drupalcommerce.org
  Commerce 2.5 ----------------- http://drupalcommerce.org
- Commons 3.0 ------------------ http://acquia.com/drupalcommons
+ Commons 3.1 ------------------ http://acquia.com/drupalcommons
  Drupal 7.21.1 ---------------- http://drupal.org/drupal-7.21
  NodeStream 2.0-rc4 ----------- http://nodestream.org
  Open Deals 1.18 -------------- http://opendealsapp.com
