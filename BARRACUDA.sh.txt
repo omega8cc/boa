@@ -4711,8 +4711,11 @@ fi
 
 ###--------------------###
 if [ -d "/etc/webmin" ] ; then
-  if [ ! -e "/var/log/webmin_new_apt.log" ] ; then
+  if [ ! -e "/var/log/webmin_update_apt_src.log" ] ; then
     cd /var/opt
+    echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
+    echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list.d/webmin.list
+    echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository sarge contrib" >> /etc/apt/sources.list.d/webmin.list
     _KEYS_SERVER_TEST=FALSE
     until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
       rm -f jcameron-key.asc*
@@ -4722,7 +4725,7 @@ if [ -d "/etc/webmin" ] ; then
     done
     cat jcameron-key.asc | apt-key add - &> /dev/null
     rm -f jcameron-key.asc*
-    touch /var/log/webmin_new_apt.log
+    touch /var/log/webmin_update_apt_src.log
   fi
 fi
 
@@ -6391,7 +6394,9 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
       msg "INFO: Installing Webmin Control Panel, please wait..."
       mrun "sleep 1"
       cd /var/opt
-      echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list
+      echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
+      echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list.d/webmin.list
+      echo "deb http://webmin.mirror.somersettechsolutions.co.uk/repository sarge contrib" >> /etc/apt/sources.list.d/webmin.list
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
         rm -f jcameron-key.asc*
@@ -6401,7 +6406,7 @@ if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
       done
       cat jcameron-key.asc | apt-key add - &> /dev/null
       rm -f jcameron-key.asc*
-      touch /var/log/webmin_new_apt.log
+      touch /var/log/webmin_update_apt_src.log
       st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "$_INSTAPP webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
       update-rc.d webmin defaults &> /dev/null
