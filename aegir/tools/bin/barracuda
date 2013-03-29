@@ -94,10 +94,14 @@ up_action ()
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
         if [ "$silent" = "system" ] ; then
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
+        else
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
         fi
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         check_report
       else
+        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
         bash /var/backups/BARRACUDA.sh.txt
       fi
     fi
