@@ -266,7 +266,7 @@ _PHP_MODERN_ONLY=YES
 ### option set to _PHP_MODERN_ONLY=NO, which
 ### is not default.
 ###
-_PHP_FPM_VERSION=5.2
+_PHP_FPM_VERSION=5.3
 
 
 ###----------------------------------------###

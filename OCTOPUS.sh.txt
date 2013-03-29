@@ -113,7 +113,7 @@ _CLIENT_CORES=8
 ### _PHP_MODERN_ONLY=YES and there is no 5.2
 ### installed/available.
 ###
-_PHP_FPM_VERSION=5.2
+_PHP_FPM_VERSION=5.3
 
 
 ###----------------------------------------###
