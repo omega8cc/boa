@@ -87,11 +87,14 @@ up_action ()
       fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-      if [ "$silent" = "log" ] ; then
+      if [ "$silent" = "log" ] || [ "$silent" = "system" ] ; then
         n=$((RANDOM%800+80))
         echo waiting $n sec
         sleep $n
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+        if [ "$silent" = "system" ] ; then
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+        fi
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         check_report
       else
