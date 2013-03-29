@@ -2146,9 +2146,6 @@ barracuda_cnf () {
         exit 1
       fi
     fi
-    if [ -x "/usr/local/bin/php" ] ; then
-      _PHP_MODERN_ONLY=NO
-    fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
@@ -2224,25 +2221,17 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
       else
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
-        if [ -e "/data/disk" ] ; then
-          echo 5.3 > /data/disk/*/log/cli.txt
-          echo 5.2 > /data/disk/*/log/fpm.txt
-        fi
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
       fi
     fi
   else
@@ -2250,9 +2239,6 @@ barracuda_cnf () {
     sleep 1
     msg "NOTE! Please review all config options displayed below"
     msg "NOTE! It will *override* all settings in the Barracuda script"
-    if [ -x "/usr/local/bin/php" ] ; then
-      _PHP_MODERN_ONLY=NO
-    fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
@@ -2280,10 +2266,6 @@ barracuda_cnf () {
         _PHP_MODERN_ONLY=YES
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
-      fi
-      if [ -x "/usr/local/bin/php" ] ; then
-        _PHP_MODERN_ONLY=NO
-        sed -i "s/.*_PHP_MODERN_ONLY.*/_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY/g" /root/.barracuda.cnf &> /dev/null
       fi
     else
       echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
@@ -2482,26 +2464,28 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
       else
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=NO/g"                         /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.2/g"                        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
-        if [ -e "/data/disk" ] ; then
-          echo 5.3 > /data/disk/*/log/cli.txt
-          echo 5.2 > /data/disk/*/log/fpm.txt
-        fi
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
       fi
+    fi
+    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                            /root/.barracuda.cnf &> /dev/null
+    sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                            /root/.barracuda.cnf &> /dev/null
+    sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=YES/g"                            /root/.barracuda.cnf &> /dev/null
+    sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                            /root/.*.octopus.cnf &> /dev/null
+    sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                            /root/.*.octopus.cnf &> /dev/null
+    sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=YES/g"                            /root/.*.octopus.cnf &> /dev/null
+    if [ -e "/data/disk" ] ; then
+      echo 5.3 > /data/disk/*/log/cli.txt
+      echo 5.3 > /data/disk/*/log/fpm.txt
     fi
     echo " "
     while read line ; do
@@ -2524,9 +2508,6 @@ barracuda_cnf () {
         msg "EXIT: Bye (2)"
         exit 1
       fi
-    fi
-    if [ -x "/usr/local/bin/php" ] ; then
-      _PHP_MODERN_ONLY=NO
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3

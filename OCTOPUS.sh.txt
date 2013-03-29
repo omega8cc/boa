@@ -650,9 +650,6 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ ! -x "/usr/local/bin/php" ] ; then
-      _PHP_MODERN_ONLY=YES
-    fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       _PHP_FPM_VERSION=5.3
       _PHP_CLI_VERSION=5.3
@@ -707,9 +704,6 @@ octopus_cnf () {
       _LD_DOM=YES
     else
       _LD_DOM=NO
-    fi
-    if [ ! -x "/usr/local/bin/php" ] ; then
-      _PHP_MODERN_ONLY=YES
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
       _PHP_FPM_VERSION=5.3
