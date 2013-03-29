@@ -29,7 +29,7 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
 }
 print "\n $sumar ALL procs\t\tGLOBAL";
-print "\n $namedsumar Bind procs\t\tGLOBAL" if ($buagentlives);
+print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
@@ -86,21 +86,21 @@ sub global_action
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
     if (!-f "/var/run/fmp_wait.pid") {
-      if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(pool)/ && $K =~ /(www)/)
+      if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /php-fpm/ && $B =~ /pool/ && $K =~ /www/)
       {
         `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
          $timedate=`date +%y%m%d-%H%M`;
          chomp($timedate);
         `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
       }
-      if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /(php-fpm)/ && $B =~ /(fpm-config)/ && $K =~ /(php53-fpm)/)
+      if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /php-fpm/ && $B =~ /fpm-config/ && $K =~ /php53-fpm/)
       {
         `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
          $timedate=`date +%y%m%d-%H%M`;
          chomp($timedate);
         `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
       }
-      if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /(Zs)/ && $B =~ /(php-fpm)/ && $K =~ /(defunct)/)
+      if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /Zs/ && $B =~ /php-fpm/ && $K =~ /defunct/)
       {
         `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
          $timedate=`date +%y%m%d-%H%M`;
@@ -108,25 +108,25 @@ sub global_action
         `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
       }
     }
-    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /(2:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
+    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /2:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
     {
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.watch.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /(3:)/ && $B =~ /(php)/ && $K =~ /(drush)/ && $Y =~ /(cron)/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /3:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
-    if ($PID ne "PID" && $USER =~ /tomcat/ && $COMMAND =~ /java/ && $TIME !~ /^(0:)/ && $STAT =~ /(Sl)/ && $CPU > 10)
+    if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && $TIME !~ /^(0:)/ && $STAT =~ /Sl/ && $CPU > 10)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $TIME $CPU $MEM $STAT" >> /var/xdrago/log/tomcat-java.kill.log`;
+      `echo "$timedate $TIME $CPU $MEM $STAT" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
     }
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
     {
