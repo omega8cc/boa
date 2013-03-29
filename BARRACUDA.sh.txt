@@ -6678,12 +6678,15 @@ fi
 fix_lfd_whitelist () {
   _THIS_FILE=/etc/csf/csf.fignore
   if [ -e "$_THIS_FILE" ] ; then
-    _CSF_WHITELIST_TEST=$(grep "drush_" $_THIS_FILE)
-    if [[ "$_CSF_WHITELIST_TEST" =~ "drush_" ]] ; then
+    _CSF_WHITELIST_TEST=$(grep "make_tmp" $_THIS_FILE)
+    if [[ "$_CSF_WHITELIST_TEST" =~ "make_tmp" ]] ; then
       true
     else
-      echo "/tmp/drush_tmp.*" >> $_THIS_FILE
+      sed -i "s/.*\/tmp\/.*//g" $_THIS_FILE &> /dev/null
+      sed -i "/^$/d"            $_THIS_FILE &> /dev/null
+      echo "/tmp/drush_tmp.*"      >> $_THIS_FILE
       echo "/tmp/drush_make_tmp.*" >> $_THIS_FILE
+      echo "/tmp/make_tmp.*"       >> $_THIS_FILE
     fi
   fi
 }
@@ -6802,6 +6805,7 @@ rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/xdrago/monitor/acrashsql.sh
 rm -f -r /tmp/drush_make_tmp*
+rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid
 rm -f /var/run/boa_wait.pid

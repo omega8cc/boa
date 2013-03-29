@@ -1498,6 +1498,7 @@ sleep 8
 rm -f /tmp/cache.inc*
 rm -f /opt/tmp/status-*
 rm -f -r /tmp/drush_make_tmp*
+rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 action
 rm -f /tmp/cache.inc*
