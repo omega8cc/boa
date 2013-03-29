@@ -38,7 +38,11 @@ check_report ()
   if [[ "$_RESULT_TEST_OK" =~ "INFO: Test OK" ]] ; then
     true
   else
-    _SEND_ALERT=YES
+    if [ "$silent" = "system" ] ; then
+      true
+    else
+      _SEND_ALERT=YES
+    fi
   fi
   _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" $_UP_LOG)
   if [[ "$_RESULT_APT_FAIL" =~ "Displaying the last 15 lines" ]] ; then
@@ -48,7 +52,11 @@ check_report ()
   if [[ "$_RESULT_ENJOY" =~ "Enjoy your Aegir Hosting System" ]] ; then
     true
   else
-    _SEND_ALERT=YES
+    if [ "$silent" = "system" ] ; then
+      true
+    else
+      _SEND_ALERT=YES
+    fi
   fi
   _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG)
   if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
