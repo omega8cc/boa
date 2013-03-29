@@ -2483,10 +2483,6 @@ barracuda_cnf () {
     sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                            /root/.*.octopus.cnf &> /dev/null
     sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                            /root/.*.octopus.cnf &> /dev/null
     sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=YES/g"                            /root/.*.octopus.cnf &> /dev/null
-    if [ -e "/data/disk" ] ; then
-      echo 5.3 > /data/disk/*/log/cli.txt
-      echo 5.3 > /data/disk/*/log/fpm.txt
-    fi
     echo " "
     while read line ; do
       echo "$line"
