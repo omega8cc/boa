@@ -317,9 +317,9 @@ _PHP_CLI_VERSION=5.3
 ### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
 ### GIT --- Latest Git from sources
-### JT7 --- Apache Solr 1 with Jetty 7
-### JT8 --- Apache Solr 3 with Jetty 8
-### JT9 --- Apache Solr 4 with Jetty 9
+### SR1 --- Apache Solr 1 with Jetty 7
+### SR3 --- Apache Solr 3 with Jetty 8
+### SR4 --- Apache Solr 4 with Jetty 8 or 9
 ### PDS --- Fast DNS Cache Server (pdnsd)
 ### WMN --- Webmin Control Panel
 ###
@@ -6124,20 +6124,32 @@ fi
 
 
 ###--------------------###
-if [[ "$_XTRAS_LIST" =~ "JT9" ]] && [ "$_REL_VERSION" = "precise" ] ; then
-  if [ ! -d "/opt/solr4" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
+  if [ ! -d "/opt/solr4" ] ; then
+    if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      _REAL_JETTY=9
+    else
+      _REAL_JETTY=8
+    fi
     echo " "
-    if prompt_yes_no "Do you want to install Experimental MultiCore Apache Solr 4 with Jetty 9?" ; then
+    if prompt_yes_no "Do you want to install Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY?" ; then
       true
-      msg "INFO: Installing Experimental MultiCore Apache Solr 4 with Jetty 9, please wait..."
+      msg "INFO: Installing Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY, please wait..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r jetty-distribution-*
       rm -f -r /opt/solr4
       rm -f -r /opt/jetty9
       rm -f /etc/jetty.conf
-      get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
-      mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
+      if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+        get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
+        mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
+        echo $_JETTY_9_VERSION > /opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt
+      else
+        get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
+        mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty9
+        echo $_JETTY_8_VERSION > /opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt
+      fi
       get_dev_arch "solr-$_SOLR_4_VERSION.tgz" &> /dev/null
       cp -af /var/opt/solr-$_SOLR_4_VERSION/dist/solr-$_SOLR_4_VERSION.war /opt/jetty9/webapps/solr.war
       mv -f /var/opt/solr-$_SOLR_4_VERSION/example/multicore /opt/solr4 &> /dev/null
@@ -6171,8 +6183,13 @@ if [[ "$_XTRAS_LIST" =~ "JT9" ]] && [ "$_REL_VERSION" = "precise" ] ; then
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      echo "JAVA=/usr/bin/java7 # Path to Java 7" > /etc/default/jetty9
-      echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 7" >> /etc/default/jetty9
+      if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+        echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
+        echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> /etc/default/jetty9
+      else
+        echo "JAVA=/usr/bin/java # Path to Java 1.6" > /etc/default/jetty9
+        echo "JAVA_HOME=/usr/lib/jvm/java-6-openjdk/jre # Path to Java 1.6" >> /etc/default/jetty9
+      fi
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty9
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty9
       echo "JETTY_PORT=8099 # Run on this port" >> /etc/default/jetty9
@@ -6186,10 +6203,10 @@ if [[ "$_XTRAS_LIST" =~ "JT9" ]] && [ "$_REL_VERSION" = "precise" ] ; then
       chmod 755 /etc/init.d/jetty9
       st_runner "update-rc.d jetty9 defaults" &> /dev/null
       st_runner "service jetty9 start" &> /dev/null
-      msg "INFO: Experimental MultiCore Apache Solr 4 with Jetty 9 installation completed"
+      msg "INFO: Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY installation completed"
       mrun "sleep 1"
     else
-      msg "INFO: Experimental MultiCore Apache Solr 4 with Jetty 9 installation skipped"
+      msg "INFO: Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY installation skipped"
       mrun "sleep 1"
     fi
   fi
@@ -6202,8 +6219,8 @@ fi
 
 
 ###--------------------###
-if [[ "$_XTRAS_LIST" =~ "JT8" ]] ; then
-  if [ ! -d "/opt/solr3" ] && [[ "$_APT_XTRA" =~ "openjdk-6-jdk" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
+  if [ ! -d "/opt/solr3" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 3 with Jetty 8?" ; then
       true
@@ -6216,6 +6233,7 @@ if [[ "$_XTRAS_LIST" =~ "JT8" ]] ; then
       rm -f /etc/jetty.conf
       get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
       mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty8
+      echo $_JETTY_8_VERSION > /opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt
       get_dev_arch "apache-solr-$_SOLR_3_VERSION.tgz" &> /dev/null
       cp -af /var/opt/apache-solr-$_SOLR_3_VERSION/dist/apache-solr-$_SOLR_3_VERSION.war /opt/jetty8/webapps/solr.war
       mv -f /var/opt/apache-solr-$_SOLR_3_VERSION/example/multicore /opt/solr3 &> /dev/null
@@ -6249,7 +6267,8 @@ if [[ "$_XTRAS_LIST" =~ "JT8" ]] ; then
       chown -R jetty8:jetty8 /opt/solr3
       chown -R jetty8:jetty8 /opt/jetty8
       chown -R jetty8:jetty8 /var/log/jetty8
-      echo "JAVA_HOME=/usr/lib/jvm/java-6-openjdk/jre # Path to Java" > /etc/default/jetty8
+      echo "JAVA=/usr/bin/java # Path to Java 1.6" > /etc/default/jetty8
+      echo "JAVA_HOME=/usr/lib/jvm/java-6-openjdk/jre # Path to Java 1.6" >> /etc/default/jetty8
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty8
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty8
       echo "JETTY_PORT=8088 # Run on this port" >> /etc/default/jetty8
@@ -6279,8 +6298,8 @@ fi
 
 
 ###--------------------###
-if [[ "$_XTRAS_LIST" =~ "JT7" ]] ; then
-  if [ ! -d "/opt/solr1" ] && [[ "$_APT_XTRA" =~ "openjdk-6-jdk" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "SR1" ]] ; then
+  if [ ! -d "/opt/solr1" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 1 with Jetty 7?" ; then
       true
@@ -6293,6 +6312,7 @@ if [[ "$_XTRAS_LIST" =~ "JT7" ]] ; then
       rm -f /etc/jetty.conf
       get_dev_arch "jetty-distribution-$_JETTY_7_VERSION.tar.gz" &> /dev/null
       mv /var/opt/jetty-distribution-$_JETTY_7_VERSION /opt/jetty7
+      echo $_JETTY_7_VERSION > /opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt
       get_dev_arch "apache-solr-$_SOLR_1_VERSION.tgz" &> /dev/null
       cp -af /var/opt/apache-solr-$_SOLR_1_VERSION/dist/apache-solr-$_SOLR_1_VERSION.war /opt/jetty7/webapps/solr.war
       mv -f /var/opt/apache-solr-$_SOLR_1_VERSION/example/multicore /opt/solr1 &> /dev/null
@@ -6327,7 +6347,8 @@ if [[ "$_XTRAS_LIST" =~ "JT7" ]] ; then
       chown -R jetty7:jetty7 /opt/solr1
       chown -R jetty7:jetty7 /opt/jetty7
       chown -R jetty7:jetty7 /var/log/jetty7
-      echo "JAVA_HOME=/usr/lib/jvm/java-6-openjdk/jre # Path to Java" > /etc/default/jetty7
+      echo "JAVA=/usr/bin/java # Path to Java 1.6" > /etc/default/jetty7
+      echo "JAVA_HOME=/usr/lib/jvm/java-6-openjdk/jre # Path to Java 1.6" >> /etc/default/jetty7
       echo "NO_START=0 # Start on boot" >> /etc/default/jetty7
       echo "JETTY_HOST=127.0.0.1 # Listen on localhost" >> /etc/default/jetty7
       echo "JETTY_PORT=8077 # Run on this port" >> /etc/default/jetty7

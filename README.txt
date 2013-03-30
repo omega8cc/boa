@@ -113,7 +113,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 (optional).
 * MultiCore Apache Solr 3.6.2 with Jetty 8 (optional).
-* MultiCore Apache Solr 4.2.0 with Jetty 9 (optional - on Ubuntu Precise only).
+* MultiCore Apache Solr 4.2.0 with Jetty 8 or 9 on Precise (optional).
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
 * Webmin Control Panel (optional).
