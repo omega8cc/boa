@@ -5095,7 +5095,7 @@ fi
 if [ -z "$_SMTP_RELAY_HOST" ] && [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "INFO: Checking SMTP connections, please wait..."
 mrun "sleep 1"
-if ! netcat -w 8 -z smtp.postoffice.net 25 ; then
+if ! netcat -w 8 -z smtp.gmail.com 25 ; then
   WE_NEED_RELAY="YES"
   cat <<EOF
 
