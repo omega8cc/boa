@@ -1505,6 +1505,7 @@ rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f -r /tmp/drush_make_tmp*
+rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid
 exit 0

@@ -5,73 +5,105 @@
  or download and enable Search API Solr search module (D7 only).
 
  http://drupal.org/project/apachesolr (6.x-1.7 or newer)
- http://drupal.org/project/search_api_solr (7.x-1.0-rc2 only)
+ http://drupal.org/project/search_api_solr (7.x-1.0-rc3)
 
  BOA system supports both Apache Solr Search Integration module
- and Search API Solr search module, but since it comes with
- Solr 1.4 to provide compatibility with both Drupal 6 and Drupal 7,
- you must remember to use correct, compatible configuration files
- when configuring your Solr core(s), or it will not work.
+ and Search API Solr search module, and you have a few options
+ to use it with different versions of Apache Solr and Jetty server,
+ for compatibility with older and latest versions of any
+ existing integration module.
 
- Both modules come with required solrconfig.xml, schema.xml and
- protwords.txt files either in the solr-conf/solr-1.4 subdirectory
- for newer versions, or in the module directory directly.
+ By default, all pre-configured Solr Cores come with required
+ solrconfig.xml, schema.xml and protwords.txt files compatible
+ with either Solr 1.x or Solr 3.x versions from Search API Solr search
+ integration module.
+
+ You may want to replace them if you wish to use Solr with Drupal 6
+ sites, which require Apache Solr Search Integration module instead.
 
  You should configure each core separately to use correct version
  by uploading respective solrconfig.xml, schema.xml and protwords.txt
- files to the solr/site_00*/conf directory and restarting Tomcat
- with command `service tomcat restart`.
+ files to the solr{1,3,4}/core*/conf directory and restarting correct
+ Jetty instance with command `service jetty{7,8,9} restart`.
 
  NOTE: If your site was already configured to use any of those
        modules, you must delete its search index (not just rebuild it)
        or the site and the search indexing will fail to work properly.
 
- In your Solr configuration there are ready to use 8 separate
+ In your Solr configuration there are ready to use 10 separate
  cores, since you need to use one core per site to avoid
  displaying search results from different sites on any site
  with enabled Solr module.
 
- Solr host name ...: 127.0.0.1
- Solr port ........: 8080
- Solr path ........: solr/unique001
- Solr path ........: solr/unique002
- Solr path ........: solr/unique003
- Solr path ........: solr/unique004
- Solr path ........: solr/unique005
- Solr path ........: solr/unique006
- Solr path ........: solr/unique007
- Solr path ........: solr/unique008
+ The access credentials you should use are as follows:
+
+ Solr host ........: 127.0.0.1
+
+ Solr port ........: 8077 (for Solr 1.x with Jetty 7)
+ Solr port ........: 8088 (for Solr 3.x with Jetty 8)
+ Solr port ........: 8099 (for Solr 4.x with Jetty 9**)
+
+ Solr path ........: solr/core0 (configured in solr.xml)
+ Solr path ........: solr/core1 (configured in solr.xml)
+
+ Solr path ........: solr/core2 (not configured in solr.xml)
+ Solr path ........: solr/core3 (not configured in solr.xml)
+ Solr path ........: solr/core4 (not configured in solr.xml)
+ Solr path ........: solr/core5 (not configured in solr.xml)
+ Solr path ........: solr/core6 (not configured in solr.xml)
+ Solr path ........: solr/core7 (not configured in solr.xml)
+ Solr path ........: solr/core8 (not configured in solr.xml)
+ Solr path ........: solr/core9 (not configured in solr.xml)
 
  To add more cores, you need to:
 
  1. Create a copy of example core directory:
-    cp -ar /opt/solr/site_008 /opt/solr/site_009
+    cp -ar /opt/solr3/core0 /opt/solr3/core11
 
  2. Add new core in file:
-    /opt/solr/solr.xml
+    /opt/solr1/solr.xml (for Solr 1.x with Jetty 7)
+    /opt/solr3/solr.xml (for Solr 3.x with Jetty 8)
+    /opt/solr4/solr.xml (for Solr 4.x with Jetty 9**)
 
- 3. Restart Tomcat:
-    service tomcat restart
+ 3. Restart Jetty:
+    service jetty7 restart (for Solr 1.x with Jetty 7)
+    service jetty8 restart (for Solr 3.x with Jetty 8)
+    service jetty9 restart (for Solr 4.x with Jetty 9**)
 
- You can also rename all cores in the file:
-   /opt/solr/solr.xml
- to avoid using them by not authorized site owners:
+ You can also rename the "core name" in the file:
+   /opt/solr{1,3,4}/solr.xml
+ to avoid using them by not authorized sites owners:
 
    <cores adminPath="/admin/cores">
-     <core name="unique001" instanceDir="site_001" />
-     <core name="w44337377" instanceDir="site_002" />
-     <core name="437y73347" instanceDir="site_003" />
-     <core name="57245i854" instanceDir="site_004" />
-     <core name="325o45758" instanceDir="site_005" />
-     <core name="343q36454" instanceDir="site_006" />
-     <core name="4574a6866" instanceDir="site_007" />
-     <core name="32x463677" instanceDir="site_008" />
+     <core name="325o45758" instanceDir="core0" />
+     <core name="w44337377" instanceDir="core1" />
    </cores>
 
+ To install one or more supported versions of Apache Solr
+ with corresponding Jetty version, just add correct
+ keyword to the _XTRAS_LIST in /root/.barracuda.cnf
 
- To disable Apache Solr Search completely, type as root:
+ JT7 (for Solr 1.x with Jetty 7)
+ JT8 (for Solr 3.x with Jetty 8)
+ JT9 (for Solr 4.x with Jetty 9**)
 
+ It is even possible to add them *all* on upgrade when
+ you are already running now deprecated Tomcat 6 with Solr 1.x,
+ because new, Jetty based Solr instances use separate
+ ports and directories.
+
+ We reccommend to migrate all your existing Solr cores
+ from Tomcat 6 with Solr 1.x to one of supported Jetty
+ based Solr version and then disable Tomcat.
+
+ NOTE: **Solr 4.x with Jetty 9 and Java 1.7 is available
+       currently only on Ubuntu Precise.
+
+ To disable Tomcat 6 with Solr 1.x, type as root:
+
+ $ service cron stop (wait 60 seconds to avoid auto-restart)
  $ service tomcat stop
  $ update-rc.d -f tomcat remove
  $ mv /etc/init.d/tomcat /etc/init.d/offtomcat
+ $ service cron start
 

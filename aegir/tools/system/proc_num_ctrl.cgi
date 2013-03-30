@@ -11,13 +11,16 @@ foreach $USER (sort keys %li_cnt) {
   push(@donetable," $li_cnt{$USER}\t$USER");
   $sumar = $sumar + $li_cnt{$USER};
   if ($USER eq "mysql") {$mysqlives = "YES"; $mysqlsumar = $li_cnt{$USER};}
+  if ($USER eq "jetty7") {$jetty7lives = "YES"; $jetty7sumar = $li_cnt{$USER};}
+  if ($USER eq "jetty8") {$jetty8lives = "YES"; $jetty8sumar = $li_cnt{$USER};}
+  if ($USER eq "jetty9") {$jetty9lives = "YES"; $jetty9sumar = $li_cnt{$USER};}
+  if ($USER eq "tomcat") {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$USER};}
 }
 foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /named/) {$namedlives = "YES"; $namedsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /buagent/) {$buagentlives = "YES"; $buagentsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /collectd/) {$collectdlives = "YES"; $collectdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /dhcpcd-bin/) {$dhcpcdlives = "YES"; $dhcpcdsumar = $li_cnt{$COMMAND};}
-  if ($COMMAND =~ /java/) {$tomcatlives = "YES"; $tomcatsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nginx/) {$nginxlives = "YES"; $nginxsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /pdnsd/) {$pdnsdlives = "YES"; $pdnsdsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /php-cgi/) {$phplives = "YES"; $phpsumar = $li_cnt{$COMMAND};}
@@ -44,6 +47,9 @@ print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
 print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
+print "\n $jetty7sumar Jetty7 procs\t\tGLOBAL" if ($jetty7lives);
+print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
+print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
@@ -62,6 +68,9 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
 `killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
 `killall -9 php-fpm; /etc/init.d/php53-fpm start` if ((!$fpmsumar || $fpmsumar > 1 ) && -f "/etc/init.d/php53-fpm");
+`/etc/init.d/jetty7 start` if (!$jetty7sumar && -f "/etc/init.d/jetty7");
+`/etc/init.d/jetty8 start` if (!$jetty8sumar && -f "/etc/init.d/jetty8");
+`/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
 `/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd");
 if (-f "/usr/local/sbin/pure-config.pl") {
@@ -85,6 +94,7 @@ sub global_action
   foreach $line (@MYARR) {
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
+
     if (!-f "/var/run/fmp_wait.pid") {
       if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /php-fpm/ && $B =~ /pool/ && $K =~ /www/)
       {
@@ -108,6 +118,7 @@ sub global_action
         `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
       }
     }
+
     if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /2:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
     {
        $timedate=`date +%y%m%d-%H%M`;
@@ -121,13 +132,15 @@ sub global_action
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
+
     if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && $TIME !~ /^(0:)/ && $STAT =~ /Sl/ && $CPU > 10)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $TIME $CPU $MEM $STAT" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
+      `echo "$timedate $TIME $CPU $MEM $STAT $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
     }
+
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
     {
       if ($COMMAND =~ /nginx/) {
@@ -141,7 +154,9 @@ sub global_action
         }
       }
       else {
-        $li_cnt{$COMMAND}++;
+        if ($PID ne "PID" && $COMMAND !~ /java/) {
+          $li_cnt{$COMMAND}++;
+        }
       }
     }
   }

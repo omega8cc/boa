@@ -23,7 +23,9 @@
   * Your (optional) Chive MariaDB/Percona Manager will be available at https://chive.master.f-q-d-n
   * Your (optional) Collectd Graph Panel will be available at https://cgp.master.f-q-d-n
   * Your (optional) CSF/LFD Firewall will support integrated Nginx Abuse Guard.
-  * Your (optional) MultiCore Apache Solr 1.4 with Tomcat 6 will listen on 127.0.0.1:8080
+  * Your (optional) MultiCore Apache Solr 1.4.1 with Jetty 7 will listen on 127.0.0.1:8077
+  * Your (optional) MultiCore Apache Solr 3.6.2 with Jetty 8 will listen on 127.0.0.1:8088
+  * Your (optional) MultiCore Apache Solr 4.2.0 with Jetty 9 will listen on 127.0.0.1:8099
   * Your (optional) SQL Buddy MariaDB/Percona Manager will be available at https://sqlbuddy.master.f-q-d-n
   * Your (optional) Webmin Control Panel will be available at https://f-q-d-n:10000
 

@@ -12,7 +12,7 @@ now available with simple command line tools: http://bit.ly/JHpFSh
 ### For BOA installation instructions see docs/INSTALL.txt
 ### See also related information in docs/NOTES.txt
 ### For BOA upgrade instructions see docs/UPGRADE.txt
-### For how-to on using MultiCore Solr Tomcat see docs/SOLR.txt
+### For how-to on using MultiCore Solr Jetty see docs/SOLR.txt
 ### For custom Nginx rewrites how-to see docs/HINTS.txt
 ### For SSL and extra IPs how-to see docs/SSL.txt
 ### For sites migration between instances see docs/REMOTE.txt
@@ -95,7 +95,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 ### OTHER REQUIREMENTS
 
 * The Git standard port 9418 must be open.
-* Minimum 512 MB of RAM or minimum 2 GB of RAM with Solr/Tomcat enabled.
+* Minimum 512 MB of RAM or minimum 1 GB of RAM with Solr/Jetty enabled.
 * Basic sysadmin skills and experience.
 
 
@@ -111,7 +111,9 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * Entry level XSS built-in protection on the Nginx level.
 * Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
 * Automated, rotated daily backups for all databases in /data/disk/arch/sql.
-* MultiCore Apache Solr 1.4 with Tomcat 6 (optional).
+* MultiCore Apache Solr 1.4.1 with Jetty 7 (optional).
+* MultiCore Apache Solr 3.6.2 with Jetty 8 (optional).
+* MultiCore Apache Solr 4.2.0 with Jetty 9 (optional - on Ubuntu Precise only).
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
 * Webmin Control Panel (optional).
