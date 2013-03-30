@@ -52,11 +52,7 @@ check_report ()
   if [[ "$_RESULT_ENJOY" =~ "Enjoy your Aegir Hosting System" ]] ; then
     true
   else
-    if [ "$silent" = "system" ] ; then
-      true
-    else
-      _SEND_ALERT=YES
-    fi
+    _SEND_ALERT=YES
   fi
   _RESULT_ABORTING=$(grep "Aborting" $_UP_LOG)
   if [[ "$_RESULT_ABORTING" =~ "Aborting" ]] ; then
