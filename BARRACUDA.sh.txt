@@ -6197,8 +6197,8 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       echo "JETTY_HOME=/opt/jetty9 # Home directory" >> /etc/default/jetty9
       echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
-      echo "JETTY_PID=$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
-      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 $JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
+      echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
+      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
       ln -s /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
       chmod 755 /etc/init.d/jetty9
       st_runner "update-rc.d jetty9 defaults" &> /dev/null
@@ -6276,8 +6276,8 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       echo "JETTY_HOME=/opt/jetty8 # Home directory" >> /etc/default/jetty8
       echo "JETTY_LOGS=/var/log/jetty8 # Logs directory" >> /etc/default/jetty8
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
-      echo "JETTY_PID=$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
-      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 $JAVA_OPTIONS\" # Options" >> /etc/default/jetty8
+      echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
+      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty8
       ln -s /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
       chmod 755 /etc/init.d/jetty8
       st_runner "update-rc.d jetty8 defaults" &> /dev/null
@@ -6356,8 +6356,8 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] ; then
       echo "JETTY_HOME=/opt/jetty7 # Home directory" >> /etc/default/jetty7
       echo "JETTY_LOGS=/var/log/jetty7 # Logs directory" >> /etc/default/jetty7
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
-      echo "JETTY_PID=$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
-      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 $JAVA_OPTIONS\" # Options" >> /etc/default/jetty7
+      echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
+      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty7
       ln -s /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
       chmod 755 /etc/init.d/jetty7
       st_runner "update-rc.d jetty7 defaults" &> /dev/null
