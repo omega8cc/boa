@@ -6199,6 +6199,12 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
+      if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+        true
+      else
+        sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+        sed -i "s/9090/8080/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+      fi
       ln -s /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
       chmod 755 /etc/init.d/jetty9
       st_runner "update-rc.d jetty9 defaults" &> /dev/null
