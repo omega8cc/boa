@@ -195,6 +195,8 @@ check_root ()
 {
   if [ `whoami` = "root" ] ; then
     true
+    sed -i "s/.*173.231.133.190.*//g" /etc/hosts &> /dev/null
+    sed -i "/^$/d" /etc/hosts &> /dev/null
   else
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
     exit 1
