@@ -296,10 +296,9 @@ _PHP_CLI_VERSION=5.3
 ### XTRAS INSTALL MODE                     ###
 ###----------------------------------------###
 ###
-### You can use wildcard "ALL" to install all
-### available xtras or configure the list
-### of xtras to be installed as explained
-### below.
+### You can use wildcard "ALL" to install
+### some default xtras or configure the list
+### as explained below.
 ###
 ### Note: the "ALL" wildcard is not default!
 ###
@@ -308,25 +307,31 @@ _PHP_CLI_VERSION=5.3
 ### control which xtras will be installed,
 ### using the symbols listed below.
 ###
-### BDD --- SQL Buddy DB Manager
-### BND --- Bind9 DNS Server
+### Xtras included with "ALL" wildcard:
+###
 ### CGP --- Collectd Graph Panel
 ### CHV --- Chive DB Manager
 ### CSF --- Firewall
 ### CSS --- Compass Tools
-### FMG --- FFmpeg support
 ### FTP --- Pure-FTPd server with forced FTPS
+### PDS --- Fast DNS Cache Server (pdnsd)
+### WMN --- Webmin Control Panel
+###
+### Xtras which need to be listed explicitly:
+###
+### BDD --- SQL Buddy DB Manager
+### BND --- Bind9 DNS Server
+### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
 ### SR1 --- Apache Solr 1 with Jetty 7
 ### SR3 --- Apache Solr 3 with Jetty 8
 ### SR4 --- Apache Solr 4 with Jetty 8 or 9
-### PDS --- Fast DNS Cache Server (pdnsd)
-### WMN --- Webmin Control Panel
 ###
 ### Examples:
 ###
 ### _XTRAS_LIST=""
-### _XTRAS_LIST=ALL
+### _XTRAS_LIST="ALL"
+### _XTRAS_LIST="ALL GIT SR3"
 ### _XTRAS_LIST="PDS CSF CGP CHV FTP"
 ###
 _XTRAS_LIST="PDS CSF CHV FTP"
@@ -2226,6 +2231,18 @@ barracuda_cnf () {
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
+    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue)
+    if [[ "$_CHECK_OS" =~ "Ubuntu 12.04 LTS" ]] ; then
+      _CHECK_OS=U12
+    fi
+    if [ "$_CHECK_OS" = "U12" ] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
+        true
+      else
+        _XTRAS_LIST=`echo -n $_XTRAS_LIST | tr -d "BND"`
+        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g"                    /root/.barracuda.cnf &> /dev/null
+      fi
+    fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
@@ -2469,6 +2486,18 @@ barracuda_cnf () {
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
+    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue)
+    if [[ "$_CHECK_OS" =~ "Ubuntu 12.04 LTS" ]] ; then
+      _CHECK_OS=U12
+    fi
+    if [ "$_CHECK_OS" = "U12" ] ; then
+      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
+        true
+      else
+        _XTRAS_LIST=`echo -n $_XTRAS_LIST | tr -d "BND"`
+        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
+      fi
+    fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
         true
@@ -2902,7 +2931,7 @@ install_php_modern () {
   ###--------------------###
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW, please wait..."
-    if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
+    if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
       _EXTRA_PHP_DEB="php5-dev php5-ffmpeg"
     else
       _EXTRA_PHP_DEB="php5-dev"
@@ -3068,7 +3097,7 @@ update_php_legacy () {
 #
 # Install latest Git.
 install_latest_git () {
-  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] ; then
     _GIT_TEST=$(git --version)
     if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
       true
@@ -4459,7 +4488,7 @@ if [ -f "/etc/default/dhcpcd" ] ; then
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ "$_INSTALL_PDNSD" = "NO" ] ; then
-    if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "PDS" ]] ; then
+    if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
         true
@@ -4841,7 +4870,7 @@ fi
 
 install_with_aptitude_deps () {
   st_runner "$_INSTAPP $_DEBDEPS" 2> /dev/null
-  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
+  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
     elif [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
@@ -5627,7 +5656,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
   if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing latest Pure-FTPd server, please wait..."
     mrun "sleep 1"
@@ -6384,7 +6413,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   if [ ! -e "/var/www/chive/index.php" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
@@ -6462,7 +6491,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
@@ -6506,7 +6535,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -d "/var/www/cgp" ] ; then
       echo " "
@@ -6563,7 +6592,7 @@ fi
 
 
 ###--------------------###
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
   if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
@@ -6598,15 +6627,7 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
-  if [ "$_XTRAS_LIST" = "ALL" ] ; then
-    _XTRAS_LIST="BDD CGP CHV CSF CSS FMG FTP GIT PDS WMN"
-  fi
-  if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
-    _XTRAS_LIST="PDS CSF CGP CHV FTP WMN"
-  fi
-fi
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
   if [ ! -e "/usr/sbin/named" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
@@ -6642,7 +6663,7 @@ fi
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   true
 else
-  if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
     if [ "$_STATUS" = "INIT" ] ; then
       _L_ST="install"
     else
@@ -6920,7 +6941,7 @@ csf_install () {
   mrun "sleep 1"
   touch /var/log/csf_$_INSTALLER_VERSION.log
 }
-if [ "$_XTRAS_LIST" = "ALL" ] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
