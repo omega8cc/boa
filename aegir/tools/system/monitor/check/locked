@@ -3,23 +3,18 @@
 $| = 1;
 if (-f "/var/run/boa_wait.pid") {exit;}
 $fpm_status="CLEAN";
-$tomcat_status="CLEAN";
+$java_status="CLEAN";
 $now_is=`date +%b:%d:%H:%M`;
 chomp($now_is);
 &fpmcheck;
-&tomcatcheck;
+&javacheck;
 if ($fpm_status ne "CLEAN") {
   `killall -9 java`;
   `/etc/init.d/php-fpm restart`;
   `/etc/init.d/php53-fpm restart`;
   sleep(2);
 }
-if ($tomcat_status ne "CLEAN") {
-  if (-f "/etc/default/tomcat" && -f "/etc/init.d/tomcat") {
-    `killall -9 java`;
-    sleep(2);
-    `/etc/init.d/tomcat start`;
-  }
+if ($java_status ne "CLEAN") {
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
     `/etc/init.d/jetty9 restart`;
   }
@@ -28,6 +23,11 @@ if ($tomcat_status ne "CLEAN") {
   }
   if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
     `/etc/init.d/jetty7 restart`;
+  }
+  if (-f "/etc/default/tomcat" && -f "/etc/init.d/tomcat") {
+    `killall -9 java`;
+    sleep(2);
+    `/etc/init.d/tomcat start`;
   }
 }
 `touch /var/xdrago/log/last-run-locked`;
@@ -69,7 +69,7 @@ local(@MYARR) = `grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&
     }
   }
 }
-sub tomcatcheck
+sub javacheck
 {
 local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
@@ -88,12 +88,12 @@ local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
         local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
         $log_is="$MONTX:$DAYX:$HOUR:$MIN";
         if ($now_is eq $log_is) {
-          $tomcat_status="ERROR";
+          $java_status="ERROR";
           print "\n===[$now_is]\t[$log_is]===";
-          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-y-problem`;
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-javacheck-y-problem`;
         }
 #         else {
-#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-tomcatcheck-n-problem`;
+#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-javacheck-n-problem`;
 #         }
       }
     }
