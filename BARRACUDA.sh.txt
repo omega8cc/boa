@@ -2042,7 +2042,7 @@ tune_memory_limits () {
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
   fi
-  _USE_JETTY="-Xmx{$_USE_APC}m"
+  _USE_JETTY="-Xmx${_USE_APC}m"
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_APC=64
   fi
