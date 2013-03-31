@@ -6139,6 +6139,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
         sed -i "s/8983/8099/g" /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr4/search_api_solr-7.x-1.0-rc3.log
       fi
+      cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
@@ -6229,6 +6230,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
         sed -i "s/8983/8088/g" /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr3/search_api_solr-7.x-1.0-rc3.log
       fi
+      cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr3/README.txt &> /dev/null
       chown -R jetty8:jetty8 /opt/solr3
       chown -R jetty8:jetty8 /opt/jetty8
       chown -R jetty8:jetty8 /var/log/jetty8
@@ -6308,6 +6310,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] ; then
         sed -i "s/8983/8077/g" /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr1/search_api_solr-7.x-1.0-rc3.log
       fi
+      cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
       rm -f -r /opt/jetty7/solr
       chown -R jetty7:jetty7 /opt/solr1
       chown -R jetty7:jetty7 /opt/jetty7
