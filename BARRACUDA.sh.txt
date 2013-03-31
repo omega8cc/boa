@@ -4704,11 +4704,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -e "/etc/init.d/bind" ] ; then
     rm -f /etc/init.d/bind
   fi
-  if [ -e "/etc/init.d/tomcat" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/tomcat /etc/init.d/tomcat &> /dev/null
-    chmod 755 /etc/init.d/tomcat
-    st_runner "update-rc.d tomcat defaults" &> /dev/null
-  fi
+  rm -f /etc/init.d/tomcat
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
