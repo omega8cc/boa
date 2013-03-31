@@ -2042,6 +2042,7 @@ tune_memory_limits () {
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
   fi
+  _USE_JETTY="-Xmx{$_USE_APC}m"
   if [ "$_VMFAMILY" = "VZ" ] ; then
     _USE_APC=64
   fi
@@ -2062,6 +2063,15 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
   sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
   sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
+  if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/opt/solr3" ] ; then
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty8 &> /dev/null
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ] ; then
+    sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7 &> /dev/null
+  fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
       true
@@ -5729,84 +5739,6 @@ fi
 
 
 ###--------------------###
-if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: Updating init scripts"
-  mrun "sleep 1"
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
-  chmod 755 /etc/init.d/clean-boa-env &> /dev/null
-  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
-  echo "UseDNS no" >> /etc/ssh/sshd_config
-  st_runner "service ssh reload" &> /dev/null
-  cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
-    true
-  else
-    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
-  fi
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
-  fi
-  update_php_conf
-  tune_memory_limits
-  msg "INFO: Restarting $_DB_SERVER"
-  st_runner "service mysql restart" &> /dev/null
-  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    msg "INFO: Starting Redis, PHP-FPM and Nginx"
-    st_runner "service redis-server start" &> /dev/null
-    killall -9 nginx php-cgi php-fpm &> /dev/null
-    mrun "sleep 1"
-    st_runner "update-rc.d cron defaults" &> /dev/null
-    if [ -e "/etc/init.d/php-fpm" ] ; then
-      st_runner "update-rc.d php-fpm defaults" &> /dev/null
-      st_runner "service php-fpm start" &> /dev/null
-    fi
-    st_runner "service php5-fpm stop" &> /dev/null
-    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    st_runner "update-rc.d php53-fpm defaults" &> /dev/null
-    st_runner "service php53-fpm start" &> /dev/null
-    st_runner "update-rc.d nginx defaults" &> /dev/null
-    st_runner "service nginx start" &> /dev/null
-  fi
-else
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
-    echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
-    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
-    echo "UseDNS no" >> /etc/ssh/sshd_config
-    echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
-    echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
-    st_runner "service ssh reload" &> /dev/null
-  fi
-  fix_on_upgrade
-  tune_memory_limits
-  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    msg "INFO: Restarting Redis and PHP-FPM, reloading Nginx"
-    mrun "sleep 1"
-    st_runner "service redis-server restart" &> /dev/null
-    if [ -e "/etc/init.d/php-fpm" ] ; then
-      st_runner "service php-fpm restart" &> /dev/null
-    fi
-    st_runner "service php5-fpm stop" &> /dev/null
-    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    st_runner "service php53-fpm stop" &> /dev/null
-    killall -9 php-fpm &> /dev/null
-    st_runner "service php53-fpm start" &> /dev/null
-    st_runner "service nginx reload" &> /dev/null
-  fi
-fi
-
-
-###--------------------###
 _NEWRELIC_APP_CFG="/etc/newrelic/newrelic.cfg"
 if [ -e "$_NEWRELIC_APP_CFG" ] ; then
   _NEWRELIC_KEY_TEST=$(grep "REPLACE_WITH_REAL_KEY" $_NEWRELIC_APP_CFG)
@@ -6225,7 +6157,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       echo "JETTY_LOGS=/var/log/jetty9 # Logs directory" >> /etc/default/jetty9
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
-      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
+      echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
       if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
         true
       else
@@ -6310,7 +6242,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       echo "JETTY_LOGS=/var/log/jetty8 # Logs directory" >> /etc/default/jetty8
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
       echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
-      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty8
+      echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty8
       ln -s /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
       chmod 755 /etc/init.d/jetty8
       st_runner "update-rc.d jetty8 defaults" &> /dev/null
@@ -6390,7 +6322,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] ; then
       echo "JETTY_LOGS=/var/log/jetty7 # Logs directory" >> /etc/default/jetty7
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
       echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
-      echo "JAVA_OPTIONS=\"-Xms32m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty7
+      echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty7
       ln -s /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
       chmod 755 /etc/init.d/jetty7
       st_runner "update-rc.d jetty7 defaults" &> /dev/null
@@ -6695,6 +6627,114 @@ fix_compass_path () {
   fi
 }
 fix_compass_path
+
+
+###--------------------###
+if [ "$_STATUS" = "INIT" ] ; then
+  msg "INFO: Updating init scripts"
+  mrun "sleep 1"
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
+  chmod 755 /etc/init.d/clean-boa-env &> /dev/null
+  st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
+  echo "UseDNS no" >> /etc/ssh/sshd_config
+  st_runner "service ssh reload" &> /dev/null
+  cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
+  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
+  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
+  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
+    true
+  else
+    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
+  fi
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
+  fi
+  update_php_conf
+  tune_memory_limits
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+    msg "INFO: Restarting Jetty 9"
+    mrun "sleep 1"
+    st_runner "service jetty9 restart" &> /dev/null
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
+    msg "INFO: Restarting Jetty 8"
+    mrun "sleep 1"
+    st_runner "service jetty8 restart" &> /dev/null
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
+    msg "INFO: Restarting Jetty 7"
+    mrun "sleep 1"
+    st_runner "service jetty7 restart" &> /dev/null
+  fi
+  msg "INFO: Restarting $_DB_SERVER"
+  st_runner "service mysql restart" &> /dev/null
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
+    msg "INFO: Starting Redis, PHP-FPM and Nginx"
+    st_runner "service redis-server start" &> /dev/null
+    killall -9 nginx php-cgi php-fpm &> /dev/null
+    mrun "sleep 1"
+    st_runner "update-rc.d cron defaults" &> /dev/null
+    if [ -e "/etc/init.d/php-fpm" ] ; then
+      st_runner "update-rc.d php-fpm defaults" &> /dev/null
+      st_runner "service php-fpm start" &> /dev/null
+    fi
+    st_runner "service php5-fpm stop" &> /dev/null
+    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+    st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+    st_runner "service php53-fpm start" &> /dev/null
+    st_runner "update-rc.d nginx defaults" &> /dev/null
+    st_runner "service nginx start" &> /dev/null
+  fi
+else
+  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
+    echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
+    echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+    echo "UseDNS no" >> /etc/ssh/sshd_config
+    echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
+    echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
+    st_runner "service ssh reload" &> /dev/null
+  fi
+  fix_on_upgrade
+  tune_memory_limits
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+    msg "INFO: Restarting Jetty 9"
+    mrun "sleep 1"
+    st_runner "service jetty9 restart" &> /dev/null
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
+    msg "INFO: Restarting Jetty 8"
+    mrun "sleep 1"
+    st_runner "service jetty8 restart" &> /dev/null
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
+    msg "INFO: Restarting Jetty 7"
+    mrun "sleep 1"
+    st_runner "service jetty7 restart" &> /dev/null
+  fi
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
+    msg "INFO: Restarting Redis and PHP-FPM, reloading Nginx"
+    mrun "sleep 1"
+    st_runner "service redis-server restart" &> /dev/null
+    if [ -e "/etc/init.d/php-fpm" ] ; then
+      st_runner "service php-fpm restart" &> /dev/null
+    fi
+    st_runner "service php5-fpm stop" &> /dev/null
+    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
+    st_runner "service php53-fpm stop" &> /dev/null
+    killall -9 php-fpm &> /dev/null
+    st_runner "service php53-fpm start" &> /dev/null
+    st_runner "service nginx reload" &> /dev/null
+  fi
+fi
 
 
 ###--------------------###

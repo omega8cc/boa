@@ -95,7 +95,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 ### OTHER REQUIREMENTS
 
 * The Git standard port 9418 must be open.
-* Minimum 512 MB of RAM or minimum 1 GB of RAM with Solr/Jetty enabled.
+* Minimum 512 MB of RAM.
 * Basic sysadmin skills and experience.
 
 
