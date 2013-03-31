@@ -46,10 +46,10 @@ print "\n $postfixsumar Postfix procs\tGLOBAL" if ($postfixlives);
 print "\n $redissumar Redis procs\t\tGLOBAL" if ($redislives);
 print "\n $newrelicdaemonsumar New Relic Apps\tGLOBAL" if ($newrelicdaemonlives);
 print "\n $newrelicsysmondsumar New Relic Server\tGLOBAL" if ($newrelicsysmondlives);
-print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 print "\n $jetty7sumar Jetty7 procs\t\tGLOBAL" if ($jetty7lives);
 print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
+print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
