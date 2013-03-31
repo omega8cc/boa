@@ -249,6 +249,8 @@ else
   manage_own >/var/backups/ltd/log/users-$_NOW.log 2>&1
   sleep 1
   cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-$_NOW
+  _THISHTIP=`hostname -i`
+  sed -i "s/8.8.8.8/$_THISHTIP/g" $_THIS_LTD_CONF
   sleep 1
   cp -af $_THIS_LTD_CONF /etc/lshell.conf
   sleep 1

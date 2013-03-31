@@ -1260,17 +1260,6 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   echo >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
   echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static', '/data/disk/$_USER/backups', '/data/disk/$_USER/clients']" >> /etc/lshell.conf
-  touch $_ROOT/log/backups.access.open
-  touch $_ROOT/log/clients.access.open
-fi
-
-
-###---### Add access to backups for older installs
-#
-if [ ! -e "$_ROOT/log/backups.access.open" ] ; then
-  sed -i "s/\/$_USER\/static'\]/\/$_USER\/static', '\/data\/disk\/$_USER\/backups'\]/g" /etc/lshell.conf &> /dev/null
-  chmod 0750 $_ROOT/backups
-  touch $_ROOT/log/backups.access.open
 fi
 
 
@@ -1318,15 +1307,6 @@ if [ ! -d "$_USER_SSH" ] ; then
   mkdir -p $_USER_SSH
   chown $_USERFTP:$_USRG $_USER_SSH
   chmod 700 $_USER_SSH
-fi
-
-
-###---### Add access to the clients directory for older installs
-#
-if [ ! -e "$_ROOT/log/clients.access.open" ] ; then
-  sed -i "s/\/$_USER\/backups'\]/\/$_USER\/backups', '\/data\/disk\/$_USER\/clients'\]/g" /etc/lshell.conf &> /dev/null
-  chmod 0750 $_ROOT/clients
-  touch $_ROOT/log/clients.access.open
 fi
 
 
