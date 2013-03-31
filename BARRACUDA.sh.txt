@@ -2071,7 +2071,6 @@ tune_memory_limits () {
       sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^key_buffer.*/key_buffer              = 2M/g"                 /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf &> /dev/null
