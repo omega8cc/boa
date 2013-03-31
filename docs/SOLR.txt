@@ -5,18 +5,16 @@
  or download and enable Search API Solr search module (D7 only).
 
  http://drupal.org/project/apachesolr (6.x-1.7 or newer)
- http://drupal.org/project/search_api_solr (7.x-1.0-rc3)
+ http://drupal.org/project/search_api_solr (7.x-1.0-rc3 or newer)
 
  BOA system supports both Apache Solr Search Integration module
- and Search API Solr search module, and you have a few options
- to use it with different versions of Apache Solr and Jetty server,
- for compatibility with older and latest versions of any
- existing integration module.
+ and Search API Solr search module (used by default), and you have
+ a few options to use it with different versions of Apache Solr
+ and Jetty server, for maximum backward and future compatibility.
 
  By default, all pre-configured Solr Cores come with required
  solrconfig.xml, schema.xml and protwords.txt files compatible
- with either Solr 1.x or Solr 3.x versions from Search API Solr search
- integration module.
+ with Solr 3.x config series from Search API Solr search module.
 
  You may want to replace them if you wish to use Solr with Drupal 6
  sites, which require Apache Solr Search Integration module instead.
@@ -42,6 +40,7 @@
  Solr port ........: 8077 (for Solr 1.x with Jetty 7)
  Solr port ........: 8088 (for Solr 3.x with Jetty 8)
  Solr port ........: 8099 (for Solr 4.x with Jetty 8 or 9 on Precise)
+ Solr port ........: 8080 (for Solr 1.x with Jetty 7 migrated from Tomcat)
 
  Solr path ........: solr/core0 (configured in solr.xml)
  Solr path ........: solr/core1 (configured in solr.xml)
@@ -60,12 +59,12 @@
  1. Create a copy of example core directory:
     cp -ar /opt/solr3/core0 /opt/solr3/core11
 
- 2. Add new core in file:
+ 2. Add this new core in the solr.xml file:
     /opt/solr1/solr.xml (for Solr 1.x with Jetty 7)
     /opt/solr3/solr.xml (for Solr 3.x with Jetty 8)
     /opt/solr4/solr.xml (for Solr 4.x with Jetty 8 or 9 on Precise)
 
- 3. Restart Jetty:
+ 3. Restart correct Jetty instance:
     service jetty7 restart (for Solr 1.x with Jetty 7)
     service jetty8 restart (for Solr 3.x with Jetty 8)
     service jetty9 restart (for Solr 4.x with Jetty 8 or 9 on Precise)
@@ -92,18 +91,14 @@
  because new, Jetty based Solr instances use separate
  ports and directories.
 
- We reccommend to migrate all your existing Solr cores
- from Tomcat 6 with Solr 1.x to one of supported Jetty
- based Solr version and then disable Tomcat.
+ TOMCAT TO JETTY MIGRATION NOTE:
 
- NOTE: **Solr 4.x with Jetty 9 and Java 1.7 is available
-       currently only on Ubuntu Precise.
+ To migrate existing Solr cores from Tomcat 6 to Jetty 7,
+ add special variable _TOMCAT_TO_JETTY=YES in your config file
+ /root/.barracuda.cnf and run barracuda up-{stable,head} upgrade.
 
- To disable Tomcat 6 with Solr 1.x, type as root:
-
- $ service cron stop (wait 60 seconds to avoid auto-restart)
- $ service tomcat stop
- $ update-rc.d -f tomcat remove
- $ mv /etc/init.d/tomcat /etc/init.d/offtomcat
- $ service cron start
+ It will migrate all cores as-is, so they will be available
+ on the same port 8080 previously used by Tomcat. It will also
+ automatically install Jetty 7 with Solr 1.4.1 for you,
+ even if you forgot to add required SR1 in the _XTRAS_LIST.
 

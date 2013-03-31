@@ -91,6 +91,12 @@ up_action ()
           echo "_LENNY_TO_SQUEEZE=YES" >> /root/.barracuda.cnf
         fi
       fi
+      if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] && [ -e "/root/.barracuda.cnf" ] ; then
+        sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+        sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf &> /dev/null
+        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+        echo "_TOMCAT_TO_JETTY=YES" >> /root/.barracuda.cnf
+      fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
       if [ "$silent" = "log" ] || [ "$silent" = "system" ] ; then

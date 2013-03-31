@@ -414,6 +414,11 @@ _FULL_FORCE_REINSTALL=NO
 ###
 _LENNY_TO_SQUEEZE=NO
 
+###
+### Use YES to run migration from Tomcat 6
+### to Jetty 7 with Apache Solr 1.4.1
+###
+_TOMCAT_TO_JETTY=NO
 
 ###----------------------------------------###
 ### DRUSH DEBUG MODE                       ###
@@ -6265,7 +6270,7 @@ fi
 
 
 ###--------------------###
-if [[ "$_XTRAS_LIST" =~ "SR1" ]] ; then
+if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
   if [ ! -d "/opt/solr1" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 1 with Jetty 7?" ; then
@@ -6342,6 +6347,23 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty7" ] ; then
   msg "INFO: Jetty 7 restart in progress - required after java upgrade"
   st_runner "service jetty7 restart" &> /dev/null
   msg "INFO: Jetty 7 restart completed"
+fi
+if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
+  msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress, please wait..."
+  mrun "sleep 1"
+  st_runner "service tomcat stop" &> /dev/null
+  st_runner "update-rc.d tomcat remove" &> /dev/null
+  mv -f /etc/init.d/tomcat /etc/init.d/offtomcat &> /dev/null
+  mv -f /opt/solr1/solr.xml /opt/solr1/vanilla-solr.xml
+  mv -f /opt/solr/* /opt/solr1/
+  cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
+  chown -R jetty7:jetty7 /opt/solr1
+  sed -i "s/8077/8080/g" /etc/default/jetty7 &> /dev/null
+  msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
+  st_runner "service jetty7 restart" &> /dev/null
+  sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf &> /dev/null
+  sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+  msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 completed"
 fi
 
 
