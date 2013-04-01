@@ -6140,7 +6140,9 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
         cd /var/opt
         rm -f -r search_api_solr*
         get_drupal_project "search_api_solr-7.x-1.0-rc3.tar.gz" &> /dev/null
-        cp -af /var/opt/search_api_solr/solr-conf/3.x/* /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/
+        for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
+          cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
+        done
         sed -i "s/8983/8099/g" /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr4/search_api_solr-7.x-1.0-rc3.log
       fi
@@ -6231,7 +6233,9 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
         cd /var/opt
         rm -f -r search_api_solr*
         get_drupal_project "search_api_solr-7.x-1.0-rc3.tar.gz" &> /dev/null
-        cp -af /var/opt/search_api_solr/solr-conf/3.x/* /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/
+        for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
+          cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
+        done
         sed -i "s/8983/8088/g" /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr3/search_api_solr-7.x-1.0-rc3.log
       fi
@@ -6311,7 +6315,9 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
         get_drupal_project "search_api_solr-7.x-1.0-rc3.tar.gz" &> /dev/null
-        cp -af /var/opt/search_api_solr/solr-conf/1.4/* /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/
+        for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
+          cp -af /var/opt/search_api_solr/solr-conf/1.4/* $Dir/ &> /dev/null
+        done
         sed -i "s/8983/8077/g" /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
         touch /opt/solr1/search_api_solr-7.x-1.0-rc3.log
       fi
@@ -6359,6 +6365,10 @@ if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/
   cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
   chown -R jetty7:jetty7 /opt/solr1
   sed -i "s/8077/8080/g" /etc/default/jetty7 &> /dev/null
+  sed -i "s/8077/8080/g" /etc/default/jetty7 &> /dev/null
+  sed -i "s/8077/8080/g" /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+  sed -i "s/8077/8080/g" /opt/solr1/site_00{1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
+  sed -i "s/8077/8080/g" /opt/solr1/conf/solrcore.properties &> /dev/null
   msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
   st_runner "service jetty7 restart" &> /dev/null
   sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf &> /dev/null

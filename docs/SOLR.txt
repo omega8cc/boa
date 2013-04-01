@@ -14,7 +14,8 @@
 
  By default, all pre-configured Solr Cores come with required
  solrconfig.xml, schema.xml and protwords.txt files compatible
- with Solr 3.x config series from Search API Solr search module.
+ with Solr 3.x config series from Search API Solr search module
+ for Solr 3.x and Solr 4.x, or Solr 1.x config series for Solr 1.x
 
  You may want to replace them if you wish to use Solr with Drupal 6
  sites, which require Apache Solr Search Integration module instead.
