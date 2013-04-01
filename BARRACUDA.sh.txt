@@ -905,7 +905,7 @@ _INSTALLER_VERSION=BOA-2.0.6-dev
 ### Software versions
 ###
 _APC_VERSION=3.1.13
-_BZR_VERSION=2.3.4
+_BZR_VERSION=2.6b2
 _CHIVE_VERSION=1.2
 _DRUSH_VERSION=4.6-dev
 _DRUSH5_VERSION=7.x-5.8
@@ -5586,6 +5586,7 @@ if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FU
   tar -xzf bzr-$_BZR_VERSION.tar.gz
   cd /var/opt/bzr-$_BZR_VERSION
   st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
   echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
 fi
 
