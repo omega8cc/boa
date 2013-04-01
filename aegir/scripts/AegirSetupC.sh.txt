@@ -1837,6 +1837,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   remove_default_core_seven_profiles
   cd $_THIS_PRPATH/modules/contrib
   upgrade_contrib_more
+  rm -f -r $_THIS_PRPATH/modules/contrib/speedy
   create_dirs
   themes_for_d7
   patch_d7_core
