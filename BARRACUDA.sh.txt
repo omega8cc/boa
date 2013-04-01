@@ -4783,8 +4783,6 @@ fi
 st_runner "aptitude update -y" &> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
-  _UP_LNX=NO
-  check_apt_updates
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold safe-upgrade" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
   st_runner "aptitude clean -y" &> /dev/null
