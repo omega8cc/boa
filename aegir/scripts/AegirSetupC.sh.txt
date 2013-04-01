@@ -141,6 +141,7 @@ else
   _D_8_ALLOW=NO
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
+_DRUSH5CMD="$_L_PHP_CLI/php /opt/tools/drush/5/drush/drush.php"
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -525,6 +526,32 @@ upgrade_contrib_more () {
   cd ../
 }
 #
+# upgrade contrib some
+upgrade_contrib_some () {
+  rm -f -r {libraries,link,linkit,navbar,rules,token,views}
+  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/link-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/linkit-7.x-2.6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/navbar-7.x-1.0-alpha5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
+  for archive in ./*.tar.gz; do
+    tar -xzf "$archive" &> /dev/null
+  done
+  rm -f *.tar.gz
+  cd views
+  # http://drupal.org/node/1766338#comment-6445882
+  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+  if [ -e "../apps" ] ; then
+    cd ../apps
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
+    patch -p1 < apps_msg.patch &> /dev/null
+  fi
+  cd ../
+}
+#
 # remove default core seven profiles
 remove_default_core_seven_profiles () {
   rm -f -r $_CORE_DISTRO/profiles/minimal
@@ -685,7 +712,7 @@ _F_OPENOUTREACH="Open Outreach 1.0-rc10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLIC="OpenPublic 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 2.0-rc1 $_SMALLCORE6 P.$_THIS_CORE"
-_F_PANOPOLY="Panopoly 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
+_F_PANOPOLY="Panopoly 1.0-rc4a $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart $_UBERCART $_SMALLCORE6 P.$_THIS_CORE"
@@ -2436,14 +2463,9 @@ msg "DISTRO: $_F_PANOPOLY installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_PANOPOLY-core.tar.gz
-  tar -xzf $_THIS_PRNAME-$_PANOPOLY-core.tar.gz &> /dev/null
-  rm -f $_THIS_PRNAME-$_PANOPOLY-core.tar.gz
-  rename_drupal7_distro_directory
-  if [ -d "$_CORE/$_THIS_PRNAME-$_PANOPOLY" ] ; then
-    mv $_THIS_PRNAME-$_PANOPOLY $_THIS_DISTRO
-  fi
-  replace_drupal7_core
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/build-panopoly.make ./
+  $_DRUSH5CMD make build-panopoly.make $_THIS_DISTRO &> /dev/null
+  rm -f build-panopoly.make
   init_core_distro_seven_root
   remove_default_core_seven_profiles
   create_dirs
@@ -2452,7 +2474,16 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv -f $_CORE_DISTRO/sites/all/modules/panopoly_demo $_THIS_PRPATH/modules/panopoly/ &> /dev/null
   fi
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_contrib_more
+  upgrade_contrib_some
+  if [ $_PANOPOLY = "7.x-1.0-rc4" ] ; then
+    cd $_THIS_PRPATH/themes
+    rm -f -r {responsive_bartik}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/responsive_bartik-7.x-1.x-dev.tar.gz
+    for archive in ./*.tar.gz; do
+      tar -xzf "$archive" &> /dev/null
+    done
+    rm -f *.tar.gz
+  fi
   patch_d7_core
 fi
 init_this_distro_root
