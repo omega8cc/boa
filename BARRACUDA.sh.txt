@@ -2082,7 +2082,7 @@ tune_memory_limits () {
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7 &> /dev/null
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "node.us.host8." ]] ; then
+    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] || [[ "$_THISHOST" =~ "ocean.nyc.host8.biz" ]] ; then
       true
     else
       sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf &> /dev/null
