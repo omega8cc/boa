@@ -748,7 +748,7 @@ tune_memory_limits () {
       fi
     else
       _USE_PHP=256
-      _USE_APC=128
+      _USE_APC=196
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=6
       else
@@ -779,11 +779,11 @@ tune_memory_limits () {
     _USE_APC=64
   fi
   let "_USE_FPM = (($_USE_PHP / 2))"
-  if [ "$_USE_FPM" -lt "128" ] ; then
-    _USE_FPM=128
+  if [ "$_USE_FPM" -lt "196" ] ; then
+    _USE_FPM=196
   fi
-  if [ "$_USE_PHP" -lt "128" ] ; then
-    _USE_PHP=128
+  if [ "$_USE_PHP" -lt "196" ] ; then
+    _USE_PHP=196
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/88/$_USE_APC/g"  /opt/etc/php.ini &> /dev/null
