@@ -2252,7 +2252,8 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
         true
       else
-        _XTRAS_LIST=`echo -n $_XTRAS_LIST | tr -d "BND"`
+        _R_M=BND
+        _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
         sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g"                    /root/.barracuda.cnf &> /dev/null
       fi
     fi
@@ -2507,7 +2508,8 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
         true
       else
-        _XTRAS_LIST=`echo -n $_XTRAS_LIST | tr -d "BND"`
+        _R_M=BND
+        _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
         sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
       fi
     fi
