@@ -72,7 +72,7 @@ up_action ()
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   /var/backups/BARRACUDA.sh.txt &> /dev/null
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "node.us.host8." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8." ]] ; then
+      if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
         true
       else
         if [ -e "/root/.barracuda.cnf" ] ; then

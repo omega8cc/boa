@@ -728,7 +728,7 @@ fi
 if [[ "$_DOMAIN" =~ ".host8." ]] ; then
   _D_8_ALLOW=NO
 fi
-if [[ "$_DOMAIN" =~ "node.us.host8." ]] ; then
+if [[ "$_DOMAIN" =~ "ocean.ams.host8.biz" ]] ; then
   _D_8_ALLOW=YES
 fi
 
