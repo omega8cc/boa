@@ -528,7 +528,8 @@ upgrade_contrib_more () {
 #
 # upgrade contrib some
 upgrade_contrib_some () {
-  rm -f -r {libraries,link,linkit,navbar,rules,token,views}
+  rm -f -r {breakpoints,libraries,link,linkit,navbar,rules,token,views}
+  wget -q -U iCab http://ftp.drupal.org/files/projects/breakpoints-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/link-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/linkit-7.x-2.6.tar.gz
