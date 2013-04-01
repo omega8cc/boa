@@ -133,30 +133,30 @@ Octopus can install the platforms listed below:
 ### Drupal 7
 
  CiviCRM 4.2.8 ---------------- http://civicrm.org
- Commerce 1.16 ---------------- http://drupalcommerce.org
- Commerce 2.5 ----------------- http://drupalcommerce.org
- Commons 3.1 ------------------ http://acquia.com/drupalcommons
+ Commerce 1.16 ---------------- http://drupal.org/project/commerce_kickstart
+ Commerce 2.5 ----------------- http://drupal.org/project/commerce_kickstart
+ Commons 3.1 ------------------ http://drupal.org/project/commons
  Drupal 7.21.2 ---------------- http://drupal.org/drupal-7.21
- NodeStream 2.0-rc4 ----------- http://nodestream.org
- Open Deals 1.18 -------------- http://opendealsapp.com
- Open Outreach 1.0-rc10 ------- http://openoutreach.org
- OpenChurch 1.11-beta9 -------- http://openchurchsite.com
- OpenPublish 3.0-beta7 -------- http://openpublishapp.com
+ NodeStream 2.0-rc4 ----------- http://drupal.org/project/nodestream
+ Open Deals 1.18 -------------- http://drupal.org/project/opendeals
+ Open Outreach 1.0-rc10 ------- http://drupal.org/project/openoutreach
+ OpenChurch 1.11-beta9 -------- http://drupal.org/project/openchurch
+ OpenPublish 3.0-beta7 -------- http://drupal.org/project/openpublish
  Panopoly 1.0-rc4a ------------ http://drupal.org/project/panopoly
- Ubercart 3.4.1 --------------- http://ubercart.org
+ Ubercart 3.4.1 --------------- http://drupal.org/project/ubercart
 
 ### Pressflow 6
 
  Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
  CiviCRM 4.1.6 ---------------- http://civicrm.org
- Commons 2.12 ----------------- http://acquia.com/drupalcommons
- Conference 1.0-rc2 ----------- http://usecod.com
+ Commons 2.12 ----------------- http://drupal.org/project/commons
+ Conference 1.0-rc2 ----------- http://drupal.org/project/cod
  Feature Server 1.2 ----------- http://bit.ly/fserver
- Managing News 1.2.3 ---------- http://managingnews.com
- Open Atrium 1.7.1 ------------ http://openatrium.com
+ Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
+ Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
  Pressflow 6.28.1 (int) ------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
- Ubercart 2.11.1 (int) -------- http://ubercart.org
+ Ubercart 2.11.1 (int) -------- http://drupal.org/project/ubercart
 
 There are also platforms temporarily disabled for new installs,
 because they are either outdated, with numerous security updates
@@ -175,12 +175,12 @@ latest D8-tested platform to every release.
 The platforms listed below can be re-added when their maintainers
 will fix all critical issues and/or apply required updates:
 
- ELMS ------------------------- http://elms.psu.edu
+ ELMS ------------------------- http://drupal.org/project/elms
  MartPlug --------------------- http://drupal.org/project/martplug
  Octopus Video ---------------- http://octopusvideo.org
  Open Academy ----------------- http://drupal.org/project/openacademy
  Open Enterprise -------------- http://drupal.org/project/openenterprise
- OpenPublic ------------------- http://openpublicapp.com
+ OpenPublic ------------------- http://drupal.org/project/openpublic
  OpenScholar ------------------ http://openscholar.harvard.edu
  Videola ---------------------- http://videola.tv
 

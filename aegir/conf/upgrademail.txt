@@ -7,7 +7,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
 
 === NEW OCTOPUS PLATFORMS
 
-  Commons 3.1 ------------------ http://acquia.com/drupalcommons
+  Commons 3.1 ------------------ http://drupal.org/project/commons
 
 
 === UPDATED OCTOPUS PLATFORMS
@@ -15,25 +15,26 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
   ### Drupal 7
 
   CiviCRM 4.2.8 ---------------- http://civicrm.org
-  Commerce 1.16 ---------------- http://drupalcommerce.org
-  Commerce 2.5 ----------------- http://drupalcommerce.org
+  Commerce 1.16 ---------------- http://drupal.org/project/commerce_kickstart
+  Commerce 2.5 ----------------- http://drupal.org/project/commerce_kickstart
   Drupal 7.21.2 ---------------- http://drupal.org/drupal-7.21
-  NodeStream 2.0-rc4 ----------- http://nodestream.org
-  Open Deals 1.18 -------------- http://opendealsapp.com
-  Open Outreach 1.0-rc10 ------- http://openoutreach.org
-  OpenChurch 1.11-beta9 -------- http://openchurchsite.com
-  Ubercart 3.4.1 --------------- http://ubercart.org
+  NodeStream 2.0-rc4 ----------- http://drupal.org/project/nodestream
+  Open Deals 1.18 -------------- http://drupal.org/project/opendeals
+  Open Outreach 1.0-rc10 ------- http://drupal.org/project/openoutreach
+  OpenChurch 1.11-beta9 -------- http://drupal.org/project/openchurch
+  Panopoly 1.0-rc4a ------------ http://drupal.org/project/panopoly
+  Ubercart 3.4.1 --------------- http://drupal.org/project/ubercart
 
   ### Pressflow 6
 
   Acquia 6.28.1 ---------------- http://bit.ly/acquiadrupal
-  Commons 2.12 ----------------- http://acquia.com/drupalcommons
+  Commons 2.12 ----------------- http://drupal.org/project/commons
   Feature Server 1.2 ----------- http://bit.ly/fserver
-  Managing News 1.2.3 ---------- http://managingnews.com
-  Open Atrium 1.7.1 ------------ http://openatrium.com
+  Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
+  Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
   Pressflow 6.28.1 ------------- http://pressflow.org
   ProsePoint 0.46 -------------- http://prosepoint.org
-  Ubercart 2.11.1 -------------- http://ubercart.org
+  Ubercart 2.11.1 -------------- http://drupal.org/project/ubercart
 
   All other not listed above platforms are available with latest
   D6 or D7 core, even if there were no new distro version released.
