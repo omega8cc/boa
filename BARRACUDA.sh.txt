@@ -5578,7 +5578,7 @@ else
   _PATH_BZR="/usr/local/bin/bzr"
 fi
 if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Installing bzr, please wait..."
+  msg "INFO: Installing Bazaar (bzr) $_BZR_VERSION, please wait..."
   mrun "sleep 1"
   if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ] ; then
     rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
