@@ -482,6 +482,11 @@ upgrade_contrib_less () {
   # http://drupal.org/node/1766338#comment-6445882
   wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+  if [ -e "../apps" ] ; then
+    cd ../apps
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
+    patch -p1 < apps_msg.patch &> /dev/null
+  fi
   cd ../
 }
 #
@@ -2101,10 +2106,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv $_THIS_PRNAME-$_OPENDEALS $_THIS_DISTRO
   fi
   replace_drupal7_core
-  if [ $_OPEN_DEALS = "7.x-1.18" ] ; then
+  if [ $_OPENDEALS = "7.x-1.18" ] ; then
     cd $_THIS_PRPATH/modules
-    rm -f -r {views}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
+    rm -f -r {diff}
+    wget -q -U iCab http://ftp.drupal.org/files/projects/diff-7.x-3.2.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
@@ -2353,9 +2358,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   replace_drupal7_core
   if [ $_OPENPUBLISH = "7.x-1.0-beta7" ] ; then
     cd $_THIS_PRPATH/modules/contrib
-    rm -f -r $_THIS_PRPATH/modules/contrib/{boxes,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,views,xmlsitemap}
+    rm -f -r $_THIS_PRPATH/modules/contrib/{boxes,context,diff,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,views,xmlsitemap}
     cd $_THIS_PRPATH/modules/contrib
     wget -q -U iCab http://ftp.drupal.org/files/projects/boxes-7.x-1.1.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/context-7.x-3.0-beta6.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/diff-7.x-3.2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/entity_autocomplete-7.x-1.0-beta3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/features_override-7.x-2.0-beta2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_sources-7.x-1.7.tar.gz
@@ -2476,16 +2483,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     mv -f $_CORE_DISTRO/sites/all/modules/panopoly_demo $_THIS_PRPATH/modules/panopoly/ &> /dev/null
   fi
   cd $_THIS_PRPATH/modules/contrib
-  upgrade_contrib_some
-  if [ $_PANOPOLY = "7.x-1.0-rc4" ] ; then
-    cd $_THIS_PRPATH/themes
-    rm -f -r {responsive_bartik}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/responsive_bartik-7.x-1.x-dev.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
-  fi
+  upgrade_contrib_less
   patch_d7_core
 fi
 init_this_distro_root
@@ -2682,7 +2680,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.6.tar.gz
   for archive in ./*.tar.gz; do
