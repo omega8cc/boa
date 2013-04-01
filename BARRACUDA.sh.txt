@@ -6365,7 +6365,6 @@ if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/
   cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
   chown -R jetty7:jetty7 /opt/solr1
   sed -i "s/8077/8080/g" /etc/default/jetty7 &> /dev/null
-  sed -i "s/8077/8080/g" /etc/default/jetty7 &> /dev/null
   sed -i "s/8077/8080/g" /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
   sed -i "s/8077/8080/g" /opt/solr1/site_00{1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
   sed -i "s/8077/8080/g" /opt/solr1/conf/solrcore.properties &> /dev/null
