@@ -7,6 +7,8 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
 
 === NEW OCTOPUS PLATFORMS
 
+  ### Drupal 7
+
   Commons 3.1 ------------------ http://drupal.org/project/commons
 
 
@@ -40,7 +42,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6-dev
   D6 or D7 core, even if there were no new distro version released.
 
 
-=== FIXES AND CHANGES
+=== NEW FEATURES, FIXES AND CHANGES
 
 * Complete list is available on our website at:
 
