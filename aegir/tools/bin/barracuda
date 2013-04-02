@@ -13,6 +13,9 @@ send_report ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      _MY_EMAIL="barracuda@omega8.cc"
+    fi
     if [ ! -z "$_MY_EMAIL" ] ; then
       cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
       echo "REPORT: Successful Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
@@ -24,6 +27,9 @@ send_alert ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      _MY_EMAIL="barracuda@omega8.cc"
+    fi
     if [ ! -z "$_MY_EMAIL" ] ; then
       cat $_UP_LOG | mail -e -s "ALERT: Failed Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
       echo "ALERT: Failed Barracuda upgrade on $_CHECK_HOST sent to $_MY_EMAIL"
