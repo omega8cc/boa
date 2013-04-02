@@ -314,11 +314,7 @@ fix_php_ini_newrelic_all () {
     fi
     _THIS_FILE=/opt/etc/php.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/usr/local/lib/php.ini
-    fix_php_ini_newrelic
     _THIS_FILE=/opt/local/etc/php53.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/local/lib/php.ini
     fix_php_ini_newrelic
   fi
 }
