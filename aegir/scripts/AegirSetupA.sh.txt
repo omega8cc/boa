@@ -1300,6 +1300,30 @@ if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
 fi
 
 
+###---### Add symlink to the system clean_missing_modules
+#
+if [ ! -L "$_USER_DM/clean_missing_modules" ] ; then
+  msg "$_STATUS A: Adding symlink to the system clean_missing_modules"
+  mrun "sleep 1"
+  mkdir -p $_USER_DM
+  chown $_USERFTP:$_USRG $_USER_DM
+  chmod 700 $_USER_DM
+  ln -s /var/aegir/.drush/clean_missing_modules $_USER_DM/clean_missing_modules
+fi
+
+
+###---### Add symlink to the system drush_ecl
+#
+if [ ! -L "$_USER_DM/drush_ecl" ] ; then
+  msg "$_STATUS A: Adding symlink to the system drush_ecl"
+  mrun "sleep 1"
+  mkdir -p $_USER_DM
+  chown $_USERFTP:$_USRG $_USER_DM
+  chmod 700 $_USER_DM
+  ln -s /var/aegir/.drush/drush_ecl $_USER_DM/drush_ecl
+fi
+
+
 ###---### Create .ssh dir if not exists
 #
 _USER_SSH="/home/$_USERFTP/.ssh"

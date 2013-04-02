@@ -66,6 +66,12 @@ fix_dot_dirs()
   if [ ! -L "$_USER_DRUSH/registry_rebuild" ] ; then
     ln -s /var/aegir/.drush/registry_rebuild $_USER_DRUSH/registry_rebuild
   fi
+  if [ ! -L "$_USER_DRUSH/clean_missing_modules" ] ; then
+    ln -s /var/aegir/.drush/clean_missing_modules $_USER_DRUSH/clean_missing_modules
+  fi
+  if [ ! -L "$_USER_DRUSH/drush_ecl" ] ; then
+    ln -s /var/aegir/.drush/drush_ecl $_USER_DRUSH/drush_ecl
+  fi
 }
 #
 # OK, create user.
