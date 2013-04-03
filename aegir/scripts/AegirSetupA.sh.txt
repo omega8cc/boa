@@ -1329,9 +1329,21 @@ fi
 _USER_SSH="/home/$_USERFTP/.ssh"
 if [ ! -d "$_USER_SSH" ] ; then
   mkdir -p $_USER_SSH
-  chown $_USERFTP:$_USRG $_USER_SSH
+  chown -R $_USERFTP:$_USRG $_USER_SSH
   chmod 700 $_USER_SSH
 fi
+chmod 600 $_USER_SSH/id_{r,d}sa &> /dev/null
+
+
+###---### Create .bazaar dir and conf file if not exist
+#
+_USER_BZR="/home/$_USERFTP/.bazaar"
+if [ ! -d "$_USER_BZR" ] ; then
+  mkdir -p $_USER_BZR
+  chown $_USERFTP:$_USRG $_USER_BZR
+  chmod 700 $_USER_BZR
+fi
+echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
 
 
 ###---### Add symlink to the clients directory
@@ -1616,6 +1628,10 @@ mrun "sleep 1"
     fi
   fi
 fi
+
+
+###---### Create ~/static dir if not exists
+#
 if [ ! -d "$_ROOT/static" ] ; then
   mkdir -p $_ROOT/static
   ln -s $_ROOT/static /home/$_USERFTP/static
@@ -1623,6 +1639,40 @@ fi
 chown $_USER:$_USRG $_ROOT/static &> /dev/null
 chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
+
+
+###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user
+#
+if [ ! -e "$_ROOT/.ssh/id_rsa.pub" ] ; then
+  su -s /bin/bash - $_USER -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H $_USER.beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H $_USER.unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H beanstalkapp.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H bitbucket.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H codebasehq.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H drupal.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H git.drupal.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H github.com >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H gitorious.org >> ~/.ssh/known_hosts" &> /dev/null
+  su -s /bin/bash - $_USER -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
+  cp -af $_ROOT/.ssh/id_rsa.pub $_ROOT/static/$_USER.id_rsa.pub
+  chmod 644 $_ROOT/static/$_USER.id_rsa.pub
+fi
+
+
+###---### Create .bazaar dir and conf file if not exist for system user
+#
+_SYSTEM_USER_BZR="$_ROOT/.bazaar"
+if [ ! -d "$_SYSTEM_USER_BZR" ] ; then
+  mkdir -p $_SYSTEM_USER_BZR
+  chown $_USER:$_USRG $_SYSTEM_USER_BZR
+  chmod 700 $_SYSTEM_USER_BZR
+fi
+echo ignore_missing_extensions=True > $_SYSTEM_USER_BZR/bazaar.conf
+
+
+###---### Create other dirs and symlinks if not exist
+#
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
 else
