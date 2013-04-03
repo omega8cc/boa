@@ -6901,7 +6901,7 @@ if [ ! -e "/var/log/sysctl.conf.vm.swap.tuned.log" ] ; then
   cp -af /etc/sysctl.conf /etc/sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf /etc/sysctl.conf
   /sbin/sysctl -p &> /dev/null
-  sysctl vm.swappiness=10 &> /dev/null
+  sysctl vm.swappiness=20 &> /dev/null
   sysctl kernel.randomize_va_space=2 &> /dev/null
   sysctl net.ipv4.tcp_syncookies=1 &> /dev/null
   touch /var/log/sysctl.conf.vm.swap.tuned.log
