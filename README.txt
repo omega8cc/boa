@@ -130,7 +130,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 Octopus can install the platforms listed below:
 
-### Drupal 7
+### Drupal 7.22.1
 
  CiviCRM 4.2.8 ---------------- http://civicrm.org
  Commerce 1.16 ---------------- http://drupal.org/project/commerce_kickstart
@@ -145,7 +145,7 @@ Octopus can install the platforms listed below:
  Panopoly 1.0-rc4a ------------ http://drupal.org/project/panopoly
  Ubercart 3.4.1 --------------- http://drupal.org/project/ubercart
 
-### Pressflow 6
+### Pressflow 6.28.1
 
  Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
  CiviCRM 4.1.6 ---------------- http://civicrm.org
@@ -157,6 +157,12 @@ Octopus can install the platforms listed below:
  Pressflow 6.28.1 (int) ------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
  Ubercart 2.11.1 (int) -------- http://drupal.org/project/ubercart
+
+All D7 platforms have been enhanced using Drupal 7.22.1 +Extra core:
+https://github.com/omega8cc/7x/tree/7.22.1
+
+All D6 platforms have been enhanced using Pressflow 6.28.1 +Extra core:
+https://github.com/omega8cc/pressflow6/tree/pressflow-plus-6.28.1
 
 There are also platforms temporarily disabled for new installs,
 because they are either outdated, with numerous security updates
@@ -183,11 +189,6 @@ will fix all critical issues and/or apply required updates:
  OpenPublic ------------------- http://drupal.org/project/openpublic
  OpenScholar ------------------ http://openscholar.harvard.edu
  Videola ---------------------- http://videola.tv
-
-All D6 platforms have been enhanced using Pressflow Drupal core.
-
-All D7 platforms include some hotfixes published between latest
-Drupal core release and latest BOA release.
 
 Platforms marked with (int) come also with ready to use translations
 of Drupal core in 25 languages. Only languages with at least
