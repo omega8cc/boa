@@ -1,4 +1,28 @@
 
+### Stable Edition BOA-2.0.7
+### Date: Thu Apr  4 00:00:17 EDT 2013
+### Installs Aegir 2.x
+
+# Updated Octopus platforms:
+
+  ### Drupal 7.22.1
+
+  Commons 3.2 ------------------ http://drupal.org/project/commons
+
+  All other not listed above platforms are available with latest
+  D6 or D7 core, even if there were no new distro version released.
+
+# Fixes:
+
+  * Create dot dirs and keys if not exist, plus known_hosts for system user.
+  * Fix the sqlmagic regex to really convert only expected tables.
+  * Issue #1958502 - Add missing symlinks to the new Drush extensions.
+  * Issue #1960192 - Fix literal path replacement with sites/$new_url in D7.
+  * Issues #1930670 #1958898 #1932616 - Fix for hosting_server_update_6200.
+  * Taxonomy Edge update to 7.x-1.7 and 6.x-1.7
+  * Update contrib in all D7 platforms to ctools-7.x-1.3 - security upgrade.
+
+
 ### Stable Edition BOA-2.0.6
 ### Date: Mon Apr  1 21:34:04 EDT 2013
 ### Installs Aegir 2.x
