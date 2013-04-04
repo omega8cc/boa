@@ -9,7 +9,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.0.6
 
   ### Drupal 7
 
-  Commons 3.1 ------------------ http://drupal.org/project/commons
+  Commons 3.2 ------------------ http://drupal.org/project/commons
 
 
 === UPDATED OCTOPUS PLATFORMS
