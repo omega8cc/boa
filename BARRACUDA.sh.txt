@@ -4509,7 +4509,8 @@ if [ -f "/etc/default/dhcpcd" ] ; then
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ "$_INSTALL_PDNSD" = "NO" ] ; then
-    if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] ; then
+    _CHECK_HOST=`uname -n`
+    if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
         true
