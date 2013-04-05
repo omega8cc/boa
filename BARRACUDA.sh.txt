@@ -5567,6 +5567,11 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
     update_php_legacy
+  else
+    if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
+      ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+    fi
   fi
   update_php_modern
 fi
