@@ -4726,8 +4726,17 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
+  if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+    mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
+    ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+  fi
   st_runner "apt-get -y remove libc-client2007b-dev" 2> /dev/null
+  st_runner "apt-get -y remove svscan" 2> /dev/null
+  st_runner "apt-get -y remove pound" 2> /dev/null
+  st_runner "apt-get -y remove udev" 2> /dev/null
+  st_runner "apt-get -y remove lsb-release" 2> /dev/null
   st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
   st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
@@ -4741,7 +4750,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y install collectd" 2> /dev/null
   fi
-  st_runner "apt-get -y install libc-client2007e-dev" 2> /dev/null
+  st_runner "apt-get -y install udev lsb-release libc-client2007e-dev" 2> /dev/null
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
     _REMOVE_LINKS="halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial umountfs umountnfs.sh umountroot urandom"
@@ -5580,29 +5589,29 @@ install_newrelic
 
 ###--------------------###
 if [ "$_REL_VERSION" = "lenny" ] ; then
-  _PATH_BZR="/usr/bin/bzr"
+  true
 else
   _PATH_BZR="/usr/local/bin/bzr"
-fi
-if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  msg "INFO: Installing Bazaar (bzr) $_BZR_VERSION, please wait..."
-  mrun "sleep 1"
-  if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ] ; then
-    rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
+  if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    msg "INFO: Installing Bazaar (bzr) $_BZR_VERSION, please wait..."
+    mrun "sleep 1"
+    if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ] ; then
+      rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
+    fi
+    if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ] ; then
+      rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
+    fi
+    mkdir -p ~/.bazaar
+    echo ignore_missing_extensions=True > ~/.bazaar/bazaar.conf
+    cd /var/opt
+    rm -f -r bzr*
+    wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
+    tar -xzf bzr-$_BZR_VERSION.tar.gz
+    cd /var/opt/bzr-$_BZR_VERSION
+    st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
   fi
-  if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ] ; then
-    rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
-  fi
-  mkdir -p ~/.bazaar
-  echo ignore_missing_extensions=True > ~/.bazaar/bazaar.conf
-  cd /var/opt
-  rm -f -r bzr*
-  wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
-  tar -xzf bzr-$_BZR_VERSION.tar.gz
-  cd /var/opt/bzr-$_BZR_VERSION
-  st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
 fi
 
 
@@ -5970,7 +5979,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
 else
   echo " "
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "xlenny" ] ; then
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped!"
     echo " "
     msg "NOTE! You *must* reboot the server and then run Barracuda *again*"
