@@ -137,7 +137,7 @@ Octopus can install the platforms listed below:
  Commerce 2.6 ----------------- http://drupal.org/project/commerce_kickstart
  Commons 3.2 ------------------ http://drupal.org/project/commons
  Drupal 7.22.1 ---------------- http://drupal.org/drupal-7.22
- NodeStream 2.0-rc4 ----------- http://drupal.org/project/nodestream
+ NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
  Open Deals 1.18 -------------- http://drupal.org/project/opendeals
  Open Outreach 1.0-rc10 ------- http://drupal.org/project/openoutreach
  OpenChurch 1.11-beta9 -------- http://drupal.org/project/openchurch
