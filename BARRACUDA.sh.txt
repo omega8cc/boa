@@ -5807,298 +5807,6 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/root/.my.pass.txt" ] ; then
-  msg "INFO: Generating random password for $_DB_SERVER"
-  mrun "sleep 1"
-  touch /root/.my.pass.txt
-  chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=""
-  _LEN_PASS=0
-  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _LEN_PASS=$(echo ${#_ESC_PASS})
-  fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
-    _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
-  fi
-  echo "$_ESC_PASS" > /root/.my.pass.txt
-fi
-if [ -e "/root/.my.pass.txt" ] ; then
-  for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f` ; do
-    sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
-  done
-  if [ "$_STATUS" = "INIT" ] ; then
-    msg "INFO: OS and services installation completed"
-  else
-    msg "INFO: OS and services upgrade completed"
-  fi
-  mrun "sleep 1"
-else
-  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
-  cat <<EOF
-
-  It appears that you don't have required file with your root sql password.
-  Create this file first and run this script again:
-
-  echo "your_working_SQL_ROOT_password" > /root/.my.pass.txt
-  chmod 0600 /root/.my.pass.txt
-
-EOF
-  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
-  exit 1
-fi
-
-
-if [ "$_STATUS" = "INIT" ] ; then
-
-
-###--------------------###
-  if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-    msg "ALRT: $_DB_SERVER server not running properly!"
-    msg "EXIT: We can't proceed with installation and will exit now"
-    msg "HINT: Please check $_LOG for more information,"
-    msg "HINT: (re)start $_DB_SERVER server and then run installer again"
-    msg "Bye"
-    rm -f /root/.my.pass.txt
-    mkdir -p /var/aegir
-    exit 1
-  fi
-  msg "INFO: Installing Aegir Master Instance, please wait..."
-  mrun "sleep 1"
-  st_runner "adduser --system --group --home /var/aegir aegir"
-  st_runner "adduser aegir www-data"
-  echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-  ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
-  update_nginx_conf
-  cd /var/aegir
-  _AEGIR_SCRIPT="AegirSetupM.sh.txt"
-  for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
-    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
-    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
-    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files &> /dev/null
-    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
-    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
-    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files &> /dev/null
-    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
-  done
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
-  ln -s /var/aegir/drush/drush /usr/bin/drush &> /dev/null
-  if [ "$_USE_STOCK" = "YES" ] ; then
-    if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
-    else
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
-    fi
-  else
-    if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
-    else
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
-    fi
-  fi
-  mrun "sleep 1"
-  if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
-    msg "FATAL ERROR: AegirSetupM installer failed"
-    msg "FATAL ERROR: Aborting Barracuda installer NOW!"
-    msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
-    touch /opt/tmp/status-Barracuda-FAIL
-    exit 1
-  fi
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
-  fi
-  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
-  fi
-  msg "INFO: Running hosting-dispatch (1/3), please wait..."
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-  mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (2/3), please wait..."
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-  mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (3/3), please wait..."
-  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-  if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
-    echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
-  fi
-  _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-  mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
-  chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
-  rm -f /var/aegir/$_AEGIR_SCRIPT
-
-
-###--------------------###
-  if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] && [ "$_USE_STOCK" = "NO" ] ; then
-    true
-  elif [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
-    true
-  else
-    msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
-    msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
-    exit 1
-  fi
-
-
-###--------------------###
-  mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
-  fi
-  sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
-  update_redis_password
-  force_advanced_nginx_config
-  if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
-    sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
-  fi
-  chmod 0711 /var/aegir/config/includes &> /dev/null
-  chmod 0711 /var/aegir/config &> /dev/null
-  find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
-  find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
-  find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
-  find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R aegir:aegir /var/aegir/.drush &> /dev/null
-  find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
-  find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
-  chmod 0440 /var/aegir/.drush/*.php &> /dev/null
-  chmod 0711 /var/aegir/.drush &> /dev/null
-  cd /var/aegir
-  rm -f /etc/nginx/sites-available/default
-  rm -f /etc/nginx/sites-enabled/default
-  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
-    mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
-  fi
-  service nginx reload &> /dev/null
-  mrun "sleep 1"
-  msg "INFO: Aegir Master Instance installation completed"
-  mrun "sleep 1"
-else
-  echo " "
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
-    msg "INFO: Aegir Master Instance upgrade skipped!"
-    echo " "
-    msg "NOTE! You *must* reboot the server and then run Barracuda *again*"
-    msg "NOTE! to complete all system upgrades and upgrade also"
-    msg "NOTE! Aegir Master Instance securely"
-    echo " "
-  elif [ "$_SYSTEM_UPGRADE_ONLY" = "YES" ] ; then
-    msg "INFO: Aegir Master Instance upgrade skipped"
-    echo " "
-  else
-    msg "INFO: Restarting $_DB_SERVER server, please wait..."
-    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    st_runner "service mysql restart" &> /dev/null
-    mrun "sleep 8"
-    msg "INFO: Upgrading $_DB_SERVER tables if necessary, please wait a minute..."
-    mrun "sleep 60"
-    if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
-      msg "ALRT: $_DB_SERVER server not running properly!"
-      msg "EXIT: We can't proceed with upgrade and will exit now"
-      msg "HINT: Please check $_LOG for more information,"
-      msg "HINT: (re)start $_DB_SERVER server and then run installer again"
-      msg "Bye"
-      exit 1
-    fi
-    upgrade_aegir_master
-  fi
-fi
-update_php_cli_cron
-
-
-###--------------------###
-if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
-  cd /etc/nginx
-  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
-  mkdir -p /var/www/nginx-default
-  cd /var/www/nginx-default
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
-  mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  mv -f uc.html index.html &> /dev/null
-  rm -f /etc/nginx/sites-available/default
-  rm -f /etc/nginx/sites-enabled/default
-  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    st_runner "service nginx reload" &> /dev/null
-  fi
-fi
-
-
-###--------------------###
-if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-  msg "INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
-  mrun "sleep 1"
-  _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
-  if [[ "$_HTTPS_TEST" =~ "443" ]] ; then
-    _HTTPS_TEST=EXIST
-    msg "WARNING!"
-    cat <<EOF
-
-  We can't enable Wildcard HTTPS Proxy for all your hosted sites,
-  including all Aegir Satellite Instances, because you have already
-  enabled SSL on the IP address used by your Aegir Master Instance.
-
-  If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
-  please disable the SSL you enabled, or use the built-in Aegir SSL
-  feature on another IP address available and not used by the Hostmaster,
-  and other hosted sites.
-
-  We will continue in 10 seconds...
-
-EOF
-    mrun "sleep 10"
-  else
-    _HTTPS_TEST=FREE
-    validate_public_ip &> /dev/null
-    validate_xtras_ip &> /dev/null
-    openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-    cd /var/aegir/config/server_master/nginx/pre.d
-    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
-    if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-      sed -i "s/127.0.0.1:80/localhost:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
-    else
-      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
-    fi
-    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
-    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
-      mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
-    fi
-    sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
-    update_redis_password
-    killall -9 nginx &> /dev/null
-    mrun "sleep 1"
-    service nginx start &> /dev/null
-  fi
-fi
-
-
-###--------------------###
-if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
-  if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-    touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
-  fi
-fi
-
-
-###--------------------###
-msg "INFO: Installing extra Drush versions"
-mrun "sleep 1"
-get_drush_versions
-
-
-###--------------------###
 if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] && [ -d "/usr/lib/jvm/java-6-openjdk-amd64" ] ; then
   ln -s /usr/lib/jvm/java-6-openjdk-amd64 /usr/lib/jvm/java-6-openjdk
 fi
@@ -6409,6 +6117,306 @@ fi
 
 
 ###--------------------###
+if [ ! -e "/root/.my.pass.txt" ] ; then
+  msg "INFO: Generating random password for $_DB_SERVER"
+  mrun "sleep 1"
+  touch /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt &> /dev/null
+  _ESC_PASS=""
+  _LEN_PASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_PASS=$(randpass 32 esc)
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _LEN_PASS=$(echo ${#_ESC_PASS})
+  fi
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+    _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+  fi
+  echo "$_ESC_PASS" > /root/.my.pass.txt
+fi
+if [ -e "/root/.my.pass.txt" ] ; then
+  for Files in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f` ; do
+    sed -i "s/php-fpm nginx php/php-fpm php-cgi nginx php/g" $Files &> /dev/null
+  done
+  if [ "$_STATUS" = "INIT" ] ; then
+    msg "INFO: Updating $_DB_SERVER and PHP configuration"
+    mrun "sleep 1"
+    update_sql_conf
+    update_php_conf
+    tune_memory_limits
+    msg "INFO: Restarting $_DB_SERVER"
+    st_runner "service mysql restart" &> /dev/null
+    msg "INFO: Restarting $_DB_SERVER server completed"
+    msg "INFO: OS and services installation completed"
+  else
+    msg "INFO: OS and services upgrade completed"
+  fi
+  mrun "sleep 1"
+else
+  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
+  cat <<EOF
+
+  It appears that you don't have required file with your root sql password.
+  Create this file first and run this script again:
+
+  echo "your_working_SQL_ROOT_password" > /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt
+
+EOF
+  msg "EXIT on error due to not found file with your MySQL/$_DB_SERVER root password"
+  exit 1
+fi
+
+
+if [ "$_STATUS" = "INIT" ] ; then
+
+
+###--------------------###
+  if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
+    msg "ALRT: $_DB_SERVER server not running properly!"
+    msg "EXIT: We can't proceed with installation and will exit now"
+    msg "HINT: Please check $_LOG for more information,"
+    msg "HINT: (re)start $_DB_SERVER server and then run installer again"
+    msg "Bye"
+    rm -f /root/.my.pass.txt
+    mkdir -p /var/aegir
+    exit 1
+  fi
+  msg "INFO: Installing Aegir Master Instance, please wait..."
+  mrun "sleep 1"
+  st_runner "adduser --system --group --home /var/aegir aegir"
+  st_runner "adduser aegir www-data"
+  echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
+  ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+  update_nginx_conf
+  cd /var/aegir
+  _AEGIR_SCRIPT="AegirSetupM.sh.txt"
+  for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f` ; do
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
+    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files &> /dev/null
+    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
+  done
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
+  ln -s /var/aegir/drush/drush /usr/bin/drush &> /dev/null
+  if [ "$_USE_STOCK" = "YES" ] ; then
+    if [ "$_DEBUG_MODE" = "YES" ] ; then
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+    else
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+    fi
+  else
+    if [ "$_DEBUG_MODE" = "YES" ] ; then
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
+    else
+      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
+    fi
+  fi
+  mrun "sleep 1"
+  if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
+    msg "FATAL ERROR: AegirSetupM installer failed"
+    msg "FATAL ERROR: Aborting Barracuda installer NOW!"
+    msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
+    touch /opt/tmp/status-Barracuda-FAIL
+    exit 1
+  fi
+  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+  fi
+  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
+    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
+  fi
+  msg "INFO: Running hosting-dispatch (1/3), please wait..."
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  mrun "sleep 5"
+  msg "INFO: Running hosting-dispatch (2/3), please wait..."
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  mrun "sleep 5"
+  msg "INFO: Running hosting-dispatch (3/3), please wait..."
+  su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+  if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
+    echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
+  fi
+  _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+  mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
+  chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
+  rm -f /var/aegir/$_AEGIR_SCRIPT
+
+
+###--------------------###
+  if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] && [ "$_USE_STOCK" = "NO" ] ; then
+    true
+  elif [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
+    true
+  else
+    msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
+    msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
+    exit 1
+  fi
+
+
+###--------------------###
+  mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
+  fi
+  sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+  update_redis_password
+  force_advanced_nginx_config
+  if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+    sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
+  fi
+  chmod 0711 /var/aegir/config/includes &> /dev/null
+  chmod 0711 /var/aegir/config &> /dev/null
+  find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+  find /var/aegir/host_master/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+  find /var/aegir/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
+  find /var/aegir/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R aegir:aegir /var/aegir/.drush &> /dev/null
+  find /var/aegir/.drush -type d -exec chmod 0755 {} \; &> /dev/null
+  find /var/aegir/.drush -type f -exec chmod 0644 {} \; &> /dev/null
+  chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+  chmod 0711 /var/aegir/.drush &> /dev/null
+  cd /var/aegir
+  rm -f /etc/nginx/sites-available/default
+  rm -f /etc/nginx/sites-enabled/default
+  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] ; then
+    mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
+  fi
+  service nginx reload &> /dev/null
+  mrun "sleep 1"
+  msg "INFO: Aegir Master Instance installation completed"
+  mrun "sleep 1"
+else
+  echo " "
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+    msg "INFO: Aegir Master Instance upgrade skipped!"
+    echo " "
+    msg "NOTE! You *must* reboot the server and then run Barracuda *again*"
+    msg "NOTE! to complete all system upgrades and upgrade also"
+    msg "NOTE! Aegir Master Instance securely"
+    echo " "
+  elif [ "$_SYSTEM_UPGRADE_ONLY" = "YES" ] ; then
+    msg "INFO: Aegir Master Instance upgrade skipped"
+    echo " "
+  else
+    msg "INFO: Restarting $_DB_SERVER server, please wait..."
+    rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
+    st_runner "service mysql restart" &> /dev/null
+    mrun "sleep 8"
+    msg "INFO: Upgrading $_DB_SERVER tables if necessary, please wait a minute..."
+    mrun "sleep 60"
+    if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock" ] ; then
+      msg "ALRT: $_DB_SERVER server not running properly!"
+      msg "EXIT: We can't proceed with upgrade and will exit now"
+      msg "HINT: Please check $_LOG for more information,"
+      msg "HINT: (re)start $_DB_SERVER server and then run installer again"
+      msg "Bye"
+      exit 1
+    fi
+    upgrade_aegir_master
+  fi
+fi
+update_php_cli_cron
+
+
+###--------------------###
+if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
+  cd /etc/nginx
+  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
+  mkdir -p /var/www/nginx-default
+  cd /var/www/nginx-default
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./
+  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
+  mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  mv -f uc.html index.html &> /dev/null
+  rm -f /etc/nginx/sites-available/default
+  rm -f /etc/nginx/sites-enabled/default
+  if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
+    st_runner "service nginx reload" &> /dev/null
+  fi
+fi
+
+
+###--------------------###
+if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+  msg "INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
+  mrun "sleep 1"
+  _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
+  if [[ "$_HTTPS_TEST" =~ "443" ]] ; then
+    _HTTPS_TEST=EXIST
+    msg "WARNING!"
+    cat <<EOF
+
+  We can't enable Wildcard HTTPS Proxy for all your hosted sites,
+  including all Aegir Satellite Instances, because you have already
+  enabled SSL on the IP address used by your Aegir Master Instance.
+
+  If you wish to use provided now by Barracuda Wildcard HTTPS Proxy,
+  please disable the SSL you enabled, or use the built-in Aegir SSL
+  feature on another IP address available and not used by the Hostmaster,
+  and other hosted sites.
+
+  We will continue in 10 seconds...
+
+EOF
+    mrun "sleep 10"
+  else
+    _HTTPS_TEST=FREE
+    validate_public_ip &> /dev/null
+    validate_xtras_ip &> /dev/null
+    openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
+    cd /var/aegir/config/server_master/nginx/pre.d
+    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
+    if [ "$_HTTP_WILDCARD" = "YES" ] ; then
+      sed -i "s/127.0.0.1:80/localhost:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    else
+      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    fi
+    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
+      mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
+    fi
+    sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    update_redis_password
+    killall -9 nginx &> /dev/null
+    mrun "sleep 1"
+    service nginx start &> /dev/null
+  fi
+fi
+
+
+###--------------------###
+if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
+  if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+    touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+  fi
+fi
+
+
+###--------------------###
+msg "INFO: Installing extra Drush versions"
+mrun "sleep 1"
+get_drush_versions
+
+
+###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   if [ ! -e "/var/www/chive/index.php" ] ; then
     echo " "
@@ -6704,22 +6712,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
   st_runner "service ssh reload" &> /dev/null
-  cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
-  sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
-  sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
-  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
-    true
-  else
-    sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
-  fi
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
-  fi
-  update_php_conf
-  tune_memory_limits
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
     msg "INFO: Restarting Jetty 9"
     mrun "sleep 1"
@@ -6735,8 +6727,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     mrun "sleep 1"
     st_runner "service jetty7 restart" &> /dev/null
   fi
-  msg "INFO: Restarting $_DB_SERVER"
-  st_runner "service mysql restart" &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Starting Redis, PHP-FPM and Nginx"
     st_runner "service redis-server start" &> /dev/null
