@@ -385,10 +385,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         $expire_in_seconds = '1';
       }
 
-      if (isset($_SERVER['HTTP_X_LOCAL_PROXY'])) {
-        $expire_in_seconds = '1';
-      }
-
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
       }
