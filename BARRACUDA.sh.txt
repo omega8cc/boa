@@ -6146,9 +6146,8 @@ if [ -e "/root/.my.pass.txt" ] ; then
     update_sql_conf
     update_php_conf
     tune_memory_limits
-    msg "INFO: Restarting $_DB_SERVER"
+    msg "INFO: Restarting $_DB_SERVER server"
     st_runner "service mysql restart" &> /dev/null
-    msg "INFO: Restarting $_DB_SERVER server completed"
     msg "INFO: OS and services installation completed"
   else
     msg "INFO: OS and services upgrade completed"
