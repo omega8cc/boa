@@ -520,6 +520,7 @@ _SMALLCORE6=6.28.1
 _SMALLCORE7=7.22.1
 _SMALLCORE8=8.0-dev
 _SPINNER=YES
+_T_BUILD=HEAD
 _TODAY=`date +%y%m%d`
 _USRG=users
 _WEBG=www-data
@@ -941,6 +942,7 @@ do
   sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
   sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
+  sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
   sed -i "s/EDIT_UBER_CART_SEVEN/$_UBER_CART_SEVEN/g"     $Files &> /dev/null
