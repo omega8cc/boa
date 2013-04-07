@@ -2248,7 +2248,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     fi
     replace_drupal7_core
     remove_default_core_seven_profiles
-    if [ $_OPENDEALS = "7.x-1.18" ] ; then
+    if [ $_OPENDEALS = "7.x-1.19" ] ; then
       cd $_THIS_PRPATH/modules
       rm -f -r {diff}
       wget -q -U iCab http://ftp.drupal.org/files/projects/diff-7.x-3.2.tar.gz
@@ -2256,7 +2256,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
-      upgrade_contrib_less
     fi
     create_dirs
     themes_for_d7
