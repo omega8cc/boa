@@ -55,7 +55,7 @@ sub makeactions
     if ($VISITOR !~ /^((192.168.)|(172.16.)|(10.)|(127.0.))/ && $VISITOR =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
-        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete)\/|files\/progress|plupload|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
+        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
           print "Not Counted Dynamic Request URI: $line\n";
         }
         elsif ($line =~ /files\/(imagecache|styles)/) {
@@ -84,7 +84,7 @@ sub makeactions
     if ($PROXY ne $VISITOR && $PROXY !~ /^((192.168.)|(172.16.)|(10.)|(127.0.))/ && $PROXY =~ /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/) {
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
-        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete)\/|files\/progress|plupload|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
+        if ($line =~ /POST \/([a-z]{2}\/)?(batch|advagg)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(hosting|filefield_nginx_progress|filefield\/progress)/) {
           print "Not Counted Dynamic Request URI: $line\n";
         }
         elsif ($line =~ /files\/(imagecache|styles)/) {
