@@ -1257,10 +1257,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     remove_default_core_seven_profiles
     cd $_THIS_PRPATH
     sed -i "s/name = Commons/name = Commons 3/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
-    if [ $_D7COMMONS = "7.x-3.1" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
-      upgrade_contrib_less
-    fi
+    rm -f -r $_THIS_PRPATH/modules/contrib/entitycache
     create_dirs
     themes_for_d7
     patch_d7_core
