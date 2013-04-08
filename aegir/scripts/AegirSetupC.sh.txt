@@ -1955,9 +1955,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     replace_drupal7_core
     remove_default_core_seven_profiles
     rm -f -r $_THIS_PRPATH/modules/contrib/speedy
-    if [ $_NODESTREAM7 = "7.x-2.0-rc4" ] ; then
+    if [ $_NODESTREAM7 = "7.x-2.0-rc5" ] ; then
       cd $_THIS_PRPATH/modules/contrib
-      upgrade_contrib_more
+      upgrade_contrib_less
     fi
     create_dirs
     themes_for_d7
