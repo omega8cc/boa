@@ -1,6 +1,7 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.0.7
+Your Aegir Hosting System has been upgraded to version BOA-2.0.8 and
+it includes changes from versions BOA-2.0.6 and BOA-2.0.7 released last week.
 
   https://aegir.dragon.ny.host8.biz
 
@@ -21,7 +22,7 @@ platforms and features to help you manage your Drupal sites.
     http://bit.ly/aegir8cc
 
 
-=== IMPORTANT CHANGES IN THIS AND PREVIOUS BOA-2.0.6 RELEASE
+=== IMPORTANT CHANGES IN THIS UPGRADE
 
 * We are changing default PHP-FPM version used by all Drupal 6 sites to the
   new PHP-FPM 5.3.23 and deprecate PHP-FPM 5.2.17, which is now used only
@@ -65,7 +66,7 @@ platforms and features to help you manage your Drupal sites.
 * All known bots receive 24h Speed Booster cache TTL by default.
 
 
-=== NEW FEATURES AND FIXES IN THIS AND PREVIOUS BOA-2.0.6 RELEASE
+=== NEW FEATURES AND FIXES IN THIS UPGRADE
 
 * We have added extra Drush versions available on command line as drush4,
   drush5 and drush6. Note that Aegir backend still uses Drush 4 by default.
@@ -146,6 +147,7 @@ platforms and features to help you manage your Drupal sites.
 
   http://omega8.cc/boa-206-edition-253
   http://omega8.cc/boa-207-edition-254
+  http://omega8.cc/boa-208-edition-255
   http://omega8.cc/updates
 
 
