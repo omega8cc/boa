@@ -538,7 +538,7 @@ fi
 ###
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.2.8
-_CIVICRM_PN=boa-2.0.7-dev
+_CIVICRM_PN=boa-2.0.8-dev
 _CIVICRM6=3.4.8
 _COD=6.x-1.0-rc2
 _COM_MERCE=7.x-2.6
