@@ -1,4 +1,34 @@
 
+### Stable Edition BOA-2.0.8
+### Date: Mon Apr  8 01:41:36 CEST 2013
+### Installs Aegir 2.x
+
+# Updated Octopus platforms:
+
+  ### Drupal 7.22.1
+
+  Commerce 2.6 ----------------- http://drupal.org/project/commerce_kickstart
+  NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
+  Open Deals 1.19 -------------- http://drupal.org/project/opendeals
+
+  All other not listed above platforms are available with latest
+  D6 or D7 core, even if there were no new distro version released.
+
+# Fixes:
+
+  * Critical Issue #1962690 - Fix for broken Percona support.
+
+  * Allow to use [a-z0-9] subdomains and not only [www] for IDN domain names.
+  * Change the interval between platforms builds from 5 to 3 seconds.
+  * Forced 1s Speed Booster TTL for vhosts behind local proxy is deprecated.
+  * Move old firewall logs to backups to avoid crazy load after upgrade.
+  * Nginx: Better exceptions handling in the Abuse Guard for js/shs modules.
+  * PHP: CLI is at 5.3 since BOA-2.0.4, so symlink old 5.2 binary path to 5.3
+  * Update _LENNY_TO_SQUEEZE major upgrade procedure.
+  * Update contrib with login_security-7.x-1.2
+  * Use static downloads for all distros in stable edition.
+
+
 ### Stable Edition BOA-2.0.7
 ### Date: Thu Apr  4 00:00:17 EDT 2013
 ### Installs Aegir 2.x
