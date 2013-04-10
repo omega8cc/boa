@@ -75,7 +75,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.0.8
+### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=YES
@@ -133,7 +133,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.0.8
+### _AEGIR_VERSION=HEAD
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=NO
@@ -446,7 +446,7 @@ _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
 ### _AEGIR_VERSION=BOA-2.0.8
 ###
-_AEGIR_VERSION=BOA-2.0.8
+_AEGIR_VERSION=HEAD
 
 
 ###----------------------------------------###
@@ -903,7 +903,7 @@ _USE_STOCK=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.0.8
+_INSTALLER_VERSION=BOA-2.0.9-dev
 
 ###
 ### Software versions
@@ -3812,7 +3812,7 @@ else
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.0.8
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -3828,7 +3828,7 @@ else
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.0.8
+    _AEGIR_VERSION=HEAD
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
