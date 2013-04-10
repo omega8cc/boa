@@ -470,7 +470,7 @@ download_o_contrib_seven () {
   touch update-018.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.4.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
