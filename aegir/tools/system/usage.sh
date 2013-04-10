@@ -220,8 +220,8 @@ if [ "$_PERMISSIONS" = "YES" ] ; then
   esac
   ### modules,themes,libraries - platform level
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
-    chown $_THIS_HM_USER:users $Plr/sites/all/{modules,themes,libraries} &> /dev/null
     chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+    chown $_THIS_HM_USER:users $Plr/sites $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
     ### known exceptions
@@ -231,8 +231,8 @@ if [ "$_PERMISSIONS" = "YES" ] ; then
     echo fixed > $Plr/sites/all/permissions-fix-$_NOW.info
   fi
   ### modules,themes,libraries - site level
-  chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
   chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+  chown $_THIS_HM_USER:users $Dir/{modules,themes,libraries} &> /dev/null
   find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
   find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
   ### files - site level
