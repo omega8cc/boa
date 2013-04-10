@@ -75,6 +75,7 @@ setup ()
 
 ###--------------------###
 if [ `whoami` = "root" ] ; then
+  chmod a+w /dev/null
   setup
   exit 0
 else

@@ -92,7 +92,7 @@ do_syncpass () {
 check_root ()
 {
   if [ `whoami` = "root" ] ; then
-    true
+    chmod a+w /dev/null
     sed -i "s/.*173.231.133.190.*//g" /etc/hosts &> /dev/null
     sed -i "/^$/d" /etc/hosts &> /dev/null
   else
