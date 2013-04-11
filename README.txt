@@ -115,7 +115,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * MultiCore Apache Solr 3.6.2 with Jetty 8 (optional).
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or 9 on Precise (optional).
 * Fast proxy DNS server (pdnsd) with permanent caching.
-* Bind9 DNS server integrated with experimental Aegir DNS feature (optional).
+* Bind9 DNS server (optional).
 * Webmin Control Panel (optional).
 * Compass Tools (optional).
 * Firewall csf/lfd integrated with Nginx abuse guard (optional).
