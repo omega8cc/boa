@@ -28,7 +28,8 @@ _MODULES=YES
 _MODULES_ON_SEVEN="syslog robotstxt entitycache"
 _MODULES_ON_SIX="syslog path_alias_cache robotstxt"
 _MODULES_OFF_SEVEN="dblog l10n_update devel performance"
-_MODULES_OFF_SIX="cache dblog l10n_update devel performance poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass"
+_MODULES_OFF_LESS_SEVEN="dblog l10n_update performance devel"
+_MODULES_OFF_SIX="cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
 
 
 ###-------------SYSTEM-----------------###
@@ -189,7 +190,11 @@ if [ "$_MODULES" = "YES" ] ; then
         su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
         su -s /bin/bash $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
       elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
-        su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+        if [ -e "$Plr/profiles/panopoly" ] || [ -e "$Plr/profiles/martplug" ] ; then
+          su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_LESS_SEVEN -y &> /dev/null"
+        else
+          su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+        fi
         su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
       fi
     fi
