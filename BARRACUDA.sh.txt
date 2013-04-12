@@ -3145,11 +3145,12 @@ check_apt_updates () {
   for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
-      *linux-*)     _UP_LNX=YES ;;
       *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _UP_PHP=YES ;;
+      *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
+      *newrelic*)   _UP_NRC=YES ;;
       *nginx*)      _UP_NGX=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _UP_PHP=YES ;;
@@ -4822,11 +4823,12 @@ else
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
   done
-  _UP_LNX=NO
-  _UP_PHP=NO
-  _UP_NGX=NO
-  _UP_JDK=NO
   _UP_FPM=NO
+  _UP_JDK=NO
+  _UP_LNX=NO
+  _UP_NGX=NO
+  _UP_NRC=NO
+  _UP_PHP=NO
   check_apt_updates
 fi
 
@@ -5028,6 +5030,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   install_with_aptitude_sql
 else
+  if [ "$_UP_NRC" = "YES" ] ; then
+    update_newrelic
+  fi
   _SQL_UPGRADE=NO
   if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     _SQL_TEST_UPGRADE=NO
@@ -5582,6 +5587,9 @@ if [ "$_REL_VERSION" = "precise" ] && [ ! -e "/var/log/precise-apc-fixed.log" ] 
   st_runner "$_INSTAPP php-apc" 2> /dev/null
   touch /var/log/precise-apc-fixed.log
 fi
+if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  update_newrelic
+fi
 st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
 st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 if [ ! -L "/usr/bin/php-cli" ] ; then
@@ -5591,7 +5599,6 @@ fi
 
 
 ###--------------------###
-update_newrelic
 install_newrelic
 
 
