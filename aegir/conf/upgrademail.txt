@@ -25,7 +25,7 @@ platforms and features to help you manage your Drupal sites.
 === IMPORTANT CHANGES IN THIS UPGRADE
 
 * We are changing default PHP-FPM version used by all Drupal 6 sites to the
-  new PHP-FPM 5.3.23 and deprecate PHP-FPM 5.2.17, which is now used only
+  new PHP-FPM 5.3.24 and deprecate PHP-FPM 5.2.17, which is now used only
   for remaining Drupal 5 sites, if hosted.
 
   We also no longer update/rebuild existing PHP 5.2.17 version.
