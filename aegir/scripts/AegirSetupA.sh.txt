@@ -316,7 +316,7 @@ for i in $REVISIONS; do
       if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
         _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         cd _THIS_HOSTMASTER &> /dev/null
-        su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=/data/disk/$_USER/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
+        su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=$_ROOT/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
       fi
       msg "UPGRADE A: Missing strongarm added to /data/all/$i/fserver"
     fi
@@ -440,18 +440,18 @@ sub_force_advanced_nginx_config () {
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
   validate_local_ip &> /dev/null
-  _THIS_NGX_PATH=/data/disk/$_USER/.drush/provision/http/Provision/Service/http
+  _THIS_NGX_PATH=$_ROOT/.drush/provision/http/Provision/Service/http
   sub_force_advanced_nginx_config
-  _THIS_NGX_PATH=/data/disk/$_USER/config/includes
+  _THIS_NGX_PATH=$_ROOT/config/includes
   sub_force_advanced_nginx_config
-  if [ -e "/data/disk/$_USER/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
-    if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
-      rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-      ln -s /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+  if [ -e "$_ROOT/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
+    if [ ! -L "$_ROOT/config/includes/nginx_advanced_include.conf" ] ; then
+      rm -f $_ROOT/config/includes/nginx_advanced_include.conf
+      ln -s $_ROOT/config/includes/nginx_octopus_include.conf $_ROOT/config/includes/nginx_advanced_include.conf
     fi
-    if [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
-      rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
-      ln -s /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
+    if [ ! -L "$_ROOT/config/includes/nginx_simple_include.conf" ] ; then
+      rm -f $_ROOT/config/includes/nginx_simple_include.conf
+      ln -s $_ROOT/config/includes/nginx_legacy_include.conf $_ROOT/config/includes/nginx_simple_include.conf
     fi
   fi
 }
@@ -871,14 +871,12 @@ main_dbuser_reborn () {
     msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
     touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1
-  else
-    _AEGIR_HOST_IP="$_RESOLVEIP"
   fi
 /usr/bin/mysql -h localhost --port=3306 -u root mysql<<EOFMYSQL
 FLUSH PRIVILEGES;
 GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_DOMAIN' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
-GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
+GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON *.* TO '$_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 FLUSH PRIVILEGES;
 EOFMYSQL
@@ -891,11 +889,10 @@ else
     mv -f $_ROOT/.$_USER.pass.txt $_ROOT/.$_USER.pass.txt-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     main_dbuser_reborn
     su -s /bin/bash - $_USER -c "$_DRUSHCMD @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
-    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
+    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_localhost.alias.drushrc.php &> /dev/null
+    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_master.alias.drushrc.php &> /dev/null
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" /data/disk/$_USER/.drush/server_localhost.alias.drushrc.php &> /dev/null
-    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" /data/disk/$_USER/.drush/server_master.alias.drushrc.php &> /dev/null
     if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
       $_DRUSHCMD cache-clear drush &> /dev/null
     fi
@@ -914,10 +911,7 @@ else
     $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   fi
 fi
-mrun "sleep 1"
-/usr/bin/mysqladmin -u root -h localhost --port=3306 reload
 cd $_ROOT
-mrun "sleep 1"
 
 
 ###---### Install or upgrade Aegir Satellite Instance [Y/n]
@@ -1259,7 +1253,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   chsh -s $_PATH_LSHELL $_USERFTP &> /dev/null
   echo >> /etc/lshell.conf
   echo "[$_USERFTP]" >> /etc/lshell.conf
-  echo "path : ['/data/disk/$_USER/distro', '/data/disk/$_USER/static', '/data/disk/$_USER/backups', '/data/disk/$_USER/clients']" >> /etc/lshell.conf
+  echo "path : ['$_ROOT/distro', '$_ROOT/static', '$_ROOT/backups', '$_ROOT/clients']" >> /etc/lshell.conf
 fi
 
 
@@ -1270,7 +1264,7 @@ _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/backups" ] ; then
   msg "$_STATUS A: Adding symlink to the sites backups"
   mrun "sleep 1"
-  ln -s /data/disk/$_USER/backups $_USER_HD/backups
+  ln -s $_ROOT/backups $_USER_HD/backups
 fi
 
 
@@ -1353,13 +1347,13 @@ _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/clients" ] ; then
   msg "$_STATUS A: Adding symlink to the clients directory"
   mrun "sleep 1"
-  ln -s /data/disk/$_USER/clients $_USER_HD/clients
+  ln -s $_ROOT/clients $_USER_HD/clients
 fi
-rm -f -r /data/disk/$_USER/clients/admin &> /dev/null
-rm -f -r /data/disk/$_USER/clients/omega8ccgmailcom &> /dev/null
-rm -f -r /data/disk/$_USER/clients/nocomega8cc &> /dev/null
-rm -f -r /data/disk/$_USER/clients/*/backups &> /dev/null
-symlinks -dr /data/disk/$_USER/clients &> /dev/null
+rm -f -r $_ROOT/clients/admin &> /dev/null
+rm -f -r $_ROOT/clients/omega8ccgmailcom &> /dev/null
+rm -f -r $_ROOT/clients/nocomega8cc &> /dev/null
+rm -f -r $_ROOT/clients/*/backups &> /dev/null
+symlinks -dr $_ROOT/clients &> /dev/null
 
 
 ###---### Remove not used dot files
