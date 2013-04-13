@@ -6916,22 +6916,20 @@ msg "INFO: New entry added to /var/log/barracuda_log.txt"
 
 
 ###--------------------###
-if [ ! -e "/var/log/sysctl.conf.vm.swap.tuned.log" ] ; then
+if [ ! -e "/var/log/sysctl.conf.vm.swap.cache.tuned.log" ] ; then
   cp -af /etc/sysctl.conf /etc/sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf /etc/sysctl.conf
-  /sbin/sysctl -p &> /dev/null
-  sysctl vm.swappiness=20 &> /dev/null
-  sysctl kernel.randomize_va_space=2 &> /dev/null
-  sysctl net.ipv4.tcp_syncookies=1 &> /dev/null
-  touch /var/log/sysctl.conf.vm.swap.tuned.log
   if [ -e "/boot/grub/menu.lst" ] ; then
     msg "INFO: Cleaning up system swap, it may take a moment, please wait..."
     mrun "sleep 1"
-    echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
-    sysctl vm.overcommit_memory=1 &> /dev/null
+    echo "vm.overcommit_memory = 0" >> /etc/sysctl.conf
+    sysctl -p /etc/sysctl.conf &> /dev/null
     st_runner "swapoff -a" &> /dev/null
     st_runner "swapon -a" &> /dev/null
+  else
+    sysctl -p /etc/sysctl.conf &> /dev/null
   fi
+  touch /var/log/sysctl.conf.vm.swap.cache.tuned.log
 fi
 APTEMAIL=${_MY_EMAIL//\@/\\\@}
 XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
