@@ -3197,6 +3197,22 @@ GRANT ALL PRIVILEGES ON *.* TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' 
 EOFMYSQL
 }
 #
+# Sync new secure password.
+main_dbpass_sync () {
+  _ADBU=aegir_root
+  _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
+  mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  main_dbuser_reborn
+  if [ ! -z "$_ESC_APASS" ] ; then
+    su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
+    sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
+  fi
+}
+#
 # Upgrade Aegir Master Instance.
 upgrade_aegir_master () {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
@@ -3238,6 +3254,7 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    main_dbpass_sync
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -3245,34 +3262,22 @@ upgrade_aegir_master () {
       touch /opt/tmp/status-Barracuda-FAIL
       exit 1
     else
-      _ADBU=aegir_root
-      _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
-      mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      main_dbuser_reborn
-      if [ ! -z "$_ESC_APASS" ] ; then
-        su -s /bin/bash - aegir -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$_ADBU'\" &> /dev/null"
-        mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-        mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$_ADBU';" &> /dev/null
-        mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-        sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
-        sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
-        if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-          su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
-        fi
-        if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
-          su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
-        else
-          su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
-        fi
-        msg "INFO: Running hosting-dispatch (1/3), please wait..."
-        su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-        mrun "sleep 5"
-        msg "INFO: Running hosting-dispatch (2/3), please wait..."
-        su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-        mrun "sleep 5"
-        msg "INFO: Running hosting-dispatch (3/3), please wait..."
-        su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+      if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
+        su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
       fi
+      if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
+        su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
+      else
+        su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
+      fi
+      msg "INFO: Running hosting-dispatch (1/3), please wait..."
+      su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+      mrun "sleep 5"
+      msg "INFO: Running hosting-dispatch (2/3), please wait..."
+      su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
+      mrun "sleep 5"
+      msg "INFO: Running hosting-dispatch (3/3), please wait..."
+      su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
     fi
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
