@@ -52,12 +52,17 @@ do_syncpass () {
       cp /var/aegir/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
       check_generate
       chown $uname:$uname $_L_SYS &> /dev/null
-      su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='aegir_root'\" &> /dev/null"
-      mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-      mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
-      mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-      sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
-      sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
+      if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then
+        mysqladmin flush-hosts &> /dev/null
+        su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='aegir_root'\" &> /dev/null"
+        mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
+        sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_localhost.alias.drushrc.php &> /dev/null
+        sed -i "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_master.alias.drushrc.php &> /dev/null
+        mysqladmin flush-privileges &> /dev/null
+      else
+        echo "ERROR: Auto-generated password for $uname system user did not work as expected, please try again."
+        exit 1
+      fi
       echo "INFO: Fixed Aegir Master Instance system user=aegir_root"
       echo "INFO: New system password=$_ESC_APASS encoded=$_ENC_APASS"
       echo "BYE!"
@@ -68,12 +73,17 @@ do_syncpass () {
         cp /data/disk/$uname/.drush/server_master.alias.drushrc.php /var/backups/server_master.alias.drushrc.php.$uname-bak-$_NOW &> /dev/null
         check_generate
         chown $uname:users $_L_SYS &> /dev/null
-        su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$uname'\" &> /dev/null"
-        mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-        mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
-        mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-        sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_localhost.alias.drushrc.php &> /dev/null
-        sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_master.alias.drushrc.php &> /dev/null
+        if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then
+          mysqladmin flush-hosts &> /dev/null
+          su -s /bin/bash - $uname -c "drush @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_APASS' WHERE db_user='$uname'\" &> /dev/null"
+          mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_APASS') WHERE User='$uname';" &> /dev/null
+          sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_localhost.alias.drushrc.php &> /dev/null
+          sed -i "s/mysql:\/\/$uname:.*/mysql:\/\/$uname:$_ENC_APASS@localhost',/g" /data/disk/$uname/.drush/server_master.alias.drushrc.php &> /dev/null
+          mysqladmin flush-privileges &> /dev/null
+        else
+          echo "ERROR: Auto-generated password for $uname system user did not work as expected, please try again."
+          exit 1
+        fi
         echo "INFO: Fixed Aegir Satellite Instance system user=$uname"
         echo "INFO: New system password=$_ESC_APASS encoded=$_ENC_APASS"
         echo "BYE!"
