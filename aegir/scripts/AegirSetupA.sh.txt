@@ -1802,15 +1802,21 @@ mrun "sleep 1"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
 chmod 700 root &> /dev/null
+if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION.info" ] ; then
+  st_runner "chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
+  st_runner "chown -R root:root /data/all" &> /dev/null
+  st_runner "chown -R root:users /data/all/*/*/sites" &> /dev/null
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION.info
+fi
 chown root:root /data/all &> /dev/null
-chown -R root:root /data/src &> /dev/null
-chown -R root:root /data/conf &> /dev/null
 chown root:root $_CORE &> /dev/null
-chown -R root:root $_CORE/o_contrib &> /dev/null
-chown -R root:root $_CORE/o_contrib_seven &> /dev/null
-chown -R root:root /data/all/$_LAST_ALL/o_contrib &> /dev/null
-chown -R root:root /data/all/$_LAST_ALL/o_contrib_seven &> /dev/null
-chown -R root:root /data/all/000 &> /dev/null
+st_runner "chown -R root:root /data/src" &> /dev/null
+st_runner "chown -R root:root /data/conf" &> /dev/null
+st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
+st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
+st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib" &> /dev/null
+st_runner "chown -R root:root /data/all/$_LAST_ALL/o_contrib_seven" &> /dev/null
+st_runner "chown -R root:root /data/all/000" &> /dev/null
 chown root:root /opt/tmp &> /dev/null
 chmod 0711 $_CORE /data/all /data/all/000 /data/src /data /data/disk /data/conf &> /dev/null
 chmod 0700 /data/u &> /dev/null

@@ -537,6 +537,7 @@ else
   action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
 fi
 #
+echo "INFO: Removing old permissions-fix-* files..."
 find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
 find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
 find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \;
@@ -568,5 +569,13 @@ if [ -e "/opt/tmp/version.txt" ] ; then
 EOF
   echo "INFO: Update notice sent: OK"
   fi
+fi
+#
+if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION.info" ] ; then
+  echo "INFO: Fixing permissions in the /data/all tree..."
+  chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
+  chown -R root:root /data/all
+  chown -R root:users /data/all/*/*/sites
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION.info
 fi
 ###EOF2013###
