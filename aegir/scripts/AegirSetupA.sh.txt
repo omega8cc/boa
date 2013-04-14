@@ -888,7 +888,7 @@ provision_backend_dbpass_sync () {
   _L_SYS="$_ROOT/.$_USER.pass.txt"
   mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   provision_backend_dbpass_generate
-  if [ ! -z "$_ESC_APASS" ] && [ ! -z "$_ENC_APASS" ] ; then
+  if [ ! -z "$_ESC_PASS" ] && [ ! -z "$_ENC_PASS" ] ; then
     su -s /bin/bash - $_USER -c "$_DRUSHCMD @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
     sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_localhost.alias.drushrc.php &> /dev/null
