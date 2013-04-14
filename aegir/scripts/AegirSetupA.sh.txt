@@ -967,6 +967,7 @@ else
       msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
       mrun "sleep 1"
     else
+      hostmaster_frontend_dbpass_sync
       msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
       mrun "sleep 1"
       rm -f /opt/tmp/testecho*
@@ -983,7 +984,6 @@ else
       chmod -R 2770 $_THIS_HM_SITE/files
       chown root:$_USRG /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
-      hostmaster_frontend_dbpass_sync
       su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
         msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
