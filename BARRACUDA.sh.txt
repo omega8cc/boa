@@ -5034,6 +5034,9 @@ if [ "$_STATUS" = "INIT" ] ; then
 fi
 install_with_aptitude_deps
 fix_locales
+if [ "$_LOCALE_TEST" = "BROKEN" ] ; then
+  _STRONG_PASSWORDS=NO
+fi
 if [ ! -e "/etc/aliases" ] ; then
   echo "postmaster:    root" > /etc/aliases
   newaliases &> /dev/null
