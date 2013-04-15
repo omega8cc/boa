@@ -2117,9 +2117,15 @@ tune_memory_limits () {
 #
 # Fix locales.
 fix_locales () {
+  _LOCALE_TEST=BROKEN
   _LOC_TEST=`locale 2>&1`
+  if [[ "$_LOC_TEST" =~ "UTF-8" ]] ; then
+    _LOCALE_TEST=OK
+  fi
   if [[ "$_LOC_TEST" =~ "Cannot" ]] ; then
     _LOCALE_TEST=BROKEN
+  fi
+  if [ "$_LOCALE_TEST" = "BROKEN" ] ; then
     msg "WARNING!"
     cat <<EOF
 
@@ -2153,7 +2159,6 @@ EOF
     echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
   else
-    _LOCALE_TEST=OK
     locale-gen en_US en_US.UTF-8 &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
   fi
