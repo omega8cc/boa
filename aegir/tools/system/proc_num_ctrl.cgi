@@ -141,7 +141,7 @@ sub global_action
       `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
 
-    if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-3]{1}:/))
+    if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-5]{1}:/))
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
