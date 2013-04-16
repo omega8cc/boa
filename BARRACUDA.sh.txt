@@ -2130,19 +2130,21 @@ fix_locales () {
     cat <<EOF
 
   Locales on this system are broken or not installed
-  and/or not configured correctly yet. This is "default"
-  issue at RackSpaceCloud (and maybe others).
+  and/or not configured correctly yet. This is a known
+  issue on some systems/hosts which either don't configure
+  locales at all or don't use UTF-8 compatible locales
+  during initial OS setup.
 
   We will fix this problem for you now, so you shouldn't
   use any tricks to change system/ssh settings before
-  running this Barracuda installer.
+  running this installer.
 
   You can experience problems if your SSH client
   forces locales other than en_US.UTF-8 we are using by default.
 
-  You should log out when Barracuda will finish all its tasks
+  You should log out when this installer will finish all its tasks
   and display last line with "BYE!" and then log in again
-  to see the result (and possibly run Octopus installer).
+  to see the result.
 
   We will continue in 10 seconds...
 
