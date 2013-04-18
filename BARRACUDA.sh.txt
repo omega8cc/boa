@@ -5342,7 +5342,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    _NGINX_DOS_LIMIT=259
+    _NGINX_DOS_LIMIT=309
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
@@ -5387,7 +5387,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    _NGINX_DOS_LIMIT=259
+    _NGINX_DOS_LIMIT=309
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
