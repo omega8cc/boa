@@ -1,5 +1,19 @@
 <?php # global settings.php
 
+$da_inc       = FALSE;
+$drupal_eight = FALSE;
+$drupal_five  = FALSE;
+$drupal_seven = FALSE;
+$drupal_six   = FALSE;
+$force_redis  = FALSE;
+$high_traffic = FALSE;
+$is_cart      = FALSE;
+$is_dev       = FALSE;
+$known_bot    = FALSE;
+$redis_lock   = FALSE;
+$redis_up     = FALSE;
+$use_redis    = FALSE;
+
 error_reporting(0); // disable reporting errors by default - enable later only for "dev" subdomains
 
 // Fix for Mollom, CloudFlare and others running via Proxy.
@@ -51,7 +65,7 @@ ini_set('session.gc_divisor', 1000);
 
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|goog|yahoo|yandex|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
   // detect known bots
-  $known_bot = 'bot';
+  $known_bot = TRUE;
 }
 
 // New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
@@ -86,19 +100,6 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
   header('X-Accel-Expires: 1');
 }
 
-$da_inc       = FALSE;
-$drupal_eight = FALSE;
-$drupal_five  = FALSE;
-$drupal_seven = FALSE;
-$drupal_six   = FALSE;
-$force_redis  = FALSE;
-$high_traffic = FALSE;
-$is_cart      = FALSE;
-$is_dev       = FALSE;
-$redis_lock   = FALSE;
-$redis_up     = FALSE;
-$use_redis    = FALSE;
-
 /**
  * Optional extra settings
  *
@@ -107,8 +108,8 @@ if (file_exists('/data/conf/settings.global.inc')) {
   require_once "/data/conf/settings.global.inc";
 }
 
-if (file_exists('./web.config')) {
-  if (file_exists('./core')) {
+if (file_exists(DRUPAL_ROOT . '/web.config')) {
+  if (file_exists(DRUPAL_ROOT . '/core')) {
     $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 8
     $drupal_eight = TRUE;
     header('X-Backend: A');
@@ -120,13 +121,13 @@ if (file_exists('./web.config')) {
     header('X-Backend: B');
   }
 }
-elseif (file_exists('./modules/path_alias_cache')) {
+elseif (file_exists(DRUPAL_ROOT . '/modules/path_alias_cache')) {
   $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   header('X-Backend: C');
 }
-elseif (file_exists('./modules/watchdog')) {
+elseif (file_exists(DRUPAL_ROOT . '/modules/watchdog')) {
   $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
   $drupal_five = TRUE;
   header('X-Backend: D');
@@ -158,10 +159,10 @@ if (isset($_SERVER['SERVER_NAME'])) {
       $conf['install_profile'] == 'commerce' ||
       $conf['install_profile'] == 'commerce_kickstart' ||
       $conf['install_profile'] == 'opendeals' ||
-      file_exists('sites/all/modules/ubercart/README.txt') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
-      file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/ubercart/README.txt')) {
+      file_exists(DRUPAL_ROOT . '/sites/all/modules/ubercart/README.txt') ||
+      file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
+      file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
+      file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/ubercart/README.txt')) {
     unset($conf['file_downloads']); // disable hardcoded public downloads
     $is_cart = TRUE;
     header('X-Is-Cart: YES');
@@ -170,7 +171,7 @@ if (isset($_SERVER['SERVER_NAME'])) {
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // deny known search bots on dev subdomains
-  if (!empty($known_bot)) {
+  if ($known_bot) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://www.aegirproject.org/");
@@ -189,7 +190,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER[
 
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST'])) {
   // deny known search bots on host8 subdomains
-  if (!empty($known_bot)) {
+  if ($known_bot) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://omega8.cc/");
@@ -216,8 +217,8 @@ if (file_exists('/var/run/redis.pid')) {
   $redis_up = TRUE;
 }
 
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/redis_cache_disable.info') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_cache_disable.info'))) {
+if (isset($_SERVER['SERVER_NAME']) && (file_exists(DRUPAL_ROOT . '/sites/all/modules/redis_cache_disable.info') ||
+    file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_cache_disable.info'))) {
   $use_cache = FALSE;
 }
 
@@ -240,14 +241,14 @@ else {
   header('X-Allow-Redis: NO');
 }
 
-if (file_exists('sites/all/modules/domain/settings.inc')) {
+if (file_exists(DRUPAL_ROOT . '/sites/all/modules/domain/settings.inc')) {
   $da_inc = 'sites/all/modules/domain/settings.inc';
 }
-elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
-  $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
+elseif (file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
+  $da_inc = DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
 }
-elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
-  $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+elseif (file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
+  $da_inc = DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
 }
 
 if (function_exists('drush_get_command')) {
@@ -269,7 +270,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cookie_domain.info')) {
+  if (file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/cookie_domain.info')) {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
@@ -285,10 +286,10 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   $this_prefix = $_SERVER['SERVER_NAME'] . '_';
   header("X-Redis-Prefix: " . $this_prefix);
 
-  if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/advagg/advagg_bundler/advagg_bundler.module')) {
+  if (file_exists(DRUPAL_ROOT . '/sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/advagg/advagg_bundler/advagg_bundler.module')) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
     $conf['advagg_aggregate_mode'] = 1;
@@ -313,11 +314,11 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_server_addr'] = "-1";
   }
 
-  if (file_exists('./modules/o_contrib/purge/purge.inc')) {
+  if (file_exists(DRUPAL_ROOT . '/modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     header('X-Purge-Level: 6');
   }
-  elseif (file_exists('./modules/o_contrib_seven/purge/purge.inc')) {
+  elseif (file_exists(DRUPAL_ROOT . '/modules/o_contrib_seven/purge/purge.inc')) {
     $conf['expire_flush_node_terms'] = 0; // disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     header('X-Purge-Level: 7');
@@ -360,21 +361,21 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     }
 
     if (!isset($_COOKIE[$test_sess_name])) {
-      if (file_exists('sites/all/modules/nginx_cache_quarter.info') ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_quarter.info')) {
+      if (file_exists(DRUPAL_ROOT . '/sites/all/modules/nginx_cache_quarter.info') ||
+          file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_quarter.info')) {
         $expire_in_seconds = '900';
       }
-      elseif (file_exists('sites/all/modules/nginx_cache_hour.info') || $force_redis || $high_traffic ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_hour.info')) {
+      elseif (file_exists(DRUPAL_ROOT . '/sites/all/modules/nginx_cache_hour.info') || $force_redis || $high_traffic ||
+          file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_hour.info')) {
         $expire_in_seconds = '3600';
       }
-      elseif (file_exists('sites/all/modules/nginx_cache_day.info') ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_day.info')) {
+      elseif (file_exists(DRUPAL_ROOT . '/sites/all/modules/nginx_cache_day.info') ||
+          file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_day.info')) {
         $expire_in_seconds = '86400';
       }
     }
 
-    if (empty($known_bot) && !$high_traffic) {
+    if (!$known_bot && !$high_traffic) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
@@ -402,7 +403,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       }
     }
 
-    if (!empty($known_bot)) {
+    if ($known_bot) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '86400';
       }
@@ -426,27 +427,27 @@ if (file_exists('/data/conf/override.global.inc')) {
 if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
-  if (file_exists('./modules/o_contrib/cache_backport/cache.inc')) {
+  if (file_exists(DRUPAL_ROOT . '/modules/o_contrib/cache_backport/cache.inc')) {
     $cache_backport = TRUE;
-    $cache_backport_path = './modules/o_contrib/cache_backport/cache.inc';
+    $cache_backport_path = DRUPAL_ROOT . '/modules/o_contrib/cache_backport/cache.inc';
   }
-  if (file_exists('./modules/o_contrib_seven/redis/redis.autoload.inc')) {
+  if (file_exists(DRUPAL_ROOT . '/modules/o_contrib_seven/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_backport = FALSE;
-    $cache_redis_path = './modules/o_contrib_seven/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib_seven/redis/redis.lock.inc';
+    $cache_redis_path = DRUPAL_ROOT . '/modules/o_contrib_seven/redis/redis.autoload.inc';
+    $cache_lock_path = DRUPAL_ROOT . '/modules/o_contrib_seven/redis/redis.lock.inc';
   }
-  elseif (file_exists('./modules/o_contrib/redis/redis.autoload.inc')) {
+  elseif (file_exists(DRUPAL_ROOT . '/modules/o_contrib/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
-    $cache_redis_path = './modules/o_contrib/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib/redis/redis.lock.d6.inc';
+    $cache_redis_path = DRUPAL_ROOT . '/modules/o_contrib/redis/redis.autoload.inc';
+    $cache_lock_path = DRUPAL_ROOT . '/modules/o_contrib/redis/redis.lock.d6.inc';
   }
   if ($cache_redis) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if (file_exists('sites/all/modules/redis_lock_enable.info') ||
-        file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_lock_enable.info')) {
+    if (file_exists(DRUPAL_ROOT . '/sites/all/modules/redis_lock_enable.info') ||
+        file_exists(DRUPAL_ROOT . '/sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_lock_enable.info')) {
       $redis_lock = TRUE;
     }
     if (file_exists($cache_lock_path) && $redis_lock) {
@@ -481,20 +482,20 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
  * http://drupal.org/node/205476
  */
 if (!$custom_fb) {
-  if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
+  if (file_exists(DRUPAL_ROOT . '/sites/all/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
-    require_once "sites/all/modules/fb/fb_settings.inc";
-    $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
+    require_once DRUPAL_ROOT . '/sites/all/modules/fb/fb_settings.inc';
+    $conf['fb_api_file'] = DRUPAL_ROOT . '/sites/all/modules/fb/facebook-platform/php/facebook.php';
   }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc')) {
+  elseif (file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
-    require_once 'profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc';
-    $conf['fb_api_file'] = 'profiles/' . $conf['install_profile'] . '/modules/fb/facebook-platform/php/facebook.php';
+    require_once DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc';
+    $conf['fb_api_file'] = DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/fb/facebook-platform/php/facebook.php';
   }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc')) {
+  elseif (file_exists(DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
-    require_once 'profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc';
-    $conf['fb_api_file'] = 'profiles/' . $conf['install_profile'] . '/modules/contrib/fb/facebook-platform/php/facebook.php';
+    require_once DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc';
+    $conf['fb_api_file'] = DRUPAL_ROOT . '/profiles/' . $conf['install_profile'] . '/modules/contrib/fb/facebook-platform/php/facebook.php';
   }
 }
 
