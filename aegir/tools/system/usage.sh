@@ -225,6 +225,7 @@ if [ "$_PERMISSIONS" = "YES" ] ; then
   esac
   ### modules,themes,libraries - platform level
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
+    mkdir -p $Plr/sites/all/{modules,themes,libraries}
     chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
     chown $_THIS_HM_USER:users $Plr/sites $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
