@@ -285,7 +285,7 @@ Core:
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  path_alias_cache ----------- [D6] -------------- [FE]
- syslog --------------------- [D6,D7] ----------- [FE]
+ syslog --------------------- [D6,D7] ----------- [FD]
 
 Drush [E]xtensions [M]aster [S]atellite:
 

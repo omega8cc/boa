@@ -25,11 +25,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON_SEVEN="syslog robotstxt entitycache"
-_MODULES_ON_SIX="syslog path_alias_cache robotstxt"
-_MODULES_OFF_SEVEN="dblog l10n_update devel performance"
-_MODULES_OFF_LESS_SEVEN="dblog l10n_update performance devel"
-_MODULES_OFF_SIX="cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
+_MODULES_ON_SEVEN="robotstxt entitycache"
+_MODULES_ON_SIX="path_alias_cache robotstxt"
+_MODULES_OFF_SEVEN="syslog dblog l10n_update devel performance"
+_MODULES_OFF_LESS_SEVEN="syslog dblog l10n_update performance devel"
+_MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
 
 
 ###-------------SYSTEM-----------------###
