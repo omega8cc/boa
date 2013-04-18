@@ -1891,14 +1891,22 @@ force_advanced_nginx_config () {
 # Tune Web Sever configuration.
 tune_web_server_config () {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "6" ] ; then
-    _LIM_FPM=6
+  if [ "$_LIM_FPM" -lt "3" ] ; then
+    _LIM_FPM=3
   fi
-  let "_START_FPM = (($_LIM_FPM / 2))"
+  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
+  let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
+  let "_START_FPM = (($_CHILD_MAX_FPM - 2))"
+  if [ "$_START_FPM" -lt "2" ] ; then
+    _START_FPM=2
+  fi
+  let "_START_LEGACY_FPM = (($_LIM_FPM / 3))"
+  if [ "$_START_LEGACY_FPM" -lt "2" ] ; then
+    _START_LEGACY_FPM=2
+  fi
   if [ ! -z "$_START_FPM" ] ; then
-    let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
-    sed -i "s/max_children\">.*</max_children\">$_START_FPM</g"                /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = $_LIM_FPM/g"               /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g"         /opt/etc/php-fpm.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g"         /opt/local/etc/php53-fpm.conf &> /dev/null
     sed -i "s/pm.start_servers =.*/pm.start_servers = $_START_FPM/g"           /opt/local/etc/php53-fpm.conf &> /dev/null
     sed -i "s/pm.max_spare_servers =.*/pm.max_spare_servers = $_START_FPM/g"   /opt/local/etc/php53-fpm.conf &> /dev/null
     sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"               /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -2013,7 +2021,7 @@ tune_memory_limits () {
         _USE_PHP=512
         _USE_APC=256
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=6
+          _L_PHP_FPM_WORKERS=3
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
@@ -2041,7 +2049,7 @@ tune_memory_limits () {
     _USE_PHP="$_USE"
     _USE_APC="$_USE"
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=6
+      _L_PHP_FPM_WORKERS=3
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
