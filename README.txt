@@ -96,6 +96,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 * The Git standard port 9418 must be open.
 * Minimum 512 MB of RAM.
+* Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 
 
