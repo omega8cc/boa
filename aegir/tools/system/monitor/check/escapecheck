@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 
 $| = 1;
-if (-f "/var/run/boa_wait.pid") {exit;}
 $status="CLEAN";
 $server=`uname -n`;
 chomp($server);
@@ -47,9 +46,8 @@ local(@MYARR) = `grep -i forbidden /var/log/lsh/* | tail --lines=999 2>&1`;
         if ($now_is eq $log_is) {
           $status="ERROR";
           `echo "$line" >> $logfile`;
-          print "\n===[$now_is]\t[$log_is]===\n";
-          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-shell-escape-y-problem`;
-
+          print "===[$now_is]\t[$log_is]\t[$line]===\n";
+          `echo "[$now_is]:[$log_is]:[$line]" >> /var/xdrago/log/last-shell-escape-y-problem`;
         }
 #         else {
 #           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-shell-escape-n-problem`;

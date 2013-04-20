@@ -34,7 +34,7 @@ local(@MYARR) = `grep mysql /var/log/syslog | tail --lines=999 2>&1`;
         $log_is="$MONTX:$DAYX:$HOUR:$MIN";
         if ($now_is eq $log_is) {
           $status="ERROR";
-          print "\n===[$now_is]\t[$log_is]===";
+          print "===[$now_is]\t[$log_is]===\n";
           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-sqlcheck-y-problem`;
         }
 #         else {

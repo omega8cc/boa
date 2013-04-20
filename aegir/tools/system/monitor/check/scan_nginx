@@ -118,8 +118,8 @@ sub makeactions
       &check_who($VISITOR);
       $critnumber = 399 if ($isloggedin); ### don't block logged in users
       $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
-      print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
-      print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
+      print "===[$isloggedin] $VISITOR is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
       &check_ip($VISITOR);
       if ($thissumar > $critnumber) {
@@ -141,8 +141,8 @@ sub makeactions
       &check_who($PROXY);
       $critnumber = 399 if ($isloggedin); ### don't block logged in users
       $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
-      print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
-      print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
+      print "===[$isloggedin] $PROXY is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
       &check_ip($PROXY);
       if ($thissumarpx > $critnumber) {
@@ -165,8 +165,8 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 399 if ($isloggedin); ### don't block logged in users
       $critnumber = 888 if ($VISITOR =~ /^($myip)$/); ### don't block own IP
-      print "\n===[$isloggedin] $VISITOR is logged in===" if ($isloggedin);
-      print "\n===[$critnumber] critnumber for $VISITOR===" if ($VISITOR);
+      print "===[$isloggedin] $VISITOR is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
       &check_ip($VISITOR);
       if ($thisim_sumar > $critnumber) {
@@ -189,8 +189,8 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 399 if ($isloggedin); ### don't block logged in users
       $critnumber = 888 if ($PROXY =~ /^($myip)$/); ### don't block own IP
-      print "\n===[$isloggedin] $PROXY is logged in===" if ($isloggedin);
-      print "\n===[$critnumber] critnumber for $PROXY===" if ($PROXY);
+      print "===[$isloggedin] $PROXY is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
       &check_ip($PROXY);
       if ($thisim_sumarpx > $critnumber) {
@@ -204,10 +204,10 @@ sub makeactions
       }
     }
   }
-  print "\n===[$sumar] sumar===";
-  print "\n===[$sumarpx] sumarpx===";
-  print "\n===[$im_sumar] im_sumar===";
-  print "\n===[$im_sumarpx] im_sumarpx===\n";
+  print "===[$sumar] sumar===\n";
+  print "===[$sumarpx] sumarpx===\n";
+  print "===[$im_sumar] im_sumar===\n";
+  print "===[$im_sumarpx] im_sumarpx===\n";
   undef (%li_cnt);
   undef (%px_cnt);
   undef (%im_li_cnt);

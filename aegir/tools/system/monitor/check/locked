@@ -59,7 +59,7 @@ local(@MYARR) = `grep " 499 0 " /var/log/nginx/access.log | tail --lines=999 2>&
         $log_is="$MONTX:$DAYX:$HOUR:$MIN";
         if ($now_is eq $log_is) {
           $fpm_status="ERROR";
-          print "\n===[$now_is]\t[$log_is]===";
+          print "===[$now_is]\t[$log_is]===\n";
           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-fpmcheck-y-problem`;
         }
 #         else {
@@ -89,7 +89,7 @@ local(@MYARR) = `grep "Apache Solr" /var/log/syslog | tail --lines=999 2>&1`;
         $log_is="$MONTX:$DAYX:$HOUR:$MIN";
         if ($now_is eq $log_is) {
           $java_status="ERROR";
-          print "\n===[$now_is]\t[$log_is]===";
+          print "===[$now_is]\t[$log_is]===\n";
           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-javacheck-y-problem`;
         }
 #         else {
