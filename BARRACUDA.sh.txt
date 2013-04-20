@@ -1927,7 +1927,7 @@ tune_web_server_config () {
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
-  let "_START_FPM = (($_CHILD_MAX_FPM - 2))"
+  let "_START_FPM = (($_CHILD_MAX_FPM - 4))"
   if [ "$_START_FPM" -lt "2" ] ; then
     _START_FPM=2
   fi
