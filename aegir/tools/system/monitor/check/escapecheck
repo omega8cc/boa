@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+
+$| = 1;
+if (-f "/var/run/boa_wait.pid") {exit;}
+$status="CLEAN";
+$server=`uname -n`;
+chomp($server);
+$date_is=`date +%Y-%m-%d`;
+chomp($date_is);
+$time_is=`date +%H:%M`;
+chomp($time_is);
+$now_is="$date_is $time_is";
+chomp($now_is);
+$logfile="/var/xdrago/log/last-shell-escape-log";
+`rm -f $logfile`;
+&makeactions;
+if ($status ne "CLEAN") {
+  $mailx_test = `mail -V 2>&1`;
+  if ($mailx_test =~ /(invalid)/i) {
+    if ($status ne "CLEAN") {
+      `cat $logfile | mail -a "From: notify\@omega8.cc" -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
+    }
+  }
+  else {
+    if ($status ne "CLEAN") {
+      `cat $logfile | mail -r notify\@omega8.cc -e -s "Shell Escape Alert [$server] $now_is" notify\@omega8.cc`;
+    }
+  }
+}
+exit;
+
+#############################################################################
+sub makeactions
+{
+local(@MYARR) = `grep -i forbidden /var/log/lsh/* | tail --lines=999 2>&1`;
+  foreach $line (@MYARR) {
+    if ($line =~ /(Forbidden path)/i || ($line =~ /(forbidden shell escape)/i && $line !~ /exit/i)) {
+      local($DATEQ, $TIMEQ, $rest) = split(/\s+/,$line);
+      chomp($line);
+      local($TIMEX, $rest) = split(/\,/,$TIMEQ);
+      chomp($DATEQ);
+      chomp($TIMEX);
+      $TIMEX =~ s/[^0-9\:]//g;
+      if ($TIMEX =~ /^[0-9]/) {
+        local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
+        $log_is="$DATEQ $HOUR:$MIN";
+        if ($now_is eq $log_is) {
+          $status="ERROR";
+          `echo "$line" >> $logfile`;
+          print "\n===[$now_is]\t[$log_is]===\n";
+          `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-shell-escape-y-problem`;
+
+        }
+#         else {
+#           `echo "[$now_is]:[$log_is]" >> /var/xdrago/log/last-shell-escape-n-problem`;
+#         }
+      }
+    }
+  }
+}
+###EOF2013###

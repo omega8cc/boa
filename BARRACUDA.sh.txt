@@ -6975,6 +6975,7 @@ sed -i "s/root/$_MY_EMAIL/g"               /etc/apticron/apticron.conf &> /dev/n
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/checksql.cgi &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/usage.sh &> /dev/null
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_alert &> /dev/null
+sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/escapecheck &> /dev/null
 if [ -e "/usr/sbin/apticron" ] ; then
   if [[ "$_INSTALLER_VERSION" =~ "dev" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     sed -i "s/aptitude full-upgrade/barracuda up-head/g" /usr/sbin/apticron &> /dev/null
