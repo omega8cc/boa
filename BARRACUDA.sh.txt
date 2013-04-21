@@ -4486,12 +4486,16 @@ install_pdnsd_cache () {
   mrun "sleep 1"
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
   st_runner "aptitude remove pdnsd resolvconf -y" &> /dev/null
+  rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  if [ ! -L "/etc/resolvconf/run" ] && [ -e "/lib/init/rw/resolvconf" ] ; then
+  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] ; then
+    if [ ! -e "/lib/init/rw/resolvconf/interface" ] ; then
+      mkdir -p /lib/init/rw/resolvconf/interface
+    fi
     rm -f /etc/resolvconf/run
     ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
     rm -f /etc/resolvconf/run/postponed-update
@@ -4564,10 +4568,12 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
     install_pdnsd_cache
   fi
 fi
-if [ ! -L "/etc/resolv.conf" ] && [ -e "/lib/init/rw/resolvconf" ] && [ -e "/usr/sbin/pdnsd" ] ; then
-  _INSTALL_PDNSD=YES
-  msg "INFO: DNS cache pdnsd server re-installation forced"
-  install_pdnsd_cache
+if [ -e "/usr/sbin/pdnsd" ] ; then
+  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] ; then
+    _INSTALL_PDNSD=YES
+    msg "INFO: DNS cache pdnsd server re-installation forced"
+    install_pdnsd_cache
+  fi
 fi
 
 
