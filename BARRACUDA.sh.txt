@@ -7192,7 +7192,9 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] && [ -e "/var/xdrago/gue
   sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
   sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [ -e "/opt/fire.sh" ] && [ -e "/opt/water.sh" ] ; then
+    if [ "$_VMFAMILY" = "VS" ] ; then
+      true
+    else
       echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
       echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
@@ -7200,6 +7202,10 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] && [ -e "/var/xdrago/gue
     echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
     echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
   fi
+  sed -i "/^$/d" /etc/crontab &> /dev/null
+else
+  sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+  sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
   sed -i "/^$/d" /etc/crontab &> /dev/null
 fi
 killall -9 memcached     &> /dev/null
