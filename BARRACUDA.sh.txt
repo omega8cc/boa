@@ -4496,7 +4496,7 @@ install_pdnsd_cache () {
     if [ ! -e "/lib/init/rw/resolvconf/interface" ] ; then
       mkdir -p /lib/init/rw/resolvconf/interface
     fi
-    rm -f /etc/resolvconf/run
+    rm -f -r /etc/resolvconf/run
     ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
     rm -f /etc/resolvconf/run/postponed-update
     touch /etc/resolvconf/run/enable-updates
