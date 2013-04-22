@@ -25,7 +25,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ###
 _PERMISSIONS=YES
 _MODULES=YES
-_MODULES_ON_SEVEN="robotstxt entitycache"
+_MODULES_ON_SEVEN="robotstxt"
 _MODULES_ON_SIX="path_alias_cache robotstxt"
 _MODULES_OFF_SEVEN="syslog dblog l10n_update devel performance"
 _MODULES_OFF_LESS_SEVEN="syslog dblog l10n_update performance devel"
@@ -194,6 +194,11 @@ if [ "$_MODULES" = "YES" ] ; then
           su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_LESS_SEVEN -y &> /dev/null"
         else
           su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+        fi
+        if [ -e "$Plr/sites/all/modules/entitycache_dont_enable.info" ] ; then
+          true
+        else
+          su -s /bin/bash $_THIS_HM_USER -c "drush en entitycache -y &> /dev/null"
         fi
         su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
       fi
