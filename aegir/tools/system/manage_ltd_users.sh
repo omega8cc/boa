@@ -271,6 +271,8 @@ else
   sleep 1
   find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
   rm -f $_TMP/*.txt
-  chmod 700 /home/* &> /dev/null
+  if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ] ; then
+    chmod 700 /home/* &> /dev/null
+  fi
 fi
 ###EOF2013###
