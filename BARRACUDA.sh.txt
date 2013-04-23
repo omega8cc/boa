@@ -1327,11 +1327,23 @@ fix_php_ext () {
       if [ -e "/var/backups/php53-20090626/newrelic.so" ] ; then
         mv -f /var/backups/php53-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
       fi
+      if [ -e "/var/backups/php53-20090626/mongo.so" ] ; then
+        mv -f /var/backups/php53-20090626/mongo.so /usr/lib/php5/20090626/ &> /dev/null
+      fi
+      if [ -e "/var/backups/php53-20090626/geos.so" ] ; then
+        mv -f /var/backups/php53-20090626/geos.so /usr/lib/php5/20090626/ &> /dev/null
+      fi
     elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /var/backups/php53-20090626+lfs
       mv -f /usr/lib/php5/20090626+lfs/* /var/backups/php53-20090626+lfs/ &> /dev/null
       if [ -e "/var/backups/php53-20090626+lfs/newrelic.so" ] ; then
         mv -f /var/backups/php53-20090626+lfs/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      fi
+      if [ -e "/var/backups/php53-20090626+lfs/mongo.so" ] ; then
+        mv -f /var/backups/php53-20090626+lfs/mongo.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      fi
+      if [ -e "/var/backups/php53-20090626+lfs/geos.so" ] ; then
+        mv -f /var/backups/php53-20090626+lfs/geos.so /usr/lib/php5/20090626+lfs/ &> /dev/null
       fi
     fi
     if [ -e "/etc/php5/conf.d" ] ; then
@@ -2680,8 +2692,8 @@ install_libmemcached () {
   fi
 }
 #
-# Install extensions for PHP universal.
-install_php_extensions () {
+# Install extensions for PHP built from sources.
+install_php_scr_build_extensions () {
   ###--------------------###
   msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2735,8 +2747,8 @@ install_php_extensions () {
   fi
 }
 #
-# Install more extensions for PHP universal.
-install_php_extensions_more () {
+# Install extensions for PHP installed from packages or built from sources.
+install_php_universal_extensions () {
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2761,6 +2773,7 @@ install_php_extensions_more () {
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
+  echo "uploadprogress $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing JSMin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2776,7 +2789,7 @@ install_php_extensions_more () {
   echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
   ###--------------------###
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
       msg "INFO: Installing GEOS PHP extension for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
       if [ ! -e "/var/log/geos-$_INSTALLER_VERSION.log" ] ; then
@@ -2799,7 +2812,7 @@ install_php_extensions_more () {
   fi
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
       msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
       cd /var/opt
@@ -2816,8 +2829,8 @@ install_php_extensions_more () {
   fi
 }
 #
-# Update PHP universal.
-update_php_universal () {
+# Update extensions for PHP built from sources.
+update_php_scr_build_extensions () {
   ###--------------------###
   if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -2868,25 +2881,10 @@ update_php_universal () {
       fi
     fi
   fi
-  ###--------------------###
-  if [ ! -e "/var/log/php-jsmin-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing JSMin upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r php-jsmin*
-    wget -q -U iCab http://files.aegir.cc/dev/php-jsmin-1.0.tgz
-    tar -xzf php-jsmin-1.0.tgz
-    cd /var/opt/php-jsmin-1.0
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-jsmin-$_LOC_PHP_VERSION.log
-  fi
 }
 #
-# Update PHP universal more.
-update_php_universal_more () {
+# Update extensions for PHP installed from packages or built from sources.
+update_php_universal_extensions () {
   ###--------------------###
   if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -2900,6 +2898,21 @@ update_php_universal_more () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
+  fi
+  ###--------------------###
+  if [ ! -e "/var/log/uploadprogress-$_LOC_PHP_VERSION.log" ] ; then
+    msg "INFO: Installing UploadProgress upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r uploadprogress*
+    wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
+    tar -xzf uploadprogress-1.0.1.tgz
+    cd /var/opt/uploadprogress-1.0.1
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "uploadprogress $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ ! -e "/var/log/php-jsmin-$_LOC_PHP_VERSION.log" ] ; then
@@ -2958,7 +2971,7 @@ update_php_universal_more () {
   fi
 }
 #
-# Install PHP 5.3.24
+# Install modern PHP version
 install_php_modern () {
   ###--------------------###
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -3037,9 +3050,9 @@ install_php_modern () {
     elif [ -x "/opt/local/bin/phpize" ] ; then
       _LOC_PHP_PATH=/opt/local/bin
     fi
-    install_php_extensions
+    install_php_scr_build_extensions
   fi
-  install_php_extensions_more
+  install_php_universal_extensions
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
@@ -3056,7 +3069,7 @@ install_php_modern () {
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
 }
 #
-# Install PHP 5.2.17
+# Install legacy PHP version
 install_php_legacy () {
   ###--------------------###
   msg "INFO: Installing PHP-FPM $_PHP_VERSION"
@@ -3087,8 +3100,8 @@ install_php_legacy () {
   st_runner "make --quiet install" 2> /dev/null
   _LOC_PHP_VERSION="$_PHP_VERSION"
   _LOC_PHP_PATH=/usr/local/bin
-  install_php_extensions
-  install_php_extensions_more
+  install_php_scr_build_extensions
+  install_php_universal_extensions
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
@@ -3103,28 +3116,28 @@ install_php_legacy () {
   chmod 755 /usr/local/sbin/php-fpm &> /dev/null
 }
 #
-# Update PHP 5.3.24
+# Update modern PHP version
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     _LOC_PHP_PATH=/usr/bin
-    update_php_universal_more
   else
     if [ -x "/usr/bin/phpize" ] ; then
       _LOC_PHP_PATH=/usr/bin
     elif [ -x "/opt/local/bin/phpize" ] ; then
       _LOC_PHP_PATH=/opt/local/bin
     fi
-    update_php_universal
-    update_php_universal_more
+    update_php_scr_build_extensions
   fi
+  update_php_universal_extensions
 }
 #
-# Update PHP 5.2.17
+# Update legacy PHP version
 update_php_legacy () {
   _LOC_PHP_VERSION="$_PHP_VERSION"
   _LOC_PHP_PATH=/usr/local/bin
-  update_php_universal
+  update_php_scr_build_extensions
+  update_php_universal_extensions
 }
 #
 # Install latest Git.
@@ -4606,8 +4619,14 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     else
       _APT_SOURCES_REWRITE=YES
     fi
-    if [ ! -e "/etc/apt/sources.list.d/dotdeb.list" ] ; then
-      _APT_SOURCES_REWRITE=YES
+    if [ "$_DB_SERVER" = "Percona" ] ; then
+      if [ ! -e "/etc/apt/sources.list.d/percona.list" ]; then
+        _APT_SOURCES_REWRITE=YES
+      fi
+    else
+      if [ ! -e "/etc/apt/sources.list.d/mariadb.list" ]; then
+        _APT_SOURCES_REWRITE=YES
+      fi
     fi
   fi
 else
@@ -4715,19 +4734,23 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
       echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
       echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
       echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-      echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
-      echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-      echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt /etc/apt/preferences
-      _KEYS_SERVER_TEST=FALSE
-      until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+      if [ "$_FROM_SOURCES" = "NO" ] ; then
+        echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
+        echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+        echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+        _KEYS_SERVER_TEST=FALSE
+        until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+          rm -f dotdeb.gpg*
+          wget -q -U iCab http://www.dotdeb.org/dotdeb.gpg
+          _KEYS_SERVER_TEST=`grep GnuPG dotdeb.gpg 2> /dev/null`
+          sleep 2
+        done
+        cat dotdeb.gpg | apt-key add - &> /dev/null
         rm -f dotdeb.gpg*
-        wget -q -U iCab http://www.dotdeb.org/dotdeb.gpg
-        _KEYS_SERVER_TEST=`grep GnuPG dotdeb.gpg 2> /dev/null`
-        sleep 2
-      done
-      cat dotdeb.gpg | apt-key add - &> /dev/null
-      rm -f dotdeb.gpg*
+      else
+        rm -f /etc/apt/sources.list.d/dotdeb.list
+      fi
     fi
   fi
   touch /var/log/apt-fast-install-log.txt
