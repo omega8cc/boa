@@ -1190,33 +1190,29 @@ update_redis_password () {
 install_redis_src () {
   msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
   mrun "sleep 1"
-  if [ "$_REL_VERSION" = "dummy" ] ; then
-    st_runner "$_INSTAPP redis-server" 2> /dev/null
-  else
-    if [ ! -e "/var/lib/redis" ] ; then
-      st_runner "adduser --system --group redis" 2> /dev/null
-    fi
-    cd /var/opt
-    rm -f -r redis*
-    wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
-    tar -xzf redis-$_REDIS_VERSION.tar.gz
-    cd redis-$_REDIS_VERSION
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    if [ -e "/var/lib/redis" ] ; then
-      st_runner "service redis-server stop" &> /dev/null
-      mrun "sleep 1"
-      killall -9 redis-server &> /dev/null
-    fi
-    cd /usr/local/bin
-    if [ ! -L "/usr/local/bin/redis-server" ] ; then
-      cp -p redis-server /usr/bin/
-    fi
-    cp -p redis-benchmark /usr/bin/
-    cp -p redis-cli /usr/bin/
-    cp -p redis-check-dump /usr/bin/
-    cp -p redis-check-aof /usr/bin/
+  if [ ! -e "/var/lib/redis" ] ; then
+    st_runner "adduser --system --group redis" 2> /dev/null
   fi
+  cd /var/opt
+  rm -f -r redis*
+  wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
+  tar -xzf redis-$_REDIS_VERSION.tar.gz
+  cd redis-$_REDIS_VERSION
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  if [ -e "/var/lib/redis" ] ; then
+    st_runner "service redis-server stop" &> /dev/null
+    mrun "sleep 1"
+    killall -9 redis-server &> /dev/null
+  fi
+  cd /usr/local/bin
+  if [ ! -L "/usr/local/bin/redis-server" ] ; then
+    cp -p redis-server /usr/bin/
+  fi
+  cp -p redis-benchmark /usr/bin/
+  cp -p redis-cli /usr/bin/
+  cp -p redis-check-dump /usr/bin/
+  cp -p redis-check-aof /usr/bin/
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
