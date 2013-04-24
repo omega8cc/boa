@@ -21,8 +21,13 @@ for i in `dir -d /vservers/*` ; do
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 22"
         else
-          echo "Deny $_IP permanently $_NR_TEST"
-          csf -d $_IP Brute force SSH Server $_NR_TEST attacks
+          if [ $_NR_TEST -ge "24" ] ; then
+            echo "Deny $_IP permanently $_NR_TEST"
+            csf -d $_IP do not delete Brute force SSH Server $_NR_TEST attacks
+          else
+            echo "Deny $_IP until limits rotation $_NR_TEST"
+            csf -d $_IP Brute force SSH Server $_NR_TEST attacks
+          fi
         fi
         sleep 1
       fi
@@ -39,8 +44,13 @@ for i in `dir -d /vservers/*` ; do
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 80"
         else
-          echo "Deny $_IP permanently $_NR_TEST"
-          csf -d $_IP Brute force Web Server $_NR_TEST attacks
+          if [ $_NR_TEST -ge "24" ] ; then
+            echo "Deny $_IP permanently $_NR_TEST"
+            csf -d $_IP do not delete Brute force Web Server $_NR_TEST attacks
+          else
+            echo "Deny $_IP until limits rotation $_NR_TEST"
+            csf -d $_IP Brute force Web Server $_NR_TEST attacks
+          fi
         fi
         sleep 1
       fi
@@ -57,8 +67,13 @@ for i in `dir -d /vservers/*` ; do
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 21"
         else
-          echo "Deny $_IP permanently $_NR_TEST"
-          csf -d $_IP Brute force FTP Server $_NR_TEST attacks
+          if [ $_NR_TEST -ge "24" ] ; then
+            echo "Deny $_IP permanently $_NR_TEST"
+            csf -d $_IP do not delete Brute force FTP Server $_NR_TEST attacks
+          else
+            echo "Deny $_IP until limits rotation $_NR_TEST"
+            csf -d $_IP Brute force FTP Server $_NR_TEST attacks
+          fi
         fi
         sleep 1
       fi
@@ -75,8 +90,13 @@ for i in `dir -d /vservers/*` ; do
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 25"
         else
-          echo "Deny $_IP permanently $_NR_TEST"
-          csf -d $_IP Brute force SMTP Server $_NR_TEST attacks
+          if [ $_NR_TEST -ge "24" ] ; then
+            echo "Deny $_IP permanently $_NR_TEST"
+            csf -d $_IP do not delete Brute force SMTP Server $_NR_TEST attacks
+          else
+            echo "Deny $_IP until limits rotation $_NR_TEST"
+            csf -d $_IP Brute force SMTP Server $_NR_TEST attacks
+          fi
         fi
         sleep 1
       fi
