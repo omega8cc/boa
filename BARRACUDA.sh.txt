@@ -1253,9 +1253,6 @@ set_xterm () {
   _XTERM_TEST=$(grep $_INSTALLER_VERSION /root/.bashrc)
   if [[ "$_XTERM_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     sed -i "s/^export TERM=.*/export TERM=xterm-color/g" /root/.bashrc &> /dev/null
-  else
-    cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
   fi
 }
 #
@@ -1673,7 +1670,6 @@ fix_on_upgrade () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
-  set_xterm
   kill_nash
   fix_ftps_modern
   fix_ftps_pam
@@ -2135,7 +2131,7 @@ tune_memory_limits () {
 fix_locales () {
   _LOCALE_TEST=BROKEN
   _LOC_TEST=`locale 2>&1`
-  if [[ "$_LOC_TEST" =~ "UTF-8" ]] ; then
+  if [[ "$_LOC_TEST" =~ LANGUAGE=.*UTF-8 ]] && [[ "$_LOC_TEST" =~ LANG=.*UTF-8 ]] ; then
     _LOCALE_TEST=OK
   fi
   if [[ "$_LOC_TEST" =~ "Cannot" ]] ; then
@@ -2162,22 +2158,26 @@ fix_locales () {
   and display last line with "BYE!" and then log in again
   to see the result.
 
-  We will continue in 10 seconds...
+  We will continue in 5 seconds...
 
 EOF
-    sleep 10
+    sleep 5
     locale-gen en_US en_US.UTF-8 &> /dev/null
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
     echo "LANG=en_US.UTF-8" > /etc/default/locale
-    export LANG=en_US.UTF-8
-    export LC_ALL=en_US.UTF-8
-    export LANGUAGE=en_US.UTF-8
+    cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
+    set_xterm
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
-    echo "export LC_ALL=en_US.UTF-8" >> /root/.bashrc
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
+    echo "export LC_ALL=\"\"" >> /root/.bashrc
+    export LANG=en_US.UTF-8
+    export LANGUAGE=en_US.UTF-8
+    export LC_ALL=""
   else
     locale-gen en_US en_US.UTF-8 &> /dev/null
+    update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
   fi
 }
@@ -3942,6 +3942,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
   sleep 1
+  cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
+  set_xterm
   fix_locales
   $_INITINS wget git-core axel netcat aptitude &> /dev/null
 fi
@@ -5187,7 +5190,6 @@ fi
 if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
   install_upgrade_nginx
 fi
-set_xterm
 kill_nash
 fix_ftps_modern
 enable_purge_cruft_machine
