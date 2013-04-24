@@ -385,7 +385,7 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-018.info" ] ; then
     for m in $RMMODULES; do
@@ -407,6 +407,7 @@ for i in $REVISIONS; do
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib_seven/boost/.git
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.7.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
@@ -487,7 +488,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/reroute_email-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.8.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc11.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
