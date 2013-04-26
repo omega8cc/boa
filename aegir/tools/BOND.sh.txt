@@ -829,6 +829,7 @@ tune_memory_limits () {
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     if [ "$_DB_BINARY_LOG" = "NO" ] ; then
+      bash /var/xdrago/purge_binlogs.sh &> /dev/null
       sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root &> /dev/null
       sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
