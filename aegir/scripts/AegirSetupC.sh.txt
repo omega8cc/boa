@@ -651,6 +651,14 @@ create_civicrm_symlinks () {
 }
 
 
+###---### Checking status
+#
+if [ -e "$_ROOT/log/setupmail.txt" ] ; then
+  _STATUS=UPGRADE
+  cd $_ROOT
+fi
+
+
 ###---### User check
 #
 msg "$_STATUS C: Aegir automated install script part C"
@@ -662,15 +670,7 @@ if [ `whoami` = "root" ] ; then
 fi
 
 
-###---### Checking status..
-#
-if [ -e "$_ROOT/log/setupmail.txt" ] ; then
-  _STATUS=UPGRADE
-  cd $_ROOT
-fi
-
-
-###---### Hot Sauce check..
+###---### Hot Sauce check
 #
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"

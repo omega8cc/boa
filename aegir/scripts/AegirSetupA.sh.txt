@@ -737,10 +737,28 @@ manage_o_contrib () {
 }
 
 
+###---### Checking status
+#
+if [ -d "$_ROOT" ] ; then
+  _STATUS=UPGRADE
+  cd $_ROOT
+  rm -f $_ROOT/AegirSetupC.sh.txt
+  rm -f $_ROOT/AegirSetupB.sh.txt
+fi
+
+
+###---### User check
+#
 msg "$_STATUS A: Aegir automated install script part A"
+if [ `whoami` = "root" ] ; then
+  msg "$_STATUS A: FATAL ERROR: This script should be ran as a non-root user"
+  msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+  touch /opt/tmp/status-AegirSetupA-FAIL
+  exit 1
+fi
 
 
-###---### Checking version..
+###---### Checking version
 #
 msg "INFO A: Checking OCTOPUS version, please wait..."
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
@@ -778,21 +796,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
 fi
 
 
-###---### Checking status..
-#
-if [ -d "$_ROOT" ] ; then
-  _STATUS=UPGRADE
-  cd $_ROOT
-  msg "$_STATUS A: $_STATUS"
-  mrun "sleep 1"
-  rm -f $_ROOT/AegirSetupC.sh.txt
-  rm -f $_ROOT/AegirSetupB.sh.txt
-else
-  msg "$_STATUS A: $_STATUS"
-fi
-
-
-###---### Hot Sauce check..
+###---### Hot Sauce check
 #
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"

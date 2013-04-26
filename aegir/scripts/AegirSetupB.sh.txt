@@ -211,20 +211,23 @@ update_php_cli_drush () {
 _SRCDIR=/opt/tmp/files
 _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
+
+###---### Checking status
+#
+if [ -e "$_ROOT/aegir.sh" ] ; then
+  _STATUS=UPGRADE
+  cd $_ROOT
+fi
+
+
+###---### User check
+#
 msg "$_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
   msg "$_STATUS B: FATAL ERROR: This script should be ran as a non-root user"
   msg "$_STATUS B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
   touch /opt/tmp/status-AegirSetupB-FAIL
   exit 1
-fi
-
-
-###---### Checking status..
-#
-if [ -e "$_ROOT/aegir.sh" ] ; then
-  _STATUS=UPGRADE
-  cd $_ROOT
 fi
 
 
