@@ -119,26 +119,33 @@ sub global_action
       }
     }
 
-    if ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $TIME =~ /3:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/)
+    if ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $TIME =~ /[3-9]:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
 
     if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /2:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
     {
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.watch.log`;
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.watch.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /3:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /[3-9]:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $K $TIME $STAT $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
 
     if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-5]{1}:/))
@@ -146,7 +153,7 @@ sub global_action
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $TIME $CPU $MEM $STAT $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
+      `echo "$timedate $TIME $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
     }
 
     if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
