@@ -3484,10 +3484,10 @@ install_upgrade_nginx () {
     if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       true
     else
-      service nginx stop &> /dev/null
+      st_runner "service nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
       mrun "sleep 1"
-      service nginx start &> /dev/null
+      st_runner "service nginx start" &> /dev/null
     fi
     _UP_NGX=NO
     _NGINX_INSTALL_REQUIRED=NO
@@ -5480,7 +5480,7 @@ fi
 
 ###--------------------###
 if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
-  service nginx stop &> /dev/null
+  st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -6372,7 +6372,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
   fi
-  service nginx reload &> /dev/null
+  st_runner "service nginx reload" &> /dev/null
   mrun "sleep 1"
   msg "INFO: Aegir Master Instance installation completed"
   mrun "sleep 1"
@@ -6472,7 +6472,7 @@ EOF
     update_redis_password
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
-    service nginx start &> /dev/null
+    st_runner "service nginx start" &> /dev/null
   fi
 fi
 
@@ -7056,14 +7056,14 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   force_advanced_nginx_config
   mrun "sleep 8"
-  service nginx restart &> /dev/null
+  st_runner "service nginx restart" &> /dev/null
 else
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] && [ ! -e "/var/log/nginx-ssl-fixed-$_INSTALLER_VERSION" ] ; then
     sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     touch /var/log/nginx-ssl-fixed-$_INSTALLER_VERSION
   fi
-  service nginx reload &> /dev/null
+  st_runner "service nginx reload" &> /dev/null
 fi
 
 

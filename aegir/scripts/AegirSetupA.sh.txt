@@ -1055,7 +1055,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f -r $_AEGIR_ROOT/scripts
   rm -f $_AEGIR_ROOT/themes/README.txt
   rm -f $_AEGIR_ROOT/*.txt
-  service nginx reload &> /dev/null
+  st_runner "service nginx reload" &> /dev/null
   cd $_AEGIR_ROOT
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   cd $_ROOT
@@ -1065,6 +1065,7 @@ fi
 ###---### Force advanced Nginx config
 #
 force_advanced_nginx_config
+st_runner "service nginx reload" &> /dev/null
 
 
 ###---### Force global.inc update
@@ -1089,7 +1090,6 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
       mrun "sleep 1"
       mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
-      service nginx reload &> /dev/null
     fi
   fi
 fi
