@@ -64,8 +64,12 @@ Done!
 -----------
 References:
 
-  http://arstechnica.com/security/2013/04/why-livingsocials-50-million-password-breach-is-graver-than-you-may-think/
-  http://arstechnica.com/security/2012/08/passwords-under-assault/
-  http://codahale.com/how-to-safely-store-a-password/
-  http://yorickpeterse.com/articles/use-bcrypt-fool/
-  http://wildlyinaccurate.com/bcrypt-choosing-a-work-factor
+http://arstechnica.com/security/2013/04/why-livingsocials-50-million-password-breach-is-graver-than-you-may-think/
+http://arstechnica.com/security/2012/08/passwords-under-assault/
+http://codahale.com/how-to-safely-store-a-password/
+http://yorickpeterse.com/articles/use-bcrypt-fool/
+http://wildlyinaccurate.com/bcrypt-choosing-a-work-factor
+https://gist.github.com/jkmickelson/3660219
+http://drupal.org/node/1201444#comment-6448638
+http://drupal.org/project/phpass
+
