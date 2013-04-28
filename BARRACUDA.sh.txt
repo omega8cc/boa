@@ -1147,28 +1147,38 @@ fix_php_ini_redis () {
   fi
 }
 #
+# Forced Redis password update.
+forced_redis_password_update () {
+  msg "INFO: Generating random password for Redis server"
+  touch /root/.redis.pass.txt
+  chmod 0600 /root/.redis.pass.txt &> /dev/null
+  _ESC_RPASS=""
+  _LEN_RPASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_RPASS=$(randpass 32 alnum)
+    _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+    _LEN_RPASS=$(echo ${#_ESC_RPASS})
+  fi
+  if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
+    _ESC_RPASS=`pwgen -v -s -1`
+    _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
+    _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
+  fi
+  echo "$_ESC_RPASS" > /root/.redis.pass.txt
+  touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
+  _FORCE_REDIS_RESTART=YES
+  sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
+  chown redis:redis /etc/redis/redis.conf
+  chmod 0600 /etc/redis/redis.conf
+}
+#
 # Set or update Redis password.
 update_redis_password () {
   if [ -e "/etc/redis/redis.conf" ] ; then
-    if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
-      msg "INFO: Generating random password for Redis server"
-      touch /root/.redis.pass.txt
-      chmod 0600 /root/.redis.pass.txt &> /dev/null
-      _ESC_RPASS=""
-      _LEN_RPASS=0
-      if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-        _ESC_RPASS=$(randpass 32 alnum)
-        _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
-        _LEN_RPASS=$(echo ${#_ESC_RPASS})
+    if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+      if [ ! -e "/root/.redis.no.new.password.cnf" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
+         forced_redis_password_update
       fi
-      if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
-        _ESC_RPASS=`pwgen -v -s -1`
-        _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
-        _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
-      fi
-      echo "$_ESC_RPASS" > /root/.redis.pass.txt
-      touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
-      _FORCE_REDIS_RESTART=YES
     fi
   fi
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
@@ -1178,11 +1188,24 @@ update_redis_password () {
     else
       RPASS="$_ESC_RPASS"
     fi
-    sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
-    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
-    sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
-    chown redis:redis /etc/redis/redis.conf
-    chmod 0600 /etc/redis/redis.conf
+    _REDIS_PWD_TEST=`grep "'$RPASS'" /data/conf/global.inc 2>&1`
+    if [[ "$_REDIS_PWD_TEST" =~ "'$RPASS'" ]] ; then
+      true
+    else
+      if [ ! -z "$RPASS" ] ; then
+        mkdir -p /data/conf
+        if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+        else
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
+        fi
+        sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
+      fi
+    fi
+    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+      rm -f /var/aegir/config/includes/global.inc
+      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+    fi
   fi
 }
 #
@@ -3320,13 +3343,20 @@ upgrade_aegir_master () {
     else
       hostmaster_frontend_dbpass_sync
     fi
-    mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
-    else
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
+    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/var/aegir/config/includes/global.inc" ] ; then
+      mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     fi
-    sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    mkdir -p /data/conf
+    if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+    else
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
+    fi
+    sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
+    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+      rm -f /var/aegir/config/includes/global.inc
+      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+    fi
     update_redis_password
     force_advanced_nginx_config
     if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
@@ -6345,13 +6375,20 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
-  mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /var/aegir/config/includes/global.inc
+  if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/var/aegir/config/includes/global.inc" ] ; then
+    mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   fi
-  sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+  mkdir -p /data/conf
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+  else
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
+  fi
+  sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
+  if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+    rm -f /var/aegir/config/includes/global.inc
+    ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+  fi
   update_redis_password
   force_advanced_nginx_config
   if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
@@ -6467,11 +6504,15 @@ EOF
       sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     fi
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    mkdir -p /data/conf
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
-      mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /var/aegir/config/includes/global.inc
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
     fi
-    sed -i "s/3600/$_SPEED_VALID_MAX/g" /var/aegir/config/includes/global.inc &> /dev/null
+    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+      rm -f /var/aegir/config/includes/global.inc
+      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+    fi
+    sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
     update_redis_password
     killall -9 nginx &> /dev/null
     mrun "sleep 1"

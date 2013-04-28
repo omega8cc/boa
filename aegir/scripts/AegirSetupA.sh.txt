@@ -250,6 +250,12 @@ update_redis_password () {
       _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
     fi
     echo "$_ESC_RPASS" > /root/.redis.pass.txt
+    sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
+    chown redis:redis /etc/redis/redis.conf
+    chmod 0600 /etc/redis/redis.conf
+    service redis-server stop &> /dev/null
+    killall -9 redis-server &> /dev/null
+    service redis-server start &> /dev/null
   fi
   if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
     if [ -z "$_ESC_RPASS" ] ; then
@@ -258,9 +264,24 @@ update_redis_password () {
     else
       RPASS="$_ESC_RPASS"
     fi
-    sed -i "s/^requirepass.*/requirepass $RPASS/g" /etc/redis/redis.conf &> /dev/null
-    sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc                 &> /dev/null
-    sed -i "s/isfoobared/$RPASS/g" /var/aegir/config/includes/global.inc &> /dev/null
+    _REDIS_PWD_TEST=`grep "'$RPASS'" /data/conf/global.inc 2>&1`
+    if [[ "$_REDIS_PWD_TEST" =~ "'$RPASS'" ]] ; then
+      true
+    else
+      if [ ! -z "$RPASS" ] ; then
+        mkdir -p /data/conf
+        if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+        else
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
+        fi
+        sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
+      fi
+    fi
+    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+      rm -f /var/aegir/config/includes/global.inc
+      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+    fi
   fi
 }
 #
@@ -1082,11 +1103,11 @@ fi
 #
 if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
-    _SSL_TEST=`cat /data/conf/global.inc 2>&1`
-    if [[ "$_SSL_TEST" =~ "HTTP_X_FORWARDED_PROTO" ]] ; then
-      _SSL_TEST=OK
+    _SSL_TEST=`grep no-https-aegir /data/conf/global.inc 2>&1`
+    if [[ "$_SSL_TEST" =~ "no-https-aegir" ]] ; then
+      true
     else
-      msg "$_STATUS A: Installing forced SSL settings for this Hostmaster site, please wait..."
+      msg "$_STATUS A: Installing forced SSL settings for all Satellite Hostmasters"
       mrun "sleep 1"
       mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
@@ -1110,7 +1131,6 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
     msg "$_STATUS A: Set/rewrite remote cache IP address and disable local caches"
     mrun "sleep 1"
     sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /data/conf/global.inc &> /dev/null
-    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /var/aegir/config/includes/global.inc &> /dev/null
     service redis-server stop &> /dev/null
     update-rc.d -f redis-server remove &> /dev/null
     service redis stop &> /dev/null
