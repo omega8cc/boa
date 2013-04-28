@@ -344,6 +344,7 @@ for i in $REVISIONS; do
     git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib/boost/.git
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.6.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
       ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
@@ -547,6 +548,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/reroute_email-6.x-1.2.tar.gz

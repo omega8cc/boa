@@ -258,6 +258,7 @@ Contrib:
  login_security ------------- [D6,D7] --- [S] [B]
  nocurrent_pass ------------- [D7] ------ [S] [B]
  performance ---------------- [D6,D7] ----------- [FD]
+ phpass --------------------- [D6] ------ [S] [B]
  poormanscron --------------- [D6] -------------- [FD]
  private_upload ------------- [D6] ------ [S] [B]
  purge ---------------------- [D6,D7] ----------- [FD]
