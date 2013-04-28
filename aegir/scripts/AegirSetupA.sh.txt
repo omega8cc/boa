@@ -778,9 +778,10 @@ fi
 
 ###---### User check
 #
-msg "$_STATUS A: Aegir automated install script part A"
 if [ `whoami` = "root" ] ; then
-  msg "$_STATUS A: FATAL ERROR: This script should be ran as a non-root user"
+  msg "$_STATUS A: Aegir automated install script part A"
+else
+  msg "$_STATUS A: FATAL ERROR: This script should be ran as a root user"
   msg "$_STATUS A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
   touch /opt/tmp/status-AegirSetupA-FAIL
   exit 1
