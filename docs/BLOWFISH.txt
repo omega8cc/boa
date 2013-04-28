@@ -10,9 +10,9 @@ the user updates his password, it is automatically encrypted with SHA512.
 You can easily switch your system to use much more secure Bcrypt/Blowfish,
 using the simple steps listed below:
 
-1. Make sure you have working SSH keys for your root account.
-2. Make sure you have working SSH keys for your root account.
-3. Make sure you have working SSH keys for your root account.
+1. Make sure you have working SSH keys for direct root access without sudo.
+2. Make sure you have working SSH keys for direct root access without sudo.
+3. Make sure you have working SSH keys for direct root access without sudo.
 
 REALLY. Don't even read anything below, if you didn't set this up yet!
         You could lock yourself out of your server forever (almost),
@@ -72,4 +72,7 @@ http://wildlyinaccurate.com/bcrypt-choosing-a-work-factor
 https://gist.github.com/jkmickelson/3660219
 http://drupal.org/node/1201444#comment-6448638
 http://drupal.org/project/phpass
+http://www.php.net/manual/en/function.crypt.php
+http://www.php.net/security/crypt_blowfish.php
+
 
