@@ -94,8 +94,6 @@ ok_create_user()
   if [ ! -d "$_USER_LTD_ROOT" ] ; then
     useradd -d $_USER_LTD_ROOT -s /usr/bin/lshell -m -N -r $_USER_LTD
     adduser $_USER_LTD $_WEBG
-    touch $_TMP/$_USER_LTD.txt
-    chmod 0600 $_TMP/$_USER_LTD.txt
     _ESC_LUPASS=""
     _LEN_LUPASS=0
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
@@ -108,16 +106,13 @@ ok_create_user()
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
-    echo "$_ESC_LUPASS" > $_TMP/$_USER_LTD.txt
-    ph=$(makepasswd --clearfrom=$_TMP/$_USER_LTD.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
+    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 | tr -d '+=' | head -c 16))
     usermod -p $ph $_USER_LTD
     passwd -w 7 -x 90 $_USER_LTD
     usermod -aG lshellg $_USER_LTD
     usermod -aG ltd-shell $_USER_LTD
   fi
-  if [ ! -e "/home/$_ADMIN/users/$_USER_LTD" ] ; then
-    PXSWD=`cat $_TMP/$_USER_LTD.txt`
-    PASWD=`echo -n $PXSWD | tr -d "\n"`
+  if [ ! -e "/home/$_ADMIN/users/$_USER_LTD" ] && [ ! -z "$_ESC_LUPASS" ] ; then
     chsh -s /usr/bin/lshell $_USER_LTD
     echo >> $_THIS_LTD_CONF
     echo "[$_USER_LTD]" >> $_THIS_LTD_CONF
@@ -125,7 +120,7 @@ ok_create_user()
     ln -s $Client $_USER_LTD_ROOT/sites
     chmod 700 $_USER_LTD_ROOT
     mkdir -p /home/$_ADMIN/users
-    echo "$PASWD" > /home/$_ADMIN/users/$_USER_LTD
+    echo "$_ESC_LUPASS" > /home/$_ADMIN/users/$_USER_LTD
   fi
   fix_dot_dirs
   rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bashrc}

@@ -1301,7 +1301,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     fi
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
     # get the password hash
-    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
+    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 | tr -d '+=' | head -c 16))
     # Set the password
     usermod -p $ph $_USERFTP &> /dev/null
     passwd -w 7 -x 90 $_USERFTP &> /dev/null
@@ -1448,7 +1448,7 @@ else
       _ESC_LUPASS=`sanitize_string "$_ESC_LUPASS"`
     fi
     echo "$_ESC_LUPASS" > $_ROOT/log/pass.txt
-    ph=$(makepasswd --clearfrom=$_ROOT/log/pass.txt --crypt-md5 --verbose | grep "=" | cut -d= -f3 | awk '{ print $1}')
+    ph=$(mkpasswd -m sha-512 $_ESC_LUPASS $(openssl rand -base64 16 | tr -d '+=' | head -c 16))
     usermod -p $ph $_USERFTP &> /dev/null
     _PASWD=`cat $_ROOT/log/pass.txt`
     _PASWD=`echo -n $_PASWD | tr -d "\n"`
