@@ -4752,8 +4752,6 @@ if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
         done
         cat dotdeb.gpg | apt-key add - &> /dev/null
         rm -f dotdeb.gpg*
-      else
-        rm -f /etc/apt/sources.list.d/dotdeb.list
       fi
     fi
   fi
@@ -4879,6 +4877,9 @@ else
     st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
     st_runner "aptitude remove php5-apc php5-cli php5-common -y" &> /dev/null
     rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+    if [ "$_REL_VERSION" = "squeeze" ] ; then
+      rm -f /etc/apt/sources.list.d/dotdeb.list
+    fi
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
