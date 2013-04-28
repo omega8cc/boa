@@ -251,6 +251,7 @@ Contrib:
  filefield_nginx_progress --- [D6,D7] --- [S] [B]
  flood_control -------------- [D7] ------ [S] [B]
  fpa ------------------------ [D6,D7] --- [S] [B]
+ httprl --------------------- [D6,D7] --- [S] [B]
  imagecache ----------------- [D6,D7] --- [S]
  imagecache_external -------- [D6,D7] --- [S]
  javascript_aggregator ------ [D6] -------------- [FD]
