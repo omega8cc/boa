@@ -234,7 +234,7 @@ sanitize_string () {
 # Set or update Redis password.
 update_redis_password () {
   if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    msg "INIT A: Generate random password for Redis server"
+    msg "$_STATUS A: Generate random password for Redis server"
     touch /root/.redis.pass.txt
     chmod 0600 /root/.redis.pass.txt &> /dev/null
     _ESC_RPASS=""
@@ -302,7 +302,7 @@ create_shared_dirs () {
 #
 feature_server_fix_002 () {
 if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
-msg "UPGRADE A: Adding missing strongarm module to old fserver platforms"
+msg "$_STATUS A: Adding missing strongarm module to old fserver platforms"
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/fserver" ] ; then
@@ -318,7 +318,7 @@ for i in $REVISIONS; do
         cd _THIS_HOSTMASTER &> /dev/null
         su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=$_ROOT/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
       fi
-      msg "UPGRADE A: Missing strongarm added to /data/all/$i/fserver"
+      msg "$_STATUS A: Missing strongarm added to /data/all/$i/fserver"
     fi
   fi
 done
@@ -337,7 +337,7 @@ for i in $REVISIONS; do
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
-        msg "UPGRADE A: Removed /data/all/$i/o_contrib/$m"
+        msg "$_STATUS A: Removed /data/all/$i/o_contrib/$m"
       fi
     done
     cd /data/all/$i/o_contrib
@@ -370,7 +370,7 @@ for i in $REVISIONS; do
       ln -s /data/all/000/modules/redis /data/all/$i/o_contrib/redis
     fi
     touch /data/all/$i/o_contrib/update-019.info
-    msg "UPGRADE A: New modules in /data/all/$i/o_contrib: purge expire backup_migrate"
+    msg "$_STATUS A: New modules in /data/all/$i/o_contrib: purge expire backup_migrate"
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -393,7 +393,7 @@ for i in $REVISIONS; do
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
-        msg "UPGRADE A: Removed /data/all/$i/o_contrib_seven/$m"
+        msg "$_STATUS A: Removed /data/all/$i/o_contrib_seven/$m"
       fi
     done
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
@@ -424,7 +424,7 @@ for i in $REVISIONS; do
       ln -s /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
     fi
     touch /data/all/$i/o_contrib_seven/update-019.info
-    msg "UPGRADE A: New modules in /data/all/$i/o_contrib_seven: filefield_nginx_progress purge expire"
+    msg "$_STATUS A: New modules in /data/all/$i/o_contrib_seven: filefield_nginx_progress purge expire"
   fi
 done
 cd
@@ -768,7 +768,7 @@ fi
 
 ###---### Checking version
 #
-msg "INFO A: Checking OCTOPUS version, please wait..."
+msg "$_STATUS A: Checking OCTOPUS version, please wait..."
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   _FILE_VERSION=release.txt
 else
@@ -779,14 +779,14 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "INFO A: Version test result: OK"
+      msg "$_STATUS A: Version test result: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "INFO: Version test result: OK"
+      msg "$_STATUS A: Version test result: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
