@@ -700,7 +700,7 @@ _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COD="Conference 1.0-rc2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.6 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE="Commerce 1.17 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMERCE="Commerce 1.18 $_SMALLCORE7 P.$_THIS_CORE"
 _F_D6COMMONS="Commons 2.12 $_SMALLCORE6 P.$_THIS_CORE"
 _F_D7COMMONS="Commons 3.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
@@ -1063,9 +1063,14 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_THIS_PRPATH
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
     patch -p1 < $_THIS_PRNAME.patch &> /dev/null
-    if [ $_COMMERCE = "7.x-1.16" ] ; then
+    if [ $_COMMERCE = "7.x-1.18" ] ; then
       cd $_THIS_PRPATH/modules
-      upgrade_contrib_less
+      rm -f -r {entity}
+      wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
+      for archive in ./*.tar.gz; do
+        tar -xzf "$archive" &> /dev/null
+      done
+      rm -f *.tar.gz
     fi
     create_dirs
     themes_for_d7
