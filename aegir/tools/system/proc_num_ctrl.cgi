@@ -5,6 +5,7 @@
 ###
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
 `/etc/init.d/redis-server start` if (!-f "/var/run/redis.pid");
+&mysqld_action;
 &global_action;
 foreach $USER (sort keys %li_cnt) {
   print " $li_cnt{$USER}\t$USER\n";
@@ -55,7 +56,7 @@ if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
 }
-if (!$mysqlsumar || $mysqlsumar > 150) {
+if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid") {
   `bash /var/xdrago/move_sql.sh`;
 }
 if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
@@ -171,6 +172,41 @@ sub global_action
       else {
         if ($PID ne "PID" && $COMMAND !~ /java/) {
           $li_cnt{$COMMAND}++;
+        }
+      }
+    }
+  }
+}
+#############################################################################
+sub mysqld_action
+{
+  local($PROCS) = `grep -c processor /proc/cpuinfo`;
+  chomp($PROCS);
+  $MAXCPU = $PROCS."00";
+  if ($PROCS > 4)
+  {
+    $MAXCPU = 400;
+  }
+  $MAXCPU = $MAXCPU - 50;
+  local(@SQLARR) = `top -n 1 | grep mysqld 2>&1`;
+  foreach $line (@SQLARR) {
+    if ($line !~ /mysqld_safe/)
+    {
+      local($NONE, $PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
+      if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
+        if ($USER =~ /mysql/ && $COMMAND =~ /mysqld/)
+        {
+          if ($CPU > $MAXCPU)
+          {
+            `bash /var/xdrago/move_sql.sh`;
+            $timedate=`date +%y%m%d-%H%M`;
+            chomp($timedate);
+            `echo $timedate >> /var/xdrago/log/mysql.forced.restart.log`;
+            print "B LINE is $line";
+          }
+          else {
+            print "C LINE is $line";
+          }
         }
       }
     }
