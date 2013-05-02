@@ -7052,11 +7052,13 @@ sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/segfault_al
 sed -i "s/notify\\\@omega8.cc/$XPTEMAIL/g" /var/xdrago/monitor/check/escapecheck &> /dev/null
 if [ -e "/usr/sbin/apticron" ] ; then
   if [[ "$_INSTALLER_VERSION" =~ "dev" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-    sed -i "s/aptitude full-upgrade/barracuda up-head/g" /usr/sbin/apticron &> /dev/null
-    sed -i "s/apt-get dist-upgrade/barracuda up-head/g" /usr/sbin/apticron &> /dev/null
+    sed -i "s/aptitude full-upgrade/barracuda up-head system/g" /usr/sbin/apticron &> /dev/null
+    sed -i "s/apt-get dist-upgrade/barracuda up-head system/g" /usr/sbin/apticron &> /dev/null
+    sed -i "s/barracuda up-head.*/barracuda up-head system/g" /usr/sbin/apticron &> /dev/null
   else
-    sed -i "s/aptitude full-upgrade/barracuda up-stable/g" /usr/sbin/apticron &> /dev/null
-    sed -i "s/apt-get dist-upgrade/barracuda up-stable/g" /usr/sbin/apticron &> /dev/null
+    sed -i "s/aptitude full-upgrade/barracuda up-stable system/g" /usr/sbin/apticron &> /dev/null
+    sed -i "s/apt-get dist-upgrade/barracuda up-stable system/g" /usr/sbin/apticron &> /dev/null
+    sed -i "s/barracuda up-stable.*/barracuda up-stable system/g" /usr/sbin/apticron &> /dev/null
   fi
 fi
 if [ "$_STATUS" = "INIT" ] ; then
