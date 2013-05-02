@@ -53,8 +53,27 @@ $ octopus up-head all
           $ barracuda up-stable log
           $ octopus up-stable all log
 
-          Note also that detailed backend log on barracuda
-          upgrade is always stored directly in /var/backups/*
+          Detailed backend log on barracuda upgrade is always stored in
+          /var/backups/*
+
+### NOTE: You can append "system" as a last argument to the barracuda
+          command, and it will upgrade only the system, without running
+          Aegir Master Instance upgrade, plus it will write the output
+          to the file instead of to the console:
+          /var/backups/reports/up/barracuda/*
+
+          Example:
+
+          $ barracuda up-stable system
+
+### NOTE: While both "log" and "system" modes are "silent", because
+          they don't display anything in your console, they will send
+          the log via e-mail to your address specified in the file:
+          /root/.barracuda.cnf
+
+          It is recommended that you start `screen` before running
+          commands using the "silent" mode - to avoid confusion
+          or incomplete tasks when your SSH connection drops.
 
 ### NOTE: It is possible to set/force the upgrade mode on the fly
           using optional arguments: {aegir|platforms|both}
@@ -63,7 +82,7 @@ $ octopus up-head all
           honor also settings from the octopus instance cnf file,
           where currently only "aegir" mode is defined
           with _HM_ONLY=YES option.
-          
+
           Examples:
 
           $ octopus up-stable o1 aegir
