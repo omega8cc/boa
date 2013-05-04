@@ -195,9 +195,7 @@ if [ "$_MODULES" = "YES" ] ; then
         else
           su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
         fi
-        if [ -e "$Plr/sites/all/modules/entitycache_dont_enable.info" ] ; then
-          true
-        else
+        if [ ! -e "$Plr/sites/all/modules/entitycache_dont_enable.info" ] ; then
           su -s /bin/bash $_THIS_HM_USER -c "drush en entitycache -y &> /dev/null"
         fi
         su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
