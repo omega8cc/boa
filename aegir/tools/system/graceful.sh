@@ -53,7 +53,9 @@ action()
   fi
   /etc/init.d/nginx reload
   touch /var/run/fmp_wait.pid
-  /etc/init.d/php-fpm reload
+  if [ -e "/etc/init.d/php-fpm" ] ; then
+    /etc/init.d/php-fpm reload
+  fi
   /etc/init.d/php53-fpm reload
   sleep 8
   rm -f /var/run/fmp_wait.pid
