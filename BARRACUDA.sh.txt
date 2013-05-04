@@ -1332,7 +1332,7 @@ enable_purge_cruft_machine () {
     true
   else
     if [[ "$_THISHOST" =~ ".host8." ]] ; then
-      echo "22 2    * * 7   root    bash /var/xdrago/purge_cruft.sh" >> /etc/crontab
+      echo "22 2    * * 7   root    bash /var/xdrago/purge_cruft.sh >/dev/null 2>&1" >> /etc/crontab
       sed -i "/^$/d" /etc/crontab &> /dev/null
     fi
   fi
@@ -3342,6 +3342,7 @@ upgrade_aegir_master () {
       exit 1
     else
       hostmaster_frontend_dbpass_sync
+      sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" /var/spool/cron/crontabs/aegir &> /dev/null
     fi
     if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/var/aegir/config/includes/global.inc" ] ; then
       mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
