@@ -3,7 +3,6 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-touch /var/run/fmp_wait.pid
 if [ -e "/etc/cron.daily/logrotate" ] ; then
   _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
   if [[ "$_SYSLOG_SIZE_TEST" =~ "G" ]] ; then
@@ -24,18 +23,11 @@ echo rotate > /var/log/redis/redis-server.log
 echo rotate > /var/log/mysql/sql-slow-query.log
 if test -f /root/.high_traffic.cnf ; then
   echo rotate > /var/log/nginx/access.log
-else
-  /etc/init.d/php53-fpm reload
-  if test -f /etc/init.d/php-fpm ; then
-    /etc/init.d/php-fpm reload
-  fi
-  sleep 8
 fi
 if test -f /var/run/boa_run.pid ; then
   sleep 1
 else
   rm -f /tmp/*error*
 fi
-rm -f /var/run/fmp_wait.pid
 touch /var/xdrago/log/clear.done
 ###EOF2013###
