@@ -1,0 +1,69 @@
+###----------------------------------------###
+### PLATFORMS INSTALL MODE                 ###
+###----------------------------------------###
+###
+### You can use wildcard "ALL" to install all
+### available platforms or configure the list
+### of platforms to be installed as explained
+### below.
+###
+### Note: the "ALL" wildcard is not default!
+###
+### When combined with _AUTOPILOT=YES option
+### you can speed up the process and still
+### control which platforms will be installed,
+### using the symbols listed below.
+###
+### D8D ----------- Drupal 8 dev-tested (off)
+### D8E ----------- Drupal 8 dev-edge (off)
+### D7P D7S D7D --- Drupal 7 prod/stage/dev
+### D6P D6S D6D --- Pressflow 6 p/s/d
+### D5P ----------- Pressflow 5 (off)
+### AQ6 ----------- Acquia D6
+### CC3 ----------- CiviCRM 3.4.8 D6 (off)
+### CM6 ----------- CiviCRM 4.1.6 D6
+### CM7 ----------- CiviCRM 4.2.8 D7
+### CME ----------- Commerce v.2
+### COD ----------- Conference
+### CS7 ----------- Commons 7
+### DCE ----------- Commerce v.1
+### DCS ----------- Commons 6
+### ELS ----------- ELMS (off)
+### FSR ----------- Feature Server
+### MNS ----------- Managing News
+### MPG ----------- MartPlug (off)
+### NS7 ----------- NodeStream D7
+### NSM ----------- NodeStream D6 (off)
+### OAM ----------- Open Atrium
+### OAY ----------- Open Academy (off)
+### OCH ----------- OpenChurch
+### ODS ----------- Open Deals
+### OEE ----------- Open Enterprise (off)
+### OOH ----------- Open Outreach
+### OPC ----------- OpenPublic (off)
+### OPH ----------- OpenPublish
+### OSR ----------- OpenScholar (off)
+### OVO ----------- Octopus Video (off)
+### PPT ----------- ProsePoint
+### PPY ----------- Panopoly
+### UC7 ----------- Ubercart D7
+### UCT ----------- Ubercart D6
+### VOA ----------- Videola (off)
+###
+### Examples:
+###
+### _PLATFORMS_LIST=ALL
+### _PLATFORMS_LIST="D7P D6P OAM MNS NS7 OOH"
+###
+_PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D OAM"
+
+
+###----------------------------------------###
+### UNSUPPORTED (off) DISTROS INSTALL      ###
+###----------------------------------------###
+###
+### If you wish to install also distros listed
+### above as (off), change the option below
+### to: _ALLOW_UNSUPPORTED=YES
+###
+_ALLOW_UNSUPPORTED=NO

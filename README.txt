@@ -74,6 +74,7 @@ to the standard production settings.
 ### SUPPORTED LTS OS 32/64bit - minimal on server or desktop on localhost
 
 * Debian 6.0 Squeeze (recommended) - 12 min install, 3 min upgrade
+* Debian 7.0 Wheezy - 30 min install, 15 min upgrade
 * Ubuntu Precise 12.04 - 12 min install, 3 min upgrade
 * Ubuntu Lucid 10.04 - 30 min install, 15 min upgrade
 
@@ -103,29 +104,46 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 ### PROVIDES
 
+=== Included by default - see docs/NOTES.txt for details
+
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 or Percona 5.5 database server.
-* Latest version of Nginx web server with upload progress and Boost support.
+* Latest release of MariaDB 5.5 database server with Chive manager.
+* Latest version of Nginx web server.
 * PHP-FPM 5.3.24 with APC, phpredis, uploadprogress and ionCube.
-* PHP-FPM 5.2.17 with APC, phpredis, uploadprogress and ionCube.
-* Redis cache server with standard DB auto-failover.
-* New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
-* Entry level XSS built-in protection on the Nginx level.
-* Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
-* Automated, rotated daily backups for all databases in /data/disk/arch/sql.
-* MultiCore Apache Solr 1.4.1 with Jetty 7 (optional).
-* MultiCore Apache Solr 3.6.2 with Jetty 8 (optional).
-* MultiCore Apache Solr 4.2.0 with Jetty 8 or 9 on Precise (optional).
+* Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
-* Bind9 DNS server (optional).
-* Webmin Control Panel (optional).
-* Compass Tools (optional).
-* Firewall csf/lfd integrated with Nginx abuse guard (optional).
-* Chive database manager in "chive." subdomain (optional).
-* SQL Buddy database manager in "sqlbuddy." subdomain (optional).
-* Collectd server monitor in "cgp." subdomain (optional).
 * Limited shell, SFTP and FTPS separate accounts per Octopus instance.
-* Limited shell and FTPS separate accounts per Aegir Client/Developer.
+* Limited Shell and FTPS accounts per Aegir Client with per site access.
+* Drush and Drush Make access - drush4, drush5 and drush6 on command line.
+* HTTPS access with self-signed certificate for all hosted sites.
+* Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
+* Entry level XSS built-in protection on the Nginx level.
+* Firewall csf/lfd integrated with Nginx abuse guard.
+* PHP errors debugging, including WSOD, enabled on the fly on dev. aliases.
+* Boost, AdvAgg, Domain Access and Drupal for Facebook built-in support.
+* Built-in collection of useful modules available in all platforms.
+* Autonomous Maintenance & Auto-Healing scripts in /var/xdrago.
+* Every 10 seconds uptime/self-healing local monitoring.
+* Automated, rotated daily backups for all databases in /data/disk/arch/sql.
+
+=== Optional add-ons - see docs/NOTES.txt for details
+
+* MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
+* MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
+* MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.
+* Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
+* Latest release of Percona 5.5 database server.
+* New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
+* LDAP Nginx support via third-party module.
+* MongoDB driver for PHP 5.3
+* GEOS extension for PHP 5.3 (experimental).
+* FFmpeg support.
+* PHP-FPM 5.2.17 with APC, phpredis, uploadprogress and ionCube (deprecated).
+* Bind9 DNS server.
+* Webmin Control Panel.
+* SQL Buddy database manager.
+* Collectd server monitor.
+* Compass Tools.
 
 
 ### OCTOPUS PLATFORMS

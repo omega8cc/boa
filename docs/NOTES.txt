@@ -1,4 +1,40 @@
 
+# Notes related to Barracuda add-ons configurable via _XTRAS_LIST variable.
+
+  * Configuration file location: /root/.barracuda.cnf
+
+    ###
+    ### Xtras included with "ALL" wildcard:
+    ###
+    ### CGP --- Collectd Graph Panel
+    ### CHV --- Chive DB Manager
+    ### CSF --- Firewall
+    ### CSS --- Compass Tools
+    ### FTP --- Pure-FTPd server with forced FTPS
+    ### PDS --- Fast DNS Cache Server (pdnsd)
+    ### WMN --- Webmin Control Panel
+    ###
+    ### Xtras which need to be listed explicitly:
+    ###
+    ### BDD --- SQL Buddy DB Manager
+    ### BND --- Bind9 DNS Server
+    ### FMG --- FFmpeg support
+    ### GIT --- Latest Git from sources
+    ### SR1 --- Apache Solr 1 with Jetty 7
+    ### SR3 --- Apache Solr 3 with Jetty 8
+    ### SR4 --- Apache Solr 4 with Jetty 8 or 9
+    ###
+    ### Examples:
+    ###
+    ### _XTRAS_LIST=""
+    ### _XTRAS_LIST="ALL"
+    ### _XTRAS_LIST="ALL GIT SR3"
+    ### _XTRAS_LIST="PDS CSF CGP CHV FTP"
+    ###
+
+  * Configuration file template: docs/cnf/barracuda.cnf
+
+
 # Notes related to Barracuda install on public server with or w/o _EASY_PUBLIC option
 
   NOTE: 123.45.67.89 below is a placeholder for your server public, real IP address.
@@ -58,12 +94,13 @@
         it further on upgrade, by editing various settings stored in the BOA config
         files, respectively:
 
-        /root/.barracuda.cnf
-        /root/.o1.octopus.cnf
-        /root/.o2.octopus.cnf
+        /root/.barracuda.cnf  - check docs/cnf/barracuda.cnf template
+        /root/.o1.octopus.cnf - check docs/cnf/octopus.cnf template
+        /root/.o2.octopus.cnf - check docs/cnf/octopus.cnf template
         etc.
 
         It may be useful when you prefer to install Percona instead of MariaDB
         or to always use latest version of PHP built from sources etc.
+
         Please read docs/UPGRADE.txt for simple upgrades how-to.
 
