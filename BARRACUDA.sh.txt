@@ -5077,12 +5077,13 @@ install_mariadb_sql () {
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _PERCONA_READY=YES
+    msg "INFO: Installing $_DB_SERVER, please wait..."
   else
     _PERCONA_READY=NO
+    msg "INFO: Installing MariaDB, please wait..."
   fi
-  msg "INFO: Installing $_DB_SERVER, please wait..."
   if [ "$_PERCONA_READY" = "YES" ] && [ "$_DB_SERVER" = "Percona" ] ; then
     install_percona_sql
     st_runner "$_INSTAPP mytop" 2> /dev/null
