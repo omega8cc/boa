@@ -1,0 +1,66 @@
+###
+### Barracuda version BOA-2.0.8
+###
+### Configuration stored in the /root/.barracuda.cnf file.
+### This example is for public install mode - see docs/INSTALL.txt
+###
+### NOTE: the group of settings displayed bellow will *not* be overriden
+### on upgrade by the Barracuda script nor by this configuration file.
+### They can be defined only on initial Barracuda install.
+###
+_HTTP_WILDCARD=YES #------------ Listen on single IP instead of all IPs when NO
+_MY_OWNIP="123.45.67.89" #------ Allows to specify web server IP if not default
+_MY_HOSTN="f-q-d-n" #----------- Allows to define server hostname
+_EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_PUBLIC
+_MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
+_THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
+_SMTP_RELAY_TEST=YES #---------- Allows to skip SMTP availability tests when NO
+_SMTP_RELAY_HOST="" #----------- Allows to configure simple SMTP relay (w/o pwd)
+_LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
+_LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
+###
+### NOTE: the group of settings displayed bellow
+### will *override* all listed settings in the Barracuda script,
+### both on initial install and upgrade.
+###
+_MY_EMAIL="my@email" #---------- System admin e-mail
+_XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
+_AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
+_SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
+_DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
+_DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona DB server
+_DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
+_DB_ENGINE=InnoDB #------------- Allows to specify default engine for Drupal 6
+_SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
+_LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
+_LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
+_FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
+_DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
+_NGINX_WORKERS=AUTO #----------- Allows to override AUTO with valid number
+_NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
+_BUILD_FROM_SRC=NO #------------ Allows to force PHP build from sources
+_PHP_MODERN_ONLY=YES #---------- Allows to install PHP 5.2 when NO
+_PHP_FPM_VERSION=5.3 #---------- Allows to define default PHP-FPM version
+_PHP_CLI_VERSION=5.3 #---------- Allows to define default PHP-CLI version
+_PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with valid number
+_NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
+_NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
+_PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
+_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
+_PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
+_LOAD_LIMIT_ONE=1444 #---------- Defines max 1 min load before disabling Nginx
+_LOAD_LIMIT_TWO=888 #----------- Defines max 5 min load before disabling Nginx
+_CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
+_CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
+_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
+_CUSTOM_CONFIG_PHP_5_2=NO #----- Protects custom PHP 5.2 ini files when YES
+_CUSTOM_CONFIG_PHP_5_3=NO #----- Protects custom PHP 5.3 ini files when YES
+_SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
+_USE_MEMCACHED=NO #------------- Installs memcached when YES (deprecated)
+_NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
+_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
+_EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
+_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+###
+### Barracuda version BOA-2.0.8
+###

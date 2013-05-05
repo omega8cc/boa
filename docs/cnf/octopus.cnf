@@ -1,0 +1,42 @@
+###
+### Octopus version BOA-2.0.8
+###
+### Configuration stored in the /root/.$_USER.octopus.cnf file.
+### This example is for public install mode - see docs/INSTALL.txt
+###
+### NOTE: the group of settings displayed bellow
+### will *override* all listed here settings in the Octopus script.
+###
+_USER="o1" #-------------------- Aegir Instance system account name
+_MY_EMAIL="my@email" #---------- Aegir Instance owner e-mail
+_PLATFORMS_LIST=ALL #----------- Platforms to install - see docs/PLATFORMS.txt
+_ALLOW_UNSUPPORTED=NO #--------- Allows to install deprecated platforms when YES
+_AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
+_HM_ONLY=NO #------------------- Allows to upgrade Aegir only (deprecated)
+_O_CONTRIB_UP=NO #-------------- Allows to force o_contrib upgrade when YES
+_DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
+_MY_OWNIP= #-------------------- Allows to specify web server IP if not default
+_FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
+_THIS_DB_HOST=localhost #------- DB host depends on Barracuda setting (FQDN)
+_DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
+_HOT_SAUCE=NO #----------------- Forces new platforms tree on install when YES
+_USE_CURRENT=YES #-------------- Forces new platforms tree on upgrade when NO
+_REMOTE_CACHE_IP=127.0.0.1 #---- Default IP address where Redis listens
+_LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
+_PHP_FPM_VERSION=5.3 #---------- Defaults to 5.3 because 5.2 is deprecated
+_PHP_CLI_VERSION=5.3 #---------- Defaults to 5.3 because 5.2 is deprecated
+_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
+_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+###
+### NOTE: the group of settings displayed bellow will be *overriden*
+### by config files stored in the /data/disk/o1/log/ directory,
+### but only on upgrade.
+###
+_DOMAIN="o1.f-q-d-n" #---------- URL of the Aegir control panel
+_CLIENT_EMAIL= #---------------- Create client user if different than _MY_EMAIL
+_CLIENT_OPTION="SSD" #---------- Currently not used
+_CLIENT_SUBSCR="Y" #------------ Currently not used
+_CLIENT_CORES="8" #------------- Currently not used
+###
+### Octopus version BOA-2.0.8
+###
