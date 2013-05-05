@@ -180,28 +180,30 @@ _EASY_LOCALHOST=NO
 
 
 ###----------------------------------------###
-### PHP, NGINX AND REDIS INSTALL METHOD    ###
+### PHP INSTALL METHOD                     ###
 ###----------------------------------------###
 ###
 ### This option is used only in Debian Squeeze
-### and Ubuntu Precise.
+### Debian Wheezy and Ubuntu Precise.
 ###
 ### By default Barracuda uses Dotdeb packages
-### to install PHP 5.3, Nginx and Redis on
-### Debian Squeeze and standard Ubuntu Precise
-### packages to install PHP 5.3 and Nginx on
-### Ubuntu Precise.
+### to install PHP 5.3 on Debian Squeeze and
+### standard Ubuntu packages to install
+### PHP 5.3 on Ubuntu Precise.
 ###
 ### They are sometimes not fully up to date
-### when new version of PHP or Nginx is
-### released, so even if it is slower to build
-### from sources, it may be useful.
+### when new version of PHP is released, so
+### even if it is slower to build from sources
+### it may be useful.
 ###
-### If you prefer to build from sources also
-### PHP 5.3, Nginx and Redis on Squeeze or
-### Precise, change this to:
+### If you want to build PHP 5.3 from sources
+### on Squeeze or Precise, change this to:
 ###
 ### _BUILD_FROM_SRC=YES
+###
+### Note that Debian Wheezy will force the
+### build from sources, at least until there
+### are Dotdeb packages for PHP 5.3 available.
 ###
 ### Note that PHP 5.2, if used, will be always
 ### installed from sources in all supported
@@ -209,14 +211,7 @@ _EASY_LOCALHOST=NO
 ###
 ### NOTE! We have switched to always build
 ### Nginx from sources, because the packages
-### based version is really bloated, so this
-### option works as explained above only when
-### you will change _NGINX_FROM_SOURCES=YES
-### to _NGINX_FROM_SOURCES=NO in the advanced
-### config section further below. This may be
-### useful when you prefer to run system only
-### updates with apt-get instead of running
-### Barracuda.
+### based version is really bloated.
 ###
 _BUILD_FROM_SRC=NO
 
