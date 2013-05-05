@@ -2667,6 +2667,9 @@ run_apt_update_again () {
     echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
   fi
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ -e "/var/log/fixed-mytop-mariadb.log" ] ; then
+    st_runner "$_INSTAPP mytop" 2> /dev/null
+  fi
 }
 #
 # Install IonCube.
@@ -3949,7 +3952,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 
   echo "[client]" > /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
-  echo "password='your_SQL_ROOT_password'" >> /root/.my.cnf
+  echo "password=your_SQL_ROOT_password" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf
 
 EOF
@@ -5088,6 +5091,7 @@ install_with_aptitude_sql () {
     st_runner "$_INSTAPP mytop" 2> /dev/null
   else
     install_mariadb_sql
+    st_runner "$_INSTAPP mytop" 2> /dev/null
     echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
   fi
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
@@ -6947,8 +6951,10 @@ if [ ! -e "/root/.my.cnf" ] ; then
   mrun "sleep 1"
   echo "[client]" > /root/.my.cnf
   echo "user=root" >> /root/.my.cnf
-  echo "password='$PASWD'" >> /root/.my.cnf
+  echo "password=$PASWD" >> /root/.my.cnf
   chmod 0600 /root/.my.cnf
+  echo "db=mysql" > /root/.mytop
+  chmod 0600 /root/.mytop
   if [ "$_THIS_DB_HOST" = "localhost" ] ; then
     echo "skip-name-resolve" > /etc/mysql/skip-name-resolve.txt
   else
@@ -6989,8 +6995,10 @@ else
     mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
     echo "[client]" > /root/.my.cnf
     echo "user=root" >> /root/.my.cnf
-    echo "password='$_ESC_PASS'" >> /root/.my.cnf
+    echo "password=$_ESC_PASS" >> /root/.my.cnf
     chmod 0600 /root/.my.cnf
+    echo "db=mysql" > /root/.mytop
+    chmod 0600 /root/.mytop
     echo "$_ESC_PASS" > /root/.my.pass.txt
     echo " "
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
