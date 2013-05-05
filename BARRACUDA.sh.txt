@@ -5235,9 +5235,9 @@ install_wkhtmltoimage
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   if [ ! -L "/usr/lib/libpng.so" ] ; then
-    msg "INFO: Fix #1 for libs in Ubuntu $_REL_VERSION"
+    msg "INFO: Fix #1 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       ln -s /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
@@ -5253,9 +5253,9 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   if [ ! -L "/usr/lib/libssl.so.1.0.0" ] ; then
-    msg "INFO: Fix #2 for libs in Ubuntu $_REL_VERSION"
+    msg "INFO: Fix #2 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       if [ -e "/usr/lib/x86_64-linux-gnu/libssl.so.1.0.0" ] ; then
