@@ -149,7 +149,7 @@ up_start ()
     touch /var/run/boa_wait.pid
     mkdir -p $_LOG_DIR
     cd /var/backups
-    rm -f /var/backups/BARRACUDA.sh.*
+    rm -f /var/backups/BARRACUDA.sh*
   fi
 }
 
@@ -157,8 +157,9 @@ up_finish ()
 {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
-  rm -f /var/backups/BARRACUDA.sh.*
-  rm -f /root/BOA.sh.*
+  rm -f /var/backups/BARRACUDA.sh*
+  rm -f /root/BOA.sh*
+  rm -f /root/.bashrc.bak*
   echo
   echo BARRACUDA upgrade completed
   echo Bye

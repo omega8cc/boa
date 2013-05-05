@@ -221,7 +221,7 @@ up_start ()
     touch /var/run/boa_wait.pid
     mkdir -p $_LOG_DIR
     cd /var/backups
-    rm -f /var/backups/OCTOPUS.sh.*
+    rm -f /var/backups/OCTOPUS.sh*
   fi
   if [ "$cmmode" = "log" ] ; then
     silent="$cmmode"
@@ -235,8 +235,8 @@ up_finish ()
 {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
-  rm -f /var/backups/OCTOPUS.sh.*
-  rm -f /root/BOA.sh.*
+  rm -f /var/backups/OCTOPUS.sh*
+  rm -f /root/BOA.sh*
   echo
   echo OCTOPUS upgrade completed
   echo Bye
