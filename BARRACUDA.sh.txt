@@ -2746,7 +2746,7 @@ install_php_scr_build_extensions () {
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
     msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
-    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
       st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
     fi
     if [ "$_FROM_SOURCES" = "NO" ] ; then
