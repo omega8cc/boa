@@ -112,7 +112,7 @@ Chive Manager URL: https://166.84.6.231
 You can also use any desktop SQL manager you prefer, if it
 supports tunneling over standard SSH port 22, since there is
 no remote access over mysql port 3306 available, for security and
-performance reasons.
+performance reasons - video tutorial: http://bit.ly/om8rsql
 
 You can also manage your databases on command line, either
 with supported Drush commands or directly with tools like
