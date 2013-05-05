@@ -5653,7 +5653,7 @@ if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
   msg "INFO: PHP rebuild required to include upgraded libs"
   fix_php_ext
 fi
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   _PHP_EXTRA=""
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
