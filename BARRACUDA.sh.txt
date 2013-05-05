@@ -4950,14 +4950,14 @@ fi
 msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_FROM_SOURCES" = "NO" ] ; then
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
       _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx-extras"
     else
       _APT_XTRA="openjdk-6-jdk nginx-extras"
     fi
     _APT_ELSE="netcat nginx"
   else
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
       _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx"
     else
       _APT_XTRA="openjdk-6-jdk nginx"
@@ -4965,7 +4965,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _APT_ELSE="netcat nginx"
   fi
 else
-  if [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
     _APT_XTRA="openjdk-7-jdk openjdk-6-jdk"
   else
     _APT_XTRA="openjdk-6-jdk"
@@ -5943,7 +5943,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
   if [ ! -d "/opt/solr4" ] ; then
-    if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+    if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
       _REAL_JETTY=9
     else
       _REAL_JETTY=8
@@ -5958,7 +5958,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       rm -f -r /opt/solr4
       rm -f -r /opt/jetty9
       rm -f /etc/jetty.conf
-      if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
         get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
         mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
         echo $_JETTY_9_VERSION > /opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt
@@ -6003,7 +6003,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> /etc/default/jetty9
       else
@@ -6019,7 +6019,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
-      if [ "$_REL_VERSION" = "precise" ] && [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
         true
       else
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
