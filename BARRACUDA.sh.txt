@@ -405,7 +405,13 @@ _FULL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to run major system upgrade
-### from Debian Lenny to Squeeze.
+### from Debian Squeeze to Debian Wheezy.
+###
+_SQUEEZE_TO_WHEEZY=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Lenny to Debian Squeeze.
 ###
 _LENNY_TO_SQUEEZE=NO
 
@@ -3509,7 +3515,9 @@ install_upgrade_nginx () {
     st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-ipv6 --with-http_geoip_module --with-debug $_NGINX_EXTRA" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+    if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
+      true
+    elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       true
     else
       st_runner "service nginx stop" &> /dev/null
@@ -4641,7 +4649,12 @@ if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
     sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
   fi
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+    run_apt_update_again
+    _LOC_REL_VERSION=squeeze
+    _REL_VERSION=wheezy
+    _APT_SOURCES_REWRITE=YES
+  elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
     run_apt_update_again
     _LOC_REL_VERSION=lenny
     _REL_VERSION=squeeze
@@ -4801,6 +4814,66 @@ if [ ! -e "/etc/apt/preferences" ] ; then
   fi
 fi
 
+
+###--------------------###
+if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
+  _FULL_FORCE_REINSTALL=YES
+  msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
+  msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
+  service cron stop &> /dev/null
+  mrun "sleep 60"
+  mv -f /var/xdrago /var/xdrago_wait &> /dev/null
+  msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
+  msg "HINT: Run tail -f $_LOG"
+  msg "HINT: in another terminal window to watch details"
+  mrun "sleep 1"
+  if [ -e "/etc/init.d/bind" ] ; then
+    rm -f /etc/init.d/bind
+  fi
+  if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
+    service tomcat stop &> /dev/null
+    mv /etc/init.d/tomcat /etc/init.d/offtomcat
+    killall -9 java &> /dev/null
+  fi
+  if [ -d "/var/www/cgp" ] ; then
+    st_runner "apt-get -y remove collectd" 2> /dev/null
+  fi
+  if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+    mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
+    ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+  fi
+  st_runner "apt-get -y remove svscan" 2> /dev/null
+  st_runner "apt-get -y remove pound" 2> /dev/null
+  st_runner "apt-get -y remove udev" 2> /dev/null
+  st_runner "apt-get -y remove lsb-release" 2> /dev/null
+  st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
+  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
+  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
+    install_upgrade_nginx
+  fi
+  if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
+    ln -s /etc/init.d/bind9 /etc/init.d/bind
+  fi
+  if [ -d "/var/www/cgp" ] ; then
+    st_runner "apt-get -y install collectd" 2> /dev/null
+  fi
+  st_runner "apt-get -y install udev lsb-release" 2> /dev/null
+  _L_VM_TEST=`uname -a 2>&1`
+  if [[ "$_L_VM_TEST" =~ beng ]] ; then
+    _REMOVE_LINKS="halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial umountfs umountnfs.sh umountroot urandom"
+    for link in $_REMOVE_LINKS
+    do
+      update-rc.d -f $link remove &> /dev/null
+    done
+  fi
+  echo rotate > /var/log/syslog &> /dev/null
+  mv -f /var/xdrago_wait /var/xdrago &> /dev/null
+  msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
+  msg "HINT: Please remember to reboot when Barracuda will complete all upgrades"
+fi
 
 
 ###--------------------###
@@ -5162,7 +5235,9 @@ else
   elif [ "$_REL_VERSION" = "squeeze" ] && [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [[ "$_DB_SERVER_TEST" =~ " 5.3." ]] ; then
     _SQL_UPGRADE=YES
   fi
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+  if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
+    _SQL_UPGRADE=NO
+  elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     _SQL_UPGRADE=NO
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
@@ -5225,7 +5300,7 @@ install_with_aptitude_deps
 st_runner "service php5-fpm stop" &> /dev/null
 st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 install_latest_git
-if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
+if [ "$_SQUEEZE_TO_WHEEZY" = "NO" ] && [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   if [ "$_FROM_SOURCES" = "YES" ] && [ "$_USE_MEMCACHED" = "YES" ] ; then
     install_upgrade_libevent
   fi
@@ -5521,7 +5596,10 @@ fi
 
 
 ###--------------------###
-if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
+  st_runner "service nginx stop" &> /dev/null
+  killall -9 nginx &> /dev/null
+elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
 fi
@@ -6427,10 +6505,17 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 1"
 else
   echo " "
-  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+  if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
     msg "INFO: Aegir Master Instance upgrade skipped!"
     echo " "
-    msg "NOTE! You *must* reboot the server and then run Barracuda *again*"
+    msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
+    msg "NOTE! to complete all system upgrades and upgrade also"
+    msg "NOTE! Aegir Master Instance securely"
+    echo " "
+  elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+    msg "INFO: Aegir Master Instance upgrade skipped!"
+    echo " "
+    msg "NOTE! You *must* reboot the server and then run boa up-stable *again*"
     msg "NOTE! to complete all system upgrades and upgrade also"
     msg "NOTE! Aegir Master Instance securely"
     echo " "
