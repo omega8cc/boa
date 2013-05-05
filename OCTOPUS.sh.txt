@@ -466,8 +466,8 @@ _REMOTE_CACHE_IP=127.0.0.1
 ### You should use this option only when you
 ### already used it with initial Barracuda
 ### install. It will override any defined
-### above _MY_OWNIP value, disable DNS test
-### and enable drush debug mode automatically.
+### above _MY_OWNIP value and disable DNS test
+### automatically.
 ###
 _LOCAL_NETWORK_IP=""
 

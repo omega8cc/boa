@@ -692,8 +692,7 @@ _SMTP_RELAY_HOST=""
 ### values.
 ###
 ### It will also disable all DNS and SMTP
-### relay tests and enable drush debug mode
-### automatically.
+### relay tests automatically.
 ###
 ### Note that for non-local installs with
 ### private and/or dynamic IPs on servers
