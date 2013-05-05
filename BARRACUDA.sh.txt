@@ -3027,7 +3027,7 @@ install_php_modern () {
       patch -p1 < $_FPM_PATCH &> /dev/null
     fi
     st_runner "sh ./buildconf --force" 2> /dev/null
-    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
       patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
     fi
@@ -3109,7 +3109,7 @@ install_php_legacy () {
   mrun "sleep 1"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
     patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
