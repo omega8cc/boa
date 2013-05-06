@@ -4823,6 +4823,8 @@ fi
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   _FULL_FORCE_REINSTALL=YES
   _PURGE_MODE=OFF
+  _BUILD_FROM_SRC=YES
+  _FROM_SOURCES=YES
   msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   service cron stop &> /dev/null
@@ -5607,6 +5609,7 @@ fi
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
+
 elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
@@ -5639,7 +5642,11 @@ elif [ -x "/opt/local/bin/php" ] ; then
   _PHP_NEW_BIN="/opt/local/bin/php"
 fi
 if [ -x "$_PHP_NEW_BIN" ] ; then
-  _PHP_INSTALLED=`$_PHP_NEW_BIN -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+  if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    _PHP_INSTALLED=5.x
+  else
+    _PHP_INSTALLED=`$_PHP_NEW_BIN -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+  fi
   if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
     if [ "$_FROM_SOURCES" = "YES" ] ; then
       if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
@@ -5669,7 +5676,11 @@ else
 fi
 if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
   if [ -x "/usr/local/bin/php" ] ; then
-    _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+    if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+      _PHP_INSTALLED=5.x
+    else
+      _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+    fi
     if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
       _PHP_INSTALL_REQUIRED=NO
       msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
