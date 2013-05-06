@@ -278,7 +278,7 @@ update_redis_password () {
         sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
       fi
     fi
-    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+    if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       rm -f /var/aegir/config/includes/global.inc
       ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi

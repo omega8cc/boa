@@ -1202,7 +1202,7 @@ update_redis_password () {
         sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
       fi
     fi
-    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+    if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       rm -f /var/aegir/config/includes/global.inc
       ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
@@ -3357,7 +3357,7 @@ upgrade_aegir_master () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
     fi
     sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
-    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+    if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       rm -f /var/aegir/config/includes/global.inc
       ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
@@ -6475,7 +6475,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
   fi
   sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
-  if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+  if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
     rm -f /var/aegir/config/includes/global.inc
     ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
   fi
@@ -6605,7 +6605,7 @@ EOF
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
     fi
-    if [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
+    if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       rm -f /var/aegir/config/includes/global.inc
       ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
