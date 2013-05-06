@@ -1667,9 +1667,11 @@ update_nginx_conf () {
     fi
   fi
   if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
-    if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-      touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+    if [ "$_PURGE_MODE" = "ON" ] ; then
+      if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+        touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+      fi
     fi
   fi
 }
@@ -3408,7 +3410,6 @@ install_upgrade_nginx () {
   if [ "$_STATUS" = "UPGRADE" ] ; then
     _NGINX_INSTALL_REQUIRED=NO
   fi
-  _NGINX_EXTRA_CTRL="/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf"
   if [ -x "/usr/sbin/nginx" ] ; then
     _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
     _NGINX_V_INSTALLED=`/usr/sbin/nginx -V 2>&1`
@@ -3416,7 +3417,7 @@ install_upgrade_nginx () {
       _NGINX_F_INSTALLED=`/usr/sbin/nginx -v 2>&1 | tr -d "\n" | cut -d" " -f3 | awk '{ print $1}'`
     fi
     _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
-    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
+    if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ "$_STATUS" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
     elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ "$_STATUS" = "INIT" ] ; then
@@ -3425,11 +3426,6 @@ install_upgrade_nginx () {
     elif [ "$_NGINX_F_INSTALLED" != "$_NGINX_F_VERSION" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
-    elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ ! -e "$_NGINX_EXTRA_CTRL" ] && [ "$_STATUS" = "UPGRADE" ] ; then
-      if [ "$_PURGE_MODE" = "ON" ] ; then
-        _NGINX_INSTALL_REQUIRED=YES
-        msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
-      fi
     fi
     if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
       if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
@@ -3454,6 +3450,14 @@ install_upgrade_nginx () {
         else
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include LDAP support"
+        fi
+      fi
+      if [ "$_PURGE_MODE" = "ON" ] ; then
+        if [[ "$_NGINX_V_INSTALLED" =~ "purge" ]] ; then
+          true
+        else
+          _NGINX_INSTALL_REQUIRED=YES
+          msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
         fi
       fi
     fi
@@ -4821,10 +4825,6 @@ fi
 
 ###--------------------###
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
-  _FULL_FORCE_REINSTALL=YES
-  _PURGE_MODE=OFF
-  _BUILD_FROM_SRC=YES
-  _FROM_SOURCES=YES
   msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   service cron stop &> /dev/null
@@ -4834,6 +4834,11 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   msg "HINT: Run tail -f $_LOG"
   msg "HINT: in another terminal window to watch details"
   mrun "sleep 1"
+  _FULL_FORCE_REINSTALL=YES
+  _BUILD_FROM_SRC=YES
+  _FROM_SOURCES=YES
+  _PURGE_MODE=OFF
+  rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   if [ -e "/etc/init.d/bind" ] ; then
     rm -f /etc/init.d/bind
   fi
@@ -6636,9 +6641,11 @@ fi
 
 ###--------------------###
 if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
-  if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] && [ "$_PURGE_MODE" = "ON" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-    touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+  if [ "$_PURGE_MODE" = "ON" ] ; then
+    if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+      touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+    fi
   fi
 fi
 
