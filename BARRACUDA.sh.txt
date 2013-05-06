@@ -4822,6 +4822,7 @@ fi
 ###--------------------###
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   _FULL_FORCE_REINSTALL=YES
+  _PURGE_MODE=OFF
   msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   service cron stop &> /dev/null
@@ -4854,8 +4855,8 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
     ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
   fi
-  st_runner "apt-get -y remove svscan" 2> /dev/null
-  st_runner "apt-get -y remove pound" 2> /dev/null
+  st_runner "apt-get -y remove svscan" &> /dev/null
+  st_runner "apt-get -y remove pound" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
