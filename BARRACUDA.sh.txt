@@ -4838,19 +4838,23 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
+  touch /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
+  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
+  st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
+  st_runner "aptitude remove php5-apc -y" &> /dev/null
+  st_runner "aptitude remove php-apc -y" &> /dev/null
+  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
     mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
     ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
   fi
   st_runner "apt-get -y remove svscan" 2> /dev/null
   st_runner "apt-get -y remove pound" 2> /dev/null
-  st_runner "apt-get -y remove udev" 2> /dev/null
-  st_runner "apt-get -y remove lsb-release" 2> /dev/null
   st_runner "apt-get update -y" &> /dev/null
-  st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
-  st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
   if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
   fi
@@ -4860,7 +4864,6 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y install collectd" 2> /dev/null
   fi
-  st_runner "apt-get -y install udev lsb-release" 2> /dev/null
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
     _REMOVE_LINKS="halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial umountfs umountnfs.sh umountroot urandom"
