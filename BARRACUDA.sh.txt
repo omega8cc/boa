@@ -2190,9 +2190,11 @@ EOF
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
     echo "LANG=en_US.UTF-8" > /etc/default/locale
-    cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
-    set_xterm
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt" ] ; then
+      cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
+      set_xterm
+    fi
     echo "export LANG=en_US.UTF-8" >> /root/.bashrc
     echo "export LANGUAGE=en_US.UTF-8" >> /root/.bashrc
     echo "export LC_ALL=\"\"" >> /root/.bashrc
@@ -2200,6 +2202,11 @@ EOF
     export LANGUAGE=en_US.UTF-8
     export LC_ALL=""
   else
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt" ] ; then
+      cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
+      set_xterm
+    fi
     locale-gen en_US en_US.UTF-8 &> /dev/null
     update-locale &> /dev/null
     localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 &> /dev/null
@@ -3979,9 +3986,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
   sleep 1
-  cp -af /root/.bashrc /root/.bashrc.bak.$_NOW
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/boa.bashrc.txt /root/.bashrc
-  set_xterm
   fix_locales
   $_INITINS wget git-core axel netcat aptitude &> /dev/null
 fi
