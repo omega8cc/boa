@@ -40,7 +40,7 @@
 
  Solr port ........: 8077 (for Solr 1.x with Jetty 7)
  Solr port ........: 8088 (for Solr 3.x with Jetty 8)
- Solr port ........: 8099 (for Solr 4.x with Jetty 8 or 9 on Precise)
+ Solr port ........: 8099 (for Solr 4.x with Jetty 8 or 9 on Precise/Wheezy)
  Solr port ........: 8080 (for Solr 1.x with Jetty 7 migrated from Tomcat)
 
  Solr path ........: solr/core0 (configured in solr.xml)
@@ -63,12 +63,12 @@
  2. Add this new core in the solr.xml file:
     /opt/solr1/solr.xml (for Solr 1.x with Jetty 7)
     /opt/solr3/solr.xml (for Solr 3.x with Jetty 8)
-    /opt/solr4/solr.xml (for Solr 4.x with Jetty 8 or 9 on Precise)
+    /opt/solr4/solr.xml (for Solr 4.x with Jetty 8 or 9 on Precise/Wheezy)
 
  3. Restart correct Jetty instance:
     service jetty7 restart (for Solr 1.x with Jetty 7)
     service jetty8 restart (for Solr 3.x with Jetty 8)
-    service jetty9 restart (for Solr 4.x with Jetty 8 or 9 on Precise)
+    service jetty9 restart (for Solr 4.x with Jetty 8 or 9 on Precise/Wheezy)
 
  You can also rename the "core name" in the file:
    /opt/solr{1,3,4}/solr.xml
@@ -85,7 +85,7 @@
 
  SR1 (for Solr 1.x with Jetty 7)
  SR3 (for Solr 3.x with Jetty 8)
- SR4 (for Solr 4.x with Jetty 8 or 9 on Precise)
+ SR4 (for Solr 4.x with Jetty 8 or 9 on Precise/Wheezy)
 
  It is even possible to add them *all* on upgrade when
  you are already running now deprecated Tomcat 6 with Solr 1.x,

@@ -1017,7 +1017,7 @@ not_supported_os () {
   msg "== FATAL ERROR =="
   msg "Invalid install script or OS used"
   msg "It is not any supported Debian or Ubuntu version"
-  msg "You need Debian - Squeeze (recommended)"
+  msg "You need Debian - Squeeze (recommended) or Wheezy"
   msg "or Ubuntu - Precise or Lucid"
   exit 1
 }
