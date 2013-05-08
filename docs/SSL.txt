@@ -34,6 +34,7 @@ server {
   location / {
     proxy_pass                 http://extra_ip;
     proxy_redirect             off;
+    gzip_vary                  off;
     proxy_set_header           Host              $host;
     proxy_set_header           X-Real-IP         $remote_addr;
     proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
@@ -95,6 +96,7 @@ server {
   location / {
     proxy_pass                 http://extra_ip_ssl;
     proxy_redirect             off;
+    gzip_vary                  off;
     proxy_set_header           Host              $host;
     proxy_set_header           X-Real-IP         $remote_addr;
     proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
@@ -143,6 +145,7 @@ server {
   location / {
     proxy_pass                 http://extra_ip_ssl;
     proxy_redirect             off;
+    gzip_vary                  off;
     proxy_set_header           Host              $host;
     proxy_set_header           X-Real-IP         $remote_addr;
     proxy_set_header           X-Forwarded-By    $server_addr:$server_port;
