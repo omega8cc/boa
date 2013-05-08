@@ -1233,9 +1233,9 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd /opt/tmp
   fi
 else
-  wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_AEGIR_VERSION.tar.gz
-  gunzip -q -c nginx-for-drupal-$_AEGIR_VERSION.tar.gz | tar -xf -
-  rm -f nginx-for-drupal-$_AEGIR_VERSION.tar.gz
+  wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz
+  gunzip -q -c nginx-for-drupal-$_INSTALLER_VERSION.tar.gz | tar -xf -
+  rm -f nginx-for-drupal-$_INSTALLER_VERSION.tar.gz
   _BOA_REPO_NAME="nginx-for-drupal"
 fi
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
