@@ -791,9 +791,9 @@ fi
 #
 msg "$_STATUS A: Checking OCTOPUS version, please wait..."
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  _FILE_VERSION=release.txt
+  _FILE_VERSION=octopus-release.txt
 else
-  _FILE_VERSION=version.txt
+  _FILE_VERSION=octopus-version.txt
 fi
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   _VERSIONS_TEST=`cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION`

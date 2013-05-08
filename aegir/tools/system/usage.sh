@@ -550,9 +550,9 @@ find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +1 -type f -ex
 ###--------------------###
 echo "INFO: Checking BARRACUDA version..."
 cd /opt/tmp
-wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/version.txt
-if [ -e "/opt/tmp/version.txt" ] ; then
-  _INSTALLER_VERSION=`cat /opt/tmp/version.txt`
+wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/barracuda-version.txt
+if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
+  _INSTALLER_VERSION=`cat /opt/tmp/barracuda-version.txt`
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
   if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
     _VERSIONS_TEST_RESULT=OK
