@@ -57,7 +57,9 @@ else
   _L_PHP_CLI=/usr/local/bin
 fi
 _DRUSHCMD="$_L_PHP_CLI/php /var/aegir/drush/drush.php"
-
+if [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
+  _DRUSHCMD="/usr/local/bin/php52 /var/aegir/drush/drush.php"
+fi
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -77,7 +79,9 @@ export DEBIAN_FRONTEND=noninteractive
 update_php_cli_drush () {
   if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php52/g"  /var/aegir/drush/drush.php &> /dev/null
+  else
     sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
   fi
 }

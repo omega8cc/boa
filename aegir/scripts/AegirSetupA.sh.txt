@@ -138,6 +138,9 @@ else
   _L_PHP_CLI=/usr/local/bin
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
+if [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
+  _DRUSHCMD="/usr/local/bin/php52 $_ROOT/tools/drush/drush.php"
+fi
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
