@@ -508,7 +508,7 @@ upgrade_contrib_more () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/date-7.x-2.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/email-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/facetapi-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-beta1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fontyourface-7.x-2.7.tar.gz
@@ -1065,8 +1065,9 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < $_THIS_PRNAME.patch &> /dev/null
     if [ $_COMMERCE = "7.x-1.18" ] ; then
       cd $_THIS_PRPATH/modules
-      rm -f -r {entity}
+      rm -f -r {addressfield,entity}
       wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
+      wget -q -U iCab http://ftp.drupal.org/files/projects/addressfield-7.x-1.0-beta4.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
@@ -2858,7 +2859,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     cd $_THIS_PRPATH/modules
     wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-2.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.x-dev.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz

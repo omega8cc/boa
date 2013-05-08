@@ -358,7 +358,7 @@ for i in $REVISIONS; do
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
-        msg "$_STATUS A: Removed /data/all/$i/o_contrib/$m"
+        msg "$_STATUS A: Replaced /data/all/$i/o_contrib/$m with latest release"
       fi
     done
     cd /data/all/$i/o_contrib
@@ -391,7 +391,6 @@ for i in $REVISIONS; do
       ln -s /data/all/000/modules/redis /data/all/$i/o_contrib/redis
     fi
     touch /data/all/$i/o_contrib/update-019.info
-    msg "$_STATUS A: New modules in /data/all/$i/o_contrib: purge expire backup_migrate"
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -408,13 +407,13 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge backup_migrate"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-019.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
-        msg "$_STATUS A: Removed /data/all/$i/o_contrib_seven/$m"
+        msg "$_STATUS A: Replaced /data/all/$i/o_contrib_seven/$m with latest release"
       fi
     done
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
@@ -429,6 +428,7 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib_seven
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib_seven/boost/.git
+    wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.5.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.11.tar.gz
@@ -445,7 +445,6 @@ for i in $REVISIONS; do
       ln -s /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
     fi
     touch /data/all/$i/o_contrib_seven/update-019.info
-    msg "$_STATUS A: New modules in /data/all/$i/o_contrib_seven: filefield_nginx_progress purge expire"
   fi
 done
 cd
