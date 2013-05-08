@@ -95,6 +95,7 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
 }
 
 $da_inc       = FALSE;
+$deny_anon    = FALSE;
 $drupal_eight = FALSE;
 $drupal_five  = FALSE;
 $drupal_seven = FALSE;
@@ -382,7 +383,22 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       }
     }
 
-    if (empty($known_bot) && !$high_traffic) {
+    if (!isset($_COOKIE[$test_sess_name])) {
+      if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
+        if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_anon_node_add.info')) {
+          $deny_anon = TRUE;
+          header("HTTP/1.1 301 Moved Permanently");
+          header("Location: http://" . $_SERVER['SERVER_NAME'] . "/");
+        }
+      }
+      if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
+        $deny_anon = TRUE;
+        header("HTTP/1.1 301 Moved Permanently");
+        header("Location: http://" . $_SERVER['SERVER_NAME'] . "/");
+      }
+    }
+
+    if (empty($known_bot) && !$high_traffic && !$deny_anon) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
