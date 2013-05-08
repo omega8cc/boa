@@ -4866,9 +4866,11 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   st_runner "aptitude remove php5-apc -y" &> /dev/null
   st_runner "aptitude remove php-apc -y" &> /dev/null
   rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
-  if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-    mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-    ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
+    if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
+      ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+    fi
   fi
   st_runner "apt-get -y remove svscan" &> /dev/null
   st_runner "apt-get -y remove pound" &> /dev/null
@@ -4922,9 +4924,11 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
-  if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-    mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-    ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+  if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
+    if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
+      ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+    fi
   fi
   st_runner "apt-get -y remove libc-client2007b-dev" 2> /dev/null
   st_runner "apt-get -y remove svscan" 2> /dev/null
@@ -5632,9 +5636,11 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mrun "sleep 1"
   ###--------------------###
   if [ -L "/usr/local/bin/php" ] ; then
-    if [ -e "/usr/local/bin/php52" ] ; then
+    if [ -e "/usr/local/bin/php52" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
       rm -f /usr/local/bin/php
-      mv -f /usr/local/bin/php52 /usr/local/bin/php
+      if [ -e "/usr/local/bin/php52" ] ; then
+        mv -f /usr/local/bin/php52 /usr/local/bin/php
+      fi
     fi
   fi
   ###--------------------###
