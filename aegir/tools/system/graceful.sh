@@ -32,19 +32,19 @@ action()
   rm -f -r /tmp/{drush*,mapshape*}
   rm -f /opt/tomcat6/logs/*
   rm -f /var/log/jetty{7,8,9}/*
+  `killall -9 java`;
+  sleep 2
   if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
-    /etc/init.d/tomcat stop
-    sleep 3
     /etc/init.d/tomcat start
   fi
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
-    /etc/init.d/jetty9 restart
+    /etc/init.d/jetty9 start
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
-    /etc/init.d/jetty8 restart
+    /etc/init.d/jetty8 start
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
-    /etc/init.d/jetty7 restart
+    /etc/init.d/jetty7 start
   fi
   if test -f /root/.high_traffic.cnf ; then
     true

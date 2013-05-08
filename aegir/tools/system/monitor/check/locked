@@ -15,18 +15,18 @@ if ($fpm_status ne "CLEAN") {
   sleep(2);
 }
 if ($java_status ne "CLEAN") {
+  `killall -9 java`;
+  sleep(2);
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
-    `/etc/init.d/jetty9 restart`;
+    `/etc/init.d/jetty9 start`;
   }
   if (-f "/etc/default/jetty8" && -f "/etc/init.d/jetty8") {
-    `/etc/init.d/jetty8 restart`;
+    `/etc/init.d/jetty8 start`;
   }
   if (-f "/etc/default/jetty7" && -f "/etc/init.d/jetty7") {
-    `/etc/init.d/jetty7 restart`;
+    `/etc/init.d/jetty7 start`;
   }
   if (-f "/etc/default/tomcat" && -f "/etc/init.d/tomcat") {
-    `killall -9 java`;
-    sleep(2);
     `/etc/init.d/tomcat start`;
   }
 }
