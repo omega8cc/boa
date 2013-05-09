@@ -3413,6 +3413,30 @@ upgrade_aegir_master () {
   rm -f /var/aegir/*install.sh.txt
 }
 #
+# Check for Linux/Cdorked.A malware and delete if discovered.
+detect_cdorked_malware () {
+  _C_DORKED=NO
+  _C_FILE=/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/dump_cdorked_config.c
+  if [ -e "$_C_FILE" ] ; then
+    msg "INFO: Checking for Linux/Cdorked.A malware, please wait..."
+    mrun "sleep 1"
+    chattr -ai $(which nginx) &> /dev/null
+    cd /var/backups
+    rm -f -r /var/opt/foo_bar*
+    gcc -o /var/opt/foo_bar /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/dump_cdorked_config.c &> /dev/null
+    _C_DORKED_TEST=$(/var/opt/foo_bar)
+    if [[ "$_C_DORKED_TEST" =~ "No shared memory matching Cdorked signature was found" ]] ; then
+      msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
+    else
+      msg "ALRT: Your system is probably infected by Linux/Cdorked.A malware!"
+      msg "ALRT: Please send /var/backups/httpd_cdorked_config.bin file to leveille@eset.com"
+      rm -f $(which nginx)
+      _NGX_FORCE_REINSTALL=YES
+      _C_DORKED=YES
+    fi
+  fi
+}
+#
 # Install or upgrade Nginx.
 install_upgrade_nginx () {
   msg "INFO: Testing Nginx version..."
@@ -3480,6 +3504,11 @@ install_upgrade_nginx () {
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
     fi
+  fi
+  detect_cdorked_malware
+  if [ "$_C_DORKED" = "YES" ] ; then
+    _NGINX_INSTALL_REQUIRED=YES
+    msg "INFO: Nginx rebuild required to remove possible Linux/Cdorked.A malware"
   fi
   if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_NGX_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_STATUS" = "UPGRADE" ] ; then
