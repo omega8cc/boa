@@ -15,7 +15,7 @@
   while releasing Octopus-only Edition will allow us to provide Drupal core
   or Aegir version upgrades, without affecting system level services.
 
-  There is also another reason while separate releases will be useful.
+  There is also another reason why separate releases will be useful.
   BOA-2.0.9 is the last Edition where Aegir 2.x uses still old Drush 4.6
   in the backend. We need to sync BOA specific Aegir 2.x with upstream
   and finally switch to Drush 5, or even Drush 6, if possible.
