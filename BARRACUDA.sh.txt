@@ -6826,7 +6826,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/www/cgp/collectd5.support.txt" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -6834,8 +6834,6 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
-        #git clone http://git.nethuis.nl/pub/cgp.git &> /dev/null
-        #rm -f -r cgp/.git
         wget -q -U iCab http://files.aegir.cc/dev/cgp.tar.gz
         tar -xzf cgp.tar.gz &> /dev/null
         rm -f cgp.tar.gz
@@ -6855,6 +6853,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
         echo "}" >> $_CGP_VHOST
         echo >> $_CGP_VHOST
+        echo collectd5 > /var/www/cgp/collectd5.support.txt
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 1"
