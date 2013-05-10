@@ -112,7 +112,7 @@ up_action ()
       fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-      if [ "$silent" = "log" ] || [ "$silent" = "system" ] ; then
+      if [ "$silent" = "log" ] || [ "$silent" = "system" ] || [ "$silent" = "stock" ] ; then
         n=$((RANDOM%800+80))
         echo waiting $n sec
         sleep $n
@@ -120,6 +120,13 @@ up_action ()
         if [ "$silent" = "system" ] ; then
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
+        elif [ "$silent" = "stock" ] ; then
+          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+          if [ -e "/root/.barracuda.cnf" ] ; then
+             sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
+             sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /root/.barracuda.cnf &> /dev/null
+          fi
         else
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
         fi
@@ -177,7 +184,11 @@ up_head ()
 up_stable ()
 {
   up_start
-  wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
+  if [ "$silent" = "stock" ] ; then
+    wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
+  else
+    wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
+  fi
   up_action
   up_finish
 }
@@ -246,7 +257,11 @@ case "$1" in
   up-head)   silent="$2"
              up_head
   ;;
-  *)         echo "Usage: barracuda {up-stable|up-head}"
+  *)         echo "Usage: barracuda {up-stable|up-head} {system|log|stock}"
+             echo
+             echo "Silent Mode Option: system == OS only upgrade"
+             echo "Silent Mode Option: log    == OS and Aegir upgrade"
+             echo "Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
              exit 1
   ;;
 esac
