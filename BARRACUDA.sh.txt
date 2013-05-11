@@ -1203,8 +1203,7 @@ update_redis_password () {
       fi
     fi
     if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
-      rm -f /var/aegir/config/includes/global.inc
-      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+      ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
   fi
 }
@@ -1266,7 +1265,7 @@ install_redis_src () {
   fi
   update_redis_password
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
-    ln -s /usr/bin/redis-server /usr/local/bin/redis-server
+    ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
   fi
   touch /var/log/redis-$_REDIS_VERSION.log
 }
@@ -1497,29 +1496,29 @@ update_php_conf () {
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
       mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
+      ln -sf /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
     fi
     if [ -e "/etc/php5/cli/php.ini" ] && [ ! -L "/etc/php5/cli/php.ini" ] ; then
       mv -f /etc/php5/cli/php.ini /var/backups/dragon/t/etc-php5-cli-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -s /opt/local/lib/php.ini /etc/php5/cli/php.ini
+      ln -sf /opt/local/lib/php.ini /etc/php5/cli/php.ini
     fi
     if [ -x "/usr/sbin/php5-fpm" ] && [ ! -L "/opt/local/sbin/php-fpm" ] ; then
       mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
       mkdir -p /opt/local/sbin
-      ln -s /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
+      ln -sf /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
     fi
     if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /var/backups/ &> /dev/null
     fi
     if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -s /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      ln -sf /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
       if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
         mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
       fi
     elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -s /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      ln -sf /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
       if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
         mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
       fi
@@ -1938,12 +1937,10 @@ force_advanced_nginx_config () {
   fi
   if [ -e "/var/aegir/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
-      rm -f /var/aegir/config/includes/nginx_advanced_include.conf
-      ln -s /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
+      ln -sf /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
     fi
     if [ ! -L "/var/aegir/config/includes/nginx_simple_include.conf" ] ; then
-      rm -f /var/aegir/config/includes/nginx_simple_include.conf
-      ln -s /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
+      ln -sf /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
     fi
   fi
   chown aegir:aegir /var/aegir/config/includes/*
@@ -3077,15 +3074,15 @@ install_php_modern () {
   fi
   if [ -f "/usr/bin/php" ] && [ "$_FROM_SOURCES" = "YES" ] && [ -f "/opt/local/bin/php" ] ; then
     mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
-    ln -s /opt/local/bin/php /usr/bin/php
+    ln -sf /opt/local/bin/php /usr/bin/php
     if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
       mv -f /usr/bin/phpize /usr/bin/phpize-old &> /dev/null
-      ln -s /opt/local/bin/phpize /usr/bin/phpize
+      ln -sf /opt/local/bin/phpize /usr/bin/phpize
     fi
   fi
   if [ ! -x "/opt/local/bin/php" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
     mkdir -p /opt/local/bin
-    ln -s /usr/bin/php /opt/local/bin/php
+    ln -sf /usr/bin/php /opt/local/bin/php
   fi
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -3158,7 +3155,7 @@ install_php_legacy () {
   cd /usr/local/sbin
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
   chmod 755 php-fpm
-  ln -s /usr/local/sbin/php-fpm /etc/init.d/php-fpm
+  ln -sf /usr/local/sbin/php-fpm /etc/init.d/php-fpm
   chmod 755 /usr/local/sbin/php-fpm &> /dev/null
 }
 #
@@ -3204,7 +3201,7 @@ install_latest_git () {
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       mv -f /usr/bin/git /usr/bin/git-old
-      ln -s /usr/local/bin/git /usr/bin/git
+      ln -sf /usr/local/bin/git /usr/bin/git
       cd /var/opt
     fi
   fi
@@ -3334,7 +3331,7 @@ upgrade_aegir_master () {
     chown -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
     if [ ! -L "/usr/bin/drush" ] ; then
-      ln -s /var/aegir/drush/drush /usr/bin/drush
+      ln -sf /var/aegir/drush/drush /usr/bin/drush
     fi
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
@@ -3377,8 +3374,7 @@ upgrade_aegir_master () {
     fi
     sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
     if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
-      rm -f /var/aegir/config/includes/global.inc
-      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+      ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
     update_redis_password
     force_advanced_nginx_config
@@ -3579,7 +3575,7 @@ install_upgrade_nginx () {
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ] ; then
-    ln -s /usr/sbin/nginx /usr/bin/nginx
+    ln -sf /usr/sbin/nginx /usr/bin/nginx
   fi
 }
 #
@@ -3825,13 +3821,13 @@ get_drush_versions () {
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   if [ ! -L "/usr/bin/drush4" ] && [ -e "/opt/tools/drush/4/drush/drush" ] ; then
-    ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
+    ln -sf /opt/tools/drush/4/drush/drush /usr/bin/drush4
   fi
   if [ ! -L "/usr/bin/drush5" ] && [ -e "/opt/tools/drush/5/drush/drush" ] ; then
-    ln -s /opt/tools/drush/5/drush/drush /usr/bin/drush5
+    ln -sf /opt/tools/drush/5/drush/drush /usr/bin/drush5
   fi
   if [ ! -L "/usr/bin/drush6" ] && [ -e "/opt/tools/drush/6/drush/drush" ] ; then
-    ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
+    ln -sf /opt/tools/drush/6/drush/drush /usr/bin/drush6
   fi
   chmod 755 /opt/tools/drush/*/drush/drush
   chmod 755 /opt/tools/drush/*/drush/drush.php
@@ -4596,7 +4592,7 @@ install_pdnsd_cache () {
       mkdir -p /lib/init/rw/resolvconf/interface
     fi
     rm -f -r /etc/resolvconf/run
-    ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
+    ln -sf /lib/init/rw/resolvconf /etc/resolvconf/run
     rm -f /etc/resolvconf/run/postponed-update
     touch /etc/resolvconf/run/enable-updates
     touch /etc/resolvconf/resolv.conf.d/tail
@@ -4609,8 +4605,7 @@ install_pdnsd_cache () {
     sed -i "s/^nameserver.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
     echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/resolv.conf
     sed -i "/^$/d" /etc/resolvconf/run/resolv.conf &> /dev/null
-    rm -f /etc/resolv.conf
-    ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
+    ln -sf /etc/resolvconf/run/resolv.conf /etc/resolv.conf
     rm -f /etc/resolvconf/run/interface/eth*
     resolvconf -u &> /dev/null
   else
@@ -4900,7 +4895,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
     fi
   fi
   st_runner "apt-get -y remove svscan" &> /dev/null
@@ -4912,7 +4907,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     install_upgrade_nginx
   fi
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
-    ln -s /etc/init.d/bind9 /etc/init.d/bind
+    ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y install collectd" 2> /dev/null
@@ -4958,7 +4953,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
     fi
   fi
   st_runner "apt-get -y remove libc-client2007b-dev" 2> /dev/null
@@ -4976,7 +4971,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     install_upgrade_nginx
   fi
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
-    ln -s /etc/init.d/bind9 /etc/init.d/bind
+    ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y install collectd" 2> /dev/null
@@ -5647,7 +5642,7 @@ if [ "$_USE_MEMCACHED" = "YES" ] ; then
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    ln -s /usr/local/bin/memcached /usr/bin/memcached
+    ln -sf /usr/local/bin/memcached /usr/bin/memcached
     echo "memcached-1.4.9" > /var/log/memcached-1.4.9.log
   fi
 fi
@@ -5678,11 +5673,11 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -f "/usr/bin/php" ] && [ -f "/opt/local/bin/php" ] && [ ! -L "/opt/local/bin/php" ] ; then
       mv -f /opt/local/bin/php /opt/local/bin/php-old &> /dev/null
-      ln -s /usr/bin/php /opt/local/bin/php
+      ln -sf /usr/bin/php /opt/local/bin/php
     fi
     if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
       mv -f /opt/local/bin/phpize /opt/local/bin/phpize-old &> /dev/null
-      ln -s /usr/bin/phpize /opt/local/bin/phpize
+      ln -sf /usr/bin/phpize /opt/local/bin/phpize
     fi
   fi
 fi
@@ -5834,7 +5829,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   else
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -s /opt/local/bin/php /usr/local/bin/php &> /dev/null
+      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
     fi
   fi
   update_php_modern
@@ -5850,7 +5845,7 @@ st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
 st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 if [ ! -L "/usr/bin/php-cli" ] ; then
   mv -f /usr/bin/php-cli /usr/bin/off-php-cli &> /dev/null
-  ln -s /opt/local/bin/php /usr/bin/php-cli
+  ln -sf /opt/local/bin/php /usr/bin/php-cli
 fi
 
 
@@ -5931,7 +5926,7 @@ if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ 
 fi
 if [ -f "/usr/local/bin/lshell" ] ; then
   if [ ! -L "/usr/bin/lshell" ] ; then
-    ln -s /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
+    ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
   fi
 fi
 
@@ -6074,22 +6069,22 @@ fi
 
 ###--------------------###
 if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] && [ -d "/usr/lib/jvm/java-6-openjdk-amd64" ] ; then
-  ln -s /usr/lib/jvm/java-6-openjdk-amd64 /usr/lib/jvm/java-6-openjdk
+  ln -sf /usr/lib/jvm/java-6-openjdk-amd64 /usr/lib/jvm/java-6-openjdk
 fi
 if [ ! -e "/usr/lib/jvm/java-6-openjdk" ] && [ -d "/usr/lib/jvm/java-6-openjdk-i386" ] ; then
-  ln -s /usr/lib/jvm/java-6-openjdk-i386 /usr/lib/jvm/java-6-openjdk
+  ln -sf /usr/lib/jvm/java-6-openjdk-i386 /usr/lib/jvm/java-6-openjdk
 fi
 if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] && [ -d "/usr/lib/jvm/java-7-openjdk-amd64" ] ; then
-  ln -s /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
+  ln -sf /usr/lib/jvm/java-7-openjdk-amd64 /usr/lib/jvm/java-7-openjdk
 fi
 if [ ! -e "/usr/lib/jvm/java-7-openjdk" ] && [ -d "/usr/lib/jvm/java-7-openjdk-i386" ] ; then
-  ln -s /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
+  ln -sf /usr/lib/jvm/java-7-openjdk-i386 /usr/lib/jvm/java-7-openjdk
 fi
 if [ ! -e "/usr/bin/java7" ] && [ -e "/usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java" ] ; then
-  ln -s /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
+  ln -sf /usr/lib/jvm/java-7-openjdk-amd64/jre/bin/java /usr/bin/java7
 fi
 if [ ! -e "/usr/bin/java7" ] && [ -e "/usr/lib/jvm/java-7-openjdk-i386/jre/bin/java" ] ; then
-  ln -s /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
+  ln -sf /usr/lib/jvm/java-7-openjdk-i386/jre/bin/java /usr/bin/java7
 fi
 
 
@@ -6132,7 +6127,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
         get_drupal_project "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
         cd /var/opt/solr-$_SOLR_4_VERSION/example/solr/collection1/conf/
         patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
-        ln -s /opt/jetty9/lib /opt/tika9
+        ln -sf /opt/jetty9/lib /opt/tika9
         cd /opt/tika9
         wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
         wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
@@ -6178,7 +6173,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         sed -i "s/9090/8080/g" /opt/jetty9/bin/jetty.sh &> /dev/null
       fi
-      ln -s /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
+      ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
       chmod 755 /etc/init.d/jetty9
       st_runner "update-rc.d jetty9 defaults" &> /dev/null
       st_runner "service jetty9 start" &> /dev/null
@@ -6225,7 +6220,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
         get_drupal_project "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
         cd /var/opt/apache-solr-$_SOLR_3_VERSION/example/solr/conf
         patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
-        ln -s /opt/jetty8/lib /opt/tika8
+        ln -sf /opt/jetty8/lib /opt/tika8
         cd /opt/tika8
         wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
         wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
@@ -6260,7 +6255,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
       echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty8
-      ln -s /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
+      ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
       chmod 755 /etc/init.d/jetty8
       st_runner "update-rc.d jetty8 defaults" &> /dev/null
       st_runner "service jetty8 start" &> /dev/null
@@ -6307,7 +6302,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
         get_drupal_project "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
         cd /var/opt/apache-solr-$_SOLR_1_VERSION/example/solr/conf
         patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
-        ln -s /opt/jetty7/lib /opt/tika7
+        ln -sf /opt/jetty7/lib /opt/tika7
         cd /opt/tika7
         wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
         wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
@@ -6343,7 +6338,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
       echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty7
-      ln -s /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
+      ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
       chmod 755 /etc/init.d/jetty7
       st_runner "update-rc.d jetty7 defaults" &> /dev/null
       st_runner "service jetty7 start" &> /dev/null
@@ -6454,7 +6449,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "adduser --system --group --home /var/aegir aegir"
   st_runner "adduser aegir www-data"
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-  ln -s /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+  ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
   update_nginx_conf
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
@@ -6470,7 +6465,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
-  ln -s /var/aegir/drush/drush /usr/bin/drush &> /dev/null
+  ln -sf /var/aegir/drush/drush /usr/bin/drush &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
@@ -6542,8 +6537,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
   if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
-    rm -f /var/aegir/config/includes/global.inc
-    ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+    ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
   fi
   update_redis_password
   force_advanced_nginx_config
@@ -6672,8 +6666,7 @@ EOF
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
     fi
     if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
-      rm -f /var/aegir/config/includes/global.inc
-      ln -s /data/conf/global.inc /var/aegir/config/includes/global.inc
+      ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
     sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
     update_redis_password
@@ -6933,7 +6926,7 @@ if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       sed -i "s/127.0.1.1/$_THISHTIP/g" /etc/bind/named.conf.options &> /dev/null
       st_runner "service bind9 restart" &> /dev/null
       if [ ! -e "/etc/init.d/bind" ] ; then
-        ln -s /etc/init.d/bind9 /etc/init.d/bind
+        ln -sf /etc/init.d/bind9 /etc/init.d/bind
       fi
       sed -i "s/.*bind.*//g" /etc/sudoers &> /dev/null
       sed -i "/^$/d" /etc/sudoers &> /dev/null
@@ -6978,10 +6971,10 @@ else
 fi
 fix_compass_path () {
   if [ ! -e "/usr/local/bin/compass" ] && [ -x "/var/lib/gems/1.8/bin/compass" ] ; then
-    ln -s /var/lib/gems/1.8/bin/compass /usr/local/bin/compass &> /dev/null
-    ln -s /var/lib/gems/1.8/bin/sass /usr/local/bin/sass &> /dev/null
-    ln -s /var/lib/gems/1.8/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
-    ln -s /var/lib/gems/1.8/bin/scss /usr/local/bin/scss &> /dev/null
+    ln -sf /var/lib/gems/1.8/bin/compass /usr/local/bin/compass &> /dev/null
+    ln -sf /var/lib/gems/1.8/bin/sass /usr/local/bin/sass &> /dev/null
+    ln -sf /var/lib/gems/1.8/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
+    ln -sf /var/lib/gems/1.8/bin/scss /usr/local/bin/scss &> /dev/null
   fi
 }
 fix_compass_path
@@ -7176,7 +7169,7 @@ if [ ! -L "/var/aegir/config/includes/barracuda_log.txt" ] ; then
     cp -af /var/aegir/config/includes/barracuda_log.txt /var/log/barracuda_log.txt
     mv -f /var/aegir/config/includes/barracuda_log.txt /var/backups/barracuda_log.txt
   fi
-  ln -s /var/log/barracuda_log.txt /var/aegir/config/includes/barracuda_log.txt
+  ln -sf /var/log/barracuda_log.txt /var/aegir/config/includes/barracuda_log.txt
 fi
 if [ "$_THIS_DB_HOST" = "localhost" ] ; then
   _LOG_DB_HOST=localhost

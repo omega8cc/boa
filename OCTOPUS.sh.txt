@@ -841,12 +841,10 @@ force_advanced_nginx_config_main () {
   sub_force_advanced_nginx_config_main
   if [ -e "/data/disk/$_USER/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
-      rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-      ln -s /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+      ln -sf /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
     fi
     if [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
-      rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
-      ln -s /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
+      ln -sf /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
     fi
   fi
 }

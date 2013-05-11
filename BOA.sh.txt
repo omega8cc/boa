@@ -56,10 +56,10 @@ setup ()
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/sqlmagic
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/syncpass
   if [ ! -e "/opt/local/bin/randpass" ] ; then
-    mkdir -p /opt/local/bin; ln -s /usr/local/bin/randpass /opt/local/bin/randpass
+    mkdir -p /opt/local/bin; ln -sf /usr/local/bin/randpass /opt/local/bin/randpass
   fi
   if [ ! -e "/opt/local/bin/sqlmagic" ] ; then
-    mkdir -p /opt/local/bin; ln -s /usr/local/bin/sqlmagic /opt/local/bin/sqlmagic
+    mkdir -p /opt/local/bin; ln -sf /usr/local/bin/sqlmagic /opt/local/bin/sqlmagic
   fi
   echo "### $_TODAY ###" >> /usr/local/bin/boa
   echo "### $_TODAY ###" >> /usr/local/bin/barracuda

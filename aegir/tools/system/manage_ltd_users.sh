@@ -70,16 +70,16 @@ fix_dot_dirs()
   fi
   echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
   if [ ! -L "$_USER_DRUSH/drush_make" ] ; then
-    ln -s /var/aegir/.drush/drush_make $_USER_DRUSH/drush_make
+    ln -sf /var/aegir/.drush/drush_make $_USER_DRUSH/drush_make
   fi
   if [ ! -L "$_USER_DRUSH/registry_rebuild" ] ; then
-    ln -s /var/aegir/.drush/registry_rebuild $_USER_DRUSH/registry_rebuild
+    ln -sf /var/aegir/.drush/registry_rebuild $_USER_DRUSH/registry_rebuild
   fi
   if [ ! -L "$_USER_DRUSH/clean_missing_modules" ] ; then
-    ln -s /var/aegir/.drush/clean_missing_modules $_USER_DRUSH/clean_missing_modules
+    ln -sf /var/aegir/.drush/clean_missing_modules $_USER_DRUSH/clean_missing_modules
   fi
   if [ ! -L "$_USER_DRUSH/drush_ecl" ] ; then
-    ln -s /var/aegir/.drush/drush_ecl $_USER_DRUSH/drush_ecl
+    ln -sf /var/aegir/.drush/drush_ecl $_USER_DRUSH/drush_ecl
   fi
 }
 #
@@ -117,7 +117,7 @@ ok_create_user()
     echo >> $_THIS_LTD_CONF
     echo "[$_USER_LTD]" >> $_THIS_LTD_CONF
     echo "path : [$_ALLD_DIR]" >> $_THIS_LTD_CONF
-    ln -s $Client $_USER_LTD_ROOT/sites
+    ln -sf $Client $_USER_LTD_ROOT/sites
     chmod 700 $_USER_LTD_ROOT
     mkdir -p /home/$_ADMIN/users
     echo "$_ESC_LUPASS" > /home/$_ADMIN/users/$_USER_LTD
@@ -136,7 +136,7 @@ ok_update_user()
     echo "[$_USER_LTD]" >> $_THIS_LTD_CONF
     echo "path : [$_ALLD_DIR]" >> $_THIS_LTD_CONF
     rm $_USER_LTD_ROOT/sites
-    ln -s $Client $_USER_LTD_ROOT/sites
+    ln -sf $Client $_USER_LTD_ROOT/sites
     chmod 700 $_USER_LTD_ROOT
   fi
   fix_dot_dirs

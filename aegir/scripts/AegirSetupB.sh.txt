@@ -305,7 +305,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     if [ ! -d "$_ROOT/config" ] ; then
       cd $_ROOT/aegir
       mv -f config $_ROOT/config &> /dev/null
-      ln -s $_ROOT/config $_ROOT/aegir/config
+      ln -sf $_ROOT/config $_ROOT/aegir/config
     fi
   fi
   if [ -d "$_ROOT/tools/drush" ] ; then
@@ -479,9 +479,9 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   chmod 2770 -R sites/$_DOMAIN/files &> /dev/null
   chgrp -R $_WEBG sites/$_DOMAIN/files &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
-  ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
+  ln -sf $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
-  ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
+  ln -sf $_AEGIR_ROOT /data/u/$_DOMAIN
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
@@ -547,9 +547,9 @@ else
   fi
   export DEBIAN_FRONTEND=text
   rm -f $_ROOT/u/$_DOMAIN
-  ln -s $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
+  ln -sf $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN
-  ln -s $_AEGIR_ROOT /data/u/$_DOMAIN
+  ln -sf $_AEGIR_ROOT /data/u/$_DOMAIN
   msg "$_STATUS B: Hostmaster STATUS: upgrade completed"
 fi
 
@@ -601,7 +601,7 @@ else
   get_dev_ext "hosting_site_backup.tar.gz"   &> /dev/null
 fi
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
-  ln -s /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
+  ln -sf /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
 fi
 cd $_AEGIR_ROOT/sites/$_DOMAIN
 if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
@@ -690,11 +690,11 @@ fi
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then
   rm -f $_ROOT/config/includes/global.inc
-  ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
+  ln -sf /data/conf/global.inc $_ROOT/config/includes/global.inc
 else
   rm -f $_ROOT/config/includes/global.inc
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
-  ln -s /data/conf/global.inc $_ROOT/config/includes/global.inc
+  ln -sf /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi
 
 touch /opt/tmp/status-AegirSetupB-OK

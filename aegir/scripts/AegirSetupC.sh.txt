@@ -280,19 +280,19 @@ create_dirs () {
 # create standard symlinks
 create_symlinks () {
 if [ ! -L "includes" ] ; then
-  ln -s $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
-  ln -s $_CORE_DISTRO/cron.php cron.php &> /dev/null
-  ln -s $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
-  ln -s $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
-  ln -s $_CORE_DISTRO/includes includes &> /dev/null
-  ln -s $_CORE_DISTRO/index.php index.php &> /dev/null
-  ln -s $_CORE_DISTRO/install.php install.php &> /dev/null
-  ln -s $_CORE_DISTRO/misc misc &> /dev/null
-  ln -s $_CORE_DISTRO/modules modules &> /dev/null
-  ln -s $_CORE_DISTRO/profiles profiles &> /dev/null
-  ln -s $_CORE_DISTRO/themes themes &> /dev/null
-  ln -s $_CORE_DISTRO/update.php update.php &> /dev/null
-  ln -s $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
+  ln -sf $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
+  ln -sf $_CORE_DISTRO/cron.php cron.php &> /dev/null
+  ln -sf $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
+  ln -sf $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
+  ln -sf $_CORE_DISTRO/includes includes &> /dev/null
+  ln -sf $_CORE_DISTRO/index.php index.php &> /dev/null
+  ln -sf $_CORE_DISTRO/install.php install.php &> /dev/null
+  ln -sf $_CORE_DISTRO/misc misc &> /dev/null
+  ln -sf $_CORE_DISTRO/modules modules &> /dev/null
+  ln -sf $_CORE_DISTRO/profiles profiles &> /dev/null
+  ln -sf $_CORE_DISTRO/themes themes &> /dev/null
+  ln -sf $_CORE_DISTRO/update.php update.php &> /dev/null
+  ln -sf $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
   cp -af $_CORE_DISTRO/cache ./
   cp -af $_CORE_DISTRO/sites ./
 fi
@@ -301,8 +301,8 @@ fi
 # create d7 symlinks
 create_d7_symlinks () {
 if [ ! -L "web.config" ] ; then
-  ln -s $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
-  ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
+  ln -sf $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
+  ln -sf $_CORE_DISTRO/web.config web.config &> /dev/null
   rm -f boost_stats.php
 fi
 }
@@ -397,11 +397,11 @@ create_d8_dirs () {
 # create standard D8 symlinks
 create_d8_symlinks () {
 if [ ! -L "core" ] ; then
-  ln -s $_CORE_DISTRO/core core &> /dev/null
-  ln -s $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
-  ln -s $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
-  ln -s $_CORE_DISTRO/index.php index.php &> /dev/null
-  ln -s $_CORE_DISTRO/web.config web.config &> /dev/null
+  ln -sf $_CORE_DISTRO/core core &> /dev/null
+  ln -sf $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
+  ln -sf $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
+  ln -sf $_CORE_DISTRO/index.php index.php &> /dev/null
+  ln -sf $_CORE_DISTRO/web.config web.config &> /dev/null
   cp -af $_CORE_DISTRO/cache ./
   cp -af $_CORE_DISTRO/sites ./
   cp -af $_CORE_DISTRO/profiles ./
@@ -429,7 +429,7 @@ enable_drupal6_admin () {
 # add drupal 6 translations
 add_drupal6_translations () {
   rm -f -r $_THIS_PRPATH/translations &> /dev/null
-  ln -s /data/all/000/translations $_THIS_PRPATH/translations &> /dev/null
+  ln -sf /data/all/000/translations $_THIS_PRPATH/translations &> /dev/null
 }
 #
 # init this distro root
@@ -449,7 +449,7 @@ init_core_distro_seven_root () {
   cd $_CORE_DISTRO
   rm -f $_CORE_DISTRO/*.txt
   rm -f modules/o_contrib_seven
-  ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+  ln -sf $_CORE/o_contrib_seven modules/o_contrib_seven
 }
 #
 # init distro six root
@@ -457,7 +457,7 @@ init_core_distro_six_root () {
   cd $_CORE_DISTRO
   rm -f $_CORE_DISTRO/*.txt
   rm -f modules/o_contrib
-  ln -s $_CORE/o_contrib modules/o_contrib
+  ln -sf $_CORE/o_contrib modules/o_contrib
   cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
   cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
 }
@@ -643,13 +643,13 @@ create_civicrm_symlinks () {
     rm -f -r sites/all/modules/civicrm
   fi
   if [ ! -L "sites/all/modules/civicrm" ] ; then
-    ln -s $_CORE_DISTRO/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
+    ln -sf $_CORE_DISTRO/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
   fi
   if [ -d "sites/all/modules/contrib" ] ; then
     rm -f -r sites/all/modules/contrib
   fi
   if [ ! -L "sites/all/modules/contrib" ] ; then
-    ln -s $_CORE_DISTRO/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
+    ln -sf $_CORE_DISTRO/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
   fi
 }
 
@@ -1021,7 +1021,7 @@ fi
 init_this_distro_root
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -s $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui
+  ln -sf $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui
 fi
 msg "DISTRO: $_F_COD installation completed"
 mrun "sleep 1"
@@ -1223,7 +1223,7 @@ fi
 init_this_distro_root
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -s $_THIS_PRPATH/libraries/getid3 $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3
+  ln -sf $_THIS_PRPATH/libraries/getid3 $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3
 fi
 msg "DISTRO: $_F_D6COMMONS installation completed"
 mrun "sleep 1"
@@ -2474,7 +2474,7 @@ mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
 cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
 if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox" ] ; then
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -s $_THIS_PRPATH/libraries/colorbox $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox
+  ln -sf $_THIS_PRPATH/libraries/colorbox $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/colorbox
 fi
 create_symlinks
 create_d7_symlinks
@@ -2605,10 +2605,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
 fi
 init_this_distro_root
 if [ ! -L "./sites/all/libraries/shadowbox" ] ; then
-  ln -s $_THIS_PRPATH/libraries/shadowbox ./sites/all/libraries/shadowbox
+  ln -sf $_THIS_PRPATH/libraries/shadowbox ./sites/all/libraries/shadowbox
 fi
 if [ ! -L "./sites/all/libraries/tinymce" ] ; then
-  ln -s $_THIS_PRPATH/libraries/tinymce ./sites/all/libraries/tinymce
+  ln -sf $_THIS_PRPATH/libraries/tinymce ./sites/all/libraries/tinymce
 fi
 msg "DISTRO: $_F_OPENSCHOLAR installation completed"
 mrun "sleep 1"

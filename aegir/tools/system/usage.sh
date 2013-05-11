@@ -144,7 +144,7 @@ if [ "$_O_CONTRIB" != "NO" ] && [ ! -e "$Plr/core" ] ; then
   symlinks -d $Plr/modules
   if [ -e "$Plr/web.config" ] ; then
     if [ ! -e "$Plr/modules/o_contrib_seven" ] ; then
-      ln -s $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven
+      ln -sf $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven
     fi
   else
     if [ -e "$Plr/modules/watchdog" ] ; then
@@ -158,7 +158,7 @@ if [ "$_O_CONTRIB" != "NO" ] && [ ! -e "$Plr/core" ] ; then
       fi
     else
       if [ ! -e "$Plr/modules/o_contrib" ] ; then
-        ln -s $_O_CONTRIB $Plr/modules/o_contrib
+        ln -sf $_O_CONTRIB $Plr/modules/o_contrib
       fi
       if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
         echo Vanilla Drupal 6.x Platform detected in $Plr

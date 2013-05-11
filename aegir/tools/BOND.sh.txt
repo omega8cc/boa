@@ -408,29 +408,29 @@ update_php_conf () {
   if [ "$_FROM_SOURCES" = "NO" ] ; then
     if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
       mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -s /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
+      ln -sf /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
     fi
     if [ -e "/etc/php5/cli/php.ini" ] && [ ! -L "/etc/php5/cli/php.ini" ] ; then
       mv -f /etc/php5/cli/php.ini /var/backups/dragon/t/etc-php5-cli-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -s /opt/local/lib/php.ini /etc/php5/cli/php.ini
+      ln -sf /opt/local/lib/php.ini /etc/php5/cli/php.ini
     fi
     if [ -x "/usr/sbin/php5-fpm" ] && [ ! -L "/opt/local/sbin/php-fpm" ] ; then
       mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
       mkdir -p /opt/local/sbin
-      ln -s /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
+      ln -sf /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
     fi
     if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /var/backups/ &> /dev/null
     fi
     if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -s /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      ln -sf /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
       if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
         mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
       fi
     elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -s /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
+      ln -sf /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
       if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
         mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
       fi
