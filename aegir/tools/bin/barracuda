@@ -113,7 +113,11 @@ up_action ()
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
       if [ "$silent" = "log" ] || [ "$silent" = "system" ] || [ "$silent" = "stock" ] ; then
-        n=$((RANDOM%800+80))
+        if [ "$silent" = "stock" ] ; then
+          n=8
+        else
+          n=$((RANDOM%800+80))
+        fi
         echo waiting $n sec
         sleep $n
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
@@ -122,13 +126,12 @@ up_action ()
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
         elif [ "$silent" = "stock" ] ; then
           sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-          if [ -e "/root/.barracuda.cnf" ] ; then
-             sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
-             sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /root/.barracuda.cnf &> /dev/null
-          fi
-        else
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
+        elif [ "$silent" = "log" ] ; then
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
         fi
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         check_report
