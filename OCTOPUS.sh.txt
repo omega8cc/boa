@@ -530,7 +530,7 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION=7.x-5.9
+  _DRUSH_VERSION=7.x-5.8
 fi
 
 ###
