@@ -159,7 +159,7 @@ hostmaster_go_up () {
     if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       cd $_ROOT/.drush
       if [ "$_USE_STOCK" = "YES" ] ; then
-        git clone --branch 6.x-2.x http://git.drupal.org/project/provision.git $_ROOT/.drush/provision &> /dev/null
+        git clone --branch 6.x-2.x-stock git://github.com/omega8cc/provision.git $_ROOT/.drush/provision &> /dev/null
       else
         if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
           _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
