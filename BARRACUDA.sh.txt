@@ -4142,7 +4142,7 @@ if ! netcat -w 8 -z github.com 9418 ; then
   msg "Bye"
   exit 1
 fi
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
   _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/test-provision 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
@@ -4162,7 +4162,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     exit 1
   fi
 fi
-if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
+if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
   _GITHUB_TEST=`git clone git://github.com/omega8cc/nginx-for-drupal.git /opt/tmp/test-nginx-for-drupal 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
