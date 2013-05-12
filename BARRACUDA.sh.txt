@@ -4142,6 +4142,16 @@ if ! netcat -w 8 -z github.com 9418 ; then
   msg "Bye"
   exit 1
 fi
+cd /var/opt/
+_GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/provision 2>&1`
+if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
+  echo " "
+  msg "EXIT on error due to GitHub downtime"
+  msg "Please try to run this script again in a few minutes"
+  msg "Also, check https://status.github.com/messages"
+  msg "Bye"
+  exit 1
+fi
 
 
 ###--------------------###
