@@ -226,7 +226,9 @@ case "$1" in
              rkey="$7"
              init_setup
   ;;
-  *)         echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max|stock} {newrelickey}"
+  *)         echo
+             echo "Usage: boa {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max|stock} {newrelickey}"
+             echo
              exit 1
   ;;
 esac

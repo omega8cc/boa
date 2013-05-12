@@ -315,7 +315,9 @@ case "$1" in
              silent="$4"
              up_head
   ;;
-  *)         echo "Usage: octopus {up-stable|up-head} {all|o1} {aegir|platforms|both}"
+  *)         echo
+             echo "Usage: octopus {up-stable|up-head} {all|o1} {aegir|platforms|both}"
+             echo
              exit 1
   ;;
 esac

@@ -194,7 +194,7 @@ up_head ()
 up_stable ()
 {
   up_start
-  if [ "$silent" = "stock" ] ; then
+  if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
     wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
   else
     wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
