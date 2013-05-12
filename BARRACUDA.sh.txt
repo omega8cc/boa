@@ -388,6 +388,12 @@ _AUTOPILOT=NO
 _SYSTEM_UPGRADE_ONLY=NO
 
 ###
+### Use YES to upgrade Aegir Master Instance
+### only and skip system upgrade.
+###
+_AEGIR_UPGRADE_ONLY=NO
+
+###
 ### You can force Nginx, PHP and/or DB server
 ### reinstall, even if there are no updates
 ### available.
@@ -2268,6 +2274,7 @@ barracuda_cnf () {
     echo "_XTRAS_LIST=\"$_XTRAS_LIST\"" >> /root/.barracuda.cnf
     echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
+    echo "_AEGIR_UPGRADE_ONLY=$_AEGIR_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
     echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
@@ -2470,6 +2477,12 @@ barracuda_cnf () {
       true
     else
       echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
+    fi
+    _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY /root/.barracuda.cnf)
+    if [[ "$_AEGIR_UPGRADE_ONLY_TEST" =~ "_AEGIR_UPGRADE_ONLY" ]] ; then
+      true
+    else
+      echo "_AEGIR_UPGRADE_ONLY=$_AEGIR_UPGRADE_ONLY" >> /root/.barracuda.cnf
     fi
     _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED /root/.barracuda.cnf)
     if [[ "$_USE_MEMCACHED_TEST" =~ "_USE_MEMCACHED" ]] ; then
@@ -3833,6 +3846,88 @@ get_drush_versions () {
   chmod 755 /opt/tools/drush/*/drush/drush.php
   cd /opt/tmp
 }
+###--------------------###
+finale () {
+  echo " "
+  if [ "$_STATUS" = "INIT" ] ; then
+    _L_ST="install"
+  else
+    _L_ST="upgrade"
+  fi
+  msg "CARD: Now charging your credit card for this automated $_L_ST service..."
+  mrun "sleep 5"
+  msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
+  mrun "sleep 3"
+  echo " "
+  if [ "$_UP_LNX" = "YES" ] ; then
+    msg "ALRT: Your OS kernel has been upgraded!"
+    if [ ! -e "/usr/sbin/uptrack-upgrade" ] ; then
+      msg "ALRT: You *must* reboot immediately to make it active and stay secure!"
+    else
+      msg "NOTE: You have Ksplice rebootless kernel updates installed"
+      msg "HINT: Run uptrack-upgrade -y to make sure that all upgrades are fully applied"
+    fi
+    echo " "
+    mrun "sleep 8"
+  fi
+  msg "Final post-$_L_ST cleaning, please wait a moment..."
+  mrun "sleep 1"
+  mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
+  echo > /etc/motd
+  echo " Barracuda System managed by Skynet Agent v.$_INSTALLER_VERSION welcomes you aboard" >> /etc/motd
+  echo >> /etc/motd
+  echo > /etc/motd.tail
+  echo " Barracuda System managed by Skynet Agent v.$_INSTALLER_VERSION welcomes you aboard" >> /etc/motd.tail
+  echo >> /etc/motd.tail
+  mkdir -p /data/conf/arch
+  mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
+  rm -f /tmp/cache.inc*
+  rm -f -r /var/opt/*
+  rm -f -r /opt/tmp/*
+  rm -f /var/xdrago/monitor/acrashsql.sh
+  rm -f -r /tmp/drush_make_tmp*
+  rm -f -r /tmp/make_tmp*
+  rm -f /tmp/pm-updatecode*
+  rm -f /var/run/boa_run.pid
+  rm -f /var/run/boa_wait.pid
+  chmod 700 /root
+  if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
+    mv -f /var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW /etc/init.d/buagent &> /dev/null
+  fi
+  if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] && [ -e "/var/xdrago/guest-fire.sh" ] && [ -e "/var/xdrago/guest-water.sh" ] ; then
+    sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+    sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+    if [[ "$_THISHOST" =~ ".host8." ]] ; then
+      if [ "$_VMFAMILY" = "VS" ] ; then
+        true
+      else
+        echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+      fi
+    else
+      echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
+    fi
+    sed -i "/^$/d" /etc/crontab &> /dev/null
+  else
+    sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
+    sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
+    sed -i "/^$/d" /etc/crontab &> /dev/null
+  fi
+  killall -9 memcached     &> /dev/null
+  chmod 0750 /sbin/audispd &> /dev/null
+  service auditd restart   &> /dev/null
+  service cron start       &> /dev/null
+  if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
+    csf -x &> /dev/null
+    csf -e &> /dev/null
+    csf -q &> /dev/null
+  fi
+  msg "BYE!"
+}
 
 
 ###--------------------###
@@ -4667,6 +4762,18 @@ if [ -e "/usr/sbin/pdnsd" ] ; then
     _INSTALL_PDNSD=YES
     msg "INFO: DNS cache pdnsd server re-installation forced"
     install_pdnsd_cache
+  fi
+fi
+
+
+###--------------------###
+if [ "$_STATUS" = "UPGRADE" ] ; then
+  if [ "$_AEGIR_UPGRADE_ONLY" = "YES" ] && [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] ; then
+    upgrade_aegir_master
+    mrun "sleep 8"
+    st_runner "service nginx reload" &> /dev/null
+    finale
+    exit 0
   fi
 fi
 
@@ -7366,87 +7473,8 @@ if [ -e "/usr/sbin/csf" ] ; then
 fi
 fix_lfd_whitelist
 
-
 ###--------------------###
-echo " "
-if [ "$_STATUS" = "INIT" ] ; then
-  _L_ST="install"
-else
-  _L_ST="upgrade"
-fi
-msg "CARD: Now charging your credit card for this automated $_L_ST service..."
-mrun "sleep 5"
-msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
-mrun "sleep 3"
-echo " "
-if [ "$_UP_LNX" = "YES" ] ; then
-  msg "ALRT: Your OS kernel has been upgraded!"
-  if [ ! -e "/usr/sbin/uptrack-upgrade" ] ; then
-    msg "ALRT: You *must* reboot immediately to make it active and stay secure!"
-  else
-    msg "NOTE: You have Ksplice rebootless kernel updates installed"
-    msg "HINT: Run uptrack-upgrade -y to make sure that all upgrades are fully applied"
-  fi
-  echo " "
-  mrun "sleep 8"
-fi
-msg "Final post-$_L_ST cleaning, please wait a moment..."
-mrun "sleep 1"
-mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
-echo > /etc/motd
-echo " Barracuda System managed by Skynet Agent v.$_INSTALLER_VERSION welcomes you aboard" >> /etc/motd
-echo >> /etc/motd
-echo > /etc/motd.tail
-echo " Barracuda System managed by Skynet Agent v.$_INSTALLER_VERSION welcomes you aboard" >> /etc/motd.tail
-echo >> /etc/motd.tail
-mkdir -p /data/conf/arch
-mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
-mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
-mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
-rm -f /tmp/cache.inc*
-rm -f -r /var/opt/*
-rm -f -r /opt/tmp/*
-rm -f /var/xdrago/monitor/acrashsql.sh
-rm -f -r /tmp/drush_make_tmp*
-rm -f -r /tmp/make_tmp*
-rm -f /tmp/pm-updatecode*
-rm -f /var/run/boa_run.pid
-rm -f /var/run/boa_wait.pid
-chmod 700 /root
-if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
-  mv -f /var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW /etc/init.d/buagent &> /dev/null
-fi
-if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] && [ -e "/var/xdrago/guest-fire.sh" ] && [ -e "/var/xdrago/guest-water.sh" ] ; then
-  sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
-  sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [ "$_VMFAMILY" = "VS" ] ; then
-      true
-    else
-      echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-      echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-    fi
-  else
-    echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-    echo "01  * * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-  fi
-  sed -i "/^$/d" /etc/crontab &> /dev/null
-else
-  sed -i "s/.*fire.*//g" /etc/crontab &> /dev/null
-  sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
-  sed -i "/^$/d" /etc/crontab &> /dev/null
-fi
-killall -9 memcached     &> /dev/null
-chmod 0750 /sbin/audispd &> /dev/null
-service auditd restart   &> /dev/null
-service cron start       &> /dev/null
-if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
-  csf -x &> /dev/null
-  csf -e &> /dev/null
-  csf -q &> /dev/null
-fi
-msg "BYE!"
+finale
 exit 0
 
 

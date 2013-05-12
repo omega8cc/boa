@@ -112,8 +112,8 @@ up_action ()
       fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-      if [ "$silent" = "log" ] || [ "$silent" = "system" ] || [ "$silent" = "stock" ] ; then
-        if [ "$silent" = "stock" ] ; then
+      if [ "$silent" = "log" ] || [ "$silent" = "system" ] || [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
+        if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
           n=8
         else
           n=$((RANDOM%800+80))
@@ -124,19 +124,26 @@ up_action ()
         if [ "$silent" = "system" ] ; then
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
-        elif [ "$silent" = "stock" ] ; then
-          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g" /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
+        elif [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
+          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"                     /var/backups/BARRACUDA.sh.txt &> /dev/null
+          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"                     /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
+          if [ "$silent" = "aegir" ] ; then
+            sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+            sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
+          else
+            sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
+          fi
         elif [ "$silent" = "log" ] ; then
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
         fi
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         check_report
       else
-        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"      /root/.barracuda.cnf &> /dev/null
         bash /var/backups/BARRACUDA.sh.txt
       fi
     fi
@@ -260,11 +267,14 @@ case "$1" in
   up-head)   silent="$2"
              up_head
   ;;
-  *)         echo "Usage: barracuda {up-stable|up-head} {system|log|stock}"
+  *)         echo
+             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir}"
              echo
-             echo "Silent Mode Option: system == OS only upgrade"
-             echo "Silent Mode Option: log    == OS and Aegir upgrade"
-             echo "Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
+             echo "  Silent Mode Option: system == OS only upgrade"
+             echo "  Silent Mode Option: log    == OS and Aegir upgrade"
+             echo "  Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
+             echo "  Silent Mode Option: aegir  == Only stock Aegir forced up-head upgrade"
+             echo
              exit 1
   ;;
 esac
