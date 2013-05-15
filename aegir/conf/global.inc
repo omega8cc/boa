@@ -278,22 +278,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cookie_domain.info')) {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
-  }
-  else {
-    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
-  }
-  $domain = str_replace('..', '.', $domain);
-  if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
-    @ini_set('session.cookie_domain', $domain);
-    $cookie_domain = $domain;
-    header("X-Cookie-Domain: " . $cookie_domain);
-  }
-
-  $this_prefix = $_SERVER['SERVER_NAME'] . '_';
-  header("X-Redis-Prefix: " . $this_prefix);
-
   if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('profiles/' . $conf['install_profile'] . '/modules/advagg/advagg_bundler/advagg_bundler.module') ||
@@ -342,6 +326,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
+        ini_set('session.cookie_secure', TRUE);
+        header('X-Cookie-Sec: YES');
       }
       header('X-Local-Proto: https');
     }
@@ -352,6 +338,22 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   else {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
+
+  if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cookie_domain.info')) {
+    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
+  }
+  else {
+    $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
+  }
+  $domain = str_replace('..', '.', $domain);
+  if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
+    @ini_set('session.cookie_domain', $domain);
+    $cookie_domain = $domain;
+    header("X-Cookie-Domain: " . $cookie_domain);
+  }
+
+  $this_prefix = $_SERVER['SERVER_NAME'] . '_';
+  header("X-Redis-Prefix: " . $this_prefix);
 
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
