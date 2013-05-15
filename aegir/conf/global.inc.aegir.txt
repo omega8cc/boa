@@ -383,13 +383,15 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_anon_node_add.info')) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
-          header("Location: http://" . $_SERVER['SERVER_NAME'] . "/");
+          header("Location: " . $base_url . "/");
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
-        $deny_anon = TRUE;
-        header("HTTP/1.1 301 Moved Permanently");
-        header("Location: http://" . $_SERVER['SERVER_NAME'] . "/");
+        if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_admin_dos_protection.info')) {
+          $deny_anon = TRUE;
+          header("HTTP/1.1 301 Moved Permanently");
+          header("Location: " . $base_url . "/");
+        }
       }
     }
 
