@@ -424,7 +424,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       }
     }
 
-    if ($conf['install_profile'] != 'hostmaster' && !empty($expire_in_seconds)) {
+    if ($conf['install_profile'] != 'hostmaster' && (!empty($expire_in_seconds) || $expire_in_seconds == 0)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
   }
