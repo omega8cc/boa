@@ -1200,7 +1200,7 @@ update_redis_password () {
     else
       if [ ! -z "$RPASS" ] ; then
         mkdir -p /data/conf
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
         sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
       fi
     fi
@@ -1681,7 +1681,7 @@ update_nginx_conf () {
 update_global_inc_conf () {
   if [ -e "/data/conf/global.inc" ] ; then
     mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
     sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
   fi
 }
@@ -3372,7 +3372,7 @@ upgrade_aegir_master () {
       mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     fi
     mkdir -p /data/conf
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
     sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
     if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
@@ -6649,7 +6649,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     mv -f /var/aegir/config/includes/global.inc /var/aegir/config/includes/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   fi
   mkdir -p /data/conf
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
   sed -i "s/3600/$_SPEED_VALID_MAX/g" /data/conf/global.inc &> /dev/null
   if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
     ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
@@ -6777,8 +6777,8 @@ EOF
     fi
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
     mkdir -p /data/conf
-    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
+    if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
     fi
     if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
