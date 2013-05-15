@@ -364,14 +364,17 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       if (file_exists('sites/all/modules/nginx_cache_quarter.info') ||
           file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_quarter.info')) {
         $expire_in_seconds = '900';
+        header('X-Limit-Booster: 900');
       }
       elseif (file_exists('sites/all/modules/nginx_cache_hour.info') || $force_redis || $high_traffic ||
           file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_hour.info')) {
         $expire_in_seconds = '3600';
+        header('X-Limit-Booster: 3600');
       }
       elseif (file_exists('sites/all/modules/nginx_cache_day.info') ||
           file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_day.info')) {
         $expire_in_seconds = '86400';
+        header('X-Limit-Booster: 86400');
       }
     }
 
@@ -399,14 +402,17 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
           setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '1';
+        header('X-Limit-Booster: 1');
       }
 
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
+        header('X-Skip-Booster: AjaxRU');
       }
 
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
+        header('X-Skip-Booster: AjaxQS');
       }
 
       if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -415,12 +421,14 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
           setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '0';
+        header('X-Skip-Booster: PostRM');
       }
     }
 
     if (!empty($known_bot)) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '86400';
+        header('X-Bot-Booster: 86400');
       }
     }
 
