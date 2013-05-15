@@ -285,7 +285,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['HTTP_HOST']);
   }
   $domain = str_replace('..', '.', $domain);
-  if (count(explode('.', $domain)) > 2) {
+  if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
     @ini_set('session.cookie_domain', $domain);
     $cookie_domain = $domain;
     header("X-Cookie-Domain: " . $cookie_domain);
