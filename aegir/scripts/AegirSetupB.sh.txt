@@ -689,11 +689,9 @@ fi
 #
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then
-  rm -f $_ROOT/config/includes/global.inc
   ln -sf /data/conf/global.inc $_ROOT/config/includes/global.inc
 else
-  rm -f $_ROOT/config/includes/global.inc
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.aegir.txt /data/conf/global.inc
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc.ssl.aegir.txt /data/conf/global.inc
   ln -sf /data/conf/global.inc $_ROOT/config/includes/global.inc
 fi
 
