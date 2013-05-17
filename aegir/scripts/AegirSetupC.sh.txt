@@ -2641,11 +2641,19 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/build-panopoly.make ./
-    $_DRUSH5CMD make build-panopoly.make $_THIS_DISTRO &> /dev/null
-    rm -f build-panopoly.make
+    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_PANOPOLY-core.tar.gz
+    tar -xzf $_THIS_PRNAME-$_PANOPOLY-core.tar.gz
+    rm -f $_THIS_PRNAME-$_PANOPOLY-core.tar.gz
+    rename_drupal7_distro_directory
+    if [ -d "$_CORE/$_THIS_PRNAME-$_PANOPOLY" ] ; then
+      mv $_THIS_PRNAME-$_PANOPOLY $_THIS_DISTRO
+    fi
+    replace_drupal7_core
+#   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/build-panopoly.make ./
+#   $_DRUSH5CMD make build-panopoly.make $_THIS_DISTRO &> /dev/null
+#   rm -f build-panopoly.make
     remove_default_core_seven_profiles
-    if [ $_PANOPOLY = "7.x-1.0-rc4" ] ; then
+    if [ $_PANOPOLY = "7.x-1.0-rc4a" ] ; then
       cd $_THIS_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
