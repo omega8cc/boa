@@ -351,7 +351,7 @@ fi
 #
 o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache httprl boost phpass"
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports backup_migrate purge expire imageinfo_cache httprl boost phpass advagg"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-019.info" ] ; then
     for m in $RMMODULES; do
@@ -363,6 +363,7 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib
     git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib/boost/.git
+    wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.9.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.7.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.11.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
@@ -406,7 +407,7 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge backup_migrate"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge backup_migrate advagg"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-019.info" ] ; then
     for m in $RMMODULES; do
@@ -427,6 +428,7 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib_seven
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib_seven/boost/.git
+    wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-alpha2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.7.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.3.tar.gz
@@ -501,6 +503,7 @@ download_o_contrib_seven () {
   touch update-019.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-alpha2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-7.x-2.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.6.tar.gz
@@ -566,6 +569,7 @@ download_o_contrib_six () {
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.9.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/backup_migrate-6.x-2.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-6.x-2.6.tar.gz
