@@ -2,7 +2,7 @@
 ###
 ### /opt/water.sh
 ### sed -i "s/.*water.*//g" /etc/crontab
-### echo "01  * * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
+### echo "01 *    * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
 ### sed -i "/^$/d" /etc/crontab
 ###
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

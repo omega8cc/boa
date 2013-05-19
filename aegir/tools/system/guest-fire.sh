@@ -2,7 +2,7 @@
 ###
 ### /var/xdrago/guest-fire.sh
 ### sed -i "s/.*fire.*//g" /etc/crontab
-### echo "*/1 * * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+### echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
 ### sed -i "/^$/d" /etc/crontab
 ###
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
