@@ -5964,9 +5964,9 @@ if [ "$_REL_VERSION" = "precise" ] && [ ! -e "/var/log/precise-apc-fixed.log" ] 
   st_runner "$_INSTAPP php-apc" 2> /dev/null
   touch /var/log/precise-apc-fixed.log
 fi
-if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+#if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   update_newrelic
-fi
+#fi
 st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
 st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 if [ ! -L "/usr/bin/php-cli" ] ; then
