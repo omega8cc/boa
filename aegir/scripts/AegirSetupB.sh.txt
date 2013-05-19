@@ -661,10 +661,10 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster vset --always-set hosting_site_backup_manager_base_path "/data/disk/$_USER" &> /dev/null
   $_DRUSHCMD @hostmaster en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD @hostmaster vset --always-set site_footer "" &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     $_DRUSHCMD @hostmaster vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
     $_DRUSHCMD @hostmaster vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
-    $_DRUSHCMD @hostmaster vset --always-set site_footer "Daily Usage Monitor (scheduled) | Disk <strong>*</strong> MB | Databases <strong>*</strong> MB" &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
     mv -f make_home.php.txt make_home.php &> /dev/null
     $_DRUSHCMD php-script make_home &> /dev/null
@@ -682,6 +682,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     $_DRUSHCMD @hostmaster urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
   fi
   $_DRUSHCMD @hostmaster sqlq "REPLACE INTO userprotect VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
+  $_DRUSHCMD @hostmaster cc all &> /dev/null
 fi
 
 
