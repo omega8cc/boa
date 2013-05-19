@@ -143,10 +143,15 @@ sub global_action
     }
     elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
     {
-      `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+       $hourminute=`date +%H%M`;
+       chomp($hourminute);
+       if ($hourminute !~ /^0000/)
+       {
+         `kill -9 $PID`;
+         `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+       }
     }
 
     if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-5]{1}:/))
