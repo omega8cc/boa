@@ -326,8 +326,10 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
-        ini_set('session.cookie_secure', TRUE);
-        header('X-Cookie-Sec: YES');
+        if ($drupal_seven || $drupal_eight) {
+          ini_set('session.cookie_secure', TRUE);
+          header('X-Cookie-Sec: YES');
+        }
       }
       header('X-Local-Proto: https');
     }
