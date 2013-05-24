@@ -116,7 +116,11 @@ up_action ()
         if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
           n=8
         else
-          n=$((RANDOM%800+80))
+          if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+            n=$((RANDOM%800+80))
+          else
+            n=8
+          fi
         fi
         echo waiting $n sec
         sleep $n
