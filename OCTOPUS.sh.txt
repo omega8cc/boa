@@ -651,10 +651,6 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
-    fi
     msg "INFO: Creating your /root/.$_USER.octopus.cnf config file"
     sleep 1
     echo "###" > /root/.$_USER.octopus.cnf
@@ -701,44 +697,33 @@ octopus_cnf () {
   else
     msg "INFO: Reading your /root/.$_USER.octopus.cnf config file"
     sleep 1
-    if [[ "$_DOMAIN" =~ ".host8." ]] ; then
-      _LD_DOM=YES
-    else
-      _LD_DOM=NO
-    fi
-    if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ "$_LD_DOM" = "NO" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
-    fi
-    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
-      _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
-      _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
-    fi
-    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
-      _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
-      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
-    fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=5.3/g" /root/.$_USER.octopus.cnf &> /dev/null
-        if [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
-          echo 5.3 > /data/disk/$_USER/log/fpm.txt
-        fi
-      fi
+      true
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.$_USER.octopus.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=5.3/g" /root/.$_USER.octopus.cnf &> /dev/null
-        if [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-          echo 5.3 > /data/disk/$_USER/log/cli.txt
-        fi
-      fi
+      true
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
+    fi
+    _CHECK_HOST=`uname -n`
+    if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      _LD_DOM=YES
+    else
+      _LD_DOM=NO
+    fi
+    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
+      _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
+      _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
+      sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.$_USER.octopus.cnf &> /dev/null
+    fi
+    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
+      _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
+      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
+      sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.$_USER.octopus.cnf &> /dev/null
     fi
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.$_USER.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
@@ -770,7 +755,6 @@ octopus_cnf () {
     echo " "
     source /root/.$_USER.octopus.cnf
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
-      _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
         true
       else
@@ -779,9 +763,17 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ ! -x "/usr/local/bin/php" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
+    _PHP_CLI_LEGACY=5.2
+    if [ -x "/usr/local/bin/php" ] ; then
+      _PHP_CLI_LEGACY=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+    fi
+    if [ ! -x "/usr/local/bin/php" ] || [[ "$_PHP_CLI_LEGACY" =~ "5.3" ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".host8." ]] && [ -e "/data/disk/$_USER/log/cli.txt" ] && [ -e "/data/disk/$_USER/log/fpm.txt" ] ; then
+        true
+      else
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
     fi
     if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
       _DRUSH_CC_REQ=NO
@@ -933,7 +925,6 @@ do
   sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
   sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
   sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
-  sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     $Files &> /dev/null
   sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files &> /dev/null
   sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files &> /dev/null
   sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files &> /dev/null

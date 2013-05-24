@@ -2372,29 +2372,19 @@ barracuda_cnf () {
     fi
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
-      if [[ "$_PHP_MODERN_ONLY_TEST" =~ "YES" ]] && [ ! -x "/usr/local/bin/php" ] ; then
-        _PHP_MODERN_ONLY=YES
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
-      fi
+      true
     else
       echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/local/bin/php" ] ; then
-        _PHP_FPM_VERSION=5.3
-        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.barracuda.cnf &> /dev/null
-      fi
+      true
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      if [ "$_PHP_MODERN_ONLY" = "YES" ] && [ ! -x "/usr/local/bin/php" ] ; then
-        _PHP_CLI_VERSION=5.3
-        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.barracuda.cnf &> /dev/null
-      fi
+      true
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     fi
@@ -2616,14 +2606,15 @@ barracuda_cnf () {
         ###
       fi
     fi
+    sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     echo " "
     while read line ; do
       echo "$line"
     done < /root/.barracuda.cnf
     echo " "
     source /root/.barracuda.cnf
+    _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
-      _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
         if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
           true
@@ -2655,6 +2646,11 @@ barracuda_cnf () {
     _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_SQL_FORCE_REINSTALL_TEST" =~ "_SQL_FORCE_REINSTALL" ]] ; then
       sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_FULL_FORCE_REINSTALL_TEST" =~ "_FULL_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_FULL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
@@ -3357,7 +3353,6 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_PHP_MODERN_ONLY/$_PHP_MODERN_ONLY/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -5778,7 +5773,6 @@ fi
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
-
 elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
@@ -5788,9 +5782,9 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mrun "sleep 1"
   ###--------------------###
   if [ -L "/usr/local/bin/php" ] ; then
-    if [ -e "/usr/local/bin/php52" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+    if [ -x "/usr/local/bin/php52" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
       rm -f /usr/local/bin/php
-      if [ -e "/usr/local/bin/php52" ] ; then
+      if [ -x "/usr/local/bin/php52" ] ; then
         mv -f /usr/local/bin/php52 /usr/local/bin/php
       fi
     fi
@@ -5953,7 +5947,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
     update_php_legacy
   else
-    if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+    if [ -x "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
       ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
     fi
