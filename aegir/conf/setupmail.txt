@@ -105,7 +105,8 @@ support department.
 
 You can manage your databases via Chive Manager web interface,
 using access credentials (dbhost, dbname and dbpass) available
-in every site settings.php file.
+in every site drushrc.php file, located in the same directory
+as your site settings.php and local.settings.php files.
 
 Chive Manager URL: https://166.84.6.231
 
