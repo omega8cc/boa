@@ -923,6 +923,7 @@ _DRUSH6_VERSION=8.x-6.x-dev
 _GEOS_VERSION=3.3.7
 _GIT_VERSION=1.8.2
 _IMAGICK_VERSION=3.1.0RC2
+_IONCUBE_VERSION=4.4.0
 _JETTY_7_VERSION=7.6.10.v20130312
 _JETTY_8_VERSION=8.1.10.v20130312
 _JETTY_9_VERSION=9.0.0.v20130308
@@ -2698,7 +2699,7 @@ run_apt_update_again () {
 # Install IonCube.
 install_ioncube () {
   ###--------------------###
-  if [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     mkdir -p /usr/local/ioncube
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
@@ -2718,7 +2719,9 @@ install_ioncube () {
       wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86.tar.gz
       tar -xzf ioncube_loaders_lin_x86.tar.gz
     fi
+    rm -f /usr/local/ioncube/*
     cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+    echo "ioncube-$_IONCUBE_VERSION" > /var/log/ioncube-$_IONCUBE_VERSION.log
   fi
 }
 #
@@ -5966,6 +5969,9 @@ st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 if [ ! -L "/usr/bin/php-cli" ] ; then
   mv -f /usr/bin/php-cli /usr/bin/off-php-cli &> /dev/null
   ln -sf /opt/local/bin/php /usr/bin/php-cli
+fi
+if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] ; then
+  install_ioncube
 fi
 
 
