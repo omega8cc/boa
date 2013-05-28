@@ -147,7 +147,7 @@ sub global_action
        chomp($timedate);
        $hourminute=`date +%H%M`;
        chomp($hourminute);
-       if ($hourminute !~ /^0000/)
+       if ($hourminute !~ /^000/)
        {
          `kill -9 $PID`;
          `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
