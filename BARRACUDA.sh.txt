@@ -6015,11 +6015,11 @@ else
 fi
 if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
-    msg "INFO: Upgrading lshell, please wait..."
+    msg "INFO: Upgrading Limited Shell, please wait..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   else
-    msg "INFO: Installing lshell, please wait..."
+    msg "INFO: Installing Limited Shell, please wait..."
   fi
   mrun "sleep 1"
   cd /var/opt

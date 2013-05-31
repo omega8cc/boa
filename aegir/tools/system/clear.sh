@@ -29,5 +29,13 @@ if test -f /var/run/boa_run.pid ; then
 else
   rm -f /tmp/*error*
 fi
+if test -f /etc/resolvconf/run/interface/lo.pdnsd ; then
+  rm -f /etc/resolvconf/run/interface/eth*
+  resolvconf -u &> /dev/null
+fi
+if test -d /dev/disk ; then
+  swapoff -a
+  swapon -a
+fi
 touch /var/xdrago/log/clear.done
 ###EOF2013###
