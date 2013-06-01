@@ -612,18 +612,18 @@ restart_services () {
 #
 tune_web_server_config () {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "3" ] ; then
-    _LIM_FPM=3
+  if [ "$_LIM_FPM" -lt "7" ] ; then
+    _LIM_FPM=7
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
   let "_START_FPM = (($_CHILD_MAX_FPM - 4))"
-  if [ "$_START_FPM" -lt "2" ] ; then
-    _START_FPM=2
+  if [ "$_START_FPM" -lt "3" ] ; then
+    _START_FPM=3
   fi
-  let "_START_LEGACY_FPM = (($_LIM_FPM / 3))"
-  if [ "$_START_LEGACY_FPM" -lt "2" ] ; then
-    _START_LEGACY_FPM=2
+  let "_START_LEGACY_FPM = (($_LIM_FPM - 8))"
+  if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
+    _START_LEGACY_FPM=3
   fi
   if [ ! -z "$_START_FPM" ] ; then
     sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g"         /opt/etc/php-fpm.conf &> /dev/null
