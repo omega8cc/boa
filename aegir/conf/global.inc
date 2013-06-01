@@ -407,6 +407,11 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       }
     }
 
+    if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_user_register_protection.info')) {
+      $conf['user_email_verification'] = 1;
+      $conf['user_register'] = 2;
+    }
+
     if (empty($known_bot) && !$high_traffic && !$deny_anon) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
