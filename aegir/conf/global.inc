@@ -278,10 +278,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/advagg/advagg_bundler/advagg_bundler.module')) {
+  if (file_exists('./modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module')) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
     $conf['advagg_aggregate_mode'] = 1;
@@ -304,6 +301,36 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_page_cache_mode'] = 0;
     $conf['advagg_rebuild_on_flush'] = 0;
     $conf['advagg_server_addr'] = "-1";
+  }
+  elseif (file_exists('./modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module')) {
+    $conf['advagg_bundler_active'] = 1;
+    $conf['advagg_cache_level'] = 1;
+    $conf['advagg_combine_css_media'] = 0;
+    $conf['advagg_core_groups'] = 0;
+    $conf['advagg_css_compressor'] = 2;
+    $conf['advagg_css_inline_compressor'] = 2;
+    $conf['advagg_css_inline_compress_if_not_cacheable'] = 1;
+    $conf['advagg_enabled'] = 1;
+    $conf['advagg_gzip'] = 1;
+    $conf['advagg_ie_css_selector_limiter'] = 1;
+    $conf['advagg_js_compressor'] = 3;
+    $conf['advagg_js_compress_packer'] = 0;
+    $conf['advagg_js_inline_compressor'] = 3;
+    $conf['advagg_js_inline_compress_if_not_cacheable'] = 1;
+    $conf['preprocess_css'] = 1;
+    $conf['preprocess_js'] = 1;
+  }
+
+  if (file_exists('./modules/o_contrib/httprl/httprl.module') || file_exists('./modules/o_contrib_seven/httprl/httprl.module')) {
+    $conf['advagg_use_httprl'] = 1;
+    $conf['httprl_background_callback'] = 1;
+    $conf['httprl_connect_timeout'] = 3;
+    $conf['httprl_dns_timeout'] = 3;
+    $conf['httprl_global_timeout'] = "60";
+    $conf['httprl_server_addr'] = "-1";
+    $conf['httprl_timeout'] = "10";
+    $conf['httprl_ttfb_timeout'] = "5";
+    ### $conf['drupal_http_request_function'] = "httprl_override_core";
   }
 
   if (file_exists('./modules/o_contrib/purge/purge.inc')) {
