@@ -169,7 +169,7 @@ Octopus can install the platforms listed below:
 
  Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
  CiviCRM 4.1.6 ---------------- http://civicrm.org
- Commons 2.12 ----------------- http://drupal.org/project/commons
+ Commons 2.13 ----------------- http://drupal.org/project/commons
  Conference 1.0-rc2 ----------- http://drupal.org/project/cod
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.3 ---------- http://drupal.org/project/managingnews

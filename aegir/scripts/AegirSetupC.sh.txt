@@ -703,7 +703,7 @@ _F_CIVICRM6="CiviCRM $_CIVICRM6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COD="Conference 1.0-rc2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.8 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.18 $_SMALLCORE7 P.$_THIS_CORE"
-_F_D6COMMONS="Commons 2.12 $_SMALLCORE6 P.$_THIS_CORE"
+_F_D6COMMONS="Commons 2.13 $_SMALLCORE6 P.$_THIS_CORE"
 _F_D7COMMONS="Commons 3.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL5="Drupal $_DRUPAL5 P.$_THIS_CORE"
@@ -1204,7 +1204,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
       mv $_CORE/commons $_CORE_DISTRO
     fi
     replace_drupal6_core
-    if [ $_D6COMMONS = "6.x-2.12" ] ; then
+    if [ $_D6COMMONS = "6.x-2.13" ] ; then
       cd $_THIS_PRPATH/modules/contrib/og
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
       patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
