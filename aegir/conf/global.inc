@@ -1,6 +1,6 @@
 <?php # global settings.php
 
-error_reporting(0); // disable reporting errors by default - enable later only for "dev" subdomains
+error_reporting(0); // disable reporting errors by default - enable later only for foo.dev.domain subdomains
 
 // Fix for Mollom, CloudFlare and others running via Proxy.
 if (isset($_SERVER['REMOTE_ADDR'])) {
@@ -172,8 +172,8 @@ if (isset($_SERVER['SERVER_NAME'])) {
   }
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // deny known search bots on dev subdomains
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // deny known search bots on foo.dev.domain subdomains
   if (!empty($known_bot)) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
@@ -186,8 +186,8 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:dev\.|devel\.)/i", $_SERVER[
   unset($conf['preprocess_css']); // stop hardcoding css aggregation
   unset($conf['preprocess_js']);  // stop hardcoding js aggregation
   unset($conf['error_level']);    // stop hardcoding no errors on screen
-  $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for dev.domain
-  $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for dev.domain
+  $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for foo.dev.domain
+  $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for foo.dev.domain
   $is_dev = TRUE;
 }
 
@@ -444,7 +444,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     if (empty($known_bot) && !$high_traffic && !$deny_anon) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
-          preg_match("/(?:dev\.|devel\.)/", $_SERVER['HTTP_HOST'])) {
+          preg_match("/(?:\.dev\.|\.devel\.)/", $_SERVER['HTTP_HOST'])) {
         if (!isset($_COOKIE['OctopusNoCacheID'])) {
           $lifetime = '15';
           setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
