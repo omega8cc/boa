@@ -156,11 +156,6 @@ if ($conf['install_profile'] == 'martplug') {
   unset($conf['preprocess_js']);  // disable hardcoded js aggregation
 }
 
-// Prevent turning the feature server site into a spam machine
-if ($conf['install_profile'] == 'feature_server') {
-  $conf['user_register'] = 0; // force "Only site administrators can create new user accounts"
-}
-
 if (isset($_SERVER['SERVER_NAME'])) {
   if ($conf['install_profile'] == 'uberdrupal' ||
       $conf['install_profile'] == 'martplug' ||
@@ -434,9 +429,16 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       }
     }
 
-    if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_user_register_protection.info')) {
-      $conf['user_email_verification'] = 1;
-      $conf['user_register'] = 2;
+    // Prevent turning the feature server site into a spam machine.
+    // Disable self-registration also on hostmaster.
+    if ($conf['install_profile'] == 'feature_server' || $conf['install_profile'] == 'hostmaster') {
+      $conf['user_register'] = 0; // force "Only site administrators can create new user accounts"
+    }
+    else {
+      if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_user_register_protection.info')) {
+        $conf['user_email_verification'] = 1;
+        $conf['user_register'] = 2;
+      }
     }
 
     if (empty($known_bot) && !$high_traffic && !$deny_anon) {
