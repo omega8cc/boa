@@ -242,6 +242,11 @@ if test -f /var/run/boa_wait.pid ; then
   touch /var/xdrago/log/wait-counter
   exit 1
 else
+  if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+    n=$((RANDOM%800+80))
+    echo waiting $n sec
+    sleep $n
+  fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   echo "INFO: Removing old permissions-fix-* files"
   find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
