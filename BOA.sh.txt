@@ -62,6 +62,9 @@ setup ()
   if [ ! -e "/opt/local/bin/sqlmagic" ] ; then
     mkdir -p /opt/local/bin; ln -sf /usr/local/bin/sqlmagic /opt/local/bin/sqlmagic
   fi
+  if [ ! -e "/opt/local/bin/drushextra" ] ; then
+    mkdir -p /opt/local/bin; ln -sf /usr/local/bin/drushextra /opt/local/bin/drushextra
+  fi
   echo "### $_TODAY ###" >> /usr/local/bin/boa
   echo "### $_TODAY ###" >> /usr/local/bin/barracuda
   echo "### $_TODAY ###" >> /usr/local/bin/octopus
