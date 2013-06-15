@@ -159,7 +159,7 @@ Octopus can install the platforms listed below:
  Drupal 7.22.1 ---------------- http://drupal.org/drupal-7.22
  NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
  Open Deals 1.21 -------------- http://drupal.org/project/opendeals
- Open Outreach 1.0-rc11 ------- http://drupal.org/project/openoutreach
+ Open Outreach 1.0 ------------ http://drupal.org/project/openoutreach
  OpenChurch 1.11-beta11 ------- http://drupal.org/project/openchurch
  OpenPublish 3.0-beta7 -------- http://drupal.org/project/openpublish
  Panopoly 1.0-rc4 ------------- http://drupal.org/project/panopoly
