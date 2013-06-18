@@ -7399,6 +7399,36 @@ fi
 
 ###--------------------###
 #
+# Fix csf.uidignore file to whitelist important system uids when UID_INTERVAL != 0
+fix_lfd_uidignore () {
+  _THIS_FILE=/etc/csf/csf.uidignore
+  if [ -e "$_THIS_FILE" ] ; then
+    _CSF_UIDIGNORE_TEST=$(grep "pdnsd" $_THIS_FILE)
+    if [[ "$_CSF_UIDIGNORE_TEST" =~ "pdnsd" ]] ; then
+      true
+    else
+      echo "#root"          >> /etc/csf/csf.uidignore &> /dev/null
+      echo `id -u root`     >> /etc/csf/csf.uidignore &> /dev/null
+      echo "#pdnsd"         >> /etc/csf/csf.uidignore &> /dev/null
+      echo `id -u pdnsd`    >> /etc/csf/csf.uidignore &> /dev/null
+      echo "#postfix"       >> /etc/csf/csf.uidignore &> /dev/null
+      echo `id -u postfix`  >> /etc/csf/csf.uidignore &> /dev/null
+      echo "#www-data"      >> /etc/csf/csf.uidignore &> /dev/null
+      echo `id -u www-data` >> /etc/csf/csf.uidignore &> /dev/null
+    fi
+    if [ -e "/usr/sbin/named" ] ; then
+      _CSF_UIDIGNORE_TEST=$(grep "bind" $_THIS_FILE)
+      if [[ "$_CSF_UIDIGNORE_TEST" =~ "bind" ]] ; then
+        true
+      else
+        echo "#bind"        >> /etc/csf/csf.uidignore &> /dev/null
+        echo `id -u bind`   >> /etc/csf/csf.uidignore &> /dev/null
+      fi
+    fi
+    sed -i "/^$/d" $_THIS_FILE &> /dev/null
+  fi
+}
+#
 # Fix csf.fignore file to whitelist /tmp/drush_*
 fix_lfd_whitelist () {
   _THIS_FILE=/etc/csf/csf.fignore
@@ -7488,6 +7518,7 @@ if [ -e "/usr/sbin/csf" ] ; then
   fi
 fi
 fix_lfd_whitelist
+fix_lfd_uidignore
 
 ###--------------------###
 finale
