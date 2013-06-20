@@ -7449,7 +7449,11 @@ fix_lfd_whitelist () {
 }
 #
 csf_install () {
-  msg "INFO: Installing csf/lfd firewall, please wait..."
+  if [ "$_CSF_MODE" = "install" ] ; then
+    msg "INFO: Installing csf/lfd firewall, please wait..."
+  else
+    msg "INFO: Upgrading csf/lfd firewall, please wait..."
+  fi
   mrun "sleep 1"
   cd /var/opt
   rm -f /var/xdrago/log/lastFire
@@ -7470,7 +7474,11 @@ csf_install () {
   sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config &> /dev/null
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
   st_runner "service ssh restart" &> /dev/null
-  msg "INFO: csf/lfd firewall installation completed"
+  if [ "$_CSF_MODE" = "install" ] ; then
+    msg "INFO: csf/lfd firewall installation completed"
+  else
+    msg "INFO: csf/lfd firewall upgrade completed"
+  fi
   mrun "sleep 1"
   touch /var/log/csf_$_INSTALLER_VERSION.log
 }
@@ -7480,6 +7488,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
         true
+        _CSF_MODE=install
         csf_install
       else
         msg "INFO: csf/lfd firewall installation skipped"
@@ -7498,15 +7507,12 @@ if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.
   rm -f -r /etc/csf
 fi
 if [ -e "/usr/sbin/csf" ] ; then
-  if [ "$_SSH_PORT" = "22" ] ; then
-    true
-  else
-    if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-      if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] && [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
-        true
-      else
-        csf_install
-      fi
+  if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] || [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
+      true
+    else
+      _CSF_MODE=upgrade
+      csf_install
     fi
   fi
   if [ -e "/var/xdrago/log/lastFire" ] ; then
