@@ -244,63 +244,71 @@ this module is used without the need to enable it.
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].
 
-Contrib:
+Contrib [S]upported:
 
- admin ---------------------- [D6,D7] --- [S] [B] [SE]
- advagg --------------------- [D6,D7] --- [S] [B]
  ais ------------------------ [D7] ------ [S]
  audio ---------------------- [D5,D6] --- [S]
  backup_migrate ------------- [D6,D7] --- [S]
- blockcache_alter ----------- [D6,D7] --- [S] [B]
- boost ---------------------- [D6,D7] --- [S] [B]
- cache_backport ------------- [D6] ------ [S] [B] [NA]
- cdn ------------------------ [D6,D7] --- [S] [B]
  ckeditor ------------------- [D6,D7] --- [S]
- config_perms --------------- [D6,D7] --- [S] [B]
- css_emimage ---------------- [D6,D7] --- [S] [B]
- css_gzip ------------------- [D6] -------------- [FD]
- dbtuner -------------------- [D6] ------ [S] [B]
- devel ---------------------- [D6,D7] ----------- [FD]
- entitycache ---------------- [D7] ------ [S] [B] [FE]
- esi ------------------------ [D6,D7] --- [S] [B]
- expire --------------------- [D6,D7] ----------- [FD]
  fbconnect ------------------ [D6,D7] --- [S]
  fckeditor ------------------ [D6] ------ [S]
+ imagecache ----------------- [D6,D7] --- [S]
+ imagecache_external -------- [D6,D7] --- [S]
+ responsive_images ---------- [D7] ------ [S]
+ tinybrowser ---------------- [D6,D7] --- [S]
+ tinymce -------------------- [D6] ------ [S]
+ wysiwyg_spellcheck --------- [D6,D7] --- [S]
+
+Contrib [S]upported and [B]undled:
+
+ advagg --------------------- [D6,D7] --- [S] [B]
+ blockcache_alter ----------- [D6,D7] --- [S] [B]
+ boost ---------------------- [D6,D7] --- [S] [B]
+ cdn ------------------------ [D6,D7] --- [S] [B]
+ config_perms --------------- [D6,D7] --- [S] [B]
+ css_emimage ---------------- [D6,D7] --- [S] [B]
+ dbtuner -------------------- [D6] ------ [S] [B]
+ esi ------------------------ [D6,D7] --- [S] [B]
  filefield_nginx_progress --- [D6,D7] --- [S] [B]
  flood_control -------------- [D7] ------ [S] [B]
  force_password_change ------ [D6,D7] --- [S] [B]
  fpa ------------------------ [D6,D7] --- [S] [B]
  httprl --------------------- [D6,D7] --- [S] [B]
- imagecache ----------------- [D6,D7] --- [S]
- imagecache_external -------- [D6,D7] --- [S]
- javascript_aggregator ------ [D6] -------------- [FD]
- l10n_update ---------------- [D6,D7] ----------- [FD]
  login_security ------------- [D6,D7] --- [S] [B]
  nocurrent_pass ------------- [D7] ------ [S] [B]
- performance ---------------- [D6,D7] ----------- [FD]
  phpass --------------------- [D6] ------ [S] [B]
- poormanscron --------------- [D6] -------------- [FD]
  private_upload ------------- [D6] ------ [S] [B]
- purge ---------------------- [D6,D7] ----------- [FD]
  readonlymode --------------- [D6,D7] --- [S] [B]
- redis ---------------------- [D6,D7] --- [S] [B] [NA]
  reroute_email -------------- [D6,D7] --- [S] [B]
- responsive_images ---------- [D7] ------ [S]
- robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
- rubik ---------------------- [D6,D7] --- [S] [B] [SE]
  securesite ----------------- [D6,D7] --- [S] [B]
  site_verify ---------------- [D6,D7] --- [S] [B]
  speedy --------------------- [D7] ------ [S] [B]
- supercron ------------------ [D6] -------------- [FD]
  taxonomy_edge -------------- [D6,D7] --- [S] [B]
  textile -------------------- [D6,D7] --- [S] [B]
- tinybrowser ---------------- [D6,D7] --- [S]
- tinymce -------------------- [D6] ------ [S]
  variable_clean ------------- [D6,D7] --- [S] [B]
  vars ----------------------- [D7] ------ [S] [B]
  views_content_cache -------- [D6,D7] --- [S] [B]
  views404 ------------------- [D6,D7] --- [S] [B]
- wysiwyg_spellcheck --------- [D6,D7] --- [S]
+
+Contrib [NA], [S]oft[E]nabled and [F]orce[E]nabled:
+
+ admin ---------------------- [D6,D7] --- [S] [B] [SE]
+ cache_backport ------------- [D6] ------ [S] [B] [NA]
+ entitycache ---------------- [D7] ------ [S] [B] [FE]
+ redis ---------------------- [D6,D7] --- [S] [B] [NA]
+ robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
+ rubik ---------------------- [D6,D7] --- [S] [B] [SE]
+
+Contrib [F]orce[D]isabled:
+
+ css_gzip ------------------- [D6] -------------- [FD]
+ devel ---------------------- [D6,D7] ----------- [FD]
+ expire --------------------- [D6,D7] ----------- [FD]
+ javascript_aggregator ------ [D6] -------------- [FD]
+ l10n_update ---------------- [D6,D7] ----------- [FD]
+ poormanscron --------------- [D6] -------------- [FD]
+ purge ---------------------- [D6,D7] ----------- [FD]
+ supercron ------------------ [D6] -------------- [FD]
 
 Core:
 
@@ -308,6 +316,7 @@ Core:
  dblog ---------------------- [D6,D7] ----------- [FD]
  path_alias_cache ----------- [D6] -------------- [FE]
  syslog --------------------- [D6,D7] ----------- [FD]
+ performance ---------------- [D6,D7] ----------- [FD]
 
 Drush [E]xtensions [M]aster [S]atellite:
 
