@@ -506,19 +506,20 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/esi-7.x-3.0-alpha1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/esi-7.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-7.x-1.0-rc2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.12.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-7.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/reroute_email-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/reroute_email-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.1.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.8.tar.gz
@@ -526,6 +527,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.0-alpha2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-7.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
     git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
@@ -565,18 +567,18 @@ download_o_contrib_seven () {
 download_o_contrib_six () {
   touch update-021.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
-  wget -q -U iCab http://files.aegir.cc/dev/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.5.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-6.x-2.6.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/esi-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-6.x-3.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.12.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
@@ -589,7 +591,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-6.x-1.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r expire*
