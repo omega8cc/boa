@@ -2103,7 +2103,7 @@ tune_memory_limits () {
   fi
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
-    _USE_APC=512
+    _USE_OPC=512
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=6
     else
@@ -2117,7 +2117,7 @@ tune_memory_limits () {
   elif [ "$_USE" -ge "1024" ] ; then
     if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
-      _USE_APC=1024
+      _USE_OPC=1024
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=12
       else
@@ -2131,7 +2131,7 @@ tune_memory_limits () {
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
-        _USE_APC=1024
+        _USE_OPC=1024
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=12
         else
@@ -2142,9 +2142,11 @@ tune_memory_limits () {
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
+        sed -i "s/8000/64000/g"  /opt/local/etc/php53.ini &> /dev/null
+        sed -i "s/8000/64000/g"  /opt/etc/php.ini &> /dev/null
       else
         _USE_PHP=512
-        _USE_APC=256
+        _USE_OPC=256
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=3
         else
@@ -2158,7 +2160,7 @@ tune_memory_limits () {
       fi
     else
       _USE_PHP=256
-      _USE_APC=196
+      _USE_OPC=196
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=6
       else
@@ -2172,7 +2174,7 @@ tune_memory_limits () {
     fi
   else
     _USE_PHP="$_USE"
-    _USE_APC="$_USE"
+    _USE_OPC="$_USE"
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=3
     else
@@ -2184,9 +2186,9 @@ tune_memory_limits () {
       _L_NGINX_WORKERS=$_NGINX_WORKERS
     fi
   fi
-  _USE_JETTY="-Xmx${_USE_APC}m"
+  _USE_JETTY="-Xmx${_USE_OPC}m"
   if [ "$_VMFAMILY" = "VZ" ] ; then
-    _USE_APC=64
+    _USE_OPC=64
   fi
   let "_USE_FPM = (($_USE_PHP / 2))"
   if [ "$_USE_FPM" -lt "196" ] ; then
@@ -2196,15 +2198,15 @@ tune_memory_limits () {
     _USE_PHP=196
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/88/$_USE_APC/g"  /opt/etc/php.ini &> /dev/null
+  sed -i "s/88/$_USE_OPC/g"  /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/88/$_USE_APC/g"  /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/88/$_USE_OPC/g"  /opt/local/etc/php53.ini &> /dev/null
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
   sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
-  sed -i "s/88/$_USE_APC/g"  /etc/redis/redis.conf &> /dev/null
+  sed -i "s/88/$_USE_OPC/g"  /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
   fi
@@ -2810,22 +2812,10 @@ install_libmemcached () {
 #
 # Install extensions for PHP built from sources.
 install_php_scr_build_extensions () {
+  ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    ###--------------------###
-    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r zendopcache*
-    wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-    tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    true
   else
-    ###--------------------###
     msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
@@ -2881,6 +2871,21 @@ install_php_scr_build_extensions () {
 #
 # Install extensions for PHP installed from packages or built from sources.
 install_php_universal_extensions () {
+  ###--------------------###
+  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
+    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r zendopcache*
+    wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+    tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+  fi
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2963,24 +2968,10 @@ install_php_universal_extensions () {
 #
 # Update extensions for PHP built from sources.
 update_php_scr_build_extensions () {
+  ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    ###--------------------###
-    if [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-      mrun "sleep 1"
-      cd /var/opt
-      rm -f -r zendopcache*
-      wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-      tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
-    fi
+    true
   else
-    ###--------------------###
     if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
@@ -3035,6 +3026,21 @@ update_php_scr_build_extensions () {
 #
 # Update extensions for PHP installed from packages or built from sources.
 update_php_universal_extensions () {
+  ###--------------------###
+  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] && [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r zendopcache*
+    wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+    tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+  fi
   ###--------------------###
   if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
