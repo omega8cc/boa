@@ -2199,9 +2199,11 @@ tune_memory_limits () {
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/88/$_USE_OPC/g"  /opt/etc/php.ini &> /dev/null
+  sed -i "s/iso-.*-1/iso-8859-1/g"  /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/88/$_USE_OPC/g"  /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/iso-.*-1/iso-8859-1/g"  /opt/local/etc/php53.ini &> /dev/null
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
