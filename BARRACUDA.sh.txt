@@ -851,6 +851,12 @@ _NGINX_EXTRA_CONF=""
 _PHP_EXTRA_CONF=""
 
 ###
+### Change to NO if you prefer the old,
+### no longer maintained APC extension.
+###
+_PHP_ZEND_OPCACHE=YES
+
+###
 ### Change to YES to always compile in
 ### MongoDB driver. Works for PHP 5.3 only.
 ###
@@ -938,6 +944,7 @@ _REDIS_VERSION=2.6.13
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.2.0
+_ZEND_OPCACHE_VERSION=7.0.2
 if [ "$_USE_STOCK" = "YES" ] ; then
   _DRUSH_VERSION=7.x-5.9
 fi
@@ -1419,6 +1426,52 @@ fix_php_ini_newrelic_all () {
   fi
 }
 #
+# Fix FMP php.ini file to add opcache.so or apc.so
+fix_php_ini_opcache () {
+  if [ -e "$_THIS_FILE" ] ; then
+    if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
+      _OPCACHE_INI_TEST=$(grep "extension=opcache.so" $_THIS_FILE)
+      if [[ "$_OPCACHE_INI_TEST" =~ "extension=opcache.so" ]] ; then
+        true
+      else
+        echo "; ZEND OPCACHE"                     >> $_THIS_FILE
+        echo "extension=opcache.so"               >> $_THIS_FILE
+        echo "opcache.memory_consumption=88"      >> $_THIS_FILE
+        echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
+        echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
+        echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
+        echo "opcache.enable_file_override=1"     >> $_THIS_FILE
+        echo "opcache.inherited_hack=1"           >> $_THIS_FILE
+        echo "opcache.dups_fix=1"                 >> $_THIS_FILE
+        echo "opcache.log_verbosity_level=3"      >> $_THIS_FILE
+        echo "opcache.fast_shutdown=1"            >> $_THIS_FILE
+        echo ""                                   >> $_THIS_FILE
+      fi
+    else
+      _OPCACHE_INI_TEST=$(grep "extension=apc.so" $_THIS_FILE)
+      if [[ "$_OPCACHE_INI_TEST" =~ "extension=apc.so" ]] ; then
+        true
+      else
+        echo "; APC OPCACHE"                      >> $_THIS_FILE
+        echo "extension=apc.so"                   >> $_THIS_FILE
+        echo "apc.shm_size = 88M"                 >> $_THIS_FILE
+        echo "apc.stat = 1"                       >> $_THIS_FILE
+        echo "apc.stat_ctime = 1"                 >> $_THIS_FILE
+        echo "apc.include_once_override = 0"      >> $_THIS_FILE
+        echo ""                                   >> $_THIS_FILE
+      fi
+    fi
+  fi
+}
+#
+# Fix all FMP php.ini files to add ZEND_OPCACHE or APC
+fix_php_ini_opcache_all () {
+  _THIS_FILE=/opt/etc/php.ini
+  fix_php_ini_opcache
+  _THIS_FILE=/opt/local/etc/php53.ini
+  fix_php_ini_opcache
+}
+#
 # Fix php.ini file to add geos.so
 fix_php_ini_geos () {
   if [ -e "$_THIS_FILE" ] ; then
@@ -1579,6 +1632,7 @@ update_php_conf () {
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
+  fix_php_ini_opcache_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
     true
   else
@@ -2290,6 +2344,7 @@ barracuda_cnf () {
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+    echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
@@ -2565,6 +2620,12 @@ barracuda_cnf () {
     else
       echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     fi
+    _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE /root/.barracuda.cnf)
+    if [[ "$_PHP_ZEND_OPCACHE_TEST" =~ "_PHP_ZEND_OPCACHE" ]] ; then
+      true
+    else
+      echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
+    fi
     sleep 1
     _CHECK_HOST=`uname -n`
     _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue)
@@ -2747,19 +2808,35 @@ install_libmemcached () {
 #
 # Install extensions for PHP built from sources.
 install_php_scr_build_extensions () {
-  ###--------------------###
-  msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r APC*
-  wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
-  tar -xzf APC-$_APC_VERSION.tgz
-  cd /var/opt/APC-$_APC_VERSION
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
+  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
+    ###--------------------###
+    msg "INFO: Installing ZEND OPCACHE for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r zendopcache*
+    wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+    tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+  else
+    ###--------------------###
+    msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r APC*
+    wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
+    tar -xzf APC-$_APC_VERSION.tgz
+    cd /var/opt/APC-$_APC_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
+  fi
   ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -2884,20 +2961,38 @@ install_php_universal_extensions () {
 #
 # Update extensions for PHP built from sources.
 update_php_scr_build_extensions () {
-  ###--------------------###
-  if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r APC*
-    wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
-    tar -xzf APC-$_APC_VERSION.tgz
-    cd /var/opt/APC-$_APC_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "apc-$_APC_VERSION-$_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
+  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
+    ###--------------------###
+    if [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing ZEND OPCACHE upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r zendopcache*
+      wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    fi
+  else
+    ###--------------------###
+    if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r APC*
+      wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
+      tar -xzf APC-$_APC_VERSION.tgz
+      cd /var/opt/APC-$_APC_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "apc-$_APC_VERSION-$_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
+    fi
   fi
   ###--------------------###
   if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then

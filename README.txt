@@ -109,7 +109,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 database server with Chive manager.
 * Latest version of Nginx web server.
-* PHP-FPM 5.3.26 with APC, phpredis, uploadprogress and ionCube.
+* PHP-FPM 5.3.26 with Zend OPcache or APC, phpredis, uploadprogress and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited shell, SFTP and FTPS separate accounts per Octopus instance.
@@ -138,7 +138,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * MongoDB driver for PHP 5.3
 * GEOS extension for PHP 5.3 (experimental).
 * FFmpeg support.
-* PHP-FPM 5.2.17 with APC, phpredis, uploadprogress and ionCube (deprecated).
+* PHP-FPM 5.2.17 with Zend OPcache or APC and phpredis (deprecated).
 * Bind9 DNS server.
 * Webmin Control Panel.
 * SQL Buddy database manager.
