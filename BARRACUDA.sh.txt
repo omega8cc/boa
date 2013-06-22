@@ -1256,7 +1256,7 @@ install_redis_src () {
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-      if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
+      if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
         true
       else
         if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
@@ -1537,7 +1537,7 @@ update_php_conf () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
       true
     else
       cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -1547,7 +1547,7 @@ update_php_conf () {
     fi
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
       true
     else
       cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -1658,7 +1658,7 @@ update_php_conf () {
 update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] && [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
       true
     else
       cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -1685,7 +1685,7 @@ update_sql_conf () {
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] || [[ "$_THISHOST" =~ "ocean.nyc.host8.biz" ]] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_THISHOST" =~ "ocean.nyc.host8.biz" ]] ; then
       true
     else
       sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf &> /dev/null
@@ -2289,7 +2289,7 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
+        if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
           true
         else
           _BUILD_FROM_SRC=YES
@@ -2379,7 +2379,7 @@ barracuda_cnf () {
       _CHECK_OS=U12
     fi
     if [ "$_CHECK_OS" = "U12" ] ; then
-      if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
+      if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
         true
       else
         _R_M=BND
@@ -2388,7 +2388,7 @@ barracuda_cnf () {
       fi
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
+      if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
         true
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
@@ -2639,7 +2639,7 @@ barracuda_cnf () {
       _CHECK_OS=U12
     fi
     if [ "$_CHECK_OS" = "U12" ] ; then
-      if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
+      if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
         true
       else
         _R_M=BND
@@ -2648,7 +2648,7 @@ barracuda_cnf () {
       fi
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-      if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
+      if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
         true
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
@@ -2684,7 +2684,7 @@ barracuda_cnf () {
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-        if [[ "$_CHECK_HOST" =~ "ocean.ams.host8.biz" ]] ; then
+        if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
           true
         else
           _BUILD_FROM_SRC=YES
@@ -3176,7 +3176,7 @@ install_php_modern () {
     st_runner "make --quiet install" 2> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
       true
     else
       cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -7613,7 +7613,7 @@ if [ -e "/usr/sbin/csf" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.
 fi
 if [ -e "/usr/sbin/csf" ] ; then
   if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "ocean.ams.host8.biz" ]] || [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] || [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
       true
     else
       _CSF_MODE=upgrade
