@@ -1434,8 +1434,8 @@ fix_php_ini_opcache () {
       if [[ "$_OPCACHE_INI_TEST" =~ "extension=opcache.so" ]] ; then
         true
       else
-        echo "; ZEND OPCACHE"                     >> $_THIS_FILE
-        echo "extension=opcache.so"               >> $_THIS_FILE
+        echo "; Zend OPcache"                     >> $_THIS_FILE
+        echo "zend_extension=\"$_OPCACHE_SO\""    >> $_THIS_FILE
         echo "opcache.memory_consumption=88"      >> $_THIS_FILE
         echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
         echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
@@ -1452,7 +1452,7 @@ fix_php_ini_opcache () {
       if [[ "$_OPCACHE_INI_TEST" =~ "extension=apc.so" ]] ; then
         true
       else
-        echo "; APC OPCACHE"                      >> $_THIS_FILE
+        echo "; APC"                              >> $_THIS_FILE
         echo "extension=apc.so"                   >> $_THIS_FILE
         echo "apc.shm_size = 88M"                 >> $_THIS_FILE
         echo "apc.stat = 1"                       >> $_THIS_FILE
@@ -1464,11 +1464,13 @@ fix_php_ini_opcache () {
   fi
 }
 #
-# Fix all FMP php.ini files to add ZEND_OPCACHE or APC
+# Fix all FMP php.ini files to add Zend OPcache or APC
 fix_php_ini_opcache_all () {
   _THIS_FILE=/opt/etc/php.ini
+  _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
   fix_php_ini_opcache
   _THIS_FILE=/opt/local/etc/php53.ini
+  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-20090626/opcache.so"
   fix_php_ini_opcache
 }
 #
@@ -2810,7 +2812,7 @@ install_libmemcached () {
 install_php_scr_build_extensions () {
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
     ###--------------------###
-    msg "INFO: Installing ZEND OPCACHE for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r zendopcache*
@@ -2964,7 +2966,7 @@ update_php_scr_build_extensions () {
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
     ###--------------------###
     if [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing ZEND OPCACHE upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r zendopcache*
