@@ -34,11 +34,14 @@ sub makeactions
 local(@MYARR) = `grep -i forbidden /var/log/lsh/* | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     if ($line =~ /(syntax|path|command)/i || ($line =~ /(shell escape)/i && $line !~ /exit/i)) {
+      if ($line =~ /(var\/log\/lsh)/i) {
+        ($log, $line) = split(/.log:/,$line);
+      }
       local($DATEQ, $TIMEQ, $rest) = split(/\s+/,$line);
-      chomp($line);
       local($TIMEX, $rest) = split(/\,/,$TIMEQ);
       chomp($DATEQ);
       chomp($TIMEX);
+      chomp($line);
       $TIMEX =~ s/[^0-9\:]//g;
       if ($TIMEX =~ /^[0-9]/) {
         local($HOUR, $MIN, $SEC) = split(/:/,$TIMEX);
