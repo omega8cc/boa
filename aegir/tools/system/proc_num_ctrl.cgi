@@ -188,16 +188,16 @@ sub mysqld_action
   local($PROCS) = `grep -c processor /proc/cpuinfo`;
   chomp($PROCS);
   $MAXCPU = $PROCS."00";
-  if ($PROCS > 4)
+  if ($PROCS > 2)
   {
-    $MAXCPU = 400;
+    $MAXCPU = 200;
   }
-  $MAXCPU = $MAXCPU - 50;
+  $MAXCPU = $MAXCPU - 2;
   local(@SQLARR) = `top -n 1 | grep mysqld 2>&1`;
   foreach $line (@SQLARR) {
     if ($line !~ /mysqld_safe/)
     {
-      local($NONE, $PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
+      local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
       if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
         if ($USER =~ /mysql/ && $COMMAND =~ /mysqld/)
         {
@@ -206,7 +206,7 @@ sub mysqld_action
             `bash /var/xdrago/move_sql.sh`;
             $timedate=`date +%y%m%d-%H%M`;
             chomp($timedate);
-            `echo $timedate >> /var/xdrago/log/mysql.forced.restart.log`;
+            `echo "$timedate $CPU $MAXCPU" >> /var/xdrago/log/mysql.forced.restart.log`;
             print "B LINE is $line";
           }
           else {
