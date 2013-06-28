@@ -21,6 +21,13 @@ _MODULES_OFF_LESS_SEVEN="syslog dblog l10n_update performance devel"
 _MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
 
 ###-------------SYSTEM-----------------###
+fix_robots_txt () {
+  if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
+    wget -q -U iCab http://$Dom/robots.txt -O $Dir/files/robots.txt
+    echo >> $Dir/files/robots.txt
+  fi
+}
+
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
     su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
@@ -161,6 +168,7 @@ process () {
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       fix_o_contrib_symlink
       fix_boost_cache
+      fix_robots_txt
       if [ "$_PERMISSIONS" = "YES" ] ; then
         fix_permissions
       fi
