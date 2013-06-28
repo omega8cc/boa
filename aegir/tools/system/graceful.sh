@@ -28,8 +28,8 @@ action()
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  rm -f /tmp/{*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,drupal*,ns*,superfish*,context*,.htaccess}
-  rm -f -r /tmp/{drush*,mapshape*}
+  rm -f /tmp/{boost*,*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,drupal*,ns*,superfish*,context*,.htaccess}
+  rm -f -r /tmp/{drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root}
   rm -f /opt/tomcat6/logs/*
   rm -f /var/log/jetty{7,8,9}/*
   `killall -9 java`;
