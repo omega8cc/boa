@@ -156,6 +156,8 @@ fix_permissions () {
   find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
   chown $_THIS_HM_USER:www-data $Dir/private &> /dev/null
   chown $_THIS_HM_USER:www-data $Dir/private/{files,temp} &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate/{manual,scheduled} &> /dev/null
   chown -L -R $_THIS_HM_USER:www-data $Dir/private/config &> /dev/null
 }
 
