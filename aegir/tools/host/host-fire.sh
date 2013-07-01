@@ -17,10 +17,10 @@ for i in `dir -d /vservers/*` ; do
       if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
         echo "$_IP already denied or allowed on port 22"
       else
-        echo "Deny $_IP on ports 21,22,25,80 in the next 1h"
+        echo "Deny $_IP on ports 21,22,443,80 in the next 1h"
         csf -td $_IP 3600 -p 21
         csf -td $_IP 3600 -p 22
-        csf -td $_IP 3600 -p 25
+        csf -td $_IP 3600 -p 443
         csf -td $_IP 3600 -p 80
       fi
       sleep 1
@@ -34,10 +34,10 @@ for i in `dir -d /vservers/*` ; do
       if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
         echo "$_IP already denied or allowed on port 80"
       else
-        echo "Deny $_IP on ports 21,22,25,80 in the next 1h"
+        echo "Deny $_IP on ports 21,22,443,80 in the next 1h"
         csf -td $_IP 3600 -p 21
         csf -td $_IP 3600 -p 22
-        csf -td $_IP 3600 -p 25
+        csf -td $_IP 3600 -p 443
         csf -td $_IP 3600 -p 80
       fi
       sleep 1
@@ -51,27 +51,10 @@ for i in `dir -d /vservers/*` ; do
       if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
         echo "$_IP already denied or allowed on port 21"
       else
-        echo "Deny $_IP on ports 21,22,25,80 in the next 1h"
+        echo "Deny $_IP on ports 21,22,443,80 in the next 1h"
         csf -td $_IP 3600 -p 21
         csf -td $_IP 3600 -p 22
-        csf -td $_IP 3600 -p 25
-        csf -td $_IP 3600 -p 80
-      fi
-      sleep 1
-    done
-  fi
-  sleep 1
-  if [ -e "$i/var/xdrago/monitor/smtp.log" ] ; then
-    for _IP in `cat $i/var/xdrago/monitor/smtp.log | cut -d '#' -f1 | sort`
-    do
-      _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
-      if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
-        echo "$_IP already denied or allowed on port 25"
-      else
-        echo "Deny $_IP on ports 21,22,25,80 in the next 1h"
-        csf -td $_IP 3600 -p 21
-        csf -td $_IP 3600 -p 22
-        csf -td $_IP 3600 -p 25
+        csf -td $_IP 3600 -p 443
         csf -td $_IP 3600 -p 80
       fi
       sleep 1

@@ -68,7 +68,6 @@ sleep 5
 perl /var/xdrago/monitor/check/escapecheck
 perl /var/xdrago/monitor/check/hackcheck
 perl /var/xdrago/monitor/check/hackftp
-perl /var/xdrago/monitor/check/hackmail
 perl /var/xdrago/monitor/check/scan_nginx
 perl /var/xdrago/monitor/check/locked
 perl /var/xdrago/monitor/check/sqlcheck
