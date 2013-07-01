@@ -127,6 +127,7 @@ up_action ()
         fi
         echo waiting $n sec
         sleep $n
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
         if [ "$silent" = "system" ] ; then
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
@@ -154,6 +155,7 @@ up_action ()
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                        /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"      /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                        /root/.barracuda.cnf &> /dev/null
         bash /var/backups/BARRACUDA.sh.txt
       fi
     fi
