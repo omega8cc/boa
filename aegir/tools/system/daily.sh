@@ -21,6 +21,12 @@ _MODULES_OFF_LESS_SEVEN="syslog dblog l10n_update performance devel"
 _MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
 
 ###-------------SYSTEM-----------------###
+fix_user_register_protection () {
+  if [ ! -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] && [ -e "/data/disk/$_THIS_HM_USER/static/control/enable_user_register_protection.info" ] ; then
+    touch $Plr/sites/all/modules/enable_user_register_protection.info
+  fi
+}
+
 fix_robots_txt () {
   if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
     curl -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
@@ -183,6 +189,7 @@ process () {
       esac
       fix_boost_cache
       fix_clear_cache
+      fix_user_register_protection
       if [ "$_PERMISSIONS" = "YES" ] ; then
         fix_permissions
       fi
