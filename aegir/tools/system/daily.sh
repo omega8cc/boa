@@ -22,7 +22,7 @@ _MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip
 
 ###-------------SYSTEM-----------------###
 fix_user_register_protection () {
-  if [ ! -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] && [ -e "/data/disk/$_THIS_HM_USER/static/control/enable_user_register_protection.info" ] ; then
+  if [ ! -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] && [ -e "$User/static/control/enable_user_register_protection.info" ] ; then
     touch $Plr/sites/all/modules/enable_user_register_protection.info
   fi
 }
