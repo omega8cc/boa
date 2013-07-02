@@ -435,9 +435,16 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       $conf['user_register'] = 0; // force "Only site administrators can create new user accounts"
     }
     else {
-      if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_user_register_protection.info')) {
-        $conf['user_email_verification'] = 1;
+      $conf['user_email_verification'] = 1;
+      if (file_exists('sites/all/modules/enable_user_register_protection.info')) {
+        $conf['user_register'] = 0;
+      }
+      else {
         $conf['user_register'] = 2;
+      }
+      if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_user_register_protection.info')) {
+        unset($conf['user_register']);
+        unset($conf['user_email_verification']);
       }
     }
 
