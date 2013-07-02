@@ -273,7 +273,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (file_exists('./modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module')) {
+  if ($drupal_six && (file_exists('./modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
+      file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
     $conf['advagg_aggregate_mode'] = 1;
@@ -297,7 +298,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_rebuild_on_flush'] = 0;
     $conf['advagg_server_addr'] = "-1";
   }
-  elseif (file_exists('./modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module')) {
+  elseif ($drupal_seven && (file_exists('./modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
+          file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['advagg_bundler_active'] = 1;
     $conf['advagg_cache_level'] = 1;
     $conf['advagg_combine_css_media'] = 0;
