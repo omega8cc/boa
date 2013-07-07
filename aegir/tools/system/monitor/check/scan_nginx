@@ -65,6 +65,9 @@ sub makeactions
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
           print "Not Counted Static Request URI: $line\n";
         }
+        elsif ($line =~ /GET \/timemachine\/[0-9]{4}\//) {
+          print "Not Counted Static Request URI: $line\n";
+        }
         else {
           $li_cnt{$VISITOR}++;
         }
@@ -92,6 +95,9 @@ sub makeactions
           $im_px_cnt{$PROXY}++;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
+          print "Not Counted Static Request URI: $line\n";
+        }
+        elsif ($line =~ /GET \/timemachine\/[0-9]{4}\//) {
           print "Not Counted Static Request URI: $line\n";
         }
         else {
