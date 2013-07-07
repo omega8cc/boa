@@ -94,7 +94,7 @@ detect_vanilla_core () {
       true
     else
       if [ -e "$Plr/modules/watchdog" ] ; then
-        if [[ "$_VM_TEST" =~ ".host8." ]] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
+        if [[ "$_VM_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
           echo Vanilla Drupal 5.x Platform detected in $Plr
           read_account_data
           send_notice_core
@@ -102,7 +102,7 @@ detect_vanilla_core () {
       else
         if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
           echo Vanilla Drupal 6.x Platform detected in $Plr
-          if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+          if [[ "$_VM_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
             read_account_data
             send_notice_core
           fi
@@ -156,20 +156,37 @@ send_notice_sql () {
 Hello,
 
 You are using more resources than allocated with your subscription.
-You have currently $_CLIENT_CORES Aegir Cores.
+You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
 Your allowed databases space is $_CLIENT_SQL_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
+or by converting their tables to MyISAM format on command line
+when in the site directory with:
+
+  $ sqlmagic convert to-myisam
+
 or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
+Please don't ignore this message! If you are using more resources
+than allocated in your subscription for more than 30 calendar days
+without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
+WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
+all past due overages plus \$100 USD reconnection fee.
+
+We provide generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return
+we expect that you will not abuse this feature.
+
+Thank you in advance.
+
 --
-This e-mail has been sent by your Aegir resources usage monitor.
+This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   else
@@ -177,20 +194,37 @@ EOF
 Hello,
 
 You are using more resources than allocated with your subscription.
-You have currently $_CLIENT_CORES Aegir Cores.
+You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
 Your allowed databases space is $_CLIENT_SQL_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
+or by converting their tables to MyISAM format on command line
+when in the site directory with:
+
+  $ sqlmagic convert to-myisam
+
 or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
+Please don't ignore this message! If you are using more resources
+than allocated in your subscription for more than 30 calendar days
+without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
+WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
+all past due overages plus \$100 USD reconnection fee.
+
+We provide generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return
+we expect that you will not abuse this feature.
+
+Thank you in advance.
+
 --
-This e-mail has been sent by your Aegir resources usage monitor.
+This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   fi
@@ -207,7 +241,7 @@ send_notice_disk () {
 Hello,
 
 You are using more resources than allocated with your subscription.
-You have currently $_CLIENT_CORES Aegir Cores.
+You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
 Your allowed disk space is $_CLIENT_DSK_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
@@ -220,8 +254,20 @@ You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
+Please don't ignore this message! If you are using more resources
+than allocated in your subscription for more than 30 calendar days
+without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
+WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
+all past due overages plus \$100 USD reconnection fee.
+
+We provide generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return
+we expect that you will not abuse this feature.
+
+Thank you in advance.
+
 --
-This e-mail has been sent by your Aegir resources usage monitor.
+This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   else
@@ -229,7 +275,7 @@ EOF
 Hello,
 
 You are using more resources than allocated with your subscription.
-You have currently $_CLIENT_CORES Aegir Cores.
+You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
 Your allowed disk space is $_CLIENT_DSK_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
@@ -242,8 +288,20 @@ You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
+Please don't ignore this message! If you are using more resources
+than allocated in your subscription for more than 30 calendar days
+without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
+WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
+all past due overages plus \$100 USD reconnection fee.
+
+We provide generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return
+we expect that you will not abuse this feature.
+
+Thank you in advance.
+
 --
-This e-mail has been sent by your Aegir resources usage monitor.
+This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   fi
@@ -252,18 +310,27 @@ EOF
 
 check_limits () {
   read_account_data
-  _CLIENT_SQL_LIMIT=256
-  _CLIENT_DSK_LIMIT=5120
   if [ "$_CLIENT_OPTION" = "SSD" ] ; then
     _CLIENT_SQL_LIMIT=512
     _CLIENT_DSK_LIMIT=10240
+    _SQL_LIMIT=$(($_CLIENT_SQL_LIMIT + 128))
+    _DSK_LIMIT=$(($_CLIENT_DSK_LIMIT + 2560))
+  else
+    _CLIENT_SQL_LIMIT=256
+    _CLIENT_DSK_LIMIT=5120
+    _SQL_LIMIT=$(($_CLIENT_SQL_LIMIT + 64))
+    _DSK_LIMIT=$(($_CLIENT_DSK_LIMIT + 1280))
   fi
   let "_CLIENT_SQL_LIMIT *= $_CLIENT_CORES"
   let "_CLIENT_DSK_LIMIT *= $_CLIENT_CORES"
+  let "_SQL_LIMIT *= $_CLIENT_CORES"
+  let "_DSK_LIMIT *= $_CLIENT_CORES"
   echo _CLIENT_CORES is $_CLIENT_CORES
   echo _CLIENT_SQL_LIMIT is $_CLIENT_SQL_LIMIT
+  echo _SQL_LIMIT is $_SQL_LIMIT
   echo _CLIENT_DSK_LIMIT is $_CLIENT_DSK_LIMIT
-  if [ "$SumDatH" -gt "$_CLIENT_SQL_LIMIT" ] ; then
+  echo _DSK_LIMIT is $_DSK_LIMIT
+  if [ "$SumDatH" -gt "$_SQL_LIMIT" ] ; then
     if [ ! -e "$User/log/CANCELLED" ] ; then
       send_notice_sql
     fi
@@ -271,7 +338,7 @@ check_limits () {
   else
     echo SQL Usage for $_THIS_HM_USER below limits
   fi
-  if [ "$HomSizH" -gt "$_CLIENT_DSK_LIMIT" ] ; then
+  if [ "$HomSizH" -gt "$_DSK_LIMIT" ] ; then
     if [ ! -e "$User/log/CANCELLED" ] ; then
       send_notice_disk
     fi
@@ -314,10 +381,10 @@ action () {
         echo HomSiz is $HomSiz or $HomSizH MB
         echo SumDir is $SumDir or $SumDirH MB
         echo SumDat is $SumDat or $SumDatH MB
-        if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+        if [[ "$_VM_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
           check_limits
           if [ -e "$_THIS_HM_SITE" ] ; then
-            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION' &> /dev/null"
+            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION | SSD+SAS System' &> /dev/null"
             su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
           fi
         else
