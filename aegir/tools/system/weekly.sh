@@ -117,8 +117,8 @@ count () {
   do
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    echo Dom is $Dom
     if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+      echo Dom is $Dom
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       detect_vanilla_core
