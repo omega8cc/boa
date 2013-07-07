@@ -21,9 +21,23 @@ _MODULES_OFF_LESS_SEVEN="syslog dblog l10n_update performance devel"
 _MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
 
 ###-------------SYSTEM-----------------###
+
 fix_user_register_protection () {
   if [ ! -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] && [ -e "$User/static/control/enable_user_register_protection.info" ] ; then
     touch $Plr/sites/all/modules/enable_user_register_protection.info
+  fi
+  if [ ! -e "$Dir/modules/disable_user_register_protection.info" ] ; then
+    Prm=$(drush vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
+    Prm=${Prm//[^0-2]/}
+    echo Prm user_register for $Dom is $Prm
+    if [ -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] ; then
+      drush vset --always-set user_register 0 &> /dev/null
+    else
+      if [ "$Prm" = "1" ] || [ -z "$Prm" ] ; then
+        drush vset --always-set user_register 2 &> /dev/null
+      fi
+      drush vset --always-set user_email_verification 1 &> /dev/null
+    fi
   fi
 }
 
@@ -89,6 +103,7 @@ fix_modules () {
       *)
       if [ -e "$Dir/drushrc.php" ] ; then
         cd $Dir
+        fix_user_register_protection
         if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
           su -s /bin/bash $_THIS_HM_USER -c "drush @hostmaster dis cache syslog dblog -y &> /dev/null"
           echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
@@ -189,7 +204,6 @@ process () {
       esac
       fix_boost_cache
       fix_clear_cache
-      fix_user_register_protection
       if [ "$_PERMISSIONS" = "YES" ] ; then
         fix_permissions
       fi

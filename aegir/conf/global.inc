@@ -436,19 +436,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     if ($conf['install_profile'] == 'feature_server' || $conf['install_profile'] == 'hostmaster') {
       $conf['user_register'] = 0; // force "Only site administrators can create new user accounts"
     }
-    else {
-      $conf['user_email_verification'] = 1;
-      if (file_exists('sites/all/modules/enable_user_register_protection.info')) {
-        $conf['user_register'] = 0;
-      }
-      else {
-        $conf['user_register'] = 2;
-      }
-      if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_user_register_protection.info')) {
-        unset($conf['user_register']);
-        unset($conf['user_email_verification']);
-      }
-    }
 
     if (empty($known_bot) && !$high_traffic && !$deny_anon) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
