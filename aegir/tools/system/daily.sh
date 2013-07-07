@@ -62,7 +62,7 @@ fix_boost_cache () {
 
 fix_o_contrib_symlink () {
   if [ "$_O_CONTRIB" != "NO" ] && [ ! -e "$Plr/core" ] ; then
-    symlinks -d $Plr/modules
+    symlinks -d $Plr/modules &> /dev/null
     if [ -e "$Plr/web.config" ] ; then
       if [ ! -e "$Plr/modules/o_contrib_seven" ] ; then
         ln -sf $_O_CONTRIB_SEVEN $Plr/modules/o_contrib_seven &> /dev/null
@@ -70,7 +70,7 @@ fix_o_contrib_symlink () {
     else
       if [ -e "$Plr/modules/watchdog" ] ; then
         if [ -e "$Plr/modules/o_contrib" ] ; then
-          rm -f $Plr/modules/o_contrib
+          rm -f $Plr/modules/o_contrib &> /dev/null
         fi
       else
         if [ ! -e "$Plr/modules/o_contrib" ] ; then
@@ -172,8 +172,8 @@ process () {
   do
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
-    echo Dom is $Dom
     if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+      echo Dom is $Dom
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       fix_o_contrib_symlink
