@@ -162,7 +162,7 @@ platforms and features to help you manage your Drupal sites.
 
   ### Drupal 7.22.1
 
-  CiviCRM 4.2.8 ---------------- http://civicrm.org
+  CiviCRM 4.3.5 ---------------- http://civicrm.org
   Commerce 1.18 ---------------- http://drupal.org/project/commerce_kickstart
   Commerce 2.8 ----------------- http://drupal.org/project/commerce_kickstart
   Drupal 7.22.1 ---------------- http://drupal.org/drupal-7.22

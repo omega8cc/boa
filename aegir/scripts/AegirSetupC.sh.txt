@@ -890,9 +890,9 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.2-d7.make ./
-    $_DRUSHCMD make civicrm-4.2-d7.make $_THIS_DISTRO &> /dev/null
-    rm -f civicrm-4.2-d7.make
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.3-d7.make ./
+    $_DRUSHCMD make civicrm-4.3-d7.make $_THIS_DISTRO &> /dev/null
+    rm -f civicrm-4.3-d7.make
     rename_drupal7_profiles
     create_dirs
     themes_for_d7
