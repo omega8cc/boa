@@ -269,6 +269,7 @@ Contrib [S]upported and [B]undled:
  css_emimage ---------------- [D6,D7] --- [S] [B]
  dbtuner -------------------- [D6] ------ [S] [B]
  esi ------------------------ [D6,D7] --- [S] [B]
+ expire --------------------- [D6,D7] --- [S] [B]
  filefield_nginx_progress --- [D6,D7] --- [S] [B]
  flood_control -------------- [D7] ------ [S] [B]
  force_password_change ------ [D6,D7] --- [S] [B]
@@ -278,6 +279,7 @@ Contrib [S]upported and [B]undled:
  nocurrent_pass ------------- [D7] ------ [S] [B]
  phpass --------------------- [D6] ------ [S] [B]
  private_upload ------------- [D6] ------ [S] [B]
+ purge ---------------------- [D6,D7] --- [S] [B]
  readonlymode --------------- [D6,D7] --- [S] [B]
  reroute_email -------------- [D6,D7] --- [S] [B]
  securesite ----------------- [D6,D7] --- [S] [B]
@@ -303,11 +305,9 @@ Contrib [F]orce[D]isabled:
 
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
- expire --------------------- [D6,D7] ----------- [FD]
  javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
- purge ---------------------- [D6,D7] ----------- [FD]
  supercron ------------------ [D6] -------------- [FD]
 
 Core:
