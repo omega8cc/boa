@@ -182,7 +182,7 @@ platforms and features to help you manage your Drupal sites.
   Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
   Pressflow 6.28.1 ------------- http://pressflow.org
   ProsePoint 0.46 -------------- http://prosepoint.org
-  Ubercart 2.11.1 -------------- http://drupal.org/project/ubercart
+  Ubercart 2.12.1 -------------- http://drupal.org/project/ubercart
 
   All other not listed above platforms are available with latest
   D6 or D7 core, even if there were no new distro version released.

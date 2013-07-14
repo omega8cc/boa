@@ -176,7 +176,7 @@ Octopus can install the platforms listed below:
  Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
  Pressflow 6.28.1 (int) ------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
- Ubercart 2.11.1 (int) -------- http://drupal.org/project/ubercart
+ Ubercart 2.12.1 (int) -------- http://drupal.org/project/ubercart
 
 All D7 platforms have been enhanced using Drupal 7.22.1 +Extra core:
 https://github.com/omega8cc/7x/tree/7.22.1
