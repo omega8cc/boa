@@ -89,7 +89,10 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
   rm -f /vservers/*/var/xdrago/monitor/ssh.log
   rm -f /vservers/*/var/xdrago/monitor/web.log
   rm -f /vservers/*/var/xdrago/monitor/ftp.log
+  csf -e
   csf -q
 fi
 ntpdate pool.ntp.org
+swapoff -a
+swapon -a
 ###EOF2013###

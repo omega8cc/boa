@@ -88,6 +88,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   rm -f /var/xdrago/monitor/web.log
   rm -f /var/xdrago/monitor/ftp.log
   ntpdate pool.ntp.org
+  csf -e
   csf -q
 fi
 ###EOF2013###
