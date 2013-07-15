@@ -102,7 +102,7 @@ hostmaster_mv_up () {
   for e in $_D_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
-      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/
+      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
   done
 }
