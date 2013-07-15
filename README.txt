@@ -333,6 +333,7 @@ Provision [E]xtensions [M]aster [S]atellite:
  provision_site_backup ------ [D6,D7] --- [S] [B] [ES]
  provision_tasks_extra ------ [D6,D7] --- [S] [B] [ES]
  remote_import -------------- [D6,D7] --- [S] [B] [ES]
+ security_check ------------- [D6,D7] --- [S] [B] [EM,ES]
 
 Hostmaster [E]xtensions [S]atellite:
 
