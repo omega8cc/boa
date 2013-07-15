@@ -35,6 +35,8 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
       // You always want that one second or you will be vulnerable to DoS attacks.
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+      header("Connection: close");
+      exit;
     }
   }
   else {
@@ -45,6 +47,8 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
       // You always want that one second or you will be vulnerable to DoS attacks.
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: http://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+      header("Connection: close");
+      exit;
     }
   }
 }
