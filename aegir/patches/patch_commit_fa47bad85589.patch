@@ -44,5 +44,5 @@ index 396e309a3e746794759bb910edeb500bea38aa41..cee2eb0acaabb7304cd4cc9e61f5d81d
    root         /var/www/nginx-default;
    index        index.html index.htm;
 -
-   ### Dont't reveal Aegir front-end URL here.
+   ### Do not reveal Aegir front-end URL here.
  }
