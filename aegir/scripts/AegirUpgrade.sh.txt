@@ -98,31 +98,13 @@ hostmaster_mv_up () {
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/provision_cdn-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
-  mv -f $_ROOT/.drush/provision $_ROOT/backups/system/provision-pre-$_DISTRO-$_NOW &> /dev/null
-  mv -f $_ROOT/.drush/drush_make $_ROOT/backups/system/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
-  if [ -e "$_ROOT/.drush/clean_missing_modules" ] ; then
-    mv -f $_ROOT/.drush/clean_missing_modules $_ROOT/backups/system/clean_missing_modules-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/drush_ecl" ] ; then
-    mv -f $_ROOT/.drush/drush_ecl $_ROOT/backups/system/drush_ecl-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_boost" ] ; then
-    mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_cdn" ] ; then
-    mv -f $_ROOT/.drush/provision_cdn $_ROOT/backups/system/provision_cdn-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
-    mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/security_check" ] ; then
-    mv -f $_ROOT/.drush/security_check $_ROOT/backups/system/security_check-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
+  _D_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  for e in $_D_EXT; do
+    if [ -e "$_ROOT/.drush/$e" ] ; then
+      mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/
+    fi
+  done
 }
 #
 hostmaster_dr_up () {

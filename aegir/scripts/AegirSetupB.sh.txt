@@ -138,55 +138,18 @@ msg() {
   echo "Octopus [`date`] ==> $*"
 }
 #
-# Success msg
-success () {
-	msg "$1 Succeeded"
-}
-#
-# Error msg
-fatal () {
-	echo " "
-	msg "Fatal Error Occurred: $1"
-	msg "Cannot continue installation"
-	touch /opt/tmp/status-AegirSetupB-FAIL
-	exit 1
-}
-#
-# Perform an action, log it, and run the spinner throughout
-runner () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		success "$CMD:"
-		return 0
-	else
-		rm busy
-		sleep 1
-		echo "$CMD failed.  Error (if any): $?"
-		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
-		tail -15 $_LOG
-		return 1
-	fi
-}
-#
 # Small spinner
 mrun () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	fi
+  CMD="$1"
+  touch busy
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  fi
 }
 #
 # stop on error
@@ -251,20 +214,12 @@ mkdir -p $_ROOT/distro/$_DISTRO
 mkdir -p $_ROOT/src/$_DISTRO
 mkdir -p $_ROOT/src/{modules,themes}
 mkdir -p $_ROOT/{tools,log,u,backups,platforms,clients}
-chmod 0711 $_ROOT/aegir/distro &> /dev/null
-chmod 0711 $_ROOT/distro/$_DISTRO &> /dev/null
-chmod 0711 $_ROOT/aegir &> /dev/null
-chmod 0711 $_ROOT/tools &> /dev/null
-chmod 0700 $_ROOT/u &> /dev/null
-chmod 0711 $_ROOT/distro &> /dev/null
-chmod 0711 $_ROOT/platforms &> /dev/null
-chmod 0700 $_ROOT/log &> /dev/null
-chmod 0700 $_ROOT/src &> /dev/null
+chmod 0700 $_ROOT/{log,src,u} &> /dev/null
 chmod 0700 $_ROOT/src/$_DISTRO &> /dev/null
-chmod 0700 $_ROOT/src/modules &> /dev/null
-chmod 0700 $_ROOT/src/themes &> /dev/null
-chmod 0750 $_ROOT/backups &> /dev/null
-chmod 0750 $_ROOT/clients &> /dev/null
+chmod 0700 $_ROOT/src/{modules,themes} &> /dev/null
+chmod 0711 $_ROOT/{aegir,aegir/distro,distro,platforms,tools} &> /dev/null
+chmod 0711 $_ROOT/distro/$_DISTRO &> /dev/null
+chmod 0750 $_ROOT/{backups,clients} &> /dev/null
 
 if [ "$_STATUS" = "UPGRADE" ] ; then
  #msg "$_STATUS B: UPGRADE in progress..."
@@ -335,39 +290,14 @@ update_php_cli_drush
 if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
-  if [ -e "$_ROOT/.drush/provision" ] ; then
-    mv -f $_ROOT/.drush/provision $_ROOT/backups/system/provision-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/drush_make" ] ; then
-    mv -f $_ROOT/.drush/drush_make $_ROOT/backups/system/drush_make-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/clean_missing_modules" ] ; then
-    mv -f $_ROOT/.drush/clean_missing_modules $_ROOT/backups/system/clean_missing_modules-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/drush_ecl" ] ; then
-    mv -f $_ROOT/.drush/drush_ecl $_ROOT/backups/system/drush_ecl-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_boost" ] ; then
-    mv -f $_ROOT/.drush/provision_boost $_ROOT/backups/system/provision_boost-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_cdn" ] ; then
-    mv -f $_ROOT/.drush/provision_cdn $_ROOT/backups/system/provision_cdn-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_civicrm" ] ; then
-    mv -f $_ROOT/.drush/provision_civicrm $_ROOT/backups/system/provision_civicrm-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_site_backup" ] ; then
-    mv -f $_ROOT/.drush/provision_site_backup $_ROOT/backups/system/provision_site_backup-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/provision_tasks_extra" ] ; then
-    mv -f $_ROOT/.drush/provision_tasks_extra $_ROOT/backups/system/provision_tasks_extra-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/registry_rebuild" ] ; then
-    mv -f $_ROOT/.drush/registry_rebuild $_ROOT/backups/system/registry_rebuild-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
-  if [ -e "$_ROOT/.drush/security_check" ] ; then
-    mv -f $_ROOT/.drush/security_check $_ROOT/backups/system/security_check-pre-$_DISTRO-$_NOW &> /dev/null
-  fi
+  mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
+  _B_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  for e in $_B_EXT; do
+    if [ -e "$_ROOT/.drush/$e" ] ; then
+      mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/
+    fi
+  done
 fi
 
 if $_DRUSHCMD help > /dev/null ; then
@@ -428,15 +358,10 @@ else
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
   msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
-  get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
-  get_dev_ext "drush_ecl.tar.gz"             &> /dev/null
-  get_dev_ext "provision_boost.tar.gz"       &> /dev/null
-  get_dev_ext "provision_cdn.tar.gz"         &> /dev/null
-  get_dev_ext "provision_civicrm.tar.gz"     &> /dev/null
-  get_dev_ext "provision_site_backup.tar.gz" &> /dev/null
-  get_dev_ext "provision_tasks_extra.tar.gz" &> /dev/null
-  get_dev_ext "registry_rebuild.tar.gz"      &> /dev/null
-  get_dev_ext "security_check.tar.gz"        &> /dev/null
+  _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  for e in $_G_EXT; do
+    get_dev_ext "$e.tar.gz" &> /dev/null
+  done
   cd $_ROOT/.drush/provision
   get_dev_ext "remote_import.tar.gz"         &> /dev/null
   cd $_ROOT/.drush
@@ -480,9 +405,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   fi
   mrun "sleep 1"
   cd $_AEGIR_ROOT
-  mkdir -p sites/$_DOMAIN/files/tmp
-  mkdir -p sites/$_DOMAIN/files/js
-  mkdir -p sites/$_DOMAIN/files/css
+  mkdir -p sites/$_DOMAIN/files/{tmp,js,css}
   chmod 2770 -R sites/$_DOMAIN/files &> /dev/null
   chgrp -R $_WEBG sites/$_DOMAIN/files &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
@@ -587,25 +510,25 @@ mkdir -p $_AEGIR_ROOT/sites/all/{modules,themes,libraries}
 cd $_AEGIR_ROOT/profiles/hostmaster/modules
 get_dev_ext "aegir_custom_settings.tar.gz" &> /dev/null
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_civicrm_cron.git  &> /dev/null
-  rm -f -r hosting_civicrm_cron/.git
   git clone --branch master git://github.com/omega8cc/hosting_advanced_cron.git  &> /dev/null
   rm -f -r hosting_advanced_cron/.git
-  git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
-  rm -f -r hosting_remote_import/.git
-  git clone --branch master git://github.com/omega8cc/hosting_tasks_extra.git    &> /dev/null
-  rm -f -r hosting_tasks_extra/.git
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_cdn.git           &> /dev/null
   rm -f -r hosting_cdn/.git
+  git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_civicrm_cron.git  &> /dev/null
+  rm -f -r hosting_civicrm_cron/.git
+  git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
+  rm -f -r hosting_remote_import/.git
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_site_backup.git   &> /dev/null
   rm -f -r hosting_site_backup/.git
+  git clone --branch master git://github.com/omega8cc/hosting_tasks_extra.git    &> /dev/null
+  rm -f -r hosting_tasks_extra/.git
 else
-  get_dev_ext "hosting_civicrm_cron.tar.gz"  &> /dev/null
   get_dev_ext "hosting_advanced_cron.tar.gz" &> /dev/null
-  get_dev_ext "hosting_remote_import.tar.gz" &> /dev/null
-  get_dev_ext "hosting_tasks_extra.tar.gz"   &> /dev/null
   get_dev_ext "hosting_cdn.tar.gz"           &> /dev/null
+  get_dev_ext "hosting_civicrm_cron.tar.gz"  &> /dev/null
+  get_dev_ext "hosting_remote_import.tar.gz" &> /dev/null
   get_dev_ext "hosting_site_backup.tar.gz"   &> /dev/null
+  get_dev_ext "hosting_tasks_extra.tar.gz"   &> /dev/null
 fi
 if [ ! -e "$_AEGIR_ROOT/modules/o_contrib" ] ; then
   ln -sf /data/all/001/o_contrib $_AEGIR_ROOT/modules/o_contrib &> /dev/null
