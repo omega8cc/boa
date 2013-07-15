@@ -1658,7 +1658,7 @@ update_php_conf () {
 update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
+    if [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
       true
     else
       cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
