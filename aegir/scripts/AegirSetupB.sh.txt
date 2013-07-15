@@ -545,9 +545,13 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   sed -i "s/Backup schedule settings/Backup schedule/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_queue/hosting_backup_queue.module &> /dev/null
   sed -i "s/Base path/Platforms path/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   if [[ "$_DOMAIN" =~ ".host8." ]] ; then
-    $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
-    $_DRUSHCMD @hostmaster pm-uninstall hosting_backup_queue -y &> /dev/null
-    rm -f -r $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_queue
+    if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
+      true
+    else
+      $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
+      $_DRUSHCMD @hostmaster pm-uninstall hosting_backup_queue -y &> /dev/null
+      rm -f -r $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_queue
+    fi
   fi
   cd $_AEGIR_ROOT/sites/$_DOMAIN
   if [ "$_CLIENT_CORES" -ge "1" ] ; then
