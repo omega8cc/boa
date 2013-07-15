@@ -283,6 +283,7 @@ Contrib [S]upported and [B]undled:
  readonlymode --------------- [D6,D7] --- [S] [B]
  reroute_email -------------- [D6,D7] --- [S] [B]
  securesite ----------------- [D6,D7] --- [S] [B]
+ security_review ------------ [D6,D7] --- [S] [B]
  site_verify ---------------- [D6,D7] --- [S] [B]
  speedy --------------------- [D7] ------ [S] [B]
  taxonomy_edge -------------- [D6,D7] --- [S] [B]
