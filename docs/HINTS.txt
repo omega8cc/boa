@@ -67,3 +67,37 @@ location ^~ /some-literal-path/no-regex-here {
   }
 }
 
+###
+### Site specific 301 redirect for various legacy .php URIs with parent literal
+### locations to stop searching for (and using) other regex based locations.
+###
+location ^~ /services {
+  location ~* ^/services {
+    if ($host ~* ^(www\.)?(foo\.com)$) {
+      rewrite ^/services/accounting\.php$ $scheme://$host/node/18 permanent;
+      rewrite ^/services/assurance\.php$  $scheme://$host/node/11 permanent;
+      rewrite ^/services/audit\.php$      $scheme://$host/node/11 permanent;
+      rewrite ^/services/taxation\.php$   $scheme://$host/node/92 permanent;
+      rewrite ^/services/wealth\.php$     $scheme://$host/node/15 permanent;
+      rewrite ^/services\.php$            $scheme://$host/node/17 permanent;
+    }
+    try_files $uri @cache;
+  }
+  try_files $uri @cache;
+}
+location ^~ /our_team {
+  location ~* ^/our_team {
+    if ($host ~* ^(www\.)?(foo\.com)$) {
+      rewrite ^/our_team\.php$ $scheme://$host/node/10 permanent;
+      rewrite ^/our_team$      $scheme://$host/node/10 permanent;
+    }
+    try_files $uri @cache;
+  }
+  try_files $uri @cache;
+}
+location = /about_us.php {
+  if ($host ~* ^(www\.)?(foo\.com)$) {
+    rewrite ^ $scheme://$host/node/19 permanent;
+  }
+  return 403;
+}
