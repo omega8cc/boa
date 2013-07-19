@@ -23,6 +23,14 @@ echo rotate > /var/log/redis/redis-server.log
 echo rotate > /var/log/mysql/sql-slow-query.log
 if test -f /root/.high_traffic.cnf ; then
   echo rotate > /var/log/nginx/access.log
+else
+  touch /var/run/fmp_wait.pid
+  if [ -e "/etc/init.d/php-fpm" ] ; then
+    /etc/init.d/php-fpm reload
+  fi
+  /etc/init.d/php53-fpm reload
+  sleep 8
+  rm -f /var/run/fmp_wait.pid
 fi
 if test -f /var/run/boa_run.pid ; then
   sleep 1
