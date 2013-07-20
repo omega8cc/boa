@@ -4098,14 +4098,14 @@ update_sources_list () {
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
-            curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+            curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
           fi
         fi
         if [ "$_REL_VERSION" = "squeeze" ] ; then
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
           else
-            curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+            curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
           fi
           if [ "$_FROM_SOURCES" = "NO" ] ; then
             echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
@@ -4132,20 +4132,20 @@ update_sources_list () {
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+        curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
       fi
     else
       if [ "$_REL_VERSION" = "wheezy" ] ; then
         if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
-          curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+          curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
         fi
       else
         if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
         else
-          curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+          curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
         fi
       fi
     fi
