@@ -492,7 +492,7 @@ upgrade_contrib_less () {
   rm -f *.tar.gz
   cd views
   # http://drupal.org/node/1766338#comment-6445882
-  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  wget -q -U iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   if [ -e "../apps" ] ; then
     cd ../apps
@@ -531,7 +531,7 @@ upgrade_contrib_more () {
   rm -f *.tar.gz
   cd views
   # http://drupal.org/node/1766338#comment-6445882
-  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  wget -q -U iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   cd ../apps
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
@@ -556,7 +556,7 @@ upgrade_contrib_some () {
   rm -f *.tar.gz
   cd views
   # http://drupal.org/node/1766338#comment-6445882
-  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  wget -q -U iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   if [ -e "../apps" ] ; then
     cd ../apps
@@ -1144,7 +1144,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
       rm -f *.tar.gz
       cd views
       # http://drupal.org/node/1766338#comment-6445882
-      wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+      wget -q -U iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
       patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
       cd ../
     fi
@@ -1754,14 +1754,14 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib context-6.x-3.1 boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.10 features-6.x-1.2 feeds-6.x-1.0-beta13 imageapi-6.x-1.10 imagecache-6.x-2.x-dev libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.6 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
     cd views
     # http://drupal.org/node/853864#comment-3898996
-    wget -q -U iCab http://drupal.org/files/issues/views-853864_2.patch
+    wget -q -U iCab https://drupal.org/files/issues/views-853864_2.patch
     patch -p0 < views-853864_2.patch &> /dev/null
     # http://drupal.org/node/402944#comment-5370400
-    wget -q -U iCab http://drupal.org/files/views-unpack_options-cache-6.2-51.patch
+    wget -q -U iCab https://drupal.org/files/views-unpack_options-cache-6.2-51.patch
     patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
+    wget -q -U iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     cd $_THIS_PRPATH/themes
     rm -f -r $_THIS_PRPATH/themes/{rubik,tao}
@@ -2142,7 +2142,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     fi
     cd $_THIS_PRPATH/modules/contrib/imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
+    wget -q -U iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     replace_drupal6_core
     enable_drupal6_contrib
@@ -2422,7 +2422,7 @@ build_openpublic () {
   fi
   cd $_THIS_PRPATH/modules/contrib/views
   # http://drupal.org/node/1766338#comment-6445882
-  wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+  wget -q -U iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   upgrade_contrib_more
   create_dirs
@@ -2802,7 +2802,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     patch -p1 < $_THIS_DINAME-1167276-reroll.patch &> /dev/null
     cd $_THIS_PRPATH/modules/imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    wget -q -U iCab http://drupal.org/files/issues/imagecache-1243258-5.patch
+    wget -q -U iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     cd $_THIS_PRPATH/themes
     wget -q -U iCab http://ftp.drupal.org/files/projects/fusion-6.x-1.x-dev.tar.gz
@@ -2883,7 +2883,7 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     rm -f *.tar.gz
     cd $_THIS_PRPATH/modules/views
     # http://drupal.org/node/1766338#comment-6445882
-    wget -q -U iCab http://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+    wget -q -U iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     create_dirs
     themes_for_d7
