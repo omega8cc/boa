@@ -4204,7 +4204,7 @@ fi
 
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: We need to install wget, axel, aptitude, netcat & git first, please wait..."
+  msg "INFO: We need to install some basic tools first, please wait..."
   if [ -e "/etc/debian_version" ] ; then
     _L_DEB_TEST=`grep "^5." /etc/debian_version 2> /dev/null`
     if [ ! -z "$_L_DEB_TEST" ] ; then
@@ -4218,7 +4218,11 @@ if [ "$_STATUS" = "INIT" ] ; then
   $_INITINS locales &> /dev/null
   sleep 1
   fix_locales
-  $_INITINS wget git-core axel netcat aptitude &> /dev/null
+  $_INITINS wget &> /dev/null
+  $_INITINS git-core &> /dev/null
+  $_INITINS netcat &> /dev/null
+  $_INITINS aptitude &> /dev/null
+  $_INITINS axel &> /dev/null
 fi
 
 
