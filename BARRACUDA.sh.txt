@@ -4480,6 +4480,10 @@ elif [ "$_THIS_OS" = "Jolicloud" ] ; then
 else
   not_supported_os
 fi
+echo " "
+msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
+echo " "
+mrun "sleep 1"
 
 
 ###--------------------###
@@ -4770,10 +4774,6 @@ if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
 else
   _FROM_SOURCES=YES
 fi
-echo " "
-msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
-echo " "
-mrun "sleep 1"
 
 
 ###--------------------###
