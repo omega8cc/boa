@@ -238,7 +238,6 @@ EOF
 set_pin_priority ()
 {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
-    cd
     _THIS_OS=$(grep "Debian" /etc/issue.net)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
       _THIS_OS=Debian

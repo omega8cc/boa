@@ -120,7 +120,6 @@ init_start ()
 set_pin_priority ()
 {
   if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
-    cd
     _THIS_OS=$(grep "Debian" /etc/issue.net)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
       _THIS_OS=Debian
@@ -140,7 +139,7 @@ set_pin_priority ()
       wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt
       cp -af etc-apt-preferences-ubuntu.txt /etc/apt/preferences
     fi
-    rm -f etc-apt-preferences-*
+    rm -f /var/backups/etc-apt-preferences-*
   fi
 }
 
