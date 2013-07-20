@@ -4810,21 +4810,16 @@ install_pdnsd_cache () {
   st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  if [ ! -L "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] ; then
+  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] ; then
+    rm -f -r /run/resolvconf
+    rm -f -r /etc/resolvconf/run
+    ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
     if [ ! -e "/lib/init/rw/resolvconf/interface" ] ; then
       mkdir -p /lib/init/rw/resolvconf/interface
     fi
-    if [ ! -L "/etc/resolvconf/run" ] ; then
-      mv -f /etc/resolvconf/run /var/backups/resolvconf-run-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -sf /lib/init/rw/resolvconf /etc/resolvconf/run
-    fi
-    if [ ! -L "/run/resolvconf" ] ; then
-      mv -f /run/resolvconf /var/backups/resolvconf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -sf /lib/init/rw/resolvconf /run/resolvconf
-    fi
     rm -f /lib/init/rw/resolvconf/postponed-update
     touch /lib/init/rw/resolvconf/enable-updates
-    mv -f /etc/resolvconf/resolv.conf.d/tail /var/backups/resolvconf-tail-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
   fi
   if [ -e "/etc/resolvconf/run" ] ; then
@@ -4835,7 +4830,14 @@ install_pdnsd_cache () {
     sed -i "s/^nameserver.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
     echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/resolv.conf
     sed -i "/^$/d" /etc/resolvconf/run/resolv.conf &> /dev/null
-    ln -sf /etc/resolvconf/run/resolv.conf /etc/resolv.conf
+    if [ -e "/etc/resolvconf/run/resolv.conf" ] ; then
+      rm -f /etc/resolv.conf
+      ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
+    else
+      rm -f /etc/resolv.conf
+      echo "nameserver 8.8.8.8" > /etc/resolv.conf
+      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+    fi
     rm -f /etc/resolvconf/run/interface/eth*
     resolvconf -u &> /dev/null
   else
