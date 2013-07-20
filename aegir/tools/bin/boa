@@ -104,6 +104,15 @@ init_start ()
     if [ ! -e "/etc/resolv.conf" ] ; then
       echo "nameserver 8.8.8.8" >/etc/resolv.conf
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    else
+      _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
+      if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
+        true
+      else
+        rm -f /etc/resolv.conf
+        echo "nameserver 8.8.8.8" >/etc/resolv.conf
+        echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      fi
     fi
   fi
 }
