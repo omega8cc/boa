@@ -130,8 +130,8 @@ set_pin_priority ()
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt
-        cp -af etc-apt-preferences-debian.txt /etc/apt/preferences
+        wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt
+        cp -af etc-apt-preferences-squeeze.txt /etc/apt/preferences
       else
         wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt
         cp -af etc-apt-preferences-wheezy.txt /etc/apt/preferences

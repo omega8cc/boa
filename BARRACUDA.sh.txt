@@ -4142,10 +4142,10 @@ update_sources_list () {
           curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
         fi
       else
-        if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt" ] ; then
-          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt /etc/apt/preferences
+        if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
         else
-          curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt" -o /etc/apt/preferences
+          curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
         fi
       fi
     fi
@@ -4499,10 +4499,8 @@ if [ "$_STATUS" = "INIT" ] ; then
       sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
     fi
   fi
-  sleep 1
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
-  sleep 1
   fix_locales
   $_INITINS wget &> /dev/null
   $_INITINS git-core &> /dev/null
