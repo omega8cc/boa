@@ -5107,6 +5107,11 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   service cron stop &> /dev/null
   mrun "sleep 60"
+  mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+  echo "nameserver 8.8.8.8" >/etc/resolv.conf
+  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+  cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
   msg "HINT: Run tail -f $_LOG"
@@ -5142,9 +5147,10 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
       ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
     fi
   fi
-  st_runner "apt-get -y remove svscan" &> /dev/null
-  st_runner "apt-get -y remove pound" &> /dev/null
+  st_runner "apt-get purge svscan -y" &> /dev/null
+  st_runner "apt-get purge pound -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
   if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
@@ -5164,6 +5170,9 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
       update-rc.d -f $link remove &> /dev/null
     done
   fi
+  st_runner "aptitude update -y" &> /dev/null
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   echo rotate > /var/log/syslog &> /dev/null
   mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
@@ -5178,6 +5187,10 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
   service cron stop &> /dev/null
   mrun "sleep 60"
+  mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+  echo "nameserver 8.8.8.8" >/etc/resolv.conf
+  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+  cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
   msg "HINT: Run tail -f $_LOG"
@@ -5192,7 +5205,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     killall -9 java &> /dev/null
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y remove collectd" 2> /dev/null
+    st_runner "apt-get -y remove collectd" &> /dev/null
   fi
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
@@ -5200,11 +5213,13 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
     fi
   fi
-  st_runner "apt-get -y remove libc-client2007b-dev" 2> /dev/null
-  st_runner "apt-get -y remove svscan" 2> /dev/null
-  st_runner "apt-get -y remove pound" 2> /dev/null
-  st_runner "apt-get -y remove udev" 2> /dev/null
-  st_runner "apt-get -y remove lsb-release" 2> /dev/null
+  st_runner "apt-get remove libc-client2007b-dev -y" &> /dev/null
+  st_runner "apt-get purge svscan -y" &> /dev/null
+  st_runner "apt-get purge pound -y" &> /dev/null
+  if [[ "$_L_VM_TEST" =~ beng ]] ; then
+    st_runner "apt-get remove udev -y" &> /dev/null
+  fi
+  st_runner "apt-get remove lsb-release -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
@@ -5229,6 +5244,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       update-rc.d -f $link remove &> /dev/null
     done
   fi
+  st_runner "aptitude update -y" &> /dev/null
+  st_runner "dpkg --configure --force-all -a" 2> /dev/null
+  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   echo rotate > /var/log/syslog &> /dev/null
   mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful - congrats!"
