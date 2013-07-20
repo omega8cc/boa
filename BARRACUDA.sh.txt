@@ -6636,7 +6636,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "adduser --system --group --home /var/aegir aegir"
   st_runner "adduser aegir www-data"
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
-  ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf
+  ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
   update_nginx_conf
   cd /var/aegir
   _AEGIR_SCRIPT="AegirSetupM.sh.txt"
