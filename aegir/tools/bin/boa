@@ -101,6 +101,31 @@ init_start ()
     cd /var/backups
     rm -f /var/backups/BARRACUDA.sh*
     rm -f /var/backups/OCTOPUS.sh*
+    if [ ! -e "/etc/resolv.conf" ] ; then
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    fi
+  fi
+}
+
+set_pin_priority ()
+{
+  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue" ] ; then
+    cd
+    _THIS_OS=$(grep "Debian" /etc/issue)
+    if [[ "$_THIS_OS" =~ "Debian" ]] ; then
+      _THIS_OS=Debian
+    else
+      _THIS_OS=Ubuntu
+    fi
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt
+      cp -af etc-apt-preferences-debian.txt /etc/apt/preferences
+    elif [ "$_THIS_OS" = "Ubuntu" ] ; then
+      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt
+      cp -af etc-apt-preferences-ubuntu.txt /etc/apt/preferences
+    fi
+    rm -f etc-apt-preferences-*
   fi
 }
 
@@ -121,6 +146,7 @@ init_finish ()
 init_setup ()
 {
   init_start
+  set_pin_priority
   if [ "$kind" = "local" ] ; then
     mode="$email"
     email="$fqdn"
@@ -170,27 +196,6 @@ EOF
   fi
 }
 
-set_pin_priority ()
-{
-  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue" ] ; then
-    cd
-    _THIS_OS=$(grep "Debian" /etc/issue)
-    if [[ "$_THIS_OS" =~ "Debian" ]] ; then
-      _THIS_OS=Debian
-    else
-      _THIS_OS=Ubuntu
-    fi
-    if [ "$_THIS_OS" = "Debian" ] ; then
-      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt
-      cp -af etc-apt-preferences-debian.txt /etc/apt/preferences
-    elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt
-      cp -af etc-apt-preferences-ubuntu.txt /etc/apt/preferences
-    fi
-    rm -f etc-apt-preferences-*
-  fi
-}
-
 check_root ()
 {
   if [ `whoami` = "root" ] ; then
@@ -205,7 +210,6 @@ check_root ()
 
 check_root
 check_date
-set_pin_priority
 
 case "$1" in
   in-stable) version="$1"
