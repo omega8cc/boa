@@ -95,6 +95,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 ### OTHER REQUIREMENTS
 
+* Wget must be installed.
 * The Git standard port 9418 must be open.
 * SMTP standard port 25 (or SMTP relay) must be open for outgoing connections.
 * Minimum 512 MB of RAM.
