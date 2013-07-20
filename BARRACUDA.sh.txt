@@ -4418,10 +4418,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   apt-get update &> /dev/null
   $_INITINS locales &> /dev/null
   fix_locales
-  $_INITINS lsb-release 2> /dev/null
-  $_INITINS dnsutils 2> /dev/null
-  $_INITINS netcat 2> /dev/null
-  $_INITINS curl 2> /dev/null
+  $_INITINS lsb-release &> /dev/null
+  $_INITINS dnsutils &> /dev/null
+  $_INITINS netcat &> /dev/null
+  $_INITINS curl &> /dev/null
 fi
 
 
@@ -4504,9 +4504,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   $_INITINS locales &> /dev/null
   sleep 1
   fix_locales
-  $_INITINS wget 2> /dev/null
-  $_INITINS git-core 2> /dev/null
-  $_INITINS aptitude 2> /dev/null
+  $_INITINS wget &> /dev/null
+  $_INITINS git-core &> /dev/null
+  $_INITINS aptitude &> /dev/null
   $_INITINS axel &> /dev/null
 fi
 
