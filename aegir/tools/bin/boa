@@ -110,17 +110,23 @@ init_start ()
 
 set_pin_priority ()
 {
-  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue" ] ; then
+  if [ ! -e "/etc/apt/preferences" ] && [ -e "/etc/issue.net" ] ; then
     cd
-    _THIS_OS=$(grep "Debian" /etc/issue)
+    _THIS_OS=$(grep "Debian" /etc/issue.net)
     if [[ "$_THIS_OS" =~ "Debian" ]] ; then
       _THIS_OS=Debian
     else
       _THIS_OS=Ubuntu
     fi
     if [ "$_THIS_OS" = "Debian" ] ; then
-      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt
-      cp -af etc-apt-preferences-debian.txt /etc/apt/preferences
+      _THIS_RV=$(grep "6.0" /etc/issue.net)
+      if [[ "$_THIS_RV" =~ "6.0" ]] ; then
+        wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt
+        cp -af etc-apt-preferences-debian.txt /etc/apt/preferences
+      else
+        wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt
+        cp -af etc-apt-preferences-wheezy.txt /etc/apt/preferences
+      fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
       wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt
       cp -af etc-apt-preferences-ubuntu.txt /etc/apt/preferences

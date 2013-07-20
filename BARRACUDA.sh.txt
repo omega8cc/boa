@@ -2374,7 +2374,7 @@ barracuda_cnf () {
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
-    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue)
+    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue.net)
     if [[ "$_CHECK_OS" =~ "Ubuntu 12.04 LTS" ]] ; then
       _CHECK_OS=U12
     fi
@@ -2634,7 +2634,7 @@ barracuda_cnf () {
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
-    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue)
+    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue.net)
     if [[ "$_CHECK_OS" =~ "Ubuntu 12.04 LTS" ]] ; then
       _CHECK_OS=U12
     fi
@@ -2749,7 +2749,6 @@ run_apt_update_again () {
   msg "INFO: Running aptitude full-upgrade again, please wait..."
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
-  st_runner "aptitude clean -y" &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ ! -e "/var/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "aptitude remove mytop -y" &> /dev/null
@@ -3943,8 +3942,219 @@ get_drush_versions () {
   chmod 755 /opt/tools/drush/*/drush/drush.php
   cd /opt/tmp
 }
-###--------------------###
+#
+# Update packages sources list.
+update_sources_list () {
+  ###--------------------###
+  if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
+    _APT_SOURCES_REWRITE=NO
+    if [ ! -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
+      _APT_SOURCES_REWRITE=YES
+    fi
+    if [ ! -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
+      _APT_SOURCES_REWRITE=YES
+    fi
+    if [ "$_REL_VERSION" = "lenny" ] ; then
+      sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
+      sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+      sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+    fi
+    if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
+      run_apt_update_again
+      _LOC_REL_VERSION=squeeze
+      _REL_VERSION=wheezy
+      _APT_SOURCES_REWRITE=YES
+    elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
+      run_apt_update_again
+      _LOC_REL_VERSION=lenny
+      _REL_VERSION=squeeze
+      _APT_SOURCES_REWRITE=YES
+    fi
+    if [ "$_REL_VERSION" = "squeeze" ] ; then
+      _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list)
+      if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]] ; then
+        true
+      else
+        _APT_SOURCES_REWRITE=YES
+      fi
+      if [ "$_DB_SERVER" = "Percona" ] ; then
+        if [ ! -e "/etc/apt/sources.list.d/percona.list" ]; then
+          _APT_SOURCES_REWRITE=YES
+        fi
+      else
+        if [ ! -e "/etc/apt/sources.list.d/mariadb.list" ]; then
+          _APT_SOURCES_REWRITE=YES
+        fi
+      fi
+    fi
+  else
+    _APT_SOURCES_REWRITE=YES
+  fi
+  if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
+    msg "INFO: Updating apt sources"
+    mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    if [ "$_THIS_OS" = "Ubuntu" ] ; then
+      if [ "$_AUTOPILOT" = "YES" ] ; then
+        if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
+          _MIRROR=archive.ubuntu.com
+        else
+          _MIRROR=$_LOCAL_UBUNTU_MIRROR
+        fi
+      else
+        if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
+          msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
+          mkdir -p /opt/tmp/helpers
+          cd /opt/tmp/helpers
+          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/ffmirror.sh.txt
+          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/apt-list-ubuntu.txt
+          _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+          _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
+          echo " "
+          prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
+          echo " "
+          _MIRROR=$_CONFIRMED_ANSWER
+        else
+          _MIRROR=$_LOCAL_UBUNTU_MIRROR
+        fi
+        if ! netcat -w 5 -z $_MIRROR 80 ; then
+          msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+          _MIRROR=archive.ubuntu.com
+        fi
+      fi
+      msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+      cd /var/opt
+      echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
+      echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
+      echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## BACKPORTS" >> /etc/apt/sources.list
+      echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
+      echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+      echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
+      if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
+      fi
+    elif [ "$_THIS_OS" = "Debian" ] ; then
+      _MIRROR_CHECK=NO
+      if [ "$_REL_VERSION" = "lenny" ] ; then
+        _MIRROR=archive.debian.org
+      else
+        if [ "$_AUTOPILOT" = "YES" ] ; then
+          if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
+            _MIRROR=ftp.debian.org
+          else
+            _MIRROR=$_LOCAL_DEBIAN_MIRROR
+          fi
+        else
+          _MIRROR_CHECK=YES
+        fi
+      fi
+      if [ "$_MIRROR_CHECK" = "YES" ] ; then
+        if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
+          msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
+          mkdir -p /opt/tmp/helpers
+          cd /opt/tmp/helpers
+          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/ffmirror.sh.txt
+          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/apt-list-debian.txt
+          _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+          _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
+          echo " "
+          prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
+          echo " "
+          _MIRROR=$_CONFIRMED_ANSWER
+        else
+          _MIRROR=$_LOCAL_DEBIAN_MIRROR
+        fi
+        if ! netcat -w 5 -z $_MIRROR 80 ; then
+          msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
+          _MIRROR=ftp.debian.org
+        fi
+      fi
+      msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
+      cd /var/opt
+      echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
+      echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+      echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
+      echo "" >> /etc/apt/sources.list
+      echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
+      if [ "$_REL_VERSION" = "lenny" ] ; then
+        echo "deb http://archive.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
+        echo "deb-src http://archive.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
+      else
+        echo "deb http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
+        echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
+        echo "" >> /etc/apt/sources.list
+        echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
+        echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+        echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+        if [ "$_REL_VERSION" = "wheezy" ] ; then
+          if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
+            cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
+          else
+            curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+          fi
+        fi
+        if [ "$_REL_VERSION" = "squeeze" ] ; then
+          if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
+            cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
+          else
+            curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+          fi
+          if [ "$_FROM_SOURCES" = "NO" ] ; then
+            echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
+            echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+            echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
+            _KEYS_SERVER_TEST=FALSE
+            until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
+              rm -f dotdeb.gpg*
+              wget -q -U iCab http://www.dotdeb.org/dotdeb.gpg
+              _KEYS_SERVER_TEST=`grep GnuPG dotdeb.gpg 2> /dev/null`
+              sleep 2
+            done
+            cat dotdeb.gpg | apt-key add - &> /dev/null
+            rm -f dotdeb.gpg*
+          fi
+        fi
+      fi
+    fi
+    touch /var/log/apt-fast-install-log.txt
+    cd /var/opt
+  fi
+  if [ ! -e "/etc/apt/preferences" ] ; then
+    if [ "$_THIS_OS" = "Ubuntu" ] ; then
+      if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
+      else
+        curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+      fi
+    else
+      if [ "$_REL_VERSION" = "wheezy" ] ; then
+        if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
+        else
+          curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+        fi
+      else
+        if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt" ] ; then
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt /etc/apt/preferences
+        else
+          curl -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-debian.txt" -o /etc/apt/preferences
+        fi
+      fi
+    fi
+  fi
+}
+#
+# Final cleanup.
 finale () {
+  ###--------------------###
   echo " "
   if [ "$_STATUS" = "INIT" ] ; then
     _L_ST="install"
@@ -4204,7 +4414,83 @@ fi
 
 ###--------------------###
 if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: We need to install some basic tools first, please wait..."
+  msg "INFO: Installing some basic tools now, please wait..."
+  apt-get update &> /dev/null
+  $_INITINS locales &> /dev/null
+  fix_locales
+  $_INITINS lsb-release 2> /dev/null
+  $_INITINS dnsutils 2> /dev/null
+  $_INITINS netcat 2> /dev/null
+  $_INITINS curl 2> /dev/null
+fi
+
+
+###--------------------###
+msg "INFO: Checking your Debian or Ubuntu version..."
+_THIS_OS=`lsb_release -si`
+_THIS_RV=`lsb_release -sc`
+if [ "$_THIS_OS" = "Ubuntu" ] ; then
+  if [ "$_THIS_RV" = "precise" ] ; then
+    _REL_VERSION="precise"
+    _HTTP_WILDCARD=YES
+    _THIS_DB_HOST=localhost
+  elif [ "$_THIS_RV" = "oneiric" ] ; then
+    _REL_VERSION="oneiric"
+    _HTTP_WILDCARD=YES
+    _THIS_DB_HOST=localhost
+  elif [ "$_THIS_RV" = "natty" ] ; then
+    _REL_VERSION="natty"
+  elif [ "$_THIS_RV" = "maverick" ] ; then
+    _REL_VERSION="maverick"
+  elif [ "$_THIS_RV" = "lucid" ] ; then
+    _REL_VERSION="lucid"
+  elif [ "$_THIS_RV" = "karmic" ] ; then
+    _REL_VERSION="karmic"
+    _DB_SERVER=MariaDB
+  elif [ "$_THIS_RV" = "jaunty" ] ; then
+    _REL_VERSION="jaunty"
+    _DB_SERVER=MariaDB
+  elif [ "$_THIS_RV" = "hardy" ] ; then
+    _REL_VERSION="hardy"
+    _DB_SERVER=MariaDB
+  else
+    not_supported_os
+  fi
+elif [ "$_THIS_OS" = "Debian" ] ; then
+  if [ "$_THIS_RV" = "wheezy" ] ; then
+    _REL_VERSION="wheezy"
+    _DB_SERVER=MariaDB
+  elif [ "$_THIS_RV" = "squeeze" ] ; then
+    _REL_VERSION="squeeze"
+  elif [ "$_THIS_RV" = "lenny" ] ; then
+    _REL_VERSION="lenny"
+    _DB_SERVER=MariaDB
+    _MARIADB_VERSION=5.3.12
+  else
+    not_supported_os
+  fi
+elif [ "$_THIS_OS" = "Jolicloud" ] ; then
+  if [ "$_THIS_RV" = "robby" ] ; then
+    _THIS_OS=Ubuntu
+    _REL_VERSION=jaunty
+    _DB_SERVER=MariaDB
+  else
+    not_supported_os
+  fi
+else
+  not_supported_os
+fi
+
+
+###--------------------###
+msg "INFO: Updating packages sources list, please wait..."
+update_sources_list
+apt-get update &> /dev/null
+
+
+###--------------------###
+if [ "$_STATUS" = "INIT" ] ; then
+  msg "INFO: Installing more basic tools now, please wait..."
   if [ -e "/etc/debian_version" ] ; then
     _L_DEB_TEST=`grep "^5." /etc/debian_version 2> /dev/null`
     if [ ! -z "$_L_DEB_TEST" ] ; then
@@ -4218,10 +4504,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   $_INITINS locales &> /dev/null
   sleep 1
   fix_locales
-  $_INITINS wget &> /dev/null
-  $_INITINS git-core &> /dev/null
-  $_INITINS netcat &> /dev/null
-  $_INITINS aptitude &> /dev/null
+  $_INITINS wget 2> /dev/null
+  $_INITINS git-core 2> /dev/null
+  $_INITINS aptitude 2> /dev/null
   $_INITINS axel &> /dev/null
 fi
 
@@ -4479,71 +4764,6 @@ fi
 
 
 ###--------------------###
-if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: Installing lsb-release and dnsutils now, please wait..."
-  mrun "sleep 1"
-  if ! st_runner "$_INSTALL lsb-release dnsutils"; then
-    fatal "Installation failed: $?"
-  fi
-fi
-
-
-###--------------------###
-msg "INFO: Checking your Debian or Ubuntu version..."
-mrun "sleep 1"
-_THIS_OS=`lsb_release -si`
-_THIS_RV=`lsb_release -sc`
-if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  if [ "$_THIS_RV" = "precise" ] ; then
-    _REL_VERSION="precise"
-    _HTTP_WILDCARD=YES
-    _THIS_DB_HOST=localhost
-  elif [ "$_THIS_RV" = "oneiric" ] ; then
-    _REL_VERSION="oneiric"
-    _HTTP_WILDCARD=YES
-    _THIS_DB_HOST=localhost
-  elif [ "$_THIS_RV" = "natty" ] ; then
-    _REL_VERSION="natty"
-  elif [ "$_THIS_RV" = "maverick" ] ; then
-    _REL_VERSION="maverick"
-  elif [ "$_THIS_RV" = "lucid" ] ; then
-    _REL_VERSION="lucid"
-  elif [ "$_THIS_RV" = "karmic" ] ; then
-    _REL_VERSION="karmic"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "jaunty" ] ; then
-    _REL_VERSION="jaunty"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "hardy" ] ; then
-    _REL_VERSION="hardy"
-    _DB_SERVER=MariaDB
-  else
-    not_supported_os
-  fi
-elif [ "$_THIS_OS" = "Debian" ] ; then
-  if [ "$_THIS_RV" = "wheezy" ] ; then
-    _REL_VERSION="wheezy"
-    _DB_SERVER=MariaDB
-  elif [ "$_THIS_RV" = "squeeze" ] ; then
-    _REL_VERSION="squeeze"
-  elif [ "$_THIS_RV" = "lenny" ] ; then
-    _REL_VERSION="lenny"
-    _DB_SERVER=MariaDB
-    _MARIADB_VERSION=5.3.12
-  else
-    not_supported_os
-  fi
-elif [ "$_THIS_OS" = "Jolicloud" ] ; then
-  if [ "$_THIS_RV" = "robby" ] ; then
-    _THIS_OS=Ubuntu
-    _REL_VERSION=jaunty
-    _DB_SERVER=MariaDB
-  else
-    not_supported_os
-  fi
-else
-  not_supported_os
-fi
 if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
   if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
     _FROM_SOURCES=YES
@@ -4926,186 +5146,6 @@ fi
 
 
 ###--------------------###
-if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
-  _APT_SOURCES_REWRITE=NO
-  if [ ! -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-    _APT_SOURCES_REWRITE=YES
-  fi
-  if [ ! -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
-    _APT_SOURCES_REWRITE=YES
-  fi
-  if [ "$_REL_VERSION" = "lenny" ] ; then
-    sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
-    sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
-    sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
-  fi
-  if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_REL_VERSION" = "squeeze" ] ; then
-    run_apt_update_again
-    _LOC_REL_VERSION=squeeze
-    _REL_VERSION=wheezy
-    _APT_SOURCES_REWRITE=YES
-  elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_REL_VERSION" = "lenny" ] ; then
-    run_apt_update_again
-    _LOC_REL_VERSION=lenny
-    _REL_VERSION=squeeze
-    _APT_SOURCES_REWRITE=YES
-  fi
-  if [ "$_REL_VERSION" = "squeeze" ] ; then
-    _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list)
-    if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]] ; then
-      true
-    else
-      _APT_SOURCES_REWRITE=YES
-    fi
-    if [ "$_DB_SERVER" = "Percona" ] ; then
-      if [ ! -e "/etc/apt/sources.list.d/percona.list" ]; then
-        _APT_SOURCES_REWRITE=YES
-      fi
-    else
-      if [ ! -e "/etc/apt/sources.list.d/mariadb.list" ]; then
-        _APT_SOURCES_REWRITE=YES
-      fi
-    fi
-  fi
-else
-  _APT_SOURCES_REWRITE=YES
-fi
-if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
-  msg "INFO: Updating apt sources"
-  mrun "sleep 1"
-  mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  if [ "$_THIS_OS" = "Ubuntu" ] ; then
-    if [ "$_AUTOPILOT" = "YES" ] ; then
-      if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
-        _MIRROR=archive.ubuntu.com
-      else
-        _MIRROR=$_LOCAL_UBUNTU_MIRROR
-      fi
-    else
-      if [ -z "$_LOCAL_UBUNTU_MIRROR" ] ; then
-        msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-        mrun "sleep 1"
-        cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
-        _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-        _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
-        echo " "
-        prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
-        echo " "
-        _MIRROR=$_CONFIRMED_ANSWER
-      else
-        _MIRROR=$_LOCAL_UBUNTU_MIRROR
-      fi
-      if ! netcat -w 5 -z $_MIRROR 80 ; then
-        msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
-        _MIRROR=archive.ubuntu.com
-      fi
-    fi
-    msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
-    cd /var/opt
-    mrun "sleep 1"
-    echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "" >> /etc/apt/sources.list
-    echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-updates main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "" >> /etc/apt/sources.list
-    echo "## BACKPORTS" >> /etc/apt/sources.list
-    echo "deb http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/ubuntu/ $_REL_VERSION-backports main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "" >> /etc/apt/sources.list
-    echo "## UBUNTU SECURITY UPDATES" >> /etc/apt/sources.list
-    echo "deb http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
-    echo "deb-src http://security.ubuntu.com/ubuntu $_REL_VERSION-security main restricted universe multiverse" >> /etc/apt/sources.list
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
-  elif [ "$_THIS_OS" = "Debian" ] ; then
-    _MIRROR_CHECK=NO
-    if [ "$_REL_VERSION" = "lenny" ] ; then
-      _MIRROR=archive.debian.org
-    else
-      if [ "$_AUTOPILOT" = "YES" ] ; then
-        if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-          _MIRROR=ftp.debian.org
-        else
-          _MIRROR=$_LOCAL_DEBIAN_MIRROR
-        fi
-      else
-        _MIRROR_CHECK=YES
-      fi
-    fi
-    if [ "$_MIRROR_CHECK" = "YES" ] ; then
-      if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-        msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
-        mrun "sleep 1"
-        cd /opt/tmp/$_BOA_REPO_NAME/aegir/helpers
-        _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-        _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
-        echo " "
-        prompt_confirm_choice "Enter your own mirror to use or press enter to use the fastest found mirror" $_MIRROR
-        echo " "
-        _MIRROR=$_CONFIRMED_ANSWER
-      else
-        _MIRROR=$_LOCAL_DEBIAN_MIRROR
-      fi
-      if ! netcat -w 5 -z $_MIRROR 80 ; then
-        msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
-        _MIRROR=ftp.debian.org
-      fi
-    fi
-    msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
-    cd /var/opt
-    mrun "sleep 1"
-    echo "## MAIN REPOSITORIES" > /etc/apt/sources.list
-    echo "deb http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
-    echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION main contrib non-free" >> /etc/apt/sources.list
-    echo "" >> /etc/apt/sources.list
-    echo "## MAJOR BUG FIX UPDATES produced after the final release" >> /etc/apt/sources.list
-    if [ "$_REL_VERSION" = "lenny" ] ; then
-      echo "deb http://archive.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
-      echo "deb-src http://archive.debian.org/debian-volatile $_REL_VERSION/volatile main contrib non-free" >> /etc/apt/sources.list
-    else
-      echo "deb http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
-      echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-updates main" >> /etc/apt/sources.list
-      echo "" >> /etc/apt/sources.list
-      echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
-      echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-      echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
-      if [ "$_REL_VERSION" = "wheezy" ] ; then
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
-      fi
-      if [ "$_REL_VERSION" = "squeeze" ] ; then
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
-        if [ "$_FROM_SOURCES" = "NO" ] ; then
-          echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
-          echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-          echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-          _KEYS_SERVER_TEST=FALSE
-          until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
-            rm -f dotdeb.gpg*
-            wget -q -U iCab http://www.dotdeb.org/dotdeb.gpg
-            _KEYS_SERVER_TEST=`grep GnuPG dotdeb.gpg 2> /dev/null`
-            sleep 2
-          done
-          cat dotdeb.gpg | apt-key add - &> /dev/null
-          rm -f dotdeb.gpg*
-        fi
-      fi
-    fi
-  fi
-  touch /var/log/apt-fast-install-log.txt
-  cd /var/opt
-fi
-if [ ! -e "/etc/apt/preferences" ] ; then
-  if [ "$_THIS_OS" = "Ubuntu" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
-  else
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-debian.txt /etc/apt/preferences
-  fi
-fi
-
-
-###--------------------###
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
@@ -5293,7 +5333,6 @@ _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold safe-upgrade" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
-  st_runner "aptitude clean -y" &> /dev/null
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   st_runner "aptitude autoclean -y" &> /dev/null
 else
@@ -5376,7 +5415,6 @@ else
   st_runner "aptitude remove redis-server -y" &> /dev/null
   st_runner "apt-get autoremove -y"           &> /dev/null
   st_runner "apt-get update -y"               &> /dev/null
-  st_runner "apt-get clean -y --force-yes"    &> /dev/null
   if [ -L "/usr/local/bin/redis-server" ] ; then
     rm -f /usr/local/bin/redis-server
   fi
@@ -5572,7 +5610,6 @@ else
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
       st_runner "apt-get update -y" &> /dev/null
-      st_runner "apt-get clean -y --force-yes" 2> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/percona.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -5582,7 +5619,6 @@ else
         sleep 2
       done
       st_runner "apt-get update -y" &> /dev/null
-      st_runner "apt-get clean -y --force-yes" &> /dev/null
     fi
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
