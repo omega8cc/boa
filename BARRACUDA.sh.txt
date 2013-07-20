@@ -3991,7 +3991,7 @@ update_sources_list () {
     _APT_SOURCES_REWRITE=YES
   fi
   if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
-    msg "INFO: Updating apt sources"
+    msg "INFO: Updating packages sources list, please wait..."
     mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ "$_THIS_OS" = "Ubuntu" ] ; then
       if [ "$_AUTOPILOT" = "YES" ] ; then
@@ -4483,7 +4483,6 @@ fi
 
 
 ###--------------------###
-msg "INFO: Updating packages sources list, please wait..."
 update_sources_list
 apt-get update &> /dev/null
 
