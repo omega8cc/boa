@@ -7676,14 +7676,19 @@ install_pdnsd_cache () {
   msg "INFO: Installing DNS cache pdnsd server, please wait..."
   mrun "sleep 1"
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
-  st_runner "aptitude remove pdnsd resolvconf -y" &> /dev/null
+  rm -f /etc/resolv.conf
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  st_runner "apt-get update -y" &> /dev/null
+  st_runner "aptitude purge pdnsd resolvconf -y" &> /dev/null
+  st_runner "apt-get autoremove -y" &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] ; then
+  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     rm -f -r /run/resolvconf
     rm -f -r /etc/resolvconf/run
     ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
@@ -7768,7 +7773,7 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
   fi
 fi
 if [ -e "/usr/sbin/pdnsd" ] ; then
-  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ]; then
+  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     _INSTALL_PDNSD=YES
     msg "INFO: DNS cache pdnsd server re-installation forced"
     install_pdnsd_cache
