@@ -3593,8 +3593,10 @@ upgrade_aegir_master () {
     chmod 0440 /var/aegir/.drush/*.php &> /dev/null
     chmod 0711 /var/aegir/.drush &> /dev/null
     msg "INFO: Aegir Master Instance upgrade completed"
+    echo " "
   else
     msg "INFO: Aegir Master Instance not upgraded this time"
+    echo " "
     mrun "sleep 1"
   fi
   rm -f /var/aegir/*install.sh.txt
@@ -5098,6 +5100,7 @@ mkdir -p /var/backups/dragon/{x,z,t}
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ "$_AEGIR_UPGRADE_ONLY" = "YES" ] && [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] ; then
+    echo " "
     upgrade_aegir_master
     mrun "sleep 8"
     st_runner "service nginx reload" &> /dev/null
@@ -6859,6 +6862,7 @@ else
       msg "Bye"
       exit 1
     fi
+    echo " "
     upgrade_aegir_master
   fi
 fi
