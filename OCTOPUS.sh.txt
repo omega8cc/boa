@@ -767,12 +767,20 @@ octopus_cnf () {
     if [ -x "/usr/local/bin/php" ] ; then
       _PHP_CLI_LEGACY=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
     fi
-    if [ ! -x "/usr/local/bin/php" ] || [[ "$_PHP_CLI_LEGACY" =~ "5.3" ]] ; then
+    if [ ! -x "/usr/local/bin/php" ] || [[ "$_PHP_CLI_LEGACY" =~ "5.3" ]] || [[ "$_PHP_CLI_LEGACY" =~ "5.4" ]] || [[ "$_PHP_CLI_LEGACY" =~ "5.5" ]] ; then
       if [[ "$_CHECK_HOST" =~ ".host8." ]] && [ -e "/data/disk/$_USER/log/cli.txt" ] && [ -e "/data/disk/$_USER/log/fpm.txt" ] ; then
         true
       else
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
+        if [ "$_PHP_CLI_LEGACY" = "5.4" ] ; then
+          _PHP_FPM_VERSION=5.4
+          _PHP_CLI_VERSION=5.4
+        elif [ "$_PHP_CLI_LEGACY" = "5.5" ] ; then
+          _PHP_FPM_VERSION=5.5
+          _PHP_CLI_VERSION=5.5
+        else
+          _PHP_FPM_VERSION=5.3
+          _PHP_CLI_VERSION=5.3
+        fi
       fi
     fi
     if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
@@ -809,7 +817,7 @@ sub_force_advanced_nginx_config_main () {
       sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
       sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
@@ -1431,7 +1439,7 @@ else
 fi
 #
 #
-if [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
+if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
   _FPM_USED="both for D6 and D7 sites"
 else
   _FPM_USED="for D6, but 5.3 for D7 sites"

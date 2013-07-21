@@ -50,7 +50,7 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_STOCK=EDIT_USE_STOCK
-if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
+if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
 else
   _L_PHP_CLI=/usr/local/bin
@@ -76,7 +76,7 @@ export DEBIAN_FRONTEND=noninteractive
 #
 #
 update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
+  if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
     sed -i "s/^#\!\/.*/#\!\/opt\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
     sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php52/g"  /var/aegir/drush/drush.php &> /dev/null

@@ -125,17 +125,17 @@ _AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _PREV_AEGIR_ROOT="$_ROOT/aegir/distro/$_LAST_HMR"
 _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
-if [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/local/bin/php" ] ; then
+if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
   _L_PHP_CLI=/opt/local/bin
 else
   _L_PHP_CLI=/usr/local/bin
 fi
-if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+if [ "$_PHP_FPM_VERSION" != "5.2" ] || [ "$_PHP_CLI_VERSION" != "5.2" ] ; then
   _D_5_ALLOW=NO
 else
   _D_5_ALLOW=YES
 fi
-if [ "$_PHP_FPM_VERSION" = "5.3" ] && [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ "$_PHP_CLI_VERSION" != "5.2" ] ; then
   _D_8_ALLOW=YES
 else
   _D_8_ALLOW=NO
