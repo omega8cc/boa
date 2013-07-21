@@ -156,6 +156,13 @@ SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
+if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+  _PHP_API=20090626
+elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+  _PHP_API=20100525
+elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+  _PHP_API=20100525
+fi
 
 
 ###---### Functions
@@ -371,7 +378,7 @@ fix_php_ini_opcache_all () {
   _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
   fix_php_ini_opcache
   _THIS_FILE=/opt/local/etc/php53.ini
-  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-20090626/opcache.so"
+  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API/opcache.so"
   fix_php_ini_opcache
 }
 #
@@ -471,20 +478,20 @@ update_php_conf () {
       mkdir -p /opt/local/sbin
       ln -sf /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
     fi
-    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
-      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /var/backups/ &> /dev/null
+    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
+      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API /var/backups/ &> /dev/null
     fi
-    if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+    if [ -e "/usr/lib/php5/$_PHP_API" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
-      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
+      ln -sf /usr/lib/php5/$_PHP_API /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
+      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
       fi
-    elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+    elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
-      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      ln -sf /usr/lib/php5/$_PHP_API+lfs /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
+      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
       fi
     fi
   fi
@@ -553,6 +560,14 @@ update_php_conf () {
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
   ###
+  if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
+    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
+  fi
+  if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+    sed -i "s/20090626/$_PHP_API/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/20090626/$_PHP_API/g" /opt/local/lib/php.ini &> /dev/null
+  fi
 }
 #
 restore_default_php () {

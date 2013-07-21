@@ -1358,29 +1358,29 @@ enable_weekly_usage_monitor () {
 # Fix PHP Extensions.
 fix_php_ext () {
   if [ "$_FROM_SOURCES" = "YES" ] ; then
-    if [ -e "/usr/lib/php5/20090626" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
-      mkdir -p /var/backups/php53-20090626
-      mv -f /usr/lib/php5/20090626/*.so /var/backups/php53-20090626/ &> /dev/null
-      if [ -e "/var/backups/php53-20090626/newrelic.so" ] ; then
-        mv -f /var/backups/php53-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
+    if [ -e "/usr/lib/php5/$_PHP_API" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
+      mkdir -p /var/backups/php53-$_PHP_API
+      mv -f /usr/lib/php5/$_PHP_API/*.so /var/backups/php53-$_PHP_API/ &> /dev/null
+      if [ -e "/var/backups/php53-$_PHP_API/newrelic.so" ] ; then
+        mv -f /var/backups/php53-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
       fi
-      if [ -e "/var/backups/php53-20090626/mongo.so" ] ; then
-        mv -f /var/backups/php53-20090626/mongo.so /usr/lib/php5/20090626/ &> /dev/null
+      if [ -e "/var/backups/php53-$_PHP_API/mongo.so" ] ; then
+        mv -f /var/backups/php53-$_PHP_API/mongo.so /usr/lib/php5/$_PHP_API/ &> /dev/null
       fi
-      if [ -e "/var/backups/php53-20090626/geos.so" ] ; then
-        mv -f /var/backups/php53-20090626/geos.so /usr/lib/php5/20090626/ &> /dev/null
+      if [ -e "/var/backups/php53-$_PHP_API/geos.so" ] ; then
+        mv -f /var/backups/php53-$_PHP_API/geos.so /usr/lib/php5/$_PHP_API/ &> /dev/null
       fi
-    elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
-      mkdir -p /var/backups/php53-20090626+lfs
-      mv -f /usr/lib/php5/20090626+lfs/* /var/backups/php53-20090626+lfs/ &> /dev/null
-      if [ -e "/var/backups/php53-20090626+lfs/newrelic.so" ] ; then
-        mv -f /var/backups/php53-20090626+lfs/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+    elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
+      mkdir -p /var/backups/php53-$_PHP_API+lfs
+      mv -f /usr/lib/php5/$_PHP_API+lfs/* /var/backups/php53-$_PHP_API+lfs/ &> /dev/null
+      if [ -e "/var/backups/php53-$_PHP_API+lfs/newrelic.so" ] ; then
+        mv -f /var/backups/php53-$_PHP_API+lfs/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
       fi
-      if [ -e "/var/backups/php53-20090626+lfs/mongo.so" ] ; then
-        mv -f /var/backups/php53-20090626+lfs/mongo.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      if [ -e "/var/backups/php53-$_PHP_API+lfs/mongo.so" ] ; then
+        mv -f /var/backups/php53-$_PHP_API+lfs/mongo.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
       fi
-      if [ -e "/var/backups/php53-20090626+lfs/geos.so" ] ; then
-        mv -f /var/backups/php53-20090626+lfs/geos.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      if [ -e "/var/backups/php53-$_PHP_API+lfs/geos.so" ] ; then
+        mv -f /var/backups/php53-$_PHP_API+lfs/geos.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
       fi
     fi
     if [ -e "/etc/php5/conf.d" ] ; then
@@ -1477,7 +1477,7 @@ fix_php_ini_opcache_all () {
   _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
   fix_php_ini_opcache
   _THIS_FILE=/opt/local/etc/php53.ini
-  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-20090626/opcache.so"
+  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API/opcache.so"
   fix_php_ini_opcache
 }
 #
@@ -1577,20 +1577,20 @@ update_php_conf () {
       mkdir -p /opt/local/sbin
       ln -sf /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
     fi
-    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
-      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-20090626 /var/backups/ &> /dev/null
+    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
+      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API /var/backups/ &> /dev/null
     fi
-    if [ -e "/usr/lib/php5/20090626" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+    if [ -e "/usr/lib/php5/$_PHP_API" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/20090626 /opt/local/lib/php/extensions/no-debug-non-zts-20090626
-      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626/ &> /dev/null
+      ln -sf /usr/lib/php5/$_PHP_API /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
+      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
       fi
-    elif [ -e "/usr/lib/php5/20090626+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-20090626" ] ; then
+    elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
       mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/20090626+lfs /opt/local/lib/php/extensions/no-debug-non-zts-20090626
-      if [ -e "/var/backups/no-debug-non-zts-20090626/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-20090626/newrelic.so /usr/lib/php5/20090626+lfs/ &> /dev/null
+      ln -sf /usr/lib/php5/$_PHP_API+lfs /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
+      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
+        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
       fi
     fi
   fi
@@ -1662,6 +1662,10 @@ update_php_conf () {
   if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
+  fi
+  if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+    sed -i "s/20090626/$_PHP_API/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/20090626/$_PHP_API/g" /opt/local/lib/php.ini &> /dev/null
   fi
 }
 #
@@ -2324,11 +2328,14 @@ barracuda_cnf () {
     fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
       _PHP_VERSION_NEW=5.3.27
+      _PHP_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
       _PHP_VERSION_NEW=5.4.17
+      _PHP_API=20100525
       _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
       _PHP_VERSION_NEW=5.5.1
+      _PHP_API=20100525
       _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
     fi
@@ -2747,11 +2754,14 @@ barracuda_cnf () {
     fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
       _PHP_VERSION_NEW=5.3.27
+      _PHP_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
       _PHP_VERSION_NEW=5.4.17
+      _PHP_API=20100525
       _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
       _PHP_VERSION_NEW=5.5.1
+      _PHP_API=20100525
       _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
     fi
@@ -3876,7 +3886,7 @@ update_newrelic () {
       mv -f /etc/newrelic /var/backups/nr/etc-newrelic-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       _UPDATE_NR=YES
       _PHP_EXT_DIR_52="/usr/local/lib/php/extensions/no-debug-non-zts-20060613"
-      _PHP_EXT_DIR_53="/opt/local/lib/php/extensions/no-debug-non-zts-20090626"
+      _PHP_EXT_DIR_53="/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API"
       if [ -e "$_PHP_EXT_DIR_52" ] && [ ! -e "$_PHP_EXT_DIR_52/newrelic.so" ] ; then
         _UPDATE_NR=YES
       elif [ -e "$_PHP_EXT_DIR_53" ] && [ ! -e "$_PHP_EXT_DIR_53/newrelic.so" ] ; then
