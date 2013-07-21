@@ -7686,7 +7686,7 @@ install_pdnsd_cache () {
   st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
-  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
+  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     rm -f -r /run/resolvconf
     rm -f -r /etc/resolvconf/run
     ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
@@ -7771,7 +7771,7 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
   fi
 fi
 if [ -e "/usr/sbin/pdnsd" ] ; then
-  if [ -d "/run/resolvconf" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/interface" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
+  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     _INSTALL_PDNSD=YES
     msg "INFO: DNS cache pdnsd server re-installation forced"
     install_pdnsd_cache
