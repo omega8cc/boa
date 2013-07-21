@@ -7667,8 +7667,6 @@ if [ -e "/usr/sbin/csf" ] ; then
     sed -i "s/^AUTO_UPDATES.*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
   fi
 fi
-fix_lfd_whitelist
-fix_lfd_uidignore
 
 
 ###--------------------###
@@ -7779,6 +7777,9 @@ if [ -e "/usr/sbin/pdnsd" ] ; then
     install_pdnsd_cache
   fi
 fi
+fix_lfd_whitelist
+fix_lfd_uidignore
+
 
 ###--------------------###
 finale
