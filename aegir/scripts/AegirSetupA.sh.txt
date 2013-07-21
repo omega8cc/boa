@@ -815,24 +815,20 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   if [[ "$_VERSIONS_TEST" =~ "-dev" ]] ; then
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "$_STATUS A: Version test result: OK"
+      msg "$_STATUS A: OCTOPUS version test: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   else
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "$_STATUS A: Version test result: OK"
+      msg "$_STATUS A: OCTOPUS version test: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   fi
   if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
     msg "ERROR: This OCTOPUS version is outdated and will not work correctly"
-    msg "Please download and use new stable version:"
-    msg "wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt"
-    msg "You can also use (for testing) latest dev version:"
-    msg "wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt"
     msg "Bye"
     touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1
