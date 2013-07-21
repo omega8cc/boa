@@ -4817,17 +4817,13 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
   else
     if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] && [[ "$_AEGIR_VERSION" =~ "BOA" ]] ; then
       _VERSIONS_TEST_RESULT=OK
-      msg "INFO: Version test result: OK"
+      msg "INFO: BARRACUDA version test: OK"
     else
       _VERSIONS_TEST_RESULT=FAIL
     fi
   fi
   if [ "$_VERSIONS_TEST_RESULT" = "FAIL" ] ; then
     msg "ERROR: This BARRACUDA version is outdated and will not work correctly"
-    msg "Please download and use new version:"
-    msg "wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt"
-    msg "You can also use (for testing) latest dev version:"
-    msg "wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt"
     msg "Bye"
     exit 1
   fi
