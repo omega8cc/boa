@@ -2958,14 +2958,14 @@ install_php_universal_extensions () {
   mrun "sleep 1"
   cd /var/opt
   rm -f -r uploadprogress*
-  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
-  tar -xzf uploadprogress-1.0.1.tgz
-  cd /var/opt/uploadprogress-1.0.1
+  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.3.1.tgz
+  tar -xzf uploadprogress-1.0.3.1.tgz
+  cd /var/opt/uploadprogress-1.0.3.1
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "uploadprogress $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-$_LOC_PHP_VERSION.log
+  echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing JSMin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
   mrun "sleep 1"
@@ -3115,19 +3115,19 @@ update_php_universal_extensions () {
     echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ ! -e "/var/log/uploadprogress-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing UploadProgress upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r uploadprogress*
-    wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.1.tgz
-    tar -xzf uploadprogress-1.0.1.tgz
-    cd /var/opt/uploadprogress-1.0.1
+    wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.3.1.tgz
+    tar -xzf uploadprogress-1.0.3.1.tgz
+    cd /var/opt/uploadprogress-1.0.3.1
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "uploadprogress $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-$_LOC_PHP_VERSION.log
+    echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ ! -e "/var/log/php-jsmin-$_LOC_PHP_VERSION.log" ] ; then
