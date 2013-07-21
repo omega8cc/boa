@@ -933,7 +933,7 @@ _DRUSH6_VERSION=8.x-6.x-dev
 _GEOS_VERSION=3.3.7
 _GIT_VERSION=1.8.2
 _IMAGICK_VERSION=3.1.0RC2
-_IONCUBE_VERSION=4.4.0
+_IONCUBE_VERSION=4.4.1
 _JETTY_7_VERSION=7.6.10.v20130312
 _JETTY_8_VERSION=8.1.10.v20130312
 _JETTY_9_VERSION=9.0.0.v20130308
@@ -1659,6 +1659,10 @@ update_php_conf () {
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
   ###
+  if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
+    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
+  fi
 }
 #
 # Update SQL Config.
@@ -2816,28 +2820,32 @@ run_apt_update_again () {
 install_ioncube () {
   ###--------------------###
   if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    mkdir -p /usr/local/ioncube
-    _X86_64_TEST=`uname -m`
-    if [ "$_X86_64_TEST" = "x86_64" ] ; then
-      SYSTEMARCH="x86_64"
-      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
-      mrun "sleep 1"
-      cd /var/opt
-      rm -f -r ioncube_loaders*
-      wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86-64.tar.gz
-      tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
+      true
     else
-      SYSTEMARCH="x86"
-      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
-      mrun "sleep 1"
-      cd /var/opt
-      rm -f -r ioncube_loaders*
-      wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86.tar.gz
-      tar -xzf ioncube_loaders_lin_x86.tar.gz
+      mkdir -p /usr/local/ioncube
+      _X86_64_TEST=`uname -m`
+      if [ "$_X86_64_TEST" = "x86_64" ] ; then
+        SYSTEMARCH="x86_64"
+        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
+        mrun "sleep 1"
+        cd /var/opt
+        rm -f -r ioncube_loaders*
+        wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86-64.tar.gz
+        tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+      else
+        SYSTEMARCH="x86"
+        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
+        mrun "sleep 1"
+        cd /var/opt
+        rm -f -r ioncube_loaders*
+        wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86.tar.gz
+        tar -xzf ioncube_loaders_lin_x86.tar.gz
+      fi
+      rm -f /usr/local/ioncube/*
+      cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+      echo "ioncube-$_IONCUBE_VERSION" > /var/log/ioncube-$_IONCUBE_VERSION.log
     fi
-    rm -f /usr/local/ioncube/*
-    cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-    echo "ioncube-$_IONCUBE_VERSION" > /var/log/ioncube-$_IONCUBE_VERSION.log
   fi
 }
 #
