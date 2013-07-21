@@ -1669,6 +1669,10 @@ update_php_conf () {
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
   fi
+  if [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
+    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/local/lib/php.ini &> /dev/null
+  fi
   if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
     sed -i "s/20090626/$_PHP_API/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/20090626/$_PHP_API/g" /opt/local/lib/php.ini &> /dev/null
