@@ -327,12 +327,16 @@ fix_php_ini_newrelic_all () {
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
     if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-      _OPCACHE_INI_TEST=$(grep "extension=opcache.so" $_THIS_FILE)
-      if [[ "$_OPCACHE_INI_TEST" =~ "extension=opcache.so" ]] ; then
+      _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
+      if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
         true
       else
         echo "; Zend OPcache"                     >> $_THIS_FILE
-        echo "zend_extension=\"$_OPCACHE_SO\""    >> $_THIS_FILE
+        if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+          echo "extension=opcache.so"             >> $_THIS_FILE
+        else
+          echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
+        fi
         echo "opcache.memory_consumption=88"      >> $_THIS_FILE
         echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
         echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE

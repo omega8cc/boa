@@ -256,6 +256,8 @@ _PHP_MODERN_ONLY=YES
 ###
 ### _PHP_FPM_VERSION=5.2
 ### _PHP_FPM_VERSION=5.3
+### _PHP_FPM_VERSION=5.4
+### _PHP_FPM_VERSION=5.5
 ###
 ### This option is useful only with its parent
 ### option set to _PHP_MODERN_ONLY=NO, which
@@ -279,6 +281,8 @@ _PHP_FPM_VERSION=5.3
 ###
 ### _PHP_CLI_VERSION=5.2
 ### _PHP_CLI_VERSION=5.3
+### _PHP_CLI_VERSION=5.4
+### _PHP_CLI_VERSION=5.5
 ###
 ### This option is useful only with its parent
 ### option set to _PHP_MODERN_ONLY=NO, which
@@ -937,7 +941,15 @@ _LSHELL_VERSION=0.9.15.1-sec-strict
 _MARIADB_VERSION=5.5.32
 _NGINX_VERSION=1.5.2
 _PERCONA_VERSION=5.5.32
-_PHP_VERSION_NEW=5.3.27
+if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+  _PHP_VERSION_NEW=5.3.27
+elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+  _PHP_VERSION_NEW=5.4.17
+  _BUILD_FROM_SRC=YES
+elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+  _PHP_VERSION_NEW=5.5.1
+  _BUILD_FROM_SRC=YES
+fi
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.6.14
@@ -1430,12 +1442,16 @@ fix_php_ini_newrelic_all () {
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
     if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-      _OPCACHE_INI_TEST=$(grep "extension=opcache.so" $_THIS_FILE)
-      if [[ "$_OPCACHE_INI_TEST" =~ "extension=opcache.so" ]] ; then
+      _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
+      if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
         true
       else
         echo "; Zend OPcache"                     >> $_THIS_FILE
-        echo "zend_extension=\"$_OPCACHE_SO\""    >> $_THIS_FILE
+        if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+          echo "extension=opcache.so"             >> $_THIS_FILE
+        else
+          echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
+        fi
         echo "opcache.memory_consumption=88"      >> $_THIS_FILE
         echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
         echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
@@ -1630,7 +1646,7 @@ update_php_conf () {
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
@@ -2302,8 +2318,21 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
+      if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+        _BUILD_FROM_SRC=YES
+      elif [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+        _BUILD_FROM_SRC=YES
+      else
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
+      _BUILD_FROM_SRC=YES
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _BUILD_FROM_SRC=YES
     fi
     msg "INFO: Creating your /root/.barracuda.cnf config file"
     sleep 1
@@ -2412,8 +2441,20 @@ barracuda_cnf () {
     msg "NOTE! Please review all config options displayed below"
     msg "NOTE! It will *override* all settings in the Barracuda script"
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
+      if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+        true
+      elif [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+        true
+      else
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _BUILD_FROM_SRC=YES
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _BUILD_FROM_SRC=YES
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
@@ -2698,8 +2739,21 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
+      if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+        true
+      elif [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+        true
+      else
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
+      _BUILD_FROM_SRC=YES
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _BUILD_FROM_SRC=YES
     fi
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_NGX_FORCE_REINSTALL_TEST" =~ "_NGX_FORCE_REINSTALL" ]] ; then
@@ -2874,18 +2928,22 @@ install_php_scr_build_extensions () {
 install_php_universal_extensions () {
   ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r zendopcache*
-    wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-    tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+      true
+    else
+      msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r zendopcache*
+      wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    fi
   fi
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
@@ -3029,18 +3087,22 @@ update_php_scr_build_extensions () {
 update_php_universal_extensions () {
   ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] && [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r zendopcache*
-    wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-    tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+      true
+    else
+      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r zendopcache*
+      wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    fi
   fi
   ###--------------------###
   if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
@@ -5068,14 +5130,14 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   if [ -d "/var/www/cgp" ] ; then
     st_runner "apt-get -y remove collectd" 2> /dev/null
   fi
-  touch /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
   st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
   st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
   st_runner "aptitude remove php5-apc -y" &> /dev/null
   st_runner "aptitude remove php-apc -y" &> /dev/null
-  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
@@ -5228,14 +5290,14 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude autoclean -y" &> /dev/null
 else
   if [ "$_FROM_SOURCES" = "YES" ] ; then
-    touch /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+    touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
     st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
     st_runner "apt-get autoremove -y" &> /dev/null
     st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
     st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
     st_runner "aptitude remove php5-apc -y" &> /dev/null
     st_runner "aptitude remove php-apc -y" &> /dev/null
-    rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+    rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       rm -f /etc/apt/sources.list.d/dotdeb.list
     fi
