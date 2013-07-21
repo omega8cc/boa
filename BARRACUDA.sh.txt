@@ -5021,7 +5021,7 @@ EOF
     echo "$_THISHOST" > /etc/hostname
     echo "$_THISHOST" > /etc/mailname
     hostname -v $_THISHOST
-    msg "INFO: DNS test OK"
+    msg "INFO: DNS test: OK"
   fi
   mrun "sleep 1"
   echo " "
