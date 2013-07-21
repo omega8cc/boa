@@ -858,6 +858,12 @@ _PHP_EXTRA_CONF=""
 ### Change to NO if you prefer the old,
 ### no longer maintained APC extension.
 ###
+### It is forced to NO when _BUILD_FROM_SRC
+### is set to NO (default) on Squeeze
+### and Precise, because of known bug
+### affecting versions older than 5.3.27
+### https://bugs.php.net/bug.php?id=64827
+###
 _PHP_ZEND_OPCACHE=YES
 
 ###
@@ -4570,6 +4576,7 @@ if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _FROM_SOURCES=YES
   else
     _FROM_SOURCES=NO
+    _PHP_ZEND_OPCACHE=NO ### Forced APC due to bug affecting older versions: https://bugs.php.net/bug.php?id=64827
   fi
 else
   _FROM_SOURCES=YES
