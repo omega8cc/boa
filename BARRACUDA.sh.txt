@@ -4548,6 +4548,15 @@ echo " "
 
 
 ###--------------------###
+if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
+    _FROM_SOURCES=YES
+  else
+    _FROM_SOURCES=NO
+  fi
+else
+  _FROM_SOURCES=YES
+fi
 update_sources_list
 apt-get update &> /dev/null
 
@@ -4822,18 +4831,6 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
     msg "Bye"
     exit 1
   fi
-fi
-
-
-###--------------------###
-if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-  if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
-    _FROM_SOURCES=YES
-  else
-    _FROM_SOURCES=NO
-  fi
-else
-  _FROM_SOURCES=YES
 fi
 
 
