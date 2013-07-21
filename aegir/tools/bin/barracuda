@@ -116,7 +116,7 @@ up_action ()
           n=8
         else
           if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-            if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
+            if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
               n=8
             else
               n=$((RANDOM%800+80))
