@@ -941,15 +941,6 @@ _LSHELL_VERSION=0.9.15.1-sec-strict
 _MARIADB_VERSION=5.5.32
 _NGINX_VERSION=1.5.2
 _PERCONA_VERSION=5.5.32
-if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-  _PHP_VERSION_NEW=5.3.27
-elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-  _PHP_VERSION_NEW=5.4.17
-  _BUILD_FROM_SRC=YES
-elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-  _PHP_VERSION_NEW=5.5.1
-  _BUILD_FROM_SRC=YES
-fi
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.6.14
@@ -2319,20 +2310,23 @@ barracuda_cnf () {
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-        _BUILD_FROM_SRC=YES
+        true
       elif [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-        _BUILD_FROM_SRC=YES
+        true
       else
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+    if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      _PHP_VERSION_NEW=5.3.27
+    elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _PHP_VERSION_NEW=5.4.17
+      _BUILD_FROM_SRC=YES
+    elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _PHP_VERSION_NEW=5.5.1
+      _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
-      _BUILD_FROM_SRC=YES
-    fi
-    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      _BUILD_FROM_SRC=YES
     fi
     msg "INFO: Creating your /root/.barracuda.cnf config file"
     sleep 1
@@ -2450,10 +2444,9 @@ barracuda_cnf () {
         _PHP_CLI_VERSION=5.3
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      _BUILD_FROM_SRC=YES
-    fi
     if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _BUILD_FROM_SRC=YES
+    elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
       _BUILD_FROM_SRC=YES
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
@@ -2748,12 +2741,15 @@ barracuda_cnf () {
         _PHP_CLI_VERSION=5.3
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+    if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      _PHP_VERSION_NEW=5.3.27
+    elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      _PHP_VERSION_NEW=5.4.17
+      _BUILD_FROM_SRC=YES
+    elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      _PHP_VERSION_NEW=5.5.1
+      _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
-      _BUILD_FROM_SRC=YES
-    fi
-    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      _BUILD_FROM_SRC=YES
     fi
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_NGX_FORCE_REINSTALL_TEST" =~ "_NGX_FORCE_REINSTALL" ]] ; then
