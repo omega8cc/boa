@@ -2327,11 +2327,7 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
-        _PHP_CLI_VERSION=5.4
-      elif [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-        _PHP_CLI_VERSION=5.5
-      else
+      if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
       fi
@@ -2456,11 +2452,7 @@ barracuda_cnf () {
     msg "NOTE! Please review all config options displayed below"
     msg "NOTE! It will *override* all settings in the Barracuda script"
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
-        _PHP_CLI_VERSION=5.4
-      elif [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-        _PHP_CLI_VERSION=5.5
-      else
+      if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
       fi
@@ -2752,13 +2744,7 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-        _PHP_FPM_VERSION=5.4
-        _PHP_CLI_VERSION=5.4
-      elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-        _PHP_FPM_VERSION=5.5
-        _PHP_CLI_VERSION=5.5
-      else
+      if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
       fi
