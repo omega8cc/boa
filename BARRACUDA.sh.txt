@@ -2469,10 +2469,9 @@ barracuda_cnf () {
         _PHP_CLI_VERSION=5.3
       fi
     fi
-    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
       _BUILD_FROM_SRC=YES
-    elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      _BUILD_FROM_SRC=YES
+      sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g" /root/.barracuda.cnf &> /dev/null
     fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
