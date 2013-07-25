@@ -726,6 +726,33 @@ _LOCAL_NETWORK_HN=""
 ###----------------------------------------###
 
 ###
+### Change to YES if you want the running
+### daily script to fix permissions on all
+### files belonging to hosted sites an their
+### platforms (and any shared code).
+###
+### Note that this feature is no longer
+### enabled by default, because it may cause
+### load spikes if you host many sites on
+### some weak VPS with disk I/O shortages.
+###
+_PERMISSIONS_FIX=NO
+
+###
+### Change to NO if you don't want the running
+### daily script to enable/disable modules in
+### all hosted sites without 'dev.' in their
+### main domain name, as listed in the
+### docs/MODULES.txt
+###
+### Note that if you disable this option, you
+### will automatically disable also the user
+### register protection check/feature:
+### http://omega8.cc/node/273
+###
+_MODULES_FIX=YES
+
+###
 ### Use YES only if both "randpass 32 esc"
 ### and "randpass 32 alnum" commands produce
 ### well looking, strong passwords and not
@@ -906,7 +933,6 @@ _PHP_FPM_WORKERS=AUTO
 ### or per platform modules/cache_hour/YES.txt
 ###
 _SPEED_VALID_MAX=3600
-
 
 ###----------------------------------------###
 ### STOCK AEGIR TESTING                    ###
@@ -2409,6 +2435,8 @@ barracuda_cnf () {
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
     echo "_EXTRA_PACKAGES=$_EXTRA_PACKAGES" >> /root/.barracuda.cnf
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
+    echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
+    echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -2673,6 +2701,18 @@ barracuda_cnf () {
       true
     else
       echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
+    fi
+    _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf)
+    if [[ "$_PERMISSIONS_FIX_TEST" =~ "_PERMISSIONS_FIX" ]] ; then
+      true
+    else
+      echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
+    fi
+    _MODULES_FIX_TEST=$(grep _MODULES_FIX /root/.barracuda.cnf)
+    if [[ "$_MODULES_FIX_TEST" =~ "_MODULES_FIX" ]] ; then
+      true
+    else
+      echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`

@@ -63,6 +63,8 @@ _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
 _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+_PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
+_MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
 ###
 ### Barracuda version BOA-2.0.9
 ###

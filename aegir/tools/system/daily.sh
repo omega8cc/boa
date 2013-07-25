@@ -6,14 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ###----------------------------------------###
 ### AUTOMATED MAINTENANCE CONFIGURATION    ###
 ###----------------------------------------###
-###
-### Note: the modules on/off switch will
-### affect only sites without "dev." in the
-### *main* domain name (the "dev." in the
-### domain alias is not checked here).
-###
-_PERMISSIONS=YES
-_MODULES=YES
+
 _MODULES_ON_SEVEN="robotstxt"
 _MODULES_ON_SIX="path_alias_cache robotstxt"
 _MODULES_OFF_SEVEN="syslog dblog l10n_update devel performance"
@@ -96,7 +89,7 @@ fix_o_contrib_symlink () {
 }
 
 fix_modules () {
-  if [ "$_MODULES" = "YES" ] ; then
+  if [ "$_MODULES_FIX" = "YES" ] ; then
     searchStringA="pressflow-5.23.50"
     case $Dir in
       *"$searchStringA"*) ;;
@@ -204,7 +197,7 @@ process () {
       esac
       fix_boost_cache
       fix_clear_cache
-      if [ "$_PERMISSIONS" = "YES" ] ; then
+      if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
         fix_permissions
       fi
     fi
@@ -275,48 +268,65 @@ if test -f /var/run/boa_wait.pid ; then
   touch /var/xdrago/log/wait-counter
   exit 1
 else
+  source /root/.barracuda.cnf
   if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+    _PERMISSIONS_FIX=YES
+    _MODULES_FIX=YES
     n=$((RANDOM%800+80))
     echo waiting $n sec
     sleep $n
   fi
+  if [ -z "$_PERMISSIONS_FIX" ] ; then
+    _PERMISSIONS_FIX=YES
+  fi
+  if [ -z "$_MODULES_FIX" ] ; then
+    _MODULES_FIX=YES
+  fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
-  echo "INFO: Removing old permissions-fix-* files"
-  find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
-  find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
-  find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
-  find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+  if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
+    echo "INFO: Removing old permissions-fix-* files"
+    find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+  fi
 fi
 
 ###--------------------###
 echo "INFO: Checking BARRACUDA version"
-cd /opt/tmp
-wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/barracuda-version.txt
+rm -f /opt/tmp/barracuda-version.txt*
+curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+if [ ! -e "/opt/tmp/barracuda-version.txt" ] ; then
+  sleep 30
+  curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+fi
 if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   _INSTALLER_VERSION=`cat /opt/tmp/barracuda-version.txt`
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
-    _VERSIONS_TEST_RESULT=OK
-    echo "INFO: Version test result: OK"
-  else
-    cat <<EOF | mail -e -s "New $_INSTALLER_VERSION Stable Edition available" notify\@omega8.cc
+  if [ ! -z "$_INSTALLER_VERSION" ] ; then
+    if [[ "$_VERSIONS_TEST" =~ "$_INSTALLER_VERSION" ]] ; then
+      _VERSIONS_TEST_RESULT=OK
+      echo "INFO: Version test result: OK"
+    else
+      cat <<EOF | mail -e -s "New $_INSTALLER_VERSION Stable Edition available" notify\@omega8.cc
 
-  There is new $_INSTALLER_VERSION Stable Edition available.
+ There is new $_INSTALLER_VERSION Stable Edition available.
 
-  Please review the changelog and upgrade as soon as possible
-  to receive all security updates and new features.
+ Please review the changelog and upgrade as soon as possible
+ to receive all security updates and new features.
 
-  Changelog: http://bit.ly/newboa
+ Changelog: http://bit.ly/newboa
 
-  --
-  This e-mail has been sent by your Barracuda server upgrade monitor.
+ --
+ This e-mail has been sent by your Barracuda server upgrade monitor.
 
 EOF
-  echo "INFO: Update notice sent: OK"
+    echo "INFO: Update notice sent: OK"
+    fi
   fi
 fi
 #
-if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION.info" ] ; then
+if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION.info" ] ; then
   echo "INFO: Fixing permissions in the /data/all tree..."
   chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   chown -R root:root /data/all
