@@ -71,7 +71,7 @@ to the standard production settings.
   Debian Squeeze desktop image install: http://bit.ly/boa-squeeze
 
 
-### SUPPORTED LTS OS 32/64bit - minimal on server or desktop on localhost
+### SUPPORTED LTS OS 32/64bit - Minimal on server or Desktop on localhost
 
 * Debian 6.0 Squeeze (recommended) - 12 min install, 3 min upgrade
 * Debian 7.0 Wheezy - 30 min install, 15 min upgrade
@@ -197,7 +197,7 @@ and version updates, and they may be moved to the second list below.
 
 We also removed D8-edge platform, since it is broken too often
 because of D8 own critical bugs. We will keep debugging it to add
-latest D8-tested platform to every release.
+latest D8-tested platform to every release, when possible.
 
 The platforms listed below can be re-added when their maintainers
 will fix all critical issues and/or apply required updates:
@@ -217,146 +217,6 @@ of Drupal core in 25 languages. Only languages with at least
 Other platforms are using extended and customized translations or
 require far more than just core translation, so we don't touch them.
 
-There are also some useful and/or performance related modules
-added to all 6.x and 7.x platforms.
-
-Some core and contrib modules are either enabled or disabled
-by default, by running daily (at morning) maintenance monitor.
-
-There are also modules supported by Octopus, but not bundled
-by default and/or not enabled.
-
-Some modules require custom rewrites on the web server level,
-but since there is no .htaccess available/used in Nginx,
-we have added all required rewrites and associated supported
-configuration settings on the system level. This is the real
-meaning of [S]upported flag here.
-
-Note that while some of them are enabled by default on initial
-install of "blank" site in the supported platform, they are
-not forced as enabled by the running daily maintenance monitor,
-so we marked them as [S]oft[E]nabled.
-
-Here is a complete list with corresponding flags for every
-module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
-[S]oft[E]nabled or [F]orce[D]isabled. [NA] means that
-this module is used without the need to enable it.
-
-Supported core version is listed for every module or theme
-as [D6] and/or [D7].
-
-Contrib [S]upported:
-
- ais ------------------------ [D7] ------ [S]
- audio ---------------------- [D5,D6] --- [S]
- backup_migrate ------------- [D6,D7] --- [S]
- ckeditor ------------------- [D6,D7] --- [S]
- fbconnect ------------------ [D6,D7] --- [S]
- fckeditor ------------------ [D6] ------ [S]
- imagecache ----------------- [D6,D7] --- [S]
- imagecache_external -------- [D6,D7] --- [S]
- responsive_images ---------- [D7] ------ [S]
- tinybrowser ---------------- [D6,D7] --- [S]
- tinymce -------------------- [D6] ------ [S]
- wysiwyg_spellcheck --------- [D6,D7] --- [S]
-
-Contrib [S]upported and [B]undled:
-
- advagg --------------------- [D6,D7] --- [S] [B]
- blockcache_alter ----------- [D6,D7] --- [S] [B]
- boost ---------------------- [D6,D7] --- [S] [B]
- cdn ------------------------ [D6,D7] --- [S] [B]
- config_perms --------------- [D6,D7] --- [S] [B]
- css_emimage ---------------- [D6,D7] --- [S] [B]
- dbtuner -------------------- [D6] ------ [S] [B]
- esi ------------------------ [D6,D7] --- [S] [B]
- expire --------------------- [D6,D7] --- [S] [B]
- filefield_nginx_progress --- [D6,D7] --- [S] [B]
- flood_control -------------- [D7] ------ [S] [B]
- force_password_change ------ [D6,D7] --- [S] [B]
- fpa ------------------------ [D6,D7] --- [S] [B]
- httprl --------------------- [D6,D7] --- [S] [B]
- login_security ------------- [D6,D7] --- [S] [B]
- nocurrent_pass ------------- [D7] ------ [S] [B]
- phpass --------------------- [D6] ------ [S] [B]
- private_upload ------------- [D6] ------ [S] [B]
- purge ---------------------- [D6,D7] --- [S] [B]
- readonlymode --------------- [D6,D7] --- [S] [B]
- reroute_email -------------- [D6,D7] --- [S] [B]
- securesite ----------------- [D6,D7] --- [S] [B]
- security_review ------------ [D6,D7] --- [S] [B]
- site_verify ---------------- [D6,D7] --- [S] [B]
- speedy --------------------- [D7] ------ [S] [B]
- taxonomy_edge -------------- [D6,D7] --- [S] [B]
- textile -------------------- [D6,D7] --- [S] [B]
- variable_clean ------------- [D6,D7] --- [S] [B]
- vars ----------------------- [D7] ------ [S] [B]
- views_content_cache -------- [D6,D7] --- [S] [B]
- views404 ------------------- [D6,D7] --- [S] [B]
-
-Contrib [NA], [S]oft[E]nabled and [F]orce[E]nabled:
-
- admin ---------------------- [D6,D7] --- [S] [B] [SE]
- cache_backport ------------- [D6] ------ [S] [B] [NA]
- entitycache ---------------- [D7] ------ [S] [B] [FE]
- redis ---------------------- [D6,D7] --- [S] [B] [NA]
- robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
- rubik ---------------------- [D6,D7] --- [S] [B] [SE]
-
-Contrib [F]orce[D]isabled:
-
- css_gzip ------------------- [D6] -------------- [FD]
- devel ---------------------- [D6,D7] ----------- [FD]
- javascript_aggregator ------ [D6] -------------- [FD]
- l10n_update ---------------- [D6,D7] ----------- [FD]
- poormanscron --------------- [D6] -------------- [FD]
- supercron ------------------ [D6] -------------- [FD]
-
-Core:
-
- cookie_cache_bypass -------- [D6] -------------- [FD]
- dblog ---------------------- [D6,D7] ----------- [FD]
- path_alias_cache ----------- [D6] -------------- [FE]
- syslog --------------------- [D6,D7] ----------- [FD]
- performance ---------------- [D6,D7] ----------- [FD]
-
-Drush [E]xtensions [M]aster [S]atellite:
-
- drush_ecl ------------------ [D7] ------ [S] [B] [EM,ES]
- drush_make ----------------- [D6,D7] --- [S] [B] [EM,ES]
- registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
-
-Provision [E]xtensions [M]aster [S]atellite:
-
- clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
- provision_boost ------------ [D6,D7] --- [S] [B] [EM,ES]
- provision_cdn -------------- [D6,D7] --- [S] [B] [EM,ES]
- provision_civicrm ---------- [D6,D7] --- [S] [B] [ES]
- provision_site_backup ------ [D6,D7] --- [S] [B] [ES]
- provision_tasks_extra ------ [D6,D7] --- [S] [B] [ES]
- remote_import -------------- [D6,D7] --- [S] [B] [ES]
- security_check ------------- [D6,D7] --- [S] [B] [EM,ES]
-
-Hostmaster [E]xtensions [S]atellite:
-
- aegir_custom_settings ------ [D6] ------ [S] [B] [FE] [ES]
- css_emimage ---------------- [D6] ------ [S] [B] [FE] [ES]
- ctools --------------------- [D6] ------ [S] [B] [FE] [ES]
- features ------------------- [D6] ------ [S] [B] [FE] [ES]
- features_extra ------------- [D6] ------ [S] [B] [FE] [ES]
- hosting_advanced_cron ------ [D6] ------ [S] [B] [FE] [ES]
- hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
- hosting_cdn ---------------- [D6] ------ [S] [B] [FE] [ES]
- hosting_platform_pathauto -- [D6] ------ [S] [B] [FE] [ES]
- hosting_remote_import ------ [D6] ------ [S] [B]      [ES]
- hosting_site_backup -------- [D6] ------ [S] [B] [FE] [ES]
- hosting_task_gc ------------ [D6] ------ [S] [B] [FE] [ES]
- hosting_tasks_extra -------- [D6] ------ [S] [B] [FE] [ES]
- protect_critical_users ----- [D6] ------ [S] [B] [FE] [ES]
- revision_deletion ---------- [D6] ------ [S] [B] [FE] [ES]
- strongarm ------------------ [D6] ------ [S] [B] [FE] [ES]
- userprotect ---------------- [D6] ------ [S] [B] [FE] [ES]
-
 
 ### BUG SUBMISSION
 
@@ -371,11 +231,10 @@ Hostmaster [E]xtensions [S]atellite:
   please include, using http://gist.github.com, the contents
   (anonymized for security and privacy) of files:
 
-    /var/aegir/config/includes/barracuda_log.txt
-    /data/disk/user/log/octopus_log.txt
-    /var/aegir/install.log (remove the password)
     /root/.barracuda.cnf
+    /var/log/barracuda_log.txt
     /root/.USER.octopus.cnf
+    /data/disk/USER/log/octopus_log.txt
 
 * Issue queues:
   http://drupal.org/project/issues/barracuda (active)
