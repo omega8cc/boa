@@ -4609,7 +4609,9 @@ if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _FROM_SOURCES=YES
   else
     _FROM_SOURCES=NO
-    _PHP_ZEND_OPCACHE=NO ### Forced APC due to bug affecting older versions: https://bugs.php.net/bug.php?id=64827
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      _PHP_ZEND_OPCACHE=NO ### Forced APC due to bug affecting older versions: https://bugs.php.net/bug.php?id=64827
+    fi
   fi
 else
   _FROM_SOURCES=YES
