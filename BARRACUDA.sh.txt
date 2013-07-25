@@ -6146,6 +6146,10 @@ fi
 if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] ; then
   install_ioncube
 fi
+if [ "$_PHP_ZEND_OPCACHE" = "YES" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
+  rm -f /var/log/zendopcache-*
+  update_php_modern
+fi
 
 
 ###--------------------###
