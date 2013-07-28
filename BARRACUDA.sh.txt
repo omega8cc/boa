@@ -934,6 +934,7 @@ _PHP_FPM_WORKERS=AUTO
 ###
 _SPEED_VALID_MAX=3600
 
+
 ###----------------------------------------###
 ### STOCK AEGIR TESTING                    ###
 ###----------------------------------------###
@@ -6118,8 +6119,12 @@ if [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES
   install_php_modern
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
-  if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
+  if [ "$_PHP_MODERN_ONLY" = "NO" ] || [ -e "/usr/local/lib/php/extensions/no-debug-non-zts-20060613" ] ; then
     update_php_legacy
+    if [ -x "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
+      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
+      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
+    fi
   else
     if [ -x "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
