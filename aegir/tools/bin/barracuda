@@ -189,6 +189,10 @@ up_finish ()
   rm -f /var/backups/BARRACUDA.sh*
   rm -f /root/BOA.sh*
   rm -f /root/.bashrc.bak*
+  if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    service webmin stop &> /dev/null
+    service usermin stop &> /dev/null
+  fi
   echo
   echo BARRACUDA upgrade completed
   echo Bye
