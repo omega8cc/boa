@@ -10,4 +10,4 @@ projects[drupal][download][url] = "http://files.aegir.cc/dev/drupal-7.22.1.tar.g
 projects[panopoly][type] = profile
 projects[panopoly][download][type] = git
 projects[panopoly][download][branch] = 7.x-1.x
-projects[panopoly][download][tag] = 7.x-1.0-rc4
+projects[panopoly][download][tag] = 7.x-1.0-rc5
