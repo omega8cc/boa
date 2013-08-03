@@ -2068,8 +2068,8 @@ force_advanced_nginx_config () {
 # Tune Web Sever configuration.
 tune_web_server_config () {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "7" ] ; then
-    _LIM_FPM=7
+  if [ "$_LIM_FPM" -lt "6" ] && [[ "$_THISHOST" =~ ".host8." ]] ; then
+    _LIM_FPM=6
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
@@ -2198,7 +2198,7 @@ tune_memory_limits () {
         sed -i "s/8000/64000/g"  /opt/etc/php.ini &> /dev/null
       else
         _USE_PHP=512
-        _USE_OPC=256
+        _USE_OPC=512
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=3
         else
@@ -2212,7 +2212,7 @@ tune_memory_limits () {
       fi
     else
       _USE_PHP=256
-      _USE_OPC=196
+      _USE_OPC=256
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=6
       else
