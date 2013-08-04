@@ -1880,16 +1880,16 @@ chmod 0711 $_CORE /data/all /data/all/000 /data/src /data /data/disk /data/conf 
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
 rm -f /data/u/*host8* &> /dev/null
-mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/drush_make-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_boost-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_civicrm-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_cdn-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
-mv -f $_ROOT/backups/provision_tasks_extra-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/provision_civicrm-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_platform_git-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_site_backup-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/provision_tasks_extra-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/provision-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
 mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
