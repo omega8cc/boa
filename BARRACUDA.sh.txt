@@ -2199,6 +2199,11 @@ tune_memory_limits () {
       else
         _USE_PHP=512
         _USE_OPC=512
+        if [[ "$_THISHOST" =~ ".host8." ]] ; then
+          if [[ "$_THISHOST" =~ "v130a." ]] ; then
+            _USE_PHP=1024
+          fi
+        fi
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=3
         else
