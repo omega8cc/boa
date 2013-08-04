@@ -1888,6 +1888,7 @@ mv -f $_ROOT/backups/provision_civicrm-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_cdn-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/registry_rebuild-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_tasks_extra-pre* $_ROOT/backups/system/ &> /dev/null
+mv -f $_ROOT/backups/provision_platform_git-pre* $_ROOT/backups/system/ &> /dev/null
 mv -f $_ROOT/backups/provision_site_backup-pre* $_ROOT/backups/system/ &> /dev/null
 mkdir -p /data/conf/arch
 mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null

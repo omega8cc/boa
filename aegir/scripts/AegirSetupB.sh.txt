@@ -291,7 +291,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _B_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  _B_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check"
   for e in $_B_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
@@ -347,6 +347,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r $_ROOT/.drush/provision_boost/.git
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/provision_site_backup &> /dev/null
   rm -f -r $_ROOT/.drush/provision_site_backup/.git
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/provision_platform_git &> /dev/null
   get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
   get_dev_ext "drush_ecl.tar.gz" &> /dev/null
   get_dev_ext "security_check.tar.gz" &> /dev/null
@@ -358,7 +359,7 @@ else
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
   msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
-  _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check"
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz" &> /dev/null
   done
@@ -518,6 +519,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r hosting_civicrm_cron/.git
   git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
   rm -f -r hosting_remote_import/.git
+  git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_platform_git.git  &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_site_backup.git   &> /dev/null
   rm -f -r hosting_site_backup/.git
   git clone --branch master git://github.com/omega8cc/hosting_tasks_extra.git    &> /dev/null
@@ -526,6 +528,7 @@ else
   get_dev_ext "hosting_advanced_cron.tar.gz" &> /dev/null
   get_dev_ext "hosting_cdn.tar.gz"           &> /dev/null
   get_dev_ext "hosting_civicrm_cron.tar.gz"  &> /dev/null
+  get_dev_ext "hosting_platform_git.tar.gz"  &> /dev/null
   get_dev_ext "hosting_remote_import.tar.gz" &> /dev/null
   get_dev_ext "hosting_site_backup.tar.gz"   &> /dev/null
   get_dev_ext "hosting_tasks_extra.tar.gz"   &> /dev/null
@@ -569,7 +572,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   $_DRUSHCMD @hostmaster en hosting_client hosting_platform_pathauto css_emimage protect_critical_users userprotect -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra hosting_cdn -y &> /dev/null
-  $_DRUSHCMD @hostmaster en hosting_site_backup_manager -y &> /dev/null
+  $_DRUSHCMD @hostmaster en hosting_site_backup_manager hosting_platform_git -y &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_register_user 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_admin_client 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_send_welcome 1 &> /dev/null
