@@ -559,8 +559,8 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
-  $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra hosting_cdn -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_client css_emimage protect_critical_users userprotect -y &> /dev/null
+  $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_site_backup_manager -y &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_register_user 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_admin_client 1 &> /dev/null
