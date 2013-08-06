@@ -69,27 +69,6 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|goog|yahoo|yande
   $known_bot = TRUE;
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // deny known search bots on foo.dev.domain subdomains
-  if ($known_bot) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
-    header("Connection: close");
-    exit;
-  }
-  error_reporting(E_ALL & ~E_NOTICE);
-  ini_set('display_errors', TRUE);
-  ini_set('display_startup_errors', TRUE);
-  unset($conf['cache']);          // stop hardcoding caching
-  unset($conf['preprocess_css']); // stop hardcoding css aggregation
-  unset($conf['preprocess_js']);  // stop hardcoding js aggregation
-  unset($conf['error_level']);    // stop hardcoding no errors on screen
-  $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for foo.dev.domain
-  $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for foo.dev.domain
-  $is_dev = TRUE;
-}
-
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST'])) {
   // deny known search bots on host8 subdomains
   if ($known_bot) {
@@ -99,34 +78,6 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
     header("Connection: close");
     exit;
   }
-}
-
-if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
-  if (!file_exists('/data/conf/no-https-aegir.inc')) {
-    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
-    if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
-      header('X-Accel-Expires: 5');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-      header("Connection: close");
-      exit;
-    }
-  }
-  $conf['hosting_require_disable_before_delete'] = 0;
-  unset($conf['cache']); // disable hardcoded caching
-  ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
-  if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST'])) {
-    if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
-      header('X-Accel-Expires: 5');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
-      header("Connection: close");
-      exit;
-    }
-  }
-  header('X-Accel-Expires: 1');
 }
 
 // New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
@@ -181,6 +132,63 @@ else {
   $conf['cache'] = 1; // enable hardcoded standard caching
   $drupal_unknown = TRUE;
   header('X-Backend: E');
+}
+
+/**
+ * Dev mode switch
+ *
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // deny known search bots on foo.dev.domain subdomains
+  if ($known_bot) {
+    header('X-Accel-Expires: 5');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+    header("Connection: close");
+    exit;
+  }
+  error_reporting(E_ALL & ~E_NOTICE);
+  ini_set('display_errors', TRUE);
+  ini_set('display_startup_errors', TRUE);
+  unset($conf['cache']);          // stop hardcoding caching
+  unset($conf['preprocess_css']); // stop hardcoding css aggregation
+  unset($conf['preprocess_js']);  // stop hardcoding js aggregation
+  unset($conf['error_level']);    // stop hardcoding no errors on screen
+  $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for foo.dev.domain
+  $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for foo.dev.domain
+  $is_dev = TRUE;
+}
+
+/**
+ * Hostmaster specific settings
+ *
+ */
+if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
+  if (!file_exists('/data/conf/no-https-aegir.inc')) {
+    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
+    if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
+      header('X-Accel-Expires: 5');
+      header("HTTP/1.1 301 Moved Permanently");
+      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+      header("Connection: close");
+      exit;
+    }
+  }
+  $conf['hosting_require_disable_before_delete'] = 0;
+  unset($conf['cache']); // disable hardcoded caching
+  ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
+  if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST'])) {
+    if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
+        preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
+        preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
+      header('X-Accel-Expires: 5');
+      header("HTTP/1.1 301 Moved Permanently");
+      header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
+      header("Connection: close");
+      exit;
+    }
+  }
+  header('X-Accel-Expires: 1');
 }
 
 // http://drupal.org/node/912682#comment-3503636
