@@ -629,7 +629,7 @@ restore_default_sql () {
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] ; then
       true
     else
-      sed -i "s/3600/3599/g" /var/xdrago/minute.sh &> /dev/null
+      sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
     fi
   fi
   chmod 700 /var/xdrago/minute.sh

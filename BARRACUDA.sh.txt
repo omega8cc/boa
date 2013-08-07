@@ -5868,7 +5868,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/3600/3599/g" /var/xdrago/minute.sh &> /dev/null
+    sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/3 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
     sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -5906,7 +5906,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    sed -i "s/3600/3599/g" /var/xdrago/minute.sh &> /dev/null
+    sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/3 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
     sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
