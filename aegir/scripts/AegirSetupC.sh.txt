@@ -384,12 +384,6 @@ enable_drupal6_admin () {
   sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
-# Add D6 translations.
-add_drupal6_translations () {
-  rm -f -r $_THIS_PRPATH/translations &> /dev/null
-  ln -sf /data/all/000/translations $_THIS_PRPATH/translations &> /dev/null
-}
-#
 # Init this distro root.
 init_this_distro_root () {
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
@@ -636,9 +630,9 @@ fi
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ]; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     msg "$_STATUS C: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
@@ -758,7 +752,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
     rm -f -r $_CORE_DISTRO/profiles/default
     create_dirs
-    add_drupal6_translations
   else
     cd $_CORE
     get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -968,7 +961,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     sed -i "s/Conference Organizing Distribution/Conference/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
     rm -f -r $_CORE_DISTRO/profiles/default
     create_dirs
-    add_drupal6_translations
   else
     cd $_CORE
     get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -1311,7 +1303,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     enable_drupal6_admin
     add_old_short_name_acquia
     create_dirs
-    add_drupal6_translations
   else
     cd $_CORE
     get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -1345,7 +1336,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     enable_drupal6_admin
     add_old_short_name_acquia
     create_dirs
-    add_drupal6_translations
   else
     cd $_CORE
     get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -1380,7 +1370,6 @@ if [ ! -d "$_CORE/pressflow" ] ; then
       enable_drupal6_admin
       add_old_short_name_acquia
       create_dirs
-      add_drupal6_translations
     else
       cd $_CORE
       get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -2038,7 +2027,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
     $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
     create_dirs
-    add_drupal6_translations
   else
     cd $_CORE
     get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -2597,7 +2585,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     replace_drupal6_core
     rm -f -r $_CORE_DISTRO/profiles/default
     create_dirs
-    add_drupal6_translations
   else
     cd $_CORE
     get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
@@ -2696,7 +2683,6 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
     done
     rm -f *.tar.gz
     create_dirs
-    add_drupal6_translations
     touch $_CORE_DISTRO/fixed_1.log
   else
     cd $_CORE

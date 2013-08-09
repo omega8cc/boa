@@ -728,39 +728,6 @@ manage_o_contrib () {
     msg "$_STATUS A: Running o_contrib modules check and upgrade, please wait..."
     upgrade_o_contrib
   fi
-  if [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
-    if [ ! -d "/data/all/000/translations" ] ; then
-      mkdir -p /data/all/000/translations
-    else
-      rm -f /data/all/000/translations/* &> /dev/null
-    fi
-    cd /data/all/000/translations
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.zh-hant.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.zh-hans.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.ca.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.da.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.nl.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.fr.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.de.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.hu.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.ja.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.nb.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.pl.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.pt-pt.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.pt-br.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.es.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.sv.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.el.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.et.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.it.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.uk.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.sk.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.fi.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.tr.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.cs.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.lt.po
-    wget -q -U iCab http://ftp.drupal.org/files/translations/6.x/drupal/drupal-$_SMALLCORE_6_LANG.ru.po
-  fi
 }
 
 
@@ -825,9 +792,9 @@ fi
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/translations/drupal-$_SMALLCORE_6_LANG.pl.po" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"

@@ -168,16 +168,16 @@ Octopus can install the platforms listed below:
 
 ### Pressflow 6.28.2
 
- Acquia 6.28.2 (int) ---------- http://bit.ly/acquiadrupal
+ Acquia 6.28.2 ---------------- http://bit.ly/acquiadrupal
  CiviCRM 4.1.6 ---------------- http://civicrm.org
  Commons 2.13 ----------------- http://drupal.org/project/commons
  Conference 1.0-rc2 ----------- http://drupal.org/project/cod
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
  Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
- Pressflow 6.28.2 (int) ------- http://pressflow.org
+ Pressflow 6.28.2 ------------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
- Ubercart 2.12.1 (int) -------- http://drupal.org/project/ubercart
+ Ubercart 2.12.1 -------------- http://drupal.org/project/ubercart
 
 All D7 platforms have been enhanced using Drupal 7.23.1 +Extra core:
 https://github.com/omega8cc/7x/tree/7.23.1
@@ -209,12 +209,6 @@ will fix all critical issues and/or apply required updates:
  OpenPublic ------------------- http://drupal.org/project/openpublic
  OpenScholar ------------------ http://openscholar.harvard.edu
  Videola ---------------------- http://videola.tv
-
-Platforms marked with (int) come also with ready to use translations
-of Drupal core in 25 languages. Only languages with at least
-10 maintainers and at least 60% of progress are included.
-Other platforms are using extended and customized translations or
-require far more than just core translation, so we don't touch them.
 
 
 ### BUG SUBMISSION
