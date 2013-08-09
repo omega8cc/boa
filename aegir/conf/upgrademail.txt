@@ -155,7 +155,7 @@ platforms and features to help you manage your Drupal sites.
 
   ### Drupal 7.23.1
 
-  Commons 3.2 ------------------ http://drupal.org/project/commons
+  OpenScholar 3.7.4 ------------ http://openscholar.harvard.edu
 
 
 === UPDATED OCTOPUS PLATFORMS

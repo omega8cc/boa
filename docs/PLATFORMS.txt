@@ -41,7 +41,7 @@
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic (off)
 ### OPH ----------- OpenPublish
-### OSR ----------- OpenScholar (off)
+### OSR ----------- OpenScholar
 ### OVO ----------- Octopus Video (off)
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly

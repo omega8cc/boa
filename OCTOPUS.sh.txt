@@ -183,7 +183,7 @@ _PHP_CLI_VERSION=5.3
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic (off)
 ### OPH ----------- OpenPublish
-### OSR ----------- OpenScholar (off)
+### OSR ----------- OpenScholar
 ### OVO ----------- Octopus Video (off)
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly
@@ -563,7 +563,7 @@ _OPENENTERPRISE=7.x-1.0-rc3
 _OPENOUTREACH=7.x-1.0
 _OPENPUBLIC=beta3-build100
 _OPENPUBLISH=7.x-1.0-beta7
-_OPENSCHOLAR=2.0-rc1
+_OPENSCHOLAR=7.x-3.7.4
 _PANOPOLY=7.x-1.0-rc5
 _PROSEPOINT=0.46
 _UBER_CART_SEVEN=3.5.1
