@@ -37,7 +37,7 @@
 _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 
-###---### distro config
+###---### Distro config.
 #
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
@@ -83,7 +83,7 @@ _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
 
 
-###---### main config
+###---### Main config.
 #
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
@@ -145,24 +145,11 @@ SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
-###---### Functions
-# noticeable messages
-msg() {
+###---### Functions.
+#
+# Noticeable messages.
+msg () {
   echo "Octopus [`date`] ==> $*"
-}
-#
-# Success msg
-success () {
-	msg "$1 Succeeded"
-}
-#
-# Error msg
-fatal () {
-	echo " "
-	msg "Fatal Error Occurred: $1"
-	msg "Cannot continue installation"
-	touch /opt/tmp/status-AegirSetupA-FAIL
-	exit 1
 }
 #
 # Silent runner.
@@ -188,21 +175,21 @@ st_runner () {
   fi
 }
 #
-# Small spinner
+# Small spinner.
 mrun () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	fi
+  CMD="$1"
+  touch busy
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  fi
 }
 #
-# Simple prompt
+# Simple prompt.
 prompt_yes_no () {
 if [ "$_AUTOPILOT" = "YES" ] ; then
   return 0
@@ -283,13 +270,11 @@ update_redis_password () {
   fi
 }
 #
-# stop on error
-# set -e ### disabled for debugging
 #
 _SRCDIR=/opt/tmp/files
 _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
-# Create shared dirs
+# Create shared dirs.
 create_shared_dirs () {
   msg "$_STATUS A: Creating shared directories, please wait..."
   if [ ! -d "$_CORE" ] ; then
@@ -317,7 +302,7 @@ create_shared_dirs () {
   chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 }
 #
-# fix for FServer broken due to required now strongarm
+# Fix for FServer broken due to required now strongarm.
 #
 feature_server_fix_002 () {
 if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
@@ -346,7 +331,7 @@ cd
 fi
 }
 #
-# update o_contrib
+# Update o_contrib.
 #
 o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
@@ -404,7 +389,7 @@ done
 cd
 }
 #
-# update o_contrib_seven
+# Update o_contrib_seven.
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
@@ -492,7 +477,7 @@ force_advanced_nginx_config () {
   fi
 }
 #
-# download_textile
+# Download Textile.
 download_textile () {
   cd textile
   svn export http://textpattern.googlecode.com/svn/development/4.x/textpattern/lib/classTextile.php &> /dev/null
@@ -501,7 +486,7 @@ download_textile () {
   patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/textile.patch &> /dev/null
 }
 #
-# download_o_contrib_seven
+# Download o_contrib_seven.
 download_o_contrib_seven () {
   touch update-022.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
@@ -568,7 +553,7 @@ download_o_contrib_seven () {
   fi
 }
 #
-# download_o_contrib_six
+# Download o_contrib_six.
 download_o_contrib_six () {
   touch update-022.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
@@ -649,7 +634,7 @@ download_o_contrib_six () {
   fi
 }
 #
-# upgrade_o_contrib
+# Upgrade o_contrib.
 upgrade_o_contrib () {
 if [ -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] && [ -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] ; then
   _O_CONTRIB_UP=NO
@@ -726,7 +711,7 @@ if [ -d "$_CORE/o_contrib_seven" ] ; then
 fi
 }
 #
-# manage_o_contrib
+# Manage o_contrib.
 manage_o_contrib () {
   if [ ! -e "$_CORE/o_contrib_seven" ] ; then
     mkdir -p $_CORE/o_contrib_seven
@@ -780,7 +765,7 @@ manage_o_contrib () {
 }
 
 
-###---### Checking status
+###---### Checking status.
 #
 if [ -d "$_ROOT" ] ; then
   _STATUS=UPGRADE
@@ -790,7 +775,7 @@ if [ -d "$_ROOT" ] ; then
 fi
 
 
-###---### User check
+###---### User check.
 #
 if [ `whoami` = "root" ] ; then
   msg "$_STATUS A: Aegir automated install script part A"
@@ -802,7 +787,7 @@ else
 fi
 
 
-###---### Checking version
+###---### Checking version.
 #
 msg "$_STATUS A: Checking OCTOPUS version, please wait..."
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
@@ -836,7 +821,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
 fi
 
 
-###---### Hot Sauce check
+###---### Hot Sauce check.
 #
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
@@ -859,7 +844,7 @@ fi
 _THIS_CTRL="$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION"
 
 
-###---### Add required users and create directories
+###---### Add required users and create directories.
 #
 msg "$_STATUS A: Creating directories with correct permissions, please wait..."
 mrun "sleep 1"
@@ -878,7 +863,7 @@ chown -R $_USER:$_USRG /opt/tmp &> /dev/null
 chown -R $_USER:$_USRG /data/conf &> /dev/null
 
 
-###---### Prepare scripts
+###---### Prepare scripts.
 #
 chmod 0711 $_ROOT
 cd $_ROOT
@@ -888,7 +873,7 @@ chown $_USER:$_USRG $_ROOT/AegirSetupB.sh.txt &> /dev/null
 chown $_USER:$_USRG $_ROOT/AegirSetupC.sh.txt &> /dev/null
 
 
-###---### Run standard pre-install
+###---### Run standard pre-install.
 #
 # Generate provision backend db_passwd.
 provision_backend_dbpass_generate () {
@@ -1054,7 +1039,7 @@ else
 fi
 
 
-###---### Create ~/bin dir if not exists
+###---### Create ~/bin dir if not exists.
 #
 _L_BIN="$_ROOT/bin"
 if [ ! -d "$_L_BIN" ] ; then
@@ -1067,7 +1052,7 @@ if [ ! -L "$_L_BIN/drush" ] ; then
 fi
 
 
-###---### Run standard post-install
+###---### Run standard post-install.
 #
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
@@ -1094,19 +1079,19 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 fi
 
 
-###---### Force advanced Nginx config
+###---### Force advanced Nginx config.
 #
 force_advanced_nginx_config
 st_runner "service nginx reload" &> /dev/null
 
 
-###---### Force global.inc update
+###---### Force global.inc update.
 #
 mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
 
 
-###---### Forced SSL settings
+###---### Forced SSL settings.
 #
 if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
   if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
@@ -1124,12 +1109,12 @@ fi
 cd $_ROOT
 
 
-###---### Set or update Redis password
+###---### Set or update Redis password.
 #
 update_redis_password
 
 
-###---### Set/rewrite _REMOTE_CACHE_IP if defined and disable local caches
+###---### Set/rewrite _REMOTE_CACHE_IP if defined and disable local caches.
 #
 if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
   if [ "$_REMOTE_CACHE_IP" = "127.0.0.1" ] ; then
@@ -1152,7 +1137,7 @@ if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
 fi
 
 
-###---### Set permissions for all
+###---### Set permissions for all.
 #
 chmod 0755 $_AEGIR_ROOT &> /dev/null
 chmod 0711 $_ROOT/config &> /dev/null
@@ -1233,7 +1218,7 @@ if [ ! -e "$_CORE/dot-files-ctrl-$_INSTALLER_VERSION" ] ; then
 fi
 
 
-###---### Fix files permissions
+###---### Fix files permissions.
 #
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
@@ -1248,14 +1233,14 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 fi
 
 
-###---### Clean up old and install files
+###---### Clean up old and install files.
 #
 rm -f $_ROOT/AegirSetupC.sh.txt
 rm -f $_ROOT/AegirSetupB.sh.txt
 rm -f $_ROOT/*.sh.txt
 
 
-###---### Add cron task
+###---### Add cron task.
 #
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
@@ -1269,7 +1254,7 @@ if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
 fi
 
 
-###---### Add ftps/lshell access
+###---### Add ftps/lshell access.
 #
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
@@ -1321,7 +1306,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 fi
 
 
-###---### Add symlink to the sites backups
+###---### Add symlink to the sites backups.
 #
 _USERFTP="$_USER.ftp"
 _USER_HD="/home/$_USERFTP"
@@ -1332,7 +1317,7 @@ if [ ! -L "$_USER_HD/backups" ] ; then
 fi
 
 
-###---### Add symlink to the system drush_make
+###---### Add symlink to the system drush_make.
 #
 _USERFTP="$_USER.ftp"
 _USER_DM="/home/$_USERFTP/.drush"
@@ -1346,7 +1331,7 @@ if [ ! -L "$_USER_DM/drush_make" ] ; then
 fi
 
 
-###---### Add symlink to the system registry_rebuild
+###---### Add symlink to the system registry_rebuild.
 #
 if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
   msg "$_STATUS A: Adding symlink to the system registry_rebuild"
@@ -1358,7 +1343,7 @@ if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
 fi
 
 
-###---### Add symlink to the system clean_missing_modules
+###---### Add symlink to the system clean_missing_modules.
 #
 if [ ! -L "$_USER_DM/clean_missing_modules" ] ; then
   msg "$_STATUS A: Adding symlink to the system clean_missing_modules"
@@ -1370,7 +1355,7 @@ if [ ! -L "$_USER_DM/clean_missing_modules" ] ; then
 fi
 
 
-###---### Add symlink to the system drush_ecl
+###---### Add symlink to the system drush_ecl.
 #
 if [ ! -L "$_USER_DM/drush_ecl" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_ecl"
@@ -1382,7 +1367,7 @@ if [ ! -L "$_USER_DM/drush_ecl" ] ; then
 fi
 
 
-###---### Create .ssh dir if not exists
+###---### Create .ssh dir if not exists.
 #
 _USER_SSH="/home/$_USERFTP/.ssh"
 if [ ! -d "$_USER_SSH" ] ; then
@@ -1393,7 +1378,7 @@ fi
 chmod 600 $_USER_SSH/id_{r,d}sa &> /dev/null
 
 
-###---### Create .bazaar dir and conf file if not exist
+###---### Create .bazaar dir and conf file if not exist.
 #
 _USER_BZR="/home/$_USERFTP/.bazaar"
 if [ ! -d "$_USER_BZR" ] ; then
@@ -1404,7 +1389,7 @@ fi
 echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
 
 
-###---### Add symlink to the clients directory
+###---### Add symlink to the clients directory.
 #
 _USERFTP="$_USER.ftp"
 _USER_HD="/home/$_USERFTP"
@@ -1420,12 +1405,12 @@ rm -f -r $_ROOT/clients/*/backups &> /dev/null
 symlinks -dr $_ROOT/clients &> /dev/null
 
 
-###---### Remove not used dot files
+###---### Remove not used dot files.
 #
 rm -f $_USER_HD/{.profile,.bash_logout,.bashrc}
 
 
-###---### Reading or creating pass.txt
+###---### Reading or creating pass.txt.
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
@@ -1463,7 +1448,7 @@ else
 fi
 
 
-###---### Creating ftp symlinks
+###---### Creating ftp symlinks.
 #
 if [ "$_DIST_INSTALL" = "YES" ] ; then
 msg "$_STATUS A: Creating ftp symlinks"
@@ -1688,7 +1673,7 @@ mrun "sleep 1"
 fi
 
 
-###---### Create ~/static dir if not exists
+###---### Create ~/static dir if not exists.
 #
 if [ ! -d "$_ROOT/static" ] ; then
   mkdir -p $_ROOT/static
@@ -1699,7 +1684,7 @@ chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
 
 
-###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user
+###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
 #
 if [ ! -e "$_ROOT/.ssh/id_rsa.pub" ] ; then
   su -s /bin/bash - $_USER -c "ssh-keygen -b 4096 -t rsa -N \"\" -f ~/.ssh/id_rsa" &> /dev/null
@@ -1718,7 +1703,7 @@ if [ ! -e "$_ROOT/.ssh/id_rsa.pub" ] ; then
 fi
 
 
-###---### Create .bazaar dir and conf file if not exist for system user
+###---### Create .bazaar dir and conf file if not exist for system user.
 #
 _SYSTEM_USER_BZR="$_ROOT/.bazaar"
 if [ ! -d "$_SYSTEM_USER_BZR" ] ; then
@@ -1729,7 +1714,7 @@ fi
 echo ignore_missing_extensions=True > $_SYSTEM_USER_BZR/bazaar.conf
 
 
-###---### Create other dirs and symlinks if not exist
+###---### Create other dirs and symlinks if not exist.
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
@@ -1756,7 +1741,7 @@ else
 fi
 
 
-###---### Remove not used cache module
+###---### Remove not used cache module.
 #
 if [ ! -e "/data/all/000/old_cache.out2.txt" ] && [ -e "/data/all/000" ] ; then
   sed -i "s/, 'cache'//g" /data/all/*/*/profiles/*/*.profile &> /dev/null
@@ -1766,7 +1751,7 @@ if [ ! -e "/data/all/000/old_cache.out2.txt" ] && [ -e "/data/all/000" ] ; then
 fi
 
 
-###---### Preparing setupmail.txt
+###---### Preparing setupmail.txt.
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
   true
@@ -1801,7 +1786,7 @@ fi
 fi
 
 
-###---### Sending setup e-mail
+###---### Sending setup e-mail.
 #
 _MAILX_TEST=`mail -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
@@ -1841,7 +1826,7 @@ else
 fi
 
 
-###---### Touch install logs
+###---### Touch install logs.
 #
 TIME=`date`
 if [ "$_STATUS" = "INIT" ] ; then
@@ -1853,7 +1838,7 @@ echo "`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` / Aegir $_AEGIR_VE
 msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
 
 
-###---### Final cleaning
+###---### Final cleaning.
 #
 msg "$_STATUS A: Final cleaning, please wait a moment..."
 mrun "sleep 1"

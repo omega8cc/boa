@@ -1,31 +1,39 @@
 #!/bin/bash
 
 
-########################################################################
-# Aegir quick install script
-#
-# This script is just a wrapper to the hostmaster-install command, which
-# is part of the provision module. It is designed to be quickly
-# downloaded and ran as the Aegir user (created as per the INSTALL.txt)
-# and bootstrap aegir by downloading drush and provision.
-#
-# The real work happens in PHP, within the hostmaster-install command.
-#
-# It should keep to strict POSIX shell syntax to ensure maximum
-# portability. The aim here is to ease the burden allow people using
-# various platforms to zip through the install quicker.
-#
-# This script also *DOES NOT CHECK* if the requirements specified in
-# INSTALL.txt have been met.  It's up to the admin to follow the proper
-# install instructions or use the packages provided by their platform.
-########################################################################
-# This script takes the following steps:
-#
-# 1. downloads drush in $_AEGIR_HOME
-# 2. downloads provision in $_AEGIR_HOME/.drush
-# 3. delegate the rest of the install to hostmaster-install
-########################################################################
-# basic variables, change before release
+###----------------------------------------###
+###
+###  Barracuda Aegir Installer
+###
+###  Copyright (C) 2010-2013 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###  This program is free software. You can
+###  redistribute it and/or modify it under
+###  the terms of the GNU GPL as published by
+###  the Free Software Foundation, version 2
+###  or later.
+###
+###  This program is distributed in the hope
+###  that it will be useful, but WITHOUT ANY
+###  WARRANTY; without even the implied
+###  warranty of MERCHANTABILITY or FITNESS
+###  FOR A PARTICULAR PURPOSE. See the GNU GPL
+###  for more details.
+###
+###  You should have received a copy of the
+###  GNU GPL along with this program.
+###  If not, see http://www.gnu.org/licenses/
+###
+###  Code: http://code.aegir.cc/aegir
+###
+###----------------------------------------###
+
+
+###----------------------------------------###
+### DON'T EDIT ANYTHING BELOW THIS LINE    ###
+###----------------------------------------###
+
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
@@ -44,15 +52,14 @@ if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
 else
   _L_PHP_CLI=/usr/local/bin
 fi
-#
-# when adding a variable here, add it to the display below
+SHELL=/bin/bash
+PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
-########################################################################
-# functions
+###---### Functions.
 #
-# noticeable messages
-msg() {
-  echo "==> $*"
+# Noticeable messages.
+msg () {
+  echo "Barracuda [`date`] ==> $*"
 }
 #
 # Update php-cli for Drush.
@@ -79,12 +86,8 @@ get_dev_ext () {
 sanitize_string () {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
 }
-#
-########################################################################
-# Main script
 
-SHELL=/bin/bash
-PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+###--------------------###
 
 if [ `whoami` = "root" ] ; then
   msg "FATAL ERROR: This script should be ran as a non-root user"
@@ -119,13 +122,7 @@ else
   exit 1
 fi
 
-msg "This script makes the following assumptions: "
-cat <<EOF
- * you have read INSTALL.txt and prepared the platform accordingly
- * you are running as your "aegir" user
-EOF
-
-msg "Aegir will now generate a mysql super user password for you: "
+msg "INFO: Barracuda will now generate a mysql super user password for you: "
 
 _AEGIR_DB_USER=aegir_root
 _ESC_APASS=""
@@ -155,15 +152,15 @@ GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'$_AEGIR_HOST_IP' IDENTIFIED BY
 GRANT ALL PRIVILEGES ON *.* TO '$_AEGIR_DB_USER'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 EOFMYSQL
 
-# we need to check both because some platforms (like SunOS) return 0 even if the binary is not found
+# We need to check both because some platforms (like SunOS) return 0 even if the binary is not found.
 if which drush 2> /dev/null && which drush | grep -v 'no drush in' > /dev/null; then
-  msg "Drush is in the path, good"
+  msg "INFO: Drush is in the path, good"
   _DRUSH=drush
 elif [ -x $_DRUSH ] ; then
-  msg "Drush found in $_DRUSH, good"
+  msg "INFO: Drush found in $_DRUSH, good"
   _DRUSH="$_L_PHP_CLI/php $_AEGIR_HOME/drush/drush.php"
 else
-  msg "Installing drush in $_AEGIR_HOME"
+  msg "INFO: Installing drush in $_AEGIR_HOME"
   cd $_AEGIR_HOME
   if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
     git clone http://git.drupal.org/project/drush.git &> /dev/null
@@ -183,7 +180,7 @@ fi
 update_php_cli_drush
 
 if $_DRUSH help > /dev/null ; then
-  msg "Drush seems to be functioning properly"
+  msg "INFO: Drush seems to be functioning properly"
 else
   msg "FATAL ERROR: Drush is broken ($_DRUSH help failed)"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
@@ -192,9 +189,9 @@ else
 fi
 
 if $_DRUSH help | grep "^ provision-install" > /dev/null ; then
-  msg "Provision already seems to be installed"
+  msg "INFO: Provision already seems to be installed"
 else
-  msg "Installing provision backend in $_AEGIR_HOME/.drush"
+  msg "INFO: Installing provision backend in $_AEGIR_HOME/.drush"
   mkdir -p $_AEGIR_HOME/.drush
   if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd $_AEGIR_HOME/.drush
@@ -236,7 +233,7 @@ else
   fi
 fi
 
-msg "Installing the frontend"
+msg "INFO: Installing the frontend"
 if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
   $_DRUSH cache-clear drush >$_AEGIR_HOME/install.log 2>&1
 fi
@@ -248,3 +245,11 @@ chmod 700 /var/aegir/backups/system
 _L_SYS="/var/aegir/backups/system/.$_AEGIR_DB_USER.pass.txt"
 echo "$_ESC_APASS" > $_L_SYS
 chmod 0600 $_L_SYS
+
+###----------------------------------------###
+###
+###  Barracuda Aegir Installer
+###  Copyright (C) 2010-2013 Omega8.cc
+###  noc@omega8.cc www.omega8.cc
+###
+###----------------------------------------###

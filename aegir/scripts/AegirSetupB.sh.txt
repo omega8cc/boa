@@ -37,7 +37,7 @@
 _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 
-###---### distro config
+###---### Distro config.
 #
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
@@ -80,7 +80,7 @@ _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
 
 
-###---### main config
+###---### Main config.
 #
 _ADM_EMAIL="EDIT_MY_EMAIL"
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
@@ -131,14 +131,14 @@ SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
-###---### Functions
+###---### Functions.
 #
-# noticeable messages
-msg() {
+# Noticeable messages.
+msg () {
   echo "Octopus [`date`] ==> $*"
 }
 #
-# Small spinner
+# Small spinner.
 mrun () {
   CMD="$1"
   touch busy
@@ -151,9 +151,6 @@ mrun () {
     return 0
   fi
 }
-#
-# stop on error
-# set -e ### disabled for debugging
 #
 # Download and extract from dev, then delete.
 get_dev_ext () {
@@ -179,7 +176,7 @@ _SRCDIR=/opt/tmp/files
 _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
 
-###---### Checking status
+###---### Checking status.
 #
 if [ -e "$_ROOT/aegir.sh" ] ; then
   _STATUS=UPGRADE
@@ -187,7 +184,7 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
 fi
 
 
-###---### User check
+###---### User check.
 #
 msg "$_STATUS B: Aegir automated install script part B"
 if [ `whoami` = "root" ] ; then
@@ -198,7 +195,7 @@ if [ `whoami` = "root" ] ; then
 fi
 
 
-###---### Add required users and create directories
+###---### Add required users and create directories.
 #
 msg "$_STATUS B: Creating directories with correct permissions"
 mrun "sleep 1"
@@ -248,7 +245,7 @@ fi
 echo $_DOMAIN > $_ROOT/log/domain.txt
 
 
-###---### Running standard installer
+###---### Running standard installer.
 #
 msg "$_STATUS B: Running standard installer"
 mrun "sleep 1"
@@ -368,7 +365,7 @@ if [ "$_HTTP_WILDCARD" = "YES" ] ; then
   sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
 fi
 
-###---### Build Aegir base
+###---### Build Aegir base.
 #
 mrun "sleep 1"
 _LOCAL_STATUS="$_STATUS"
@@ -497,7 +494,7 @@ else
 fi
 
 
-###---### Enhancing Aegir UI
+###---### Enhancing Aegir UI.
 #
 msg "$_STATUS B: Enhancing Aegir UI, please wait..."
 mrun "sleep 1"
@@ -612,7 +609,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
 fi
 
 
-###---### Aegir global.inc file
+###---### Aegir global.inc file.
 #
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then

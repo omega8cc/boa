@@ -37,7 +37,7 @@
 _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 
-###---### distro config
+###---### Distro config.
 #
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
@@ -82,7 +82,7 @@ _UBERCART=EDIT_UBERCART
 _VIDEOLA=EDIT_VIDEOLA
 
 
-###---### main config
+###---### Main config.
 #
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _ALL_DISTRO=EDIT_ALL_DISTRO
@@ -150,14 +150,14 @@ SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 
-###---### Functions
+###---### Functions.
 #
-# noticeable messages
+# Noticeable messages.
 msg () {
   echo "Octopus [`date`] ==> $*"
 }
 #
-# Simple prompt
+# Simple prompt.
 prompt_yes_no () {
 if [ "$_AUTOPILOT" = "YES" ]; then
   return 0
@@ -183,59 +183,19 @@ else
 fi
 }
 #
-# Success msg
-success () {
-	msg "$1 Succeeded"
-}
-#
-# Error msg
-fatal () {
-	echo " "
-	msg "Fatal Error Occurred: $1"
-	msg "Cannot continue installation"
-	touch /opt/tmp/status-AegirSetupC-FAIL
-	exit 1
-}
-#
-# Perform an action, log it, and run the spinner throughout
-runner () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		success "$CMD:"
-		return 0
-	else
-		rm busy
-		sleep 1
-		echo "$CMD failed.  Error (if any): $?"
-		echo " "
-		echo "Displaying the last 15 lines of $_LOG to help troubleshoot this problem:"
-		tail -15 $_LOG
-		return 1
-	fi
-}
-#
-# Small spinner
+# Small spinner.
 mrun () {
-	CMD="$1"
-	touch busy
-	if [ "$_SPINNER" = "YES" ] ; then
-	  bash $_SRCDIR/spinner busy &
-	fi
-	if $CMD >> $_LOG; then
-		rm busy
-		sleep 1
-		return 0
-	fi
+  CMD="$1"
+  touch busy
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  fi
 }
-#
-# stop on error
-# set -e ### disabled for debugging
 #
 # Download and extract from dev/distro, then delete.
 get_distro_ext () {
@@ -246,7 +206,7 @@ get_distro_ext () {
   fi
 }
 #
-# create standard directories
+# Create standard directories.
 create_dirs () {
   cd $_CORE_DISTRO
   mkdir -p ./sites/default/files
@@ -276,7 +236,7 @@ create_dirs () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
 }
 #
-# create standard symlinks
+# Create standard symlinks.
 create_symlinks () {
 if [ ! -L "includes" ] ; then
   ln -sf $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
@@ -297,7 +257,7 @@ if [ ! -L "includes" ] ; then
 fi
 }
 #
-# create d7 symlinks
+# Create D7 symlinks.
 create_d7_symlinks () {
 if [ ! -L "web.config" ] ; then
   ln -sf $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
@@ -306,7 +266,7 @@ if [ ! -L "web.config" ] ; then
 fi
 }
 #
-# patch d7 core
+# Patch D7 core.
 patch_d7_core () {
 cd $_CORE_DISTRO
 if [ ! -e "taxonomy-7.7.patch" ] ; then
@@ -315,7 +275,7 @@ if [ ! -e "taxonomy-7.7.patch" ] ; then
 fi
 }
 #
-# themes_for_d6
+# Themes for D6.
 themes_for_d6 () {
 cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta3.tar.gz
@@ -327,7 +287,7 @@ wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz
 cd /data/src/$_THIS_CORE
 }
 #
-# themes_for_d7
+# Themes for D7.
 themes_for_d7 () {
 cd $_CORE_DISTRO/themes
 wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta8.tar.gz
@@ -339,7 +299,7 @@ wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz
 cd $_CORE_DISTRO
 }
 #
-# prepare_pressflow_core
+# Prepare Pressflow core.
 prepare_pressflow_core () {
   mkdir -p /data/src/$_THIS_CORE
   chmod 0700 /data/src/$_THIS_CORE &> /dev/null
@@ -363,7 +323,7 @@ prepare_pressflow_core () {
   cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/
 }
 #
-# create standard D8 directories
+# Create standard D8 directories.
 create_d8_dirs () {
   mkdir -p ./sites/default/files
   mkdir -p ./cache/{normal,perm}
@@ -393,7 +353,7 @@ create_d8_dirs () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
 }
 #
-# create standard D8 symlinks
+# Create standard D8 symlinks.
 create_d8_symlinks () {
 if [ ! -L "core" ] ; then
   ln -sf $_CORE_DISTRO/core core &> /dev/null
@@ -407,7 +367,7 @@ if [ ! -L "core" ] ; then
 fi
 }
 #
-# replace drupal 6 core
+# Replace D6 core.
 replace_drupal6_core () {
   cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
   rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
@@ -415,35 +375,35 @@ replace_drupal6_core () {
   cd $_CORE_DISTRO
 }
 #
-# enable drupal 6 contrib
+# Enable D6 contrib.
 enable_drupal6_contrib () {
   sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
-# enable drupal 6 admin
+# Enable D6 admin.
 enable_drupal6_admin () {
   sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
-# add drupal 6 translations
+# Add D6 translations.
 add_drupal6_translations () {
   rm -f -r $_THIS_PRPATH/translations &> /dev/null
   ln -sf /data/all/000/translations $_THIS_PRPATH/translations &> /dev/null
 }
 #
-# init this distro root
+# Init this distro root.
 init_this_distro_root () {
   mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
   cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
   create_symlinks
 }
 #
-# add old short name acquia
+# Add old short name acquia.
 add_old_short_name_acquia () {
   sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
 }
 #
-# init distro seven root
+# Init distro seven root.
 init_core_distro_seven_root () {
   cd $_CORE_DISTRO
   rm -f $_CORE_DISTRO/*.txt
@@ -451,7 +411,7 @@ init_core_distro_seven_root () {
   ln -sf $_CORE/o_contrib_seven modules/o_contrib_seven
 }
 #
-# init distro six root
+# Init distro six root.
 init_core_distro_six_root () {
   cd $_CORE_DISTRO
   rm -f $_CORE_DISTRO/*.txt
@@ -461,7 +421,7 @@ init_core_distro_six_root () {
   cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
 }
 #
-# get panopoly apps
+# Get Panopoly apps.
 get_panopoly_apps () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_admin-7.x-1.0-beta6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_core-7.x-1.0-beta6.tar.gz
@@ -480,7 +440,7 @@ get_panopoly_apps () {
   rm -f *.tar.gz
 }
 #
-# upgrade contrib less
+# Upgrade contrib less.
 upgrade_contrib_less () {
   rm -f -r {ctools,rules,views}
   wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.3.tar.gz
@@ -502,7 +462,7 @@ upgrade_contrib_less () {
   cd ../
 }
 #
-# upgrade contrib more
+# Upgrade contrib more.
 upgrade_contrib_more () {
   rm -f -r {apps,calendar,ctools,date,email,entity,facetapi,features,fontyourface,libraries,module_filter,panels_breadcrumbs,pathauto,rules,search_api,simple_gmap,taxonomy_menu,token,views,views_bulk_operations}
   wget -q -U iCab http://ftp.drupal.org/files/projects/apps-7.x-1.0-beta7.tar.gz
@@ -539,7 +499,7 @@ upgrade_contrib_more () {
   cd ../
 }
 #
-# upgrade contrib some
+# Upgrade contrib some.
 upgrade_contrib_some () {
   rm -f -r {breakpoints,libraries,link,linkit,navbar,rules,token,views}
   wget -q -U iCab http://ftp.drupal.org/files/projects/breakpoints-7.x-1.x-dev.tar.gz
@@ -566,14 +526,14 @@ upgrade_contrib_some () {
   cd ../
 }
 #
-# remove default core seven profiles
+# Remove default core seven profiles.
 remove_default_core_seven_profiles () {
   rm -f -r $_CORE_DISTRO/profiles/minimal
   rm -f -r $_CORE_DISTRO/profiles/standard
   rm -f -r $_CORE_DISTRO/profiles/testing
 }
 #
-# replace drupal7 core
+# Replace D7 core.
 replace_drupal7_core () {
   if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
     cd $_CORE
@@ -584,7 +544,7 @@ replace_drupal7_core () {
   cp -af $_CORE/$_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
 }
 #
-# rename drupal7 profiles
+# Rename D7 profiles.
 rename_drupal7_profiles () {
   for Files in `find $_CORE_DISTRO/profiles -type f`
   do
@@ -594,7 +554,7 @@ rename_drupal7_profiles () {
   done
 }
 #
-# rename drupal8 profiles
+# Rename D8 profiles.
 rename_drupal8_profiles () {
   for Files in `find $_CORE_DISTRO/core/profiles -type f`
   do
@@ -604,7 +564,7 @@ rename_drupal8_profiles () {
   done
 }
 #
-# rename drupal7 distro directory
+# Rename D7 distro directory.
 rename_drupal7_distro_directory () {
   _REVISIONS="10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26"
   for i in $_REVISIONS; do
@@ -614,13 +574,13 @@ rename_drupal7_distro_directory () {
   done
 }
 #
-# add old short name seven
+# Add old short name seven.
 add_old_short_name_seven () {
   sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" $_CORE_DISTRO/profiles/minimal/minimal.info &> /dev/null
   sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
 }
 #
-# create drupal7 basic platform
+# Create D7 basic platform.
 create_drupal7_basic () {
   if [ ! -d "$_CORE_DISTRO" ] ; then
     mkdir -p $_CORE_DISTRO
@@ -636,7 +596,7 @@ create_drupal7_basic () {
   create_d7_symlinks
 }
 #
-# create civicrm symlinks
+# Create civicrm symlinks.
 create_civicrm_symlinks () {
   if [ -d "sites/all/modules/civicrm" ] ; then
     rm -f -r sites/all/modules/civicrm
@@ -653,7 +613,7 @@ create_civicrm_symlinks () {
 }
 
 
-###---### Checking status
+###---### Checking status.
 #
 if [ -e "$_ROOT/log/setupmail.txt" ] ; then
   _STATUS=UPGRADE
@@ -661,7 +621,7 @@ if [ -e "$_ROOT/log/setupmail.txt" ] ; then
 fi
 
 
-###---### User check
+###---### User check.
 #
 msg "$_STATUS C: Aegir automated install script part C"
 if [ `whoami` = "root" ] ; then
@@ -672,7 +632,7 @@ if [ `whoami` = "root" ] ; then
 fi
 
 
-###---### Hot Sauce check
+###---### Hot Sauce check.
 #
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
@@ -694,7 +654,7 @@ fi
 _THIS_CTRL="/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION"
 
 
-###---### Distributions full names
+###---### Distributions full names.
 #
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
@@ -740,14 +700,14 @@ _F_DRUPAL7_S="Drupal $_SMALLCORE7 S.$_THIS_CORE"
 _F_DRUPAL7_P="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 
 
-###---### Create directories
+###---### Create directories.
 #
 mkdir -p $_ROOT/distro/$_THIS_CORE
 chmod 0711 $_ROOT/distro &> /dev/null
 chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
 
 
-###---### Prepare Pressflow core
+###---### Prepare Pressflow core.
 #
 if [ $_STATUS = "INIT" ] && [ ! -e "$_THIS_CTRL" ] ; then
   msg "$_STATUS C: Preparing Pressflow +Extra $_SMALLCORE6 core, please wait..."
@@ -2999,7 +2959,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
 fi
 
 
-###---### remove some module and themes for all
+###---### Remove some module and themes for all.
 #
 echo " "
 msg "$_STATUS C: Removing some old core themes, please wait..."
@@ -3013,7 +2973,7 @@ rm -f $_CORE/*.tar.gz
 cd $_CORE
 
 
-###---### Save & verify platforms
+###---### Save & verify platforms.
 #
 msg "$_STATUS C: Running Platforms Save & Verify tasks, please wait..."
 _LOCAL_STATUS="NOT_SET"

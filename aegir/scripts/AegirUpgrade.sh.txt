@@ -65,13 +65,11 @@ PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 ###---### Functions
 #
-# noticeable messages
+# Noticeable messages.
 msg () {
   echo "Barracuda [`date`] ==> $*"
 }
 #
-# stop on error
-# set -e
 export DEBIAN_FRONTEND=noninteractive
 #
 #
