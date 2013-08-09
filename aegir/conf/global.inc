@@ -196,14 +196,8 @@ if ($conf['install_profile'] == 'managingnews') {
   ini_set('auto_detect_line_endings', TRUE);
 }
 
-// JS aggregation breaks jquery.autopager-1.0.0.js
-if ($conf['install_profile'] == 'martplug') {
-  unset($conf['preprocess_js']);  // disable hardcoded js aggregation
-}
-
 if (isset($_SERVER['SERVER_NAME'])) {
   if ($conf['install_profile'] == 'uberdrupal' ||
-      $conf['install_profile'] == 'martplug' ||
       $conf['install_profile'] == 'commerce' ||
       $conf['install_profile'] == 'commerce_kickstart' ||
       $conf['install_profile'] == 'opendeals' ||

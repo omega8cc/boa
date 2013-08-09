@@ -57,7 +57,6 @@ _DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
 _ELMS=EDIT_ELMS
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _MART_PLUG=EDIT_MART_PLUG
-_MARTPLUG=EDIT_MARTPLUG
 _NODESTREAM6=EDIT_NODESTREAM6
 _NODESTREAM7=EDIT_NODESTREAM7
 _OCTOPUS_VIDEO=EDIT_OCTOPUS_VIDEO
@@ -673,7 +672,6 @@ _F_DRUPAL8="Drupal $_DRUPAL8 P.$_THIS_CORE"
 _F_ELMS="ELMS 1.0-b1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
-_F_MARTPLUG="MartPlug $_MART_PLUG $_SMALLCORE7 P.$_THIS_CORE"
 _F_NODESTREAM6="NodeStream 1.5.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1742,80 +1740,6 @@ mrun "sleep 1"
 else
   msg "DISTRO: $_F_MANAGINGNEWS installation skipped"
   mrun "sleep 1"
-fi
-fi
-fi
-}
-
-
-martplug_install () {
-###---### MartPlug
-#
-_THIS_PRNAME="martplug"
-_THIS_DISTRO="$_THIS_PRNAME-$_MART_PLUG-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MPG ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
-echo " "
-if prompt_yes_no "$_F_MARTPLUG - http://drupal.org/project/martplug" ; then
-true
-msg "DISTRO: $_F_MARTPLUG installation in progress..."
-mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
-  cd $_CORE
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    get_distro_ext "$_THIS_PRNAME-$_MARTPLUG-core.tar.gz" &> /dev/null
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_MARTPLUG" ] ; then
-      mv $_THIS_PRNAME-$_MARTPLUG $_THIS_DISTRO
-    fi
-    replace_drupal7_core
-    remove_default_core_seven_profiles
-    cd $_THIS_PRPATH/modules/contrib
-    if [ "$_MART_PLUG" = "1.0-b1b" ] ; then
-      rm -f -r $_THIS_PRPATH/modules/entity
-      rm -f -r $_THIS_PRPATH/modules/contrib/{block_titlelink,commerce,features,job_scheduler,media,strongarm,token,views_infinite_scroll,wysiwyg}
-      wget -q -U iCab http://ftp.drupal.org/files/projects/block_titlelink-7.x-1.3.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/commerce-7.x-1.5.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-rc2.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/job_scheduler-7.x-2.0-alpha3.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/media-7.x-1.2.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/strongarm-7.x-2.0.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.4.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/views_infinite_scroll-7.x-1.1.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/wysiwyg-7.x-2.x-dev.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-    fi
-    upgrade_contrib_more
-    cd $_THIS_PRPATH/modules/contrib/features
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/features-1265168-19-roles.patch ./
-    patch -p1 < features-1265168-19-roles.patch &> /dev/null
-    sed -i "s/^dependencies.*martplug_sample_content.*//g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
-    sed -i "s/name = MartPlug/name = MartPlug\nold_short_name = commerce_kickstart/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
-    find $_THIS_PRPATH -type d -exec chmod 0755 {} \; &> /dev/null
-    find $_THIS_PRPATH -type f -exec chmod 0644 {} \; &> /dev/null
-    create_dirs
-    themes_for_d7
-    patch_d7_core
-  else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
-  fi
-  init_core_distro_seven_root
-fi
-init_this_distro_root
-create_d7_symlinks
-msg "DISTRO: $_F_MARTPLUG installation completed"
-mrun "sleep 1"
-else
-  msg "DISTRO: $_F_MARTPLUG installation skipped"
-  mrun "sleep 1"
-fi
 fi
 fi
 fi
@@ -2948,7 +2872,6 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   drupal5_install
   drupal8_install
   elms_install
-  martplug_install
   nodestream6_install
   octopus_video_install
   openacademy_install
@@ -3144,12 +3067,6 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6 &> /dev/null
-    mrun "sleep 3"
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_MARTPLUG" martplug $_ROOT/distro/$_THIS_CORE/martplug-$_MART_PLUG-$_SMALLCORE7 &> /dev/null
     mrun "sleep 3"
   fi
 fi

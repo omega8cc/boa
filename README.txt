@@ -203,7 +203,6 @@ The platforms listed below can be re-added when their maintainers
 will fix all critical issues and/or apply required updates:
 
  ELMS ------------------------- http://drupal.org/project/elms
- MartPlug --------------------- http://drupal.org/project/martplug
  Octopus Video ---------------- http://octopusvideo.org
  Open Academy ----------------- http://drupal.org/project/openacademy
  Open Enterprise -------------- http://drupal.org/project/openenterprise

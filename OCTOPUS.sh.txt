@@ -173,7 +173,6 @@ _PHP_CLI_VERSION=5.3
 ### ELS ----------- ELMS (off)
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
-### MPG ----------- MartPlug (off)
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6 (off)
 ### OAM ----------- Open Atrium
@@ -552,7 +551,6 @@ _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _ELMS=6.x-1.0-beta1
 _MANAGINGNEWS=1.2.3
 _MART_PLUG=1.0-b1b
-_MARTPLUG=7.x-1.x-dev
 _NODESTREAM6=6.x-1.5
 _NODESTREAM7=7.x-2.0-rc5
 _OCTOPUS_VIDEO=1.0-alpha6
@@ -913,7 +911,6 @@ do
   sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
   sed -i "s/EDIT_MART_PLUG/$_MART_PLUG/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_MARTPLUG/$_MARTPLUG/g"                   $Files &> /dev/null
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
   sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files &> /dev/null
   sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files &> /dev/null

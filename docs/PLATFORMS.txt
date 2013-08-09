@@ -31,7 +31,6 @@
 ### ELS ----------- ELMS (off)
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
-### MPG ----------- MartPlug (off)
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6 (off)
 ### OAM ----------- Open Atrium
