@@ -166,24 +166,24 @@ Octopus can install the platforms listed below:
  Panopoly 1.0-rc5 ------------- http://drupal.org/project/panopoly
  Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
 
-### Pressflow 6.28.1
+### Pressflow 6.28.2
 
- Acquia 6.28.1 (int) ---------- http://bit.ly/acquiadrupal
+ Acquia 6.28.2 (int) ---------- http://bit.ly/acquiadrupal
  CiviCRM 4.1.6 ---------------- http://civicrm.org
  Commons 2.13 ----------------- http://drupal.org/project/commons
  Conference 1.0-rc2 ----------- http://drupal.org/project/cod
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
  Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
- Pressflow 6.28.1 (int) ------- http://pressflow.org
+ Pressflow 6.28.2 (int) ------- http://pressflow.org
  ProsePoint 0.46 -------------- http://prosepoint.org
  Ubercart 2.12.1 (int) -------- http://drupal.org/project/ubercart
 
 All D7 platforms have been enhanced using Drupal 7.23.1 +Extra core:
 https://github.com/omega8cc/7x/tree/7.23.1
 
-All D6 platforms have been enhanced using Pressflow 6.28.1 +Extra core:
-https://github.com/omega8cc/pressflow6/tree/pressflow-plus-6.28.1
+All D6 platforms have been enhanced using Pressflow 6.28.2 +Extra core:
+https://github.com/omega8cc/pressflow6/tree/pressflow-plus-6.28.2
 
 There are also platforms temporarily disabled for new installs,
 because they are either outdated, with numerous security updates
