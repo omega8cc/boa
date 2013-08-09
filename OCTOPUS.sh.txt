@@ -819,13 +819,13 @@ sub_force_advanced_nginx_config_main () {
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
       fi
     else
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
       fi
     fi
   fi

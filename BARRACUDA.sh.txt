@@ -2024,13 +2024,13 @@ sub_force_advanced_nginx_config () {
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
       fi
     else
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_advanced_include.conf &> /dev/null
+        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
       fi
     fi
   fi
@@ -6850,7 +6850,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 ###--------------------###
   if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] && [ "$_USE_STOCK" = "NO" ] ; then
     true
-  elif [ -e "/var/aegir/config/includes/nginx_advanced_include.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
+  elif [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
     true
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
