@@ -6271,7 +6271,11 @@ if [ -f "/usr/local/bin/lshell" ] ; then
     ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
   fi
 fi
-sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
+if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  rm -f /etc/logrotate.d/lshell
+else
+  sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
+fi
 
 
 ###--------------------###
