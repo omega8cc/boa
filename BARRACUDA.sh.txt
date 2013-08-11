@@ -3550,7 +3550,9 @@ upgrade_aegir_master () {
     msg "INFO: Running Aegir Master Instance upgrade"
     mrun "sleep 1"
     rm -f /opt/tmp/testecho*
-    service cron stop &> /dev/null
+    if [ ! -e "/root/.upstart.cnf" ] ; then
+      service cron stop &> /dev/null
+    fi
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries}
@@ -4350,7 +4352,9 @@ finale () {
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
   service auditd restart   &> /dev/null
-  service cron start       &> /dev/null
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    service cron start     &> /dev/null
+  fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
     csf -x &> /dev/null
     csf -e &> /dev/null
@@ -4373,7 +4377,9 @@ if [ `whoami` = "root" ] ; then
   rm -f -r /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   rm -f /tmp/cache.inc*
-  service cron stop &> /dev/null
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    service cron stop &> /dev/null
+  fi
   touch /var/run/boa_run.pid
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
@@ -5157,8 +5163,10 @@ fi
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   msg "WARN: Squeeze to Wheezy upgrade will start in 60 seconds..."
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
-  service cron stop &> /dev/null
-  mrun "sleep 60"
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    service cron stop &> /dev/null
+    mrun "sleep 60"
+  fi
   mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
   echo "nameserver 8.8.8.8" >/etc/resolv.conf
   echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -5237,8 +5245,10 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   _FULL_FORCE_REINSTALL=YES
   msg "WARN: Lenny to Squeeze upgrade will start in 60 seconds..."
   msg "WARN: Now pray it will work... or hit ctrl-c to stop now!"
-  service cron stop &> /dev/null
-  mrun "sleep 60"
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    service cron stop &> /dev/null
+    mrun "sleep 60"
+  fi
   mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
   echo "nameserver 8.8.8.8" >/etc/resolv.conf
   echo "nameserver 8.8.4.4" >>/etc/resolv.conf
@@ -5359,7 +5369,9 @@ else
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
-  service cron stop &> /dev/null
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    service cron stop &> /dev/null
+  fi
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
     csf -x &> /dev/null
   fi
