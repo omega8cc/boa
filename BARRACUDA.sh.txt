@@ -5885,7 +5885,6 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
     sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/INTERVAL 1 HOUR/INTERVAL 15 MINUTE/g" /var/xdrago/purge_binlogs.sh &> /dev/null
-    rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
@@ -5922,7 +5921,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/3 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
     sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
     sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
-    rm -f /etc/logrotate.d/lshell
     if [ -e "/usr/share/man/man3/buagent.3.gz" ] ; then
       chmod 644 /usr/share/man/man3/buagent.3.gz
     fi
@@ -6229,7 +6227,7 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_LSHELL="/usr/local/bin/lshell"
 fi
-if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: Upgrading Limited Shell, please wait..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
@@ -6240,12 +6238,7 @@ if [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ 
   mrun "sleep 1"
   cd /var/opt
   rm -f -r lshell*
-  if [ "$_LSHELL_VERSION" = "0.9.14" ] ; then
-    wget -q -U iCab http://garr.dl.sourceforge.net/project/lshell/lshell/$_LSHELL_VERSION/lshell-$_LSHELL_VERSION.tar.gz
-    tar -xzf lshell-$_LSHELL_VERSION.tar.gz
-  else
-    git clone --branch $_LSHELL_VERSION git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
-  fi
+  git clone --branch $_LSHELL_VERSION git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files &> /dev/null
     sed -i "s/Kicked/Logged/g" $Files &> /dev/null
@@ -6272,8 +6265,6 @@ if [ -f "/usr/local/bin/lshell" ] ; then
   fi
 fi
 if [[ "$_THISHOST" =~ ".host8." ]] ; then
-  rm -f /etc/logrotate.d/lshell
-else
   sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
 fi
 
