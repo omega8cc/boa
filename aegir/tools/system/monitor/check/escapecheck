@@ -31,7 +31,7 @@ exit;
 #############################################################################
 sub makeactions
 {
-local(@MYARR) = `grep -i forbidden /var/log/lsh/* | tail --lines=999 2>&1`;
+local(@MYARR) = `grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
     if ($line =~ /(syntax|path|command)/i || ($line =~ /(shell escape)/i && $line !~ /exit/i)) {
       if ($line =~ /(var\/log\/lsh)/i) {
