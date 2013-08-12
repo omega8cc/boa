@@ -419,7 +419,7 @@ for i in $REVISIONS; do
     wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-7.x-1.0-rc2.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.7.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.8.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.8.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/security_review-7.x-1.0.tar.gz
     for archive in ./*.tar.gz; do
@@ -510,7 +510,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/security_review-7.x-1.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.7.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.8.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.8.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc11.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
