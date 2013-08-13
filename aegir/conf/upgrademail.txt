@@ -155,6 +155,7 @@ platforms and features to help you manage your Drupal sites.
 
   ### Drupal 7.23.1
 
+  Open Atrium 2.0-b3 ----------- http://drupal.org/project/openatrium
   OpenScholar 3.7.4 ------------ http://openscholar.harvard.edu
 
 

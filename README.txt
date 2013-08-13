@@ -159,6 +159,7 @@ Octopus can install the platforms listed below:
  Commons 3.2 ------------------ http://drupal.org/project/commons
  Drupal 7.23.1 ---------------- http://drupal.org/drupal-7.22
  NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
+ Open Atrium 2.0-b3 ----------- http://drupal.org/project/openatrium
  Open Deals 1.24 -------------- http://drupal.org/project/opendeals
  Open Outreach 1.0 ------------ http://drupal.org/project/openoutreach
  OpenChurch 1.11-beta12 ------- http://drupal.org/project/openchurch

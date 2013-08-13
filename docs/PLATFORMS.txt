@@ -33,7 +33,8 @@
 ### MNS ----------- Managing News
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6 (off)
-### OAM ----------- Open Atrium
+### OAM ----------- Open Atrium D6
+### OA7 ----------- Open Atrium D7
 ### OAY ----------- Open Academy (off)
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals

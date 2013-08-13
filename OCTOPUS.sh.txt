@@ -175,7 +175,8 @@ _PHP_CLI_VERSION=5.3
 ### MNS ----------- Managing News
 ### NS7 ----------- NodeStream D7
 ### NSM ----------- NodeStream D6 (off)
-### OAM ----------- Open Atrium
+### OAM ----------- Open Atrium D6
+### OA7 ----------- Open Atrium D7
 ### OAY ----------- Open Academy (off)
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
@@ -557,6 +558,7 @@ _OCTOPUS_VIDEO=1.0-alpha6
 _OPEN_DEALS=1.24
 _OPENACADEMY=7.x-1.0-beta3
 _OPENATRIUM6=6.x-1.7
+_OPENATRIUM7=7.x-2.0-beta3
 _OPENCHURCH=7.x-1.11-beta12
 _OPENDEALS=7.x-1.24
 _OPENENTERPRISE=7.x-1.0-rc3
@@ -920,6 +922,7 @@ do
   sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
+  sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files &> /dev/null
