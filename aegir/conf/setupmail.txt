@@ -7,6 +7,12 @@ Your Aegir control panel [version BOA-2.0.8] is available at:
 
   https://aegir.dragon.ny.host8.biz
 
+Note:
+
+  Your Aegir control panel is using self-signed SSL certificate,
+  so your browser can display warning. Please add this certificate
+  as accepted in your system settings to avoid displaying it
+  each time you are trying to log in.
 
 The following topics are covered within this email:
 
