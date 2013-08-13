@@ -62,7 +62,7 @@ _NODESTREAM7=EDIT_NODESTREAM7
 _OCTOPUS_VIDEO=EDIT_OCTOPUS_VIDEO
 _OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
-_OPENATRIUM=EDIT_OPENATRIUM
+_OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
 _OPENENTERPRISE=EDIT_OPENENTERPRISE
@@ -670,7 +670,7 @@ _F_NODESTREAM6="NodeStream 1.5.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OCTOPUS_VIDEO="Octopus Video 1.0-a6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0-b3 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENATRIUM="Open Atrium 1.7.1 $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENATRIUM6="Open Atrium 1.7.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.11-b12 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENENTERPRISE="Open Enterprise 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1991,15 +1991,15 @@ openatrium_install () {
 ###---### Open Atrium
 #
 _THIS_PRNAME="openatrium"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENATRIUM-$_SMALLCORE6"
+_THIS_DISTRO="$_THIS_PRNAME-$_OPENATRIUM6-$_SMALLCORE6"
 _CORE_DISTRO="$_CORE/$_THIS_DISTRO"
 _THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENATRIUM - http://openatrium.com" ; then
+if prompt_yes_no "$_F_OPENATRIUM6 - http://openatrium.com" ; then
 true
-msg "DISTRO: $_F_OPENATRIUM installation in progress..."
+msg "DISTRO: $_F_OPENATRIUM6 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
@@ -2007,11 +2007,11 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
       prepare_pressflow_core
     fi
     cd $_CORE
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENATRIUM-core.tar.gz
-    rm -f $_THIS_PRNAME-$_OPENATRIUM-core.tar.gz
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENATRIUM" ] ; then
-      mv $_THIS_PRNAME-$_OPENATRIUM $_THIS_DISTRO
+    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM6-core.tar.gz
+    tar -xzf $_THIS_PRNAME-$_OPENATRIUM6-core.tar.gz
+    rm -f $_THIS_PRNAME-$_OPENATRIUM6-core.tar.gz
+    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENATRIUM6" ] ; then
+      mv $_THIS_PRNAME-$_OPENATRIUM6 $_THIS_DISTRO
     fi
     cd $_THIS_PRPATH/modules/contrib/imagecache
     # http://drupal.org/node/1243258#comment-4850634
@@ -2034,10 +2034,10 @@ if [ ! -d "$_CORE_DISTRO" ] ; then
   init_core_distro_six_root
 fi
 init_this_distro_root
-msg "DISTRO: $_F_OPENATRIUM installation completed"
+msg "DISTRO: $_F_OPENATRIUM6 installation completed"
 mrun "sleep 1"
 else
-  msg "DISTRO: $_F_OPENATRIUM installation skipped"
+  msg "DISTRO: $_F_OPENATRIUM6 installation skipped"
   mrun "sleep 1"
 fi
 fi
@@ -3065,9 +3065,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; t
     mrun "sleep 3"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM" openatrium $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM-$_SMALLCORE6 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM6" openatrium $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6 &> /dev/null
     mrun "sleep 3"
   fi
 fi

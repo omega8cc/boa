@@ -556,7 +556,7 @@ _NODESTREAM7=7.x-2.0-rc5
 _OCTOPUS_VIDEO=1.0-alpha6
 _OPEN_DEALS=1.24
 _OPENACADEMY=7.x-1.0-beta3
-_OPENATRIUM=6.x-1.7
+_OPENATRIUM6=6.x-1.7
 _OPENCHURCH=7.x-1.11-beta12
 _OPENDEALS=7.x-1.24
 _OPENENTERPRISE=7.x-1.0-rc3
@@ -919,7 +919,7 @@ do
   sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files &> /dev/null
   sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
-  sed -i "s/EDIT_OPENATRIUM/$_OPENATRIUM/g"               $Files &> /dev/null
+  sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
   sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files &> /dev/null
