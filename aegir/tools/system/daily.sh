@@ -128,6 +128,8 @@ fix_static_permissions () {
     find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
     echo fixed > $Plr/profiles/permissions-fix.info
+    chown $_THIS_HM_USER:users $Plr/profiles/permissions-fix.info
+    chmod 0664 $Plr/profiles/permissions-fix.info
   fi
 }
 
@@ -151,6 +153,8 @@ fix_permissions () {
     chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
     chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
     echo fixed > $Plr/sites/all/permissions-fix-$_NOW.info
+    chown $_THIS_HM_USER:users $Plr/sites/all/permissions-fix-$_NOW.info
+    chmod 0664 $Plr/sites/all/permissions-fix-$_NOW.info
   fi
   ### modules,themes,libraries - site level
   chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
