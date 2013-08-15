@@ -224,7 +224,7 @@ action () {
           su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_cron_use_backend 1 &> /dev/null"
           su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
         fi
-        if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+        if [[ "$_HOST_TEST" =~ ".host8." ]] ; then
           rm -f -r $User/clients/admin &> /dev/null
           rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
           rm -f -r $User/clients/nocomega8cc &> /dev/null
@@ -249,7 +249,7 @@ action () {
 ###--------------------###
 echo "INFO: Daily maintenance start"
 _NOW=`date +%y%m%d-%H%M`
-_VM_TEST=`uname -a 2>&1`
+_HOST_TEST=`uname -n 2>&1`
 #
 # Check for last all nr
 if [ -e "/data/all" ] ; then
@@ -269,7 +269,7 @@ if test -f /var/run/boa_wait.pid ; then
   exit 1
 else
   source /root/.barracuda.cnf
-  if [[ "$_VM_TEST" =~ ".host8." ]] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] ; then
     _PERMISSIONS_FIX=YES
     _MODULES_FIX=YES
     n=$((RANDOM%800+80))

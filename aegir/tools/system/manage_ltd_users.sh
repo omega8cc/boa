@@ -252,6 +252,13 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
 else
   sleep 3
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
+  _THISHTIP=`hostname -i`
+  sed -i "s/8.8.8.8/$_THISHTIP/g" $_THIS_LTD_CONF
+  _HOST_TEST=`uname -n 2>&1`
+  if [[ "$_HOST_TEST" =~ ".host8." ]] ; then
+    sed -i "s/'mc', //g" $_THIS_LTD_CONF
+    sed -i "s/, 'mc':'mc -u'//g" $_THIS_LTD_CONF
+  fi
   add_ltd_group_if_not_exists
   sleep 1
   kill_zombies >/var/backups/ltd/log/zombies-$_NOW.log 2>&1
@@ -259,8 +266,6 @@ else
   manage_own >/var/backups/ltd/log/users-$_NOW.log 2>&1
   sleep 1
   cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-$_NOW
-  _THISHTIP=`hostname -i`
-  sed -i "s/8.8.8.8/$_THISHTIP/g" $_THIS_LTD_CONF
   sleep 1
   cp -af $_THIS_LTD_CONF /etc/lshell.conf
   sleep 1

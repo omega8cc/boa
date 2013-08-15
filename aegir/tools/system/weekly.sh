@@ -94,7 +94,7 @@ detect_vanilla_core () {
       true
     else
       if [ -e "$Plr/modules/watchdog" ] ; then
-        if [[ "$_VM_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
+        if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
           echo Vanilla Drupal 5.x Platform detected in $Plr
           read_account_data
           send_notice_core
@@ -102,7 +102,7 @@ detect_vanilla_core () {
       else
         if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
           echo Vanilla Drupal 6.x Platform detected in $Plr
-          if [[ "$_VM_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
+          if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
             read_account_data
             send_notice_core
           fi
@@ -381,7 +381,7 @@ action () {
         echo HomSiz is $HomSiz or $HomSizH MB
         echo SumDir is $SumDir or $SumDirH MB
         echo SumDat is $SumDat or $SumDatH MB
-        if [[ "$_VM_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
+        if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
           check_limits
           if [ -e "$_THIS_HM_SITE" ] ; then
             su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION | SSD+SAS System' &> /dev/null"
@@ -407,7 +407,7 @@ action () {
 ###--------------------###
 echo "INFO: Weekly maintenance start"
 _NOW=`date +%y%m%d-%H%M`
-_VM_TEST=`uname -a 2>&1`
+_HOST_TEST=`uname -n 2>&1`
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
 echo "INFO: Weekly maintenance complete"
