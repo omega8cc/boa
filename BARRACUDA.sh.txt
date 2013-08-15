@@ -6996,14 +6996,14 @@ EOF
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:2048 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
-    cd /var/aegir/config/server_master/nginx/pre.d
-    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf ./
+    _WILD_SSL_VHOST="/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf"
+    cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf $_WILD_SSL_VHOST
     if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-      sed -i "s/127.0.0.1:80/localhost:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
     else
-      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" $_WILD_SSL_VHOST &> /dev/null
     fi
-    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" /var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf &> /dev/null
+    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
     mkdir -p /data/conf
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
