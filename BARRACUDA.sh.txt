@@ -6230,7 +6230,6 @@ fi
 if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: Upgrading Limited Shell, please wait..."
-    cp -af /etc/lshell.conf /etc/lshell.conf-bak &> /dev/null
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   else
     msg "INFO: Installing Limited Shell, please wait..."
@@ -6244,11 +6243,12 @@ if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/va
     sed -i "s/Kicked/Logged/g" $Files &> /dev/null
   done
   cd /var/opt/lshell-$_LSHELL_VERSION
+  rm -f -r /usr/local/lib/python2.6/dist-packages/lshell*
+  rm -f -r /usr/local/lib/python2.7/dist-packages/lshell*
   st_runner "python setup.py install" 2> /dev/null
   if [ "$_STATUS" = "UPGRADE" ] ; then
-    cp -af /etc/lshell.conf-bak /etc/lshell.conf &> /dev/null
+    cp -af /etc/lshell.conf-bak-$_NOW /etc/lshell.conf &> /dev/null
   else
-    mv -f /etc/lshell.conf /etc/lshell.conf-pre-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /etc/lshell.conf
     echo "$_PATH_LSHELL" >> /etc/shells
   fi
@@ -6258,6 +6258,10 @@ if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/va
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
   echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
+  if [ -f "/var/xdrago/manage_ltd_users.sh" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /var/xdrago/conf/lshell.conf
+    st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
+  fi
 fi
 if [ -f "/usr/local/bin/lshell" ] ; then
   if [ ! -L "/usr/bin/lshell" ] ; then
