@@ -262,8 +262,7 @@ else
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   _THISHTIP=`hostname -i`
   sed -i "s/8.8.8.8/$_THISHTIP/g" $_THIS_LTD_CONF
-  _HOST_TEST=`uname -n 2>&1`
-  if [[ "$_HOST_TEST" =~ ".host8." ]] ; then
+  if [ ! -e "/root/.allow.mc.cnf" ] ; then
     sed -i "s/'mc', //g" $_THIS_LTD_CONF
     sed -i "s/, 'mc':'mc -u'//g" $_THIS_LTD_CONF
   fi
