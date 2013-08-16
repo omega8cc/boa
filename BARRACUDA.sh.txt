@@ -1381,7 +1381,7 @@ fix_ftps_modern () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
     echo "mss-$_MSS_VERSION $_NOW" > /var/log/mss-$_MSS_VERSION.log
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/sftp_config /etc/ssh/sftp_config
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sftp_config /etc/ssh/sftp_config
     st_runner "service ssh restart" &> /dev/null
   fi
   if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
