@@ -1,0 +1,39 @@
+#!/bin/bash
+
+PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+SHELL=/bin/bash
+
+drushextra_updates() {
+  if [ "$kind" = "updates" ] ; then
+    echo "STATUS: enabling update module..."
+    drush5 en update -y &> /dev/null
+    echo "STATUS: checking for available updates..."
+    drush5 upc --no-core --no-backup -n | grep available
+    echo "STATUS: disabling update module..."
+    drush5 dis update -y &> /dev/null
+    echo "STATUS: check complete"
+    exit 0
+  else
+    echo "Usage: drushextra check updates"
+    exit 1
+  fi
+}
+
+case "$1" in
+  check) kind="$2"
+       drushextra_updates
+  ;;
+  *)  echo
+      echo " This command is not available directly!"
+      echo
+      echo " You should use Aegir for code and db updates,"
+      echo " but if you really know what are you doing,"
+      echo " you could use these aliases instead:"
+      echo
+      echo "   drush dbup  (alias for drush updatedb)"
+      echo "   drush mup   (alias for drush up)"
+      echo "   drush mupc  (alias for drush upc)"
+      echo
+      exit 1
+  ;;
+esac

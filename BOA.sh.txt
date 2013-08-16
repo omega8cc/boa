@@ -60,11 +60,14 @@ setup ()
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     fi
   fi
-  _INITINS="/usr/bin/apt-get -y --force-yes install"
-  apt-get update &> /dev/null
-  $_INITINS wget &> /dev/null
+  _WGET_TEST=$(which wget)
+  if [ -z "$_WGET_TEST" ] ; then
+    _INITINS="/usr/bin/apt-get -y --force-yes install"
+    apt-get update &> /dev/null
+    $_INITINS wget &> /dev/null
+  fi
   mkdir -p /usr/local/bin; cd /usr/local/bin
-  rm -f /usr/local/bin/{boa*,barracuda*,octopus*,randpass*,sqlmagic*,syncpass*,drushextra*}
+  rm -f /usr/local/bin/{boa*,barracuda*,octopus*,randpass*,sqlmagic*,syncpass*,drushextra*,thinkdifferent*}
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/boa
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
@@ -72,6 +75,7 @@ setup ()
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/sqlmagic
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/syncpass
   wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/drushextra
+  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/thinkdifferent
   if [ ! -e "/opt/local/bin/randpass" ] ; then
     mkdir -p /opt/local/bin; ln -sf /usr/local/bin/randpass /opt/local/bin/randpass
   fi
@@ -85,7 +89,7 @@ setup ()
   echo "### $_TODAY ###" >> /usr/local/bin/barracuda
   echo "### $_TODAY ###" >> /usr/local/bin/octopus
   chmod 700 /usr/local/bin/{boa,barracuda,octopus,syncpass}
-  chmod 755 /usr/local/bin/{randpass,sqlmagic,drushextra}
+  chmod 755 /usr/local/bin/{randpass,sqlmagic,drushextra,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
   echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs for how-to"
