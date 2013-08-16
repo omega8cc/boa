@@ -1230,10 +1230,10 @@ fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   _USERFTP="$_USER.ftp"
   _USERFTP_ROOT="/home/$_USERFTP"
-  if [ "$_REL_VERSION" = "lenny" ] ; then
-    _PATH_LSHELL="/usr/bin/lshell"
+  if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
+    _PATH_LSHELL="/usr/bin/MySecureShell"
   else
-    _PATH_LSHELL="/usr/local/bin/lshell"
+    _PATH_LSHELL="/usr/bin/lshell"
   fi
   if [ ! -d "$_USERFTP_ROOT" ] ; then
     msg "$_STATUS A: Adding ftps/lshell user"

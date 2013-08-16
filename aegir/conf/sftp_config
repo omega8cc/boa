@@ -1,0 +1,22 @@
+<Default>
+  GlobalDownload         0
+  GlobalUpload           0
+  Download               0
+  Upload                 0
+  StayAtHome             true
+  VirtualChroot          true
+  LimitConnection        0
+  LimitConnectionByUser  5
+  LimitConnectionByIP    5
+  Home                   /home/$USER
+  IdleTimeOut            5m
+  ResolveIP              false
+  IgnoreHidden           true
+  HideNoAccess           true
+  DefaultRights          0664 0775
+  MinimumRights          0664 0775
+</Default>
+
+<Group lshellg>
+  Shell                  /usr/bin/lshell
+</Group>

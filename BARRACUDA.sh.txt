@@ -972,6 +972,7 @@ _JETTY_8_VERSION=8.1.10.v20130312
 _JETTY_9_VERSION=9.0.0.v20130308
 _LSHELL_VERSION=0.9.16-om8
 _MARIADB_VERSION=5.5.32
+_MSS_VERSION=1.31
 _NGINX_VERSION=1.5.3
 _PERCONA_VERSION=5.5.32
 _PHP_VERSION=5.2.17
@@ -1366,6 +1367,27 @@ fix_ftps_modern () {
       echo "/usr/bin/lshell" >> /etc/shells
       ### we don't need this replace, so it is here just for reference:
       ### sed -i "s/usr\/bin\/lshell/usr\/local\/bin\/lshell/g" /etc/passwd &> /dev/null
+    fi
+  fi
+  if [ ! -e "/var/log/mss-$_MSS_VERSION.log" ] || [ ! -e "/etc/ssh/sftp_config" ] || [ ! -e "/usr/bin/MySecureShell" ] ; then
+    msg "INFO: Installing MySecureShell $_MSS_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r mysecureshell*
+    wget -q -U iCab http://files.aegir.cc/dev/mysecureshell-$_MSS_VERSION.tar.gz
+    tar -xzf mysecureshell-$_MSS_VERSION.tar.gz
+    cd /var/opt/mysecureshell-$_MSS_VERSION
+    st_runner "sh ./configure" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "sh ./install.sh yesall" 2> /dev/null
+    echo "mss-$_MSS_VERSION $_NOW" > /var/log/mss-$_MSS_VERSION.log
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/sftp_config /etc/ssh/sftp_config
+    st_runner "service ssh restart" &> /dev/null
+  fi
+  if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
+    _MSS_TEST=$(grep "lshell" /etc/passwd)
+    if [[ "$_MSS_TEST" =~ "lshell" ]] ; then
+      sed -i "s/usr\/.*\/lshell/usr\/bin\/MySecureShell/g" /etc/passwd &> /dev/null
     fi
   fi
 }
@@ -6229,10 +6251,10 @@ else
 fi
 if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
-    msg "INFO: Upgrading Limited Shell, please wait..."
+    msg "INFO: Upgrading Limited Shell to version $_LSHELL_VERSION, please wait..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   else
-    msg "INFO: Installing Limited Shell, please wait..."
+    msg "INFO: Installing Limited Shell $_LSHELL_VERSION, please wait..."
   fi
   mrun "sleep 1"
   cd /var/opt

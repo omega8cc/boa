@@ -92,7 +92,11 @@ ok_create_user()
   _WEBG=www-data
   _USRG=users
   if [ ! -d "$_USER_LTD_ROOT" ] ; then
-    useradd -d $_USER_LTD_ROOT -s /usr/bin/lshell -m -N -r $_USER_LTD
+    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
+      useradd -d $_USER_LTD_ROOT -s /usr/bin/MySecureShell -m -N -r $_USER_LTD
+    else
+      useradd -d $_USER_LTD_ROOT -s /usr/bin/lshell -m -N -r $_USER_LTD
+    fi
     adduser $_USER_LTD $_WEBG
     _ESC_LUPASS=""
     _LEN_LUPASS=0
@@ -113,7 +117,11 @@ ok_create_user()
     usermod -aG ltd-shell $_USER_LTD
   fi
   if [ ! -e "/home/$_ADMIN/users/$_USER_LTD" ] && [ ! -z "$_ESC_LUPASS" ] ; then
-    chsh -s /usr/bin/lshell $_USER_LTD
+    if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
+      chsh -s /usr/bin/MySecureShell $_USER_LTD
+    else
+      chsh -s /usr/bin/lshell $_USER_LTD
+    fi
     echo >> $_THIS_LTD_CONF
     echo "[$_USER_LTD]" >> $_THIS_LTD_CONF
     echo "path : [$_ALLD_DIR]" >> $_THIS_LTD_CONF
