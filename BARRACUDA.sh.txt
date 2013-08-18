@@ -1357,8 +1357,8 @@ fix_ftps_pam () {
   fi
 }
 #
-# Fix FTPS access on modern systems.
-fix_ftps_modern () {
+# Fix FTPS and SFTP access on modern systems.
+fix_sftp_ftps_modern () {
   if [ "$_REL_VERSION" != "lenny" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
@@ -1389,6 +1389,12 @@ fix_ftps_modern () {
     if [[ "$_MSS_TEST" =~ "lshell" ]] ; then
       sed -i "s/usr\/.*\/lshell/usr\/bin\/MySecureShell/g" /etc/passwd &> /dev/null
     fi
+  fi
+  _MSS_PATH_TEST=$(grep "/usr/bin/MySecureShell" /etc/shells)
+  if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/MySecureShell" ]] ; then
+    true
+  else
+    echo "/usr/bin/MySecureShell" >> /etc/shells
   fi
 }
 #
@@ -1830,7 +1836,7 @@ fix_on_upgrade () {
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   kill_nash
-  fix_ftps_modern
+  fix_sftp_ftps_modern
   fix_ftps_pam
   enable_purge_cruft_machine
   enable_weekly_usage_monitor
@@ -5706,7 +5712,7 @@ if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
   install_upgrade_nginx
 fi
 kill_nash
-fix_ftps_modern
+fix_sftp_ftps_modern
 enable_purge_cruft_machine
 enable_weekly_usage_monitor
 install_wkhtmltopdf
