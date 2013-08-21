@@ -1396,6 +1396,11 @@ fix_sftp_ftps_modern () {
   else
     echo "/usr/bin/MySecureShell" >> /etc/shells
   fi
+  if [ ! -e "/var/log/fixed-sftp-idle.log" ] ; then
+    sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
+    st_runner "service ssh reload" &> /dev/null
+    echo fixed-sftp-idle > /var/log/fixed-sftp-idle.log
+  fi
 }
 #
 # Enable Purge Cruft Machine (Monday).
