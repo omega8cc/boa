@@ -9,7 +9,7 @@
   LimitConnectionByUser  5
   LimitConnectionByIP    5
   Home                   /home/$USER
-  IdleTimeOut            5m
+  IdleTimeOut            15m
   ResolveIP              false
   IgnoreHidden           true
   HideNoAccess           true
