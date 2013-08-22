@@ -150,6 +150,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
   error_reporting(E_ALL & ~E_NOTICE);
   ini_set('display_errors', TRUE);
   ini_set('display_startup_errors', TRUE);
+  ini_set('opcache.revalidate_freq', '1');
   unset($conf['cache']);          // stop hardcoding caching
   unset($conf['preprocess_css']); // stop hardcoding css aggregation
   unset($conf['preprocess_js']);  // stop hardcoding js aggregation
