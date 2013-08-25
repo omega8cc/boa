@@ -58,8 +58,11 @@ for i in `dir -d /vservers/*` ; do
     do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < $i/$_HA | grep -c $_IP 2>&1)
-      if [ -e "/root/.local.IP.list" ] && [ ! -z $(cat /root/.local.IP.list | grep $_IP 2>&1) ] ; then
-        _NR_TEST="0"
+      if [ -e "/root/.local.IP.list" ] ; then
+        _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
+        if [ ! -z $_IP_CHECK ] ; then
+          _NR_TEST="0"
+        fi
       fi
       echo $_IP $_NR_TEST
       if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
@@ -84,8 +87,11 @@ for i in `dir -d /vservers/*` ; do
     do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < $i/$_WA | grep -c $_IP 2>&1)
-      if [ -e "/root/.local.IP.list" ] && [ ! -z $(cat /root/.local.IP.list | grep $_IP 2>&1) ] ; then
-        _NR_TEST="0"
+      if [ -e "/root/.local.IP.list" ] ; then
+        _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
+        if [ ! -z $_IP_CHECK ] ; then
+          _NR_TEST="0"
+        fi
       fi
       echo $_IP $_NR_TEST
       if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
@@ -110,8 +116,11 @@ for i in `dir -d /vservers/*` ; do
     do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < $i/$_FA | grep -c $_IP 2>&1)
-      if [ -e "/root/.local.IP.list" ] && [ ! -z $(cat /root/.local.IP.list | grep $_IP 2>&1) ] ; then
-        _NR_TEST="0"
+      if [ -e "/root/.local.IP.list" ] ; then
+        _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
+        if [ ! -z $_IP_CHECK ] ; then
+          _NR_TEST="0"
+        fi
       fi
       echo $_IP $_NR_TEST
       if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
