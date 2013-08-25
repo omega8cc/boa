@@ -74,7 +74,7 @@ check_report ()
 up_action ()
 {
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-    if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
       true
     else
       mkdir -p /var/backups/old-firewall-monitor/$_NOW
