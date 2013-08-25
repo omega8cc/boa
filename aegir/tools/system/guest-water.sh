@@ -7,6 +7,46 @@
 ###
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+#
+#
+local_ip_rg()
+{
+  if [ -e "/root/.local.IP.list" ] ; then
+    echo "the file /root/.local.IP.list already exists"
+    for _IP in `hostname -I`
+    do
+      _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
+      if [ -z $_IP_CHECK ] ; then
+        echo "$_IP not yet listed in /root/.local.IP.list"
+        echo "$_IP" >> /root/.local.IP.list
+      else
+        echo "$_IP already listed in /root/.local.IP.list"
+      fi
+    done
+    for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`
+    do
+      echo removing $_IP from firewall rules
+      csf -ar $_IP &> /dev/null
+      csf -dr $_IP &> /dev/null
+      csf -tr $_IP &> /dev/null
+      echo removing $_IP from csf.ignore
+      sed -i "s/^$_IP .*//g" /etc/csf/csf.ignore
+      echo removing $_IP from csf.allow
+      sed -i "s/^$_IP .*//g" /etc/csf/csf.allow
+    done
+  else
+    echo "the file /root/.local.IP.list does not exist"
+    rm -f /root/.tmp.IP.list*
+    rm -f /root/.local.IP.list*
+    for _IP in `hostname -I`;do echo $_IP >> /root/.tmp.IP.list;done
+    for _IP in `cat /root/.tmp.IP.list | sort | uniq`;do echo "$_IP # local IP address" >> /root/.local.IP.list;done
+    rm -f /root/.tmp.IP.list*
+  fi
+  sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
+  sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
+}
+#
+#
 guard_stats()
 {
   if [ -e "$_HA" ] ; then
@@ -14,6 +54,9 @@ guard_stats()
     do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < $_HA | grep -c $_IP 2>&1)
+      if [ -e "/root/.local.IP.list" ] && [ ! -z $(cat /root/.local.IP.list | grep $_IP 2>&1) ] ; then
+        _NR_TEST="0"
+      fi
       echo $_IP $_NR_TEST
       if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
@@ -37,6 +80,9 @@ guard_stats()
     do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < $_WA | grep -c $_IP 2>&1)
+      if [ -e "/root/.local.IP.list" ] && [ ! -z $(cat /root/.local.IP.list | grep $_IP 2>&1) ] ; then
+        _NR_TEST="0"
+      fi
       echo $_IP $_NR_TEST
       if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
@@ -60,6 +106,9 @@ guard_stats()
     do
       _NR_TEST="0"
       _NR_TEST=$(tr -s ' ' '\n' < $_FA | grep -c $_IP 2>&1)
+      if [ -e "/root/.local.IP.list" ] && [ ! -z $(cat /root/.local.IP.list | grep $_IP 2>&1) ] ; then
+        _NR_TEST="0"
+      fi
       echo $_IP $_NR_TEST
       if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
@@ -80,6 +129,7 @@ guard_stats()
   fi
 }
 if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
+  local_ip_rg
   _HA=/var/xdrago/monitor/hackcheck.archive.log
   _WA=/var/xdrago/monitor/scan_nginx.archive.log
   _FA=/var/xdrago/monitor/hackftp.archive.log

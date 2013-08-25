@@ -7,6 +7,8 @@
 ###
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+#
+#
 guest_guard()
 {
 for i in `dir -d /vservers/*` ; do
@@ -63,6 +65,8 @@ for i in `dir -d /vservers/*` ; do
   echo Completed for $i
 done
 }
+#
+#
 if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   guest_guard
   sleep 15
