@@ -62,6 +62,7 @@ for i in `dir -d /vservers/*` ; do
         _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
         if [ ! -z $_IP_CHECK ] ; then
           _NR_TEST="0"
+          echo "$_IP is a local IP address! $i/$_HA"
         fi
       fi
       echo $_IP $_NR_TEST
@@ -91,6 +92,7 @@ for i in `dir -d /vservers/*` ; do
         _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
         if [ ! -z $_IP_CHECK ] ; then
           _NR_TEST="0"
+          echo "$_IP is a local IP address! $i/$_WA"
         fi
       fi
       echo $_IP $_NR_TEST
@@ -120,6 +122,7 @@ for i in `dir -d /vservers/*` ; do
         _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
         if [ ! -z $_IP_CHECK ] ; then
           _NR_TEST="0"
+          echo "$_IP is a local IP address! $i/$_FA"
         fi
       fi
       echo $_IP $_NR_TEST

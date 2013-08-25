@@ -58,6 +58,7 @@ guard_stats()
         _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
         if [ ! -z $_IP_CHECK ] ; then
           _NR_TEST="0"
+          echo "$_IP is a local IP address! $_HA"
         fi
       fi
       echo $_IP $_NR_TEST
@@ -87,6 +88,7 @@ guard_stats()
         _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
         if [ ! -z $_IP_CHECK ] ; then
           _NR_TEST="0"
+          echo "$_IP is a local IP address! $_WA"
         fi
       fi
       echo $_IP $_NR_TEST
@@ -116,6 +118,7 @@ guard_stats()
         _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
         if [ ! -z $_IP_CHECK ] ; then
           _NR_TEST="0"
+          echo "$_IP is a local IP address! $_FA"
         fi
       fi
       echo $_IP $_NR_TEST
