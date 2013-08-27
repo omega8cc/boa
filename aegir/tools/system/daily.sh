@@ -116,6 +116,11 @@ fix_modules () {
           fi
           su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
         fi
+        if [ ! -e "$Plr/sites/all/modules/views_cache_bully_dont_enable.info" ] ; then
+          if [ -e "$Plr/modules/o_contrib_seven/views_cache_bully" ] || [ -e "$Plr/modules/o_contrib/views_cache_bully" ] ; then
+            su -s /bin/bash $_THIS_HM_USER -c "drush en views_cache_bully -y &> /dev/null"
+          fi
+        fi
       fi
       ;;
     esac
