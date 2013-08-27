@@ -177,7 +177,7 @@ _PHP_CLI_VERSION=5.3
 ### NSM ----------- NodeStream D6 (off)
 ### OAM ----------- Open Atrium D6
 ### OA7 ----------- Open Atrium D7
-### OAY ----------- Open Academy (off)
+### OAY ----------- Open Academy
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OEE ----------- Open Enterprise (off)
@@ -556,7 +556,7 @@ _NODESTREAM6=6.x-1.5
 _NODESTREAM7=7.x-2.0-rc5
 _OCTOPUS_VIDEO=1.0-alpha6
 _OPEN_DEALS=1.24
-_OPENACADEMY=7.x-1.0-beta3
+_OPENACADEMY=7.x-1.0-beta5
 _OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.0-beta3
 _OPENCHURCH=7.x-1.11-beta12

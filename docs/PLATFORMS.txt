@@ -35,7 +35,7 @@
 ### NSM ----------- NodeStream D6 (off)
 ### OAM ----------- Open Atrium D6
 ### OA7 ----------- Open Atrium D7
-### OAY ----------- Open Academy (off)
+### OAY ----------- Open Academy
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OEE ----------- Open Enterprise (off)

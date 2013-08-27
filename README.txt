@@ -159,6 +159,7 @@ Octopus can install the platforms listed below:
  Commons 3.3 ------------------ http://drupal.org/project/commons
  Drupal 7.23.1 ---------------- http://drupal.org/drupal-7.22
  NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
+ Open Academy 1.0-b5 ---------- http://drupal.org/project/openacademy
  Open Atrium 2.0-b3 ----------- http://drupal.org/project/openatrium
  Open Deals 1.24 -------------- http://drupal.org/project/opendeals
  Open Outreach 1.0 ------------ http://drupal.org/project/openoutreach
@@ -206,7 +207,6 @@ will fix all critical issues and/or apply required updates:
 
  ELMS ------------------------- http://drupal.org/project/elms
  Octopus Video ---------------- http://octopusvideo.org
- Open Academy ----------------- http://drupal.org/project/openacademy
  Open Enterprise -------------- http://drupal.org/project/openenterprise
  OpenPublic ------------------- http://drupal.org/project/openpublic
  Videola ---------------------- http://videola.tv
