@@ -79,6 +79,7 @@ Contrib [S]upported and [B]undled:
  textile -------------------- [D6,D7] --- [S] [B]
  variable_clean ------------- [D6,D7] --- [S] [B]
  vars ----------------------- [D7] ------ [S] [B]
+ views_cache_bully ---------- [D6,D7] --- [S] [B]
  views_content_cache -------- [D6,D7] --- [S] [B]
  views404 ------------------- [D6,D7] --- [S] [B]
 
