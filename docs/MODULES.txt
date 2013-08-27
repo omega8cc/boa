@@ -72,7 +72,6 @@ Contrib [S]upported and [B]undled:
  readonlymode --------------- [D6,D7] --- [S] [B]
  reroute_email -------------- [D6,D7] --- [S] [B]
  securesite ----------------- [D6,D7] --- [S] [B]
- security_review ------------ [D6,D7] --- [S] [B]
  site_verify ---------------- [D6,D7] --- [S] [B]
  speedy --------------------- [D7] ------ [S] [B]
  taxonomy_edge -------------- [D6,D7] --- [S] [B]
@@ -111,13 +110,15 @@ Core:
 
 Drush [E]xtensions [M]aster [S]atellite:
 
+ clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
  drush_ecl ------------------ [D7] ------ [S] [B] [EM,ES]
  drush_make ----------------- [D6,D7] --- [S] [B] [EM,ES]
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
+ security_check ------------- [D6,D7] --- [S] [B] [EM,ES]
+ security_review ------------ [D6,D7] --- [S] [B] [EM,ES]
 
 Provision [E]xtensions [M]aster [S]atellite:
 
- clean_missing_modules ------ [D6,D7] --- [S] [B] [EM,ES]
  provision_boost ------------ [D6,D7] --- [S] [B] [EM,ES]
  provision_cdn -------------- [D6,D7] --- [S] [B] [EM,ES]
  provision_civicrm ---------- [D6,D7] --- [S] [B] [ES]
@@ -125,7 +126,6 @@ Provision [E]xtensions [M]aster [S]atellite:
  provision_site_backup ------ [D6,D7] --- [S] [B] [ES]
  provision_tasks_extra ------ [D6,D7] --- [S] [B] [ES]
  remote_import -------------- [D6,D7] --- [S] [B] [ES]
- security_check ------------- [D6,D7] --- [S] [B] [EM,ES]
 
 Hostmaster [E]xtensions [S]atellite:
 

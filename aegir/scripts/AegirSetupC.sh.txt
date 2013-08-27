@@ -466,7 +466,7 @@ upgrade_contrib_more () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/email-7.x-1.2.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/facetapi-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-rc2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-rc3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/fontyourface-7.x-2.7.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/module_filter-7.x-1.7.tar.gz

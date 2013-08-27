@@ -288,7 +288,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _B_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  _B_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review"
   for e in $_B_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
@@ -335,13 +335,14 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/provision_platform_git &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/provision_site_backup   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/provision/remote_import         &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl                           &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/security_review               &> /dev/null
   git clone --branch 7.x-1.x-o8 git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild          &> /dev/null
   git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost               &> /dev/null
   git clone --branch master git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra    &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/security_check.git $_ROOT/.drush/security_check                 &> /dev/null
   rm -f -r $_ROOT/.drush/*/.git
   get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
-  get_dev_ext "drush_ecl.tar.gz" &> /dev/null
-  get_dev_ext "security_check.tar.gz" &> /dev/null
 else
   wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
   tar -xzf provision-$_AEGIR_VERSION.tar.gz
@@ -350,12 +351,12 @@ else
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
   msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
-  _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check"
+  _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review"
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz" &> /dev/null
   done
   cd $_ROOT/.drush/provision
-  get_dev_ext "remote_import.tar.gz"         &> /dev/null
+  get_dev_ext "remote_import.tar.gz" &> /dev/null
   cd $_ROOT/.drush
 fi
 if [ "$_HTTP_WILDCARD" = "YES" ] ; then
