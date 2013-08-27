@@ -86,7 +86,7 @@ Contrib [NA], [S]oft[E]nabled and [F]orce[E]nabled:
 
  admin ---------------------- [D6,D7] --- [S] [B] [SE]
  cache_backport ------------- [D6] ------ [S] [B] [NA]
- entitycache ---------------- [D7] ------ [S] [B] [FE]
+ entitycache ---------------- [D7] ------ [S] [B] [FE] unless sites/all/modules/entitycache_dont_enable.info exists
  redis ---------------------- [D6,D7] --- [S] [B] [NA]
  robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
  rubik ---------------------- [D6,D7] --- [S] [B] [SE]
