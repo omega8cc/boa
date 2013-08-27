@@ -415,25 +415,6 @@ init_core_distro_six_root () {
   cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
 }
 #
-# Get Panopoly apps.
-get_panopoly_apps () {
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_admin-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_core-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_demo-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_images-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_magic-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_pages-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_search-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_theme-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_users-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_widgets-7.x-1.0-beta6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panopoly_wysiwyg-7.x-1.0-beta6.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-}
-#
 # Upgrade contrib less.
 upgrade_contrib_less () {
   rm -f -r {ctools,rules,views}
