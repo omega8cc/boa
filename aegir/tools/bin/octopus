@@ -246,7 +246,7 @@ up_finish ()
 up_head ()
 {
   up_start
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else

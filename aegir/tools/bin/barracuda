@@ -202,7 +202,7 @@ up_finish ()
 up_head ()
 {
   up_start
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   up_action
   up_finish
 }
@@ -211,7 +211,7 @@ up_stable ()
 {
   up_start
   if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
-    wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
+    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   else
     wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
   fi
@@ -251,12 +251,12 @@ set_pin_priority ()
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
       else
-        curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+      curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
   fi
 }

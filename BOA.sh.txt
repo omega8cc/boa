@@ -68,14 +68,14 @@ setup ()
   fi
   mkdir -p /usr/local/bin; cd /usr/local/bin
   rm -f /usr/local/bin/{boa*,barracuda*,octopus*,randpass*,sqlmagic*,syncpass*,drushextra*,thinkdifferent*}
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/boa
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/barracuda
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/octopus
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/randpass
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/sqlmagic
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/syncpass
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/drushextra
-  wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/tools/bin/thinkdifferent
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/boa"            -o /usr/local/bin/boa
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda"      -o /usr/local/bin/barracuda
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/octopus"        -o /usr/local/bin/octopus
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/randpass"       -o /usr/local/bin/randpass
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/sqlmagic"       -o /usr/local/bin/sqlmagic
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/syncpass"       -o /usr/local/bin/syncpass
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/drushextra"     -o /usr/local/bin/drushextra
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/thinkdifferent" -o /usr/local/bin/thinkdifferent
   if [ ! -e "/opt/local/bin/randpass" ] ; then
     mkdir -p /opt/local/bin; ln -sf /usr/local/bin/randpass /opt/local/bin/randpass
   fi

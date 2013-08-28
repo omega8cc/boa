@@ -129,15 +129,12 @@ set_pin_priority ()
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt
-        cp -af etc-apt-preferences-squeeze.txt /etc/apt/preferences
+        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
       else
-        wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt
-        cp -af etc-apt-preferences-wheezy.txt /etc/apt/preferences
+        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt
-      cp -af etc-apt-preferences-ubuntu.txt /etc/apt/preferences
+      curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
     rm -f /var/backups/etc-apt-preferences-*
   fi
@@ -174,12 +171,12 @@ init_setup ()
   fi
   if [ "$mode" = "stock" ] ; then
     version=in-head
-    wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
-    wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt
+    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   else
     if [ "$version" = "in-head" ] ; then
-      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/BARRACUDA.sh.txt
-      wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/OCTOPUS.sh.txt
+      curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+      curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     elif [ "$version" = "in-stable" ] ; then
       wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
       wget -q -U iCab http://files.aegir.cc/versions/OCTOPUS.sh.txt

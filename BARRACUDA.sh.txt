@@ -4167,8 +4167,8 @@ update_sources_list () {
           msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
           mkdir -p /opt/tmp/helpers
           cd /opt/tmp/helpers
-          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/ffmirror.sh.txt
-          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/apt-list-ubuntu.txt
+          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
+          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/apt-list-ubuntu.txt" -o apt-list-ubuntu.txt
           _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
           _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
           echo " "
@@ -4203,7 +4203,7 @@ update_sources_list () {
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Debian" ] ; then
       _MIRROR_CHECK=NO
@@ -4225,8 +4225,8 @@ update_sources_list () {
           msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
           mkdir -p /opt/tmp/helpers
           cd /opt/tmp/helpers
-          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/ffmirror.sh.txt
-          wget -q -U iCab http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/helpers/apt-list-debian.txt
+          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
+          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/apt-list-debian.txt" -o apt-list-debian.txt
           _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
           _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
           echo " "
@@ -4262,14 +4262,14 @@ update_sources_list () {
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
-            curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+            curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
           fi
         fi
         if [ "$_REL_VERSION" = "squeeze" ] ; then
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
           else
-            curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+            curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
           fi
           if [ "$_FROM_SOURCES" = "NO" ] ; then
             echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
@@ -4296,20 +4296,20 @@ update_sources_list () {
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
       fi
     else
       if [ "$_REL_VERSION" = "wheezy" ] ; then
         if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
-          curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
         fi
       else
         if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
         else
-          curl -s -A iCab "http://drupalcode.org/project/barracuda.git/blob_plain/HEAD:/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
         fi
       fi
     fi
