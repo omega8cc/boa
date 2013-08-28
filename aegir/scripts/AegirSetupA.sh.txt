@@ -337,7 +337,7 @@ o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
 RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-022.info" ] ; then
+  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-023.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
@@ -376,7 +376,7 @@ for i in $REVISIONS; do
     if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
       ln -sf /data/all/000/modules/redis /data/all/$i/o_contrib/redis
     fi
-    touch /data/all/$i/o_contrib/update-022.info
+    touch /data/all/$i/o_contrib/update-023.info
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -395,7 +395,7 @@ o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
 RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-022.info" ] ; then
+  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-023.info" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
@@ -433,7 +433,7 @@ for i in $REVISIONS; do
     if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
       ln -sf /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
     fi
-    touch /data/all/$i/o_contrib_seven/update-022.info
+    touch /data/all/$i/o_contrib_seven/update-023.info
   fi
 done
 cd
@@ -488,7 +488,7 @@ download_textile () {
 #
 # Download o_contrib_seven.
 download_o_contrib_seven () {
-  touch update-022.info
+  touch update-023.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-rc2.tar.gz
@@ -542,20 +542,20 @@ download_o_contrib_seven () {
     ln -sf /data/all/000/modules/redis redis
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/redis/update-022.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-023.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
     git clone --branch 7.x-2.x-o8 git://github.com/omega8cc/redis.git &> /dev/null
     rm -f -r redis/.git
     rm -f redis/redis.info
-    echo update > redis/update-022.info
+    echo update > redis/update-023.info
   fi
 }
 #
 # Download o_contrib_six.
 download_o_contrib_six () {
-  touch update-022.info
+  touch update-023.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
@@ -611,7 +611,7 @@ download_o_contrib_six () {
     ln -sf /data/all/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/cache_backport/update-022.info" ] ; then
+  if [ ! -e "/data/all/000/modules/cache_backport/update-023.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
@@ -621,16 +621,16 @@ download_o_contrib_six () {
     done
     rm -f *.tar.gz
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
-    echo update > cache_backport/update-022.info
+    echo update > cache_backport/update-023.info
   fi
-  if [ ! -e "/data/all/000/modules/redis/update-022.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-023.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
     git clone --branch 7.x-2.x-o8 git://github.com/omega8cc/redis.git &> /dev/null
     rm -f -r redis/.git
     rm -f redis/redis.info
-    echo update > redis/update-022.info
+    echo update > redis/update-023.info
   fi
 }
 #
@@ -665,7 +665,7 @@ fi
 if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
-if [ ! -e "/data/all/000/modules/redis/update-022.info" ] ; then
+if [ ! -e "/data/all/000/modules/redis/update-023.info" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
