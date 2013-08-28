@@ -7774,12 +7774,12 @@ if [ -e "/usr/sbin/csf" ] ; then
     st_runner "csf -q" &> /dev/null
   fi
   if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
-    sed -i "s/^AUTO_UPDATES.*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
+    sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
   fi
   if [ "$_VMFAMILY" = "VZ" ] ; then
-    sed -i "s/^PORTFLOOD.*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^CONNLIMIT.*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
-    sed -i "s/^USE_CONNTRACK.*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
+    sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
   fi
 fi
 
