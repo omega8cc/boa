@@ -629,7 +629,11 @@ restore_default_sql () {
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] ; then
       true
     else
-      sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
+      if [ -e "/root/.high_load.cnf" ] ; then
+        sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
+      else
+        sed -i "s/3600/300/g" /var/xdrago/minute.sh &> /dev/null
+      fi
     fi
   fi
   chmod 700 /var/xdrago/minute.sh
