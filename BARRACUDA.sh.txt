@@ -7341,11 +7341,13 @@ else
           st_runner "gem install sass" 2> /dev/null
           st_runner "gem install compass_radix" 2> /dev/null
           st_runner "gem install zurb-foundation" 2> /dev/null
+          st_runner "gem install zen-grids" 2> /dev/null
         else
           st_runner "gem update compass" 2> /dev/null
           st_runner "gem update sass" 2> /dev/null
           st_runner "gem update compass_radix" 2> /dev/null
           st_runner "gem update zurb-foundation" 2> /dev/null
+          st_runner "gem update zen-grids" 2> /dev/null
         fi
         echo "compass-$_INSTALLER_VERSION" > /var/log/compass-sass-radix-zurb-$_INSTALLER_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
