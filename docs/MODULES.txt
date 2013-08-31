@@ -30,6 +30,9 @@ module/theme: [S]upported, [B]undled, [F]orce[E]nabled,
 [S]oft[E]nabled or [F]orce[D]isabled. [NA] means that
 this module is used without the need to enable it.
 
+NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
+      with _MODULES_FIX=NO in /root/.barracuda.cnf (default: YES)
+
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].
 
@@ -80,18 +83,14 @@ Contrib [S]upported and [B]undled:
  vars ----------------------- [D7] ------ [S] [B]
  views404 ------------------- [D6,D7] --- [S] [B]
 
-Contrib [NA], [S]oft[E]nabled and [F]orce[E]nabled:
+Contrib [F]orce[E]nabled
 
- admin ---------------------- [D6,D7] --- [S] [B] [SE]
- cache_backport ------------- [D6] ------ [S] [B] [NA]
  entitycache ---------------- [D7] ------ [S] [B] [FE] unless sites/all/modules/entitycache_dont_enable.info exists
- redis ---------------------- [D6,D7] --- [S] [B] [NA]
  robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
- rubik ---------------------- [D6,D7] --- [S] [B] [SE]
  views_cache_bully ---------- [D6,D7] --- [S] [B] [FE] unless sites/all/modules/views_cache_bully_dont_enable.info exists
  views_content_cache -------- [D6,D7] --- [S] [B] [FE] unless sites/all/modules/views_content_cache_dont_enable.info exists
 
-Contrib [F]orce[D]isabled:
+Contrib [F]orce[D]isabled
 
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
@@ -100,11 +99,24 @@ Contrib [F]orce[D]isabled:
  poormanscron --------------- [D6] -------------- [FD]
  supercron ------------------ [D6] -------------- [FD]
 
-Core:
+Contrib [NA]:
+
+ cache_backport ------------- [D6] ------ [S] [B] [NA]
+ redis ---------------------- [D6,D7] --- [S] [B] [NA]
+
+Contrib [S]oft[E]nabled:
+
+ admin ---------------------- [D6,D7] --- [S] [B] [SE]
+ rubik ---------------------- [D6,D7] --- [S] [B] [SE]
+
+Core [F]orce[E]nabled:
+
+ path_alias_cache ----------- [D6] -------------- [FE]
+
+Core [F]orce[D]isabled:
 
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
- path_alias_cache ----------- [D6] -------------- [FE]
  syslog --------------------- [D6,D7] ----------- [FD]
  performance ---------------- [D6,D7] ----------- [FD]
 
