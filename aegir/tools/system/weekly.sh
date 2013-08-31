@@ -117,30 +117,53 @@ count () {
   do
     #echo Counting Site $Site
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
+    #echo "$_THIS_HM_USER,$Dom,vhost-exists"
+    _DEV_URL=NO
+    searchStringA=".dev."
+    searchStringB=".devel."
+    searchStringC=".tmp."
+    searchStringD=".test."
+    case $Dom in
+      *"$searchStringA"*) _DEV_URL=YES ;;
+      *"$searchStringB"*) _DEV_URL=YES ;;
+      *"$searchStringC"*) _DEV_URL=YES ;;
+      *"$searchStringD"*) _DEV_URL=YES ;;
+      *)
+      ;;
+    esac
     if [ -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
-      echo Dom is $Dom
+      #echo "$_THIS_HM_USER,$Dom,drushrc-exists"
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       detect_vanilla_core
       fix_clear_cache
       #echo Dir is $Dir
       if [ -e "$Dir/drushrc.php" ] ; then
-      Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-      #echo Dat is $Dat
-      if [ -e "$Dir" ] ; then
-        DirSize=`du -s $Dir`
-        DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
-        SumDir=$(($SumDir + $DirSize))
-        echo DirSize of $Dom is $DirSize
-      fi
-      if [ -e "/var/lib/mysql/$Dat" ] ; then
-        DatSize=`du -s /var/lib/mysql/$Dat`
-        DatSize=`echo "$DatSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
-        SumDat=$(($SumDat + $DatSize))
-        echo DatSize of $Dat is $DatSize
-      else
-        echo Database $Dat does not exist
-      fi
+        #echo "$_THIS_HM_USER,$Dom,sitedir-exists"
+        Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
+        #echo Dat is $Dat
+        if [ -e "$Dir" ] ; then
+          DirSize=`du -s $Dir`
+          DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+          if [ "$_DEV_URL" = "YES" ] ; then
+            echo "$_THIS_HM_USER,$Dom,DirSize:$DirSize,skip"
+          else
+            SumDir=$(($SumDir + $DirSize))
+            echo "$_THIS_HM_USER,$Dom,DirSize:$DirSize"
+          fi
+        fi
+        if [ -e "/var/lib/mysql/$Dat" ] ; then
+          DatSize=`du -s /var/lib/mysql/$Dat`
+          DatSize=`echo "$DatSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+          if [ "$_DEV_URL" = "YES" ] ; then
+            echo "$_THIS_HM_USER,$Dom,DatSize:$DatSize:$Dat,skip"
+          else
+            SumDat=$(($SumDat + $DatSize))
+            echo "$_THIS_HM_USER,$Dom,DatSize:$DatSize:$Dat"
+          fi
+        else
+          echo "Database $Dat for $Dom does not exist"
+        fi
       fi
     fi
   done
@@ -152,13 +175,13 @@ send_notice_sql () {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-  cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "Your Aegir instance needs an upgrade [sql-$_THIS_HM_USER]" $_CLIENT_EMAIL
+  cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "NOTICE: Your DB Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
 Hello,
 
-You are using more resources than allocated with your subscription.
+You are using more resources than allocated in your subscription.
 You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
-Your allowed databases space is $_CLIENT_SQL_LIMIT MB.
+Your allowed databases space is $_SQL_MIN_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
@@ -173,15 +196,26 @@ You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
-Please don't ignore this message! If you are using more resources
-than allocated in your subscription for more than 30 calendar days
-without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
-WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
-all past due overages plus \$100 USD reconnection fee.
+Note that we do not count any site identified as temporary dev/test,
+by having in its main name a special keyword with two dots on both sides:
 
-We provide generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return
-we expect that you will not abuse this feature.
+  .tmp. .test. .dev. .devel.
+
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes).
+
+However, if we discover that someone is using this method to hide real
+usage via listed keywords in the main site name and adding live domain(s)
+as aliases, such account will be suspended without any warning.
+
+If you are using more (counted) resources than allocated in your subscription
+for more than 30 calendar days without purchasing an upgrade, your instance
+will be suspended without further notice, and to restore it you will have to
+pay for all past due overages plus \$152 USD reconnection fee.
+
+We provide very generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return we expect
+that you will use this allowance responsibly and sparingly.
 
 Thank you in advance.
 
@@ -190,13 +224,13 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   else
-  cat <<EOF | mail -r $_ADM_EMAIL -e -b $_BCC_EMAIL -s "Your Aegir instance needs an upgrade [sql-$_THIS_HM_USER]" $_CLIENT_EMAIL
+  cat <<EOF | mail -r $_ADM_EMAIL -e -b $_BCC_EMAIL -s "NOTICE: Your DB Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
 Hello,
 
-You are using more resources than allocated with your subscription.
+You are using more resources than allocated in your subscription.
 You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
-Your allowed databases space is $_CLIENT_SQL_LIMIT MB.
+Your allowed databases space is $_SQL_MIN_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
 
 Please reduce your usage by deleting no longer used sites,
@@ -211,15 +245,26 @@ You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
-Please don't ignore this message! If you are using more resources
-than allocated in your subscription for more than 30 calendar days
-without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
-WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
-all past due overages plus \$100 USD reconnection fee.
+Note that we do not count any site identified as temporary dev/test,
+by having in its main name a special keyword with two dots on both sides:
 
-We provide generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return
-we expect that you will not abuse this feature.
+  .tmp. .test. .dev. .devel.
+
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes).
+
+However, if we discover that someone is using this method to hide real
+usage via listed keywords in the main site name and adding live domain(s)
+as aliases, such account will be suspended without any warning.
+
+If you are using more (counted) resources than allocated in your subscription
+for more than 30 calendar days without purchasing an upgrade, your instance
+will be suspended without further notice, and to restore it you will have to
+pay for all past due overages plus \$152 USD reconnection fee.
+
+We provide very generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return we expect
+that you will use this allowance responsibly and sparingly.
 
 Thank you in advance.
 
@@ -228,7 +273,7 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   fi
-  echo "INFO: Update notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+  echo "INFO: Notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
 send_notice_disk () {
@@ -237,13 +282,13 @@ send_notice_disk () {
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
-  cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "Your Aegir instance needs an upgrade [disk-$_THIS_HM_USER]" $_CLIENT_EMAIL
+  cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "NOTICE: Your Disk Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
 Hello,
 
-You are using more resources than allocated with your subscription.
+You are using more resources than allocated in your subscription.
 You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
-Your allowed disk space is $_CLIENT_DSK_LIMIT MB.
+Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
@@ -254,15 +299,26 @@ You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
-Please don't ignore this message! If you are using more resources
-than allocated in your subscription for more than 30 calendar days
-without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
-WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
-all past due overages plus \$100 USD reconnection fee.
+Note that we do not count any site identified as temporary dev/test,
+by having in its main name a special keyword with two dots on both sides:
 
-We provide generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return
-we expect that you will not abuse this feature.
+  .tmp. .test. .dev. .devel.
+
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes).
+
+However, if we discover that someone is using this method to hide real
+usage via listed keywords in the main site name and adding live domain(s)
+as aliases, such account will be suspended without any warning.
+
+If you are using more (counted) resources than allocated in your subscription
+for more than 30 calendar days without purchasing an upgrade, your instance
+will be suspended without further notice, and to restore it you will have to
+pay for all past due overages plus \$152 USD reconnection fee.
+
+We provide very generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return we expect
+that you will use this allowance responsibly and sparingly.
 
 Thank you in advance.
 
@@ -271,13 +327,13 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   else
-  cat <<EOF | mail -r $_ADM_EMAIL -e -b $_BCC_EMAIL -s "Your Aegir instance needs an upgrade [disk-$_THIS_HM_USER]" $_CLIENT_EMAIL
+  cat <<EOF | mail -r $_ADM_EMAIL -e -b $_BCC_EMAIL -s "NOTICE: Your Disk Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
 Hello,
 
-You are using more resources than allocated with your subscription.
+You are using more resources than allocated in your subscription.
 You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
 
-Your allowed disk space is $_CLIENT_DSK_LIMIT MB.
+Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
@@ -288,15 +344,26 @@ You can purchase more Aegir Cores easily online:
 
   http://omega8.cc/upgrade
 
-Please don't ignore this message! If you are using more resources
-than allocated in your subscription for more than 30 calendar days
-without purchasing an upgrade, YOUR INSTANCE WILL BE SUSPENDED
-WITHOUT FURTHER NOTICE, and to restore it you will have to pay for
-all past due overages plus \$100 USD reconnection fee.
+Note that we do not count any site identified as temporary dev/test,
+by having in its main name a special keyword with two dots on both sides:
 
-We provide generous soft-limits and we allow free-of-charge overages
-between weekly checks which happen every Monday, but in return
-we expect that you will not abuse this feature.
+  .tmp. .test. .dev. .devel.
+
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes).
+
+However, if we discover that someone is using this method to hide real
+usage via listed keywords in the main site name and adding live domain(s)
+as aliases, such account will be suspended without any warning.
+
+If you are using more (counted) resources than allocated in your subscription
+for more than 30 calendar days without purchasing an upgrade, your instance
+will be suspended without further notice, and to restore it you will have to
+pay for all past due overages plus \$152 USD reconnection fee.
+
+We provide very generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return we expect
+that you will use this allowance responsibly and sparingly.
 
 Thank you in advance.
 
@@ -305,32 +372,32 @@ This e-mail has been sent by your Aegir resources usage weekly monitor.
 
 EOF
   fi
-  echo "INFO: Update notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
+  echo "INFO: Notice sent to $_CLIENT_EMAIL [$_THIS_HM_USER]: OK"
 }
 
 check_limits () {
   read_account_data
   if [ "$_CLIENT_OPTION" = "SSD" ] ; then
-    _CLIENT_SQL_LIMIT=512
-    _CLIENT_DSK_LIMIT=10240
-    _SQL_LIMIT=$(($_CLIENT_SQL_LIMIT + 128))
-    _DSK_LIMIT=$(($_CLIENT_DSK_LIMIT + 2560))
+    _SQL_MIN_LIMIT=512
+    _DSK_MIN_LIMIT=10240
+    _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 128))
+    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 2560))
   else
-    _CLIENT_SQL_LIMIT=256
-    _CLIENT_DSK_LIMIT=5120
-    _SQL_LIMIT=$(($_CLIENT_SQL_LIMIT + 64))
-    _DSK_LIMIT=$(($_CLIENT_DSK_LIMIT + 1280))
+    _SQL_MIN_LIMIT=256
+    _DSK_MIN_LIMIT=5120
+    _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 64))
+    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 1280))
   fi
-  let "_CLIENT_SQL_LIMIT *= $_CLIENT_CORES"
-  let "_CLIENT_DSK_LIMIT *= $_CLIENT_CORES"
-  let "_SQL_LIMIT *= $_CLIENT_CORES"
-  let "_DSK_LIMIT *= $_CLIENT_CORES"
+  let "_SQL_MIN_LIMIT *= $_CLIENT_CORES"
+  let "_DSK_MIN_LIMIT *= $_CLIENT_CORES"
+  let "_SQL_MAX_LIMIT *= $_CLIENT_CORES"
+  let "_DSK_MAX_LIMIT *= $_CLIENT_CORES"
   echo _CLIENT_CORES is $_CLIENT_CORES
-  echo _CLIENT_SQL_LIMIT is $_CLIENT_SQL_LIMIT
-  echo _SQL_LIMIT is $_SQL_LIMIT
-  echo _CLIENT_DSK_LIMIT is $_CLIENT_DSK_LIMIT
-  echo _DSK_LIMIT is $_DSK_LIMIT
-  if [ "$SumDatH" -gt "$_SQL_LIMIT" ] ; then
+  echo _SQL_MIN_LIMIT is $_SQL_MIN_LIMIT
+  echo _SQL_MAX_LIMIT is $_SQL_MAX_LIMIT
+  echo _DSK_MIN_LIMIT is $_DSK_MIN_LIMIT
+  echo _DSK_MAX_LIMIT is $_DSK_MAX_LIMIT
+  if [ "$SumDatH" -gt "$_SQL_MAX_LIMIT" ] ; then
     if [ ! -e "$User/log/CANCELLED" ] ; then
       send_notice_sql
     fi
@@ -338,7 +405,7 @@ check_limits () {
   else
     echo SQL Usage for $_THIS_HM_USER below limits
   fi
-  if [ "$HomSizH" -gt "$_DSK_LIMIT" ] ; then
+  if [ "$HomSizH" -gt "$_DSK_MAX_LIMIT" ] ; then
     if [ ! -e "$User/log/CANCELLED" ] ; then
       send_notice_disk
     fi
@@ -407,6 +474,7 @@ action () {
 ###--------------------###
 echo "INFO: Weekly maintenance start"
 _NOW=`date +%y%m%d-%H%M`
+_DATE=`date +%y:%m:%d`
 _HOST_TEST=`uname -n 2>&1`
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
