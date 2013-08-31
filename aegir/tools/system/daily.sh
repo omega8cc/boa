@@ -15,6 +15,40 @@ _MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip
 
 ###-------------SYSTEM-----------------###
 
+run_drush_cmd () {
+  su -s /bin/bash $_THIS_HM_USER -c "drush $1 &> /dev/null"
+}
+
+run_drush_dash_cmd () {
+  su -s /bin/bash - $_THIS_HM_USER -c "drush $1 &> /dev/null"
+}
+
+run_drush_nosilent_cmd () {
+  su -s /bin/bash $_THIS_HM_USER -c "drush $1"
+}
+
+disable_modules () {
+  for m in $1; do
+    _MODULE_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
+    if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
+      run_drush_cmd "dis $m -y"
+      echo $m disabled in $Dom
+    fi
+  done
+}
+
+enable_modules () {
+  for m in $1; do
+    _MODULE_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
+    if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
+      true
+    else
+      run_drush_cmd "en $m -y"
+      echo $m enabled in $Dom
+    fi
+  done
+}
+
 fix_user_register_protection () {
   if [ ! -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] && [ -e "$User/static/control/enable_user_register_protection.info" ] ; then
     touch $Plr/sites/all/modules/enable_user_register_protection.info
@@ -45,7 +79,7 @@ fix_robots_txt () {
 
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
-    su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
+    run_drush_dash_cmd "@hostmaster cc all"
   fi
 }
 
@@ -98,34 +132,34 @@ fix_modules () {
         cd $Dir
         fix_user_register_protection
         if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
-          su -s /bin/bash $_THIS_HM_USER -c "drush @hostmaster dis cache syslog dblog -y &> /dev/null"
+          run_drush_cmd "@hostmaster dis cache syslog dblog -y"
           echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
           chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
         elif [ -e "$Plr/modules/o_contrib" ] ; then
-          su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SIX -y &> /dev/null"
-          su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SIX -y &> /dev/null"
-          su -s /bin/bash $_THIS_HM_USER -c "drush sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\" &> /dev/null"
+          disable_modules "$_MODULES_OFF_SIX"
+          enable_modules "$_MODULES_ON_SIX"
+          run_drush_cmd "sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\""
         elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
           if [ -e "$Plr/profiles/panopoly" ] || [ -e "$Plr/profiles/martplug" ] || [ -e "$Plr/profiles/openacademy" ] ; then
-            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_LESS_SEVEN -y &> /dev/null"
+            disable_modules "$_MODULES_OFF_LESS_SEVEN"
           else
-            su -s /bin/bash $_THIS_HM_USER -c "drush dis $_MODULES_OFF_SEVEN -y &> /dev/null"
+            disable_modules "$_MODULES_OFF_SEVEN"
           fi
           if [ ! -e "$Plr/sites/all/modules/entitycache_dont_enable.info" ] ; then
-            su -s /bin/bash $_THIS_HM_USER -c "drush en entitycache -y &> /dev/null"
+            enable_modules "entitycache"
           fi
-          su -s /bin/bash $_THIS_HM_USER -c "drush en $_MODULES_ON_SEVEN -y &> /dev/null"
+          enable_modules "$_MODULES_ON_SEVEN"
         fi
-        _VIEWS_TEST=$(drush pml --status=enabled --no-core --type=module | grep Views)
+        _VIEWS_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(views\)")
         if [[ "$_VIEWS_TEST" =~ "Views" ]] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
           if [ ! -e "$Plr/sites/all/modules/views_cache_bully_dont_enable.info" ] ; then
             if [ -e "$Plr/modules/o_contrib_seven/views_cache_bully" ] || [ -e "$Plr/modules/o_contrib/views_cache_bully" ] ; then
-              su -s /bin/bash $_THIS_HM_USER -c "drush en views_cache_bully -y &> /dev/null"
+              enable_modules "views_cache_bully"
             fi
           fi
           if [ ! -e "$Plr/sites/all/modules/views_content_cache_dont_enable.info" ] ; then
             if [ -e "$Plr/modules/o_contrib_seven/views_content_cache" ] || [ -e "$Plr/modules/o_contrib/views_content_cache" ] ; then
-              su -s /bin/bash $_THIS_HM_USER -c "drush en views_content_cache -y &> /dev/null"
+              enable_modules "views_content_cache"
             fi
           fi
         fi
@@ -231,15 +265,15 @@ action () {
         _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
-        echo Counting User $User
+        echo User $User
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null"
-          su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1 &> /dev/null"
-          su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_queue_cron_frequency 53222400 &> /dev/null"
-          su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_cron_use_backend 1 &> /dev/null"
-          su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set hosting_ignore_default_profiles 0 &> /dev/null"
+          run_drush_dash_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
+          run_drush_dash_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
+          run_drush_dash_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
+          run_drush_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 1"
+          run_drush_dash_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
         fi
         if [[ "$_HOST_TEST" =~ ".host8." ]] ; then
           rm -f -r $User/clients/admin &> /dev/null
