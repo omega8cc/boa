@@ -112,15 +112,14 @@ hostmaster_dr_up () {
   cd $_ROOT
   mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
-    git clone http://git.drupal.org/project/drush.git &> /dev/null
+    git clone --branch master git://github.com/drush-ops/drush.git &> /dev/null
     rm -f -r $_ROOT/drush/.git &> /dev/null
-    _DRUSH_CC_REQ=YES
-  elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
-    get_dev_ext "drush4.tar.gz" &> /dev/null
   else
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
-    tar -xzf drush-$_DRUSH_VERSION.tar.gz
-    rm -f drush-$_DRUSH_VERSION.tar.gz
+    get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+  fi
+  if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+    _DRUSH_CC_REQ=NO
+  else
     _DRUSH_CC_REQ=YES
   fi
   update_php_cli_drush

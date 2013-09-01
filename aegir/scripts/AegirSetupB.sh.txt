@@ -267,19 +267,16 @@ fi
 cd $_ROOT/tools
 msg "$_STATUS B: Downloading drush, please wait..."
 if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
-  git clone http://git.drupal.org/project/drush.git &> /dev/null
+  git clone --branch master git://github.com/drush-ops/drush.git &> /dev/null
   rm -f -r $_ROOT/tools/drush/.git &> /dev/null
-  _DRUSH_CC_REQ=YES
-elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
-  get_dev_ext "drush4.tar.gz" &> /dev/null
 else
-  wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
-  tar -xzf drush-$_DRUSH_VERSION.tar.gz
-  rm -f drush-$_DRUSH_VERSION.tar.gz
-  _DRUSH_CC_REQ=YES
+  get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
 fi
-if [ "$_DRUSH_VERSION" = "7.x-4.5" ] || [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+  _DRUSH_CC_REQ=NO
   sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null
+else
+  _DRUSH_CC_REQ=YES
 fi
 
 update_php_cli_drush

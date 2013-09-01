@@ -163,15 +163,14 @@ else
   msg "INFO: Installing drush in $_AEGIR_HOME"
   cd $_AEGIR_HOME
   if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
-    git clone http://git.drupal.org/project/drush.git &> /dev/null
-    rm -f -r drush/.git
-    _DRUSH_CC_REQ=YES
-  elif [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
-    get_dev_ext "drush4.tar.gz" &> /dev/null
+    git clone --branch master git://github.com/drush-ops/drush.git &> /dev/null
+    rm -f -r $_ROOT/drush/.git &> /dev/null
   else
-    wget -q -U iCab http://ftp.drupal.org/files/projects/drush-$_DRUSH_VERSION.tar.gz
-    tar -xzf drush-$_DRUSH_VERSION.tar.gz
-    rm -f drush-$_DRUSH_VERSION.tar.gz
+    get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+  fi
+  if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+    _DRUSH_CC_REQ=NO
+  else
     _DRUSH_CC_REQ=YES
   fi
   _DRUSH="$_L_PHP_CLI/php $_AEGIR_HOME/drush/drush.php"
