@@ -414,7 +414,7 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib_seven
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib_seven/boost/.git
-    wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-rc2.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-rc3.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-7.x-1.0-rc2.tar.gz
@@ -491,7 +491,7 @@ download_o_contrib_seven () {
   touch update-023.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-rc2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0-rc3.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.6.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
