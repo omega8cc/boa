@@ -278,7 +278,7 @@ fi
 # Themes for D6.
 themes_for_d6 () {
 cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/themes
-wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta3.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta5.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
@@ -290,7 +290,7 @@ cd /data/src/$_THIS_CORE
 # Themes for D7.
 themes_for_d7 () {
 cd $_CORE_DISTRO/themes
-wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta8.tar.gz
+wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta9.tar.gz
 wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
