@@ -1773,15 +1773,16 @@ update_sql_conf () {
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_THISHOST" =~ "ocean.nyc.host8.biz" ]] ; then
       true
     else
-      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf &> /dev/null
+      if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+        sed -i "s/^join_buffer_size.*/join_buffer_size        = 4M/g"      /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/^max_connections.*/max_connections         = 80/g"       /etc/mysql/my.cnf &> /dev/null
+        sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"  /etc/mysql/my.cnf &> /dev/null
+      else
+        sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"      /etc/mysql/my.cnf &> /dev/null
+      fi
+      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"         /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"    /etc/mysql/my.cnf &> /dev/null
+      sed -i "s/^query_cache_size.*/query_cache_size        = 128M/g"      /etc/mysql/my.cnf &> /dev/null
     fi
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
@@ -2183,15 +2184,22 @@ tune_memory_limits () {
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-      let "_USE_SQL = (($_RAM / 48))"
+  if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    if [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.tg.cnf" ] ; then
+        let "_USE_SQL = (($_RAM / 10))"
+      else
+        let "_USE_SQL = (($_RAM / 22))"
+      fi
     else
       let "_USE_SQL = (($_RAM / 8))"
     fi
   else
     let "_USE_SQL = (($_RAM / 8))"
   fi
+  _TMP_SQL="${_USE_SQL}M"
+  let "_SRT_SQL = (($_USE_SQL * 2))"
+  _SRT_SQL="${_SRT_SQL}K"
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_OPC=512
@@ -2303,7 +2311,12 @@ tune_memory_limits () {
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
+    sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+  fi
   sed -i "s/88/$_USE_OPC/g"  /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
