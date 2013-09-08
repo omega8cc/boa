@@ -1769,22 +1769,6 @@ update_sql_conf () {
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_THISHOST" =~ "ocean.nyc.host8.biz" ]] ; then
-      true
-    else
-      if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
-        sed -i "s/^join_buffer_size.*/join_buffer_size        = 4M/g"      /etc/mysql/my.cnf &> /dev/null
-        sed -i "s/^max_connections.*/max_connections         = 80/g"       /etc/mysql/my.cnf &> /dev/null
-        sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"  /etc/mysql/my.cnf &> /dev/null
-      else
-        sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"      /etc/mysql/my.cnf &> /dev/null
-      fi
-      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"         /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"    /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^query_cache_size.*/query_cache_size        = 128M/g"      /etc/mysql/my.cnf &> /dev/null
-    fi
-  fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     if [ "$_DB_BINARY_LOG" = "NO" ] ; then
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
@@ -2203,6 +2187,10 @@ tune_memory_limits () {
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_OPC=512
+    _PRC_SQL=20
+    _QCE_SQL=128M
+    _RND_SQL=8M
+    _JBF_SQL=4M
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=6
     else
@@ -2217,6 +2205,10 @@ tune_memory_limits () {
     if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
       _USE_OPC=1024
+      _PRC_SQL=30
+      _QCE_SQL=128M
+      _RND_SQL=8M
+      _JBF_SQL=4M
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=12
       else
@@ -2231,6 +2223,10 @@ tune_memory_limits () {
       if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
+        _PRC_SQL=50
+        _QCE_SQL=128M
+        _RND_SQL=8M
+        _JBF_SQL=4M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=12
         else
@@ -2246,6 +2242,10 @@ tune_memory_limits () {
       else
         _USE_PHP=512
         _USE_OPC=512
+        _PRC_SQL=25
+        _QCE_SQL=64M
+        _RND_SQL=2M
+        _JBF_SQL=2M
         if [[ "$_THISHOST" =~ ".host8." ]] ; then
           if [[ "$_THISHOST" =~ "v130a." ]] ; then
             _USE_PHP=1024
@@ -2265,6 +2265,10 @@ tune_memory_limits () {
     else
       _USE_PHP=256
       _USE_OPC=256
+      _PRC_SQL=10
+      _QCE_SQL=32M
+      _RND_SQL=2M
+      _JBF_SQL=2M
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=6
       else
@@ -2279,6 +2283,10 @@ tune_memory_limits () {
   else
     _USE_PHP="$_USE"
     _USE_OPC="$_USE"
+    _PRC_SQL=10
+    _QCE_SQL=32M
+    _RND_SQL=1M
+    _JBF_SQL=1M
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=3
     else
@@ -2312,10 +2320,14 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
-    sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"  /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/= 88/= $_USE_SQL/g"                                                /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/= 99/= $_PRC_SQL/g"                                                /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^query_cache_size.*/query_cache_size        = $_QCE_SQL/g"         /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = $_RND_SQL/g"     /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^join_buffer_size.*/join_buffer_size        = $_JBF_SQL/g"         /etc/mysql/my.cnf &> /dev/null
   fi
   sed -i "s/88/$_USE_OPC/g"  /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then

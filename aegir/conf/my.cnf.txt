@@ -18,15 +18,15 @@ character_set_server    = utf8
 collation_server        = utf8_general_ci
 skip-external-locking
 skip-name-resolve
-connect_timeout         = 60
+connect_timeout         = 30
 join_buffer_size        = 1M
 key_buffer              = 2M
 key_buffer_size         = 88M
 log_warnings            = 2
 max_allowed_packet      = 32M
-max_connect_errors      = 30
-max_connections         = 30
-max_user_connections    = 30
+max_connect_errors      = 99
+max_connections         = 99
+max_user_connections    = 99
 myisam_sort_buffer_size = 1024K
 query_cache_limit       = 128K
 query_cache_size        = 64M
