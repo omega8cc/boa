@@ -66,6 +66,16 @@ do
   fi
 done
 
+if [ "$OPTIM" = "YES" ] ; then
+  touch /var/run/boa_wait.pid
+  touch /var/xdrago/log/mysql_restart_running.pid
+  sleep 3
+  /etc/init.d/mysql restart
+  sleep 3
+  rm -f /var/run/boa_wait.pid
+  rm -f /var/xdrago/log/mysql_restart_running.pid
+fi
+
 find $BACKUPDIR -mtime +8 -type d -exec rm -rf {} \;
 echo "Backups older than 8 days deleted"
 
