@@ -344,7 +344,7 @@ fix_php_ini_opcache () {
         else
           echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
         fi
-        echo "opcache.memory_consumption=88"      >> $_THIS_FILE
+        echo "opcache.memory_consumption=181"     >> $_THIS_FILE
         echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
         echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
         echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
@@ -362,7 +362,7 @@ fix_php_ini_opcache () {
       else
         echo "; APC"                              >> $_THIS_FILE
         echo "extension=apc.so"                   >> $_THIS_FILE
-        echo "apc.shm_size = 88M"                 >> $_THIS_FILE
+        echo "apc.shm_size = 181M"                >> $_THIS_FILE
         echo "apc.stat = 1"                       >> $_THIS_FILE
         echo "apc.stat_ctime = 1"                 >> $_THIS_FILE
         echo "apc.include_once_override = 0"      >> $_THIS_FILE
@@ -878,17 +878,18 @@ tune_memory_limits () {
     _USE_PHP=196
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/88/$_USE_OPC/g"  /opt/etc/php.ini &> /dev/null
+  sed -i "s/181/$_USE_OPC/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/iso-.*-1/iso-8859-1/g"  /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/88/$_USE_OPC/g"  /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/iso-.*-1/iso-8859-1/g"  /opt/local/etc/php53.ini &> /dev/null
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/88/$_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
-  sed -i "s/88/$_USE_OPC/g"  /etc/redis/redis.conf &> /dev/null
+  sed -i "s/181/$_USE_SQL/g" /etc/mysql/my.cnf &> /dev/null
+  _MAX_MEM_REDIS="${_USE_OPC}MB"
+  sed -i "s/^maxmemory .*/maxmemory $_MAX_MEM_REDIS/g" /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
   fi

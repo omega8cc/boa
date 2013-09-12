@@ -21,12 +21,12 @@ skip-name-resolve
 connect_timeout         = 30
 join_buffer_size        = 1M
 key_buffer              = 2M
-key_buffer_size         = 88M
+key_buffer_size         = 181M
 log_warnings            = 2
 max_allowed_packet      = 32M
-max_connect_errors      = 99
-max_connections         = 99
-max_user_connections    = 99
+max_connect_errors      = 191
+max_connections         = 191
+max_user_connections    = 191
 myisam_sort_buffer_size = 1024K
 query_cache_limit       = 128K
 query_cache_size        = 64M
@@ -67,7 +67,7 @@ open_files_limit        = 196608
 sql_mode                = NO_ENGINE_SUBSTITUTION
 # you can't just change log file size, requires special procedure
 #innodb_log_file_size   = 50M
-innodb_buffer_pool_size = 88M
+innodb_buffer_pool_size = 181M
 innodb_log_buffer_size  = 4M
 innodb_file_per_table   = 1
 innodb_open_files       = 256
