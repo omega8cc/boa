@@ -335,7 +335,7 @@ fi
 #
 o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully"
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully views_content_cache"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-023.info" ] ; then
     for m in $RMMODULES; do
@@ -353,6 +353,7 @@ for i in $REVISIONS; do
     wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.x-dev.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-6.x-3.0.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
       ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
@@ -393,7 +394,7 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully views_content_cache"
 for i in $REVISIONS; do
   if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-023.info" ] ; then
     for m in $RMMODULES; do
@@ -423,6 +424,7 @@ for i in $REVISIONS; do
     wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.8.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.8.tar.gz
     wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-7.x-3.0.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.x-dev.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
@@ -516,7 +518,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha10.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-7.x-3.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.0-alpha2.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-7.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
@@ -582,7 +584,7 @@ download_o_contrib_six () {
   wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-6.x-3.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.3.tar.gz
+  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r expire*
