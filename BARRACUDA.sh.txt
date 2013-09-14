@@ -870,12 +870,22 @@ _NGINX_DOS_LIMIT=300
 _NGINX_LDAP=NO
 
 ###
-### When set to _NGINX_SPDY=YES below or
-### in the /root/.barracuda.cnf file, it will
-### force openssl re-install from sources
-### on Debian Squeeze and Ubuntu Lucid.
+### When set to YES, it will also force
+### OpenSSL re-install from sources
+### on systems other than Debian Wheezy,
+### which already comes with required
+### OpenSSL 1.0.1e by default.
 ###
 _NGINX_SPDY=NO
+
+###
+### When set to YES, it will also force
+### OpenSSL re-install from sources
+### on systems other than Debian Wheezy,
+### which already comes with required
+### OpenSSL 1.0.1e by default.
+###
+_NGINX_FORWARD_SECRECY=NO
 
 ###
 ### Use this only when you need to always
@@ -925,10 +935,12 @@ _PHP_GEOS=NO
 _NGINX_FROM_SOURCES=YES
 
 ###
-### When set to YES it will force OpenSSL
-### re-install from sources. Do NOT use
-### if you don't have a serial console
-### access to the machine or VPS!
+### When set to YES, it will force
+### OpenSSL re-install from sources.
+###
+### Debian Wheezy already comes with latest
+### OpenSSL 1.0.1e by default, so this option
+### will be ignored on this system.
 ###
 _SSL_FROM_SOURCES=NO
 
@@ -1008,6 +1020,7 @@ _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.2.0
 _ZEND_OPCACHE_VERSION=7.0.2
+_ZLIB_VERSION=1.2.8
 if [ "$_USE_STOCK" = "YES" ] ; then
   _DRUSH_VERSION=5.9
 fi
@@ -2092,6 +2105,21 @@ force_advanced_nginx_config () {
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
+  _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+  if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+    _ALLOW_NGINX_FORWARD_SECRECY=YES
+    _SSL_PROTOCOLS="SSLv3 TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:E
+DH+aRSA:RC4:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:+RC4:RC4;"
+  else
+    _ALLOW_NGINX_FORWARD_SECRECY=NO
+  fi
+  if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+  fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     sed -i "s/9000/9090/g" /var/aegir/config/includes/nginx_compact_include.conf &> /dev/null
@@ -2521,6 +2549,7 @@ barracuda_cnf () {
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
+    echo "_NGINX_FORWARD_SECRECY=$_NGINX_FORWARD_SECRECY" >> /root/.barracuda.cnf
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
     echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
@@ -2793,6 +2822,12 @@ barracuda_cnf () {
       true
     else
       echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
+    fi
+    _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY /root/.barracuda.cnf)
+    if [[ "$_NGINX_FORWARD_SECRECY_TEST" =~ "_NGINX_FORWARD_SECRECY" ]] ; then
+      true
+    else
+      echo "_NGINX_FORWARD_SECRECY=$_NGINX_FORWARD_SECRECY" >> /root/.barracuda.cnf
     fi
     _PHP_GEOS_TEST=$(grep _PHP_GEOS /root/.barracuda.cnf)
     if [[ "$_PHP_GEOS_TEST" =~ "_PHP_GEOS" ]] ; then
@@ -4422,6 +4457,18 @@ install_ssl_src () {
     msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, upgrade required"
   fi
   if [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+    ###--------------------###
+    msg "INFO: Installing zlib $_ZLIB_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r zlib*
+    wget -q -U iCab http://files.aegir.cc/dev/zlib-$_ZLIB_VERSION.tar.gz
+    tar -xzf zlib-$_ZLIB_VERSION.tar.gz
+    cd /var/opt/zlib-$_ZLIB_VERSION
+    st_runner "./configure --prefix=/usr" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    ###--------------------###
     msg "INFO: Installing OpenSSL $_OPENSSL_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
@@ -4429,13 +4476,26 @@ install_ssl_src () {
     wget -q -U iCab http://files.aegir.cc/dev/openssl-$_OPENSSL_VERSION.tar.gz
     tar -xzf openssl-$_OPENSSL_VERSION.tar.gz
     cd /var/opt/openssl-$_OPENSSL_VERSION
-    st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl shared" 2> /dev/null
+    _X86_64_IF=`uname -m`
+    if [ "$_X86_64_IF" = "x86_64" ] ; then
+      st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl shared enable-ec_nistp_64_gcc_128" 2> /dev/null
+      st_runner "make depend" 2> /dev/null
+    else
+      st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl shared" 2> /dev/null
+    fi
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
+    ###--------------------###
     aptitude hold libssl-dev &> /dev/null
     aptitude hold openssl &> /dev/null
+    aptitude hold zlibc &> /dev/null
+    aptitude hold zlib1g &> /dev/null
+    aptitude hold zlib1g-dev &> /dev/null
     echo "libssl-dev hold" | dpkg --set-selections &> /dev/null
     echo "openssl hold" | dpkg --set-selections &> /dev/null
+    echo "zlibc hold" | dpkg --set-selections &> /dev/null
+    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
@@ -5770,13 +5830,12 @@ if [ ! -e "/etc/aliases" ] ; then
   echo "postmaster:    root" > /etc/aliases
   newaliases &> /dev/null
 fi
-if [ "$_NGINX_SPDY" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] ; then
+    true
+  else
     install_ssl_src
   fi
-fi
-if [ "$_SSL_FROM_SOURCES" = "YES" ] ; then
-  install_ssl_src
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
   install_ssh_src
@@ -7835,6 +7894,21 @@ else
   if [ "$_NGINX_SPDY" = "YES" ] ; then
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+  fi
+  _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+  if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+    _ALLOW_NGINX_FORWARD_SECRECY=YES
+    _SSL_PROTOCOLS="SSLv3 TLSv1 TLSv1.1 TLSv1.2;"
+    _SSL_CIPHERS="EECDH+ECDSA+AESGCM:EECDH+aRSA+AESGCM:EECDH+ECDSA+SHA384:EECDH+ECDSA+SHA256:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH+aRSA+RC4:EECDH:E
+DH+aRSA:RC4:\!aNULL:\!eNULL:\!LOW:\!3DES:\!MD5:\!EXP:\!PSK:\!SRP:\!DSS:+RC4:RC4;"
+  else
+    _ALLOW_NGINX_FORWARD_SECRECY=NO
+  fi
+  if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   st_runner "service nginx reload" &> /dev/null
 fi
