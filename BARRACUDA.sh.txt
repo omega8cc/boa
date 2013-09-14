@@ -870,6 +870,14 @@ _NGINX_DOS_LIMIT=300
 _NGINX_LDAP=NO
 
 ###
+### When set to _NGINX_SPDY=YES below or
+### in the /root/.barracuda.cnf file, it will
+### force openssl re-install from sources
+### on Debian Squeeze and Ubuntu Lucid.
+###
+_NGINX_SPDY=NO
+
+###
 ### Use this only when you need to always
 ### compile in some extra/custom module(s).
 ###
@@ -2080,6 +2088,10 @@ force_advanced_nginx_config () {
   _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 300;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+  if [ "$_NGINX_SPDY" = "YES" ] ; then
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+  fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     sed -i "s/9000/9090/g" /var/aegir/config/includes/nginx_compact_include.conf &> /dev/null
@@ -2508,6 +2520,7 @@ barracuda_cnf () {
     echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
+    echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
     echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
@@ -2774,6 +2787,12 @@ barracuda_cnf () {
       true
     else
       echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
+    fi
+    _NGINX_SPDY_TEST=$(grep _NGINX_SPDY /root/.barracuda.cnf)
+    if [[ "$_NGINX_SPDY_TEST" =~ "_NGINX_SPDY" ]] ; then
+      true
+    else
+      echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
     fi
     _PHP_GEOS_TEST=$(grep _PHP_GEOS /root/.barracuda.cnf)
     if [[ "$_PHP_GEOS_TEST" =~ "_PHP_GEOS" ]] ; then
@@ -3826,6 +3845,14 @@ install_upgrade_nginx () {
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
         fi
       fi
+      if [ "$_NGINX_SPDY" = "YES" ] ; then
+        if [[ "$_NGINX_V_INSTALLED" =~ "http_spdy_module" ]] ; then
+          true
+        else
+          _NGINX_INSTALL_REQUIRED=YES
+          msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include SPDY support"
+        fi
+      fi
     fi
     mrun "sleep 1"
   else
@@ -3892,6 +3919,9 @@ install_upgrade_nginx () {
       if [ -e "/var/opt/nginx-auth-ldap" ] ; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ $_NGINX_EXTRA"
       fi
+    fi
+    if [ "$_NGINX_SPDY" = "YES" ] ; then
+      _NGINX_EXTRA="--with-http_spdy_module $_NGINX_EXTRA"
     fi
     cd /var/opt/nginx-$_NGINX_VERSION
     st_runner "sh ./configure --prefix=/usr --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --user=www-data --group=www-data --with-http_realip_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_ssl_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_scgi_module --without-http_uwsgi_module --with-ipv6 --with-http_geoip_module --with-debug $_NGINX_EXTRA" 2> /dev/null
@@ -5739,6 +5769,11 @@ fi
 if [ ! -e "/etc/aliases" ] ; then
   echo "postmaster:    root" > /etc/aliases
   newaliases &> /dev/null
+fi
+if [ "$_NGINX_SPDY" = "YES" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+    install_ssl_src
+  fi
 fi
 if [ "$_SSL_FROM_SOURCES" = "YES" ] ; then
   install_ssl_src
@@ -7796,6 +7831,10 @@ else
     sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     touch /var/log/nginx-ssl-fixed-$_INSTALLER_VERSION
+  fi
+  if [ "$_NGINX_SPDY" = "YES" ] ; then
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   st_runner "service nginx reload" &> /dev/null
 fi
