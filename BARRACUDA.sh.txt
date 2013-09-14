@@ -917,6 +917,13 @@ _PHP_GEOS=NO
 _NGINX_FROM_SOURCES=YES
 
 ###
+### When set to YES it will force OpenSSL
+### re-install from sources. Do NOT use
+### if you don't have a serial console
+### access to the machine or VPS!
+###
+_SSL_FROM_SOURCES=NO
+
 ###
 ### When set to YES it will force OpenSSH
 ### re-install from sources. Do NOT use
@@ -984,6 +991,7 @@ _MARIADB_VERSION=5.5.32
 _MSS_VERSION=1.31
 _NGINX_VERSION=1.5.4
 _OPENSSH_VERSION=6.2p2
+_OPENSSL_VERSION=1.0.1e
 _PERCONA_VERSION=5.5.33
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.36
@@ -2518,6 +2526,7 @@ barracuda_cnf () {
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
     echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
     echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
+    echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
@@ -2795,6 +2804,12 @@ barracuda_cnf () {
       true
     else
       echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
+    fi
+    _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES /root/.barracuda.cnf)
+    if [[ "$_SSL_FROM_SOURCES_TEST" =~ "_SSL_FROM_SOURCES" ]] ; then
+      true
+    else
+      echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
     fi
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES /root/.barracuda.cnf)
     if [[ "$_SSH_FROM_SOURCES_TEST" =~ "_SSH_FROM_SOURCES" ]] ; then
@@ -3529,18 +3544,25 @@ check_apt_updates () {
     case $Update in
       *libcurl*)    _UP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
-      *libssl*)     _UP_PHP=YES ;;
+      *libssl*)     _YP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
       *nginx*)      _UP_NGX=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
-      *openssl*)    _UP_PHP=YES ;;
+      *openssl*)    _YP_PHP=YES ;;
       *percona*)    _UP_PHP=YES ;;
       *php5*)       _UP_FPM=YES ;;
       *)  ;;
     esac
   done
+  if [ "$_YP_PHP" = "YES" ] ; then
+    if [ "$_SSL_FROM_SOURCES" = "YES" ] ; then
+      _UP_PHP=NO
+    else
+      _UP_PHP=YES
+    fi
+  fi
 }
 #
 # Generate provision backend db_passwd.
@@ -4356,6 +4378,34 @@ update_sources_list () {
         fi
       fi
     fi
+  fi
+}
+#
+# Install OpenSSL from sources.
+install_ssl_src () {
+  _SSL_INSTALL_REQUIRED=NO
+  _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+  if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
+    true
+  else
+    _SSL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, upgrade required"
+  fi
+  if [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+    msg "INFO: Installing OpenSSL $_OPENSSL_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r openssl*
+    wget -q -U iCab http://files.aegir.cc/dev/openssl-$_OPENSSL_VERSION.tar.gz
+    tar -xzf openssl-$_OPENSSL_VERSION.tar.gz
+    cd /var/opt/openssl-$_OPENSSL_VERSION
+    st_runner "sh ./config --prefix=/usr zlib-dynamic --openssldir=/etc/ssl shared" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    aptitude hold libssl-dev &> /dev/null
+    aptitude hold openssl &> /dev/null
+    echo "libssl-dev hold" | dpkg --set-selections &> /dev/null
+    echo "openssl hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
@@ -5689,6 +5739,9 @@ fi
 if [ ! -e "/etc/aliases" ] ; then
   echo "postmaster:    root" > /etc/aliases
   newaliases &> /dev/null
+fi
+if [ "$_SSL_FROM_SOURCES" = "YES" ] ; then
+  install_ssl_src
 fi
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_latest_git
