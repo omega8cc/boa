@@ -5743,6 +5743,9 @@ fi
 if [ "$_SSL_FROM_SOURCES" = "YES" ] ; then
   install_ssl_src
 fi
+if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
+  install_ssh_src
+fi
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_latest_git
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
