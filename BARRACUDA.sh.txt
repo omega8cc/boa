@@ -3822,10 +3822,10 @@ install_upgrade_nginx () {
       git clone --branch v0.9.0 $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
     fi
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      wget -q -U iCab http://files.aegir.cc/dev/ngx_cache_purge-1.6.tar.gz
-      tar -xzf ngx_cache_purge-1.6.tar.gz
-      mv ngx_cache_purge-1.6 ngx-cache-purge
-      perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx-cache-purge/ngx_cache_purge_module.c &> /dev/null
+      wget -q -U iCab http://files.aegir.cc/dev/ngx_cache_purge-2.1.tar.gz
+      tar -xzf ngx_cache_purge-2.1.tar.gz
+      mv ngx_cache_purge-2.1 ngx-cache-purge
+      ### perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx-cache-purge/ngx_cache_purge_module.c &> /dev/null
     fi
     wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
     tar -xzf nginx-$_NGINX_VERSION.tar.gz
