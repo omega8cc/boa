@@ -917,6 +917,15 @@ _PHP_GEOS=NO
 _NGINX_FROM_SOURCES=YES
 
 ###
+###
+### When set to YES it will force OpenSSH
+### re-install from sources. Do NOT use
+### if you don't have a serial console
+### access to the machine or VPS!
+###
+_SSH_FROM_SOURCES=NO
+
+###
 ### AUTO will default to values calculated
 ### on the fly and based on available RAM.
 ### You can force workers number for Nginx
@@ -974,6 +983,7 @@ _LSHELL_VERSION=0.9.16.3-om8
 _MARIADB_VERSION=5.5.32
 _MSS_VERSION=1.31
 _NGINX_VERSION=1.5.4
+_OPENSSH_VERSION=6.2p2
 _PERCONA_VERSION=5.5.33
 _PHP_VERSION=5.2.17
 _PURE_FTPD_VERSION=1.0.36
@@ -2508,6 +2518,7 @@ barracuda_cnf () {
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
     echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
     echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
+    echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -2784,6 +2795,12 @@ barracuda_cnf () {
       true
     else
       echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
+    fi
+    _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES /root/.barracuda.cnf)
+    if [[ "$_SSH_FROM_SOURCES_TEST" =~ "_SSH_FROM_SOURCES" ]] ; then
+      true
+    else
+      echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
@@ -4339,6 +4356,35 @@ update_sources_list () {
         fi
       fi
     fi
+  fi
+}
+#
+# Install OpenSSH from sources.
+install_ssh_src () {
+  _SSH_INSTALL_REQUIRED=NO
+  _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
+  if [ "$_SSH_INSTALLED" = "$_OPENSSH_VERSION" ] ; then
+    true
+  else
+    _SSH_INSTALL_REQUIRED=YES
+    msg "INFO: Installed OpenSSH version $_SSH_INSTALLED, upgrade required"
+  fi
+  if [ "$_SSH_INSTALL_REQUIRED" = "YES" ] ; then
+    msg "INFO: Installing OpenSSH $_OPENSSH_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r openssh*
+    wget -q -U iCab http://files.aegir.cc/dev/openssh-$_OPENSSH_VERSION.tar.gz
+    tar -xzf openssh-$_OPENSSH_VERSION.tar.gz
+    cd /var/opt/openssh-$_OPENSSH_VERSION
+    st_runner "sh ./configure --prefix=/usr --with-pam" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    st_runner "service ssh restart" &> /dev/null
+    aptitude hold openssh-server &> /dev/null
+    aptitude hold ssh &> /dev/null
+    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
