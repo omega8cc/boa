@@ -4453,6 +4453,9 @@ install_ssl_src () {
     true
   else
     _SSL_INSTALL_REQUIRED=YES
+    _NGX_FORCE_REINSTALL=YES
+    _PHP_FORCE_REINSTALL=YES
+    rm -f /var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
     msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, upgrade required"
   fi
   if [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
