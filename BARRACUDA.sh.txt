@@ -2203,9 +2203,9 @@ tune_sql_memory_limits () {
         let "_RAW_MYISAM_MEM = (($_RAW_MYISAM_MEM * 1024))"
       fi
       if [ "$_RAW_MYISAM_MEM" -gt "$_USE_SQL" ] ; then
-        _USE_MYISAM_MEM=$_USE_SQL
+        _USE_MYISAM_MEM="$_USE_SQL"
       else
-        _USE_MYISAM_MEM=$_USE_SQL
+        _USE_MYISAM_MEM="$_RAW_MYISAM_MEM"
       fi
       _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
       sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
@@ -2220,9 +2220,9 @@ tune_sql_memory_limits () {
         let "_RAW_INNODB_MEM = (($_RAW_INNODB_MEM * 1024))"
       fi
       if [ "$_RAW_INNODB_MEM" -gt "$_USE_SQL" ] ; then
-        _USE_INNODB_MEM=$_USE_SQL
+        _USE_INNODB_MEM="$_USE_SQL"
       else
-        _USE_INNODB_MEM=$_USE_SQL
+        _USE_INNODB_MEM="$_RAW_INNODB_MEM"
       fi
       _INNODB_BPI="0"
       _INNODB_BPI=`echo "scale=0; $_USE_INNODB_MEM/1024" | bc`;
