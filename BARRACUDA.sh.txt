@@ -2182,6 +2182,63 @@ tune_web_server_config () {
   fi
 }
 #
+# Tune memory limits for SQL server.
+tune_sql_memory_limits () {
+  if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
+    msg "INFO: Running mysqltuner check, please wait..."
+    rm -f /var/opt/mysqltuner*
+    curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    if [ -e "/var/opt/mysqltuner.pl" ] ; then
+      st_runner "perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt"
+    fi
+  fi
+  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
+    _REC_MYISAM_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "Data in MyISAM tables" | cut -d: -f2 | awk '{ print $1}'`
+    _REC_INNODB_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "Data in InnoDB tables" | cut -d: -f2 | awk '{ print $1}'`
+    ###--------------------###
+    if [ ! -z "$_REC_MYISAM_MEM" ] ; then
+      _RAW_MYISAM_MEM=`echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g"`
+      if [[ "$_REC_MYISAM_MEM" =~ "G" ]] ; then
+        let "_RAW_MYISAM_MEM = (($_RAW_MYISAM_MEM * 1024))"
+      fi
+      if [ "$_RAW_MYISAM_MEM" -gt "$_USE_SQL" ] ; then
+        _USE_MYISAM_MEM=$_USE_SQL
+      else
+        _USE_MYISAM_MEM=$_USE_SQL
+      fi
+      _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    else
+      _USE_MYISAM_MEM="64M"
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    fi
+    ###--------------------###
+    if [ ! -z "$_REC_INNODB_MEM" ] ; then
+      _RAW_INNODB_MEM=`echo $_REC_INNODB_MEM | sed "s/[A-Z]//g"`
+      if [[ "$_REC_INNODB_MEM" =~ "G" ]] ; then
+        let "_RAW_INNODB_MEM = (($_RAW_INNODB_MEM * 1024))"
+      fi
+      if [ "$_RAW_INNODB_MEM" -gt "$_USE_SQL" ] ; then
+        _USE_INNODB_MEM=$_USE_SQL
+      else
+        _USE_INNODB_MEM=$_USE_SQL
+      fi
+      _INNODB_BPI="0"
+      _INNODB_BPI=`echo "scale=0; $_USE_INNODB_MEM/1024" | bc`;
+      if [ "$_INNODB_BPI" -gt "1" ] ; then
+        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf &> /dev/null
+      fi
+      _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    else
+      _USE_INNODB_MEM="64M"
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    fi
+  else
+    sed -i "s/= 181/= $_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+  fi
+}
+#
 # Tune memory limits for PHP-FPM, Nginx and MariaDB/Percona.
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
@@ -2379,7 +2436,7 @@ tune_memory_limits () {
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
-    sed -i "s/= 181/= $_USE_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
+    tune_sql_memory_limits
     sed -i "s/= 191/= $_PRC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
     sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf &> /dev/null
