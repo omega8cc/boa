@@ -5,6 +5,11 @@ SHELL=/bin/bash
 
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
+_L_VMFAMILY=XEN
+_L_VM_TEST=`uname -a 2>&1`
+if [[ "$_L_VM_TEST" =~ beng ]] ; then
+  _L_VMFAMILY="VS"
+fi
 
 octopus_install ()
 {
@@ -31,7 +36,7 @@ octopus_install ()
       sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
       sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
     fi
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
         true
       else

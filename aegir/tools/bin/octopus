@@ -8,12 +8,17 @@ _NOW=`date +%y%m%d-%H%M`
 _CHECK_HOST=`uname -n`
 _LOG_DIR="/var/backups/reports/up/octopus/$_TODAY"
 _UP_CONTRIB_PID="$_LOG_DIR/octopus-contrib-up.pid"
+_L_VMFAMILY=XEN
+_L_VM_TEST=`uname -a 2>&1`
+if [[ "$_L_VM_TEST" =~ beng ]] ; then
+  _L_VMFAMILY="VS"
+fi
 
 send_report ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="octopus@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
@@ -27,7 +32,7 @@ send_alert ()
 {
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       _MY_EMAIL="octopus@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
@@ -95,7 +100,7 @@ up_one ()
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
         true
       else

@@ -1331,7 +1331,7 @@ install_redis_src () {
   rm -f /var/lib/redis/*
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "$_STATUS" = "UPGRADE" ] ; then
-    if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
         true
       else
@@ -1444,7 +1444,7 @@ fix_sftp_ftps_modern () {
 #
 # Enable Purge Cruft Machine (Monday).
 enable_purge_cruft_machine () {
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
     echo "18 6    * * 1   root    bash /var/xdrago/purge_cruft.sh >/dev/null 2>&1" >> /etc/crontab
@@ -1453,7 +1453,7 @@ enable_purge_cruft_machine () {
 #
 # Enable Weekly Usage Monitor (Monday).
 enable_weekly_usage_monitor () {
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
     echo "28 6    * * 1   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
@@ -1648,7 +1648,7 @@ update_php_conf () {
     mkdir -p /opt/local/lib
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
       true
     else
@@ -1658,7 +1658,7 @@ update_php_conf () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
     fi
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
       true
     else
@@ -1781,7 +1781,7 @@ update_php_conf () {
 # Update SQL Config.
 update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
-  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
       true
     else
@@ -2143,8 +2143,10 @@ force_advanced_nginx_config () {
 # Tune Web Sever configuration.
 tune_web_server_config () {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "6" ] && [[ "$_THISHOST" =~ ".host8." ]] ; then
-    _LIM_FPM=6
+  if [ "$_LIM_FPM" -lt "6" ] ; then
+    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      _LIM_FPM=6
+    fi
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
@@ -2174,7 +2176,7 @@ tune_web_server_config () {
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
     sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
   fi
@@ -2228,9 +2230,9 @@ tune_memory_limits () {
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/root/.tg.cnf" ] ; then
-        let "_USE_SQL = (($_RAM / 10))"
+        let "_USE_SQL = (($_RAM / 12))"
       else
-        let "_USE_SQL = (($_RAM / 22))"
+        let "_USE_SQL = (($_RAM / 24))"
       fi
     else
       let "_USE_SQL = (($_RAM / 8))"
@@ -2467,7 +2469,7 @@ barracuda_cnf () {
   if [ ! -e "/root/.barracuda.cnf" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
           true
         else
@@ -2587,7 +2589,7 @@ barracuda_cnf () {
         sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g"                    /root/.barracuda.cnf &> /dev/null
       fi
     fi
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
         true
       else
@@ -2885,7 +2887,7 @@ barracuda_cnf () {
         sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
       fi
     fi
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
         true
       else
@@ -2921,7 +2923,7 @@ barracuda_cnf () {
     source /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
           true
         else
@@ -3443,7 +3445,7 @@ install_php_modern () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
       true
     else
@@ -6135,7 +6137,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     _NGINX_DOS_LIMIT=222
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
@@ -6186,7 +6188,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     _NGINX_DOS_LIMIT=222
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
@@ -6585,7 +6587,7 @@ if [ -f "/usr/local/bin/lshell" ] ; then
     ln -sf /usr/local/bin/lshell /usr/bin/lshell &> /dev/null
   fi
 fi
-if [[ "$_THISHOST" =~ ".host8." ]] ; then
+if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
   sed -i "s/rotate 12/rotate 50/g" /etc/logrotate.d/lshell &> /dev/null
 fi
 
@@ -7554,7 +7556,7 @@ fi
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   true
 else
-  if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
     if [ "$_STATUS" = "INIT" ] ; then
       _L_ST="install"
     else
@@ -7644,7 +7646,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     st_runner "service nginx start" &> /dev/null
   fi
 else
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
     sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
     sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
@@ -8137,7 +8139,7 @@ fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   if [ "$_INSTALL_PDNSD" = "NO" ] ; then
     _CHECK_HOST=`uname -n`
-    if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
         true
