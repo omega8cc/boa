@@ -209,7 +209,7 @@ else
         sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_AEGIR_HOME/.drush/provision/aegir.make &> /dev/null
       fi
     fi
-    msg "INFO: Downloading Drush and Provision extensions, please wait..."
+    msg "INFO: Downloading Drush and Provision extensions..."
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_AEGIR_HOME/.drush/provision_cdn &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_AEGIR_HOME/.drush/drush_ecl &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/security_check.git $_AEGIR_HOME/.drush/security_check &> /dev/null
@@ -223,7 +223,7 @@ else
     wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
     gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
     rm -f provision-$_AEGIR_VERSION.tar.gz
-    msg "INFO: Downloading Drush and Provision extensions, please wait..."
+    msg "INFO: Downloading Drush and Provision extensions..."
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
     get_dev_ext "drush_ecl.tar.gz"             &> /dev/null
     get_dev_ext "provision_boost.tar.gz"       &> /dev/null

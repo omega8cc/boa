@@ -276,7 +276,7 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 #
 # Create shared dirs.
 create_shared_dirs () {
-  msg "$_STATUS A: Creating shared directories, please wait..."
+  msg "$_STATUS A: Creating shared directories..."
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
     mkdir -p /data/src
@@ -728,7 +728,7 @@ manage_o_contrib () {
     cd $_CORE/o_contrib
   fi
   if [ $_STATUS != "INIT" ] ; then
-    msg "$_STATUS A: Running o_contrib modules check and upgrade, please wait..."
+    msg "$_STATUS A: Running o_contrib modules check and upgrade..."
     upgrade_o_contrib
   fi
 }
@@ -758,7 +758,7 @@ fi
 
 ###---### Checking version.
 #
-msg "$_STATUS A: Checking OCTOPUS version, please wait..."
+msg "$_STATUS A: Checking OCTOPUS version..."
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   _FILE_VERSION=octopus-release.txt
 else
@@ -815,7 +815,7 @@ _THIS_CTRL="$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION"
 
 ###---### Add required users and create directories.
 #
-msg "$_STATUS A: Creating directories with correct permissions, please wait..."
+msg "$_STATUS A: Creating directories with correct permissions..."
 mrun "sleep 1"
 mkdir -p /data/u
 mkdir -p /data/disk
@@ -823,7 +823,7 @@ mkdir -p /data/conf
 chown root:root /data &> /dev/null
 chown root:root /data/disk &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
-  msg "$_STATUS A: Adding user, please wait..."
+  msg "$_STATUS A: Adding user..."
   mrun "sleep 1"
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
@@ -882,7 +882,7 @@ mysqladmin flush-privileges &> /dev/null
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync () {
-  msg "$_STATUS A: Syncing provision backend db_passwd, please wait..."
+  msg "$_STATUS A: Syncing provision backend db_passwd..."
   mrun "sleep 1"
   _L_SYS="$_ROOT/.$_USER.pass.txt"
   mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
@@ -902,19 +902,19 @@ provision_backend_dbpass_sync () {
   else
     su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster hosting-task @server_master verify --force &> /dev/null"
   fi
-  msg "$_STATUS A: Running hosting-dispatch (1/3), please wait..."
+  msg "$_STATUS A: Running hosting-dispatch (1/3)..."
   su -s /bin/bash $_USER -c "$_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "$_STATUS A: Running hosting-dispatch (2/3), please wait..."
+  msg "$_STATUS A: Running hosting-dispatch (2/3)..."
   su -s /bin/bash $_USER -c "$_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "$_STATUS A: Running hosting-dispatch (3/3), please wait..."
+  msg "$_STATUS A: Running hosting-dispatch (3/3)..."
   su -s /bin/bash $_USER -c "$_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null"
 }
 #
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync () {
-  msg "$_STATUS A: Syncing hostmaster frontend db_passwd, please wait..."
+  msg "$_STATUS A: Syncing hostmaster frontend db_passwd..."
   mrun "sleep 1"
   _THIS_HM_SPTH=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   _THIS_HM_DBUR=`cat $_THIS_HM_SPTH/drushrc.php | grep "options\['db_user'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -942,7 +942,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
+  msg "$_STATUS A: Switching user and running AegirSetupB..."
   mrun "sleep 1"
   rm -f /opt/tmp/testecho*
   chown root:$_USRG /data/u &> /dev/null
@@ -967,7 +967,7 @@ else
       mrun "sleep 1"
     else
       hostmaster_frontend_dbpass_sync
-      msg "$_STATUS A: Switching user and running AegirSetupB, please wait..."
+      msg "$_STATUS A: Switching user and running AegirSetupB..."
       mrun "sleep 1"
       rm -f /opt/tmp/testecho*
       service cron stop &> /dev/null
@@ -1176,7 +1176,7 @@ else
   fi
 fi
 if [ ! -e "$_CORE/dot-files-ctrl-$_INSTALLER_VERSION" ] ; then
-  msg "$_STATUS A: Cleaning up various dot files, please wait..."
+  msg "$_STATUS A: Cleaning up various dot files..."
   cd $_CORE
   st_runner "find . -name .svn -exec rm -rf {} \;" &> /dev/null
   st_runner "find . -name .bzr -exec rm -rf {} \;" &> /dev/null
@@ -1759,7 +1759,7 @@ fi
 #
 _MAILX_TEST=`mail -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
-  msg "$_STATUS A: Sending setup e-mail on init, please wait..."
+  msg "$_STATUS A: Sending setup e-mail on init..."
   mrun "sleep 1"
   TIME=`date`
   echo $TIME > $_ROOT/log/date-init.txt
@@ -1772,7 +1772,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   if [ "$_DIST_INSTALL" = "YES" ] && [ "$_PLATFORMS_ONLY" = "NO" ] ; then
-    msg "$_STATUS A: Resending setup e-mail on upgrade, please wait..."
+    msg "$_STATUS A: Resending setup e-mail on upgrade..."
     mrun "sleep 1"
     TIME=`date`
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt

@@ -265,7 +265,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   fi
 fi
 cd $_ROOT/tools
-msg "$_STATUS B: Downloading drush, please wait..."
+msg "$_STATUS B: Downloading drush..."
 if [ "$_DRUSH_VERSION" = "HEAD" ] ; then
   git clone --branch master git://github.com/drush-ops/drush.git &> /dev/null
   rm -f -r $_ROOT/tools/drush/.git &> /dev/null
@@ -326,7 +326,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
-  msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
+  msg "$_STATUS B: Downloading Drush and Provision extensions..."
   git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm      &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn                   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/provision_platform_git &> /dev/null
@@ -347,7 +347,7 @@ else
   if [ "$_STATUS" = "UPGRADE" ] ; then
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
-  msg "$_STATUS B: Downloading Drush and Provision extensions, please wait..."
+  msg "$_STATUS B: Downloading Drush and Provision extensions..."
   _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_check security_review"
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz" &> /dev/null
@@ -405,13 +405,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
-  msg "$_STATUS B: Running hosting-dispatch (1/3), please wait..."
+  msg "$_STATUS B: Running hosting-dispatch (1/3)..."
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
-  msg "$_STATUS B: Running hosting-dispatch (2/3), please wait..."
+  msg "$_STATUS B: Running hosting-dispatch (2/3)..."
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
   mrun "sleep 5"
-  msg "$_STATUS B: Running hosting-dispatch (3/3), please wait..."
+  msg "$_STATUS B: Running hosting-dispatch (3/3)..."
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."

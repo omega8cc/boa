@@ -106,7 +106,7 @@ hostmaster_mv_up () {
 }
 #
 hostmaster_dr_up () {
-  msg "INFO: Downloading drush, please wait..."
+  msg "INFO: Downloading drush..."
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
@@ -157,7 +157,7 @@ hostmaster_go_up () {
           sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
         fi
       fi
-      msg "INFO: Downloading Drush and Provision extensions, please wait..."
+      msg "INFO: Downloading Drush and Provision extensions..."
       git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/security_check.git $_ROOT/.drush/security_check &> /dev/null
@@ -169,7 +169,7 @@ hostmaster_go_up () {
       wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
       gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
       rm -f provision-$_AEGIR_VERSION.tar.gz
-      msg "INFO: Downloading Drush and Provision extensions, please wait..."
+      msg "INFO: Downloading Drush and Provision extensions..."
       _G_EXT="drush_ecl provision_boost provision_cdn registry_rebuild security_check security_review"
       for e in $_G_EXT; do
         get_dev_ext "$e.tar.gz" &> /dev/null

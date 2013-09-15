@@ -1296,7 +1296,7 @@ update_redis_password () {
 #
 # Install Redis from sources.
 install_redis_src () {
-  msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV, please wait..."
+  msg "INFO: Installing Redis update for $_THIS_OS/$_THIS_RV..."
   mrun "sleep 1"
   if [ ! -e "/var/lib/redis" ] ; then
     st_runner "adduser --system --group redis" 2> /dev/null
@@ -1409,7 +1409,7 @@ fix_sftp_ftps_modern () {
     fi
   fi
   if [ ! -e "/var/log/mss-$_MSS_VERSION.log" ] || [ ! -e "/etc/ssh/sftp_config" ] || [ ! -e "/usr/bin/MySecureShell" ] ; then
-    msg "INFO: Installing MySecureShell $_MSS_VERSION, please wait..."
+    msg "INFO: Installing MySecureShell $_MSS_VERSION..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r mysecureshell*
@@ -3030,7 +3030,7 @@ install_ioncube () {
       _X86_64_TEST=`uname -m`
       if [ "$_X86_64_TEST" = "x86_64" ] ; then
         SYSTEMARCH="x86_64"
-        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
+        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
         mrun "sleep 1"
         cd /var/opt
         rm -f -r ioncube_loaders*
@@ -3038,7 +3038,7 @@ install_ioncube () {
         tar -xzf ioncube_loaders_lin_x86-64.tar.gz
       else
         SYSTEMARCH="x86"
-        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM, please wait..."
+        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
         mrun "sleep 1"
         cd /var/opt
         rm -f -r ioncube_loaders*
@@ -3078,7 +3078,7 @@ install_php_scr_build_extensions () {
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
     true
   else
-    msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r APC*
@@ -3092,7 +3092,7 @@ install_php_scr_build_extensions () {
     echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
   cd /var/opt
   rm -f -r imagick*
@@ -3138,7 +3138,7 @@ install_php_universal_extensions () {
     if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
       true
     else
-      msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r zendopcache*
@@ -3153,7 +3153,7 @@ install_php_universal_extensions () {
     fi
   fi
   ###--------------------###
-  msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
   cd /var/opt
   rm -f -r phpredis*
@@ -3165,7 +3165,7 @@ install_php_universal_extensions () {
   st_runner "make --quiet install" 2> /dev/null
   echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
   ###--------------------###
-  msg "INFO: Installing UploadProgress for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing UploadProgress for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
   cd /var/opt
   rm -f -r uploadprogress*
@@ -3178,7 +3178,7 @@ install_php_universal_extensions () {
   st_runner "make --quiet install" 2> /dev/null
   echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
   ###--------------------###
-  msg "INFO: Installing JSMin for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+  msg "INFO: Installing JSMin for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
   cd /var/opt
   rm -f -r php-jsmin*
@@ -3216,7 +3216,7 @@ install_php_universal_extensions () {
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
-      msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r mongo*
@@ -3239,7 +3239,7 @@ update_php_scr_build_extensions () {
     true
   else
     if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r APC*
@@ -3255,7 +3255,7 @@ update_php_scr_build_extensions () {
   fi
   ###--------------------###
   if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r imagick*
@@ -3271,7 +3271,7 @@ update_php_scr_build_extensions () {
   ###--------------------###
   if [ "$_USE_MEMCACHED" = "YES" ] ; then
    if [ ! -e "/var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing memcached upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing memcached upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r memcached*
@@ -3297,7 +3297,7 @@ update_php_universal_extensions () {
     if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
       true
     else
-      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r zendopcache*
@@ -3313,7 +3313,7 @@ update_php_universal_extensions () {
   fi
   ###--------------------###
   if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r phpredis*
@@ -3327,7 +3327,7 @@ update_php_universal_extensions () {
   fi
   ###--------------------###
   if [ ! -e "/var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing UploadProgress upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    msg "INFO: Installing UploadProgress upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r uploadprogress*
@@ -3342,7 +3342,7 @@ update_php_universal_extensions () {
   fi
   ###--------------------###
   if [ ! -e "/var/log/php-jsmin-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing JSMin upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+    msg "INFO: Installing JSMin upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
     rm -f -r php-jsmin*
@@ -3381,7 +3381,7 @@ update_php_universal_extensions () {
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
+      msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r mongo*
@@ -3655,7 +3655,7 @@ mysqladmin flush-privileges &> /dev/null
 #
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync () {
-  msg "INFO: Syncing provision backend db_passwd, please wait..."
+  msg "INFO: Syncing provision backend db_passwd..."
   mrun "sleep 1"
   _ADBU=aegir_root
   _L_SYS="/var/aegir/backups/system/.$_ADBU.pass.txt"
@@ -3676,19 +3676,19 @@ provision_backend_dbpass_sync () {
   else
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_master verify --force &> /dev/null"
   fi
-  msg "INFO: Running hosting-dispatch (1/3), please wait..."
+  msg "INFO: Running hosting-dispatch (1/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (2/3), please wait..."
+  msg "INFO: Running hosting-dispatch (2/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (3/3), please wait..."
+  msg "INFO: Running hosting-dispatch (3/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
 }
 #
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync () {
-  msg "INFO: Syncing hostmaster frontend db_passwd, please wait..."
+  msg "INFO: Syncing hostmaster frontend db_passwd..."
   mrun "sleep 1"
   _THIS_HM_SPTH=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   _THIS_HM_DBUR=`cat $_THIS_HM_SPTH/drushrc.php | grep "options\['db_user'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -3803,7 +3803,7 @@ detect_cdorked_malware () {
   _C_DORKED=NO
   _C_FILE=/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/dump_cdorked_config.c
   if [ -e "$_C_FILE" ] ; then
-    msg "INFO: Checking for Linux/Cdorked.A malware, please wait..."
+    ### msg "INFO: Checking for Linux/Cdorked.A malware..."
     mrun "sleep 1"
     chattr -ai $(which nginx) &> /dev/null
     cd /var/backups
@@ -3811,7 +3811,8 @@ detect_cdorked_malware () {
     gcc -o /var/opt/foo_bar /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar)
     if [[ "$_C_DORKED_TEST" =~ "No shared memory matching Cdorked signature was found" ]] ; then
-      msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
+      true
+      ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
     else
       msg "ALRT: Your system is probably infected by Linux/Cdorked.A malware!"
       msg "ALRT: Please send /var/backups/httpd_cdorked_config.bin file to leveille@eset.com"
@@ -3905,9 +3906,9 @@ install_upgrade_nginx () {
   fi
   if [ "$_NGINX_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_NGX_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_STATUS" = "UPGRADE" ] ; then
-      msg "INFO: Upgrading Nginx, please wait..."
+      msg "INFO: Upgrading Nginx..."
     else
-      msg "INFO: Installing Nginx, please wait..."
+      msg "INFO: Installing Nginx..."
     fi
     mrun "sleep 1"
     cd /var/opt; rm -f -r nginx*
@@ -4011,7 +4012,7 @@ install_wkhtmltopdf () {
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       SYSTEMARCH="x86_64"
-      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version, please wait..."
+      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltopdf*
@@ -4022,7 +4023,7 @@ install_wkhtmltopdf () {
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
     else
       SYSTEMARCH="x86"
-      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version, please wait..."
+      msg "INFO: Installing /usr/bin/wkhtmltopdf $SYSTEMARCH version..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltopdf*
@@ -4043,7 +4044,7 @@ install_wkhtmltoimage () {
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       SYSTEMARCH="x86_64"
-      msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version, please wait..."
+      msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltoimage*
@@ -4054,7 +4055,7 @@ install_wkhtmltoimage () {
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
     else
       SYSTEMARCH="x86"
-      msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version, please wait..."
+      msg "INFO: Installing /usr/bin/wkhtmltoimage $SYSTEMARCH version..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltoimage*
@@ -4084,7 +4085,7 @@ update_newrelic () {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
     if [ -e "/etc/newrelic/newrelic.cfg" ] || [ -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
-      msg "INFO: Uninstalling previous version of New Relic Apps and Server Monitor, please wait..."
+      msg "INFO: Uninstalling previous version of New Relic Apps and Server Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
       until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
@@ -4108,7 +4109,7 @@ update_newrelic () {
         _UPDATE_NR=YES
       fi
       if [ "$_UPDATE_NR" = "YES" ] ; then
-        msg "INFO: Installing latest version of New Relic Apps and Server Monitor, please wait..."
+        msg "INFO: Installing latest version of New Relic Apps and Server Monitor..."
         mrun "sleep 1"
         echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
@@ -4135,7 +4136,7 @@ install_newrelic () {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
     if [ ! -e "/etc/newrelic/newrelic.cfg" ] || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
-      msg "INFO: Installing New Relic Apps and Server Monitor, please wait..."
+      msg "INFO: Installing New Relic Apps and Server Monitor..."
       mrun "sleep 1"
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
@@ -4282,7 +4283,7 @@ update_sources_list () {
     _APT_SOURCES_REWRITE=YES
   fi
   if [ "$_APT_SOURCES_REWRITE" = "YES" ] ; then
-    msg "INFO: Updating packages sources list, please wait..."
+    msg "INFO: Updating packages sources list..."
     mv -f /etc/apt/sources.list /var/backups/sources.list-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     if [ "$_THIS_OS" = "Ubuntu" ] ; then
       if [ "$_AUTOPILOT" = "YES" ] ; then
@@ -5006,7 +5007,7 @@ elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   _GITORIOUS_WORKS=YES
   sleep 1
 else
-  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability, please wait..."
+  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability..."
   sleep 1
   _GITHUB_WORKS=YES
   _DRUPAL_WORKS=YES
@@ -5059,7 +5060,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Downloading little helpers, please wait..."
+msg "INFO: Downloading little helpers..."
 sleep 1
 #
 # Git clone all
@@ -5592,7 +5593,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Running aptitude update, please wait..."
+msg "INFO: Running aptitude update..."
 if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
@@ -6021,7 +6022,7 @@ fi
 
 ###--------------------###
 if [ -z "$_SMTP_RELAY_HOST" ] && [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
-msg "INFO: Checking SMTP connections, please wait..."
+msg "INFO: Checking SMTP connections..."
 mrun "sleep 1"
 if ! netcat -w 8 -z smtp.gmail.com 25 ; then
   WE_NEED_RELAY="YES"
@@ -6082,7 +6083,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   if [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Installing VnStat monitor, please wait..."
+    msg "INFO: Installing VnStat monitor..."
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
       _IFCONFIG="venet0"
@@ -6117,7 +6118,7 @@ fi
 ###--------------------###
 cd /var
 if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
-  msg "INFO: Upgrading a few more tools, please wait..."
+  msg "INFO: Upgrading a few more tools..."
   mrun "sleep 1"
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
   rm -f -r /var/xdrago/log/init.d-pre*
@@ -6173,7 +6174,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   fi
 fi
 if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: Installing a few more tools, please wait..."
+  msg "INFO: Installing a few more tools..."
   mrun "sleep 1"
   mkdir -p ./xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/* ./xdrago/ &> /dev/null
@@ -6545,10 +6546,10 @@ else
 fi
 if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
-    msg "INFO: Upgrading Limited Shell to version $_LSHELL_VERSION, please wait..."
+    msg "INFO: Upgrading Limited Shell to version $_LSHELL_VERSION..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
   else
-    msg "INFO: Installing Limited Shell $_LSHELL_VERSION, please wait..."
+    msg "INFO: Installing Limited Shell $_LSHELL_VERSION..."
   fi
   mrun "sleep 1"
   cd /var/opt
@@ -6727,7 +6728,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
     echo " "
     if prompt_yes_no "Do you want to install Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY?" ; then
       true
-      msg "INFO: Installing Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY, please wait..."
+      msg "INFO: Installing MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r jetty-distribution-*
@@ -6826,7 +6827,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 3 with Jetty 8?" ; then
       true
-      msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8, please wait..."
+      msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r jetty-distribution-*
@@ -6908,7 +6909,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 1 with Jetty 7?" ; then
       true
-      msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7, please wait..."
+      msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."
       mrun "sleep 1"
       cd /var/opt
       rm -f -r jetty-distribution-*
@@ -6984,7 +6985,7 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty7" ] ; then
   msg "INFO: Jetty 7 restart completed"
 fi
 if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
-  msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress, please wait..."
+  msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress..."
   mrun "sleep 1"
   st_runner "service tomcat stop" &> /dev/null
   st_runner "update-rc.d tomcat remove" &> /dev/null
@@ -7128,13 +7129,13 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   fi
-  msg "INFO: Running hosting-dispatch (1/3), please wait..."
+  msg "INFO: Running hosting-dispatch (1/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (2/3), please wait..."
+  msg "INFO: Running hosting-dispatch (2/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
-  msg "INFO: Running hosting-dispatch (3/3), please wait..."
+  msg "INFO: Running hosting-dispatch (3/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
     echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
@@ -7257,7 +7258,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-  msg "INFO: Installing default SSL Wildcard Nginx Proxy, please wait..."
+  msg "INFO: Installing default SSL Wildcard Nginx Proxy..."
   mrun "sleep 1"
   _HTTPS_TEST=`netstat -ln | grep :443 2>&1`
   if [[ "$_HTTPS_TEST" =~ "443" ]] ; then
@@ -7330,7 +7331,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
       true
-      msg "INFO: Installing Chive $_DB_SERVER Manager, please wait..."
+      msg "INFO: Installing Chive $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
       rm -f -r /var/www/chive &> /dev/null
@@ -7358,7 +7359,7 @@ fi
 ###--------------------###
 if [ -e "/var/www/chive/index.php" ] ; then
   if [ ! -e "/var/log/chive_$_CHIVE_VERSION.log" ] ; then
-    msg "INFO: Upgrading Chive $_DB_SERVER Manager, please wait..."
+    msg "INFO: Upgrading Chive $_DB_SERVER Manager..."
     mrun "sleep 1"
     rm -f -r /var/www/chive
     cd /var/www
@@ -7394,7 +7395,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
-      msg "INFO: Installing SQL Buddy $_DB_SERVER Manager, please wait..."
+      msg "INFO: Installing SQL Buddy $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
       wget -q -U iCab http://files.aegir.cc/dev/sqlbuddy_1_3_3.tar.gz
@@ -7432,7 +7433,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
-        msg "INFO: Installing Collectd Graph Panel, please wait..."
+        msg "INFO: Installing Collectd Graph Panel..."
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
@@ -7487,7 +7488,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
     echo " "
     if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
       true
-      msg "INFO: Installing Webmin Control Panel, please wait..."
+      msg "INFO: Installing Webmin Control Panel..."
       mrun "sleep 1"
       cd /var/opt
       echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
@@ -7522,7 +7523,7 @@ if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
       true
-      msg "INFO: Installing Bind9 DNS Server, please wait..."
+      msg "INFO: Installing Bind9 DNS Server..."
       mrun "sleep 1"
       if [ -z "$_THISHTIP" ] ; then
         _LOC_DOM="$_THISHOST"
@@ -7968,9 +7969,9 @@ fix_lfd_whitelist () {
 #
 csf_install () {
   if [ "$_CSF_MODE" = "install" ] ; then
-    msg "INFO: Installing csf/lfd firewall, please wait..."
+    msg "INFO: Installing csf/lfd firewall..."
   else
-    msg "INFO: Upgrading csf/lfd firewall, please wait..."
+    msg "INFO: Upgrading csf/lfd firewall..."
   fi
   mrun "sleep 1"
   cd /var/opt
@@ -8053,7 +8054,7 @@ fi
 
 ###--------------------###
 install_pdnsd_cache () {
-  msg "INFO: Installing DNS cache pdnsd server, please wait..."
+  msg "INFO: Installing DNS cache pdnsd server..."
   mrun "sleep 1"
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
   rm -f /etc/resolv.conf

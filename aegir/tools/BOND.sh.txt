@@ -961,7 +961,7 @@ elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   _GITORIOUS_WORKS=YES
   sleep 1
 else
-  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability, please wait..."
+  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability..."
   sleep 1
   _GITHUB_WORKS=YES
   _DRUPAL_WORKS=YES
