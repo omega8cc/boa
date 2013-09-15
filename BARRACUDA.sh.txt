@@ -2185,7 +2185,8 @@ tune_web_server_config () {
 # Tune memory limits for SQL server.
 tune_sql_memory_limits () {
   if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
-    msg "INFO: Running mysqltuner check, please wait..."
+    msg "INFO: Running mysqltuner check..."
+    msg "NOTE! This step may take a moment, please wait..."
     rm -f /var/opt/mysqltuner*
     curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
@@ -6485,16 +6486,18 @@ if [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ "$_PHP_MODERN_ONLY" = "NO" ] || [ -e "/usr/local/lib/php/extensions/no-debug-non-zts-20060613" ] ; then
-    if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-      rm -f /var/log/zendopcache-*
+    if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+      if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
+        rm -f /var/log/zendopcache-*
+      fi
+      rm -f /var/log/phpredis-*
+      rm -f /var/log/uploadprogress-*
+      rm -f /var/log/php-jsmin-*
+      rm -f /var/log/php-geos-*
+      rm -f /var/log/php-mongo-*
+      rm -f /var/log/apc-*
+      rm -f /var/log/imagick-*
     fi
-    rm -f /var/log/phpredis-*
-    rm -f /var/log/uploadprogress-*
-    rm -f /var/log/php-jsmin-*
-    rm -f /var/log/php-geos-*
-    rm -f /var/log/php-mongo-*
-    rm -f /var/log/apc-*
-    rm -f /var/log/imagick-*
     update_php_legacy
     if [ -x "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
@@ -6525,16 +6528,18 @@ if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] ; then
   install_ioncube
 fi
 if [ "$_FROM_SOURCES" = "NO" ] ; then
-  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    rm -f /var/log/zendopcache-*
+  if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+    if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
+      rm -f /var/log/zendopcache-*
+    fi
+    rm -f /var/log/phpredis-*
+    rm -f /var/log/uploadprogress-*
+    rm -f /var/log/php-jsmin-*
+    rm -f /var/log/php-geos-*
+    rm -f /var/log/php-mongo-*
+    rm -f /var/log/apc-*
+    rm -f /var/log/imagick-*
   fi
-  rm -f /var/log/phpredis-*
-  rm -f /var/log/uploadprogress-*
-  rm -f /var/log/php-jsmin-*
-  rm -f /var/log/php-geos-*
-  rm -f /var/log/php-mongo-*
-  rm -f /var/log/apc-*
-  rm -f /var/log/imagick-*
   update_php_modern
 fi
 
