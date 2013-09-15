@@ -2190,7 +2190,7 @@ tune_sql_memory_limits () {
     rm -f /var/opt/mysqltuner*
     curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
-      perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt
+      st_runner "perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt"
     fi
   fi
   if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
