@@ -94,10 +94,13 @@ up_action ()
         true
       else
         if [ -e "/root/.barracuda.cnf" ] ; then
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"    /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                         /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"                /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g" /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"              /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"           /root/.barracuda.cnf &> /dev/null
         fi
       fi
       sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"   /root/.barracuda.cnf &> /dev/null
