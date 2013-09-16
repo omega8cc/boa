@@ -189,29 +189,6 @@ https://github.com/omega8cc/7x/tree/7.23.1
 All D6 platforms have been enhanced using Pressflow 6.28.2 +Extra core:
 https://github.com/omega8cc/pressflow6/tree/pressflow-plus-6.28.2
 
-There are also platforms temporarily disabled for new installs,
-because they are either outdated, with numerous security updates
-not applied by maintainer, or sometimes no longer possible to use
-with Drush based install because of fatal errors, or even abandoned
-with no development for months and no issues fixed in the meantime.
-
-Note that we still support some semi-abandoned distros listed above,
-but at some point we may no longer be able to maintain their security
-and version updates, and they may be moved to the second list below.
-
-We also removed D8-edge platform, since it is broken too often
-because of D8 own critical bugs. We will keep debugging it to add
-latest D8-tested platform to every release, when possible.
-
-The platforms listed below can be re-added when their maintainers
-will fix all critical issues and/or apply required updates:
-
- ELMS ------------------------- http://drupal.org/project/elms
- Octopus Video ---------------- http://octopusvideo.org
- Open Enterprise -------------- http://drupal.org/project/openenterprise
- OpenPublic ------------------- http://drupal.org/project/openpublic
- Videola ---------------------- http://videola.tv
-
 
 ### BUG SUBMISSION
 

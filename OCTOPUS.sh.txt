@@ -170,27 +170,22 @@ _PHP_CLI_VERSION=5.3
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
-### ELS ----------- ELMS (off)
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
 ### NS7 ----------- NodeStream D7
-### NSM ----------- NodeStream D6 (off)
 ### OAM ----------- Open Atrium D6
 ### OA7 ----------- Open Atrium D7
 ### OAY ----------- Open Academy
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
-### OEE ----------- Open Enterprise (off)
 ### OOH ----------- Open Outreach
 ### OPC ----------- OpenPublic (off)
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
-### OVO ----------- Octopus Video (off)
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
-### VOA ----------- Videola (off)
 ###
 ### Examples:
 ###
@@ -539,38 +534,30 @@ fi
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.5
 _CIVICRM_PN=boa-2.0.9-dev
-_CIVICRM6=3.4.8
 _COD=6.x-1.0-rc2
 _COM_MERCE=7.x-2.9
 _COMMERCE=7.x-1.19
 _D6COMMONS=6.x-2.13
 _D7COMMONS=7.x-3.3
-_DRUPAL5=5.23.50
 _DRUPAL7=drupal-7.23.1
 _DRUPAL8="8.0-dev-120915"
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
-_ELMS=6.x-1.0-beta1
 _MANAGINGNEWS=1.2.3
 _MART_PLUG=1.0-b1b
-_NODESTREAM6=6.x-1.5
 _NODESTREAM7=7.x-2.0-rc5
-_OCTOPUS_VIDEO=1.0-alpha6
 _OPEN_DEALS=1.25
 _OPENACADEMY=7.x-1.0-beta5
 _OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.0-beta4
 _OPENCHURCH=7.x-1.11-beta12
 _OPENDEALS=7.x-1.25
-_OPENENTERPRISE=7.x-1.0-rc3
 _OPENOUTREACH=7.x-1.0
-_OPENPUBLIC=beta3-build100
 _OPENPUBLISH=7.x-1.0-beta7
 _OPENSCHOLAR=7.x-3.7.4
 _PANOPOLY=7.x-1.0-rc5
 _PROSEPOINT=0.46
 _UBER_CART_SEVEN=3.5.1
 _UBERCART=2.12.1
-_VIDEOLA=6.x-1.0-alpha3
 
 
 ###---### Functions
@@ -884,7 +871,6 @@ do
   sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
   sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
   sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files &> /dev/null
-  sed -i "s/EDIT_CIVICRM6/$_CIVICRM6/g"                   $Files &> /dev/null
   sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
   sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
   sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
@@ -897,12 +883,10 @@ do
   sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
   sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files &> /dev/null
-  sed -i "s/EDIT_DRUPAL5/$_DRUPAL5/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_CC_REQ/$_DRUSH_CC_REQ/g"           $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
-  sed -i "s/EDIT_ELMS/$_ELMS/g"                           $Files &> /dev/null
   sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null
   sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files &> /dev/null
@@ -914,20 +898,16 @@ do
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
   sed -i "s/EDIT_MART_PLUG/$_MART_PLUG/g"                 $Files &> /dev/null
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_NODESTREAM6/$_NODESTREAM6/g"             $Files &> /dev/null
   sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files &> /dev/null
   sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
-  sed -i "s/EDIT_OCTOPUS_VIDEO/$_OCTOPUS_VIDEO/g"         $Files &> /dev/null
   sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_OPENENTERPRISE/$_OPENENTERPRISE/g"       $Files &> /dev/null
   sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
-  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
   sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
@@ -954,7 +934,6 @@ do
   sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 $Files &> /dev/null
   sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
   sed -i "s/EDIT_USRG/$_USRG/g"                           $Files &> /dev/null
-  sed -i "s/EDIT_VIDEOLA/$_VIDEOLA/g"                     $Files &> /dev/null
   sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files &> /dev/null
 done
 _THISHOST=`cat /etc/hostname`
