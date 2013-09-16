@@ -76,9 +76,7 @@ update_php_cli_drush () {
 # Download and extract from dev, then delete.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://files.aegir.cc/dev/$_AEGIR_VERSION/$1
-    tar -xzf $1
-    rm -f $1
+    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | tar -xzf -
   fi
 }
 #
@@ -220,9 +218,7 @@ else
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
   else
     cd $_AEGIR_HOME/.drush
-    wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
-    gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
-    rm -f provision-$_AEGIR_VERSION.tar.gz
+    curl -s -A iCab "http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
     msg "INFO: Downloading Drush and Provision extensions..."
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
     get_dev_ext "drush_ecl.tar.gz"             &> /dev/null

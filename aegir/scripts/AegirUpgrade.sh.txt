@@ -85,9 +85,7 @@ update_php_cli_drush () {
 #
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://files.aegir.cc/dev/$_AEGIR_VERSION/$1
-    tar -xzf $1
-    rm -f $1
+    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | tar -xzf -
   fi
 }
 #
@@ -166,9 +164,7 @@ hostmaster_go_up () {
       git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost &> /dev/null
     else
       cd $_ROOT/.drush
-      wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
-      gunzip -q -c provision-$_AEGIR_VERSION.tar.gz | tar -xf -
-      rm -f provision-$_AEGIR_VERSION.tar.gz
+      curl -s -A iCab "http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       msg "INFO: Downloading Drush and Provision extensions..."
       _G_EXT="drush_ecl provision_boost provision_cdn registry_rebuild security_check security_review"
       for e in $_G_EXT; do

@@ -4243,9 +4243,7 @@ install_newrelic () {
 get_dev_arch () {
   ###--------------------###
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://files.aegir.cc/dev/$1
-    tar -xzf $1
-    rm -f $1
+    curl -s -A iCab "http://files.aegir.cc/dev/$1" | tar -xzf -
   fi
 }
 #
@@ -4253,9 +4251,7 @@ get_dev_arch () {
 get_dev_ext () {
   ###--------------------###
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://files.aegir.cc/dev/$_AEGIR_VERSION/$1
-    tar -xzf $1
-    rm -f $1
+    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | tar -xzf -
   fi
 }
 #
@@ -4263,9 +4259,7 @@ get_dev_ext () {
 get_drupal_project () {
   ###--------------------###
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$1
-    tar -xzf $1
-    rm -f $1
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$1" | tar -xzf -
   fi
 }
 #
@@ -5150,9 +5144,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     fi
   fi
 else
-  wget -q -U iCab http://files.aegir.cc/versions/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz
-  gunzip -q -c nginx-for-drupal-$_INSTALLER_VERSION.tar.gz | tar -xf -
-  rm -f nginx-for-drupal-$_INSTALLER_VERSION.tar.gz
+  curl -s -A iCab "http://files.aegir.cc/versions/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="nginx-for-drupal"
 fi
 #

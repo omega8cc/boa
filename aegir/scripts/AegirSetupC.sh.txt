@@ -916,9 +916,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COMMERCE-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_COMMERCE-core.tar.gz
-    rm -f $_THIS_PRNAME-$_COMMERCE-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COMMERCE-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
       mv commerce-$_COMMERCE $_THIS_DISTRO
@@ -980,9 +978,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COM_MERCE-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_COM_MERCE-core.tar.gz
-    rm -f $_THIS_PRNAME-$_COM_MERCE-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COM_MERCE-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/commerce-$_COM_MERCE" ] ; then
       mv commerce-$_COM_MERCE $_THIS_DISTRO
@@ -1119,9 +1115,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_D7COMMONS-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_D7COMMONS-core.tar.gz
-    rm -f $_THIS_PRNAME-$_D7COMMONS-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_D7COMMONS-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_D7COMMONS" ] ; then
       mv $_THIS_PRNAME-$_D7COMMONS $_THIS_DISTRO
@@ -1578,9 +1572,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_NODESTREAM7-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_NODESTREAM7-core.tar.gz
-    rm -f $_THIS_PRNAME-$_NODESTREAM7-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_NODESTREAM7-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_NODESTREAM7" ] ; then
       mv $_THIS_PRNAME-$_NODESTREAM7 $_THIS_DISTRO
@@ -1633,9 +1625,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENACADEMY-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENACADEMY-core.tar.gz &> /dev/null
-    rm -f $_THIS_PRNAME-$_OPENACADEMY-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENACADEMY-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_OPENACADEMY" ] ; then
       mv $_THIS_PRNAME-$_OPENACADEMY $_THIS_DISTRO
@@ -1740,9 +1730,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM7-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENATRIUM7-core.tar.gz &> /dev/null
-    rm -f $_THIS_PRNAME-$_OPENATRIUM7-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_OPENATRIUM7" ] ; then
       mv $_THIS_PRNAME-$_OPENATRIUM7 $_THIS_DISTRO
@@ -1789,9 +1777,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENCHURCH-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENCHURCH-core.tar.gz &> /dev/null
-    rm -f $_THIS_PRNAME-$_OPENCHURCH-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENCHURCH-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_OPENCHURCH" ] ; then
       mv $_THIS_PRNAME-$_OPENCHURCH $_THIS_DISTRO
@@ -1842,9 +1828,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENDEALS-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENDEALS-core.tar.gz
-    rm -f $_THIS_PRNAME-$_OPENDEALS-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENDEALS-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_OPENDEALS" ] ; then
       mv $_THIS_PRNAME-$_OPENDEALS $_THIS_DISTRO
@@ -1900,9 +1884,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENOUTREACH-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENOUTREACH-core.tar.gz
-    rm -f $_THIS_PRNAME-$_OPENOUTREACH-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_OPENOUTREACH" ] ; then
       mv $_THIS_PRNAME-$_OPENOUTREACH $_THIS_DISTRO
@@ -1960,9 +1942,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz &> /dev/null
-    rm -f $_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_OPENPUBLISH" ] ; then
       mv $_THIS_PRNAME-$_OPENPUBLISH $_THIS_DISTRO
@@ -2081,9 +2061,7 @@ mrun "sleep 1"
 if [ ! -d "$_CORE_DISTRO" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_PANOPOLY-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_PANOPOLY-core.tar.gz
-    rm -f $_THIS_PRNAME-$_PANOPOLY-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_PANOPOLY-core.tar.gz" | tar -xzf -
     rename_drupal7_distro_directory
     if [ -d "$_CORE/$_THIS_PRNAME-$_PANOPOLY" ] ; then
       mv $_THIS_PRNAME-$_PANOPOLY $_THIS_DISTRO
