@@ -341,6 +341,25 @@ else
     find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
     find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
   fi
+  if [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+    for File in `find /etc/ssl/private/*.key -type f` ; do
+      _PFS_TEST=$(grep "DH PARAMETERS" $File)
+      if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
+        true
+      else
+        openssl dhparam -rand - 2048 >> $File
+      fi
+    done
+    for File in `find /etc/ssl/private/*.crt -type f` ; do
+      _PFS_TEST=$(grep "DH PARAMETERS" $File)
+      if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
+        true
+      else
+        openssl dhparam -rand - 2048 >> $File
+      fi
+    done
+    /etc/init.d/nginx reload
+  fi
 fi
 
 ###--------------------###
