@@ -871,7 +871,7 @@ _NGINX_LDAP=NO
 
 ###
 ### When set to YES, it will also force
-### OpenSSL re-install from sources
+### OpenSSL ans cURL re-install from sources
 ### on systems other than Debian Wheezy,
 ### which already comes with required
 ### OpenSSL 1.0.1e by default.
@@ -880,7 +880,7 @@ _NGINX_SPDY=NO
 
 ###
 ### When set to YES, it will also force
-### OpenSSL re-install from sources
+### OpenSSL ans cURL re-install from sources
 ### on systems other than Debian Wheezy,
 ### which already comes with required
 ### OpenSSL 1.0.1e by default.
@@ -936,7 +936,8 @@ _NGINX_FROM_SOURCES=YES
 
 ###
 ### When set to YES, it will force
-### OpenSSL re-install from sources.
+### OpenSSL, OpenSSH and cURL re-install
+### from sources.
 ###
 ### Debian Wheezy already comes with latest
 ### OpenSSL 1.0.1e by default, so this option
@@ -996,6 +997,7 @@ _INSTALLER_VERSION=BOA-2.0.9-dev
 _APC_VERSION=3.1.13
 _BZR_VERSION=2.6b2
 _CHIVE_VERSION=1.3
+_CURL_VERSION=7.32.0
 _DRUSH_VERSION=4.6-dev
 _DRUSH5_VERSION=5.9
 _DRUSH6_VERSION=6.0
@@ -4512,6 +4514,70 @@ update_sources_list () {
   fi
 }
 #
+# Install OpenSSH from sources.
+install_ssh_src () {
+  _SSH_INSTALL_REQUIRED=NO
+  _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
+  if [ "$_SSH_INSTALLED" = "$_OPENSSH_VERSION" ] ; then
+    true
+  else
+    _SSH_INSTALL_REQUIRED=YES
+    msg "INFO: Installed OpenSSH version $_SSH_INSTALLED, upgrade required"
+  fi
+  if [ "$_SSH_INSTALL_REQUIRED" = "YES" ] ; then
+    msg "INFO: Installing OpenSSH $_OPENSSH_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r openssh*
+    wget -q -U iCab http://files.aegir.cc/dev/openssh-$_OPENSSH_VERSION.tar.gz
+    tar -xzf openssh-$_OPENSSH_VERSION.tar.gz
+    cd /var/opt/openssh-$_OPENSSH_VERSION
+    st_runner "sh ./configure --prefix=/usr --with-pam" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    st_runner "service ssh restart" &> /dev/null
+    aptitude hold openssh-server &> /dev/null
+    aptitude hold ssh &> /dev/null
+    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "ssh hold" | dpkg --set-selections &> /dev/null
+  fi
+}
+#
+# Install cURL from sources.
+install_curl_src () {
+  _CURL_INSTALL_REQUIRED=NO
+  _CURL_INSTALLED=`curl -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
+  if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
+    true
+  else
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
+  fi
+  if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
+    msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r curl*
+    wget -q -U iCab http://files.aegir.cc/dev/curl-$_CURL_VERSION.tar.gz
+    tar -xzf curl-$_CURL_VERSION.tar.gz
+    cd /var/opt/curl-$_CURL_VERSION
+    st_runner "sh ./configure --prefix=/usr --with-pam" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    st_runner "service curl restart" &> /dev/null
+    aptitude hold curl &> /dev/null
+    aptitude hold gnupg-curl &> /dev/null
+    aptitude hold libcurl3 &> /dev/null
+    aptitude hold libcurl3-gnutls &> /dev/null
+    aptitude hold libcurl4-openssl-dev &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    echo "gnupg-curl hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
+  fi
+}
+#
 # Install OpenSSL from sources.
 install_ssl_src () {
   _SSL_INSTALL_REQUIRED=NO
@@ -4565,35 +4631,8 @@ install_ssl_src () {
     echo "zlibc hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-  fi
-}
-#
-# Install OpenSSH from sources.
-install_ssh_src () {
-  _SSH_INSTALL_REQUIRED=NO
-  _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
-  if [ "$_SSH_INSTALLED" = "$_OPENSSH_VERSION" ] ; then
-    true
-  else
-    _SSH_INSTALL_REQUIRED=YES
-    msg "INFO: Installed OpenSSH version $_SSH_INSTALLED, upgrade required"
-  fi
-  if [ "$_SSH_INSTALL_REQUIRED" = "YES" ] ; then
-    msg "INFO: Installing OpenSSH $_OPENSSH_VERSION, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r openssh*
-    wget -q -U iCab http://files.aegir.cc/dev/openssh-$_OPENSSH_VERSION.tar.gz
-    tar -xzf openssh-$_OPENSSH_VERSION.tar.gz
-    cd /var/opt/openssh-$_OPENSSH_VERSION
-    st_runner "sh ./configure --prefix=/usr --with-pam" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    st_runner "service ssh restart" &> /dev/null
-    aptitude hold openssh-server &> /dev/null
-    aptitude hold ssh &> /dev/null
-    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
-    echo "ssh hold" | dpkg --set-selections &> /dev/null
+    install_ssh_src
+    install_curl_src
   fi
 }
 #
