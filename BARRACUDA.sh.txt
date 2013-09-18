@@ -1021,6 +1021,7 @@ _REDIS_VERSION=2.6.16
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.2.0
+_VNSTAT_VERSION=1.11
 _ZEND_OPCACHE_VERSION=7.0.2
 _ZLIB_VERSION=1.2.8
 if [ "$_USE_STOCK" = "YES" ] ; then
@@ -6185,7 +6186,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  if [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/vnstat-$_VNSTAT_VERSION.log" ] || [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing VnStat monitor..."
     _ETH_TEST=`ifconfig 2>&1`
     if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
@@ -6197,16 +6198,19 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     fi
     cd /var/opt
     rm -f -r vnstat*
-    wget -q -U iCab http://files.aegir.cc/dev/vnstat-1.10.tar.gz
-    tar -xzf vnstat-1.10.tar.gz
-    cd vnstat-1.10
+    wget -q -U iCab http://files.aegir.cc/dev/vnstat-$_VNSTAT_VERSION.tar.gz
+    tar -xzf vnstat-$_VNSTAT_VERSION.tar.gz
+    cd vnstat-$_VNSTAT_VERSION
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
-    cp -af /var/opt/vnstat-1.10/examples/init.d/debian/vnstat /etc/init.d/vnstat
+    cp -af /var/opt/vnstat-$_VNSTAT_VERSION/examples/init.d/debian/vnstat /etc/init.d/vnstat
     chmod 755 /etc/init.d/vnstat &> /dev/null
     st_runner "update-rc.d vnstat defaults" &> /dev/null
     st_runner "service vnstat start" &> /dev/null
+    mrun "sleep 3"
+    echo "vnstat-$_VNSTAT_VERSION $_NOW" > /var/log/vnstat-$_VNSTAT_VERSION.log
+    st_runner "service vnstat restart" &> /dev/null
   fi
 fi
 if [ -e "/etc/init.d/vnstat" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
