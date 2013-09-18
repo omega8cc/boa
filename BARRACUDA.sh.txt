@@ -6188,14 +6188,6 @@ fi
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
   if [ ! -e "/var/log/vnstat-$_VNSTAT_VERSION.log" ] || [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing VnStat monitor..."
-    _ETH_TEST=`ifconfig 2>&1`
-    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ] ; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
     cd /var/opt
     rm -f -r vnstat*
     wget -q -U iCab http://files.aegir.cc/dev/vnstat-$_VNSTAT_VERSION.tar.gz
@@ -6203,7 +6195,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     cd vnstat-$_VNSTAT_VERSION
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    st_runner "vnstat -u -i $_IFCONFIG" 2> /dev/null
+    for INF in `vnstat --iflist | sed "s/Available interfaces//g" | cut -d: -f2` ;do vnstat -u -i $INF &> /dev/null;done
     cp -af /var/opt/vnstat-$_VNSTAT_VERSION/examples/init.d/debian/vnstat /etc/init.d/vnstat
     chmod 755 /etc/init.d/vnstat &> /dev/null
     st_runner "update-rc.d vnstat defaults" &> /dev/null
