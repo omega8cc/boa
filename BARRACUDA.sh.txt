@@ -7992,10 +7992,16 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 8"
   st_runner "service nginx restart" &> /dev/null
 else
-  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] && [ ! -e "/var/log/nginx-ssl-fixed-$_INSTALLER_VERSION" ] ; then
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
     sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
-    touch /var/log/nginx-ssl-fixed-$_INSTALLER_VERSION
+    sed -i "s/gzip_vary .*//g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/gzip_vary .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "/^$/d" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "/^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/add_header Vary .*//g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   fi
   if [ "$_NGINX_SPDY" = "YES" ] ; then
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
