@@ -4533,7 +4533,7 @@ install_ssh_src () {
     wget -q -U iCab http://files.aegir.cc/dev/openssh-$_OPENSSH_VERSION.tar.gz
     tar -xzf openssh-$_OPENSSH_VERSION.tar.gz
     cd /var/opt/openssh-$_OPENSSH_VERSION
-    st_runner "sh ./configure --prefix=/usr --with-pam" 2> /dev/null
+    st_runner "sh ./configure --without-openssl-header-check --prefix=/usr --with-pam" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     st_runner "service ssh restart" &> /dev/null
