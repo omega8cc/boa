@@ -3670,7 +3670,7 @@ check_apt_updates () {
   for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
-      *libcurl*)    _UP_PHP=YES ;;
+      *libcurl*)    _YP_PHP=YES ;;
       *libmysql*)   _UP_PHP=YES ;;
       *libssl*)     _YP_PHP=YES ;;
       *linux-*)     _UP_LNX=YES ;;
@@ -4576,6 +4576,7 @@ install_curl_src () {
     echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
     echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
     echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
+    _UP_PHP=YES
   fi
 }
 #
