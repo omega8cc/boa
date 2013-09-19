@@ -6086,7 +6086,15 @@ fi
 
 ###--------------------###
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-  if [ ! -L "/usr/lib/libssl.so.1.0.0" ] ; then
+  _SSL_FIX_REQUIRED=YES
+  if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] ; then
+      _SSL_FIX_REQUIRED=YES
+    else
+      _SSL_FIX_REQUIRED=NO
+    fi
+  fi
+  if [ ! -L "/usr/lib/libssl.so.1.0.0" ] && [ "$_SSL_FIX_REQUIRED" = "YES" ] ; then
     msg "INFO: Fix #2 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
