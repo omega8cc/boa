@@ -4562,10 +4562,9 @@ install_curl_src () {
     wget -q -U iCab http://files.aegir.cc/dev/curl-$_CURL_VERSION.tar.gz
     tar -xzf curl-$_CURL_VERSION.tar.gz
     cd /var/opt/curl-$_CURL_VERSION
-    st_runner "sh ./configure --prefix=/usr --with-pam" 2> /dev/null
+    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    st_runner "service curl restart" &> /dev/null
     aptitude hold curl &> /dev/null
     aptitude hold gnupg-curl &> /dev/null
     aptitude hold libcurl3 &> /dev/null
