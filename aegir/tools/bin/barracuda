@@ -209,9 +209,9 @@ up_finish ()
   echo BARRACUDA upgrade completed
   echo Bye
   if [ "$ifauto" = "auto" ] ; then
-    curl -s -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_TODAY
-    bash /var/backups/BOA.sh.txt-$_TODAY &> /dev/null
-    rm -f /var/backups/BOA.sh.txt-$_TODAY
+    curl -s -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+    bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
+    rm -f /var/backups/BOA.sh.txt-$_NOW
   fi
   exit 0
 }
@@ -238,34 +238,10 @@ up_stable ()
 
 auto_update_continue ()
 {
-  if [ ! -e "/etc/resolv.conf" ] ; then
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  else
-    _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
-    if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-      true
-    else
-      rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-    fi
-  fi
-  _CURL_TEST=$(curl -I "http://files.aegir.cc")
-  if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
-    true
-  else
-    apt-get clean -qq &> /dev/null
-    apt-get update -qq &> /dev/null
-    apt-get install -y --force-yes --reinstall curl &> /dev/null
-  fi
-  rm -f /var/backups/barracuda-now-*
-  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o /var/backups/barracuda-now-$_TODAY
-  echo "### $_TODAY ###" >> /var/backups/barracuda-now-$_TODAY
   if [ ! -z "$silent" ] ; then
-    bash /var/backups/barracuda-now-$_TODAY $commnd $silent
+    bash /var/backups/barracuda-now-$_NOW $commnd $silent
   else
-    bash /var/backups/barracuda-now-$_TODAY $commnd
+    bash /var/backups/barracuda-now-$_NOW $commnd
   fi
 }
 
@@ -293,20 +269,44 @@ set_pin_priority ()
 
 check_date ()
 {
-  _THIS_FILE="/usr/local/bin/barracuda"
+  if [ "$silent" = "noauto" ] ; then
+    ifauto="$silent"
+    silent=""
+  fi
+  if [ "$ifauto" = "noauto" ] ; then
+    _THIS_FILE="/usr/local/bin/barracuda"
+  else
+    if [ ! -e "/etc/resolv.conf" ] ; then
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    else
+      _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
+      if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
+        true
+      else
+        rm -f /etc/resolv.conf
+        echo "nameserver 8.8.8.8" >/etc/resolv.conf
+        echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      fi
+    fi
+    _CURL_TEST=$(curl -I "http://files.aegir.cc")
+    if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
+      true
+    else
+      apt-get clean -qq &> /dev/null
+      apt-get update -qq &> /dev/null
+      apt-get install -y --force-yes --reinstall curl &> /dev/null
+    fi
+    rm -f /var/backups/barracuda-now-*
+    _THIS_FILE="/var/backups/barracuda-now-$_NOW"
+    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
+    echo "### $_TODAY ###" >> $_THIS_FILE
+  fi
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
   if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
     true
   else
-    if [ "$silent" = "auto" ] ; then
-      ifauto="$silent"
-      silent=""
-    fi
-    echo silent is $silent
-    echo ifauto is $ifauto
-    if [ "$ifauto" = "auto" ] ; then
-      auto_update_continue
-    else
+    if [ "$ifauto" = "noauto" ] ; then
       cat <<EOF
 
   Please update installers on your system
@@ -317,6 +317,8 @@ check_date ()
 
 EOF
       exit 1
+    else
+      auto_update_continue
     fi
   fi
 }
@@ -351,14 +353,14 @@ case "$1" in
              up_head
   ;;
   *)         echo
-             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir} {auto}"
+             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir} {noauto}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir upgrade"
              echo "  Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
              echo "  Silent Mode Option: aegir  == Only stock Aegir forced up-head upgrade"
              echo
-             echo "The \"auto\" option automatically updates all meta-installers"
+             echo "The \"noauto\" option allows to skip auto-updates for all meta-installers"
              echo
              exit 1
   ;;
