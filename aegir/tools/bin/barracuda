@@ -267,6 +267,16 @@ set_pin_priority ()
   fi
 }
 
+download_wrapper ()
+{
+  if [ ! -e "$_THIS_FILE" ] ; then
+    echo "I can not connect to github.com at the moment"
+    echo "I will try again in 15 seconds, please wait..."
+    sleep 15
+    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
+  fi
+}
+
 check_date ()
 {
   if [ "$silent" = "noauto" ] ; then
@@ -300,6 +310,20 @@ check_date ()
     rm -f /var/backups/barracuda-now-*
     _THIS_FILE="/var/backups/barracuda-now-$_NOW"
     curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
+    if [ ! -e "$_THIS_FILE" ] ; then
+      download_wrapper
+      if [ ! -e "$_THIS_FILE" ] ; then
+        download_wrapper
+        if [ ! -e "$_THIS_FILE" ] ; then
+          download_wrapper
+          if [ ! -e "$_THIS_FILE" ] ; then
+            echo "Sorry, I gave up."
+            echo "Please check https://status.github.com and try again later."
+            exit 1
+          fi
+        fi
+      fi
+    fi
     echo "### $_TODAY ###" >> $_THIS_FILE
   fi
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
