@@ -279,71 +279,50 @@ download_wrapper ()
 
 check_date ()
 {
-  if [ "$silent" = "noauto" ] ; then
-    ifauto="$silent"
-    silent=""
-  fi
-  if [ "$ifauto" = "noauto" ] ; then
-    _THIS_FILE="/usr/local/bin/barracuda"
+  if [ ! -e "/etc/resolv.conf" ] ; then
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
   else
-    if [ ! -e "/etc/resolv.conf" ] ; then
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
+    if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
+    true
     else
-      _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
-      if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-        true
-      else
-        rm -f /etc/resolv.conf
-        echo "nameserver 8.8.8.8" >/etc/resolv.conf
-        echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-      fi
+    rm -f /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     fi
-    _CURL_TEST=$(curl -s -I "http://files.aegir.cc")
-    if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
-      true
-    else
-      apt-get clean -qq &> /dev/null
-      apt-get update -qq &> /dev/null
-      apt-get install -y --force-yes --reinstall curl &> /dev/null
-    fi
-    rm -f /var/backups/barracuda-now-*
-    _THIS_FILE="/var/backups/barracuda-now-$_NOW"
-    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
+  fi
+  _CURL_TEST=$(curl -s -I "http://files.aegir.cc")
+  if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
+    true
+  else
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install -y --force-yes --reinstall curl &> /dev/null
+  fi
+  rm -f /var/backups/barracuda-now-*
+  _THIS_FILE="/var/backups/barracuda-now-$_NOW"
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
+  if [ ! -e "$_THIS_FILE" ] ; then
+    download_wrapper
+    if [ ! -e "$_THIS_FILE" ] ; then
+    download_wrapper
     if [ ! -e "$_THIS_FILE" ] ; then
       download_wrapper
       if [ ! -e "$_THIS_FILE" ] ; then
-        download_wrapper
-        if [ ! -e "$_THIS_FILE" ] ; then
-          download_wrapper
-          if [ ! -e "$_THIS_FILE" ] ; then
-            echo "Sorry, I gave up."
-            echo "Please check https://status.github.com and try again later."
-            exit 1
-          fi
-        fi
+      echo "Sorry, I gave up."
+      echo "Please check https://status.github.com and try again later."
+      exit 1
       fi
     fi
-    echo "### $_TODAY ###" >> $_THIS_FILE
+    fi
   fi
+  echo "### $_TODAY ###" >> $_THIS_FILE
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
   if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
     true
   else
-    if [ "$ifauto" = "noauto" ] ; then
-      cat <<EOF
-
-  Please update installers on your system
-  using BOA Meta Installer and try again.
-
-  $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
-  $ bash BOA.sh.txt
-
-EOF
-      exit 1
-    else
-      auto_update_continue
-    fi
+    auto_update_continue
   fi
 }
 
@@ -377,14 +356,12 @@ case "$1" in
              up_head
   ;;
   *)         echo
-             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir} {noauto}"
+             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir upgrade"
              echo "  Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
              echo "  Silent Mode Option: aegir  == Only stock Aegir forced up-head upgrade"
-             echo
-             echo "The \"noauto\" option allows to skip auto-updates for all meta-installers"
              echo
              exit 1
   ;;
