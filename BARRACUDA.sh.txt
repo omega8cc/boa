@@ -4189,7 +4189,7 @@ update_newrelic () {
         echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
         st_runner "apt-get update -y" &> /dev/null
-        st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
+        st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
         NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
         if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
           echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
@@ -4226,7 +4226,7 @@ install_newrelic () {
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
       st_runner "apt-get update -y" &> /dev/null
-      st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
+      st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
       NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
       if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
         echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
@@ -5570,8 +5570,8 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   st_runner "apt-get purge pound -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
-  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
-  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
+  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
   if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
   fi
@@ -5579,7 +5579,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y install collectd" 2> /dev/null
+    st_runner "apt-get -y --force-yes install collectd" 2> /dev/null
   fi
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
@@ -5626,7 +5626,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     killall -9 java &> /dev/null
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y remove collectd" &> /dev/null
+    st_runner "apt-get -y --force-yes remove collectd" &> /dev/null
   fi
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
@@ -5643,9 +5643,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get remove lsb-release -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
-  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
-  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
-  st_runner "apt-get -y install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
+  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
+  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  st_runner "apt-get -y --force-yes install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
   install_latest_git
   if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
@@ -5654,9 +5654,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y install collectd" 2> /dev/null
+    st_runner "apt-get -y --force-yes install collectd" 2> /dev/null
   fi
-  st_runner "apt-get -y install udev lsb-release libc-client2007e-dev" 2> /dev/null
+  st_runner "apt-get -y --force-yes install udev lsb-release libc-client2007e-dev" 2> /dev/null
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
     _REMOVE_LINKS="halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial umountfs umountnfs.sh umountroot urandom"
@@ -5837,7 +5837,7 @@ install_with_aptitude_deps () {
   else
     _EXTRA_APT="tree"
   fi
-  st_runner "apt-get -f -y -q --config-file /opt/tmp/apt.conf.noninteractive install $_EXTRA_APT" 2> /dev/null
+  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install $_EXTRA_APT" 2> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
@@ -7583,8 +7583,8 @@ fi
 ###--------------------###
 if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   rm -f /var/aegir/config/server_master/nginx/vhost.d/cgp*
-  st_runner "apt-get -y remove collectd" 2> /dev/null
-  st_runner "apt-get -y purge collectd" 2> /dev/null
+  st_runner "apt-get -y --force-yes remove collectd" 2> /dev/null
+  st_runner "apt-get -y --force-yes purge collectd" 2> /dev/null
   rm -f -r /var/www/cgp
 fi
 _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
