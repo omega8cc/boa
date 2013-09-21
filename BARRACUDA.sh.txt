@@ -4632,8 +4632,6 @@ install_ssl_src () {
     echo "zlibc hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-    install_ssh_src
-    install_curl_src
   fi
 }
 #
@@ -5942,6 +5940,8 @@ if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_
     true
   else
     install_ssl_src
+    install_ssh_src
+    install_curl_src
   fi
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
