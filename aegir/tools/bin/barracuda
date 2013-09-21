@@ -208,6 +208,11 @@ up_finish ()
   echo
   echo BARRACUDA upgrade completed
   echo Bye
+  if [ "$ifauto" = "auto" ] ; then
+    curl -s -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_TODAY
+    bash /var/backups/BOA.sh.txt-$_TODAY &> /dev/null
+    rm -f /var/backups/BOA.sh.txt-$_TODAY
+  fi
   exit 0
 }
 
@@ -231,23 +236,36 @@ up_stable ()
   up_finish
 }
 
-check_date ()
+auto_update_continue ()
 {
-  _THIS_FILE="/usr/local/bin/barracuda"
-  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
-  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
+  if [ ! -e "/etc/resolv.conf" ] ; then
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+  else
+    _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
+    if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
+      true
+    else
+      rm -f /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    fi
+  fi
+  _CURL_TEST=$(curl -I "http://files.aegir.cc")
+  if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     true
   else
-    cat <<EOF
-
-  Please update installers on your system
-  using BOA Meta Installer and try again.
-
-  $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
-  $ bash BOA.sh.txt
-
-EOF
-    exit 1
+    apt-get clean -qq &> /dev/null
+    apt-get update -qq &> /dev/null
+    apt-get install -y --force-yes --reinstall curl &> /dev/null
+  fi
+  rm -f /var/backups/barracuda-now-*
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o /var/backups/barracuda-now-$_TODAY
+  echo "### $_TODAY ###" >> /var/backups/barracuda-now-$_TODAY
+  if [ ! -z "$silent" ] ; then
+    bash /var/backups/barracuda-now-$_TODAY $commnd $silent
+  else
+    bash /var/backups/barracuda-now-$_TODAY $commnd
   fi
 }
 
@@ -273,6 +291,36 @@ set_pin_priority ()
   fi
 }
 
+check_date ()
+{
+  _THIS_FILE="/usr/local/bin/barracuda"
+  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
+  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
+    true
+  else
+    if [ "$silent" = "auto" ] ; then
+      ifauto="$silent"
+      silent=""
+    fi
+    echo silent is $silent
+    echo ifauto is $ifauto
+    if [ "$ifauto" = "auto" ] ; then
+      auto_update_continue
+    else
+      cat <<EOF
+
+  Please update installers on your system
+  using BOA Meta Installer and try again.
+
+  $ wget -q -U iCab http://files.aegir.cc/BOA.sh.txt
+  $ bash BOA.sh.txt
+
+EOF
+      exit 1
+    fi
+  fi
+}
+
 check_root ()
 {
   if [ `whoami` = "root" ] ; then
@@ -286,23 +334,31 @@ check_root ()
 }
 
 check_root
-check_date
-set_pin_priority
 
 case "$1" in
-  up-stable) silent="$2"
+  up-stable) commnd="$1"
+             silent="$2"
+             ifauto="$3"
+             check_date
+             set_pin_priority
              up_stable
   ;;
-  up-head)   silent="$2"
+  up-head)   commnd="$1"
+             silent="$2"
+             ifauto="$3"
+             check_date
+             set_pin_priority
              up_head
   ;;
   *)         echo
-             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir}"
+             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir} {auto}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir upgrade"
              echo "  Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
              echo "  Silent Mode Option: aegir  == Only stock Aegir forced up-head upgrade"
+             echo
+             echo "The \"auto\" option automatically updates all meta-installers"
              echo
              exit 1
   ;;
