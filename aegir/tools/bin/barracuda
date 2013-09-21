@@ -230,7 +230,7 @@ up_stable ()
   if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
     curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   else
-    wget -q -U iCab http://files.aegir.cc/versions/BARRACUDA.sh.txt
+    curl -s -A iCab "http://files.aegir.cc/versions/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   fi
   up_action
   up_finish
@@ -289,7 +289,7 @@ check_date ()
         echo "nameserver 8.8.4.4" >>/etc/resolv.conf
       fi
     fi
-    _CURL_TEST=$(curl -I "http://files.aegir.cc")
+    _CURL_TEST=$(curl -s -I "http://files.aegir.cc")
     if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
       true
     else
