@@ -4547,7 +4547,7 @@ install_ssh_src () {
 # Install cURL from sources.
 install_curl_src () {
   _CURL_INSTALL_REQUIRED=NO
-  _CURL_INSTALLED=`curl -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
+  _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
     true
   else
