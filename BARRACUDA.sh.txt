@@ -5936,7 +5936,7 @@ if [ ! -e "/etc/aliases" ] ; then
   newaliases &> /dev/null
 fi
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
     true
   else
     install_ssl_src
@@ -6088,7 +6088,7 @@ fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   _SSL_FIX_REQUIRED=YES
   if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-    if [ "$_REL_VERSION" = "wheezy" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _SSL_FIX_REQUIRED=YES
     else
       _SSL_FIX_REQUIRED=NO
