@@ -6,8 +6,8 @@ SHELL=/bin/bash
 _TODAY=`date +%y%m%d`
 _NOW=`date +%y%m%d-%H%M`
 _CHECK_HOST=`uname -n`
-_LOG_DIR="/var/backups/reports/up/barracuda/$_TODAY"
-_UP_LOG="$_LOG_DIR/barracuda-up-$_NOW.log"
+_LOG_DIR="/var/backups/reports/up/$(basename "$0")/$_TODAY"
+_UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_NOW.log"
 _L_VMFAMILY=XEN
 _L_VM_TEST=`uname -a 2>&1`
 if [[ "$_L_VM_TEST" =~ beng ]] ; then
@@ -19,7 +19,7 @@ send_report ()
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      _MY_EMAIL="barracuda@omega8.cc"
+      _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
       cat $_UP_LOG | mail -e -s "REPORT: Successful Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
@@ -33,7 +33,7 @@ send_alert ()
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      _MY_EMAIL="barracuda@omega8.cc"
+      _MY_EMAIL="$(basename "$0")@omega8.cc"
     fi
     if [ ! -z "$_MY_EMAIL" ] ; then
       cat $_UP_LOG | mail -e -s "ALERT: Failed Barracuda upgrade on $_CHECK_HOST at $_NOW" $_MY_EMAIL
@@ -230,19 +230,14 @@ up_stable ()
   if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
     curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   else
-    curl -s -A iCab "http://files.aegir.cc/versions/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    if [ "$_THIS_DO" = "Precise" ] ; then
+      curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    else
+      curl -s -A iCab "http://files.aegir.cc/versions/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    fi
   fi
   up_action
   up_finish
-}
-
-auto_update_continue ()
-{
-  if [ ! -z "$silent" ] ; then
-    bash /var/backups/barracuda-now-$_NOW $commnd $silent
-  else
-    bash /var/backups/barracuda-now-$_NOW $commnd
-  fi
 }
 
 set_pin_priority ()
@@ -265,6 +260,12 @@ set_pin_priority ()
       curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
   fi
+  _THIS_DO=$(grep "Ubuntu 12.04" /etc/issue.net)
+  if [[ "$_THIS_DO" =~ "Ubuntu 12.04" ]] ; then
+    _THIS_DO=Precise
+  else
+    _THIS_DO=Other
+  fi
 }
 
 download_wrapper ()
@@ -273,11 +274,39 @@ download_wrapper ()
     echo "I can not connect to github.com at the moment"
     echo "I will try again in 15 seconds, please wait..."
     sleep 15
-    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
+    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   fi
 }
 
-check_date ()
+check_wrapper ()
+{
+  rm -f /var/backups/$(basename "$0")-now-*
+  _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
+  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+  if [ ! -e "$_THIS_FILE" ] ; then
+    download_wrapper
+    if [ ! -e "$_THIS_FILE" ] ; then
+      download_wrapper
+      if [ ! -e "$_THIS_FILE" ] ; then
+        download_wrapper
+        if [ ! -e "$_THIS_FILE" ] ; then
+          echo "Sorry, I gave up."
+          echo "Please check https://status.github.com and try again later."
+          exit 1
+        fi
+      fi
+    fi
+  fi
+  echo "### $_TODAY ###" >> $_THIS_FILE
+  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
+  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
+    true
+  else
+    bash /var/backups/$(basename "$0")-now-$_NOW $*
+  fi
+}
+
+check_dns_curl ()
 {
   if [ ! -e "/etc/resolv.conf" ] ; then
     echo "nameserver 8.8.8.8" >/etc/resolv.conf
@@ -300,30 +329,6 @@ check_date ()
     apt-get update -qq &> /dev/null
     apt-get install -y --force-yes --reinstall curl &> /dev/null
   fi
-  rm -f /var/backups/barracuda-now-*
-  _THIS_FILE="/var/backups/barracuda-now-$_NOW"
-  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/barracuda" -o $_THIS_FILE
-  if [ ! -e "$_THIS_FILE" ] ; then
-    download_wrapper
-    if [ ! -e "$_THIS_FILE" ] ; then
-    download_wrapper
-    if [ ! -e "$_THIS_FILE" ] ; then
-      download_wrapper
-      if [ ! -e "$_THIS_FILE" ] ; then
-      echo "Sorry, I gave up."
-      echo "Please check https://status.github.com and try again later."
-      exit 1
-      fi
-    fi
-    fi
-  fi
-  echo "### $_TODAY ###" >> $_THIS_FILE
-  _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
-  if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
-    true
-  else
-    auto_update_continue
-  fi
 }
 
 check_root ()
@@ -338,25 +343,27 @@ check_root ()
   fi
 }
 
-check_root
-
 case "$1" in
-  up-stable) commnd="$1"
+  up-stable) cmmand="$1"
              silent="$2"
              ifauto="$3"
-             check_date
+             check_root
+             check_dns_curl
+             check_wrapper
              set_pin_priority
              up_stable
   ;;
-  up-head)   commnd="$1"
+  up-head)   cmmand="$1"
              silent="$2"
              ifauto="$3"
-             check_date
+             check_root
+             check_dns_curl
+             check_wrapper
              set_pin_priority
              up_head
   ;;
   *)         echo
-             echo "Usage: barracuda {up-stable|up-head} {system|log|stock|aegir}"
+             echo "Usage: $(basename "$0") {up-stable|up-head} {system|log|stock|aegir}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir upgrade"
