@@ -6605,8 +6605,6 @@ else
     if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ] ; then
       rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
     fi
-    mkdir -p ~/.bazaar
-    echo ignore_missing_extensions=True > ~/.bazaar/bazaar.conf
     cd /var/opt
     rm -f -r bzr*
     wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
@@ -6615,6 +6613,8 @@ else
     st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
+    mkdir -p /root/.bazaar
+    echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
   fi
 fi
 
