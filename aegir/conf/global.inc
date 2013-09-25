@@ -399,7 +399,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $identity = 'BOND'. md5("$identity");
 
     if ($drupal_seven || $drupal_eight) {
-      $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
       unset($conf['file_downloads']); // disable hardcoded public downloads in d7
