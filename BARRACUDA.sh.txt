@@ -3556,9 +3556,9 @@ install_php_modern () {
   install_php_universal_extensions
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
+    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log
   else
-    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
+    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
   fi
   rm -f /etc/init.d/php53-fpm*
   if [ "$_FROM_SOURCES" = "NO" ] ; then
@@ -3606,15 +3606,16 @@ install_php_legacy () {
   echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
+    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
   else
-    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
+    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
   fi
   cd /usr/local/sbin
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
   chmod 755 php-fpm
   ln -sf /usr/local/sbin/php-fpm /etc/init.d/php-fpm
   chmod 755 /usr/local/sbin/php-fpm &> /dev/null
+  echo "php52-rebuild-$_INSTALLER_VERSION" > /var/log/php52-rebuild-$_INSTALLER_VERSION
 }
 #
 # Update modern PHP version
@@ -6369,7 +6370,10 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     if [ -x "/usr/local/bin/php52" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
       rm -f /usr/local/bin/php
       if [ -x "/usr/local/bin/php52" ] ; then
+        _LEGACY_PHP_BINARY=YES
         mv -f /usr/local/bin/php52 /usr/local/bin/php
+      else
+        _LEGACY_PHP_BINARY=NO
       fi
     fi
   fi
@@ -6463,20 +6467,34 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     mrun "sleep 1"
   fi
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/log/installed-$_MARIADB_VERSION-MariaDB.log" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-      _PHP_INSTALL_REQUIRED=YES
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_MARIADB_VERSION-MariaDB.log
-      msg "INFO: PHP rebuild required to include MariaDB $_MARIADB_VERSION libs"
-      mrun "sleep 1"
+    if [ "$_FROM_SOURCES" = "YES" ] ; then
+      if [ ! -e "/var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
+        _PHP_INSTALL_REQUIRED=YES
+        echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
+        msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
+        mrun "sleep 1"
+      fi
+      if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log" ] ; then
+        _PHP_INSTALL_REQUIRED_NEW=YES
+        echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log
+        msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include MariaDB $_MARIADB_VERSION libs"
+        mrun "sleep 1"
+      fi
     fi
   else
-    if [ ! -e "/var/log/installed-$_PERCONA_VERSION-Percona.log" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-      _PHP_INSTALL_REQUIRED=YES
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PERCONA_VERSION-Percona.log
-      msg "INFO: PHP rebuild required to include Percona $_PERCONA_VERSION libs"
-      mrun "sleep 1"
+    if [ "$_FROM_SOURCES" = "YES" ] ; then
+      if [ ! -e "/var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
+        _PHP_INSTALL_REQUIRED=YES
+        echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
+        msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
+        mrun "sleep 1"
+      fi
+      if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log" ] ; then
+        _PHP_INSTALL_REQUIRED_NEW=YES
+        echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
+        msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include Percona $_PERCONA_VERSION libs"
+        mrun "sleep 1"
+      fi
     fi
   fi
 fi
@@ -6504,6 +6522,10 @@ if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED_NEW=YES
   msg "INFO: PHP rebuild required to include upgraded libs"
   fix_php_ext
+fi
+if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ ! -e "/var/log/php52-rebuild-$_INSTALLER_VERSION" ] ; then
+  _PHP_INSTALL_REQUIRED=YES
+  msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
 fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   _PHP_EXTRA=""
