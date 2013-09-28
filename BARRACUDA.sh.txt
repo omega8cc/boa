@@ -6525,6 +6525,7 @@ if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
 fi
 if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ ! -e "/var/log/php52-rebuild-$_INSTALLER_VERSION" ] ; then
   _PHP_INSTALL_REQUIRED=YES
+  _PHP_MODERN_ONLY=NO
   msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
 fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
