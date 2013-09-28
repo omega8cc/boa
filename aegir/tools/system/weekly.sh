@@ -476,6 +476,11 @@ echo "INFO: Weekly maintenance start"
 _NOW=`date +%y%m%d-%H%M`
 _DATE=`date +%y:%m:%d`
 _HOST_TEST=`uname -n 2>&1`
+if [[ "$_HOST_TEST" =~ "server.lnx-4." ]] || [[ "$_HOST_TEST" =~ "server.lnx-1." ]] ; then
+  gem uninstall scout &> /dev/null
+  sed -i "s/.*scout.*//g" /etc/crontab
+  sed -i "/^$/d" /etc/crontab
+fi
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
 echo "INFO: Weekly maintenance complete"
