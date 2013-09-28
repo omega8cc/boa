@@ -259,6 +259,9 @@ else {
 if (file_exists('sites/all/modules/domain/settings.inc')) {
   $da_inc = 'sites/all/modules/domain/settings.inc';
 }
+elseif (file_exists('sites/all/modules/contrib/domain/settings.inc')) {
+  $da_inc = 'sites/all/modules/contrib/domain/settings.inc';
+}
 elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
   $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
 }
