@@ -281,5 +281,6 @@ else
   if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ] ; then
     chmod 700 /home/* &> /dev/null
   fi
+  chmod 600 /var/log/lsh/*
 fi
 ###EOF2013###
