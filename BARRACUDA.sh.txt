@@ -6670,6 +6670,15 @@ if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
   st_runner "service ssh restart" &> /dev/null
   touch /var/log/umask_fixed_shell_sftp.log
 fi
+if [ ! -e "/var/log/src_umask_fixed_shell_sftp.log" ] && [ -e "/usr/etc/sshd_config" ] ; then
+  if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
+    true
+  else
+    sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
+  fi
+  st_runner "service ssh restart" &> /dev/null
+  touch /var/log/src_umask_fixed_shell_sftp.log
+fi
 
 
 ###--------------------###
@@ -7752,6 +7761,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
   echo "UseDNS no" >> /etc/ssh/sshd_config
+  if [ -e "/usr/etc/sshd_config" ] ; then
+    echo "UseDNS no" >> /usr/etc/sshd_config
+  fi
   st_runner "service ssh reload" &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
     msg "INFO: Restarting Jetty 9"
@@ -7799,6 +7811,20 @@ else
     echo "ClientAliveInterval 300" >> /etc/ssh/sshd_config
     echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
+    if [ -e "/usr/etc/sshd_config" ] ; then
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^IgnoreUserKnownHosts.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^ClientAliveInterval.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
+      echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
+      echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
+      echo "UseDNS no" >> /usr/etc/sshd_config
+      echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
+      echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
+      sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
+    fi
     st_runner "service ssh reload" &> /dev/null
   fi
   fix_on_upgrade
@@ -8146,7 +8172,13 @@ csf_install () {
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf &> /dev/null
   sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,$_SSH_PORT,/g" /etc/csf/csf.conf &> /dev/null
   chmod 600 /etc/csf/csf.conf &> /dev/null
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    _SSH_PORT=22
+  fi
   sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config &> /dev/null
+  if [ -e "/usr/etc/sshd_config" ] ; then
+    sed -i "s/^Port.*/Port $_SSH_PORT/g" /usr/etc/sshd_config &> /dev/null
+  fi
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
   st_runner "service ssh restart" &> /dev/null
   if [ "$_CSF_MODE" = "install" ] ; then
