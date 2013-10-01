@@ -7837,6 +7837,52 @@ else
 fi
 
 
+#
+# Forced MySQL root password update.
+forced_mysql_root_password_update () {
+  mv -f /root/.my.cnf-pre-* /var/backups/ &> /dev/null
+  mv -f /root/.my.pass.txt-pre-* /var/backups/ &> /dev/null
+  touch /root/.my.pass.txt
+  chmod 0600 /root/.my.pass.txt &> /dev/null
+  _ESC_PASS=""
+  _LEN_PASS=0
+  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    _ESC_PASS=$(randpass 32 esc)
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _LEN_PASS=$(echo ${#_ESC_PASS})
+  fi
+  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
+    _ESC_PASS=`pwgen -v -s -1`
+    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
+    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
+  fi
+  if [ ! -z "$_ESC_PASS" ] ; then
+    cp -af /root/.my.cnf /root/.my.cnf-pre-$_INSTALLER_VERSION-$_NOW
+    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-$_INSTALLER_VERSION-$_NOW
+    mysql -u root -e "FLUSH HOSTS;" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
+    mysql -u root -e "DROP DATABASE test;" &> /dev/null
+    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
+    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='root';" &> /dev/null
+    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
+    echo "[client]" > /root/.my.cnf
+    echo "user=root" >> /root/.my.cnf
+    echo "password=$_ESC_PASS" >> /root/.my.cnf
+    chmod 0600 /root/.my.cnf
+    echo "db=mysql" > /root/.mytop
+    chmod 0600 /root/.mytop
+    echo "$_ESC_PASS" > /root/.my.pass.txt
+    echo " "
+    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+      msg "INFO: New secure random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+    else
+      msg "INFO: New random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+    fi
+    mrun "sleep 1"
+  fi
+}
+
 ###--------------------###
 if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: $_DB_SERVER final setup"
@@ -7884,46 +7930,8 @@ if [ ! -e "/root/.my.cnf" ] ; then
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
   mrun "sleep 1"
 else
-  mv -f /root/.my.cnf-pre-* /var/backups/ &> /dev/null
-  mv -f /root/.my.pass.txt-pre-* /var/backups/ &> /dev/null
-  touch /root/.my.pass.txt
-  chmod 0600 /root/.my.pass.txt &> /dev/null
-  _ESC_PASS=""
-  _LEN_PASS=0
-  if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-    _ESC_PASS=$(randpass 32 esc)
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _LEN_PASS=$(echo ${#_ESC_PASS})
-  fi
-  if [ -z "$_ESC_PASS" ] || [ $_LEN_PASS -lt 19 ] ; then
-    _ESC_PASS=`pwgen -v -s -1`
-    _ESC_PASS=`echo -n $_ESC_PASS | tr -d "\n"`
-    _ESC_PASS=`sanitize_string "$_ESC_PASS"`
-  fi
-  if [ ! -z "$_ESC_PASS" ] ; then
-    cp -af /root/.my.cnf /root/.my.cnf-pre-$_INSTALLER_VERSION-$_NOW
-    cp -af /root/.my.pass.txt /root/.my.pass.txt-pre-$_INSTALLER_VERSION-$_NOW
-    mysql -u root -e "FLUSH HOSTS;" &> /dev/null
-    mysql -u root -e "DELETE FROM mysql.user WHERE User='';" &> /dev/null
-    mysql -u root -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');" &> /dev/null
-    mysql -u root -e "DROP DATABASE test;" &> /dev/null
-    mysql -u root -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';" &> /dev/null
-    mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='root';" &> /dev/null
-    mysql -u root -e "FLUSH PRIVILEGES;" &> /dev/null
-    echo "[client]" > /root/.my.cnf
-    echo "user=root" >> /root/.my.cnf
-    echo "password=$_ESC_PASS" >> /root/.my.cnf
-    chmod 0600 /root/.my.cnf
-    echo "db=mysql" > /root/.mytop
-    chmod 0600 /root/.mytop
-    echo "$_ESC_PASS" > /root/.my.pass.txt
-    echo " "
-    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      msg "INFO: New secure random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
-    else
-      msg "INFO: New random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
-    fi
-    mrun "sleep 1"
+  if [ ! -e "/root/.mysql.no.new.password.cnf" ] ; then
+    forced_mysql_root_password_update
   fi
 fi
 
