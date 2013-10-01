@@ -572,6 +572,11 @@ if (!$custom_fb) {
     require_once "sites/all/modules/fb/fb_settings.inc";
     $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
   }
+  elseif (file_exists('sites/all/modules/contrib/fb/fb_settings.inc')) {
+    ini_set('arg_separator.output', '&');
+    require_once "sites/all/modules/contrib/fb/fb_settings.inc";
+    $conf['fb_api_file'] = "sites/all/modules/contrib/fb/facebook-platform/php/facebook.php";
+  }
   elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once 'profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc';
