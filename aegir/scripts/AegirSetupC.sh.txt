@@ -1229,7 +1229,6 @@ fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6 installation completed"
 mrun "sleep 1"
-echo " "
 fi
 
 else
