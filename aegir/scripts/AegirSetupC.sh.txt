@@ -576,6 +576,7 @@ create_drupal7_basic () {
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
+    nocore_d7_dist_clean
     add_old_short_name_seven
   fi
   init_this_distro_root
