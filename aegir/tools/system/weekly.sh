@@ -94,17 +94,21 @@ detect_vanilla_core () {
       true
     else
       if [ -e "$Plr/modules/watchdog" ] ; then
-        if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
-          echo Vanilla Drupal 5.x Platform detected in $Plr
-          read_account_data
-          send_notice_core
+        if [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
+          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+            echo Vanilla Drupal 5.x Platform detected in $Plr
+            read_account_data
+            send_notice_core
+          fi
         fi
       else
         if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
           echo Vanilla Drupal 6.x Platform detected in $Plr
-          if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
-            read_account_data
-            send_notice_core
+          if [ ! -e "/boot/grub/menu.lst" ] ; then
+            if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+              read_account_data
+              send_notice_core
+            fi
           fi
         fi
       fi
@@ -377,7 +381,12 @@ EOF
 
 check_limits () {
   read_account_data
-  if [ "$_CLIENT_OPTION" = "SSD" ] ; then
+  if [ "$_CLIENT_OPTION" = "POWER" ] ; then
+    _SQL_MIN_LIMIT=5120
+    _DSK_MIN_LIMIT=51200
+    _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 256))
+    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 5120))
+  elif [ "$_CLIENT_OPTION" = "SSD" ] ; then
     _SQL_MIN_LIMIT=512
     _DSK_MIN_LIMIT=10240
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 128))
@@ -448,16 +457,18 @@ action () {
         echo HomSiz is $HomSiz or $HomSizH MB
         echo SumDir is $SumDir or $SumDirH MB
         echo SumDat is $SumDat or $SumDatH MB
-        if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/menu.lst" ] ; then
-          check_limits
-          if [ -e "$_THIS_HM_SITE" ] ; then
-            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION | SSD+SAS System' &> /dev/null"
-            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
-          fi
-        else
-          if [ -e "$_THIS_HM_SITE" ] ; then
-            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer '' &> /dev/null"
-            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
+        if [ ! -e "/boot/grub/menu.lst" ] ; then
+          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+            check_limits
+            if [ -e "$_THIS_HM_SITE" ] ; then
+              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION | SSD+SAS System' &> /dev/null"
+              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
+            fi
+          else
+            if [ -e "$_THIS_HM_SITE" ] ; then
+              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer '' &> /dev/null"
+              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
+            fi
           fi
         fi
         echo Done for $User
@@ -476,6 +487,12 @@ echo "INFO: Weekly maintenance start"
 _NOW=`date +%y%m%d-%H%M`
 _DATE=`date +%y:%m:%d`
 _HOST_TEST=`uname -n 2>&1`
+_VM_TEST=`uname -a 2>&1`
+if [[ "$_VM_TEST" =~ beng ]] ; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
 if [[ "$_HOST_TEST" =~ "server.lnx-4." ]] || [[ "$_HOST_TEST" =~ "server.lnx-1." ]] ; then
   gem uninstall scout &> /dev/null
   sed -i "s/.*scout.*//g" /etc/crontab
