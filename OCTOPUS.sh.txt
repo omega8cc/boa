@@ -162,7 +162,7 @@ _PHP_CLI_VERSION=5.3
 ### D6P D6S D6D --- Pressflow 6 p/s/d
 ### AQ6 ----------- Acquia D6 (off)
 ### CM6 ----------- CiviCRM 4.1.6 D6 (off)
-### CM7 ----------- CiviCRM 4.3.5 D7
+### CM7 ----------- CiviCRM 4.3.7 D7
 ### CME ----------- Commerce v.2
 ### COD ----------- Conference
 ### CS7 ----------- Commons 7
@@ -528,7 +528,7 @@ fi
 ### Distributions
 ###
 _CIVICRM_M6=4.1.6
-_CIVICRM_M7=4.3.5
+_CIVICRM_M7=4.3.7
 _CIVICRM_PN=boa-2.0.9-dev
 _COD=6.x-1.0-rc2
 _COM_MERCE=7.x-2.9
