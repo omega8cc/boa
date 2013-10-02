@@ -177,7 +177,7 @@ _PHP_CLI_VERSION=5.3
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
-### OPH ----------- OpenPublish
+### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly

@@ -2268,7 +2268,6 @@ openatrium7_install
 openchurch_install
 opendeals_install
 openoutreach_install
-openpublish_install
 openscholar_install
 panopoly_install
 prosepoint_install
@@ -2282,6 +2281,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   drupal_edge_8_install
   drupal8_install
   nodestream7_install
+  openpublish_install
 fi
 
 
