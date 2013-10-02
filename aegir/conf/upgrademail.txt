@@ -157,7 +157,7 @@ platforms and features to help you manage your Drupal sites.
 
   Open Academy 1.0-rc2 --------- http://drupal.org/project/openacademy
   Open Atrium 2.0-b4 ----------- http://drupal.org/project/openatrium
-  OpenScholar 3.7.4 ------------ http://openscholar.harvard.edu
+  OpenScholar 3.8.1 ------------ http://openscholar.harvard.edu
 
 
 === UPDATED OCTOPUS PLATFORMS
