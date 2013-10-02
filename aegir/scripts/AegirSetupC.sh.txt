@@ -871,7 +871,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ -d "$_CORE/$_REAL_PRNAME-$_COD" ] ; then
       mv $_CORE/$_REAL_PRNAME-$_COD $_CORE/$_REAL_PRNAME-$_COD-old
     fi
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/$_REAL_PRNAME-$_COD-core.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COD-core.tar.gz
     tar -xzf $_REAL_PRNAME-$_COD-core.tar.gz
     rm -f $_REAL_PRNAME-$_COD-core.tar.gz
     if [ -d "$_CORE/$_REAL_PRNAME" ] ; then
@@ -929,12 +929,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMERCE-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
       mv commerce-$_COMMERCE $_SHRD_PLNAME
     elif [ -d "$_CORE/$_REAL_PRNAME-$_COMMERCE" ] ; then
       mv $_REAL_PRNAME-$_COMMERCE $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch ./
@@ -989,12 +989,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COM_MERCE-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/commerce-$_COM_MERCE" ] ; then
       mv commerce-$_COM_MERCE $_SHRD_PLNAME
     elif [ -d "$_CORE/$_REAL_PRNAME-$_COM_MERCE" ] ; then
       mv $_REAL_PRNAME-$_COM_MERCE $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     if [ $_COM_MERCE = "7.x-2.5" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {message_notify}
@@ -1122,10 +1122,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_D7COMMONS-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_D7COMMONS" ] ; then
       mv $_REAL_PRNAME-$_D7COMMONS $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     sed -i "s/name = Commons/name = Commons 3/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
@@ -1547,10 +1547,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_NODESTREAM7-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_NODESTREAM7" ] ; then
       mv $_REAL_PRNAME-$_NODESTREAM7 $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     rm -f -r $_SHRD_PRPATH/modules/contrib/speedy
     if [ $_NODESTREAM7 = "7.x-2.0-rc5" ] ; then
@@ -1597,10 +1597,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENACADEMY-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENACADEMY" ] ; then
       mv $_REAL_PRNAME-$_OPENACADEMY $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -1640,7 +1640,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal6_core
     fi
     cd $_CORE
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
+    wget -q -U iCab http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
     tar -xzf $_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
     rm -f $_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM6" ] ; then
@@ -1698,10 +1698,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM7" ] ; then
       mv $_REAL_PRNAME-$_OPENATRIUM7 $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -1743,10 +1743,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENCHURCH-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENCHURCH" ] ; then
       mv $_REAL_PRNAME-$_OPENCHURCH $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     if [ $_OPENCHURCH = "7.x-1.11-beta9" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
@@ -1792,10 +1792,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENDEALS-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENDEALS" ] ; then
       mv $_REAL_PRNAME-$_OPENDEALS $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     if [ $_OPENDEALS = "7.x-1.26" ] ; then
       cd $_SHRD_PRPATH/modules
@@ -1846,10 +1846,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENOUTREACH" ] ; then
       mv $_REAL_PRNAME-$_OPENOUTREACH $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     if [ $_OPENOUTREACH = "7.x-1.0-rc10" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
@@ -1902,10 +1902,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENPUBLISH" ] ; then
       mv $_REAL_PRNAME-$_OPENPUBLISH $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     if [ $_OPENPUBLISH = "7.x-1.0-beta7" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
@@ -1971,10 +1971,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     get_distro_ext "$_REAL_PRNAME-$_OPENSCHOLAR.tar.gz" &> /dev/null
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENSCHOLAR" ] ; then
       mv $_REAL_PRNAME-$_OPENSCHOLAR $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -2016,10 +2016,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal7_core
     fi
     curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_PANOPOLY-core.tar.gz" | tar -xzf -
-    nocore_d7_dist_clean
     if [ -d "$_CORE/$_REAL_PRNAME-$_PANOPOLY" ] ; then
       mv $_REAL_PRNAME-$_PANOPOLY $_SHRD_PLNAME
     fi
+    nocore_d7_dist_clean
     remove_default_core_seven_profiles
     if [ $_PANOPOLY = "7.x-1.0-rc4a" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
