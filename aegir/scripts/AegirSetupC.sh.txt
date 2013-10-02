@@ -197,138 +197,25 @@ get_distro_ext () {
 }
 #
 # Create standard directories.
-create_dirs () {
-  cd $_CORE_DISTRO
-  mkdir -p ./sites/default/files
-  mkdir -p ./cache/{normal,perm}
-  chmod -R 777 ./cache &> /dev/null
-  if [ -e "./sites/default/default.settings.php" ] ; then
-    cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
-  fi
-  chmod a+rw ./sites/default/settings.php &> /dev/null
-  chmod a+rwx ./sites/default/files &> /dev/null
-  mkdir -p ./sites/all/modules
-  mkdir -p ./sites/all/libraries
-  mkdir -p ./sites/all/themes
+fix_dirs_files () {
+  rm -f ./*.txt
   rm -f ./modules/*.txt
   rm -f ./themes/*.txt
-  rm -f ./sites/all/*.txt
-  echo empty > ./sites/all/EMPTY.txt
-  echo empty > ./sites/all/modules/EMPTY.txt
-  echo empty > ./sites/all/libraries/EMPTY.txt
-  echo empty > ./sites/all/themes/EMPTY.txt
-  chmod 0751 ./sites &> /dev/null
-  chmod 0751 ./sites/all &> /dev/null
-  chmod 02775 ./sites/all/{modules,libraries,themes} &> /dev/null
-  rm -f .htaccess
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./
-  mv -f get.htaccess.txt .htaccess &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
-}
-#
-# Create standard symlinks.
-create_symlinks () {
-if [ ! -L "includes" ] ; then
-  ln -sf $_CORE_DISTRO/boost_stats.php boost_stats.php &> /dev/null
-  ln -sf $_CORE_DISTRO/cron.php cron.php &> /dev/null
-  ln -sf $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
-  ln -sf $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
-  ln -sf $_CORE_DISTRO/includes includes &> /dev/null
-  ln -sf $_CORE_DISTRO/index.php index.php &> /dev/null
-  ln -sf $_CORE_DISTRO/install.php install.php &> /dev/null
-  ln -sf $_CORE_DISTRO/misc misc &> /dev/null
-  ln -sf $_CORE_DISTRO/modules modules &> /dev/null
-  ln -sf $_CORE_DISTRO/profiles profiles &> /dev/null
-  ln -sf $_CORE_DISTRO/themes themes &> /dev/null
-  ln -sf $_CORE_DISTRO/update.php update.php &> /dev/null
-  ln -sf $_CORE_DISTRO/xmlrpc.php xmlrpc.php &> /dev/null
-  cp -af $_CORE_DISTRO/cache ./
-  cp -af $_CORE_DISTRO/sites ./
-fi
-}
-#
-# Create D7 symlinks.
-create_d7_symlinks () {
-if [ ! -L "web.config" ] ; then
-  ln -sf $_CORE_DISTRO/authorize.php authorize.php &> /dev/null
-  ln -sf $_CORE_DISTRO/web.config web.config &> /dev/null
-  rm -f boost_stats.php
-fi
-}
-#
-# Patch D7 core.
-patch_d7_core () {
-cd $_CORE_DISTRO
-if [ ! -e "taxonomy-7.7.patch" ] ; then
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.12.patch ./
-  patch -p0 < taxonomy-7.12.patch &> /dev/null
-fi
-}
-#
-# Themes for D6.
-themes_for_d6 () {
-cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/themes
-wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta5.tar.gz
-wget -q -U iCab http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-cd /data/src/$_THIS_CORE
-}
-#
-# Themes for D7.
-themes_for_d7 () {
-cd $_CORE_DISTRO/themes
-wget -q -U iCab http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta9.tar.gz
-wget -q -U iCab http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
-cd $_CORE_DISTRO
-}
-#
-# Prepare Pressflow core.
-prepare_pressflow_core () {
-  mkdir -p /data/src/$_THIS_CORE
-  chmod 0700 /data/src/$_THIS_CORE &> /dev/null
-  cd /data/src/$_THIS_CORE
-  rm -f -r /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6
-  wget -q -U iCab http://files.aegir.cc/dev/pressflow-$_SMALLCORE6.tar.gz
-  tar -xzf pressflow-$_SMALLCORE6.tar.gz
-  rm -f pressflow-$_SMALLCORE6.tar.gz
-  cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/
-  rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/*.txt
-  rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/*.txt
-  rm -f -r /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/cookie_cache_bypass
-  rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/themes/*.txt
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch ./
-  patch -p0 < taxonomy-6.26.patch &> /dev/null
-  rm -f taxonomy-6.20.patch
-  rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/modules/taxonomy/taxonomy.module.orig
-  themes_for_d6
-  rm -f /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/sites/all/*.txt
-  echo abc > $_THIS_CTRL
-  cd /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/
-}
-#
-# Create standard D8 directories.
-create_d8_dirs () {
+  rm -f -r ./modules/cookie_cache_bypass
   mkdir -p ./sites/default/files
   mkdir -p ./cache/{normal,perm}
-  chmod -R 777 ./cache &> /dev/null
+  chmod -R 777 ./cache
   if [ -e "./sites/default/default.settings.php" ] ; then
-    cp -af ./sites/default/default.settings.php ./sites/default/settings.php &> /dev/null
+    cp -af ./sites/default/default.settings.php ./sites/default/settings.php
   fi
-  chmod a+rw ./sites/default/settings.php &> /dev/null
-  chmod a+rwx ./sites/default/files &> /dev/null
+  chmod a+rw ./sites/default/settings.php
+  chmod a+rwx ./sites/default/files
   mkdir -p ./profiles
-  mkdir -p ./sites/all/modules
-  mkdir -p ./sites/all/libraries
-  mkdir -p ./sites/all/themes
+  mkdir -p ./sites/all/{modules,libraries,themes}
   rm -f ./core/modules/*.txt
   rm -f ./core/themes/*.txt
+  rm -f ./modules/*.txt
+  rm -f ./themes/*.txt
   rm -f ./sites/all/*.txt
   echo empty > ./profiles/EMPTY.txt
   echo empty > ./sites/all/EMPTY.txt
@@ -336,88 +223,278 @@ create_d8_dirs () {
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
   chmod 02775 ./profiles &> /dev/null
-  chmod 0751 ./sites &> /dev/null
-  chmod 0751 ./sites/all &> /dev/null
-  chmod 02775 ./sites/all/{modules,libraries,themes} &> /dev/null
+  chmod 0751 ./sites
+  chmod 0751 ./sites/all
+  chmod 02775 ./sites/all/{modules,libraries,themes}
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/get.htaccess.txt ./.htaccess
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/crossdomain.xml ./
 }
 #
-# Create standard D8 symlinks.
+# Create D6 symlinks.
+create_d6_symlinks () {
+  if [ ! -L "includes" ] ; then
+    ln -sf $_D6_CORE_DIR/.htaccess .htaccess
+    ln -sf $_D6_CORE_DIR/boost_stats.php boost_stats.php
+    ln -sf $_D6_CORE_DIR/cron.php cron.php
+    ln -sf $_D6_CORE_DIR/crossdomain.xml crossdomain.xml
+    ln -sf $_D6_CORE_DIR/includes includes
+    ln -sf $_D6_CORE_DIR/index.php index.php
+    ln -sf $_D6_CORE_DIR/install.php install.php
+    ln -sf $_D6_CORE_DIR/misc misc
+    ln -sf $_D6_CORE_DIR/modules modules
+    ln -sf $_D6_CORE_DIR/themes themes
+    ln -sf $_D6_CORE_DIR/update.php update.php
+    ln -sf $_D6_CORE_DIR/xmlrpc.php xmlrpc.php
+    cp -af $_D6_CORE_DIR/sites ./
+  fi
+  if [ ! -L "$_OCTO_PLPATH/profiles" ] && [ -d "$_SHRD_PLPATH/profiles" ] ; then
+    rm -f -r $_OCTO_PLPATH/profiles
+    ln -s $_SHRD_PLPATH/profiles $_OCTO_PLPATH/profiles
+  fi
+}
+#
+# Create D7 symlinks.
+create_d7_symlinks () {
+  if [ ! -L "web.config" ] ; then
+    ln -sf $_D7_CORE_DIR/.htaccess .htaccess
+    ln -sf $_D7_CORE_DIR/authorize.php authorize.php
+    ln -sf $_D7_CORE_DIR/cron.php cron.php
+    ln -sf $_D7_CORE_DIR/crossdomain.xml crossdomain.xml
+    ln -sf $_D7_CORE_DIR/includes includes
+    ln -sf $_D7_CORE_DIR/index.php index.php
+    ln -sf $_D7_CORE_DIR/install.php install.php
+    ln -sf $_D7_CORE_DIR/misc misc
+    ln -sf $_D7_CORE_DIR/modules modules
+    ln -sf $_D7_CORE_DIR/profiles profiles
+    ln -sf $_D7_CORE_DIR/themes themes
+    ln -sf $_D7_CORE_DIR/update.php update.php
+    ln -sf $_D7_CORE_DIR/web.config web.config
+    ln -sf $_D7_CORE_DIR/xmlrpc.php xmlrpc.php
+    cp -af $_D7_CORE_DIR/sites ./
+  fi
+  if [ ! -L "$_OCTO_PLPATH/profiles" ] && [ -d "$_SHRD_PLPATH/profiles" ] ; then
+    rm -f -r $_OCTO_PLPATH/profiles
+    ln -s $_SHRD_PLPATH/profiles $_OCTO_PLPATH/profiles
+  fi
+}
+#
+# Create D8 symlinks.
 create_d8_symlinks () {
-if [ ! -L "core" ] ; then
-  ln -sf $_CORE_DISTRO/core core &> /dev/null
-  ln -sf $_CORE_DISTRO/crossdomain.xml crossdomain.xml &> /dev/null
-  ln -sf $_CORE_DISTRO/.htaccess .htaccess &> /dev/null
-  ln -sf $_CORE_DISTRO/index.php index.php &> /dev/null
-  ln -sf $_CORE_DISTRO/web.config web.config &> /dev/null
-  cp -af $_CORE_DISTRO/cache ./
-  cp -af $_CORE_DISTRO/sites ./
-  cp -af $_CORE_DISTRO/profiles ./
-fi
+  if [ ! -L "core" ] ; then
+    ln -sf $_D8_CORE_DIR/.htaccess .htaccess
+    ln -sf $_D8_CORE_DIR/core core
+    ln -sf $_D8_CORE_DIR/crossdomain.xml crossdomain.xml
+    ln -sf $_D8_CORE_DIR/index.php index.php
+    ln -sf $_D8_CORE_DIR/profiles profiles
+    ln -sf $_D8_CORE_DIR/web.config web.config
+    cp -af $_D8_CORE_DIR/sites ./
+  fi
+  if [ ! -L "$_OCTO_PLPATH/profiles" ] && [ -d "$_SHRD_PLPATH/profiles" ] ; then
+    rm -f -r $_OCTO_PLPATH/profiles
+    ln -s $_SHRD_PLPATH/profiles $_OCTO_PLPATH/profiles
+  fi
 }
 #
-# Replace D6 core.
-replace_drupal6_core () {
-  cp -af /data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/* $_CORE_DISTRO/ &> /dev/null
-  rm -f -r $_CORE_DISTRO/modules/cookie_cache_bypass
-  rm -f $_CORE_DISTRO/*.txt
-  cd $_CORE_DISTRO
+# Rename D7 profiles.
+rename_drupal7_profiles () {
+  for Files in `find ./profiles -type f`
+  do
+    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
+    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
+  done
+  sed -i "s/Vanilla Minimal/Vanilla Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
+  sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
+  rm -f -r ./profiles/testing
 }
 #
-# Enable D6 contrib.
-enable_drupal6_contrib () {
-  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
+# Rename D8 profiles.
+rename_drupal8_profiles () {
+  for Files in `find ./core/profiles -type f`
+  do
+    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
+    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
+  done
+  sed -i "s/Vanilla Minimal/Vanilla Minimal\nold_short_name = testing/g" ./core/profiles/minimal/minimal.info
+  sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" ./core/profiles/standard/standard.info
+  rm -f -r ./core/profiles/testing
+}
+#
+# Prepare D6 core.
+prepare_drupal6_core () {
+  if [ ! -e "$_D6_CORE_DIR" ] ; then
+    mkdir -p /data/all/000/core
+    rm -f -r $_D6_CORE_DIR
+    cd /data/all/000/core
+    curl -s -A iCab "http://files.aegir.cc/dev/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
+    cd $_D6_CORE_DIR/
+    fix_dirs_files
+    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch &> /dev/null
+    rm -f $_D6_CORE_DIR/modules/taxonomy/taxonomy.module.orig
+    rm -f modules/o_contrib
+    ln -s $_CORE/o_contrib modules/o_contrib
+    cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
+    cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
+    cd $_D6_CORE_DIR/themes
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta5.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz" | tar -xzf -
+    rm -f $_D6_CORE_DIR/sites/all/*.txt
+  fi
+}
+#
+# Prepare D7 core.
+prepare_drupal7_core () {
+  if [ ! -e "$_D7_CORE_DIR" ] ; then
+    mkdir -p /data/all/000/core
+    rm -f -r $_D7_CORE_DIR
+    cd /data/all/000/core
+    curl -s -A iCab "http://files.aegir.cc/dev/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
+    cd $_D7_CORE_DIR/
+    fix_dirs_files
+    rename_drupal7_profiles
+    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-7.12.patch &> /dev/null
+    rm -f $_D7_CORE_DIR/modules/taxonomy/taxonomy.module.orig
+    rm -f modules/o_contrib_seven
+    ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+    cd $_D7_CORE_DIR/themes
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta9.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz" | tar -xzf -
+  fi
+}
+#
+# Prepare D8 core.
+prepare_drupal8_core () {
+  if [ ! -e "$_D8_CORE_DIR" ] ; then
+    mkdir -p /data/all/000/core
+    rm -f -r $_D8_CORE_DIR
+    cd /data/all/000/core
+    curl -s -A iCab "http://files.aegir.cc/dev/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
+    cd $_D8_CORE_DIR/
+    fix_dirs_files
+    rename_drupal8_profiles
+    rm -f modules/o_contrib_eight
+    ln -s $_CORE/o_contrib_eight modules/o_contrib_eight
+  fi
+}
+#
+# Remove D6 core from distro directory.
+nocore_d6_dist_clean () {
+  rm -f $_SHRD_PLPATH/.gitignore
+  rm -f $_SHRD_PLPATH/.htaccess
+  rm -f $_SHRD_PLPATH/*.php
+  rm -f $_SHRD_PLPATH/*.txt
+  rm -f $_SHRD_PLPATH/*.xml
+  rm -f -r $_SHRD_PLPATH/cache
+  rm -f -r $_SHRD_PLPATH/includes
+  rm -f -r $_SHRD_PLPATH/misc
+  rm -f -r $_SHRD_PLPATH/modules
+  rm -f -r $_SHRD_PLPATH/sites
+  rm -f -r $_SHRD_PLPATH/scripts
+  rm -f -r $_SHRD_PLPATH/themes
+  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "$_D6_CORE_DIR/profiles" ] ; then
+    rm -f -r $_SHRD_PLPATH/profiles
+    cp -af $_D6_CORE_DIR/profiles $_SHRD_PLPATH/
+  fi
+  sed -i "s/'dblog'/'robotstxt', 'path_alias_cache'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+}
+#
+# Remove D7 core from distro directory.
+nocore_d7_dist_clean () {
+  rm -f $_SHRD_PLPATH/.gitignore
+  rm -f $_SHRD_PLPATH/.htaccess
+  rm -f $_SHRD_PLPATH/*.php
+  rm -f $_SHRD_PLPATH/*.txt
+  rm -f $_SHRD_PLPATH/*.xml
+  rm -f $_SHRD_PLPATH/web.config
+  rm -f -r $_SHRD_PLPATH/cache
+  rm -f -r $_SHRD_PLPATH/includes
+  rm -f -r $_SHRD_PLPATH/misc
+  rm -f -r $_SHRD_PLPATH/modules
+  rm -f -r $_SHRD_PLPATH/sites
+  rm -f -r $_SHRD_PLPATH/scripts
+  rm -f -r $_SHRD_PLPATH/themes
+  _REVISIONS="10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26"
+  for i in $_REVISIONS; do
+    if [ -d "$_CORE/drupal-7.$i" ] && [ ! -e "$_SHRD_PLPATH" ] ; then
+      mv $_CORE/drupal-7.$i $_SHRD_PLPATH
+    fi
+  done
+  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "$_D7_CORE_DIR/profiles" ] ; then
+    rm -f -r $_SHRD_PLPATH/profiles
+    cp -af $_D7_CORE_DIR/profiles $_SHRD_PLPATH/
+  fi
+}
+#
+# Remove D8 core from distro directory.
+nocore_d8_dist_clean () {
+  rm -f $_SHRD_PLPATH/.gitignore
+  rm -f $_SHRD_PLPATH/.htaccess
+  rm -f $_SHRD_PLPATH/*.php
+  rm -f $_SHRD_PLPATH/*.txt
+  rm -f $_SHRD_PLPATH/*.xml
+  rm -f $_SHRD_PLPATH/web.config
+  rm -f -r $_SHRD_PLPATH/cache
+  rm -f -r $_SHRD_PLPATH/core
+  rm -f -r $_SHRD_PLPATH/includes
+  rm -f -r $_SHRD_PLPATH/misc
+  rm -f -r $_SHRD_PLPATH/modules
+  rm -f -r $_SHRD_PLPATH/scripts
+  rm -f -r $_SHRD_PLPATH/sites
+  rm -f -r $_SHRD_PLPATH/themes
+  if [ ! -d "$_SHRD_PLPATH/profiles" ] && [ -d "$_D8_CORE_DIR/profiles" ] ; then
+    rm -f -r $_SHRD_PLPATH/profiles
+    cp -af $_D8_CORE_DIR/profiles $_SHRD_PLPATH/
+  fi
 }
 #
 # Enable D6 admin.
 enable_drupal6_admin () {
-  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
+  sed -i "s/'path_alias_cache'/'path_alias_cache', 'admin'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+}
+#
+# Remove default core seven profiles.
+remove_default_core_seven_profiles () {
+  rm -f -r $_SHRD_PLPATH/profiles/minimal
+  rm -f -r $_SHRD_PLPATH/profiles/standard
+  rm -f -r $_SHRD_PLPATH/profiles/testing
+}
+#
+# Add old short name seven.
+add_old_short_name_seven () {
+  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
+  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_SHRD_PLPATH/profiles/standard/standard.info &> /dev/null
 }
 #
 # Init this distro root.
 init_this_distro_root () {
-  mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-  cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-  create_symlinks
+  mkdir -p $_OCTO_PLPATH
+  cd $_OCTO_PLPATH
+  if [[ "$_SHRD_PLNAME" =~ "-$_SMALLCORE6" ]] ; then
+    create_d6_symlinks
+  elif [[ "$_SHRD_PLNAME" =~ "-$_SMALLCORE7" ]] ; then
+    create_d7_symlinks
+  else
+    create_d8_symlinks
+  fi
 }
 #
 # Add old short name acquia.
 add_old_short_name_acquia () {
-  sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
-}
-#
-# Init distro seven root.
-init_core_distro_seven_root () {
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f modules/o_contrib_seven
-  ln -sf $_CORE/o_contrib_seven modules/o_contrib_seven
-}
-#
-# Init distro six root.
-init_core_distro_six_root () {
-  cd $_CORE_DISTRO
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f modules/o_contrib
-  ln -sf $_CORE/o_contrib modules/o_contrib
-  cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
-  cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
+  sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
 }
 #
 # Upgrade contrib less.
 upgrade_contrib_less () {
   rm -f -r {ctools,rules,views}
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
   cd views
   # http://drupal.org/node/1766338#comment-6445882
-  curl -s -O -A iCab https://drupal.org/files//views-revert-broken-filter-or-groups-1766338-7.patch
+  curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   if [ -e "../apps" ] ; then
     cd ../apps
@@ -430,33 +507,33 @@ upgrade_contrib_less () {
 # Upgrade contrib more.
 upgrade_contrib_more () {
   rm -f -r {apps,calendar,ctools,date,email,entity,facetapi,features,fontyourface,libraries,module_filter,panels_breadcrumbs,pathauto,rules,search_api,simple_gmap,taxonomy_menu,token,views,views_bulk_operations}
-  wget -q -U iCab http://ftp.drupal.org/files/projects/apps-7.x-1.0-beta7.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/calendar-7.x-3.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/date-7.x-2.6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/email-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/facetapi-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/features-7.x-2.0-rc3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fontyourface-7.x-2.7.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/module_filter-7.x-1.7.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/panels_breadcrumbs-7.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/search_api-7.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/simple_gmap-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_menu-7.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_bulk_operations-7.x-3.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/apps-7.x-1.0-beta7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/calendar-7.x-3.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/date-7.x-2.6.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/email-7.x-1.2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/facetapi-7.x-1.2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/features-7.x-2.0-rc3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/fontyourface-7.x-2.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/module_filter-7.x-1.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/panels_breadcrumbs-7.x-2.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/pathauto-7.x-1.2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/search_api-7.x-1.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/simple_gmap-7.x-1.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_menu-7.x-1.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_bulk_operations-7.x-3.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
   cd views
   # http://drupal.org/node/1766338#comment-6445882
-  curl -s -O -A iCab https://drupal.org/files//views-revert-broken-filter-or-groups-1766338-7.patch
+  curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   cd ../apps
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
@@ -467,21 +544,21 @@ upgrade_contrib_more () {
 # Upgrade contrib some.
 upgrade_contrib_some () {
   rm -f -r {breakpoints,libraries,link,linkit,navbar,rules,token,views}
-  wget -q -U iCab http://ftp.drupal.org/files/projects/breakpoints-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/link-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/linkit-7.x-2.6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/navbar-7.x-1.0-alpha5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/breakpoints-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/link-7.x-1.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/linkit-7.x-2.6.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/navbar-7.x-1.0-alpha5.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
   cd views
   # http://drupal.org/node/1766338#comment-6445882
-  curl -s -O -A iCab https://drupal.org/files//views-revert-broken-filter-or-groups-1766338-7.patch
+  curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
   patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   if [ -e "../apps" ] ; then
     cd ../apps
@@ -491,74 +568,16 @@ upgrade_contrib_some () {
   cd ../
 }
 #
-# Remove default core seven profiles.
-remove_default_core_seven_profiles () {
-  rm -f -r $_CORE_DISTRO/profiles/minimal
-  rm -f -r $_CORE_DISTRO/profiles/standard
-  rm -f -r $_CORE_DISTRO/profiles/testing
-}
-#
-# Replace D7 core.
-replace_drupal7_core () {
-  if [ ! -d "$_CORE/$_DRUPAL7" ] ; then
-    cd $_CORE
-    wget -q -U iCab http://files.aegir.cc/dev/$_DRUPAL7.tar.gz
-    tar -xzf $_CORE/$_DRUPAL7.tar.gz
-    rm -f $_CORE/$_DRUPAL7.tar.gz
-  fi
-  cp -af $_CORE/$_DRUPAL7/* $_CORE_DISTRO/ &> /dev/null
-}
-#
-# Rename D7 profiles.
-rename_drupal7_profiles () {
-  for Files in `find $_CORE_DISTRO/profiles -type f`
-  do
-    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
-    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
-  done
-}
-#
-# Rename D8 profiles.
-rename_drupal8_profiles () {
-  for Files in `find $_CORE_DISTRO/core/profiles -type f`
-  do
-    sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
-    sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
-  done
-}
-#
-# Rename D7 distro directory.
-rename_drupal7_distro_directory () {
-  _REVISIONS="10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26"
-  for i in $_REVISIONS; do
-    if [ -d "$_CORE/drupal-7.$i" ] && [ ! -e "$_CORE_DISTRO" ] ; then
-      mv $_CORE/drupal-7.$i $_CORE_DISTRO
-    fi
-  done
-}
-#
-# Add old short name seven.
-add_old_short_name_seven () {
-  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" $_CORE_DISTRO/profiles/minimal/minimal.info &> /dev/null
-  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
-}
-#
 # Create D7 basic platform.
 create_drupal7_basic () {
-  if [ ! -d "$_CORE_DISTRO" ] ; then
-    mkdir -p $_CORE_DISTRO
-    replace_drupal7_core
-    init_core_distro_seven_root
-    rename_drupal7_profiles
+  if [ ! -d "$_SHRD_PLPATH" ] ; then
+    mkdir -p $_SHRD_PLPATH
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
     add_old_short_name_seven
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   fi
   init_this_distro_root
-  create_d7_symlinks
 }
 #
 # Create civicrm symlinks.
@@ -567,13 +586,13 @@ create_civicrm_symlinks () {
     rm -f -r sites/all/modules/civicrm
   fi
   if [ ! -L "sites/all/modules/civicrm" ] ; then
-    ln -sf $_CORE_DISTRO/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
+    ln -sf $_SHRD_PLPATH/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
   fi
   if [ -d "sites/all/modules/contrib" ] ; then
     rm -f -r sites/all/modules/contrib
   fi
   if [ ! -L "sites/all/modules/contrib" ] ; then
-    ln -sf $_CORE_DISTRO/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
+    ln -sf $_SHRD_PLPATH/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
   fi
 }
 
@@ -616,7 +635,9 @@ else
   _THIS_CORE="$_ALL_DISTRO"
   msg "$_STATUS C: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
 fi
-_THIS_CTRL="/data/src/$_THIS_CORE/pressflow-$_SMALLCORE6/misc/ctrl-$_INSTALLER_VERSION"
+_D6_CORE_DIR="/data/all/000/core/pressflow-$_SMALLCORE6"
+_D7_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE7"
+_D8_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE8"
 
 
 ###---### Distributions full names.
@@ -632,7 +653,7 @@ _F_D7COMMONS="Commons 3.4-rc1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
-_F_DRUPAL8="Drupal $_DRUPAL8 P.$_THIS_CORE"
+_F_DRUPAL8="Drupal $_SMALLCORE8 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
@@ -648,7 +669,6 @@ _F_PANOPOLY="Panopoly 1.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart $_UBERCART $_SMALLCORE6 P.$_THIS_CORE"
-_F_VIDEOLA="Videola 1.0-a3 $_SMALLCORE6 P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
 _F_DRUPAL6_S="Drupal $_SMALLCORE6 S.$_THIS_CORE"
@@ -663,15 +683,6 @@ _F_DRUPAL7_P="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 mkdir -p $_ROOT/distro/$_THIS_CORE
 chmod 0711 $_ROOT/distro &> /dev/null
 chmod 0711 $_ROOT/distro/$_THIS_CORE &> /dev/null
-
-
-###---### Prepare Pressflow core.
-#
-if [ $_STATUS = "INIT" ] && [ ! -e "$_THIS_CTRL" ] ; then
-  msg "$_STATUS C: Preparing Pressflow +Extra $_SMALLCORE6 core..."
-  mrun "sleep 1"
-  prepare_pressflow_core
-fi
 
 
 ###---###
@@ -693,34 +704,32 @@ fi
 acquia_install () {
 ###---### Acquia
 #
-_THIS_PRNAME="acquia"
-_THIS_DISTRO="$_THIS_PRNAME-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="acquia"
+_SHRD_PLNAME="$_REAL_PRNAME-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AQ6 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_ACQUIA - http://bit.ly/acquiadrupal" ; then
 true
 msg "DISTRO: $_F_ACQUIA installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    get_distro_ext "vanilla-$_THIS_DISTRO.tar.gz" &> /dev/null
-    replace_drupal6_core
-    enable_drupal6_contrib
-    sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
-    rm -f -r $_CORE_DISTRO/profiles/default
-    create_dirs
+    get_distro_ext "vanilla-$_SHRD_PLNAME.tar.gz" &> /dev/null
+    nocore_d6_dist_clean
+    sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+    rm -f -r $_SHRD_PLPATH/profiles/default
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_ACQUIA installation completed"
@@ -737,41 +746,41 @@ fi
 civicrm_m6_install () {
 ###---### CiviCRM Modern D6
 #
-_THIS_PRNAME="default"
-_THIS_DISTRO="civicrm-$_CIVICRM_M6-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="default"
+_SHRD_PLNAME="civicrm-$_CIVICRM_M6-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CM6 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM_M6 - http://civicrm.org" ; then
 true
 msg "DISTRO: $_F_CIVICRM_M6 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.1-d6.make ./
-    $_DRUSHCMD make civicrm-4.1-d6.make $_THIS_DISTRO &> /dev/null
+    $_DRUSHCMD make civicrm-4.1-d6.make $_SHRD_PLNAME &> /dev/null
     rm -f civicrm-4.1-d6.make
-    replace_drupal6_core
-    enable_drupal6_contrib
-    add_old_short_name_acquia
-    _CIVI_ENGAGE="$_CORE_DISTRO/sites/all/modules/civicrm/drupal/modules/civicrm_engage"
+    _CIVI_ENGAGE="$_SHRD_PLPATH/sites/all/modules/civicrm/drupal/modules/civicrm_engage"
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/civicrm_engage.install $_CIVI_ENGAGE/civicrm_engage.install &> /dev/null
-    create_dirs
-    if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
-      mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrm_l10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
+    if [ ! -d "$_SHRD_PLPATH/sites/all/modules/civicrm/l10n" ] && [ -d "$_SHRD_PLPATH/sites/all/modules/civicrm/civicrm_l10n/l10n" ] ; then
+      mv $_SHRD_PLPATH/sites/all/modules/civicrm/civicrm_l10n/l10n $_SHRD_PLPATH/sites/all/modules/civicrm/ &> /dev/null
     fi
+    mkdir -p $_SHRD_PRPATH/modules
+    mv $_SHRD_PLPATH/sites/all/modules/civicrm $_SHRD_PRPATH/modules/ &> /dev/null
+    nocore_d6_dist_clean
+    add_old_short_name_acquia
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 create_civicrm_symlinks
@@ -790,38 +799,38 @@ fi
 civicrm_m7_install () {
 ###---### CiviCRM Modern D7
 #
-_THIS_PRNAME="standard"
-_THIS_DISTRO="civicrm-$_CIVICRM_M7-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="standard"
+_SHRD_PLNAME="civicrm-$_CIVICRM_M7-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CM7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_CIVICRM_M7 - http://civicrm.org" ; then
 true
 msg "DISTRO: $_F_CIVICRM_M7 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.3-d7.make ./
-    $_DRUSHCMD make civicrm-4.3-d7.make $_THIS_DISTRO &> /dev/null
+    $_DRUSHCMD make civicrm-4.3-d7.make $_SHRD_PLNAME &> /dev/null
     rm -f civicrm-4.3-d7.make
-    rename_drupal7_profiles
-    create_dirs
-    themes_for_d7
-    patch_d7_core
-    if [ ! -d "$_CORE_DISTRO/sites/all/modules/civicrm/l10n" ] && [ -d "$_CORE_DISTRO/sites/all/modules/civicrm/civicrml10n/l10n" ] ; then
-      mv $_CORE_DISTRO/sites/all/modules/civicrm/civicrml10n/l10n $_CORE_DISTRO/sites/all/modules/civicrm/ &> /dev/null
+    if [ ! -d "$_SHRD_PLPATH/sites/all/modules/civicrm/l10n" ] && [ -d "$_SHRD_PLPATH/sites/all/modules/civicrm/civicrml10n/l10n" ] ; then
+      mv $_SHRD_PLPATH/sites/all/modules/civicrm/civicrml10n/l10n $_SHRD_PLPATH/sites/all/modules/civicrm/ &> /dev/null
     fi
+    mkdir -p $_SHRD_PRPATH/modules
+    mv $_SHRD_PLPATH/sites/all/modules/civicrm $_SHRD_PRPATH/modules/ &> /dev/null
+    rm -f -r $_SHRD_PLPATH/profiles/testing
+    rm -f -r $_SHRD_PLPATH/profiles/minimal
+    nocore_d7_dist_clean
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM_M7 installation completed"
 mrun "sleep 1"
@@ -838,52 +847,50 @@ fi
 cod_install () {
 ###---### Conference Organizing Distribution
 #
-_THIS_PRNAME="cod"
-_THIS_DISTRO="$_THIS_PRNAME-$_COD-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="cod"
+_SHRD_PLNAME="$_REAL_PRNAME-$_COD-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
-if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui" ] ; then
+if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/jquery.ui" ] ; then
 echo " "
 if prompt_yes_no "$_F_COD - http://usecod.com" ; then
 true
 msg "DISTRO: $_F_COD installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    if [ -d "$_CORE/$_THIS_PRNAME-$_COD" ] ; then
-      mv $_CORE/$_THIS_PRNAME-$_COD $_CORE/$_THIS_PRNAME-$_COD-old
+    if [ -d "$_CORE/$_REAL_PRNAME-$_COD" ] ; then
+      mv $_CORE/$_REAL_PRNAME-$_COD $_CORE/$_REAL_PRNAME-$_COD-old
     fi
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COD-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_COD-core.tar.gz
-    rm -f $_THIS_PRNAME-$_COD-core.tar.gz
-    if [ -d "$_CORE/$_THIS_PRNAME" ] ; then
-      mv $_CORE/$_THIS_PRNAME $_CORE_DISTRO
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/$_REAL_PRNAME-$_COD-core.tar.gz
+    tar -xzf $_REAL_PRNAME-$_COD-core.tar.gz
+    rm -f $_REAL_PRNAME-$_COD-core.tar.gz
+    if [ -d "$_CORE/$_REAL_PRNAME" ] ; then
+      mv $_CORE/$_REAL_PRNAME $_SHRD_PLPATH
     else
-      mv $_CORE/$_THIS_PRNAME-$_COD $_CORE_DISTRO
+      mv $_CORE/$_REAL_PRNAME-$_COD $_SHRD_PLPATH
     fi
-    if [ -d "$_CORE/$_THIS_PRNAME-$_COD-old" ] ; then
-      mv $_CORE/$_THIS_PRNAME-$_COD-old $_CORE/$_THIS_PRNAME-$_COD
+    if [ -d "$_CORE/$_REAL_PRNAME-$_COD-old" ] ; then
+      mv $_CORE/$_REAL_PRNAME-$_COD-old $_CORE/$_REAL_PRNAME-$_COD
     fi
-    replace_drupal6_core
-    enable_drupal6_contrib
-    sed -i "s/Conference Organizing Distribution/Conference/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
-    rm -f -r $_CORE_DISTRO/profiles/default
-    create_dirs
+    nocore_d6_dist_clean
+    sed -i "s/Conference Organizing Distribution/Conference/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+    rm -f -r $_SHRD_PLPATH/profiles/default
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
-if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui" ] ; then
-  mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -sf $_CORE_DISTRO/profiles/$_THIS_PRNAME/modules/contrib/jquery_ui/jquery.ui $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/jquery.ui
+if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/jquery.ui" ] ; then
+  mkdir -p $_OCTO_PLPATH/sites/all/libraries
+  ln -sf $_SHRD_PLPATH/profiles/$_REAL_PRNAME/modules/contrib/jquery_ui/jquery.ui $_OCTO_PLPATH/sites/all/libraries/jquery.ui
 fi
 msg "DISTRO: $_F_COD installation completed"
 mrun "sleep 1"
@@ -899,53 +906,51 @@ fi
 commerce_7_1_install () {
 ###---### Commerce 7.x-1.x
 #
-_THIS_PRNAME="commerce_kickstart"
-_THIS_DISTRO="commerce-$_COMMERCE-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="commerce_kickstart"
+_SHRD_PLNAME="commerce-$_COMMERCE-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCE ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_COMMERCE - http://drupalcommerce.org" ; then
 true
 msg "DISTRO: $_F_COMMERCE installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COMMERCE-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
-      mv commerce-$_COMMERCE $_THIS_DISTRO
-    elif [ -d "$_CORE/$_THIS_PRNAME-$_COMMERCE" ] ; then
-      mv $_THIS_PRNAME-$_COMMERCE $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMERCE-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/commerce-$_COMMERCE" ] ; then
+      mv commerce-$_COMMERCE $_SHRD_PLNAME
+    elif [ -d "$_CORE/$_REAL_PRNAME-$_COMMERCE" ] ; then
+      mv $_REAL_PRNAME-$_COMMERCE $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    cd $_THIS_PRPATH
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
-    patch -p1 < $_THIS_PRNAME.patch &> /dev/null
+    cd $_SHRD_PRPATH
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch ./
+    patch -p1 < $_REAL_PRNAME.patch &> /dev/null
     if [ $_COMMERCE = "7.x-1.18" ] ; then
-      cd $_THIS_PRPATH/modules
+      cd $_SHRD_PRPATH/modules
       rm -f -r {addressfield,entity}
-      wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/addressfield-7.x-1.0-beta4.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/addressfield-7.x-1.0-beta4.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
     fi
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_COMMERCE installation completed"
 mrun "sleep 1"
 else
@@ -961,66 +966,64 @@ fi
 commerce_7_2_install () {
 ###---### Commerce 7.x-2.x
 #
-_THIS_PRNAME="commerce_kickstart"
-_THIS_DISTRO="commerce-$_COM_MERCE-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="commerce_kickstart"
+_SHRD_PLNAME="commerce-$_COM_MERCE-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CME ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_COM_MERCE - http://drupalcommerce.org" ; then
 true
 msg "DISTRO: $_F_COM_MERCE installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_COM_MERCE-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/commerce-$_COM_MERCE" ] ; then
-      mv commerce-$_COM_MERCE $_THIS_DISTRO
-    elif [ -d "$_CORE/$_THIS_PRNAME-$_COM_MERCE" ] ; then
-      mv $_THIS_PRNAME-$_COM_MERCE $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COM_MERCE-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/commerce-$_COM_MERCE" ] ; then
+      mv commerce-$_COM_MERCE $_SHRD_PLNAME
+    elif [ -d "$_CORE/$_REAL_PRNAME-$_COM_MERCE" ] ; then
+      mv $_REAL_PRNAME-$_COM_MERCE $_SHRD_PLNAME
+    fi
     if [ $_COM_MERCE = "7.x-2.5" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
+      cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {message_notify}
-      wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.4.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/message_notify-7.x-2.4.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
       upgrade_contrib_less
     elif [ $_COM_MERCE = "7.x-2.6" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
+      cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {message_notify}
-      wget -q -U iCab http://ftp.drupal.org/files/projects/message_notify-7.x-2.4.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/message_notify-7.x-2.4.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
       cd views
       # http://drupal.org/node/1766338#comment-6445882
-      curl -s -O -A iCab https://drupal.org/files//views-revert-broken-filter-or-groups-1766338-7.patch
+      curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
       patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
       cd ../
     fi
     remove_default_core_seven_profiles
-    cd $_THIS_PRPATH
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_PRNAME.patch ./
-    patch -p1 < $_THIS_PRNAME.patch &> /dev/null
-    create_dirs
-    themes_for_d7
-    patch_d7_core
+    cd $_SHRD_PRPATH
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch ./
+    patch -p1 < $_REAL_PRNAME.patch &> /dev/null
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_COM_MERCE installation completed"
 mrun "sleep 1"
 else
@@ -1036,52 +1039,50 @@ fi
 commons_6_install () {
 ###---### Commons 6.x
 #
-_THIS_PRNAME="drupal_commons"
-_THIS_DISTRO="commons-$_D6COMMONS-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="drupal_commons"
+_SHRD_PLNAME="commons-$_D6COMMONS-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ DCS ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_D6COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "DISTRO: $_F_D6COMMONS installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
     get_distro_ext "commons-$_D6COMMONS.tar.gz" &> /dev/null
     if [ -d "$_CORE/acquia_commons" ] ; then
-      mv $_CORE/acquia_commons $_CORE_DISTRO
+      mv $_CORE/acquia_commons $_SHRD_PLPATH
     elif [ -d "$_CORE/commons-$_D6COMMONS" ] ; then
-      mv $_CORE/commons-$_D6COMMONS $_CORE_DISTRO
+      mv $_CORE/commons-$_D6COMMONS $_SHRD_PLPATH
     else
-      mv $_CORE/commons $_CORE_DISTRO
+      mv $_CORE/commons $_SHRD_PLPATH
     fi
-    replace_drupal6_core
     if [ $_D6COMMONS = "6.x-2.13" ] ; then
-      cd $_THIS_PRPATH/modules/contrib/og
+      cd $_SHRD_PRPATH/modules/contrib/og
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
       patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
     fi
-    rm -f -r $_CORE_DISTRO/profiles/default
-    enable_drupal6_contrib
-    sed -i "s/'Commons'/'Commons 2'/g" $_THIS_PRPATH/$_THIS_PRNAME.profile &> /dev/null
-    create_dirs
+    rm -f -r $_SHRD_PLPATH/profiles/default
+    nocore_d6_dist_clean
+    sed -i "s/'Commons'/'Commons 2'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
-if [ ! -L "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3" ] ; then
-  mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries
-  ln -sf $_THIS_PRPATH/libraries/getid3 $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/sites/all/libraries/getid3
+if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/getid3" ] ; then
+  mkdir -p $_OCTO_PLPATH/sites/all/libraries
+  ln -sf $_SHRD_PRPATH/libraries/getid3 $_OCTO_PLPATH/sites/all/libraries/getid3
 fi
 msg "DISTRO: $_F_D6COMMONS installation completed"
 mrun "sleep 1"
@@ -1098,41 +1099,39 @@ fi
 commons_7_install () {
 ###---### Commons 7.x
 #
-_THIS_PRNAME="commons"
-_THIS_DISTRO="commons-$_D7COMMONS-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="commons"
+_SHRD_PLNAME="commons-$_D7COMMONS-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ CS7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_D7COMMONS - http://acquia.com/drupalcommons" ; then
 true
 msg "DISTRO: $_F_D7COMMONS installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_D7COMMONS-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_D7COMMONS" ] ; then
-      mv $_THIS_PRNAME-$_D7COMMONS $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_D7COMMONS-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_D7COMMONS" ] ; then
+      mv $_REAL_PRNAME-$_D7COMMONS $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    cd $_THIS_PRPATH
-    sed -i "s/name = Commons/name = Commons 3/g" $_THIS_PRPATH/$_THIS_PRNAME.info &> /dev/null
-    rm -f -r $_THIS_PRPATH/modules/contrib/entitycache
-    create_dirs
-    themes_for_d7
-    patch_d7_core
+    cd $_SHRD_PRPATH
+    sed -i "s/name = Commons/name = Commons 3/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
+    rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_D7COMMONS installation completed"
 mrun "sleep 1"
 else
@@ -1156,30 +1155,28 @@ true
 
 ###---### Drupal 6 Pressflow Development
 #
-_THIS_PRNAME="default"
-_THIS_DISTRO="pressflow-$_SMALLCORE6-dev"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="default"
+_SHRD_PLNAME="pressflow-$_SMALLCORE6-dev"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
 msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    mkdir -p $_CORE_DISTRO
-    replace_drupal6_core
-    enable_drupal6_contrib
+    mkdir -p $_SHRD_PLPATH
+    nocore_d6_dist_clean
     enable_drupal6_admin
     add_old_short_name_acquia
-    create_dirs
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_D installation completed"
@@ -1189,30 +1186,28 @@ fi
 
 ###---### Drupal 6 Pressflow Staging
 #
-_THIS_PRNAME="default"
-_THIS_DISTRO="pressflow-$_SMALLCORE6-stage"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="default"
+_SHRD_PLNAME="pressflow-$_SMALLCORE6-stage"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
 msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    mkdir -p $_CORE_DISTRO
-    replace_drupal6_core
-    enable_drupal6_contrib
+    mkdir -p $_SHRD_PLPATH
+    nocore_d6_dist_clean
     enable_drupal6_admin
     add_old_short_name_acquia
-    create_dirs
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_S installation completed"
@@ -1222,48 +1217,33 @@ fi
 
 ###---### Drupal 6 Pressflow Production
 #
-_THIS_PRNAME="default"
-_THIS_DISTRO="pressflow-$_SMALLCORE6-prod"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="default"
+_SHRD_PLNAME="pressflow-$_SMALLCORE6-prod"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
-if [ ! -d "$_CORE/pressflow" ] ; then
-  msg "DISTRO: $_F_DRUPAL6 installation in progress..."
-  mrun "sleep 1"
-  if [ ! -d "$_CORE_DISTRO" ] ; then
-    if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-      if [ ! -e "$_THIS_CTRL" ] ; then
-        prepare_pressflow_core
-      fi
-      cd $_CORE
-      mkdir -p $_CORE_DISTRO
-      replace_drupal6_core
-      enable_drupal6_contrib
-      enable_drupal6_admin
-      add_old_short_name_acquia
-      create_dirs
-    else
-      cd $_CORE
-      get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+msg "DISTRO: $_F_DRUPAL6 installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_SHRD_PLPATH" ] ; then
+  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
-    init_core_distro_six_root
+    cd $_CORE
+    mkdir -p $_SHRD_PLPATH
+    nocore_d6_dist_clean
+    enable_drupal6_admin
+    add_old_short_name_acquia
+  else
+    cd $_CORE
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-  cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-  create_symlinks
-  msg "DISTRO: $_F_DRUPAL6 installation completed"
-  mrun "sleep 1"
-elif [ -d "$_CORE/pressflow" ] ; then
-  echo " "
-  msg "DISTRO: $_F_DRUPAL6 installation in progress..."
-  mrun "sleep 1"
-  _CORE_DISTRO="$_CORE/pressflow"
-  mkdir -p $_ROOT/distro/$_THIS_CORE/pressflow
-  cd $_ROOT/distro/$_THIS_CORE/pressflow
-  create_symlinks
-  msg "DISTRO: $_F_DRUPAL6 installation completed"
-  mrun "sleep 1"
 fi
+init_this_distro_root
+msg "DISTRO: $_F_DRUPAL6 installation completed"
+mrun "sleep 1"
+echo " "
 fi
 
 else
@@ -1286,46 +1266,49 @@ true
 
 ###---### Drupal 7 Development
 #
-_THIS_PRNAME="standard"
-_THIS_DISTRO="$_DRUPAL7D"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="standard"
+_SHRD_PLNAME="$_DRUPAL7D"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] ; then
-msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
-mrun "sleep 1"
-create_drupal7_basic
-msg "DISTRO: $_F_DRUPAL7_D installation completed"
-mrun "sleep 1"
-echo " "
+  msg "DISTRO: $_F_DRUPAL7_D installation in progress..."
+  mrun "sleep 1"
+  create_drupal7_basic
+  msg "DISTRO: $_F_DRUPAL7_D installation completed"
+  mrun "sleep 1"
+  echo " "
 fi
 
 ###---### Drupal 7 Staging
 #
-_THIS_PRNAME="standard"
-_THIS_DISTRO="$_DRUPAL7S"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="standard"
+_SHRD_PLNAME="$_DRUPAL7S"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7S ]] ; then
-msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
-mrun "sleep 1"
-create_drupal7_basic
-msg "DISTRO: $_F_DRUPAL7_S installation completed"
-mrun "sleep 1"
-echo " "
+  msg "DISTRO: $_F_DRUPAL7_S installation in progress..."
+  mrun "sleep 1"
+  create_drupal7_basic
+  msg "DISTRO: $_F_DRUPAL7_S installation completed"
+  mrun "sleep 1"
+  echo " "
 fi
 
 ###---### Drupal 7 Production
 #
-_THIS_PRNAME="standard"
-_THIS_DISTRO="$_DRUPAL7P"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="standard"
+_SHRD_PLNAME="$_DRUPAL7P"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
-msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
-mrun "sleep 1"
-create_drupal7_basic
-msg "DISTRO: $_F_DRUPAL7_P installation completed"
-mrun "sleep 1"
+  msg "DISTRO: $_F_DRUPAL7_P installation in progress..."
+  mrun "sleep 1"
+  create_drupal7_basic
+  msg "DISTRO: $_F_DRUPAL7_P installation completed"
+  mrun "sleep 1"
 fi
 
 else
@@ -1340,32 +1323,26 @@ fi
 drupal8_install () {
 ###---### Drupal 8
 #
-_THIS_PRNAME="standard"
-_THIS_DISTRO="drupal-$_DRUPAL8"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="standard"
+_SHRD_PLNAME="drupal-$_SMALLCORE8"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8D ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL8 - http://drupal.org" ; then
 true
 msg "DISTRO: $_F_DRUPAL8 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
-  get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
-  rm -f -r $_CORE_DISTRO/.git
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f $_CORE_DISTRO/core/*.txt
-  cd $_CORE_DISTRO
-  rename_drupal8_profiles
-  create_d8_dirs
+  if [ ! -e "$_D8_CORE_DIR" ] ; then
+    prepare_drupal8_core
+  fi
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_d8_symlinks
-rm -f boost_stats.php
+init_this_distro_root
 msg "DISTRO: $_F_DRUPAL8 installation completed"
 mrun "sleep 1"
 else
@@ -1383,35 +1360,31 @@ drupal_edge_8_install () {
 #
 #_DRUPAL_EDGE_8="8.0-dev-$_TODAY"
 #
-_THIS_PRNAME="standard"
-_THIS_DISTRO="drupal-$_DRUPAL_EDGE_8"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="standard"
+_SHRD_PLNAME="drupal-$_DRUPAL_EDGE_8"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_D_8_ALLOW" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D8E ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_DRUPAL_EDGE_8 - http://drupal.org" ; then
 true
 msg "DISTRO: $_F_DRUPAL_EDGE_8 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
-  wget -q -U iCab http://ftp.drupal.org/files/projects/drupal-8.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/drupal-8.x-dev.tar.gz
   tar -xzf drupal-8.x-dev.tar.gz
   rm -f drupal-8.x-dev.tar.gz
-  mv drupal-8.x-dev $_THIS_DISTRO
-  rm -f -r $_CORE_DISTRO/.git
-  rm -f $_CORE_DISTRO/*.txt
-  rm -f $_CORE_DISTRO/core/*.txt
-  cd $_CORE_DISTRO
-  rename_drupal8_profiles
-  create_d8_dirs
+  mv drupal-8.x-dev $_SHRD_PLNAME
+  rm -f -r $_SHRD_PLPATH/.git
+  rm -f $_SHRD_PLPATH/*.txt
+  rm -f $_SHRD_PLPATH/core/*.txt
+  cd $_SHRD_PLPATH
 fi
-mkdir -p $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-cd $_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO
-create_d8_symlinks
-rm -f boost_stats.php
+init_this_distro_root
 msg "DISTRO: $_F_DRUPAL_EDGE_8 installation completed"
 mrun "sleep 1"
 else
@@ -1427,49 +1400,47 @@ fi
 fserver_install () {
 ###---### Feature Server Make
 #
-_THIS_PRNAME="feature_server"
-_THIS_DISTRO="fserver-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="feature_server"
+_SHRD_PLNAME="fserver-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ FSR ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_FSERVER - http://bit.ly/fservermore" ; then
 true
 msg "DISTRO: $_F_FSERVER installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
     if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
       _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
     else
       _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
     fi
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
     echo "api = 2" > fserver.make
     echo "core = 6.x" >> fserver.make
     echo "projects[drupal][type] = \"core\"" >> fserver.make
-    echo "projects[$_THIS_PRNAME][type] = \"profile\"" >> fserver.make
-    echo "projects[$_THIS_PRNAME][download][type] = \"git\"" >> fserver.make
-    echo "projects[$_THIS_PRNAME][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/$_THIS_PRNAME.git\"" >> fserver.make
-    $_DRUSHCMD make fserver.make $_THIS_DISTRO &> /dev/null
+    echo "projects[$_REAL_PRNAME][type] = \"profile\"" >> fserver.make
+    echo "projects[$_REAL_PRNAME][download][type] = \"git\"" >> fserver.make
+    echo "projects[$_REAL_PRNAME][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/$_REAL_PRNAME.git\"" >> fserver.make
+    $_DRUSHCMD make fserver.make $_SHRD_PLNAME &> /dev/null
     rm -f fserver.make
-    replace_drupal6_core
-    rm -f -r $_CORE_DISTRO/profiles/default
-    create_dirs
-    cd $_CORE_DISTRO/profiles/$_THIS_PRNAME/themes
+    rm -f -r $_SHRD_PLPATH/profiles/default
+    cd $_SHRD_PLPATH/profiles/$_REAL_PRNAME/themes
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
     patch -p0 <./singular.patch &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch ./
     patch -p0 <./singular.mft.patch &> /dev/null
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_FSERVER installation completed"
@@ -1486,59 +1457,57 @@ fi
 managingnews_install () {
 ###---### ManagingNews
 #
-_THIS_PRNAME="managingnews"
-_THIS_DISTRO="$_THIS_PRNAME-$_MANAGINGNEWS-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="managingnews"
+_SHRD_PLNAME="$_REAL_PRNAME-$_MANAGINGNEWS-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ MNS ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_MANAGINGNEWS - http://managingnews.com" ; then
 true
 msg "DISTRO: $_F_MANAGINGNEWS installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
     _MANAGINGNEWS_DL=1.2
-    if [ -d "$_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL" ] ; then
-      mv $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old
+    if [ -d "$_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL" ] ; then
+      mv $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old
     fi
-    get_distro_ext "$_THIS_PRNAME-$_MANAGINGNEWS_DL.tar.gz" &> /dev/null
-    mv $_THIS_PRNAME-$_MANAGINGNEWS_DL $_THIS_DISTRO
-    if [ -d "$_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
-      mv $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_THIS_PRNAME-$_MANAGINGNEWS_DL
+    get_distro_ext "$_REAL_PRNAME-$_MANAGINGNEWS_DL.tar.gz" &> /dev/null
+    mv $_REAL_PRNAME-$_MANAGINGNEWS_DL $_SHRD_PLNAME
+    if [ -d "$_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
+      mv $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL
     fi
-    replace_drupal6_core
-    cd $_THIS_PRPATH/modules/contrib
+    cd $_SHRD_PRPATH/modules/contrib
     rm -f -r context boxes data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views views_rss
-    $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib context-6.x-3.1 boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.10 features-6.x-1.2 feeds-6.x-1.0-beta13 imageapi-6.x-1.10 imagecache-6.x-2.x-dev libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.6 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
+    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/contrib context-6.x-3.1 boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.10 features-6.x-1.2 feeds-6.x-1.0-beta13 imageapi-6.x-1.10 imagecache-6.x-2.x-dev libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.6 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
     cd views
     # http://drupal.org/node/853864#comment-3898996
-    curl -s -O -A iCab https://drupal.org/files//issues/views-853864_2.patch
+    curl -s -O -A iCab https://drupal.org/files/issues/views-853864_2.patch
     patch -p0 < views-853864_2.patch &> /dev/null
     # http://drupal.org/node/402944#comment-5370400
-    curl -s -O -A iCab https://drupal.org/files//views-unpack_options-cache-6.2-51.patch
+    curl -s -O -A iCab https://drupal.org/files/views-unpack_options-cache-6.2-51.patch
     patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab https://drupal.org/files//issues/imagecache-1243258-5.patch
+    curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
-    cd $_THIS_PRPATH/themes
-    rm -f -r $_THIS_PRPATH/themes/{rubik,tao}
-    $_DRUSHCMD dl --destination=$_THIS_PRPATH/themes rubik-6.x-3.0-beta3 tao-6.x-3.3 -y &> /dev/null
-    enable_drupal6_contrib
+    cd $_SHRD_PRPATH/themes
+    rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
+    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/themes rubik-6.x-3.0-beta3 tao-6.x-3.3 -y &> /dev/null
+    nocore_d6_dist_clean
     enable_drupal6_admin
-    rm -f -r $_CORE_DISTRO/profiles/default
-    create_dirs
+    rm -f -r $_SHRD_PLPATH/profiles/default
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_MANAGINGNEWS installation completed"
@@ -1555,43 +1524,41 @@ fi
 nodestream7_install () {
 ###---### NodeStream7 Make
 #
-_THIS_PRNAME="nodestream"
-_THIS_DISTRO="$_THIS_PRNAME-$_NODESTREAM7-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="nodestream"
+_SHRD_PLNAME="$_REAL_PRNAME-$_NODESTREAM7-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ NS7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_NODESTREAM7 - http://nodestream.org" ; then
 true
 msg "DISTRO: $_F_NODESTREAM7 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_NODESTREAM7-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_NODESTREAM7" ] ; then
-      mv $_THIS_PRNAME-$_NODESTREAM7 $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_NODESTREAM7-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_NODESTREAM7" ] ; then
+      mv $_REAL_PRNAME-$_NODESTREAM7 $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    rm -f -r $_THIS_PRPATH/modules/contrib/speedy
+    rm -f -r $_SHRD_PRPATH/modules/contrib/speedy
     if [ $_NODESTREAM7 = "7.x-2.0-rc5" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
+      cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_NODESTREAM7 installation completed"
 mrun "sleep 1"
 else
@@ -1607,39 +1574,36 @@ fi
 openacademy_install () {
 ###---### Open Academy
 #
-_THIS_PRNAME="openacademy"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENACADEMY-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-_THIS_PLPATH="$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO"
+_REAL_PRNAME="openacademy"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENACADEMY-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAY ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENACADEMY - http://drupal.org/project/openacademy" ; then
 true
 msg "DISTRO: $_F_OPENACADEMY installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENACADEMY-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENACADEMY" ] ; then
-      mv $_THIS_PRNAME-$_OPENACADEMY $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENACADEMY-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENACADEMY" ] ; then
+      mv $_REAL_PRNAME-$_OPENACADEMY $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENACADEMY installation completed"
 mrun "sleep 1"
 else
@@ -1655,48 +1619,46 @@ fi
 openatrium6_install () {
 ###---### Open Atrium D6
 #
-_THIS_PRNAME="openatrium"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENATRIUM6-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="openatrium"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENATRIUM6-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAM ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENATRIUM6 - http://openatrium.com" ; then
 true
 msg "DISTRO: $_F_OPENATRIUM6 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM6-core.tar.gz
-    tar -xzf $_THIS_PRNAME-$_OPENATRIUM6-core.tar.gz
-    rm -f $_THIS_PRNAME-$_OPENATRIUM6-core.tar.gz
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENATRIUM6" ] ; then
-      mv $_THIS_PRNAME-$_OPENATRIUM6 $_THIS_DISTRO
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
+    tar -xzf $_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
+    rm -f $_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM6" ] ; then
+      mv $_REAL_PRNAME-$_OPENATRIUM6 $_SHRD_PLNAME
     fi
-    cd $_THIS_PRPATH/modules/contrib/imagecache
+    cd $_SHRD_PRPATH/modules/contrib/imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab https://drupal.org/files//issues/imagecache-1243258-5.patch
+    curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
-    replace_drupal6_core
-    enable_drupal6_contrib
-    rm -f -r $_CORE_DISTRO/profiles/default
-    cd $_THIS_PRPATH/modules/atrium_features/
+    nocore_d6_dist_clean
+    rm -f -r $_SHRD_PLPATH/profiles/default
+    cd $_SHRD_PRPATH/modules/atrium_features/
     git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
     rm -f -r atrium_folders/.git
-    $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
-    $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
-    $_DRUSHCMD dl --destination=$_THIS_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
-    create_dirs
+    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
+    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
+    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_OPENATRIUM6 installation completed"
@@ -1713,38 +1675,36 @@ fi
 openatrium7_install () {
 ###---### Open Atrium D7
 #
-_THIS_PRNAME="openatrium"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENATRIUM7-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="openatrium"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENATRIUM7-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OA7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENATRIUM7 - http://openatrium.com" ; then
 true
 msg "DISTRO: $_F_OPENATRIUM7 installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENATRIUM7" ] ; then
-      mv $_THIS_PRNAME-$_OPENATRIUM7 $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM7" ] ; then
+      mv $_REAL_PRNAME-$_OPENATRIUM7 $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENATRIUM7 installation completed"
 mrun "sleep 1"
 else
@@ -1760,42 +1720,40 @@ fi
 openchurch_install () {
 ###---### Open Church
 #
-_THIS_PRNAME="openchurch"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENCHURCH-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="openchurch"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENCHURCH-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OCH ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENCHURCH - http://openchurchsite.com" ; then
 true
 msg "DISTRO: $_F_OPENCHURCH installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENCHURCH-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENCHURCH" ] ; then
-      mv $_THIS_PRNAME-$_OPENCHURCH $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENCHURCH-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENCHURCH" ] ; then
+      mv $_REAL_PRNAME-$_OPENCHURCH $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
     if [ $_OPENCHURCH = "7.x-1.11-beta9" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
+      cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENCHURCH installation completed"
 mrun "sleep 1"
 else
@@ -1811,47 +1769,45 @@ fi
 opendeals_install () {
 ###---### Open Deals
 #
-_THIS_PRNAME="opendeals"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPEN_DEALS-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="opendeals"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPEN_DEALS-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ ODS ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENDEALS - http://opendealsapp.com" ; then
 true
 msg "DISTRO: $_F_OPENDEALS installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENDEALS-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENDEALS" ] ; then
-      mv $_THIS_PRNAME-$_OPENDEALS $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENDEALS-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENDEALS" ] ; then
+      mv $_REAL_PRNAME-$_OPENDEALS $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    if [ $_OPENDEALS = "7.x-1.25" ] ; then
-      cd $_THIS_PRPATH/modules
+    if [ $_OPENDEALS = "7.x-1.26" ] ; then
+      cd $_SHRD_PRPATH/modules
       rm -f -r {diff}
-      wget -q -U iCab http://ftp.drupal.org/files/projects/diff-7.x-3.2.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/diff-7.x-3.2.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
     fi
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENDEALS installation completed"
 mrun "sleep 1"
 else
@@ -1867,49 +1823,47 @@ fi
 openoutreach_install () {
 ###---### Open Outreach
 #
-_THIS_PRNAME="openoutreach"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENOUTREACH-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="openoutreach"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENOUTREACH-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OOH ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENOUTREACH - http://openoutreach.org" ; then
 true
 msg "DISTRO: $_F_OPENOUTREACH installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENOUTREACH" ] ; then
-      mv $_THIS_PRNAME-$_OPENOUTREACH $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENOUTREACH" ] ; then
+      mv $_REAL_PRNAME-$_OPENOUTREACH $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
     if [ $_OPENOUTREACH = "7.x-1.0-rc10" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
+      cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {comment_notify,libraries}
-      wget -q -U iCab http://ftp.drupal.org/files/projects/comment_notify-7.x-1.2.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/comment_notify-7.x-1.2.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.1.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
       upgrade_contrib_less
     fi
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENOUTREACH installation completed"
 mrun "sleep 1"
 else
@@ -1925,62 +1879,60 @@ fi
 openpublish_install () {
 ###---### OpenPublish
 #
-_THIS_PRNAME="openpublish"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENPUBLISH-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="openpublish"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENPUBLISH-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPH ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENPUBLISH - http://openpublishapp.com" ; then
 true
 msg "DISTRO: $_F_OPENPUBLISH installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENPUBLISH" ] ; then
-      mv $_THIS_PRNAME-$_OPENPUBLISH $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENPUBLISH" ] ; then
+      mv $_REAL_PRNAME-$_OPENPUBLISH $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
     if [ $_OPENPUBLISH = "7.x-1.0-beta7" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
-      rm -f -r $_THIS_PRPATH/modules/contrib/{boxes,context,diff,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,xmlsitemap}
-      cd $_THIS_PRPATH/modules/contrib
-      wget -q -U iCab http://ftp.drupal.org/files/projects/boxes-7.x-1.1.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/context-7.x-3.0-beta6.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/diff-7.x-3.2.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/entity_autocomplete-7.x-1.0-beta3.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/features_override-7.x-2.0-beta2.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_sources-7.x-1.7.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.3.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/imce-7.x-1.7.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/link-7.x-1.1.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/plupload-7.x-1.1.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/recaptcha-7.x-1.9.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/references-7.x-2.1.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/xmlsitemap-7.x-2.0-rc2.tar.gz
+      cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,diff,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,xmlsitemap}
+      cd $_SHRD_PRPATH/modules/contrib
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/boxes-7.x-1.1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/context-7.x-3.0-beta6.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/diff-7.x-3.2.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/entity_autocomplete-7.x-1.0-beta3.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/features_override-7.x-2.0-beta2.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_sources-7.x-1.7.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-7.x-1.3.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/imce-7.x-1.7.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/link-7.x-1.1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/plupload-7.x-1.1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/recaptcha-7.x-1.9.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/references-7.x-2.1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/xmlsitemap-7.x-2.0-rc2.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
       upgrade_contrib_less
     fi
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENPUBLISH installation completed"
 mrun "sleep 1"
 else
@@ -1996,38 +1948,36 @@ fi
 openscholar_install () {
 ###---### OpenScholar
 #
-_THIS_PRNAME="openscholar"
-_THIS_DISTRO="$_THIS_PRNAME-$_OPENSCHOLAR-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="openscholar"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENSCHOLAR-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
 true
 msg "DISTRO: $_F_OPENSCHOLAR installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    get_distro_ext "$_THIS_PRNAME-$_OPENSCHOLAR.tar.gz" &> /dev/null
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_OPENSCHOLAR" ] ; then
-      mv $_THIS_PRNAME-$_OPENSCHOLAR $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    get_distro_ext "$_REAL_PRNAME-$_OPENSCHOLAR.tar.gz" &> /dev/null
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENSCHOLAR" ] ; then
+      mv $_REAL_PRNAME-$_OPENSCHOLAR $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_OPENSCHOLAR installation completed"
 mrun "sleep 1"
 else
@@ -2043,46 +1993,43 @@ fi
 panopoly_install () {
 ###---### Panopoly
 #
-_THIS_PRNAME="panopoly"
-_THIS_DISTRO="$_THIS_PRNAME-$_PANOPOLY-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
-_THIS_PLPATH="$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO"
+_REAL_PRNAME="panopoly"
+_SHRD_PLNAME="$_REAL_PRNAME-$_PANOPOLY-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPY ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_PANOPOLY - http://drupal.org/project/panopoly" ; then
 true
 msg "DISTRO: $_F_PANOPOLY installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_THIS_PRNAME-$_PANOPOLY-core.tar.gz" | tar -xzf -
-    rename_drupal7_distro_directory
-    if [ -d "$_CORE/$_THIS_PRNAME-$_PANOPOLY" ] ; then
-      mv $_THIS_PRNAME-$_PANOPOLY $_THIS_DISTRO
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    replace_drupal7_core
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_PANOPOLY-core.tar.gz" | tar -xzf -
+    nocore_d7_dist_clean
+    if [ -d "$_CORE/$_REAL_PRNAME-$_PANOPOLY" ] ; then
+      mv $_REAL_PRNAME-$_PANOPOLY $_SHRD_PLNAME
+    fi
     remove_default_core_seven_profiles
     if [ $_PANOPOLY = "7.x-1.0-rc4a" ] ; then
-      cd $_THIS_PRPATH/modules/contrib
+      cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
-    create_dirs
-    themes_for_d7
-    if [ -d "$_CORE_DISTRO/sites/all/modules/panopoly_demo" ] && [ ! -d "$_THIS_PRPATH/modules/panopoly/panopoly_demo" ] ; then
-      mv -f $_CORE_DISTRO/sites/all/modules/panopoly_demo $_THIS_PRPATH/modules/panopoly/ &> /dev/null
+    if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] && [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
+      mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
     fi
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_PANOPOLY installation completed"
 mrun "sleep 1"
 else
@@ -2098,40 +2045,38 @@ fi
 prosepoint_install () {
 ###---### Prosepoint
 #
-_THIS_PRNAME="prosepoint"
-_THIS_DISTRO="$_THIS_PRNAME-$_PROSEPOINT-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="prosepoint"
+_SHRD_PLNAME="$_REAL_PRNAME-$_PROSEPOINT-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_CLIENT_CORES" -ge "1" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPT ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_PROSEPOINT - http://prosepoint.org" ; then
 true
 msg "DISTRO: $_F_PROSEPOINT installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    if [ -d "$_CORE/$_THIS_PRNAME-$_PROSEPOINT" ] ; then
-      mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old
+    if [ -d "$_CORE/$_REAL_PRNAME-$_PROSEPOINT" ] ; then
+      mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT $_CORE/$_REAL_PRNAME-$_PROSEPOINT-old
     fi
-    get_distro_ext "$_THIS_PRNAME-$_PROSEPOINT.tar.gz" &> /dev/null
-    mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT $_CORE_DISTRO
-    if [ -d "$_CORE/$_THIS_PRNAME-$_PROSEPOINT-old" ] ; then
-      mv $_CORE/$_THIS_PRNAME-$_PROSEPOINT-old $_CORE/$_THIS_PRNAME-$_PROSEPOINT
+    get_distro_ext "$_REAL_PRNAME-$_PROSEPOINT.tar.gz" &> /dev/null
+    mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT $_SHRD_PLPATH
+    if [ -d "$_CORE/$_REAL_PRNAME-$_PROSEPOINT-old" ] ; then
+      mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT-old $_CORE/$_REAL_PRNAME-$_PROSEPOINT
     fi
-    replace_drupal6_core
-    rm -f -r $_CORE_DISTRO/profiles/default
-    create_dirs
+    rm -f -r $_SHRD_PLPATH/profiles/default
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_PROSEPOINT installation completed"
@@ -2149,88 +2094,87 @@ fi
 ubercart6_install () {
 ###---### Ubercart 2
 #
-_THIS_PRNAME="uberdrupal"
-_THIS_DINAME="ubercart"
-_THIS_DISTRO="$_THIS_DINAME-$_UBERCART-$_SMALLCORE6"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="uberdrupal"
+_VIRT_PRNAME="ubercart"
+_SHRD_PLNAME="$_VIRT_PRNAME-$_UBERCART-$_SMALLCORE6"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UCT ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO/modules/path_alias_cache" ] ; then
+if [ ! -d "$_OCTO_PLPATH/modules/path_alias_cache" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "DISTRO: $_F_UBERCART installation in progress..."
 mrun "sleep 1"
-if [ -d "$_CORE_DISTRO" ] && [ ! -e "$_CORE_DISTRO/fixed_1.log" ] ; then
-  rm -f -r $_CORE_DISTRO
+if [ -d "$_SHRD_PLPATH" ] && [ ! -e "$_SHRD_PLPATH/fixed_1.log" ] ; then
+  rm -f -r $_SHRD_PLPATH
 fi
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_THIS_CTRL" ] ; then
-      prepare_pressflow_core
+    if [ ! -e "$_D6_CORE_DIR" ] ; then
+      prepare_drupal6_core
     fi
     cd $_CORE
-    if [ -d "$_CORE/$_THIS_DINAME-$_UBERCART" ] ; then
-      mv $_CORE/$_THIS_DINAME-$_UBERCART $_CORE/$_THIS_DINAME-$_UBERCART-old
+    if [ -d "$_CORE/$_VIRT_PRNAME-$_UBERCART" ] ; then
+      mv $_CORE/$_VIRT_PRNAME-$_UBERCART $_CORE/$_VIRT_PRNAME-$_UBERCART-old
     fi
-    get_distro_ext "$_THIS_DINAME-$_UBERCART.tar.gz" &> /dev/null
-    mv $_THIS_DINAME-$_UBERCART $_THIS_DISTRO
-    if [ -d "$_CORE/$_THIS_DINAME-$_UBERCART-old" ] ; then
-      mv $_CORE/$_THIS_DINAME-$_UBERCART-old $_CORE/$_THIS_DINAME-$_UBERCART
+    get_distro_ext "$_VIRT_PRNAME-$_UBERCART.tar.gz" &> /dev/null
+    mv $_VIRT_PRNAME-$_UBERCART $_SHRD_PLNAME
+    if [ -d "$_CORE/$_VIRT_PRNAME-$_UBERCART-old" ] ; then
+      mv $_CORE/$_VIRT_PRNAME-$_UBERCART-old $_CORE/$_VIRT_PRNAME-$_UBERCART
     fi
-    replace_drupal6_core
-    enable_drupal6_contrib
-    rm -f -r $_CORE_DISTRO/profiles/default
-    mkdir -p $_THIS_PRPATH/libraries
-    cd $_THIS_PRPATH/libraries
-    wget -q -U iCab http://jacklmoore.com/colorbox/colorbox.zip
-    unzip -qq colorbox.zip &> /dev/null
-    rm -f colorbox.zip
-    cd $_THIS_PRPATH/modules
-    rm -f -r $_THIS_PRPATH/modules/{date,webform}
-    wget -q -U iCab http://ftp.drupal.org/files/projects/admin_menu-6.x-3.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/cck-6.x-2.9.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-6.x-1.2.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/date-6.x-2.9.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/filefield-6.x-3.10.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-6.x-3.4.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/imageapi-6.x-1.10.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/imagecache-6.x-2.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/imagefield-6.x-3.10.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-6.x-1.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/lightbox2-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/rules-6.x-1.5.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/skinr-6.x-1.6.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/token-6.x-1.19.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-6.x-2.12.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views-6.x-3.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/webform-6.x-3.18.tar.gz
+    nocore_d6_dist_clean
+    rm -f -r $_SHRD_PLPATH/profiles/default
+    mkdir -p $_SHRD_PRPATH/libraries
+    cd $_SHRD_PRPATH/libraries
+    wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
+    unzip -qq master.zip &> /dev/null
+    rm -f master.zip
+    mv -f colorbox-master colorbox
+    cd $_SHRD_PRPATH/modules
+    rm -f -r $_SHRD_PRPATH/modules/{date,webform}
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/admin_menu-6.x-3.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/cck-6.x-2.9.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-6.x-1.2.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/date-6.x-2.9.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield-6.x-3.10.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-6.x-3.4.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/imageapi-6.x-1.10.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/imagecache-6.x-2.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/imagefield-6.x-3.10.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-6.x-1.0.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/lightbox2-6.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-6.x-1.5.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/skinr-6.x-1.6.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/token-6.x-1.19.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/ubercart-6.x-2.12.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/views-6.x-3.0.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/webform-6.x-3.18.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
     ### http://drupal.org/node/1167276#comment-5138248
-    cd $_THIS_PRPATH/modules/$_THIS_DINAME
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_THIS_DINAME-1167276-reroll.patch ./
-    patch -p1 < $_THIS_DINAME-1167276-reroll.patch &> /dev/null
-    cd $_THIS_PRPATH/modules/imagecache
+    cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch ./
+    patch -p1 < $_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
+    cd $_SHRD_PRPATH/modules/imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab https://drupal.org/files//issues/imagecache-1243258-5.patch
+    curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
-    cd $_THIS_PRPATH/themes
-    wget -q -U iCab http://ftp.drupal.org/files/projects/fusion-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/acquia_prosper-6.x-1.1.tar.gz
+    cd $_SHRD_PRPATH/themes
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/fusion-6.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/acquia_prosper-6.x-1.1.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
-    create_dirs
-    touch $_CORE_DISTRO/fixed_1.log
+    touch $_SHRD_PLPATH/fixed_1.log
   else
     cd $_CORE
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_six_root
 fi
 init_this_distro_root
 msg "DISTRO: $_F_UBERCART installation completed"
@@ -2247,66 +2191,65 @@ fi
 ubercart7_install () {
 ###---### Ubercart 3
 #
-_THIS_PRNAME="acquia"
-_THIS_DISTRO="ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7"
-_CORE_DISTRO="$_CORE/$_THIS_DISTRO"
-_THIS_PRPATH="$_CORE_DISTRO/profiles/$_THIS_PRNAME"
+_REAL_PRNAME="acquia"
+_VIRT_PRNAME="ubercart"
+_SHRD_PLNAME="$_VIRT_PRNAME-$_UBER_CART_SEVEN-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_THIS_DISTRO" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_UBER_CART_SEVEN - http://ubercart.org" ; then
 true
 msg "DISTRO: $_F_UBER_CART_SEVEN installation in progress..."
 mrun "sleep 1"
-if [ ! -d "$_CORE_DISTRO" ] ; then
+if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
     get_distro_ext "ubercart-$_UBER_CART_SEVEN.tar.gz" &> /dev/null
-    mv -f ubercart-$_UBER_CART_SEVEN $_THIS_DISTRO
-    replace_drupal7_core
-    sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_THIS_PRPATH/acquia.info &> /dev/null
-    sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" $_THIS_PRPATH/acquia.info &> /dev/null
-    rm -f -r $_CORE_DISTRO/profiles/minimal
-    rm -f -r $_CORE_DISTRO/profiles/testing
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
-    sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" $_CORE_DISTRO/profiles/standard/standard.info &> /dev/null
-    mkdir -p $_THIS_PRPATH/libraries
-    cd $_THIS_PRPATH/libraries
+    mv -f ubercart-$_UBER_CART_SEVEN $_SHRD_PLNAME
+    sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_SHRD_PRPATH/acquia.info &> /dev/null
+    sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" $_SHRD_PRPATH/acquia.info &> /dev/null
+    rm -f -r $_SHRD_PLPATH/profiles/minimal
+    rm -f -r $_SHRD_PLPATH/profiles/testing
+    sed -i "s/name = Standard/name = Vanilla Standard/g" $_SHRD_PLPATH/profiles/standard/standard.info &> /dev/null
+    sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" $_SHRD_PLPATH/profiles/standard/standard.info &> /dev/null
+    mkdir -p $_SHRD_PRPATH/libraries
+    cd $_SHRD_PRPATH/libraries
     wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
     unzip -qq master.zip &> /dev/null
     rm -f master.zip
     mv -f colorbox-master colorbox
-    rm -f -r $_THIS_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
-    cd $_THIS_PRPATH/modules
-    wget -q -U iCab http://ftp.drupal.org/files/projects/colorbox-7.x-2.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/ctools-7.x-1.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/entity-7.x-1.1.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/google_analytics-7.x-1.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/libraries-7.x-2.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/pathauto-7.x-1.2.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/rules-7.x-2.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/token-7.x-1.5.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/ubercart-7.x-3.5.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views-7.x-3.7.tar.gz
+    rm -f -r $_SHRD_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
+    cd $_SHRD_PRPATH/modules
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-7.x-2.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.1.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-7.x-1.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/pathauto-7.x-1.2.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/ubercart-7.x-3.5.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
-    cd $_THIS_PRPATH/modules/views
+    cd $_SHRD_PRPATH/modules/views
     # http://drupal.org/node/1766338#comment-6445882
-    curl -s -O -A iCab https://drupal.org/files//views-revert-broken-filter-or-groups-1766338-7.patch
+    curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-    create_dirs
-    themes_for_d7
-    patch_d7_core
   else
-    get_distro_ext "$_THIS_DISTRO.tar.gz" &> /dev/null
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
-  init_core_distro_seven_root
 fi
 init_this_distro_root
-create_d7_symlinks
 msg "DISTRO: $_F_UBER_CART_SEVEN installation completed"
 mrun "sleep 1"
 else
@@ -2319,8 +2262,6 @@ fi
 }
 
 
-acquia_install
-civicrm_m6_install
 civicrm_m7_install
 cod_install
 commerce_7_1_install
@@ -2347,6 +2288,8 @@ ubercart7_install
 
 
 if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
+  acquia_install
+  civicrm_m6_install
   drupal_edge_8_install
   drupal8_install
 fi

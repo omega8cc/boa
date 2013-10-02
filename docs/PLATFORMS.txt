@@ -18,8 +18,8 @@
 ### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
-### AQ6 ----------- Acquia D6
-### CM6 ----------- CiviCRM 4.1.6 D6
+### AQ6 ----------- Acquia D6 (off)
+### CM6 ----------- CiviCRM 4.1.6 D6 (off)
 ### CM7 ----------- CiviCRM 4.3.5 D7
 ### CME ----------- Commerce v.2
 ### COD ----------- Conference

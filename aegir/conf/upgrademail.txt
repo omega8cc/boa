@@ -178,7 +178,6 @@ platforms and features to help you manage your Drupal sites.
 
   ### Pressflow 6.28.2
 
-  Acquia 6.28.2 ---------------- http://bit.ly/acquiadrupal
   Commons 2.13 ----------------- http://drupal.org/project/commons
   Feature Server 1.2 ----------- http://bit.ly/fserver
   Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
