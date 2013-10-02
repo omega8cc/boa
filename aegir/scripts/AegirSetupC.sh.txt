@@ -816,6 +816,9 @@ mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/civicrm-4.3-d7.make ./
     $_DRUSHCMD make civicrm-4.3-d7.make $_SHRD_PLNAME &> /dev/null
     rm -f civicrm-4.3-d7.make
