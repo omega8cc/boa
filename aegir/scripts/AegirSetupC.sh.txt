@@ -265,7 +265,6 @@ create_d7_symlinks () {
     ln -sf $_D7_CORE_DIR/install.php install.php
     ln -sf $_D7_CORE_DIR/misc misc
     ln -sf $_D7_CORE_DIR/modules modules
-    ln -sf $_D7_CORE_DIR/profiles profiles
     ln -sf $_D7_CORE_DIR/themes themes
     ln -sf $_D7_CORE_DIR/update.php update.php
     ln -sf $_D7_CORE_DIR/web.config web.config
@@ -285,7 +284,6 @@ create_d8_symlinks () {
     ln -sf $_D8_CORE_DIR/core core
     ln -sf $_D8_CORE_DIR/crossdomain.xml crossdomain.xml
     ln -sf $_D8_CORE_DIR/index.php index.php
-    ln -sf $_D8_CORE_DIR/profiles profiles
     ln -sf $_D8_CORE_DIR/web.config web.config
     cp -af $_D8_CORE_DIR/sites ./
   fi
@@ -1433,6 +1431,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     echo "projects[$_REAL_PRNAME][download][type] = \"git\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/$_REAL_PRNAME.git\"" >> fserver.make
     $_DRUSHCMD make fserver.make $_SHRD_PLNAME &> /dev/null
+    nocore_d6_dist_clean
     rm -f fserver.make
     rm -f -r $_SHRD_PLPATH/profiles/default
     cd $_SHRD_PLPATH/profiles/$_REAL_PRNAME/themes
@@ -2076,6 +2075,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       mv $_CORE/$_REAL_PRNAME-$_PROSEPOINT-old $_CORE/$_REAL_PRNAME-$_PROSEPOINT
     fi
     rm -f -r $_SHRD_PLPATH/profiles/default
+    nocore_d6_dist_clean
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -2216,6 +2216,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     get_distro_ext "ubercart-$_UBER_CART_SEVEN.tar.gz" &> /dev/null
     mv -f ubercart-$_UBER_CART_SEVEN $_SHRD_PLNAME
+    nocore_d7_dist_clean
     sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_SHRD_PRPATH/acquia.info &> /dev/null
     sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" $_SHRD_PRPATH/acquia.info &> /dev/null
     rm -f -r $_SHRD_PLPATH/profiles/minimal
