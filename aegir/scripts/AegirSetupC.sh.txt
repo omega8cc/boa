@@ -2261,7 +2261,6 @@ drupal6_install
 drupal7_install
 fserver_install
 managingnews_install
-nodestream7_install
 openacademy_install
 openatrium6_install
 openatrium7_install
@@ -2281,6 +2280,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   civicrm_m6_install
   drupal_edge_8_install
   drupal8_install
+  nodestream7_install
 fi
 
 

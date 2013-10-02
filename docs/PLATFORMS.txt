@@ -28,7 +28,7 @@
 ### DCS ----------- Commons 6
 ### FSR ----------- Feature Server
 ### MNS ----------- Managing News
-### NS7 ----------- NodeStream D7
+### NS7 ----------- NodeStream D7 (off)
 ### OAM ----------- Open Atrium D6
 ### OA7 ----------- Open Atrium D7
 ### OAY ----------- Open Academy
