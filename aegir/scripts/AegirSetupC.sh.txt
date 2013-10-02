@@ -580,22 +580,6 @@ create_drupal7_basic () {
   fi
   init_this_distro_root
 }
-#
-# Create civicrm symlinks.
-create_civicrm_symlinks () {
-  if [ -d "sites/all/modules/civicrm" ] ; then
-    rm -f -r sites/all/modules/civicrm
-  fi
-  if [ ! -L "sites/all/modules/civicrm" ] ; then
-    ln -sf $_SHRD_PLPATH/sites/all/modules/civicrm sites/all/modules/civicrm &> /dev/null
-  fi
-  if [ -d "sites/all/modules/contrib" ] ; then
-    rm -f -r sites/all/modules/contrib
-  fi
-  if [ ! -L "sites/all/modules/contrib" ] ; then
-    ln -sf $_SHRD_PLPATH/sites/all/modules/contrib sites/all/modules/contrib &> /dev/null
-  fi
-}
 
 
 ###---### Checking status.
@@ -784,7 +768,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
   fi
 fi
 init_this_distro_root
-create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM_M6 installation completed"
 mrun "sleep 1"
 else
@@ -835,7 +818,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
   fi
 fi
 init_this_distro_root
-create_civicrm_symlinks
 msg "DISTRO: $_F_CIVICRM_M7 installation completed"
 mrun "sleep 1"
 else
