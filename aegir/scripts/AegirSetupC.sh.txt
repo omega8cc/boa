@@ -2259,7 +2259,6 @@ fi
 }
 
 
-civicrm_m7_install
 cod_install
 commerce_7_1_install
 commerce_7_2_install
@@ -2285,6 +2284,7 @@ ubercart7_install
 if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   acquia_install
   civicrm_m6_install
+  civicrm_m7_install
   drupal_edge_8_install
   drupal8_install
   nodestream7_install
