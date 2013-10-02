@@ -160,10 +160,8 @@ _PHP_CLI_VERSION=5.3
 ### D8E ----------- Drupal 8 dev-edge (off)
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
-### D5P ----------- Pressflow 5 (off)
-### AQ6 ----------- Acquia D6
-### CC3 ----------- CiviCRM 3.4.8 D6 (off)
-### CM6 ----------- CiviCRM 4.1.6 D6
+### AQ6 ----------- Acquia D6 (off)
+### CM6 ----------- CiviCRM 4.1.6 D6 (off)
 ### CM7 ----------- CiviCRM 4.3.5 D7
 ### CME ----------- Commerce v.2
 ### COD ----------- Conference
@@ -179,7 +177,6 @@ _PHP_CLI_VERSION=5.3
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
-### OPC ----------- OpenPublic (off)
 ### OPH ----------- OpenPublish
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
@@ -852,7 +849,7 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
   _MY_OWNIP="$_LOC_IP"
 fi
 if [ -d "/data/all/000" ] ; then
-  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
+  if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
     _USE_CURRENT=NO
     _HOT_SAUCE=YES
     _HM_ONLY=NO
@@ -991,9 +988,9 @@ if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
 fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ -d "/data/all/000" ] ; then
-  if [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
-    echo "$_SMALLCORE6" > /data/all/000/core.$_SMALLCORE6.txt
-    echo "$_SMALLCORE7" > /data/all/000/core.$_SMALLCORE7.txt
+  if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+    echo "$_SMALLCORE6" > /data/all/000/core-v-$_SMALLCORE6.txt
+    echo "$_SMALLCORE7" > /data/all/000/core-v-$_SMALLCORE7.txt
   fi
 fi
 }

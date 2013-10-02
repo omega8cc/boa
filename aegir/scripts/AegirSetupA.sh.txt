@@ -785,9 +785,9 @@ fi
 if [ "$_HOT_SAUCE" = "NO" ] ; then
   _CORE="/data/all/$_LAST_ALL"
   _THIS_CORE="$_LAST_ALL"
-  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/core.$_SMALLCORE6.txt" ] && [ -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
+  if [ "$_USE_CURRENT" = "YES" ] && [ -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] && [ -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
     msg "$_STATUS A: Shared platforms code v.$_LAST_ALL (latest available) will be used for this install"
-  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/core.$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core.$_SMALLCORE7.txt" ] ; then
+  elif [ "$_USE_CURRENT" = "NO" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
     _CORE="/data/all/$_ALL_DISTRO"
     _THIS_CORE="$_ALL_DISTRO"
     msg "$_STATUS A: Shared platforms code v.$_ALL_DISTRO (hot new) will be created"
