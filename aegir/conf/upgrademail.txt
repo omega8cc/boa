@@ -171,7 +171,7 @@ platforms and features to help you manage your Drupal sites.
   Drupal 7.23.1 ---------------- http://drupal.org/drupal-7.22
   NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
   Open Deals 1.26 -------------- http://drupal.org/project/opendeals
-  Open Outreach 1.0 ------------ http://drupal.org/project/openoutreach
+  Open Outreach 1.1 ------------ http://drupal.org/project/openoutreach
   OpenChurch 1.11-beta13 ------- http://drupal.org/project/openchurch
   Panopoly 1.0-rc5 ------------- http://drupal.org/project/panopoly
   Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
