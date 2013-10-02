@@ -2061,6 +2061,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
+    sed -i "s/'robotstxt', 'path_alias_cache'/'path_alias_cache'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
