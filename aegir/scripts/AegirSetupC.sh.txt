@@ -2187,7 +2187,7 @@ fi
 ubercart7_install () {
 ###---### Ubercart 3
 #
-_REAL_PRNAME="acquia"
+_REAL_PRNAME="standard"
 _VIRT_PRNAME="ubercart"
 _SHRD_PLNAME="$_VIRT_PRNAME-$_UBER_CART_SEVEN-$_SMALLCORE7"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
@@ -2202,35 +2202,30 @@ true
 msg "DISTRO: $_F_UBER_CART_SEVEN installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
+  mkdir -p $_SHRD_PLPATH
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    get_distro_ext "ubercart-$_UBER_CART_SEVEN.tar.gz" &> /dev/null
-    mv -f ubercart-$_UBER_CART_SEVEN $_SHRD_PLNAME
     nocore_d7_dist_clean
-    sed -i "s/Acquia Drupal/UberCart 3 Acquia\nold_short_name = uberdrupal/g" $_SHRD_PRPATH/acquia.info &> /dev/null
-    sed -i "s/Acquia enchanced Drupal/Acquia with UberCart 3/g" $_SHRD_PRPATH/acquia.info &> /dev/null
+    sed -i "s/old_short_name = minimal/old_short_name = acquia/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
     rm -f -r $_SHRD_PLPATH/profiles/minimal
-    rm -f -r $_SHRD_PLPATH/profiles/testing
-    sed -i "s/name = Standard/name = Vanilla Standard/g" $_SHRD_PLPATH/profiles/standard/standard.info &> /dev/null
-    sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" $_SHRD_PLPATH/profiles/standard/standard.info &> /dev/null
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
     wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
     unzip -qq master.zip &> /dev/null
     rm -f master.zip
     mv -f colorbox-master colorbox
-    rm -f -r $_SHRD_PRPATH/modules/{ctools,sqlsrv,token,pathauto}
+    mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-7.x-2.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-7.x-2.4.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-7.x-1.3.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.x-dev.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/pathauto-7.x-1.2.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.5.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/ubercart-7.x-3.5.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
