@@ -2103,42 +2103,34 @@ if prompt_yes_no "$_F_UBERCART - http://ubercart.org" ; then
 true
 msg "DISTRO: $_F_UBERCART installation in progress..."
 mrun "sleep 1"
-if [ -d "$_SHRD_PLPATH" ] && [ ! -e "$_SHRD_PLPATH/fixed_1.log" ] ; then
-  rm -f -r $_SHRD_PLPATH
-fi
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    cd $_CORE
     if [ ! -e "$_D6_CORE_DIR" ] ; then
       prepare_drupal6_core
     fi
-    cd $_CORE
-    if [ -d "$_CORE/$_VIRT_PRNAME-$_UBERCART" ] ; then
-      mv $_CORE/$_VIRT_PRNAME-$_UBERCART $_CORE/$_VIRT_PRNAME-$_UBERCART-old
-    fi
-    get_distro_ext "$_VIRT_PRNAME-$_UBERCART.tar.gz" &> /dev/null
-    mv $_VIRT_PRNAME-$_UBERCART $_SHRD_PLNAME
-    if [ -d "$_CORE/$_VIRT_PRNAME-$_UBERCART-old" ] ; then
-      mv $_CORE/$_VIRT_PRNAME-$_UBERCART-old $_CORE/$_VIRT_PRNAME-$_UBERCART
-    fi
+    mkdir -p $_SHRD_PLPATH
     nocore_d6_dist_clean
     rm -f -r $_SHRD_PLPATH/profiles/default
-    mkdir -p $_SHRD_PRPATH/libraries
+    cd $_SHRD_PLPATH/profiles
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/uberdrupal.tar.gz" | tar -xzf -
+    cd $_CORE
+    mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
     cd $_SHRD_PRPATH/libraries
     wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
     unzip -qq master.zip &> /dev/null
     rm -f master.zip
     mv -f colorbox-master colorbox
     cd $_SHRD_PRPATH/modules
-    rm -f -r $_SHRD_PRPATH/modules/{date,webform}
     wget -q -U iCab http://files.aegir.cc/dev/contrib/admin_menu-6.x-3.x-dev.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/cck-6.x-2.9.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-6.x-1.2.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-6.x-1.4.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/date-6.x-2.9.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield-6.x-3.10.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-6.x-3.4.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield-6.x-3.11.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-6.x-3.5.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/imageapi-6.x-1.10.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/imagecache-6.x-2.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/imagefield-6.x-3.10.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/imagefield-6.x-3.11.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-6.x-1.0.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/lightbox2-6.x-1.x-dev.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-6.x-1.5.tar.gz
@@ -2146,15 +2138,14 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     wget -q -U iCab http://files.aegir.cc/dev/contrib/token-6.x-1.19.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/ubercart-6.x-2.12.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/views-6.x-3.0.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/webform-6.x-3.18.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/webform-6.x-3.19.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
     ### http://drupal.org/node/1167276#comment-5138248
     cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch ./
-    patch -p1 < $_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
     cd $_SHRD_PRPATH/modules/imagecache
     # http://drupal.org/node/1243258#comment-4850634
     curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
@@ -2166,7 +2157,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       tar -xzf "$archive" &> /dev/null
     done
     rm -f *.tar.gz
-    touch $_SHRD_PLPATH/fixed_1.log
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -2202,12 +2192,12 @@ true
 msg "DISTRO: $_F_UBER_CART_SEVEN installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
-  mkdir -p $_SHRD_PLPATH
   cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
+    mkdir -p $_SHRD_PLPATH
     nocore_d7_dist_clean
     sed -i "s/old_short_name = minimal/old_short_name = acquia/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
     rm -f -r $_SHRD_PLPATH/profiles/minimal
