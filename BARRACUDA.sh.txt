@@ -7703,13 +7703,13 @@ else
     else
       _L_ST="upgrade"
     fi
-    if [ ! -e "/var/log/compass-sass-radix-zurb-toolkit-$_INSTALLER_VERSION.log" ] ; then
+    if [ ! -e "/var/log/compass-sass-radix-zurb-toolkit-globbing-$_INSTALLER_VERSION.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
         mrun "sleep 1"
-        if [ "$_STATUS" = "INIT" ] || [ ! -e "/var/log/compass-sass-radix-zurb-toolkit-$_INSTALLER_VERSION.log" ] ; then
+        if [ "$_STATUS" = "INIT" ] || [ ! -e "/var/log/compass-sass-radix-zurb-toolkit-globbing-$_INSTALLER_VERSION.log" ] ; then
           st_runner "apt-get update -y --force-yes" &> /dev/null
           st_runner "$_INSTAPP rubygems" 2> /dev/null
           st_runner "gem install compass" 2> /dev/null
@@ -7721,6 +7721,7 @@ else
           st_runner "gem install toolkit" 2> /dev/null
           st_runner "gem install susy" 2> /dev/null
           st_runner "gem install compass-rgbapng" 2> /dev/null
+          st_runner "gem install sass-globbing" 2> /dev/null
         else
           st_runner "gem update compass" 2> /dev/null
           st_runner "gem update sass" 2> /dev/null
@@ -7731,8 +7732,9 @@ else
           st_runner "gem update toolkit" 2> /dev/null
           st_runner "gem update susy" 2> /dev/null
           st_runner "gem update compass-rgbapng" 2> /dev/nul
+          st_runner "gem update sass-globbing" 2> /dev/null
         fi
-        echo "compass-$_INSTALLER_VERSION" > /var/log/compass-sass-radix-zurb-toolkit-$_INSTALLER_VERSION.log
+        echo "compass-$_INSTALLER_VERSION" > /var/log/compass-sass-radix-zurb-toolkit-globbing-$_INSTALLER_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
         mrun "sleep 1"
       else
