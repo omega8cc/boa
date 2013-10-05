@@ -1411,7 +1411,7 @@ fix_sftp_ftps_modern () {
       ### sed -i "s/usr\/bin\/lshell/usr\/local\/bin\/lshell/g" /etc/passwd &> /dev/null
     fi
   fi
-  if [ ! -e "/var/log/mss-$_MSS_VERSION.log" ] || [ ! -e "/etc/ssh/sftp_config" ] || [ ! -e "/usr/bin/MySecureShell" ] ; then
+  if [ ! -e "/var/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log" ] || [ ! -e "/etc/ssh/sftp_config" ] || [ ! -e "/usr/bin/MySecureShell" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
     msg "INFO: Installing MySecureShell $_MSS_VERSION..."
     mrun "sleep 1"
     cd /var/opt
@@ -1422,7 +1422,7 @@ fix_sftp_ftps_modern () {
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
-    echo "mss-$_MSS_VERSION $_NOW" > /var/log/mss-$_MSS_VERSION.log
+    echo "mss-$_MSS_VERSION $_NOW" > /var/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sftp_config /etc/ssh/sftp_config
     st_runner "service ssh restart" &> /dev/null
   fi
@@ -4590,7 +4590,8 @@ install_ssl_src () {
     _SSL_INSTALL_REQUIRED=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
-    rm -f /var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
+    rm -f /var/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
+    rm -f /var/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
     msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, upgrade required"
   fi
   if [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
@@ -6735,7 +6736,7 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
-  if [ ! -e "/var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
     msg "INFO: Installing latest Pure-FTPd server, please wait..."
     mrun "sleep 1"
     if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
@@ -6768,7 +6769,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     mrun "sleep 1"
     st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
     cd /var/opt
-    echo "pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION" > /var/log/pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
+    echo "pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION" > /var/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
   fi
 fi
 
