@@ -6688,7 +6688,7 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_LSHELL="/usr/local/bin/lshell"
 fi
-if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-build-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: Upgrading Limited Shell to version $_LSHELL_VERSION..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
@@ -6718,7 +6718,7 @@ if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/va
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
-  echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-$_LSHELL_VERSION
+  echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-build-$_LSHELL_VERSION
   if [ -f "/var/xdrago/manage_ltd_users.sh" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /var/xdrago/conf/lshell.conf
     st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
