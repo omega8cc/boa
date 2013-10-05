@@ -516,7 +516,7 @@ upgrade_contrib_more () {
   wget -q -U iCab http://files.aegir.cc/dev/contrib/email-7.x-1.2.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/facetapi-7.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/features-7.x-2.0-rc3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/features-7.x-2.0-rc4.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/fontyourface-7.x-2.7.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.1.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/module_filter-7.x-1.7.tar.gz
