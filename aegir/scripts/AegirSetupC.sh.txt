@@ -320,7 +320,6 @@ rename_drupal8_profiles () {
 # Prepare D6 core.
 prepare_drupal6_core () {
   if [ ! -e "$_D6_CORE_DIR" ] ; then
-    mkdir -p /data/all/000/core
     rm -f -r $_D6_CORE_DIR
     cd /data/all/000/core
     curl -s -A iCab "http://files.aegir.cc/dev/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
@@ -343,7 +342,6 @@ prepare_drupal6_core () {
 # Prepare D7 core.
 prepare_drupal7_core () {
   if [ ! -e "$_D7_CORE_DIR" ] ; then
-    mkdir -p /data/all/000/core
     rm -f -r $_D7_CORE_DIR
     cd /data/all/000/core
     curl -s -A iCab "http://files.aegir.cc/dev/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
@@ -364,7 +362,6 @@ prepare_drupal7_core () {
 # Prepare D8 core.
 prepare_drupal8_core () {
   if [ ! -e "$_D8_CORE_DIR" ] ; then
-    mkdir -p /data/all/000/core
     rm -f -r $_D8_CORE_DIR
     cd /data/all/000/core
     curl -s -A iCab "http://files.aegir.cc/dev/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -

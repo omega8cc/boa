@@ -267,6 +267,7 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 # Create shared dirs.
 create_shared_dirs () {
   msg "$_STATUS A: Creating shared directories..."
+  mkdir -p /data/all/000/{core,modules}
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
     mkdir -p /data/src
