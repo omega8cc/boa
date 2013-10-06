@@ -3916,10 +3916,10 @@ install_upgrade_nginx () {
     _NGINX_F_VERSION="$_CUSTOM_NAME/$_NGINX_VERSION"
     if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ "$_STATUS" = "UPGRADE" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, OK"
     elif [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] && [ "$_STATUS" = "INIT" ] ; then
       _NGINX_INSTALL_REQUIRED=NO
-      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, no upgrade required"
+      msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, OK"
     elif [ "$_NGINX_F_INSTALLED" != "$_NGINX_F_VERSION" ] ; then
       _NGINX_INSTALL_REQUIRED=YES
       msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, upgrade required"
@@ -4647,7 +4647,7 @@ finale () {
   else
     _L_ST="upgrade"
   fi
-  msg "CARD: Now charging your credit card for this automated $_L_ST service..."
+  msg "CARD: Now charging your credit card for this auto-$_L_ST magic..."
   mrun "sleep 5"
   msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
   mrun "sleep 3"
@@ -4655,7 +4655,7 @@ finale () {
   if [ "$_UP_LNX" = "YES" ] ; then
     msg "ALRT: Your OS kernel has been upgraded!"
     if [ ! -e "/usr/sbin/uptrack-upgrade" ] ; then
-      msg "ALRT: You *must* reboot immediately to make it active and stay secure!"
+      msg "ALRT: You *must* reboot immediately to stay secure!"
     else
       msg "NOTE: You have Ksplice rebootless kernel updates installed"
       msg "HINT: Run uptrack-upgrade -y to make sure that all upgrades are fully applied"
@@ -4917,7 +4917,7 @@ fi
 
 
 ###--------------------###
-msg "INFO: Checking your Debian or Ubuntu version..."
+msg "INFO: Checking your system version..."
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
@@ -4972,7 +4972,7 @@ else
   not_supported_os
 fi
 echo " "
-msg "Aegir with Nginx on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
+msg "Aegir on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
 echo " "
 
 
@@ -5114,7 +5114,7 @@ elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   _GITORIOUS_WORKS=YES
   sleep 1
 else
-  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability..."
+  msg "INFO: Testing repository mirror servers availability..."
   sleep 1
   _GITHUB_WORKS=YES
   _DRUPAL_WORKS=YES
@@ -5133,15 +5133,15 @@ fi
 if [ "$_GITHUB_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
-  msg "INFO: GitHub mirror repository will be used for this install"
+  msg "INFO: GitHub mirror repository will be used"
 elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda"
   _BOA_REPO_GIT_URL="http://git.drupal.org/project"
-  msg "INFO: Drupal master repository will be used for this install"
+  msg "INFO: Drupal master repository will be used"
 elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
   _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
-  msg "INFO: Gitorious mirror repository will be used for this install"
+  msg "INFO: Gitorious mirror repository will be used"
 else
   cat <<EOF
 
@@ -6410,11 +6410,11 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
         fix_php_ext
       else
         _PHP_INSTALL_REQUIRED_NEW=NO
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+        msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
       fi
     else
       _PHP_INSTALL_REQUIRED_NEW=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     fi
   else
     if [ "$_FROM_SOURCES" = "YES" ] ; then
@@ -6423,7 +6423,7 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
       fix_php_ext
     else
       _PHP_INSTALL_REQUIRED_NEW=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     fi
   fi
 else
@@ -6438,7 +6438,7 @@ if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
     fi
     if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
       _PHP_INSTALL_REQUIRED=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, no upgrade required"
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     else
       _PHP_INSTALL_REQUIRED=YES
       msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
@@ -6785,10 +6785,10 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   fi
   if [ "$_REDIS_V_INSTALLED" = "$_REDIS_VERSION" ] ; then
     _REDIS_INSTALL_MISMATCH=NO
-    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, no upgrade/rebuild required"
+    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, OK"
   else
     _REDIS_INSTALL_MISMATCH=YES
-    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, upgrade/rebuild required"
+    msg "INFO: Installed Redis version $_REDIS_V_INSTALLED, upgrade required"
   fi
   mrun "sleep 1"
 else
@@ -7907,9 +7907,9 @@ forced_mysql_root_password_update () {
     echo "$_ESC_PASS" > /root/.my.pass.txt
     echo " "
     if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      msg "INFO: New secure random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+      msg "INFO: New secure random password for $_DB_SERVER generated and updated"
     else
-      msg "INFO: New random password for $_DB_SERVER generated and stored in /root/.my.pass.txt"
+      msg "INFO: New random password for $_DB_SERVER generated and updated"
     fi
     mrun "sleep 1"
   fi

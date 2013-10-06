@@ -1131,7 +1131,7 @@ elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
   _GITORIOUS_WORKS=YES
   sleep 1
 else
-  msg "INFO: Testing GitHub, Drupal and Gitorious servers availability..."
+  msg "INFO: Testing repository mirror servers availability..."
   sleep 1
   _GITHUB_WORKS=YES
   _DRUPAL_WORKS=YES
@@ -1150,15 +1150,15 @@ fi
 if [ "$_GITHUB_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="nginx-for-drupal"
   _BOA_REPO_GIT_URL="git://github.com/omega8cc"
-  msg "INFO: GitHub mirror repository will be used for this install"
+  msg "INFO: GitHub mirror repository will be used"
 elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda"
   _BOA_REPO_GIT_URL="http://git.drupal.org/project"
-  msg "INFO: Drupal master repository will be used for this install"
+  msg "INFO: Drupal master repository will be used"
 elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
   _BOA_REPO_NAME="barracuda-octopus"
   _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
-  msg "INFO: Gitorious mirror repository will be used for this install"
+  msg "INFO: Gitorious mirror repository will be used"
 else
   cat <<EOF
 
