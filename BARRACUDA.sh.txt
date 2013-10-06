@@ -320,6 +320,7 @@ _PHP_CLI_VERSION=5.3
 ###
 ### BDD --- SQL Buddy DB Manager
 ### BND --- Bind9 DNS Server
+### BZR --- Bazaar
 ### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
 ### SR1 --- Apache Solr 1 with Jetty 7
@@ -6616,29 +6617,31 @@ install_newrelic
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "lenny" ] ; then
-  true
-else
-  _PATH_BZR="/usr/local/bin/bzr"
-  if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Installing Bazaar (bzr) $_BZR_VERSION, please wait..."
-    mrun "sleep 1"
-    if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ] ; then
-      rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
+if [[ "$_XTRAS_LIST" =~ "BZR" ]] ; then
+  if [ "$_REL_VERSION" = "lenny" ] ; then
+    true
+  else
+    _PATH_BZR="/usr/local/bin/bzr"
+    if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+      msg "INFO: Installing Bazaar (bzr) $_BZR_VERSION, please wait..."
+      mrun "sleep 1"
+      if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ] ; then
+        rm -f -r /usr/local/lib/python2.6/dist-packages/bzrlib
+      fi
+      if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ] ; then
+        rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
+      fi
+      cd /var/opt
+      rm -f -r bzr*
+      wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
+      tar -xzf bzr-$_BZR_VERSION.tar.gz
+      cd /var/opt/bzr-$_BZR_VERSION
+      st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
+      mkdir -p /root/.bazaar
+      echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
     fi
-    if [ -e "/usr/local/lib/python2.7/dist-packages/bzrlib" ] ; then
-      rm -f -r /usr/local/lib/python2.7/dist-packages/bzrlib
-    fi
-    cd /var/opt
-    rm -f -r bzr*
-    wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
-    tar -xzf bzr-$_BZR_VERSION.tar.gz
-    cd /var/opt/bzr-$_BZR_VERSION
-    st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
-    mkdir -p /root/.bazaar
-    echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
   fi
 fi
 

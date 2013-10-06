@@ -63,10 +63,14 @@ fix_dot_dirs()
   chmod 600 $_USER_SSH/id_{r,d}sa &> /dev/null
   chmod 600 $_USER_SSH/known_hosts &> /dev/null
   _USER_BZR="/home/$_USER_LTD/.bazaar"
-  if [ ! -d "$_USER_BZR" ] ; then
-    mkdir -p $_USER_BZR
-    chown $_USER_LTD:$_USRG $_USER_BZR
-    chmod 700 $_USER_BZR
+  if [ -x "/usr/local/bin/bzr" ] ; then
+    if [ ! -d "$_USER_BZR" ] ; then
+      mkdir -p $_USER_BZR
+      chown $_USER_LTD:$_USRG $_USER_BZR
+      chmod 700 $_USER_BZR
+    fi
+  else
+    rm -f -r $_USER_BZR
   fi
   echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
   if [ ! -L "$_USER_DRUSH/drush_make" ] ; then

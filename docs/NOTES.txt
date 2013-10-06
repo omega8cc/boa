@@ -18,6 +18,7 @@
     ###
     ### BDD --- SQL Buddy DB Manager
     ### BND --- Bind9 DNS Server
+    ### BZR --- Bazaar
     ### FMG --- FFmpeg support
     ### GIT --- Latest Git from sources
     ### SR1 --- Apache Solr 1 with Jetty 7

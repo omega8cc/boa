@@ -1341,12 +1341,16 @@ chmod 600 $_USER_SSH/id_{r,d}sa &> /dev/null
 ###---### Create .bazaar dir and conf file if not exist.
 #
 _USER_BZR="/home/$_USERFTP/.bazaar"
-if [ ! -d "$_USER_BZR" ] ; then
-  mkdir -p $_USER_BZR
-  chown $_USERFTP:$_USRG $_USER_BZR
-  chmod 700 $_USER_BZR
+if [ -x "/usr/local/bin/bzr" ] ; then
+  if [ ! -d "$_USER_BZR" ] ; then
+    mkdir -p $_USER_BZR
+    chown $_USERFTP:$_USRG $_USER_BZR
+    chmod 700 $_USER_BZR
+  fi
+  echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
+else
+  rm -f -r $_USER_BZR
 fi
-echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
 
 
 ###---### Add symlink to the clients directory.
@@ -1626,12 +1630,16 @@ fi
 ###---### Create .bazaar dir and conf file if not exist for system user.
 #
 _SYSTEM_USER_BZR="$_ROOT/.bazaar"
-if [ ! -d "$_SYSTEM_USER_BZR" ] ; then
-  mkdir -p $_SYSTEM_USER_BZR
-  chown $_USER:$_USRG $_SYSTEM_USER_BZR
-  chmod 700 $_SYSTEM_USER_BZR
+if [ -x "/usr/local/bin/bzr" ] ; then
+  if [ ! -d "$_SYSTEM_USER_BZR" ] ; then
+    mkdir -p $_SYSTEM_USER_BZR
+    chown $_USER:$_USRG $_SYSTEM_USER_BZR
+    chmod 700 $_SYSTEM_USER_BZR
+  fi
+  echo ignore_missing_extensions=True > $_SYSTEM_USER_BZR/bazaar.conf
+else
+  rm -f -r $_SYSTEM_USER_BZR
 fi
-echo ignore_missing_extensions=True > $_SYSTEM_USER_BZR/bazaar.conf
 
 
 ###---### Create other dirs and symlinks if not exist.
