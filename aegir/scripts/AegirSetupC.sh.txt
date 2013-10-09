@@ -513,7 +513,7 @@ upgrade_contrib_more () {
   wget -q -U iCab http://files.aegir.cc/dev/contrib/email-7.x-1.2.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/facetapi-7.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/features-7.x-2.0-rc4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/features-7.x-2.0-rc5.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/fontyourface-7.x-2.7.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.1.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/module_filter-7.x-1.7.tar.gz
@@ -633,7 +633,7 @@ _F_COD="Conference 1.0-rc2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.19 $_SMALLCORE7 P.$_THIS_CORE"
 _F_D6COMMONS="Commons 2.13 $_SMALLCORE6 P.$_THIS_CORE"
-_F_D7COMMONS="Commons 3.4-rc1 $_SMALLCORE7 P.$_THIS_CORE"
+_F_D7COMMONS="Commons 3.4-rc2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
