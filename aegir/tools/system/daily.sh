@@ -192,7 +192,7 @@ fix_permissions () {
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries}
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
+    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
     ### known exceptions
@@ -203,6 +203,10 @@ fix_permissions () {
     chown $_THIS_HM_USER:users $Plr/sites/all/permissions-fix-$_NOW.info
     chmod 0664 $Plr/sites/all/permissions-fix-$_NOW.info
   fi
+  ### directory and settings files - site level
+  chown $_THIS_HM_USER:users $Dir &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php} &> /dev/null
+  find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
   ### modules,themes,libraries - site level
   chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
   chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
