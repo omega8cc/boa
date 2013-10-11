@@ -7726,6 +7726,7 @@ else
           st_runner "gem install susy" 2> /dev/null
           st_runner "gem install compass-rgbapng" 2> /dev/null
           st_runner "gem install sass-globbing" 2> /dev/null
+          st_runner "gem install bundler" 2> /dev/null
         else
           st_runner "gem update compass" 2> /dev/null
           st_runner "gem update sass" 2> /dev/null
@@ -7737,6 +7738,7 @@ else
           st_runner "gem update susy" 2> /dev/null
           st_runner "gem update compass-rgbapng" 2> /dev/nul
           st_runner "gem update sass-globbing" 2> /dev/null
+          st_runner "gem update bundler" 2> /dev/null
         fi
         echo "compass-$_INSTALLER_VERSION" > /var/log/compass-sass-radix-zurb-toolkit-globbing-$_INSTALLER_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
