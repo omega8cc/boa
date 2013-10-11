@@ -255,6 +255,33 @@ process () {
   done
 }
 
+delete_this_platform () {
+  run_drush_dash_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
+  echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
+}
+
+check_old_empty_platforms () {
+  _DEL_OLD_EMPTY_PLATFORMS="0"
+  if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
+    source /root/.${_THIS_HM_USER}.octopus.cnf
+    _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
+  fi
+  if [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
+    if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] ; then
+      echo "_DEL_OLD_EMPTY_PLATFORMS is set to ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_THIS_HM_USER} instance"
+      for Platform in `find $User/.drush/platform_* -maxdepth 1 -mtime +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`
+      do
+        _THIS_PLATFORM_NAME=`echo "$Platform" | sed "s/.*platform_//g; s/.alias.drushrc.php//g" | awk '{ print $1}'`
+        _THIS_PLATFORM_ROOT=`cat $Platform | grep 'root' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+        _THIS_PLATFORM_SITE=`grep "${_THIS_PLATFORM_ROOT}/sites/" $User/.drush/* | grep site_path`
+        if [ -z $_THIS_PLATFORM_SITE ] ; then
+          delete_this_platform
+        fi
+      done
+    fi
+  fi
+}
+
 action () {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
   do
@@ -286,6 +313,7 @@ action () {
           symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
           rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bashrc}
         fi
+        check_old_empty_platforms
         echo Done for $User
       else
         echo load is $NOW_LOAD while maxload is $CTL_LOAD

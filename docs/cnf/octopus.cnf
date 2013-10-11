@@ -21,6 +21,7 @@ _THIS_DB_HOST=localhost #------- DB host depends on Barracuda setting (FQDN)
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _HOT_SAUCE=NO #----------------- Forces new platforms tree on install when YES
 _USE_CURRENT=YES #-------------- Forces new platforms tree on upgrade when NO
+_DEL_OLD_EMPTY_PLATFORMS="0" #-- Delete empty platforms if verified > X-days-ago
 _REMOTE_CACHE_IP=127.0.0.1 #---- Default IP address where Redis listens
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
 _PHP_FPM_VERSION=5.3 #---------- Defaults to 5.3 because 5.2 is deprecated

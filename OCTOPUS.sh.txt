@@ -413,6 +413,19 @@ _USE_CURRENT=YES
 
 
 ###----------------------------------------###
+### DELETE OLD EMPTY PLATFORMS             ###
+###----------------------------------------###
+###
+### Change to any number greater than "0" to
+### automatically delete empty platforms with
+### no sites hosted, during daily cleanup,
+### if verified more than X days ago, where X
+### is a number of days defined below.
+###
+_DEL_OLD_EMPTY_PLATFORMS="0"
+
+
+###----------------------------------------###
 ### REMOTE CACHE IP ADDRESS                ###
 ###----------------------------------------###
 ###
@@ -656,6 +669,7 @@ octopus_cnf () {
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.$_USER.octopus.cnf
     echo "_HOT_SAUCE=$_HOT_SAUCE" >> /root/.$_USER.octopus.cnf
     echo "_USE_CURRENT=$_USE_CURRENT" >> /root/.$_USER.octopus.cnf
+    echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.$_USER.octopus.cnf
     echo "_REMOTE_CACHE_IP=$_REMOTE_CACHE_IP" >> /root/.$_USER.octopus.cnf
     echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.$_USER.octopus.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
@@ -718,6 +732,12 @@ octopus_cnf () {
       true
     else
       echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
+    fi
+    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS /root/.$_USER.octopus.cnf)
+    if [[ "$_DEL_OLD_EMPTY_PLATFORMS_TEST" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]] ; then
+      true
+    else
+      echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.$_USER.octopus.cnf
     fi
     if [ "$_LD_DOM" = "YES" ] ; then
       _STRONG_PASSWORDS=YES
