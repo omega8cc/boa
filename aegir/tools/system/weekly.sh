@@ -440,8 +440,8 @@ action () {
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
         echo Counting User $User
         count
-        if [ -e "/home/$_THIS_HM_USER.ftp" ] ; then
-          HxmSiz=`du -s /home/$_THIS_HM_USER.ftp` &> /dev/null
+        if [ -e "/home/${_THIS_HM_USER}.ftp" ] ; then
+          HxmSiz=`du -s /home/${_THIS_HM_USER}.ftp` &> /dev/null
           HxmSiz=`echo "$HxmSiz" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
         fi
         if [ -L "$User" ] ; then

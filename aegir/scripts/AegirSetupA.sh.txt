@@ -1222,7 +1222,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  _USERFTP="$_USER.ftp"
+  _USERFTP="${_USER}.ftp"
   _USERFTP_ROOT="/home/$_USERFTP"
   if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
     _PATH_LSHELL="/usr/bin/MySecureShell"
@@ -1270,7 +1270,7 @@ fi
 
 ###---### Add symlink to the sites backups.
 #
-_USERFTP="$_USER.ftp"
+_USERFTP="${_USER}.ftp"
 _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/backups" ] ; then
   msg "$_STATUS A: Adding symlink to the sites backups"
@@ -1281,7 +1281,7 @@ fi
 
 ###---### Add symlink to the system drush_make.
 #
-_USERFTP="$_USER.ftp"
+_USERFTP="${_USER}.ftp"
 _USER_DM="/home/$_USERFTP/.drush"
 if [ ! -L "$_USER_DM/drush_make" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_make"
@@ -1357,7 +1357,7 @@ fi
 
 ###---### Add symlink to the clients directory.
 #
-_USERFTP="$_USER.ftp"
+_USERFTP="${_USER}.ftp"
 _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/clients" ] ; then
   msg "$_STATUS A: Adding symlink to the clients directory"

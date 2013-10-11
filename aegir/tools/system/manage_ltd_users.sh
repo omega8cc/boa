@@ -34,9 +34,9 @@ do
     _SEC_SYM="/home/$Existing/sites"
     _SEC_DIR=`readlink -n $_SEC_SYM`
     _SEC_DIR=`echo -n $_SEC_DIR | tr -d "\n"`
-    if [ ! -L "$_SEC_SYM" ] || [ ! -e "$_SEC_DIR" ] || [ ! -e "/home/$_PAR_OWN.ftp/users/$Existing" ] ; then
+    if [ ! -L "$_SEC_SYM" ] || [ ! -e "$_SEC_DIR" ] || [ ! -e "/home/${_PAR_OWN}.ftp/users/$Existing" ] ; then
       deluser --remove-home --backup-to /var/backups/zombie/deleted $Existing
-      rm -f /home/$_PAR_OWN.ftp/users/$Existing
+      rm -f /home/${_PAR_OWN}.ftp/users/$Existing
       echo Zombie $Existing killed
       echo
     fi
@@ -90,14 +90,21 @@ fix_dot_dirs()
 # OK, create user.
 ok_create_user()
 {
-  _ADMIN="$_OWN.ftp"
+  _ADMIN="${_OWN}.ftp"
+  echo "_ADMIN is == $_ADMIN == at ok_create_user"
   _USER_LTD_ROOT="/home/$_USER_LTD"
+  _SEC_SYM="$_USER_LTD_ROOT/sites"
   _TMP="/var/tmp"
   _WEBG=www-data
   _USRG=users
+  if [ ! -L "$_SEC_SYM" ] ; then
+    mkdir -p /var/backups/zombie/deleted/$_NOW
+    mv -f $_USER_LTD_ROOT /var/backups/zombie/deleted/$_NOW/ &> /dev/null
+  fi
   if [ ! -d "$_USER_LTD_ROOT" ] ; then
     if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
       useradd -d $_USER_LTD_ROOT -s /usr/bin/MySecureShell -m -N -r $_USER_LTD
+      echo "_USER_LTD_ROOT is == $_USER_LTD_ROOT == at ok_create_user"
     else
       useradd -d $_USER_LTD_ROOT -s /usr/bin/lshell -m -N -r $_USER_LTD
     fi
@@ -141,7 +148,7 @@ ok_create_user()
 # OK, update user.
 ok_update_user()
 {
-  _ADMIN="$_OWN.ftp"
+  _ADMIN="${_OWN}.ftp"
   _USER_LTD_ROOT="/home/$_USER_LTD"
   if [ -e "/home/$_ADMIN/users/$_USER_LTD" ] ; then
     echo >> $_THIS_LTD_CONF
@@ -159,9 +166,13 @@ ok_update_user()
 add_user_if_not_exists () {
   _ID_EXISTS=$(getent passwd $_USER_LTD 2>&1)
   _ID_SHELLS=$(id -nG $_USER_LTD 2>&1)
+  echo "_ID_EXISTS is == $_ID_EXISTS == at add_user_if_not_exists"
+  echo "_ID_SHELLS is == $_ID_SHELLS == at add_user_if_not_exists"
   if [ -z "$_ID_EXISTS" ] ; then
+    echo "We will create user == $_USER_LTD =="
     ok_create_user
   elif [[ "$_ID_EXISTS" =~ "$_USER_LTD" ]] && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
+    echo "We will update user == $_USER_LTD =="
     ok_update_user
   fi
 }
@@ -190,7 +201,8 @@ do
   _USER_LTD=`echo $Client | cut -d'/' -f6 | awk '{ print $1}'`
   _USER_LTD=${_USER_LTD//[^a-zA-Z0-9]/}
   _USER_LTD=`echo -n $_USER_LTD | tr A-Z a-z`
-  _USER_LTD="$_OWN.$_USER_LTD"
+  _USER_LTD="${_OWN}.${_USER_LTD}"
+  echo "_USER_LTD is == $_USER_LTD == at manage_sec"
   _ALLD_NUM="0"
   _ALLD_CTL="1"
   _ALLD_DIR="'$Client'"
@@ -215,28 +227,30 @@ manage_own()
 for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
 do
   if [ -e "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/fpm.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
+    _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
-    if [ -e "$User/clients" ] ; then
+    echo "_OWN is == $_OWN == at manage_own"
+    if [ -e "$User/clients" ] && [ ! -z $_OWN ] ; then
       echo Managing Users for $User Instance
       rm -f -r $User/clients/admin &> /dev/null
       rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
       rm -f -r $User/clients/nocomega8cc &> /dev/null
       rm -f -r $User/clients/*/backups &> /dev/null
       symlinks -dr $User/clients &> /dev/null
-      if [ -e "/home/$_OWN.ftp" ] ; then
-        symlinks -dr /home/$_OWN.ftp &> /dev/null
+      if [ -e "/home/${_OWN}.ftp" ] ; then
+        symlinks -dr /home/${_OWN}.ftp &> /dev/null
         echo >> $_THIS_LTD_CONF
-        echo "[$_OWN.ftp]" >> $_THIS_LTD_CONF
+        echo "[${_OWN}.ftp]" >> $_THIS_LTD_CONF
         echo "path : ['/data/disk/$_OWN/distro', '/data/disk/$_OWN/static', '/data/disk/$_OWN/backups', '/data/disk/$_OWN/clients']" >> $_THIS_LTD_CONF
         manage_sec
-        if [ -e "/home/$_OWN.ftp/users" ] ; then
-          chown -R $_OWN.ftp:users /home/$_OWN.ftp/users
-          chmod 700 /home/$_OWN.ftp/users
-          chmod 600 /home/$_OWN.ftp/users/*
+        if [ -e "/home/${_OWN}.ftp/users" ] ; then
+          chown -R ${_OWN}.ftp:users /home/${_OWN}.ftp/users
+          chmod 700 /home/${_OWN}.ftp/users
+          chmod 600 /home/${_OWN}.ftp/users/*
         fi
         echo Done for $User
       else
-        echo Directory /home/$_OWN.ftp not available
+        echo Directory /home/${_OWN}.ftp not available
       fi
       echo
     else

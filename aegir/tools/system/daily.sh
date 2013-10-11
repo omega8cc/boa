@@ -171,7 +171,7 @@ fix_modules () {
 
 fix_static_permissions () {
   if [ ! -f "$Plr/profiles/permissions-fix.info" ] ; then
-    chown -R $_THIS_HM_USER.ftp:users $Plr/profiles &> /dev/null
+    chown -R ${_THIS_HM_USER}.ftp:users $Plr/profiles &> /dev/null
     find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
     echo fixed > $Plr/profiles/permissions-fix.info
@@ -191,7 +191,7 @@ fix_permissions () {
   ### modules,themes,libraries - platform level
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries}
-    chown -R $_THIS_HM_USER.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
+    chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
     chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
@@ -204,7 +204,7 @@ fix_permissions () {
     chmod 0664 $Plr/sites/all/permissions-fix-$_NOW.info
   fi
   ### modules,themes,libraries - site level
-  chown -R $_THIS_HM_USER.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+  chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
   chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
   find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
   find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
@@ -282,9 +282,9 @@ action () {
         fi
         rm -f -r $User/clients/*/backups &> /dev/null
         symlinks -dr $User/clients &> /dev/null
-        if [ -e "/home/$_THIS_HM_USER.ftp" ] ; then
-          symlinks -dr /home/$_THIS_HM_USER.ftp &> /dev/null
-          rm -f /home/$_THIS_HM_USER.ftp/{.profile,.bash_logout,.bashrc}
+        if [ -e "/home/${_THIS_HM_USER}.ftp" ] ; then
+          symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
+          rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bashrc}
         fi
         echo Done for $User
       else
