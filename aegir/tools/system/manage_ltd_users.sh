@@ -263,6 +263,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   exit
 else
   sleep 3
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   _THISHTIP=`hostname -i`
   sed -i "s/8.8.8.8/$_THISHTIP/g" $_THIS_LTD_CONF

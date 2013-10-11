@@ -4686,6 +4686,7 @@ finale () {
   rm -f /tmp/pm-updatecode*
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
     mv -f /var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW /etc/init.d/buagent &> /dev/null
@@ -4742,6 +4743,7 @@ if [ `whoami` = "root" ] ; then
     service cron stop &> /dev/null
   fi
   touch /var/run/boa_run.pid
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
