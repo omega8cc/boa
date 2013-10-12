@@ -444,7 +444,7 @@ update_php_conf () {
     mkdir -p /opt/local/lib
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
       true
     else
@@ -454,7 +454,7 @@ update_php_conf () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
     fi
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
       true
     else
@@ -538,7 +538,7 @@ update_php_conf () {
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  rm -f /etc/php5/conf.d/{apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
+  rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
@@ -625,14 +625,16 @@ restore_default_sql () {
   fi
   cd /var/xdrago
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] ; then
       true
     else
-      if [ -e "/root/.high_load.cnf" ] ; then
+      if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
         sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
+      elif [ -e "/root/.big_db.cnf" ] ; then
+        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
       else
-        sed -i "s/3600/300/g" /var/xdrago/minute.sh &> /dev/null
+        sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
       fi
     fi
   fi
@@ -688,8 +690,10 @@ restart_services () {
 #
 tune_web_server_config () {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "6" ] && [[ "$_THISHOST" =~ ".host8." ]] ; then
-    _LIM_FPM=6
+  if [ "$_LIM_FPM" -lt "6" ] ; then
+    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      _LIM_FPM=6
+    fi
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
@@ -719,9 +723,66 @@ tune_web_server_config () {
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
     sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
+  fi
+}
+#
+tune_sql_memory_limits () {
+  if [ ! -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
+    msg "INFO: Running MySQLTuner check on all databases..."
+    msg "NOTE! This step may take a LONG time, please wait..."
+    rm -f /var/opt/mysqltuner*
+    curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    if [ -e "/var/opt/mysqltuner.pl" ] ; then
+      perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt
+    fi
+  fi
+  if [ -e "/var/opt/mysqltuner.pl" ] && [ -e "/var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt" ] ; then
+    _REC_MYISAM_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "Data in MyISAM tables" | cut -d: -f2 | awk '{ print $1}'`
+    _REC_INNODB_MEM=`cat /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt | grep "Data in InnoDB tables" | cut -d: -f2 | awk '{ print $1}'`
+    ###--------------------###
+    if [ ! -z "$_REC_MYISAM_MEM" ] ; then
+      _RAW_MYISAM_MEM=`echo $_REC_MYISAM_MEM | sed "s/[A-Z]//g"`
+      if [[ "$_REC_MYISAM_MEM" =~ "G" ]] ; then
+        let "_RAW_MYISAM_MEM = (($_RAW_MYISAM_MEM * 1024))"
+      fi
+      if [ "$_RAW_MYISAM_MEM" -gt "$_USE_SQL" ] ; then
+        _USE_MYISAM_MEM="$_USE_SQL"
+      else
+        _USE_MYISAM_MEM="$_RAW_MYISAM_MEM"
+      fi
+      _USE_MYISAM_MEM="${_USE_MYISAM_MEM}M"
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    else
+      _USE_MYISAM_MEM="64M"
+      sed -i "s/^key_buffer_size.*/key_buffer_size         = $_USE_MYISAM_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    fi
+    ###--------------------###
+    if [ ! -z "$_REC_INNODB_MEM" ] ; then
+      _RAW_INNODB_MEM=`echo $_REC_INNODB_MEM | sed "s/[A-Z]//g"`
+      if [[ "$_REC_INNODB_MEM" =~ "G" ]] ; then
+        let "_RAW_INNODB_MEM = (($_RAW_INNODB_MEM * 1024))"
+      fi
+      if [ "$_RAW_INNODB_MEM" -gt "$_USE_SQL" ] ; then
+        _USE_INNODB_MEM="$_USE_SQL"
+      else
+        _USE_INNODB_MEM="$_RAW_INNODB_MEM"
+      fi
+      _INNODB_BPI="0"
+      _INNODB_BPI=`echo "scale=0; $_USE_INNODB_MEM/1024" | bc`;
+      if [ "$_INNODB_BPI" -gt "1" ] ; then
+        sed -i "s/innodb_file_per_table   = 1/innodb_file_per_table   = 1\ninnodb_buffer_pool_instances = $_INNODB_BPI/g" /etc/mysql/my.cnf &> /dev/null
+      fi
+      _USE_INNODB_MEM="${_USE_INNODB_MEM}M"
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    else
+      _USE_INNODB_MEM="64M"
+      sed -i "s/^innodb_buffer_pool_size.*/innodb_buffer_pool_size = $_USE_INNODB_MEM/g"  /etc/mysql/my.cnf &> /dev/null
+    fi
+  else
+    sed -i "s/= 181/= $_USE_SQL/g"  /etc/mysql/my.cnf &> /dev/null
   fi
 }
 #
@@ -772,18 +833,29 @@ tune_memory_limits () {
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
   let "_USE = (($_RAM / 4))"
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-      let "_USE_SQL = (($_RAM / 48))"
+  if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
+    if [ "$_VMFAMILY" = "VS" ] ; then
+      if [ -e "/root/.tg.cnf" ] ; then
+        let "_USE_SQL = (($_RAM / 12))"
+      else
+        let "_USE_SQL = (($_RAM / 24))"
+      fi
     else
       let "_USE_SQL = (($_RAM / 8))"
     fi
   else
     let "_USE_SQL = (($_RAM / 8))"
   fi
+  _TMP_SQL="${_USE_SQL}M"
+  let "_SRT_SQL = (($_USE_SQL * 2))"
+  _SRT_SQL="${_SRT_SQL}K"
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     _USE_PHP=512
     _USE_OPC=512
+    _PRC_SQL=20
+    _QCE_SQL=128M
+    _RND_SQL=8M
+    _JBF_SQL=4M
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=6
     else
@@ -798,6 +870,10 @@ tune_memory_limits () {
     if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       _USE_PHP=512
       _USE_OPC=1024
+      _PRC_SQL=30
+      _QCE_SQL=128M
+      _RND_SQL=8M
+      _JBF_SQL=4M
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=12
       else
@@ -812,6 +888,10 @@ tune_memory_limits () {
       if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
+        _PRC_SQL=50
+        _QCE_SQL=128M
+        _RND_SQL=8M
+        _JBF_SQL=4M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=12
         else
@@ -827,6 +907,15 @@ tune_memory_limits () {
       else
         _USE_PHP=512
         _USE_OPC=512
+        _PRC_SQL=25
+        _QCE_SQL=64M
+        _RND_SQL=2M
+        _JBF_SQL=2M
+        if [[ "$_THISHOST" =~ ".host8." ]] ; then
+          if [[ "$_THISHOST" =~ "v130a." ]] ; then
+            _USE_PHP=1024
+          fi
+        fi
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=3
         else
@@ -841,6 +930,10 @@ tune_memory_limits () {
     else
       _USE_PHP=256
       _USE_OPC=256
+      _PRC_SQL=10
+      _QCE_SQL=32M
+      _RND_SQL=2M
+      _JBF_SQL=2M
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
         _L_PHP_FPM_WORKERS=6
       else
@@ -855,6 +948,10 @@ tune_memory_limits () {
   else
     _USE_PHP="$_USE"
     _USE_OPC="$_USE"
+    _PRC_SQL=10
+    _QCE_SQL=32M
+    _RND_SQL=1M
+    _JBF_SQL=1M
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
       _L_PHP_FPM_WORKERS=3
     else
@@ -879,17 +976,26 @@ tune_memory_limits () {
   fi
   sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/181/$_USE_OPC/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/iso-.*-1/iso-8859-1/g"  /opt/etc/php.ini &> /dev/null
+  sed -i "s/iso-.*-1/iso-8859-1/g" /opt/etc/php.ini &> /dev/null
   if [ -e "/opt/local/etc/php53.ini" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/181/$_USE_OPC/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/iso-.*-1/iso-8859-1/g"  /opt/local/etc/php53.ini &> /dev/null
+    sed -i "s/iso-.*-1/iso-8859-1/g" /opt/local/etc/php53.ini &> /dev/null
   fi
   sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/181/$_USE_SQL/g" /etc/mysql/my.cnf &> /dev/null
+  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
+    tune_sql_memory_limits
+    sed -i "s/= 191/= $_PRC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^tmp_table_size.*/tmp_table_size          = $_TMP_SQL/g"           /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^max_heap_table_size.*/max_heap_table_size     = $_TMP_SQL/g"      /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = $_SRT_SQL/g"  /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^query_cache_size.*/query_cache_size        = $_QCE_SQL/g"         /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = $_RND_SQL/g"     /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/^join_buffer_size.*/join_buffer_size        = $_JBF_SQL/g"         /etc/mysql/my.cnf &> /dev/null
+  fi
   _MAX_MEM_REDIS="${_USE_OPC}MB"
-  sed -i "s/^maxmemory .*/maxmemory $_MAX_MEM_REDIS/g" /etc/redis/redis.conf &> /dev/null
+  sed -i "s/^maxmemory .*/maxmemory $_MAX_MEM_REDIS/g"  /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
   fi
@@ -898,38 +1004,6 @@ tune_memory_limits () {
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/opt/solr1" ] ; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr1 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty7 &> /dev/null
-  fi
-  if [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_THISHOST" =~ "ocean.nyc.host8.biz" ]] ; then
-      true
-    else
-      sed -i "s/^connect_timeout.*/connect_timeout         = 30/g"            /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^join_buffer_size.*/join_buffer_size        = 2M/g"           /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_connections.*/max_connections         = 80/g"            /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_user_connections.*/max_user_connections    = 80/g"       /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^query_cache_size.*/query_cache_size        = 256M/g"         /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^read_rnd_buffer_size.*/read_rnd_buffer_size    = 8M/g"       /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^tmp_table_size.*/tmp_table_size          = 128M/g"           /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_heap_table_size.*/max_heap_table_size     = 256M/g"      /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^myisam_sort_buffer_size.*/myisam_sort_buffer_size = 2048K/g" /etc/mysql/my.cnf &> /dev/null
-    fi
-  fi
-  if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
-    if [ "$_DB_BINARY_LOG" = "NO" ] ; then
-      bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root &> /dev/null
-      sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
-      sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
-    elif [ "$_DB_BINARY_LOG" = "YES" ] ; then
-      sed -i "s/.*log_bin/log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/.*expire_logs_days/expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
-      sed -i "s/.*max_binlog_size/max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
-    fi
-    if [ "$_DB_ENGINE" = "MyISAM" ] || [ "$_DB_ENGINE" = "InnoDB" ] ; then
-      sed -i "s/^default_storage_engine.*/default_storage_engine  = $_DB_ENGINE/g" /etc/mysql/my.cnf &> /dev/null
-    fi
   fi
   tune_web_server_config
 }

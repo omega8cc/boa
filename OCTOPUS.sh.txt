@@ -638,7 +638,7 @@ octopus_cnf () {
   if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address"
@@ -706,7 +706,7 @@ octopus_cnf () {
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     fi
     _CHECK_HOST=`uname -n`
-    if [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       _LD_DOM=YES
     else
       _LD_DOM=NO
@@ -757,7 +757,7 @@ octopus_cnf () {
     echo " "
     source /root/.$_USER.octopus.cnf
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
@@ -1114,6 +1114,22 @@ fi
   _DOMAIN=${_DOMAIN//[^a-zA-Z0-9-.]/}
   _DOMAIN=`echo -n $_DOMAIN | tr A-Z a-z`
 #
+# Detect VM family
+_ETH_TEST=`ifconfig 2>&1`
+if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
+  _IFCONFIG="venet0"
+elif [ -e "/proc/bean_counters" ] ; then
+  _IFCONFIG="venet0"
+else
+  _IFCONFIG="eth0"
+fi
+_VM_TEST=`uname -a 2>&1`
+if [[ "$_VM_TEST" =~ beng ]] ; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
+#
 #
 if [[ "$_DOMAIN" =~ ".xhost8." ]] ; then
   true
@@ -1269,7 +1285,7 @@ if [ -d "$_ROOT" ] ; then
       exit 1
     fi
     _CHECK_HOST=`uname -n`
-    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+    if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [ -e "/data/disk/$_USER/log/amazing_upgrade.txt" ] && [ ! -e "/data/disk/$_USER/log/amazing_upgrade_complete.txt" ] ; then
         if [ -e "/data/disk/$_USER/log/original_option.txt" ] ; then
           cp -af /data/disk/$_USER/log/option.txt /data/disk/$_USER/log/prev_option.txt
@@ -1310,7 +1326,7 @@ if [ -d "$_ROOT" ] ; then
     fi
     if [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
-      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
+      if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
@@ -1387,17 +1403,6 @@ else
 fi
 #
 #
-_ETH_TEST=`ifconfig 2>&1`
-if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-  _VMFAMILY="VZ"
-  _IFCONFIG="venet0"
-elif [ -e "/proc/bean_counters" ] ; then
-  _VMFAMILY="VZ"
-  _IFCONFIG="venet0"
-else
-  _VMFAMILY="XEN"
-  _IFCONFIG="eth0"
-fi
 if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
   if [ -z "$_MY_OWNIP" ] ; then
     _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`

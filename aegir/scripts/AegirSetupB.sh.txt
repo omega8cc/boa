@@ -519,8 +519,14 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
   sed -i "s/Backup schedule settings/Backup schedule/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_queue/hosting_backup_queue.module &> /dev/null
   sed -i "s/Base path/Platforms path/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null
-  if [[ "$_DOMAIN" =~ ".host8." ]] ; then
-    if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] ; then
+  _VM_TEST=`uname -a 2>&1`
+  if [[ "$_VM_TEST" =~ beng ]] ; then
+    _VMFAMILY="VS"
+  else
+    _VMFAMILY="XEN"
+  fi
+  if [[ "$_DOMAIN" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
       true
     else
       $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null

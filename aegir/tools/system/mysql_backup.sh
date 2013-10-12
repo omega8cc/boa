@@ -11,6 +11,12 @@ if [ -e "/root/.my.optimize.cnf" ] ; then
 else
   OPTIM=NO
 fi
+_VM_TEST=`uname -a 2>&1`
+if [[ "$_VM_TEST" =~ beng ]] ; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
 
 truncate_cache_tables () {
   TABLES=`mysql $DB -e "show tables" -s | grep ^cache | uniq | sort`
@@ -50,7 +56,7 @@ do
   if [ "$DB" != "Database" ] && [ "$DB" != "information_schema" ] && [ "$DB" != "performance_schema" ] ; then
     if [ "$DB" != "mysql" ] ; then
       truncate_cache_tables &> /dev/null
-      if [[ "$HOST" =~ ".host8." ]] ; then
+      if [[ "$HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         truncate_accesslog_tables &> /dev/null
         echo "Truncated not used accesslog for $DB"
       fi
