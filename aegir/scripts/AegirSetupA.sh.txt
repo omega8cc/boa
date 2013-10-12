@@ -816,7 +816,7 @@ chown root:root /data/disk &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
   msg "$_STATUS A: Adding user..."
   mrun "sleep 1"
-  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
 fi
@@ -1233,7 +1233,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     msg "$_STATUS A: Adding ftps/lshell user"
     mrun "sleep 1"
     # add user
-    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \;
+    find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     useradd -d /home/$_USERFTP -s $_PATH_LSHELL -m -N -r $_USERFTP &> /dev/null
     adduser $_USERFTP $_WEBG &> /dev/null
     # Make sure new file which contains password is private
