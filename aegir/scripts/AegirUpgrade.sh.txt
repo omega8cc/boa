@@ -160,7 +160,7 @@ hostmaster_go_up () {
       git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/security_check.git $_ROOT/.drush/security_check &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/security_review &> /dev/null
-      git clone --branch 7.x-1.x-o8 git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
+      git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
       git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost &> /dev/null
     else
       cd $_ROOT/.drush

@@ -322,9 +322,9 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/provision/remote_import         &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl                           &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/security_review               &> /dev/null
-  git clone --branch 7.x-1.x-o8 git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild          &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild          &> /dev/null
   git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost               &> /dev/null
-  git clone --branch master git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra    &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra    &> /dev/null
   git clone --branch 7.x-1.x git://github.com/omega8cc/security_check.git $_ROOT/.drush/security_check                 &> /dev/null
   rm -f -r $_ROOT/.drush/*/.git
   get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
@@ -494,7 +494,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_platform_git.git  &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_site_backup.git   &> /dev/null
   git clone --branch master git://github.com/omega8cc/hosting_advanced_cron.git  &> /dev/null
-  git clone --branch master git://github.com/omega8cc/hosting_tasks_extra.git    &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_tasks_extra.git    &> /dev/null
   rm -f -r */.git
 else
   get_dev_ext "hosting_advanced_cron.tar.gz" &> /dev/null
