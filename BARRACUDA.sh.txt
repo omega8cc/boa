@@ -3851,6 +3851,8 @@ upgrade_aegir_master () {
       if [ ! -d "/var/aegir/config/server_master/nginx/pre.d" ] ; then
         cd /var/aegir/config/server_master/nginx
         cp -a conf.d pre.d
+      else
+        rm -f -r /var/aegir/config/server_master/nginx/conf.d
       fi
       if [ -e "/var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf" ] ; then
         rm -f /var/aegir/config/server_master/nginx/pre.d/custom_nginx.conf
