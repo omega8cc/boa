@@ -4568,12 +4568,10 @@ install_curl_src () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     aptitude hold curl &> /dev/null
-    aptitude hold gnupg-curl &> /dev/null
     aptitude hold libcurl3 &> /dev/null
     aptitude hold libcurl3-gnutls &> /dev/null
     aptitude hold libcurl4-openssl-dev &> /dev/null
     echo "curl hold" | dpkg --set-selections &> /dev/null
-    echo "gnupg-curl hold" | dpkg --set-selections &> /dev/null
     echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
     echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
     echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
@@ -5716,6 +5714,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
   st_runner "aptitude autoclean -y" &> /dev/null
 else
+  echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
   if [ "$_FROM_SOURCES" = "YES" ] ; then
     touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
     st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
