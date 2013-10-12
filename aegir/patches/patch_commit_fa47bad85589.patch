@@ -5,7 +5,7 @@ index a4ce098ea323d9855642ab4b17a54d93cb2d1d0f..00597f8795768bc43dea4fa0eae8afca
 @@ -3,7 +3,16 @@ $ip_address = !empty($ip_address) ? $ip_address : '*';
  ?>
  server {
-   limit_conn   gulag 18; # like mod_evasive - this allows max 18 simultaneous connections from one IP address
+   limit_conn   limreq 18; # like mod_evasive - this allows max 18 simultaneous connections from one IP address
 -  listen       <?php print $ip_address . ':' . $http_port; ?>;
 +<?php
 +if ($ip_address == '*') {
@@ -29,7 +29,7 @@ index 396e309a3e746794759bb910edeb500bea38aa41..cee2eb0acaabb7304cd4cc9e61f5d81d
  ?>
  server {
 -  listen       <?php print $ip_address . ':' . $http_port; ?>;
-+  limit_conn   gulag 18;
++  limit_conn   limreq 18;
 +<?php
 +if ($ip_address == '*') {
 +  print "  listen       {$ip_address}:{$http_port};\n";

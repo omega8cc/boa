@@ -7598,7 +7598,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
         echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-        echo "   limit_conn  gulag 32;" >> $_CGP_VHOST
+        echo "   limit_conn  limreq 32;" >> $_CGP_VHOST
         echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
         echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
         echo "   root        /var/www/cgp;" >> $_CGP_VHOST
@@ -8105,6 +8105,14 @@ else
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
+  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision_cdn/Provision/Config/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/* &> /dev/null
   st_runner "service nginx reload" &> /dev/null
 fi
 
