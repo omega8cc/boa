@@ -3085,11 +3085,11 @@ run_apt_update_again () {
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ ! -e "/var/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "aptitude remove mytop -y" &> /dev/null
-    st_runner "apt-get purge mytop -y" &> /dev/null
+    st_runner "apt-get purge mytop -y --force-yes" &> /dev/null
     rm -f /usr/bin/mytop
     echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
   fi
-  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ -e "/var/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "$_INSTAPP mytop" 2> /dev/null
   fi
@@ -3669,7 +3669,7 @@ install_latest_git () {
 #
 # Check apt updates.
 check_apt_updates () {
-  for Update in `/usr/bin/apt-get -q -y --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
+  for Update in `/usr/bin/apt-get -q -y --force-yes --allow-unauthenticated -s dist-upgrade | grep ^Inst | cut -d\  -f2 | sort`
   do
     case $Update in
       *libcurl*)    _YP_PHP=YES ;;
@@ -4191,7 +4191,7 @@ update_newrelic () {
         echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
         st_runner "apt-get update -y" &> /dev/null
-        st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
+        st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
         NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
         if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
           echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
@@ -4228,7 +4228,7 @@ install_newrelic () {
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
       st_runner "apt-get update -y" &> /dev/null
-      st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install newrelic-php5 newrelic-sysmond" 2> /dev/null
+      st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
       NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
       if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
         echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
@@ -5551,11 +5551,11 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     killall -9 java &> /dev/null
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y remove collectd" 2> /dev/null
+    st_runner "apt-get remove collectd -y --force-yes" 2> /dev/null
   fi
   touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
-  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
   st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
   st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
   st_runner "aptitude remove php5-apc -y" &> /dev/null
@@ -5571,8 +5571,8 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   st_runner "apt-get purge pound -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
-  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
-  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
+  st_runner "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+  st_runner "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
   fi
@@ -5580,7 +5580,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y --force-yes install collectd" 2> /dev/null
+    st_runner "apt-get install collectd -y --force-yes" 2> /dev/null
   fi
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
@@ -5592,7 +5592,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   fi
   st_runner "aptitude update -y" &> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
   echo rotate > /var/log/syslog &> /dev/null
   mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   msg "INFO: No errors? Then Squeeze to Wheezy upgrade was successful - congrats!"
@@ -5627,7 +5627,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     killall -9 java &> /dev/null
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y --force-yes remove collectd" &> /dev/null
+    st_runner "apt-get remove collectd -y --force-yes" &> /dev/null
   fi
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
@@ -5644,9 +5644,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   st_runner "apt-get remove lsb-release -y" &> /dev/null
   st_runner "apt-get update -y" &> /dev/null
   st_runner "apt-get autoremove -y" &> /dev/null
-  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install apt dpkg aptitude" 2> /dev/null
-  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive dist-upgrade" 2> /dev/null
-  st_runner "apt-get -y --force-yes install libgeoip1 libgeoip-dev geoip-database" 2> /dev/null
+  st_runner "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+  st_runner "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
+  st_runner "apt-get install libgeoip1 libgeoip-dev geoip-database -y --force-yes" 2> /dev/null
   install_latest_git
   if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
     install_upgrade_nginx
@@ -5655,9 +5655,9 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
   if [ -d "/var/www/cgp" ] ; then
-    st_runner "apt-get -y --force-yes install collectd" 2> /dev/null
+    st_runner "apt-get install collectd -y --force-yes" 2> /dev/null
   fi
-  st_runner "apt-get -y --force-yes install udev lsb-release libc-client2007e-dev" 2> /dev/null
+  st_runner "apt-get install udev lsb-release libc-client2007e-dev -y --force-yes" 2> /dev/null
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
     _REMOVE_LINKS="halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial umountfs umountnfs.sh umountroot urandom"
@@ -5668,7 +5668,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   fi
   st_runner "aptitude update -y" &> /dev/null
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
-  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
   echo rotate > /var/log/syslog &> /dev/null
   mv -f /var/xdrago_wait /var/xdrago &> /dev/null
   msg "INFO: No errors? Then Lenny to Squeeze upgrade was successful - congrats!"
@@ -5709,9 +5709,9 @@ fi
 st_runner "aptitude update -y" &> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
-  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold safe-upgrade" 2> /dev/null
+  st_runner "aptitude safe-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
-  st_runner "aptitude -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade" 2> /dev/null
+  st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
   st_runner "aptitude autoclean -y" &> /dev/null
 else
   echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
@@ -5839,7 +5839,7 @@ install_with_aptitude_deps () {
   else
     _EXTRA_APT="tree"
   fi
-  st_runner "apt-get -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive install $_EXTRA_APT" 2> /dev/null
+  st_runner "apt-get install $_EXTRA_APT -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
 }
 install_percona_sql () {
   cd /var/opt
@@ -7620,8 +7620,8 @@ fi
 ###--------------------###
 if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   rm -f /var/aegir/config/server_master/nginx/vhost.d/cgp*
-  st_runner "apt-get -y --force-yes remove collectd" 2> /dev/null
-  st_runner "apt-get -y --force-yes purge collectd" 2> /dev/null
+  st_runner "apt-get remove collectd -y --force-yes" 2> /dev/null
+  st_runner "apt-get purge collectd -y --force-yes" 2> /dev/null
   rm -f -r /var/www/cgp
 fi
 _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"

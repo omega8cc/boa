@@ -66,7 +66,7 @@ setup ()
   else
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null
-    apt-get install -y --force-yes --reinstall curl &> /dev/null
+    apt-get install curl -y --force-yes --reinstall &> /dev/null
   fi
   mkdir -p /usr/local/bin; cd /usr/local/bin
   rm -f /usr/local/bin/{boa*,barracuda*,octopus*,randpass*,sqlmagic*,syncpass*,drushextra*,thinkdifferent*}
