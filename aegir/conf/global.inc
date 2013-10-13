@@ -104,8 +104,8 @@ if (file_exists('/data/conf/settings.global.inc')) {
   require_once "/data/conf/settings.global.inc";
 }
 
-if (file_exists('./web.config')) {
-  if (file_exists('./core')) {
+if (file_exists('web.config')) {
+  if (file_exists('core')) {
     $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 8
     $drupal_eight = TRUE;
     header('X-Backend: A');
@@ -117,13 +117,13 @@ if (file_exists('./web.config')) {
     header('X-Backend: B');
   }
 }
-elseif (file_exists('./modules/path_alias_cache')) {
+elseif (file_exists('modules/path_alias_cache')) {
   $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   header('X-Backend: C');
 }
-elseif (file_exists('./modules/watchdog')) {
+elseif (file_exists('modules/watchdog')) {
   $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
   $drupal_five = TRUE;
   header('X-Backend: D');
@@ -288,7 +288,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (!$is_dev && $drupal_six && (file_exists('./modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
+  if (!$is_dev && $drupal_six && (file_exists('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
       file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
@@ -313,7 +313,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_rebuild_on_flush'] = 0;
     $conf['advagg_server_addr'] = "-1";
   }
-  elseif (!$is_dev && $drupal_seven && (file_exists('./modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
+  elseif (!$is_dev && $drupal_seven && (file_exists('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['advagg_bundler_active'] = 1;
     $conf['advagg_cache_level'] = 1;
@@ -333,7 +333,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['preprocess_js'] = 1;
   }
 
-  if (!$is_dev && (file_exists('./modules/o_contrib/httprl/httprl.module') || file_exists('./modules/o_contrib_seven/httprl/httprl.module'))) {
+  if (!$is_dev && (file_exists('modules/o_contrib/httprl/httprl.module') || file_exists('modules/o_contrib_seven/httprl/httprl.module'))) {
     $conf['advagg_use_httprl'] = 1;
     $conf['httprl_background_callback'] = 1;
     $conf['httprl_connect_timeout'] = 3;
@@ -345,11 +345,11 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     ### $conf['drupal_http_request_function'] = "httprl_override_core";
   }
 
-  if (file_exists('./modules/o_contrib/purge/purge.inc')) {
+  if (file_exists('modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     header('X-Purge-Level: 6');
   }
-  elseif (file_exists('./modules/o_contrib_seven/purge/purge.inc')) {
+  elseif (file_exists('modules/o_contrib_seven/purge/purge.inc')) {
     $conf['expire_flush_node_terms'] = 0; // disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     header('X-Purge-Level: 7');
@@ -513,20 +513,20 @@ if (file_exists('/data/conf/override.global.inc')) {
 if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
-  if (file_exists('./modules/o_contrib/cache_backport/cache.inc')) {
+  if (file_exists('modules/o_contrib/cache_backport/cache.inc')) {
     $cache_backport = TRUE;
-    $cache_backport_path = './modules/o_contrib/cache_backport/cache.inc';
+    $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
   }
-  if (file_exists('./modules/o_contrib_seven/redis/redis.autoload.inc')) {
+  if (file_exists('modules/o_contrib_seven/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_backport = FALSE;
-    $cache_redis_path = './modules/o_contrib_seven/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib_seven/redis/redis.lock.inc';
+    $cache_redis_path = 'modules/o_contrib_seven/redis/redis.autoload.inc';
+    $cache_lock_path = 'modules/o_contrib_seven/redis/redis.lock.inc';
   }
-  elseif (file_exists('./modules/o_contrib/redis/redis.autoload.inc')) {
+  elseif (file_exists('modules/o_contrib/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
-    $cache_redis_path = './modules/o_contrib/redis/redis.autoload.inc';
-    $cache_lock_path = './modules/o_contrib/redis/redis.lock.d6.inc';
+    $cache_redis_path = 'modules/o_contrib/redis/redis.autoload.inc';
+    $cache_lock_path = 'modules/o_contrib/redis/redis.lock.d6.inc';
   }
   if ($cache_redis) {
     if ($cache_backport) {
