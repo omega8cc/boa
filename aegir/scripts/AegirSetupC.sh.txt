@@ -685,7 +685,7 @@ fi
 if [[ "$_DOMAIN" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
   _D_8_ALLOW=NO
 fi
-if [[ "$_DOMAIN" =~ "v182q.nyc.host8.biz" ]] || [[ "$_DOMAIN" =~ "ocean.nyc.host8.biz" ]] ; then
+if [[ "$_DOMAIN" =~ "v182q.nyc." ]] || [[ "$_DOMAIN" =~ "ocean.nyc." ]] ; then
   _D_8_ALLOW=YES
 fi
 

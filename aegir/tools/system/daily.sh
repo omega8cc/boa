@@ -271,7 +271,11 @@ check_old_empty_platforms () {
     _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
   fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    _DEL_OLD_EMPTY_PLATFORMS="60"
+    if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ "v182q.nyc." ]] || [[ "$_HOST_TEST" =~ "ocean.nyc." ]] ; then
+      true
+    else
+      _DEL_OLD_EMPTY_PLATFORMS="60"
+    fi
   fi
   if [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
     if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] ; then

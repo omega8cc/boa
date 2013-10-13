@@ -90,7 +90,7 @@ up_action ()
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   /var/backups/BARRACUDA.sh.txt &> /dev/null
     sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
+      if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
         true
       else
         if [ -e "/root/.barracuda.cnf" ] ; then
@@ -128,7 +128,7 @@ up_action ()
           n=8
         else
           if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-            if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
+            if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
               n=8
             else
               n=$((RANDOM%800+80))

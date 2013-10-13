@@ -526,7 +526,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _VMFAMILY="XEN"
   fi
   if [[ "$_DOMAIN" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ "v182q.nyc.host8.biz" ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc.host8.biz" ]] ; then
+    if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
       true
     else
       $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
