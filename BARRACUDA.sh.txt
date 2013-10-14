@@ -8113,6 +8113,9 @@ else
   sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/* &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Service/http/* &> /dev/null
   st_runner "service nginx reload" &> /dev/null
 fi
 
