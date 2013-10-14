@@ -2104,9 +2104,9 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
-  sed -i "s/ 90;/ 300;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+  sed -i "s/ 90;/ 300;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
   if [ "$_NGINX_SPDY" = "YES" ] ; then
-    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
@@ -2118,9 +2118,9 @@ force_advanced_nginx_config () {
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
@@ -8077,18 +8077,18 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "service nginx restart" &> /dev/null
 else
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
-    sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
-    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
+    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     sed -i "s/add_header Vary .*//g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   fi
   if [ "$_NGINX_SPDY" = "YES" ] ; then
-    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
@@ -8100,22 +8100,22 @@ else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
-  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision_cdn/Provision/Config/* &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/* &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/* &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/* &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Service/http/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
   st_runner "service nginx reload" &> /dev/null
 fi
 
