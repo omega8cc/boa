@@ -236,11 +236,11 @@ check_dns_curl ()
   else
     _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
     if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-    true
+      true
     else
-    rm -f /etc/resolv.conf
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+      rm -f /etc/resolv.conf
+      echo "nameserver 8.8.8.8" >/etc/resolv.conf
+      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     fi
   fi
   _CURL_TEST=$(curl -s -I "http://files.aegir.cc")
