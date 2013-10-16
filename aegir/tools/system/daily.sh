@@ -205,7 +205,7 @@ fix_permissions () {
   fi
   ### directory and settings files - site level
   chown $_THIS_HM_USER:users $Dir &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php} &> /dev/null
+  chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php} &> /dev/null
   find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
   ### modules,themes,libraries - site level
   chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
