@@ -126,7 +126,6 @@ Drush [E]xtensions [M]aster [S]atellite:
  drush_ecl ------------------ [D7] ------ [S] [B] [EM,ES]
  drush_make ----------------- [D6,D7] --- [S] [B] [EM,ES]
  registry_rebuild ----------- [D6,D7] --- [S] [B] [EM,ES]
- security_check ------------- [D6,D7] --- [S] [B] [EM,ES]
  security_review ------------ [D6,D7] --- [S] [B] [EM,ES]
 
 Provision [E]xtensions [M]aster [S]atellite:

@@ -156,17 +156,16 @@ hostmaster_go_up () {
         fi
       fi
       msg "INFO: Downloading Drush and Provision extensions..."
-      git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn &> /dev/null
-      git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl &> /dev/null
-      git clone --branch 7.x-1.x git://github.com/omega8cc/security_check.git $_ROOT/.drush/security_check &> /dev/null
-      git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/security_review &> /dev/null
+      git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn       &> /dev/null
+      git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl               &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild &> /dev/null
-      git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost &> /dev/null
+      git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/security_review   &> /dev/null
+      git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost   &> /dev/null
     else
       cd $_ROOT/.drush
       curl -s -A iCab "http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       msg "INFO: Downloading Drush and Provision extensions..."
-      _G_EXT="drush_ecl provision_boost provision_cdn registry_rebuild security_check security_review"
+      _G_EXT="drush_ecl provision_boost provision_cdn registry_rebuild security_review"
       for e in $_G_EXT; do
         get_dev_ext "$e.tar.gz" &> /dev/null
       done
