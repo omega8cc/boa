@@ -9,30 +9,58 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 _MODULES_ON_SEVEN="robotstxt"
 _MODULES_ON_SIX="path_alias_cache robotstxt"
-_MODULES_OFF_SEVEN="syslog dblog l10n_update devel performance"
-_MODULES_OFF_LESS_SEVEN="syslog dblog l10n_update performance devel"
-_MODULES_OFF_SIX="syslog cache dblog l10n_update poormanscron supercron css_gzip javascript_aggregator cookie_cache_bypass devel performance"
+_MODULES_OFF_SEVEN="background_process dblog devel l10n_update performance syslog ultimate_cron update"
+_MODULES_OFF_SIX="background_process cookie_cache_bypass css_gzip dblog devel javascript_aggregator l10n_update performance poormanscron supercron syslog ultimate_cron update"
 
 ###-------------SYSTEM-----------------###
 
 run_drush_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush $1 &> /dev/null"
+  su -s /bin/bash $_THIS_HM_USER -c "drush6 $1 &> /dev/null"
 }
 
 run_drush_dash_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush $1 &> /dev/null"
+  su -s /bin/bash - $_THIS_HM_USER -c "drush6 $1 &> /dev/null"
 }
 
 run_drush_nosilent_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush $1"
+  su -s /bin/bash $_THIS_HM_USER -c "drush6 $1"
+}
+
+check_if_required () {
+  _REQ_TEST=$(run_drush_nosilent_cmd "pmi --fields=required_by $1 | grep ':  none'")
+  if [[ "$_REQ_TEST" =~ ":  none" ]] ; then
+    _REQ=NO
+  else
+    _REQ=YES
+  fi
+}
+
+check_if_skip () {
+  for s in $_MODULES_SKIP; do
+    if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
+      _SKIP=YES
+      echo $1 is whitelisted and will not be disabled in $Dom
+    fi
+  done
 }
 
 disable_modules () {
   for m in $1; do
-    _MODULE_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
-    if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
-      run_drush_cmd "dis $m -y"
-      echo $m disabled in $Dom
+    _SKIP=NO
+    if [ ! -z "$_MODULES_SKIP" ] ; then
+      check_if_skip "$m"
+    fi
+    if [ "$_SKIP" = "NO" ] ; then
+      _MODULE_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
+      if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
+        check_if_required "$m"
+        if [ "$_REQ" = "NO" ] ; then
+          run_drush_cmd "dis $m -y"
+          echo $m disabled in $Dom
+        else
+          echo $m is required and can not be disabled in $Dom
+        fi
+      fi
     fi
   done
 }
@@ -54,16 +82,16 @@ fix_user_register_protection () {
     touch $Plr/sites/all/modules/enable_user_register_protection.info
   fi
   if [ ! -e "$Dir/modules/disable_user_register_protection.info" ] ; then
-    Prm=$(drush vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
+    Prm=$(drush6 vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
     Prm=${Prm//[^0-2]/}
     echo Prm user_register for $Dom is $Prm
     if [ -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] ; then
-      drush vset --always-set user_register 0 &> /dev/null
+      drush6 vset --always-set user_register 0 &> /dev/null
     else
       if [ "$Prm" = "1" ] || [ -z "$Prm" ] ; then
-        drush vset --always-set user_register 2 &> /dev/null
+        drush6 vset --always-set user_register 2 &> /dev/null
       fi
-      drush vset --always-set user_email_verification 1 &> /dev/null
+      drush6 vset --always-set user_email_verification 1 &> /dev/null
     fi
   fi
 }
@@ -140,11 +168,7 @@ fix_modules () {
           enable_modules "$_MODULES_ON_SIX"
           run_drush_cmd "sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\""
         elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
-          if [ -e "$Plr/profiles/panopoly" ] || [ -e "$Plr/profiles/martplug" ] || [ -e "$Plr/profiles/openacademy" ] ; then
-            disable_modules "$_MODULES_OFF_LESS_SEVEN"
-          else
-            disable_modules "$_MODULES_OFF_SEVEN"
-          fi
+          disable_modules "$_MODULES_OFF_SEVEN"
           if [ ! -e "$Plr/sites/all/modules/entitycache_dont_enable.info" ] ; then
             enable_modules "entitycache"
           fi

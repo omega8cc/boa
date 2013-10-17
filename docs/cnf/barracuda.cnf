@@ -67,6 +67,7 @@ _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 _PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
 _MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
+_MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable.
 _SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
 _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 ###

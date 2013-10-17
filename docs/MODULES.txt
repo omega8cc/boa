@@ -32,6 +32,12 @@ this module is used without the need to enable it.
 
 NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
       with _MODULES_FIX=NO in /root/.barracuda.cnf (default: YES)
+      However, this options is now smart enough to check if the module
+      is defined as required by any other module or feature and will
+      skip such module automatically, to avoid disabling innocent modules
+      via feature or any other dependency. You can also use _MODULES_SKIP
+      variable to list modules which should never be disabled by
+      the running daily maintenance agent.
 
 Supported core version is listed for every module or theme
 as [D6] and/or [D7].
@@ -92,12 +98,15 @@ Contrib [F]orce[E]nabled
 
 Contrib [F]orce[D]isabled
 
+ background_process --------- [D6,D7] ----------- [FD]
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
  javascript_aggregator ------ [D6] -------------- [FD]
  l10n_update ---------------- [D6,D7] ----------- [FD]
+ performance ---------------- [D6,D7] ----------- [FD]
  poormanscron --------------- [D6] -------------- [FD]
  supercron ------------------ [D6] -------------- [FD]
+ ultimate_cron -------------- [D6,D7] ----------- [FD]
 
 Contrib [NA]:
 
@@ -118,7 +127,7 @@ Core [F]orce[D]isabled:
  cookie_cache_bypass -------- [D6] -------------- [FD]
  dblog ---------------------- [D6,D7] ----------- [FD]
  syslog --------------------- [D6,D7] ----------- [FD]
- performance ---------------- [D6,D7] ----------- [FD]
+ update --------------------- [D6,D7] ----------- [FD]
 
 Drush [E]xtensions [M]aster [S]atellite:
 
