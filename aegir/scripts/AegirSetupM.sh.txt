@@ -210,7 +210,7 @@ else
     msg "INFO: Downloading Drush and Provision extensions..."
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_AEGIR_HOME/.drush/provision_cdn       &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_AEGIR_HOME/.drush/drush_ecl               &> /dev/null
-    git clone --branch 7.x-1.x git://github.com/omega8cc/registry_rebuild.git $_AEGIR_HOME/.drush/registry_rebuild &> /dev/null
+    git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_AEGIR_HOME/.drush/registry_rebuild &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_AEGIR_HOME/.drush/security_review   &> /dev/null
     git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_AEGIR_HOME/.drush/provision_boost   &> /dev/null
     rm -f -r $_AEGIR_HOME/.drush/*/.git
