@@ -483,25 +483,29 @@ add_old_short_name_acquia () {
 #
 # Upgrade contrib less.
 upgrade_contrib_less () {
-  rm -f -r {ctools,entity,rules,views}
+  rm -f -r {context,ctools,entity,rules,views}
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/context-7.x-3.1.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.5.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
   rm -f *.tar.gz
-  cd views
-  # http://drupal.org/node/1766338#comment-6445882
-  curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
-  patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-  if [ -e "../apps" ] ; then
-    cd ../apps
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch ./
-    patch -p1 < apps_msg.patch &> /dev/null
+  if [ -e "views" ] ; then
+    cd views
+    # http://drupal.org/node/1766338#comment-6445882
+    curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+    patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    cd ../
   fi
-  cd ../
+  if [ -e "apps" ] ; then
+    cd apps
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/apps_msg.patch &> /dev/null
+    cd ../
+  fi
+  cd $_CORE
 }
 #
 # Create D7 basic platform.
@@ -862,8 +866,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch ./
-    patch -p1 < $_REAL_PRNAME.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
     if [ $_COMMERCE = "7.x-1.18" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {addressfield,entity}
@@ -873,6 +876,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
+    fi
+    if [ $_COMMERCE = "7.x-1.19" ] ; then
+      cd $_SHRD_PRPATH/modules
+      upgrade_contrib_less
     fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -920,33 +927,19 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       mv $_REAL_PRNAME-$_COM_MERCE $_SHRD_PLNAME
     fi
     nocore_d7_dist_clean
-    if [ $_COM_MERCE = "7.x-2.5" ] ; then
+    remove_default_core_seven_profiles
+    cd $_SHRD_PRPATH
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
+    if [ $_COM_MERCE = "7.x-2.9" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {message_notify}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/message_notify-7.x-2.4.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/message_notify-7.x-2.5.tar.gz
       for archive in ./*.tar.gz; do
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
       upgrade_contrib_less
-    elif [ $_COM_MERCE = "7.x-2.6" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {message_notify}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/message_notify-7.x-2.4.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-      cd views
-      # http://drupal.org/node/1766338#comment-6445882
-      curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
-      patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-      cd ../
     fi
-    remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch ./
-    patch -p1 < $_REAL_PRNAME.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -996,8 +989,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     if [ $_D6COMMONS = "6.x-2.13" ] ; then
       cd $_SHRD_PRPATH/modules/contrib/og
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch ./
-      patch -p1 < og_update_6205_commons_fix.patch &> /dev/null
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch &> /dev/null
     fi
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
@@ -1056,6 +1048,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     sed -i "s/name = Commons/name = Commons 3/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
     rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
     rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
+    if [ $_D7COMMONS = "7.x-3.4" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      upgrade_contrib_less
+    fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -1528,6 +1524,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
+    if [ $_OPENACADEMY = "7.x-1.0-rc3" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      upgrade_contrib_less
+    fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -1629,6 +1629,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
+    if [ $_OPENATRIUM7 = "7.x-2.0-rc1" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      upgrade_contrib_less
+    fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -1674,11 +1678,11 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENCHURCH = "7.x-1.11-beta9" ] ; then
+    rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
+    if [ $_OPENCHURCH = "7.x-1.11-beta13" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
-    rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -1732,6 +1736,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
         tar -xzf "$archive" &> /dev/null
       done
       rm -f *.tar.gz
+      upgrade_contrib_less
     fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -1903,6 +1908,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
+    if [ $_OPENSCHOLAR = "7.x-3.8.1" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      upgrade_contrib_less
+    fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -1950,13 +1959,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_PANOPOLY = "7.x-1.0-rc5" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {entity}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
-      cd $_CORE
+      upgrade_contrib_less
     fi
     if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] && [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
       mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
