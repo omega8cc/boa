@@ -39,6 +39,7 @@
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly
+### RER ----------- Recruiter
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###

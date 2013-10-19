@@ -165,6 +165,7 @@ Octopus can install the platforms listed below:
  OpenChurch 1.11-beta13 ------- http://drupal.org/project/openchurch
  OpenScholar 3.8.1 ------------ http://openscholar.harvard.edu
  Panopoly 1.0-rc5 ------------- http://drupal.org/project/panopoly
+ Recruiter 1.1 ---------------- http://drupal.org/project/recruiter
  Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
 
 ### Pressflow 6.28.2

@@ -68,6 +68,7 @@ _PROSEPOINT=EDIT_PROSEPOINT
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
 _SMALLCORE8=EDIT_SMALLCORE8
+_RECRUITER=EDIT_RECRUITER
 _UBER_CART_SEVEN=EDIT_UBER_CART_SEVEN
 _UBERCART=EDIT_UBERCART
 
@@ -587,6 +588,7 @@ _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 3.8.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
+_F_RECRUITER="Recruiter 1.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart $_UBERCART $_SMALLCORE6 P.$_THIS_CORE"
 #
@@ -2027,6 +2029,55 @@ fi
 }
 
 
+recruiter_install () {
+###---### Recruiter
+#
+_REAL_PRNAME="recruiter"
+_SHRD_PLNAME="$_REAL_PRNAME-$_RECRUITER-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ RER ]] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
+echo " "
+if prompt_yes_no "$_F_RECRUITER - http://recruiterapp.com" ; then
+true
+msg "DISTRO: $_F_RECRUITER installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_SHRD_PLPATH" ] ; then
+  cd $_CORE
+  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_RECRUITER-core.tar.gz" | tar -xzf -
+    if [ -d "$_CORE/$_REAL_PRNAME-$_RECRUITER" ] ; then
+      mv $_REAL_PRNAME-$_RECRUITER $_SHRD_PLNAME
+    fi
+    nocore_d7_dist_clean
+    remove_default_core_seven_profiles
+    if [ $_RECRUITER = "7.x-1.1" ] ; then
+      cd $_SHRD_PRPATH/modules
+      upgrade_contrib_less
+    fi
+  else
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
+  fi
+fi
+init_this_distro_root
+msg "DISTRO: $_F_RECRUITER installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_RECRUITER installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
 ubercart6_install () {
 ###---### Ubercart 2
 #
@@ -2202,6 +2253,7 @@ openoutreach_install
 openscholar_install
 panopoly_install
 prosepoint_install
+recruiter_install
 ubercart6_install
 ubercart7_install
 
@@ -2450,6 +2502,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6 &> /dev/null
+    mrun "sleep 3"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_RECRUITER" recruiter $_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7 &> /dev/null
     mrun "sleep 3"
   fi
 fi
