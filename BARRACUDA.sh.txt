@@ -3677,7 +3677,7 @@ update_php_legacy () {
 #
 # Install latest Git.
 install_latest_git () {
-  if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] ; then
+  if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] || [ "$_SSB_SRC" = "YES" ] ; then
     _GIT_TEST=$(git --version)
     if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
       true
@@ -5975,12 +5975,16 @@ if [ ! -e "/etc/aliases" ] ; then
 fi
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
   if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _SSB_SRC=NO
     true
   else
+    _SSB_SRC=YES
     install_ssl_src
     install_ssh_src
     install_curl_src
   fi
+else
+  _SSB_SRC=NO
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
   install_ssh_src
