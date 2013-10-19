@@ -3719,8 +3719,12 @@ check_apt_updates () {
     esac
   done
   if [ "$_YP_PHP" = "YES" ] ; then
-    if [ "$_SSL_FROM_SOURCES" = "YES" ] ; then
-      _UP_PHP=NO
+    if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+        _UP_PHP=YES
+      else
+        _UP_PHP=NO
+      fi
     else
       _UP_PHP=YES
     fi
