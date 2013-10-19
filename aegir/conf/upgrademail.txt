@@ -167,7 +167,7 @@ platforms and features to help you manage your Drupal sites.
   CiviCRM 4.3.7 ---------------- http://civicrm.org
   Commerce 1.19 ---------------- http://drupal.org/project/commerce_kickstart
   Commerce 2.9 ----------------- http://drupal.org/project/commerce_kickstart
-  Commons 3.4-rc4 -------------- http://drupal.org/project/commons
+  Commons 3.4 ------------------ http://drupal.org/project/commons
   Drupal 7.23.2 ---------------- http://drupal.org/drupal-7.23
   NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
   Open Deals 1.26 -------------- http://drupal.org/project/opendeals
