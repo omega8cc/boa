@@ -1053,6 +1053,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_SHRD_PRPATH
     sed -i "s/name = Commons/name = Commons 3/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
     rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
+    rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
