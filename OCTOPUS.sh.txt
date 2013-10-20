@@ -183,6 +183,7 @@ _PHP_CLI_VERSION=5.3
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
+### SRK ----------- Spark
 ### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
@@ -569,6 +570,7 @@ _OPENSCHOLAR=7.x-3.8.1
 _PANOPOLY=7.x-1.0-rc5
 _PROSEPOINT=0.46
 _RECRUITER=7.x-1.1
+_SPARK=7.x-1.0-alpha9
 _TOTEM=7.x-1.1
 _UBER_CART_SEVEN=3.5.1
 _UBERCART=2.12.1
@@ -944,6 +946,7 @@ do
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
+  sed -i "s/EDIT_SPARK/$_SPARK/g"                         $Files &> /dev/null
   sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
   sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
