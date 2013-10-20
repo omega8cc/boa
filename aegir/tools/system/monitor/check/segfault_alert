@@ -178,7 +178,10 @@ sub send_alert
   $mailx_test = `mail -V 2>&1`;
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
-  if ($mailx_test =~ /invalid/i) {
+  if ($mailx_test =~ /(GNU Mailutils)/i) {
+    `cat $this_path | mail -e -a "From: notify\@omega8.cc" -a "Bcc: notify\@omega8.cc" -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+  }
+  elsif ($mailx_test =~ /invalid/i) {
     `cat $this_path | mail -a "From: notify\@omega8.cc" -e -b notify\@omega8.cc -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
   }
   else {

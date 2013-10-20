@@ -19,7 +19,7 @@ sleep(90);
 &makeactions;
 `rm -f /var/run/boa_wait.pid`;
 `touch /var/xdrago/log/last-run-acrashsql`;
-if ($mailx_test =~ /(invalid)/i) {
+if ($mailx_test =~ /(invalid)/i || $mailx_test =~ /(GNU Mailutils)/i) {
   if ($status ne "CLEAN") {
     `cat $logfile | mail -a "From: notify\@omega8.cc" -e -s "SQL check ERROR [$server] $timedate" notify\@omega8.cc`;
     `sh $fixfile | mail -a "From: notify\@omega8.cc" -e -s "SQL REPAIR done [$server] $timedate" notify\@omega8.cc`;

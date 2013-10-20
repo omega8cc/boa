@@ -1749,7 +1749,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   TIME=`date`
   echo $TIME > $_ROOT/log/date-init.txt
   if [ -e "$_ROOT/log/setupmail.txt" ] ; then
-    if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+    if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+      cat $_ROOT/log/setupmail.txt | sed "s/[\~]//g" | mail -a "From: $_A_DM_EMAIL" -a "Bcc: $_A_DM_EMAIL" -e -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+    elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
       cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
     else
       cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Install on $TIME [$_USER]" $_AT_CLIENT_EMAIL
@@ -1762,13 +1764,17 @@ else
     TIME=`date`
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
-      if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+      if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+        cat $_ROOT/log/upgrademail.txt | sed "s/[\~]//g" | mail -a "From: $_A_DM_EMAIL" -a "Bcc: $_A_DM_EMAIL" -e -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
         cat $_ROOT/log/upgrademail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
       else
         cat $_ROOT/log/upgrademail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
       fi
     else
-      if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+      if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+        cat $_ROOT/log/setupmail.txt | sed "s/[\~]//g" | mail -a "From: $_A_DM_EMAIL" -a "Bcc: $_A_DM_EMAIL" -e -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
+      elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
         cat $_ROOT/log/setupmail.txt | mail -a "From: $_A_DM_EMAIL" -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL
       else
         cat $_ROOT/log/setupmail.txt | mail -r $_A_DM_EMAIL -e -b $_A_DM_EMAIL -s "Your Aegir Upgrade on $TIME [$_USER]" $_AT_CLIENT_EMAIL

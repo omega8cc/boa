@@ -30,7 +30,34 @@ send_notice_core () {
   _BCC_EMAIL="notify@omega8.cc"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
-  if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_ADM_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "URGENT: Please migrate $Dom site to Pressflow" $_CLIENT_EMAIL
+Hello,
+
+Our system detected that you are using vanilla Drupal core
+for site $Dom.
+
+The platform root directory for this site is:
+$Plr
+
+Using non-Pressflow 5.x or 6.x core is not allowed
+on our servers, unless it is a temporary result of your site
+import, but every imported site should be migrated to Pressflow
+based platform as soon as possible.
+
+If the site is not migrated to Pressflow based platform
+in seven (7) days, it may cause service interruption.
+
+We are working hard to deliver top performance hosting
+for your Drupal sites and we appreciate your efforts
+to meet the requirements, which are an integral part
+of the quality you can expect from Omega8.cc.
+
+--
+This e-mail has been sent by your Aegir platform core monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
   cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "URGENT: Please migrate $Dom site to Pressflow" $_CLIENT_EMAIL
 Hello,
 
@@ -178,7 +205,56 @@ send_notice_sql () {
   _BCC_EMAIL="notify@omega8.cc"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
-  if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_ADM_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "NOTICE: Your DB Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
+Hello,
+
+You are using more resources than allocated in your subscription.
+You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+
+Your allowed databases space is $_SQL_MIN_LIMIT MB.
+You are currently using $SumDatH MB of databases space.
+
+Please reduce your usage by deleting no longer used sites,
+or by converting their tables to MyISAM format on command line
+when in the site directory with:
+
+  $ sqlmagic convert to-myisam
+
+or purchase enough Aegir Cores to cover your current usage.
+
+You can purchase more Aegir Cores easily online:
+
+  http://omega8.cc/upgrade
+
+Note that we do not count any site identified as temporary dev/test,
+by having in its main name a special keyword with two dots on both sides:
+
+  .tmp. .test. .dev. .devel.
+
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes).
+
+However, if we discover that someone is using this method to hide real
+usage via listed keywords in the main site name and adding live domain(s)
+as aliases, such account will be suspended without any warning.
+
+If you are using more (counted) resources than allocated in your subscription
+for more than 30 calendar days without purchasing an upgrade, your instance
+will be suspended without further notice, and to restore it you will have to
+pay for all past due overages plus \$152 USD reconnection fee.
+
+We provide very generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return we expect
+that you will use this allowance responsibly and sparingly.
+
+Thank you in advance.
+
+--
+This e-mail has been sent by your Aegir resources usage weekly monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
   cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "NOTICE: Your DB Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
 Hello,
 
@@ -285,7 +361,52 @@ send_notice_disk () {
   _BCC_EMAIL="notify@omega8.cc"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
-  if [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
+  if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
+  cat <<EOF | mail -e -a "From: $_ADM_EMAIL" -a "Bcc: $_BCC_EMAIL" -s "NOTICE: Your Disk Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
+Hello,
+
+You are using more resources than allocated in your subscription.
+You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+
+Your allowed disk space is $_DSK_MIN_LIMIT MB.
+You are currently using $HomSizH MB of disk space.
+
+Please reduce your usage by deleting old backups, files,
+and no longer used sites, or purchase enough Aegir Cores
+to cover your current usage.
+
+You can purchase more Aegir Cores easily online:
+
+  http://omega8.cc/upgrade
+
+Note that we do not count any site identified as temporary dev/test,
+by having in its main name a special keyword with two dots on both sides:
+
+  .tmp. .test. .dev. .devel.
+
+For example, a site with main name: abc.test.foo.com is by default excluded
+from your allocated resources limits (not counted for billing purposes).
+
+However, if we discover that someone is using this method to hide real
+usage via listed keywords in the main site name and adding live domain(s)
+as aliases, such account will be suspended without any warning.
+
+If you are using more (counted) resources than allocated in your subscription
+for more than 30 calendar days without purchasing an upgrade, your instance
+will be suspended without further notice, and to restore it you will have to
+pay for all past due overages plus \$152 USD reconnection fee.
+
+We provide very generous soft-limits and we allow free-of-charge overages
+between weekly checks which happen every Monday, but in return we expect
+that you will use this allowance responsibly and sparingly.
+
+Thank you in advance.
+
+--
+This e-mail has been sent by your Aegir resources usage weekly monitor.
+
+EOF
+  elif [[ "$_MAILX_TEST" =~ "invalid" ]] ; then
   cat <<EOF | mail -a "From: $_ADM_EMAIL" -e -b $_BCC_EMAIL -s "NOTICE: Your Disk Usage on [$_THIS_HM_USER] is too high" $_CLIENT_EMAIL
 Hello,
 
