@@ -1529,6 +1529,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_OPENACADEMY = "7.x-1.0-rc3" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {ds}
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/ds-7.x-1.9.tar.gz
+      for archive in ./*.tar.gz; do
+        tar -xzf "$archive" &> /dev/null
+      done
+      rm -f *.tar.gz
       upgrade_contrib_less
     fi
   else
