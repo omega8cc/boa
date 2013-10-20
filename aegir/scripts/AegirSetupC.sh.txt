@@ -2168,8 +2168,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_SPARK = "7.x-1.1" ] ; then
-      cd $_SHRD_PRPATH/modules
+    if [ $_SPARK = "7.x-1.0-alpha9" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
   else
@@ -2217,8 +2217,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
+    rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
     if [ $_TOTEM = "7.x-1.1" ] ; then
-      cd $_SHRD_PRPATH/modules
+      cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
   else
