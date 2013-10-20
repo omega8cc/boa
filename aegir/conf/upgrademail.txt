@@ -160,6 +160,7 @@ platforms and features to help you manage your Drupal sites.
   OpenBlog 1.0-a2 -------------- http://drupal.org/project/openblog
   OpenScholar 3.8.1 ------------ http://openscholar.harvard.edu
   Recruiter 1.1 ---------------- http://drupal.org/project/recruiter
+  Totem 1.1 -------------------- http://drupal.org/project/totem
 
 
 === UPDATED OCTOPUS PLATFORMS
@@ -174,7 +175,7 @@ platforms and features to help you manage your Drupal sites.
   NodeStream 2.0-rc5 ----------- http://drupal.org/project/nodestream
   Open Deals 1.26 -------------- http://drupal.org/project/opendeals
   Open Outreach 1.2 ------------ http://drupal.org/project/openoutreach
-  OpenChurch 1.11-beta13 ------- http://drupal.org/project/openchurch
+  OpenChurch 1.11-b13 ---------- http://drupal.org/project/openchurch
   Panopoly 1.0-rc5 ------------- http://drupal.org/project/panopoly
   Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
 

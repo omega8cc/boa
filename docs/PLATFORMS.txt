@@ -41,6 +41,7 @@
 ### PPT ----------- ProsePoint
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
+### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###
