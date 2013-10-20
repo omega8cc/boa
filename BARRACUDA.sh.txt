@@ -5039,6 +5039,19 @@ if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
 else
   _FROM_SOURCES=YES
 fi
+
+
+###--------------------###
+if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
+  if [ "$_REL_VERSION" = "precise" ] ; then
+    true
+  else
+    _FROM_SOURCES=YES
+  fi
+fi
+
+
+###--------------------###
 update_sources_list
 apt-get update &> /dev/null
 
