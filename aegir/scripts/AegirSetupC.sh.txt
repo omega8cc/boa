@@ -486,12 +486,9 @@ add_old_short_name_acquia () {
 #
 # Upgrade contrib less.
 upgrade_contrib_less () {
-  rm -f -r {context,ctools,entity,rules,views}
+  rm -f -r {context,entity}
   wget -q -U iCab http://files.aegir.cc/dev/contrib/context-7.x-3.1.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.5.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
   for archive in ./*.tar.gz; do
     tar -xzf "$archive" &> /dev/null
   done
