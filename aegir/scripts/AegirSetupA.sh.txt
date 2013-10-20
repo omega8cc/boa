@@ -59,6 +59,7 @@ _OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENATRIUM7=EDIT_OPENATRIUM7
+_OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
@@ -1550,6 +1551,11 @@ mrun "sleep 1"
   if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites" ] ; then

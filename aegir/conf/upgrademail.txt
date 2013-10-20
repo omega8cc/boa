@@ -157,6 +157,7 @@ platforms and features to help you manage your Drupal sites.
 
   Open Academy 1.0-rc3 --------- http://drupal.org/project/openacademy
   Open Atrium 2.0-rc1 ---------- http://drupal.org/project/openatrium
+  OpenBlog 1.0-a2 -------------- http://drupal.org/project/openblog
   OpenScholar 3.8.1 ------------ http://openscholar.harvard.edu
   Recruiter 1.1 ---------------- http://drupal.org/project/recruiter
 

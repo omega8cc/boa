@@ -58,6 +58,7 @@ _OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM6=EDIT_OPENATRIUM6
 _OPENATRIUM7=EDIT_OPENATRIUM7
+_OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
@@ -585,6 +586,7 @@ _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM6="Open Atrium 1.7.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENATRIUM7="Open Atrium 2.0-rc1 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENBLOG="OpenBlog 1.0-a2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.11-b13 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.2 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1650,6 +1652,62 @@ fi
 }
 
 
+openblog_install () {
+###---### OpenBlog
+#
+_REAL_PRNAME="openblog"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENBLOG-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OBG ]] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENBLOG - http://drupal.org/project/openblog" ; then
+true
+msg "DISTRO: $_F_OPENBLOG installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_SHRD_PLPATH" ] ; then
+  cd $_CORE
+  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENBLOG-core.tar.gz" | tar -xzf -
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENBLOG" ] ; then
+      mv $_REAL_PRNAME-$_OPENBLOG $_SHRD_PLNAME
+    fi
+    nocore_d7_dist_clean
+    remove_default_core_seven_profiles
+    if [ $_OPENBLOG = "7.x-1.0-alpha2" ] ; then
+      cd $_SHRD_PRPATH/themes/contrib
+      rm -f -r {subtle_simplicity}
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/subtle_simplicity-7.x-2.x-dev.tar.gz
+      for archive in ./*.tar.gz; do
+        tar -xzf "$archive" &> /dev/null
+      done
+      rm -f *.tar.gz
+      cd $_SHRD_PRPATH/modules/contrib
+      upgrade_contrib_less
+    fi
+  else
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
+  fi
+fi
+init_this_distro_root
+msg "DISTRO: $_F_OPENBLOG installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_OPENBLOG installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
+
 openchurch_install () {
 ###---### Open Church
 #
@@ -2044,7 +2102,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ RER ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_RECRUITER - http://recruiterapp.com" ; then
+if prompt_yes_no "$_F_RECRUITER - http://drupal.org/project/recruiter" ; then
 true
 msg "DISTRO: $_F_RECRUITER installation in progress..."
 mrun "sleep 1"
@@ -2250,6 +2308,7 @@ managingnews_install
 openacademy_install
 openatrium6_install
 openatrium7_install
+openblog_install
 openchurch_install
 opendeals_install
 openoutreach_install
@@ -2463,6 +2522,12 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM7" openatrium $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 3"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENBLOG" openblog $_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7 &> /dev/null
     mrun "sleep 3"
   fi
 fi
