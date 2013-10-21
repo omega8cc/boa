@@ -42,7 +42,13 @@ $conf['drupal_http_request_fails'] = FALSE;  // avoid false alarm
 $conf['image_allow_insecure_derivatives'] = TRUE; // enable to avoid known issues: http://drupal.org/drupal-7.20-release-notes
 $conf['omega_rebuild_aggregates'] = FALSE;   // do not allow to turn it on by default
 
-ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
+if ($conf['install_profile'] == 'totem') {
+  ini_set('session.cookie_lifetime', 0); // set it to 24 hours max
+}
+else {
+  ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
+}
+
 ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
 ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
 // Improve sessions management if module session_expire and/or Pressflow core is not used.
