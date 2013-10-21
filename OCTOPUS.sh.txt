@@ -164,7 +164,7 @@ _PHP_CLI_VERSION=5.3
 ### CM6 ----------- CiviCRM 4.1.6 D6 (off)
 ### CM7 ----------- CiviCRM 4.3.7 D7 (off)
 ### CME ----------- Commerce v.2
-### COD ----------- Conference
+### COD ----------- Conference (off)
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
@@ -547,7 +547,7 @@ fi
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _CIVICRM_PN=boa-2.0.9-dev
-_COD=6.x-1.0-rc2
+_COD=7.x-1.0-alpha2
 _COM_MERCE=7.x-2.9
 _COMMERCE=7.x-1.19
 _D6COMMONS=6.x-2.13

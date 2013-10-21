@@ -570,7 +570,7 @@ _D8_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE8"
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COD="Conference 1.0-rc2 $_SMALLCORE6 P.$_THIS_CORE"
+_F_COD="Conference 1.0-a2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.19 $_SMALLCORE7 P.$_THIS_CORE"
 _F_D6COMMONS="Commons 2.13 $_SMALLCORE6 P.$_THIS_CORE"
@@ -783,55 +783,46 @@ cod_install () {
 ###---### Conference Organizing Distribution
 #
 _REAL_PRNAME="cod"
-_SHRD_PLNAME="$_REAL_PRNAME-$_COD-$_SMALLCORE6"
+_SHRD_PLNAME="$_REAL_PRNAME-$_COD-$_SMALLCORE7"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
-if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/jquery.ui" ] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_COD - http://usecod.com" ; then
+if prompt_yes_no "$_F_COD - http://drupal.org/project/cod" ; then
 true
 msg "DISTRO: $_F_COD installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
+  cd $_CORE
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
     fi
-    cd $_CORE
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COD-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_COD" ] ; then
-      mv $_CORE/$_REAL_PRNAME-$_COD $_CORE/$_REAL_PRNAME-$_COD-old
+      mv $_REAL_PRNAME-$_COD $_SHRD_PLNAME
     fi
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COD-core.tar.gz
-    tar -xzf $_REAL_PRNAME-$_COD-core.tar.gz
-    rm -f $_REAL_PRNAME-$_COD-core.tar.gz
-    if [ -d "$_CORE/$_REAL_PRNAME" ] ; then
-      mv $_CORE/$_REAL_PRNAME $_SHRD_PLPATH
-    else
-      mv $_CORE/$_REAL_PRNAME-$_COD $_SHRD_PLPATH
+    nocore_d7_dist_clean
+    remove_default_core_seven_profiles
+    sed -i "s/Conference Organizing Distribution (COD)/Conference/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+    if [ $_COD = "7.x-1.0-alpha2" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      upgrade_contrib_less
     fi
-    if [ -d "$_CORE/$_REAL_PRNAME-$_COD-old" ] ; then
-      mv $_CORE/$_REAL_PRNAME-$_COD-old $_CORE/$_REAL_PRNAME-$_COD
-    fi
-    nocore_d6_dist_clean
-    sed -i "s/Conference Organizing Distribution/Conference/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-    rm -f -r $_SHRD_PLPATH/profiles/default
   else
-    cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
 fi
 init_this_distro_root
-if [ ! -L "$_OCTO_PLPATH/sites/all/libraries/jquery.ui" ] ; then
-  mkdir -p $_OCTO_PLPATH/sites/all/libraries
-  ln -sf $_SHRD_PLPATH/profiles/$_REAL_PRNAME/modules/contrib/jquery_ui/jquery.ui $_OCTO_PLPATH/sites/all/libraries/jquery.ui
-fi
 msg "DISTRO: $_F_COD installation completed"
 mrun "sleep 1"
 else
   msg "DISTRO: $_F_COD installation skipped"
   mrun "sleep 1"
+fi
 fi
 fi
 fi
@@ -2402,7 +2393,6 @@ fi
 }
 
 
-cod_install
 commerce_7_1_install
 commerce_7_2_install
 commons_6_install
@@ -2432,6 +2422,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   acquia_install
   civicrm_m6_install
   civicrm_m7_install
+  cod_install
   drupal_edge_8_install
   drupal8_install
   nodestream7_install
@@ -2501,9 +2492,9 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
     mrun "sleep 3"
   fi
 fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE6 &> /dev/null
+if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7 &> /dev/null
     mrun "sleep 3"
   fi
 fi
