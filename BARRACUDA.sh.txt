@@ -3266,7 +3266,7 @@ install_php_universal_extensions () {
   mrun "sleep 1"
   cd /var/opt
   rm -f -r phpredis*
-  git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+  git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
   cd /var/opt/phpredis
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3433,7 +3433,7 @@ update_php_universal_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r phpredis*
-    git clone git://github.com/nicolasff/phpredis.git &> /dev/null
+    git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
     cd /var/opt/phpredis
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
