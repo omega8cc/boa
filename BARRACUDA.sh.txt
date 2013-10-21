@@ -1287,6 +1287,7 @@ forced_redis_password_update () {
   touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
   _FORCE_REDIS_RESTART=YES
   sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
+  sed -i "s/^requirepass /# requirepass /g" /etc/redis/redis.conf &> /dev/null
   chown redis:redis /etc/redis/redis.conf
   chmod 0600 /etc/redis/redis.conf
 }

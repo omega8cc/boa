@@ -234,6 +234,7 @@ update_redis_password () {
     fi
     echo "$_ESC_RPASS" > /root/.redis.pass.txt
     sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
+    sed -i "s/^requirepass /# requirepass /g" /etc/redis/redis.conf &> /dev/null
     chown redis:redis /etc/redis/redis.conf
     chmod 0600 /etc/redis/redis.conf
     service redis-server stop &> /dev/null

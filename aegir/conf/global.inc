@@ -545,7 +545,7 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     $conf['redis_client_interface']           = 'PhpRedis';
     $conf['redis_client_host']                = '127.0.0.1';
     $conf['redis_client_port']                = '6379';
-    $conf['redis_client_password']            = 'isfoobared';
+  //$conf['redis_client_password']            = 'isfoobared';
     $conf['cache_prefix']                     = $this_prefix;
     $conf['page_cache_invoke_hooks']          = TRUE;
     $conf['page_cache_without_database']      = FALSE;
