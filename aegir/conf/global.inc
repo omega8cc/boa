@@ -71,7 +71,7 @@ $redis_lock   = FALSE;
 $redis_up     = FALSE;
 $use_redis    = FALSE;
 
-if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|goog|yahoo|yandex|spider|bot|tracker|click|parser)/i", $_SERVER['HTTP_USER_AGENT'])) {
+if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
   // detect known bots
   $known_bot = TRUE;
 }
