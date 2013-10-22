@@ -111,36 +111,6 @@ if (file_exists('/data/conf/settings.global.inc')) {
   require_once "/data/conf/settings.global.inc";
 }
 
-if (file_exists('web.config')) {
-  if (file_exists('core')) {
-    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 8
-    $drupal_eight = TRUE;
-    header('X-Backend: A');
-  }
-  else {
-    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7
-    $drupal_seven = TRUE;
-    $use_redis = TRUE;
-    header('X-Backend: B');
-  }
-}
-elseif (file_exists('modules/path_alias_cache')) {
-  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
-  $drupal_six = TRUE;
-  $use_redis = TRUE;
-  header('X-Backend: C');
-}
-elseif (file_exists('modules/watchdog')) {
-  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
-  $drupal_five = TRUE;
-  header('X-Backend: D');
-}
-else {
-  $conf['cache'] = 1; // enable hardcoded standard caching
-  $drupal_unknown = TRUE;
-  header('X-Backend: E');
-}
-
 /**
  * Dev mode switch
  *
@@ -166,6 +136,46 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
   $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for foo.dev.domain
   $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for foo.dev.domain
   $is_dev = TRUE;
+}
+
+if (file_exists('web.config')) {
+  if (file_exists('core')) {
+    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 8
+    $drupal_eight = TRUE;
+    if ($is_dev) {
+      header('X-Backend: A');
+    }
+  }
+  else {
+    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7
+    $drupal_seven = TRUE;
+    $use_redis = TRUE;
+    if ($is_dev) {
+      header('X-Backend: B');
+    }
+  }
+}
+elseif (file_exists('modules/path_alias_cache')) {
+  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
+  $drupal_six = TRUE;
+  $use_redis = TRUE;
+  if ($is_dev) {
+    header('X-Backend: C');
+  }
+}
+elseif (file_exists('modules/watchdog')) {
+  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
+  $drupal_five = TRUE;
+  if ($is_dev) {
+    header('X-Backend: D');
+  }
+}
+else {
+  $conf['cache'] = 1; // enable hardcoded standard caching
+  $drupal_unknown = TRUE;
+  if ($is_dev) {
+    header('X-Backend: E');
+  }
 }
 
 /**
@@ -216,7 +226,9 @@ if (isset($_SERVER['SERVER_NAME'])) {
       file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/ubercart/README.txt')) {
     unset($conf['file_downloads']); // disable hardcoded public downloads
     $is_cart = TRUE;
-    header('X-Is-Cart: YES');
+    if ($is_dev) {
+      header('X-Is-Cart: YES');
+    }
   }
 }
 
@@ -250,18 +262,24 @@ if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUES
 }
 
 if ($redis_up && $use_cache && $use_redis && !$force_redis) {
-  header('X-Allow-Redis: YES');
+  if ($is_dev) {
+    header('X-Allow-Redis: YES');
+  }
 }
 elseif ($redis_up && $force_redis) {
   $use_cache = TRUE;
   $use_redis = TRUE;
-  header('X-Force-Redis: YES');
+  if ($is_dev) {
+    header('X-Force-Redis: YES');
+  }
 }
 else {
   if (!$is_dev) {
     $conf['cache'] = 1; // enable standard db caching if redis is not allowed or not available
   }
-  header('X-Allow-Redis: NO');
+  if ($is_dev) {
+    header('X-Allow-Redis: NO');
+  }
 }
 
 if (file_exists('sites/all/modules/domain/settings.inc')) {
@@ -355,15 +373,21 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (file_exists('modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    header('X-Purge-Level: 6');
+    if ($is_dev) {
+      header('X-Purge-Level: 6');
+    }
   }
   elseif (file_exists('modules/o_contrib_seven/purge/purge.inc')) {
     $conf['expire_flush_node_terms'] = 0; // disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    header('X-Purge-Level: 7');
+    if ($is_dev) {
+      header('X-Purge-Level: 7');
+    }
   }
   else {
-    header('X-Purge-Level: none');
+    if ($is_dev) {
+      header('X-Purge-Level: none');
+    }
   }
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
@@ -375,10 +399,14 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         $_SERVER['HTTPS'] = 'on';
         if ($drupal_seven || $drupal_eight) {
           ini_set('session.cookie_secure', TRUE);
-          header('X-Cookie-Sec: YES');
+          if ($is_dev) {
+            header('X-Cookie-Sec: YES');
+          }
         }
       }
-      header('X-Local-Proto: https');
+      if ($is_dev) {
+        header('X-Local-Proto: https');
+      }
     }
     else {
       $base_url = 'http://' . $_SERVER['HTTP_HOST'];
@@ -402,12 +430,14 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   }
 
   $this_prefix = $_SERVER['SERVER_NAME'] . '_';
-  header("X-Redis-Prefix: " . $this_prefix);
+  if ($is_dev) {
+    header("X-Redis-Prefix: " . $this_prefix);
+  }
 
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
-    $identity = 'BOND'. md5("$identity");
+    $identity = 'BD'. md5("$identity");
 
     if ($drupal_seven || $drupal_eight) {
       $conf['https'] = TRUE;
@@ -468,9 +498,9 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/", $_SERVER['HTTP_HOST'])) {
-        if (!isset($_COOKIE['OctopusNoCacheID'])) {
+        if (!isset($_COOKIE['NoCacheID'])) {
           $lifetime = '15';
-          setcookie('OctopusNoCacheID', 'NOCACHE' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+          setcookie('NoCacheID', 'NC' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '1';
         header('X-Limit-Booster: 1');
@@ -478,28 +508,36 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
-        header('X-Skip-Booster: AjaxRU');
+        if ($is_dev) {
+          header('X-Skip-Booster: AjaxRU');
+        }
       }
 
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
-        header('X-Skip-Booster: AjaxQS');
+        if ($is_dev) {
+          header('X-Skip-Booster: AjaxQS');
+        }
       }
 
       if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
-        if (!isset($_COOKIE['OctopusNoCacheID'])) {
+        if (!isset($_COOKIE['NoCacheID'])) {
           $lifetime = '15';
-          setcookie('OctopusNoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
+          setcookie('NoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '0';
-        header('X-Skip-Booster: PostRM');
+        if ($is_dev) {
+          header('X-Skip-Booster: PostRM');
+        }
       }
     }
 
     if ($known_bot) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '86400';
-        header('X-Bot-Booster: 86400');
+        if ($is_dev) {
+          header('X-Bot-Booster: 86400');
+        }
       }
     }
 
