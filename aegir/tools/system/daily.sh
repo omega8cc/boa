@@ -15,11 +15,11 @@ _MODULES_OFF_SIX="background_process cookie_cache_bypass css_gzip dblog devel ja
 ###-------------SYSTEM-----------------###
 
 run_drush_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush6 $1 &> /dev/null"
+  su -s /bin/bash $_THIS_HM_USER -c "drush $1 &> /dev/null"
 }
 
 run_drush_dash_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush6 $1 &> /dev/null"
+  su -s /bin/bash - $_THIS_HM_USER -c "drush $1 &> /dev/null"
 }
 
 run_drush_nosilent_cmd () {
@@ -82,16 +82,16 @@ fix_user_register_protection () {
     touch $Plr/sites/all/modules/enable_user_register_protection.info
   fi
   if [ ! -e "$Dir/modules/disable_user_register_protection.info" ] ; then
-    Prm=$(drush6 vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
+    Prm=$(drush vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
     Prm=${Prm//[^0-2]/}
     echo Prm user_register for $Dom is $Prm
     if [ -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] ; then
-      drush6 vset --always-set user_register 0 &> /dev/null
+      drush vset --always-set user_register 0 &> /dev/null
     else
       if [ "$Prm" = "1" ] || [ -z "$Prm" ] ; then
-        drush6 vset --always-set user_register 2 &> /dev/null
+        drush vset --always-set user_register 2 &> /dev/null
       fi
-      drush6 vset --always-set user_email_verification 1 &> /dev/null
+      drush vset --always-set user_email_verification 1 &> /dev/null
     fi
   fi
 }
