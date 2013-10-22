@@ -113,7 +113,7 @@ DirectoryIndex index.php
       ExpiresDefault A1
     </IfModule>
     <IfModule mod_headers.c>
-      Header set Expires "Sun, 19 Nov 1978 05:00:00 GMT"
+      Header set Expires "Tue, 24 Jan 1984 08:00:00 GMT"
       Header set Cache-Control "no-store, no-cache, must-revalidate, post-check=0, pre-check=0"
     </IfModule>
   </FilesMatch>
