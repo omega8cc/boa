@@ -570,7 +570,7 @@ _D8_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE8"
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COD="Conference 1.0-a2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COD="Conference 1.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.19 $_SMALLCORE7 P.$_THIS_CORE"
 _F_D6COMMONS="Commons 2.13 $_SMALLCORE6 P.$_THIS_CORE"
@@ -808,7 +808,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     sed -i "s/Conference Organizing Distribution (COD)/Conference/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-    if [ $_COD = "7.x-1.0-alpha2" ] ; then
+    if [ $_COD = "7.x-1.0-alpha3" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
