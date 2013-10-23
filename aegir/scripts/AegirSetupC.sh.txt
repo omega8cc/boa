@@ -336,8 +336,8 @@ prepare_drupal6_core () {
     cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
     cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
     cd $_D6_CORE_DIR/themes
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/rubik-6.x-3.0-beta5.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/tao-6.x-3.3.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/rubik-6.x-3.0-beta5.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.tar.gz" | tar -xzf -
     rm -f $_D6_CORE_DIR/sites/all/*.txt
     cd $_CORE
   fi
@@ -357,8 +357,8 @@ prepare_drupal7_core () {
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
     cd $_D7_CORE_DIR/themes
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/rubik-7.x-4.0-beta9.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://ftp.drupal.org/files/projects/tao-7.x-3.0-beta4.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/rubik-7.x-4.0-beta9.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/tao-7.x-3.0-beta4.tar.gz" | tar -xzf -
     cd $_CORE
   fi
 }

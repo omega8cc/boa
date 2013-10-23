@@ -343,15 +343,15 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib
     git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib/boost/.git
-    wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-6.x-3.4.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.5.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-6.x-3.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-6.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-6.x-3.4.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-6.x-2.5.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-6.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/phpass-6.x-2.0.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-6.x-3.0.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-6.x-2.x-dev.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-6.x-1.6.tar.gz
       ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
       git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
       ### rm -f -r /data/all/$i/o_contrib/purge/.git
@@ -401,8 +401,8 @@ for i in $REVISIONS; do
     done
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       cd /data/all/$i/o_contrib_seven
-      wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.6.tar.gz
-      wget -q -U iCab http://ftp.drupal.org/files/projects/expire-7.x-1.0-beta1.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-7.x-1.6.tar.gz
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-7.x-1.0-beta1.tar.gz
       ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
       ### git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
       ### rm -f -r /data/all/$i/o_contrib_seven/purge/.git
@@ -411,16 +411,16 @@ for i in $REVISIONS; do
     cd /data/all/$i/o_contrib_seven
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib_seven/boost/.git
-    wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-7.x-1.0-rc2.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.3.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.8.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-7.x-3.0.tar.gz
-    wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-7.x-2.0.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-7.x-2.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-7.x-1.0-rc2.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-7.x-2.3.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-7.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/speedy-7.x-1.8.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_edge-7.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-7.x-3.0.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-7.x-3.x-dev.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
@@ -488,40 +488,40 @@ download_textile () {
 download_o_contrib_seven () {
   touch update-024.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
-  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-7.x-2.0-beta3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-7.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-7.x-2.6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/entitycache-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/esi-7.x-3.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/flood_control-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-7.x-1.0-rc2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-7.x-2.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-7.x-1.12.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-7.x-1.7.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/nocurrent_pass-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/reroute_email-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-7.x-1.1.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/speedy-7.x-1.8.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-7.x-2.0-rc11.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/vars-7.x-2.0-alpha10.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-7.x-3.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-7.x-3.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/admin-7.x-2.0-beta3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-7.x-2.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/blockcache_alter-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/cdn-7.x-2.6.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/config_perms-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/css_emimage-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/esi-7.x-3.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/flood_control-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-7.x-1.0-rc2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-7.x-2.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-7.x-1.12.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/login_security-7.x-1.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/nocurrent_pass-7.x-1.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/readonlymode-7.x-1.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/reroute_email-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/robotstxt-7.x-1.1.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/securesite-7.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/site_verify-7.x-1.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/speedy-7.x-1.8.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_edge-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/textile-7.x-2.0-rc11.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/variable_clean-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/vars-7.x-2.0-alpha10.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-7.x-3.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-7.x-3.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views404-7.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
     git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r expire/.git
     rm -f -r purge*
-    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-7.x-1.6.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-7.x-1.6.tar.gz
     ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
     ### rm -f -r purge/.git
   else
@@ -555,39 +555,39 @@ download_o_contrib_seven () {
 download_o_contrib_six () {
   touch update-024.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
-  wget -q -U iCab http://ftp.drupal.org/files/projects/admin-6.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/advagg-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/blockcache_alter-6.x-1.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/cdn-6.x-2.6.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/config_perms-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/css_emimage-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/esi-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/filefield_nginx_progress-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/force_password_change-6.x-3.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/fpa-6.x-2.5.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/httprl-6.x-1.12.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/image-6.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/login_security-6.x-1.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/phpass-6.x-2.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/private_upload-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/readonlymode-6.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/reroute_email-6.x-1.2.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/robotstxt-6.x-1.3.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/securesite-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/site_verify-6.x-1.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/taxonomy_edge-6.x-1.7.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/textile-6.x-2.4.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/variable_clean-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_cache_bully-6.x-3.0.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views_content_cache-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://ftp.drupal.org/files/projects/views404-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/admin-6.x-2.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/blockcache_alter-6.x-1.5.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/cdn-6.x-2.6.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/config_perms-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/css_emimage-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/dbtuner-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/esi-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-6.x-3.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-6.x-2.5.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-6.x-1.12.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/image-6.x-1.2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/login_security-6.x-1.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/phpass-6.x-2.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/private_upload-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/readonlymode-6.x-1.2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/reroute_email-6.x-1.2.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/robotstxt-6.x-1.3.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/securesite-6.x-2.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/site_verify-6.x-1.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_edge-6.x-1.7.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/textile-6.x-2.4.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/variable_clean-6.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-6.x-3.0.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-6.x-2.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/views404-6.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r expire*
     git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
     rm -f -r expire/.git
     rm -f -r purge*
-    wget -q -U iCab http://ftp.drupal.org/files/projects/purge-6.x-1.6.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-6.x-1.6.tar.gz
     ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git &> /dev/null
     ### rm -f -r purge/.git
   else
@@ -613,7 +613,7 @@ download_o_contrib_six () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
-    wget -q -U iCab http://ftp.drupal.org/files/projects/cache_backport-6.x-1.0-rc1.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/cache_backport-6.x-1.0-rc1.tar.gz
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
     done
