@@ -150,6 +150,10 @@ fix_o_contrib_symlink () {
   fi
 }
 
+sql_convert () {
+  su - ${_THIS_HM_USER}.ftp -c "sqlmagic convert to-innodb"
+}
+
 fix_modules () {
   if [ "$_MODULES_FIX" = "YES" ] ; then
     searchStringA="pressflow-5.23.50"
@@ -158,6 +162,13 @@ fix_modules () {
       *)
       if [ -e "$Dir/drushrc.php" ] ; then
         cd $Dir
+        if [ "$_SQL_CONVERT" = "YES" ] ; then
+          _TIMESTAMP=`date +%y%m%d-%H%M`
+          echo "$_TIMESTAMP sql conversion for $Dom started"
+          sql_convert
+          _TIMESTAMP=`date +%y%m%d-%H%M`
+          echo "$_TIMESTAMP sql conversion for $Dom completed"
+        fi
         fix_user_register_protection
         if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
           run_drush_cmd "@hostmaster dis cache syslog dblog -y"
@@ -289,11 +300,6 @@ delete_this_platform () {
 }
 
 check_old_empty_platforms () {
-  _DEL_OLD_EMPTY_PLATFORMS="0"
-  if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
-    source /root/.${_THIS_HM_USER}.octopus.cnf
-    _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
-  fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ "v182q.nyc." ]] || [[ "$_HOST_TEST" =~ "ocean.nyc." ]] ; then
       true
@@ -328,6 +334,12 @@ action () {
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
         echo User $User
+        _SQL_CONVERT=NO
+        _DEL_OLD_EMPTY_PLATFORMS="0"
+        if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
+          source /root/.${_THIS_HM_USER}.octopus.cnf
+          _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
+        fi
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE

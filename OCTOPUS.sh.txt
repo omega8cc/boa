@@ -512,6 +512,44 @@ _STRONG_PASSWORDS=NO
 
 
 ###----------------------------------------###
+### DB ENGINE AUTO-CONVERSION              ###
+###----------------------------------------###
+###
+### Automatic, running daily DB conversion to
+### InnoDB or MyISAM for all sites hosted on
+### the instance via the 'sqlmagic' tool.
+###
+### The conversion mode is configurable with
+### per-site control file(s):
+###
+###   sites/foo.com/modules/to-innodb.info
+###   sites/foo.com/modules/to-myisam.info
+###
+### Defaults to "sqlmagic convert to-innodb"
+### if no control file exists, but if both
+### control files do exist, then NO action
+### is taken.
+###
+### Note that it will run daily on all sites
+### not excluded by both control files presence
+### even if all tables have been already
+### converted to the desired format/engine.
+###
+### This behaviour has two purposes. It will
+### effectively run OPTIMIZE foo; on all,
+### even already converted tables via the
+### ALTER TABLE foo ENGINE=bar; command.
+### It will also make sure that any newly
+### created table will receive correct
+### format/engine, despite system or Drupal
+### core defaults.
+###
+### Change to _SQL_CONVERT=YES to enable.
+###
+_SQL_CONVERT=NO
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -684,6 +722,7 @@ octopus_cnf () {
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
+    echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf
     echo "### NOTE: the group of settings displayed bellow will be *overriden*" >> /root/.$_USER.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.$_USER.octopus.cnf
@@ -755,6 +794,12 @@ octopus_cnf () {
       true
     else
       echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
+    fi
+    _SQL_CONVERT_TEST=$(grep _SQL_CONVERT /root/.$_USER.octopus.cnf)
+    if [[ "$_SQL_CONVERT_TEST" =~ "_SQL_CONVERT" ]] ; then
+      true
+    else
+      echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.$_USER.octopus.cnf
     fi
     msg "NOTE! Please review all config options displayed below"
     sleep 3
