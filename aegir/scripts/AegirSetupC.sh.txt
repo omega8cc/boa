@@ -1576,9 +1576,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal6_core
     fi
     cd $_CORE
-    wget -q -U iCab http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
-    tar -xzf $_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
-    rm -f $_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz
+    curl -s -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM6" ] ; then
       mv $_REAL_PRNAME-$_OPENATRIUM6 $_SHRD_PLNAME
     fi
