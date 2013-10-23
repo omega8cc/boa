@@ -7882,12 +7882,12 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
     sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
     sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^ClientAliveInterval.*//g" /etc/ssh/sshd_config &> /dev/null
-    sed -i "s/^ClientAliveCountMax.*//g" /etc/ssh/sshd_config &> /dev/null
+    sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
     echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
     echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
     echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -7895,17 +7895,27 @@ else
     echo "ClientAliveCountMax 3" >> /etc/ssh/sshd_config
     sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
     if [ -e "/usr/etc/sshd_config" ] ; then
-      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^ClientAliveInterval.*//g" /usr/etc/sshd_config &> /dev/null
       sed -i "s/^IgnoreUserKnownHosts.*//g" /usr/etc/sshd_config &> /dev/null
       sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
-      sed -i "s/^UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
-      sed -i "s/^ClientAliveInterval.*//g" /usr/etc/sshd_config &> /dev/null
-      sed -i "s/^ClientAliveCountMax.*//g" /usr/etc/sshd_config &> /dev/null
+      sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /usr/etc/sshd_config &> /dev/null
       echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
       echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
       echo "UseDNS no" >> /usr/etc/sshd_config
       echo "ClientAliveInterval 300" >> /usr/etc/sshd_config
       echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
+      sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
+    fi
+    st_runner "service ssh reload" &> /dev/null
+  else
+    sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
+    echo "UseDNS no" >> /etc/ssh/sshd_config
+    sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
+    if [ -e "/usr/etc/sshd_config" ] ; then
+      sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
+      echo "UseDNS no" >> /usr/etc/sshd_config
       sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
     fi
     st_runner "service ssh reload" &> /dev/null
