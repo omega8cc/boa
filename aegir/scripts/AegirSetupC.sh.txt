@@ -1784,7 +1784,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENDEALS = "7.x-1.26" ] ; then
+    if [ $_OPENDEALS = "7.x-1.27" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {diff}
       wget -q -U iCab http://files.aegir.cc/dev/contrib/diff-7.x-3.2.tar.gz
