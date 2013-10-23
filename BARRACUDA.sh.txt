@@ -2219,6 +2219,9 @@ tune_sql_memory_limits () {
     msg "NOTE! This step may take a LONG time, please wait..."
     rm -f /var/opt/mysqltuner*
     curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
+      curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    fi
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
       perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt
     fi
@@ -4061,11 +4064,6 @@ install_upgrade_nginx () {
     wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
     tar -xzf nginx-$_NGINX_VERSION.tar.gz
     sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h &> /dev/null
-    if [ "$_NGINX_VERSION" = "1.3.10" ] ; then
-      cd /var/opt/nginx-$_NGINX_VERSION
-      wget -q -U iCab https://trac.nginx.org/nginx/raw-attachment/ticket/268/fix_valgirnd_error.patch
-      patch -p1 < fix_valgirnd_error.patch &> /dev/null
-    fi
     if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
       _NGINX_EXTRA="--add-module=/var/opt/ngx-cache-purge/"
     elif [ ! -z "$_NGINX_EXTRA_CONF" ] && [ "$_PURGE_MODE" = "OFF" ] ; then

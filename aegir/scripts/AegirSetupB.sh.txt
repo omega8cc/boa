@@ -516,7 +516,16 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-    $_DRUSHCMD dl --destination=$_AEGIR_ROOT/profiles/hostmaster/modules hosting_task_gc-6.x-1.0-alpha1 revision_deletion-6.x-1.x-dev strongarm-6.x-2.2 features-6.x-1.2 features_extra-6.x-1.x-dev ctools-6.x-1.10 hosting_backup_queue-6.x-1.x-dev protect_critical_users-6.x-1.1 userprotect-6.x-1.5 -y &> /dev/null
+    cd $_AEGIR_ROOT/profiles/hostmaster/modules/
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/ctools-6.x-1.10.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/features_extra-6.x-1.x-dev.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/hosting_backup_queue-6.x-1.x-dev.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/hosting_task_gc-6.x-1.0-alpha1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/protect_critical_users-6.x-1.1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/revision_deletion-6.x-1.x-dev.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/strongarm-6.x-2.2.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/userprotect-6.x-1.5.tar.gz" | tar -xzf -
   fi
   sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null

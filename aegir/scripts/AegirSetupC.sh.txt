@@ -496,7 +496,7 @@ upgrade_contrib_less () {
   if [ -e "views" ] ; then
     cd views
     # http://drupal.org/node/1766338#comment-6445882
-    curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     cd ../
   fi
@@ -1399,23 +1399,37 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ -d "$_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
       mv $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL
     fi
-    cd $_SHRD_PRPATH/modules/contrib
-    rm -f -r context boxes data ctools features feeds imageapi imagecache libraries mapbox openlayers spaces views views_rss
-    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/contrib context-6.x-3.1 boxes-6.x-1.1 data-6.x-1.1 ctools-6.x-1.10 features-6.x-1.2 feeds-6.x-1.0-beta13 imageapi-6.x-1.10 imagecache-6.x-2.x-dev libraries-6.x-1.0 mapbox-6.x-2.0-alpha1 openlayers-6.x-2.0-beta1 spaces-6.x-3.6 views-6.x-2.13 views_rss-6.x-2.0-rc3 -y &> /dev/null
+    rm -f -r $_SHRD_PRPATH/modules/contrib/{context,boxes,data,ctools,features,feeds,imageapi,imagecache,libraries,mapbox,openlayers,spaces,views,views_rss}
+    cd $_SHRD_PRPATH/modules/contrib/
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/boxes-6.x-1.1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/context-6.x-3.1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/ctools-6.x-1.10.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/data-6.x-1.1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/feeds-6.x-1.0-beta13.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/imageapi-6.x-1.10.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/imagecache-6.x-2.x-dev.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/libraries-6.x-1.0.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/mapbox-6.x-2.0-alpha1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/openlayers-6.x-2.0-beta1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/spaces-6.x-3.6.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/views_rss-6.x-2.0-rc3.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/views-6.x-2.13.tar.gz" | tar -xzf -
     cd views
     # http://drupal.org/node/853864#comment-3898996
-    curl -s -O -A iCab https://drupal.org/files/issues/views-853864_2.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/views-853864_2.patch
     patch -p0 < views-853864_2.patch &> /dev/null
     # http://drupal.org/node/402944#comment-5370400
-    curl -s -O -A iCab https://drupal.org/files/views-unpack_options-cache-6.2-51.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/views-unpack_options-cache-6.2-51.patch
     patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/magecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
-    cd $_SHRD_PRPATH/themes
     rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
-    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/themes rubik-6.x-3.0-beta3 tao-6.x-3.3 -y &> /dev/null
+    cd $_SHRD_PRPATH/themes
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/rubik-6.x-3.0-beta5.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.tar.gz" | tar -xzf -
     nocore_d6_dist_clean
     enable_drupal6_admin
     rm -f -r $_SHRD_PLPATH/profiles/default
@@ -1570,16 +1584,21 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     cd $_SHRD_PRPATH/modules/contrib/imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     nocore_d6_dist_clean
     rm -f -r $_SHRD_PLPATH/profiles/default
     cd $_SHRD_PRPATH/modules/atrium_features/
     git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
     rm -f -r atrium_folders/.git
-    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/atrium_features ideation-6.x-1.0-rc1 -y &> /dev/null
-    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/contrib better_exposed_filters-6.x-1.0 fivestar-6.x-1.19 -y &> /dev/null
-    $_DRUSHCMD dl --destination=$_SHRD_PRPATH/modules/contrib votingapi-6.x-2.3 data-6.x-1.0 -y &> /dev/null
+    cd $_SHRD_PRPATH/modules/atrium_features/
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/ideation-6.x-1.0-rc1.tar.gz" | tar -xzf -
+    cd $_SHRD_PRPATH/modules/contrib/
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/better_exposed_filters-6.x-1.0.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/data-6.x-1.1.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/fivestar-6.x-1.20.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/votingapi-6.x-2.3.tar.gz" | tar -xzf -
+    cd $_CORE
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -2293,7 +2312,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
     cd $_SHRD_PRPATH/modules/imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab https://drupal.org/files/issues/imagecache-1243258-5.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     cd $_SHRD_PRPATH/themes
     wget -q -U iCab http://files.aegir.cc/dev/contrib/fusion-6.x-1.x-dev.tar.gz
@@ -2370,7 +2389,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f *.tar.gz
     cd $_SHRD_PRPATH/modules/views
     # http://drupal.org/node/1766338#comment-6445882
-    curl -s -O -A iCab https://drupal.org/files/views-revert-broken-filter-or-groups-1766338-7.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
