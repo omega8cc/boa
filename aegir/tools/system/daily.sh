@@ -360,6 +360,8 @@ action () {
           symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
           rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bashrc}
         fi
+        run_drush_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         echo Done for $User
       else
