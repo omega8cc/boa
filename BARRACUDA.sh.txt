@@ -4591,9 +4591,14 @@ install_ssh_src () {
     st_runner "make --quiet install" 2> /dev/null
     st_runner "service ssh restart" &> /dev/null
     aptitude hold openssh-server &> /dev/null
+    aptitude hold openssh-client &> /dev/null
     aptitude hold ssh &> /dev/null
     echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
     echo "ssh hold" | dpkg --set-selections &> /dev/null
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      apt-mark hold openssh-server openssh-client ssh &> /dev/null
+    fi
   fi
 }
 #
@@ -4627,6 +4632,9 @@ install_curl_src () {
     echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
     echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
     _UP_PHP=YES
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      apt-mark hold curl libcurl3 libcurl3-gnutls libcurl4-openssl-dev &> /dev/null
+    fi
   fi
 }
 #
@@ -4684,6 +4692,9 @@ install_ssl_src () {
     echo "zlibc hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      apt-mark hold libssl-dev openssl zlibc zlib1g zlib1g-dev &> /dev/null
+    fi
   fi
 }
 #
