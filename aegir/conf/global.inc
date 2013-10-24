@@ -40,7 +40,9 @@ $conf['video_ffmpeg_instances'] = 1;         // force safe default for ffmpeg
 $conf['securepages_enable'] = 1;             // force to avoid issues with SSL proxy
 $conf['drupal_http_request_fails'] = FALSE;  // avoid false alarm
 $conf['image_allow_insecure_derivatives'] = TRUE; // enable to avoid known issues: http://drupal.org/drupal-7.20-release-notes
-$conf['omega_rebuild_aggregates'] = FALSE;   // do not allow to turn it on by default
+$conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // do not allow to turn it on by default
+$conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // do not allow to turn it on by default
+$update_free_access = FALSE;
 
 if ($conf['install_profile'] == 'totem') {
   ini_set('session.cookie_lifetime', 0); // set it to 24 hours max
@@ -131,7 +133,8 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
   unset($conf['cache']);          // stop hardcoding caching
   unset($conf['preprocess_css']); // stop hardcoding css aggregation
   unset($conf['preprocess_js']);  // stop hardcoding js aggregation
-  unset($conf['omega_rebuild_aggregates']);  // do not force on dev URLs
+  unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // do not force on dev URLs
+  unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // do not force on dev URLs
   unset($conf['error_level']);    // stop hardcoding no errors on screen
   $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for foo.dev.domain
   $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for foo.dev.domain
