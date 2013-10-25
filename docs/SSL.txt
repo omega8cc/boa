@@ -31,6 +31,12 @@ server {
   listen                       YO.UR.EXTRA.IP2:80;
   listen                       YO.UR.EXTRA.IP3:80;
   server_name                  _;
+  ###
+  ### Optional permanent redirect to HTTPS per domain/regex
+  ###
+  if ($host ~* ^(www\.)?(foo\.com)$) {
+    rewrite ^ https://$host$uri? permanent;
+  }
   location / {
     proxy_pass                 http://extra_ip;
     proxy_redirect             off;
