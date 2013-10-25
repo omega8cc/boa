@@ -594,11 +594,12 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     $conf['redis_client_port']                = '6379';
   //$conf['redis_client_password']            = 'isfoobared';
     $conf['cache_prefix']                     = $this_prefix;
-    $conf['page_cache_invoke_hooks']          = TRUE;
-    $conf['page_cache_without_database']      = FALSE;
-    $conf['page_cache_maximum_age']           = 0;
-    $conf['page_cache_max_age']               = 0;
-    $conf['cache_lifetime']                   = 0;
+    $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
+    $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
+    $conf['page_cache_maximum_age']           = 0;     // D7 == max-age in the Cache-Control header (ignored by Speed Booster)
+    $conf['page_cache_max_age']               = 0;     // D6 == max-age in the Cache-Control header (ignored by Speed Booster)
+    $conf['cache_lifetime']                   = 0;     // D7 == BOA uses Speed Booster / Nginx micro-caching instead
+    $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
     $conf['cache_default_class']              = 'Redis_Cache';
     $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
     if ($conf['install_profile'] == 'hostmaster') {
