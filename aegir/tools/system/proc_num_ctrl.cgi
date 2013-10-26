@@ -141,6 +141,13 @@ sub global_action
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $B =~ /php/ && $K =~ /drush/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+    }
     elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
     {
        $timedate=`date +%y%m%d-%H%M`;
