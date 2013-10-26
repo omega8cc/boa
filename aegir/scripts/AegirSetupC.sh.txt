@@ -1399,7 +1399,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ -d "$_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
       mv $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL
     fi
-    rm -f -r $_SHRD_PRPATH/modules/contrib/{context,boxes,data,ctools,features,feeds,imageapi,imagecache,libraries,mapbox,openlayers,spaces,views,views_rss}
+    rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,ctools,data,features,feeds,imageapi,imagecache,libraries,mapbox,openlayers,spaces,views,views_rss}
     cd $_SHRD_PRPATH/modules/contrib/
     curl -s -A iCab "http://files.aegir.cc/dev/contrib/boxes-6.x-1.1.tar.gz" | tar -xzf -
     curl -s -A iCab "http://files.aegir.cc/dev/contrib/context-6.x-3.1.tar.gz" | tar -xzf -

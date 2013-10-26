@@ -9,7 +9,7 @@ There are many changes, improvements and fixes in this release.
 It is very important that you read release notes and changelog
 posted on our website at:
 
-  http://omega8.cc/updates
+  https://omega8.cc/updates
 
 Questions? Comments? Please contact us:
 
