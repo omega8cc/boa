@@ -586,7 +586,7 @@ _F_OPENACADEMY="Open Academy 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM6="Open Atrium 1.7.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENATRIUM7="Open Atrium 2.0 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENBLOG="OpenBlog 1.0-a2 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENCHURCH="OpenChurch 1.11-b13 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENCHURCH="OpenChurch 1.11-b14 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1748,7 +1748,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
-    if [ $_OPENCHURCH = "7.x-1.11-beta13" ] ; then
+    if [ $_OPENCHURCH = "7.x-1.11-beta14" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
