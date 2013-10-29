@@ -67,6 +67,7 @@ $drupal_six   = FALSE;
 $force_redis  = FALSE;
 $high_traffic = FALSE;
 $is_cart      = FALSE;
+$is_backend   = FALSE;
 $is_dev       = FALSE;
 $known_bot    = FALSE;
 $redis_lock   = FALSE;
@@ -89,21 +90,6 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
   }
 }
 
-// New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
-if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
-  $frags = explode("/", $_SERVER['DOCUMENT_ROOT']);
-  if ($frags[1] == 'data') {
-    $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Octopus ' . $frags[3] . ';AAA All Instances';
-  }
-  elseif ($frags[2] == 'aegir') {
-    $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Barracuda Master;AAA All Instances';
-  }
-  ini_set('newrelic.appname', $this_instance);
-  ini_set('newrelic.framework', 'drupal');
-  if (extension_loaded('newrelic')) {
-    newrelic_set_appname($this_instance);
-  }
-}
 
 /**
  * Optional extra settings
@@ -301,6 +287,9 @@ elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/d
 if (function_exists('drush_get_command')) {
   $command = drush_get_command();
   $command = explode(" ", $command['command']);
+  if ($command && !preg_match("/^help/", $command[0])) {
+    $is_backend = TRUE;
+  }
   if (preg_match("/^provision-install/", $command[0])) {
     $use_redis = FALSE;
     $use_cache = FALSE;
@@ -647,5 +636,72 @@ if (!$custom_fb) {
 if (!$custom_da) {
   if ($da_inc) {
     require_once($da_inc);
+  }
+}
+
+
+/**
+ * New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
+ * Support for background job borrowed from https://drupal.org/project/newrelic_drush_plugin
+ */
+if (extension_loaded('newrelic')) {
+  ini_set('newrelic.framework', 'drupal');
+  $this_instance = FALSE;
+  if ($is_backend) {
+    $context = drush_get_context();
+    $uri = FALSE;
+    if (isset($context['DRUSH_URI'])) {
+      $uri = $context['DRUSH_URI'];
+      $uri = str_replace('http://', '', $uri);
+      $uri = str_replace('https://', '', $uri);
+    }
+    elseif (isset($context['DRUSH_DRUPAL_SITE'])) {
+      $uri = $context['DRUSH_DRUPAL_SITE'];
+    }
+
+    if ($uri) {
+      $this_instance = 'Site: ' . $uri;
+      $root = FALSE;
+
+      // Support Barracuda and Octopus naming convention.
+      if (isset($context['DRUSH_DRUPAL_CORE'])) {
+        $root = $context['DRUSH_DRUPAL_CORE'];
+      }
+      elseif (isset($context['DRUSH_DRUPAL_ROOT'])) {
+        $root = $context['DRUSH_DRUPAL_ROOT'];
+      }
+
+      if ($root) {
+        $frags = explode("/", $root);
+        if ($frags[1] == 'data') {
+          $this_instance = 'Site: ' . $uri . ';AAA Octopus ' . $frags[3] . ';AAA All Instances';
+        }
+        elseif ($frags[2] == 'aegir') {
+          $this_instance = 'Site: ' . $uri . ';AAA Barracuda Master;AAA All Instances';
+        }
+      }
+
+      // Build drush command.
+      $drush_command = array_merge(array($command['command']), $command['arguments']);
+      newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
+      newrelic_name_transaction(implode(' ', $drush_command));
+      newrelic_background_job(TRUE);
+    }
+  }
+  else {
+    if (isset($_SERVER['DOCUMENT_ROOT']) && isset($_SERVER['SERVER_NAME'])) {
+      $frags = explode("/", $_SERVER['DOCUMENT_ROOT']);
+      if ($frags[1] == 'data') {
+        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Octopus ' . $frags[3] . ';AAA All Instances';
+      }
+      elseif ($frags[2] == 'aegir') {
+        $this_instance = 'Site: ' . $_SERVER['SERVER_NAME'] . ';AAA Barracuda Master;AAA All Instances';
+      }
+    }
+  }
+
+  if ($this_instance) {
+    ini_set('newrelic.appname', $this_instance);
+    newrelic_set_appname($this_instance);
   }
 }
