@@ -74,6 +74,7 @@ $is_dev       = FALSE;
 $known_bot    = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
+$use_cache    = TRUE;  // Standard Redis integration for 6.x and 7.x core is enabled by default.
 $use_redis    = FALSE;
 
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
