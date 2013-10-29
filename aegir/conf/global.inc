@@ -95,8 +95,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
 
 
 /**
- * Optional extra settings
- *
+ * Optional system level early overrides
  */
 if (is_readable('/data/conf/settings.global.inc')) {
   require_once "/data/conf/settings.global.inc";
@@ -104,7 +103,6 @@ if (is_readable('/data/conf/settings.global.inc')) {
 
 /**
  * Dev mode switch
- *
  */
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // deny known search bots on foo.dev.domain subdomains
@@ -172,7 +170,6 @@ else {
 
 /**
  * Hostmaster specific settings
- *
  */
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   if (!file_exists('/data/conf/no-https-aegir.inc')) {
@@ -527,8 +524,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 }
 
 /**
- * Optional extra overrides
- *
+ * Optional system level overrides
  */
 if (is_readable('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
@@ -618,7 +614,6 @@ if (!$custom_fb) {
 
 /**
  * Domain module
- *
  */
 if (!$custom_da) {
   if ($da_inc) {
