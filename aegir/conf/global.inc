@@ -95,7 +95,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST']
  * Optional extra settings
  *
  */
-if (file_exists('/data/conf/settings.global.inc')) {
+if (is_readable('/data/conf/settings.global.inc')) {
   require_once "/data/conf/settings.global.inc";
 }
 
@@ -271,16 +271,16 @@ else {
   }
 }
 
-if (file_exists('sites/all/modules/domain/settings.inc')) {
+if (is_readable('sites/all/modules/domain/settings.inc')) {
   $da_inc = 'sites/all/modules/domain/settings.inc';
 }
-elseif (file_exists('sites/all/modules/contrib/domain/settings.inc')) {
+elseif (is_readable('sites/all/modules/contrib/domain/settings.inc')) {
   $da_inc = 'sites/all/modules/contrib/domain/settings.inc';
 }
-elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
+elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
   $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
 }
-elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
+elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
   $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
 }
 
@@ -306,8 +306,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (!$is_dev && $drupal_six && (file_exists('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
-      file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
+  if (!$is_dev && $drupal_six && (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
+      is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
     $conf['advagg_aggregate_mode'] = 1;
@@ -331,8 +331,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_rebuild_on_flush'] = 0;
     $conf['advagg_server_addr'] = "-1";
   }
-  elseif (!$is_dev && $drupal_seven && (file_exists('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
-          file_exists('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
+  elseif (!$is_dev && $drupal_seven && (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['advagg_bundler_active'] = 1;
     $conf['advagg_cache_level'] = 1;
     $conf['advagg_combine_css_media'] = 0;
@@ -351,7 +351,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['preprocess_js'] = 1;
   }
 
-  if (!$is_dev && (file_exists('modules/o_contrib/httprl/httprl.module') || file_exists('modules/o_contrib_seven/httprl/httprl.module'))) {
+  if (!$is_dev && (is_readable('modules/o_contrib/httprl/httprl.module') || is_readable('modules/o_contrib_seven/httprl/httprl.module'))) {
     $conf['advagg_use_httprl'] = 1;
     $conf['httprl_background_callback'] = 1;
     $conf['httprl_connect_timeout'] = 3;
@@ -363,13 +363,13 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     ### $conf['drupal_http_request_function'] = "httprl_override_core";
   }
 
-  if (file_exists('modules/o_contrib/purge/purge.inc')) {
+  if (is_readable('modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     if ($is_dev) {
       header('X-Purge-Level: 6');
     }
   }
-  elseif (file_exists('modules/o_contrib_seven/purge/purge.inc')) {
+  elseif (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
     $conf['expire_flush_node_terms'] = 0; // disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     if ($is_dev) {
@@ -543,7 +543,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
  * Optional extra overrides
  *
  */
-if (file_exists('/data/conf/override.global.inc')) {
+if (is_readable('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
 }
 
@@ -551,17 +551,17 @@ if (file_exists('/data/conf/override.global.inc')) {
 if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
-  if (file_exists('modules/o_contrib/cache_backport/cache.inc')) {
+  if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
     $cache_backport = TRUE;
     $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
   }
-  if (file_exists('modules/o_contrib_seven/redis/redis.autoload.inc')) {
+  if (is_readable('modules/o_contrib_seven/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_backport = FALSE;
     $cache_redis_path = 'modules/o_contrib_seven/redis/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib_seven/redis/redis.lock.inc';
   }
-  elseif (file_exists('modules/o_contrib/redis/redis.autoload.inc')) {
+  elseif (is_readable('modules/o_contrib/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_redis_path = 'modules/o_contrib/redis/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib/redis/redis.lock.d6.inc';
@@ -574,7 +574,7 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
         file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_lock_enable.info')) {
       $redis_lock = TRUE;
     }
-    if (file_exists($cache_lock_path) && $redis_lock) {
+    if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
     }
     $conf['cache_backends'][]                 = $cache_redis_path;
@@ -607,22 +607,22 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
  * http://drupal.org/node/205476
  */
 if (!$custom_fb) {
-  if (file_exists('sites/all/modules/fb/fb_settings.inc')) {
+  if (is_readable('sites/all/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once "sites/all/modules/fb/fb_settings.inc";
     $conf['fb_api_file'] = "sites/all/modules/fb/facebook-platform/php/facebook.php";
   }
-  elseif (file_exists('sites/all/modules/contrib/fb/fb_settings.inc')) {
+  elseif (is_readable('sites/all/modules/contrib/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once "sites/all/modules/contrib/fb/fb_settings.inc";
     $conf['fb_api_file'] = "sites/all/modules/contrib/fb/facebook-platform/php/facebook.php";
   }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc')) {
+  elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once 'profiles/' . $conf['install_profile'] . '/modules/fb/fb_settings.inc';
     $conf['fb_api_file'] = 'profiles/' . $conf['install_profile'] . '/modules/fb/facebook-platform/php/facebook.php';
   }
-  elseif (file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc')) {
+  elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once 'profiles/' . $conf['install_profile'] . '/modules/contrib/fb/fb_settings.inc';
     $conf['fb_api_file'] = 'profiles/' . $conf['install_profile'] . '/modules/contrib/fb/facebook-platform/php/facebook.php';
