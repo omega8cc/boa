@@ -224,22 +224,6 @@ if (isset($_SERVER['SERVER_NAME'])) {
   }
 }
 
-$use_cache = TRUE;     // Standard Redis integration for 6.x and 7.x core is enabled by default.
-
-$custom_cache = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
-                       // it will disable default Redis configuration.
-
-$custom_fb = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
-                       // it will disable default Drupal for Facebook (fb) configuration.
-
-$custom_da = FALSE;    // When set to TRUE in the /data/conf/override.global.inc file,
-                       // it will disable default Domain Access configuration,
-                       // so you can define your own, custom configuration in the included below
-                       // /data/conf/override.global.inc file. NOTE: if set to TRUE, then you
-                       // must set to TRUE also $custom_cache and copy all its logic in your
-                       // /data/conf/override.global.inc file, because Domain Access must be included
-                       // *after* any cache-related settings to work properly.
-
 if (file_exists('/var/run/redis.pid')) {
   $redis_up = TRUE;
 }
