@@ -34,3 +34,17 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:domain\.com|another-domain\.
     }
   }
 }
+
+$custom_cache = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Redis configuration.
+
+$custom_fb    = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Drupal for Facebook (fb) configuration.
+
+$custom_da    = FALSE; // When set to TRUE in the /data/conf/override.global.inc file,
+                       // it will disable default Domain Access configuration,
+                       // so you can define your own, custom configuration in the included below
+                       // /data/conf/override.global.inc file. NOTE: if set to TRUE, then you
+                       // must set to TRUE also $custom_cache and copy all its logic in your
+                       // /data/conf/override.global.inc file, because Domain Access must be included
+                       // *after* any cache-related settings to work properly.

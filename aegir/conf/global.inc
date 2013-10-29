@@ -58,6 +58,9 @@ ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
+$custom_cache = FALSE;
+$custom_da    = FALSE;
+$custom_fb    = FALSE;
 $da_inc       = FALSE;
 $deny_anon    = FALSE;
 $drupal_eight = FALSE;
