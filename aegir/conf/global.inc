@@ -69,7 +69,6 @@ $drupal_seven = FALSE;
 $drupal_six   = FALSE;
 $force_redis  = FALSE;
 $high_traffic = FALSE;
-$is_cart      = FALSE;
 $is_backend   = FALSE;
 $is_dev       = FALSE;
 $known_bot    = FALSE;
@@ -204,20 +203,11 @@ if ($conf['install_profile'] == 'managingnews') {
   ini_set('auto_detect_line_endings', TRUE);
 }
 
-if (isset($_SERVER['SERVER_NAME'])) {
-  if ($conf['install_profile'] == 'uberdrupal' ||
-      $conf['install_profile'] == 'commerce' ||
-      $conf['install_profile'] == 'commerce_kickstart' ||
-      $conf['install_profile'] == 'opendeals' ||
-      file_exists('sites/all/modules/ubercart/README.txt') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/ubercart/README.txt') ||
-      file_exists('profiles/' . $conf['install_profile'] . '/modules/contrib/ubercart/README.txt') ||
-      file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/ubercart/README.txt')) {
-    unset($conf['file_downloads']); // disable hardcoded public downloads
-    $is_cart = TRUE;
-    if ($is_dev) {
-      header('X-Is-Cart: YES');
-    }
+if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/allow_private_file_downloads.info') ||
+    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_private_file_downloads.info'))) {
+  unset($conf['file_downloads']); // disable hardcoded public downloads
+  if ($is_dev) {
+    header('X-Is-Cart: YES');
   }
 }
 
