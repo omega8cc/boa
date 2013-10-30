@@ -73,3 +73,50 @@ _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 ###
 ### Barracuda version BOA-2.0.9
 ###
+
+
+###
+### Extra, special purpose settings are listed below.
+###
+### NOTE: the group of settings displayed bellow is never stored
+### permanently in this config file, since they are intended to be used
+### only when required/useful for some reason, and while can be added
+### manually before running barracuda up-{stable|head} command,
+### they will be either removed automatically to not affect
+### normal upgrades, or ignored afterwards.
+###
+
+###
+### You can force Nginx, PHP and/or DB server
+### reinstall, even if there are no updates
+### available, when set to YES.
+###
+_NGX_FORCE_REINSTALL=NO
+_PHP_FORCE_REINSTALL=NO
+_SQL_FORCE_REINSTALL=NO
+
+###
+### Use YES to force installing everything
+### from sources again, even if there are
+### no updates available.
+###
+_FULL_FORCE_REINSTALL=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Squeeze to Debian Wheezy.
+###
+_SQUEEZE_TO_WHEEZY=NO
+
+###
+### Use YES to run major system upgrade
+### from Debian Lenny to Debian Squeeze.
+###
+_LENNY_TO_SQUEEZE=NO
+
+###
+### Use YES to run migration from Tomcat 6
+### to Jetty 7 with Apache Solr 1.4.1
+### See also docs/SOLR.txt
+###
+_TOMCAT_TO_JETTY=NO
