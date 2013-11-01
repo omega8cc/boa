@@ -69,63 +69,35 @@ $drupal_seven = FALSE;
 $drupal_six   = FALSE;
 $force_redis  = FALSE;
 $high_traffic = FALSE;
+$ini_src      = FALSE;
 $is_backend   = FALSE;
 $is_dev       = FALSE;
+$is_test      = FALSE;
 $known_bot    = FALSE;
+$local_ini    = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
 $use_cache    = TRUE;  // Standard Redis integration for 6.x and 7.x core is enabled by default
 $use_redis    = FALSE;
+$usr_ini      = FALSE;
 
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
   // Detect known bots
   $known_bot = TRUE;
 }
 
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/host8/i", $_SERVER['HTTP_HOST'])) {
-  // deny known search bots on host8 subdomains
+/**
+ * CI URLs protection
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
+  // Deny known search bots on some protected CI subdomains
   if ($known_bot) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://omega8.cc/");
+    header("Location: https://omega8.cc/");
     header("Connection: close");
     exit;
   }
-}
-
-
-/**
- * Optional system level early overrides
- */
-if (is_readable('/data/conf/settings.global.inc')) {
-  require_once "/data/conf/settings.global.inc";
-}
-
-/**
- * Dev mode switch
- */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // deny known search bots on foo.dev.domain subdomains
-  if ($known_bot) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
-    header("Connection: close");
-    exit;
-  }
-  error_reporting(E_ALL & ~E_NOTICE);
-  ini_set('display_errors', TRUE);
-  ini_set('display_startup_errors', TRUE);
-  ini_set('opcache.revalidate_freq', '1');
-  unset($conf['cache']);          // stop hardcoding caching
-  unset($conf['preprocess_css']); // stop hardcoding css aggregation
-  unset($conf['preprocess_js']);  // stop hardcoding js aggregation
-  unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // do not force on dev URLs
-  unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // do not force on dev URLs
-  unset($conf['error_level']);    // stop hardcoding no errors on screen
-  $conf['xmlsitemap_submit'] = 0; // disable XML Sitemap for foo.dev.domain
-  $conf['xmlsitemap_update'] = 0; // disable XML Sitemap for foo.dev.domain
-  $is_dev = TRUE;
 }
 
 /**
@@ -169,6 +141,102 @@ else {
   if ($is_dev) {
     header('X-Backend: E');
   }
+}
+
+/**
+ * Dev mode switch and URLs protection
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
+  if ($known_bot) {
+    header('X-Accel-Expires: 5');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+    header("Connection: close");
+    exit;
+  }
+  error_reporting(E_ALL & ~E_NOTICE);
+  ini_set('display_errors', TRUE);
+  ini_set('display_startup_errors', TRUE);
+  ini_set('opcache.revalidate_freq', '1');
+  unset($conf['cache']);          // Stop hardcoding caching
+  unset($conf['preprocess_css']); // Stop hardcoding css aggregation
+  unset($conf['preprocess_js']);  // Stop hardcoding js aggregation
+  unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // Do not force on dev URLs
+  unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // Do not force on dev URLs
+  unset($conf['error_level']);    // Stop hardcoding no errors on screen
+  $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
+  $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
+  $is_dev = TRUE;
+}
+
+/**
+ * Test and tmp URLs protection
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
+  if ($known_bot) {
+    header('X-Accel-Expires: 5');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+    header("Connection: close");
+    exit;
+  }
+  $is_test = TRUE;
+}
+
+/**
+ * BOA defaults
+ */
+$boa_ini = array(
+  'redis_lock_enable' => FALSE,
+  'redis_cache_disable' => FALSE,
+  'speed_booster_anon_cache_ttl' => FALSE,
+  'allow_anon_node_add' => FALSE,
+  'disable_admin_dos_protection' => FALSE,
+  'allow_private_file_downloads' => FALSE,
+  'server_name_cookie_domain' => FALSE,
+  'auto_detect_facebook_integration' => FALSE,
+  'auto_detect_domain_access_integration' => FALSE,
+);
+
+/**
+ * Optional system level early overrides
+ */
+if (is_readable('/data/conf/settings.global.inc')) {
+  require_once "/data/conf/settings.global.inc";
+}
+
+/**
+ * Optional site or platform level settings defined in the ini files
+ * Note: platform-level ini file is ignored when site-level ini file exists
+ */
+if (is_readable('sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini')) {
+  $ini_src = 'sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini';
+}
+elseif (is_readable('sites/all/modules/boa_platform_control.ini')) {
+  $ini_src = 'sites/all/modules/boa_platform_control.ini';
+}
+if ($ini_src) {
+  $usr_ini = array();
+  $usr_ini = parse_ini_file($ini_src);
+}
+if (is_array($usr_ini) && $usr_ini) {
+  $all_ini = array_merge($boa_ini, $usr_ini);
+else {
+  $all_ini = $boa_ini;
+}
+if (is_array($all_ini) && $is_dev) {
+  header("X-Ini-Src: " . $ini_src);
+  header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
+  header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
+  header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
+  header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
+  header("X-Ini-Disable-Admin-Dos-Protection: " . $all_ini['disable_admin_dos_protection']);
+  header("X-Ini-Allow-Private-File-Downloads: " . $all_ini['allow_private_file_downloads']);
+  header("X-Ini-Server-Name-Cookie-Domain: " . $all_ini['server_name_cookie_domain']);
+  header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
+  header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
 }
 
 /**
@@ -253,17 +321,19 @@ else {
   }
 }
 
-if (is_readable('sites/all/modules/domain/settings.inc')) {
-  $da_inc = 'sites/all/modules/domain/settings.inc';
-}
-elseif (is_readable('sites/all/modules/contrib/domain/settings.inc')) {
-  $da_inc = 'sites/all/modules/contrib/domain/settings.inc';
-}
-elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
-  $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
-}
-elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
-  $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+if ($all_ini['auto_detect_domain_access_integration']) {
+  if (is_readable('sites/all/modules/domain/settings.inc')) {
+    $da_inc = 'sites/all/modules/domain/settings.inc';
+  }
+  elseif (is_readable('sites/all/modules/contrib/domain/settings.inc')) {
+    $da_inc = 'sites/all/modules/contrib/domain/settings.inc';
+  }
+  elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc')) {
+    $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/domain/settings.inc';
+  }
+  elseif (is_readable('profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc')) {
+    $da_inc = 'profiles/' . $conf['install_profile'] . '/modules/contrib/domain/settings.inc';
+  }
 }
 
 if (function_exists('drush_get_command')) {
@@ -410,7 +480,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
-      unset($conf['file_downloads']); // disable hardcoded public downloads in d7
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BD'. md5("$identity");
     if ($drupal_seven || $drupal_eight) {
@@ -576,7 +645,7 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
  * The default value is &amp;. Change this in settings.php. Make the value "&"
  * http://drupal.org/node/205476
  */
-if (!$custom_fb) {
+if (!$custom_fb && $all_ini['auto_detect_facebook_integration']) {
   if (is_readable('sites/all/modules/fb/fb_settings.inc')) {
     ini_set('arg_separator.output', '&');
     require_once "sites/all/modules/fb/fb_settings.inc";
@@ -667,4 +736,13 @@ if (extension_loaded('newrelic')) {
     ini_set('newrelic.appname', $this_instance);
     newrelic_set_appname($this_instance);
   }
+}
+
+/**
+ * Unset config arrays on non-dev URLs
+ */
+if (!$is_dev) {
+  unset($boa_ini);
+  unset($usr_ini);
+  unset($all_ini);
 }
