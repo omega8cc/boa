@@ -1,8 +1,8 @@
 <?php # global settings.php
 
-error_reporting(0); // disable reporting errors by default - enable later only for foo.dev.domain subdomains
+error_reporting(0); // Disable reporting errors by default - enable later only for foo.dev.domain subdomains
 
-// Fix for Mollom, CloudFlare and others running via Proxy.
+// Fix for Mollom, CloudFlare and others running via Proxy
 if (isset($_SERVER['REMOTE_ADDR'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
     $_SERVER['REMOTE_ADDR'] = $_SERVER['HTTP_X_FORWARDED_FOR'];
@@ -20,41 +20,41 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
 }
 
-$conf['page_compression'] = 0;    // required in Nginx, since it already compresses everything
-$conf['boost_crawl_on_cron'] = 0; // deny Boost crawler
-$conf['cron_safe_threshold'] = 0; // disable poormanscron
-$conf['preprocess_css'] = 1;      // enable hardcoded css aggregation
-$conf['preprocess_js'] = 1;       // enable hardcoded js aggregation
-$conf['file_downloads'] = 1;      // force public downloads by default
-$conf['error_level'] = 0;         // disable errors on screen
-$conf['statistics_enable_access_log'] = 0;   // disable access log stats
-$conf['allow_authorize_operations'] = FALSE; // disable insecure plugin manager
-$conf['admin_menu_cache_client'] = FALSE;    // disable caching in admin_menu #442560
-$conf['boost_ignore_htaccess_warning'] = 1;  // silence false alarm in Boost
-$conf['expire_flush_front'] = 1;             // default settings for expire module
-$conf['expire_flush_node_terms'] = 1;        // default settings for expire module
-$conf['expire_flush_menu_items'] = 0;        // default settings for expire module
-$conf['expire_flush_cck_references'] = 0;    // default settings for expire module
-$conf['expire_include_base_url'] = 1;        // default settings for expire module
-$conf['video_ffmpeg_instances'] = 1;         // force safe default for ffmpeg
-$conf['securepages_enable'] = 1;             // force to avoid issues with SSL proxy
-$conf['drupal_http_request_fails'] = FALSE;  // avoid false alarm
-$conf['image_allow_insecure_derivatives'] = TRUE; // enable to avoid known issues: http://drupal.org/drupal-7.20-release-notes
-$conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = FALSE;     // do not allow to turn it on by default
-$conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = FALSE; // do not allow to turn it on by default
+$conf['page_compression'] = 0;    // Required in Nginx, since it already compresses everything
+$conf['boost_crawl_on_cron'] = 0; // Deny Boost crawler
+$conf['cron_safe_threshold'] = 0; // Disable poormanscron
+$conf['preprocess_css'] = 1;      // Enable hardcoded css aggregation
+$conf['preprocess_js'] = 1;       // Enable hardcoded js aggregation
+$conf['file_downloads'] = 1;      // Force public downloads by default
+$conf['error_level'] = 0;         // Disable errors on screen
+$conf['statistics_enable_access_log'] = 0;   // Disable access log stats
+$conf['allow_authorize_operations'] = false; // Disable insecure plugin manager
+$conf['admin_menu_cache_client'] = false;    // Disable caching in admin_menu #442560
+$conf['boost_ignore_htaccess_warning'] = 1;  // Silence false alarm in boost
+$conf['expire_flush_front'] = 1;             // Default settings for expire module
+$conf['expire_flush_node_terms'] = 1;        // Default settings for expire module
+$conf['expire_flush_menu_items'] = 0;        // Default settings for expire module
+$conf['expire_flush_cck_references'] = 0;    // Default settings for expire module
+$conf['expire_include_base_url'] = 1;        // Default settings for expire module
+$conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
+$conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
+$conf['drupal_http_request_fails'] = false;  // Avoid false alarm
+$conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issues: http://drupal.org/drupal-7.20-release-notes
+$conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
+$conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do not allow to turn it on by default
 $update_free_access = FALSE;
 
 if ($conf['install_profile'] == 'totem') {
-  ini_set('session.cookie_lifetime', 0); // set it to 24 hours max
+  ini_set('session.cookie_lifetime', 0); // Set it to 24 hours max
 }
 else {
-  ini_set('session.cookie_lifetime', 86400); // set it to 24 hours max
+  ini_set('session.cookie_lifetime', 86400); // Set it to 24 hours max
 }
 
-ini_set('session.cache_expire', 86400);    // set it also to 24 hours max
-ini_set('session.gc_maxlifetime', 86400);  // set it also to 24 hours max
-// Improve sessions management if module session_expire and/or Pressflow core is not used.
-// It is already enabled in the php.ini, but we are forcing it here, just in case.
+ini_set('session.cache_expire', 86400);    // Set it also to 24 hours max
+ini_set('session.gc_maxlifetime', 86400);  // Set it also to 24 hours max
+// Improve sessions management if module session_expire and/or Pressflow core is not used
+// It is already enabled in the php.ini, but we are forcing it here, just in case
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
@@ -74,11 +74,11 @@ $is_dev       = FALSE;
 $known_bot    = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
-$use_cache    = TRUE;  // Standard Redis integration for 6.x and 7.x core is enabled by default.
+$use_cache    = TRUE;  // Standard Redis integration for 6.x and 7.x core is enabled by default
 $use_redis    = FALSE;
 
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
-  // detect known bots
+  // Detect known bots
   $known_bot = TRUE;
 }
 
@@ -128,16 +128,19 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
   $is_dev = TRUE;
 }
 
+/**
+ * Core detection and Caching auto-conf
+ */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 8
+    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 8
     $drupal_eight = TRUE;
     if ($is_dev) {
       header('X-Backend: A');
     }
   }
   else {
-    $conf['cache'] = 1; // enable hardcoded standard caching - Drupal 7
+    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 7
     $drupal_seven = TRUE;
     $use_redis = TRUE;
     if ($is_dev) {
@@ -146,7 +149,7 @@ if (file_exists('web.config')) {
   }
 }
 elseif (file_exists('modules/path_alias_cache')) {
-  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 6
+  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   if ($is_dev) {
@@ -154,14 +157,14 @@ elseif (file_exists('modules/path_alias_cache')) {
   }
 }
 elseif (file_exists('modules/watchdog')) {
-  $conf['cache'] = 1; // enable hardcoded standard caching - Pressflow 5
+  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 5
   $drupal_five = TRUE;
   if ($is_dev) {
     header('X-Backend: D');
   }
 }
 else {
-  $conf['cache'] = 1; // enable hardcoded standard caching
+  $conf['cache'] = 1; // Enable hardcoded standard caching
   $drupal_unknown = TRUE;
   if ($is_dev) {
     header('X-Backend: E');
@@ -183,8 +186,8 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
     }
   }
   $conf['hosting_require_disable_before_delete'] = 0;
-  unset($conf['cache']); // disable hardcoded caching
-  ini_set('session.cookie_lifetime', 0); // force log-out on browser quit
+  unset($conf['cache']); // Disable hardcoded caching
+  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
   if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST'])) {
     if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
         preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
@@ -199,14 +202,18 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
   header('X-Accel-Expires: 1');
 }
 
-// http://drupal.org/node/912682#comment-3503636
+/**
+ * Main section starts here
+ */
+
 if ($conf['install_profile'] == 'managingnews') {
   ini_set('auto_detect_line_endings', TRUE);
+  // http://drupal.org/node/912682#comment-3503636
 }
 
 if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/allow_private_file_downloads.info') ||
     file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_private_file_downloads.info'))) {
-  unset($conf['file_downloads']); // disable hardcoded public downloads
+  unset($conf['file_downloads']); // Disable hardcoded public downloads
   if ($is_dev) {
     header('X-Is-Cart: YES');
   }
@@ -239,7 +246,7 @@ elseif ($redis_up && $force_redis) {
 }
 else {
   if (!$is_dev) {
-    $conf['cache'] = 1; // enable standard db caching if redis is not allowed or not available
+    $conf['cache'] = 1; // Enable standard db caching if redis is not allowed or not available
   }
   if ($is_dev) {
     header('X-Allow-Redis: NO');
@@ -345,7 +352,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     }
   }
   elseif (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
-    $conf['expire_flush_node_terms'] = 0; // disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
+    $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     if ($is_dev) {
       header('X-Purge-Level: 7');
@@ -403,19 +410,17 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (isset($_SERVER['REQUEST_TIME']) && isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['HTTP_USER_AGENT']) &&
       !preg_match("/^\/esi\//", $_SERVER['REQUEST_URI'])) {
+      unset($conf['file_downloads']); // disable hardcoded public downloads in d7
     $identity = $_SERVER['REQUEST_TIME'] . $_SERVER['REMOTE_ADDR'] . $_SERVER['SERVER_NAME'] . $_SERVER['HTTP_USER_AGENT'];
     $identity = 'BD'. md5("$identity");
-
     if ($drupal_seven || $drupal_eight) {
       $conf['https'] = TRUE;
       $sess_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $sess_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
-      unset($conf['file_downloads']); // disable hardcoded public downloads in d7
     }
     else {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
-
     if (!isset($_COOKIE[$test_sess_name])) {
       if (file_exists('sites/all/modules/nginx_cache_quarter.info') ||
           file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_quarter.info')) {
@@ -433,7 +438,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         header('X-Limit-Booster: 86400');
       }
     }
-
     if (!isset($_COOKIE[$test_sess_name])) {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
         if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_anon_node_add.info')) {
@@ -454,13 +458,11 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         }
       }
     }
-
-    // Prevent turning the feature server site into a spam machine.
-    // Disable self-registration also on hostmaster.
+    // Prevent turning the feature server site into a spam machine
+    // Disable self-registration also on hostmaster
     if ($conf['install_profile'] == 'feature_server' || $conf['install_profile'] == 'hostmaster') {
-      $conf['user_register'] = 0; // force "Only site administrators can create new user accounts"
+      $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
-
     if (!$known_bot && !$high_traffic && !$deny_anon) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
@@ -472,21 +474,18 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         $expire_in_seconds = '1';
         header('X-Limit-Booster: 1');
       }
-
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
         if ($is_dev) {
           header('X-Skip-Booster: AjaxRU');
         }
       }
-
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
         if ($is_dev) {
           header('X-Skip-Booster: AjaxQS');
         }
       }
-
       if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
         if (!isset($_COOKIE['NoCacheID'])) {
           $lifetime = '15';
@@ -498,7 +497,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         }
       }
     }
-
     if ($known_bot) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '86400';
@@ -507,7 +505,6 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         }
       }
     }
-
     if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
@@ -521,7 +518,7 @@ if (is_readable('/data/conf/override.global.inc')) {
   require_once "/data/conf/override.global.inc";
 }
 
-// Use Redis caching and lock support only for d6 and d7 profiles.
+// Use Redis caching and lock support only for d6 and d7 profiles
 if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
@@ -571,12 +568,11 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
   }
 }
 
-
 /**
  * Drupal for Facebook (fb)
  *
  * Important:
- * Facebook client libraries will not work properly if arg_separator.output is not &.
+ * Facebook client libraries will not work properly if arg_separator.output is not &
  * The default value is &amp;. Change this in settings.php. Make the value "&"
  * http://drupal.org/node/205476
  */
@@ -612,7 +608,6 @@ if (!$custom_da) {
   }
 }
 
-
 /**
  * New Relic - see: https://newrelic.com/docs/php/per-directory-settings#perdir-rollup
  * Support for background job borrowed from https://drupal.org/project/newrelic_drush_plugin
@@ -631,19 +626,16 @@ if (extension_loaded('newrelic')) {
     elseif (isset($context['DRUSH_DRUPAL_SITE'])) {
       $uri = $context['DRUSH_DRUPAL_SITE'];
     }
-
     if ($uri) {
       $this_instance = 'Site: ' . $uri;
       $root = FALSE;
-
-      // Support Barracuda and Octopus naming convention.
+      // Support Barracuda and Octopus naming convention
       if (isset($context['DRUSH_DRUPAL_CORE'])) {
         $root = $context['DRUSH_DRUPAL_CORE'];
       }
       elseif (isset($context['DRUSH_DRUPAL_ROOT'])) {
         $root = $context['DRUSH_DRUPAL_ROOT'];
       }
-
       if ($root) {
         $frags = explode("/", $root);
         if ($frags[1] == 'data') {
@@ -653,8 +645,7 @@ if (extension_loaded('newrelic')) {
           $this_instance = 'Site: ' . $uri . ';AAA Barracuda Master;AAA All Instances';
         }
       }
-
-      // Build drush command.
+      // Build drush command
       $drush_command = array_merge(array($command['command']), $command['arguments']);
       newrelic_add_custom_parameter('Drush command', implode(' ', $drush_command));
       newrelic_name_transaction(implode(' ', $drush_command));
@@ -672,7 +663,6 @@ if (extension_loaded('newrelic')) {
       }
     }
   }
-
   if ($this_instance) {
     ini_set('newrelic.appname', $this_instance);
     newrelic_set_appname($this_instance);
