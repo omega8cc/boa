@@ -102,6 +102,36 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:bi
 }
 
 /**
+ * Test and tmp URLs protection
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
+  if ($known_bot) {
+    header('X-Accel-Expires: 5');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+    header("Connection: close");
+    exit;
+  }
+  $is_test = TRUE;
+}
+
+/**
+ * Dev mode detection and URLs protection
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
+  if ($known_bot) {
+    header('X-Accel-Expires: 5');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+    header("Connection: close");
+    exit;
+  }
+  $is_dev = TRUE;
+}
+
+/**
  * Core detection and Caching auto-conf
  */
 if (file_exists('web.config')) {
@@ -145,17 +175,9 @@ else {
 }
 
 /**
- * Dev mode switch and URLs protection
+ * Dev mode switch
  */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
-  if ($known_bot) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
-    header("Connection: close");
-    exit;
-  }
+if ($is_dev) {
   error_reporting(E_ALL & ~E_NOTICE);
   ini_set('display_errors', TRUE);
   ini_set('display_startup_errors', TRUE);
@@ -168,22 +190,6 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
   unset($conf['error_level']);    // Stop hardcoding no errors on screen
   $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
   $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
-  $is_dev = TRUE;
-}
-
-/**
- * Test and tmp URLs protection
- */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
-  if ($known_bot) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
-    header("Connection: close");
-    exit;
-  }
-  $is_test = TRUE;
 }
 
 /**
