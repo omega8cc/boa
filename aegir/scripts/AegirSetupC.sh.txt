@@ -1424,7 +1424,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
     # http://drupal.org/node/1243258#comment-4850634
-    curl -s -O -A iCab http://files.aegir.cc/dev/patches/magecache-1243258-5.patch
+    curl -s -O -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
     cd $_SHRD_PRPATH/themes

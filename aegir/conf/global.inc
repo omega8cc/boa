@@ -229,9 +229,9 @@ if ($ini_plr_src) {
 if (is_readable('sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini')) {
   $ini_loc_src = 'sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini';
 }
-if ($ini_plr_src) {
+if ($ini_loc_src) {
   $usr_loc_ini = array();
-  $usr_loc_ini = parse_ini_file($ini_plr_src);
+  $usr_loc_ini = parse_ini_file($ini_loc_src);
 }
 if (is_array($usr_plr_ini) && $usr_plr_ini) {
   $all_ini = array_merge($all_ini, $usr_plr_ini);
