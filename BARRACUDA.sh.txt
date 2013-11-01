@@ -401,7 +401,7 @@ _AEGIR_UPGRADE_ONLY=NO
 ###
 ### You can force Nginx, PHP and/or DB server
 ### reinstall, even if there are no updates
-### available.
+### available, when set to YES.
 ###
 _NGX_FORCE_REINSTALL=NO
 _PHP_FORCE_REINSTALL=NO
