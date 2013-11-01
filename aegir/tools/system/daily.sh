@@ -9,29 +9,39 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 _MODULES_ON_SEVEN="robotstxt"
 _MODULES_ON_SIX="path_alias_cache robotstxt"
-_MODULES_OFF_SEVEN="background_process dblog devel l10n_update performance syslog ultimate_cron update"
-_MODULES_OFF_SIX="background_process cookie_cache_bypass css_gzip dblog devel javascript_aggregator l10n_update performance poormanscron supercron syslog ultimate_cron update"
+_MODULES_OFF_SEVEN="background_process dblog devel hacked l10n_update performance syslog ultimate_cron update"
+_MODULES_OFF_SIX="background_process cookie_cache_bypass css_gzip dblog devel javascript_aggregator hacked l10n_update performance poormanscron supercron syslog ultimate_cron update"
 
 ###-------------SYSTEM-----------------###
 
-run_drush_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush $1 &> /dev/null"
+run_drush4_cmd () {
+  su -s /bin/bash $_THIS_HM_USER -c "drush4 $1 &> /dev/null"
 }
 
-run_drush_dash_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush $1 &> /dev/null"
+run_drush4_dash_cmd () {
+  su -s /bin/bash - $_THIS_HM_USER -c "drush4 $1 &> /dev/null"
 }
 
-run_drush_nosilent_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush6 $1"
+run_drush4_nosilent_cmd () {
+  su -s /bin/bash $_THIS_HM_USER -c "drush4 $1"
 }
 
 check_if_required () {
-  _REQ_TEST=$(run_drush_nosilent_cmd "pmi --fields=required_by $1 | grep ':  none'")
-  if [[ "$_REQ_TEST" =~ ":  none" ]] ; then
+  _REQ_TEST=$(run_drush4_nosilent_cmd "pmi --fields=required_by $1 | grep 'Required by.*none'")
+  if [[ "$_REQ_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+  elif [[ "$_REQ_TEST" =~ "was not found" ]] ; then
+    _REQ=NULL
   else
     _REQ=YES
+  fi
+  _RET_TEST=$(run_drush4_nosilent_cmd "pmi --fields=required_by $1 | grep 'Required by.*hacked'")
+  if [[ "$_RET_TEST" =~ "Required by" ]] ; then
+    _RET=NO
+  elif [[ "$_RET_TEST" =~ "was not found" ]] ; then
+    _RET=NULL
+  else
+    _RET=YES
   fi
 }
 
@@ -51,12 +61,14 @@ disable_modules () {
       check_if_skip "$m"
     fi
     if [ "$_SKIP" = "NO" ] ; then
-      _MODULE_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
+      _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
       if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
         check_if_required "$m"
-        if [ "$_REQ" = "NO" ] ; then
-          run_drush_cmd "dis $m -y"
+        if [ "$_REQ" = "NO" ] || [ "$_RET" = "NO" ] ; then
+          run_drush4_cmd "dis $m -y"
           echo $m disabled in $Dom
+        elif [ "$_REQ" = "NULL" ] || [ "$_RET" = "NULL" ] ; then
+          echo $m is not used in $Dom
         else
           echo $m is required and can not be disabled in $Dom
         fi
@@ -67,11 +79,11 @@ disable_modules () {
 
 enable_modules () {
   for m in $1; do
-    _MODULE_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
+    _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
     if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
       true
     else
-      run_drush_cmd "en $m -y"
+      run_drush4_cmd "en $m -y"
       echo $m enabled in $Dom
     fi
   done
@@ -86,18 +98,18 @@ fix_user_register_protection () {
     Prm=${Prm//[^0-2]/}
     echo Prm user_register for $Dom is $Prm
     if [ -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] ; then
-      drush vset --always-set user_register 0 &> /dev/null
+      drush4 vset --always-set user_register 0 &> /dev/null
     else
       if [ "$Prm" = "1" ] || [ -z "$Prm" ] ; then
-        drush vset --always-set user_register 2 &> /dev/null
+        drush4 vset --always-set user_register 2 &> /dev/null
       fi
-      drush vset --always-set user_email_verification 1 &> /dev/null
+      drush4 vset --always-set user_email_verification 1 &> /dev/null
     fi
   fi
 }
 
 fix_robots_txt () {
-  if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
+  if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] && [ "$_STATUS" = "OK" ] ; then
     curl -s -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
     if [ -e "$Dir/files/robots.txt" ] ; then
       echo >> $Dir/files/robots.txt
@@ -107,7 +119,7 @@ fix_robots_txt () {
 
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
-    run_drush_dash_cmd "@hostmaster cc all"
+    run_drush4_dash_cmd "@hostmaster cc all"
   fi
 }
 
@@ -295,7 +307,7 @@ process () {
 }
 
 delete_this_platform () {
-  run_drush_dash_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
+  run_drush4_dash_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
   echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
 }
 
@@ -315,7 +327,14 @@ check_old_empty_platforms () {
         _THIS_PLATFORM_NAME=`echo "$Platform" | sed "s/.*platform_//g; s/.alias.drushrc.php//g" | awk '{ print $1}'`
         _THIS_PLATFORM_ROOT=`cat $Platform | grep 'root' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         _THIS_PLATFORM_SITE=`grep "${_THIS_PLATFORM_ROOT}/sites/" $User/.drush/* | grep site_path`
-        if [ -z $_THIS_PLATFORM_SITE ] ; then
+        if [ ! -e "${_THIS_PLATFORM_ROOT}/sites/all" ] ; then
+          echo "WARNING: ghost platform found: $_THIS_PLATFORM_ROOT"
+          rm -f $User/.drush/platform_${_THIS_PLATFORM_NAME}.alias.drushrc.php
+        fi
+        if [[ "$_THIS_PLATFORM_SITE" =~ ".restore" ]] ; then
+          echo "WARNING: ghost site leftover found: $_THIS_PLATFORM_SITE"
+        fi
+        if [ -z "$_THIS_PLATFORM_SITE" ] && [ -e "${_THIS_PLATFORM_ROOT}/sites/all" ] ; then
           delete_this_platform
         fi
       done
@@ -343,11 +362,11 @@ action () {
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          run_drush_dash_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
-          run_drush_dash_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush_dash_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
-          run_drush_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 1"
-          run_drush_dash_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 1"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
         fi
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           rm -f -r $User/clients/admin &> /dev/null
@@ -360,8 +379,8 @@ action () {
           symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
           rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bashrc}
         fi
-        run_drush_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-        run_drush_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush4_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush4_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         echo Done for $User
       else
