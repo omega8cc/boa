@@ -120,7 +120,21 @@ sub global_action
       }
     }
 
-    if ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $TIME =~ /[3-9]:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/)
+    if ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[1-9]:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $TIME =~ /[3-9]:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $K =~ /php/ && ($X =~ /(drush|-d)/ || $Z =~ /magic/))
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
@@ -141,7 +155,14 @@ sub global_action
        chomp($timedate);
       `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $B =~ /php/ && $K =~ /drush/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /(drush|-d)/ || $X =~ /magic/))
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[1-9]{1,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /drush/ || $X =~ /(dis|en)/))
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
@@ -158,6 +179,30 @@ sub global_action
        {
          `kill -9 $PID`;
          `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.kill.log`;
+       }
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/)
+    {
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+       $hourminute=`date +%H%M`;
+       chomp($hourminute);
+       if ($hourminute !~ /^000/)
+       {
+         `kill -9 $PID`;
+         `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
+       }
+    }
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/)
+    {
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+       $hourminute=`date +%H%M`;
+       chomp($hourminute);
+       if ($hourminute !~ /^000/)
+       {
+         `kill -9 $PID`;
+         `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
        }
     }
 
