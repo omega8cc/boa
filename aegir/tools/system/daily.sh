@@ -90,14 +90,49 @@ enable_modules () {
 }
 
 fix_user_register_protection () {
-  if [ ! -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] && [ -e "$User/static/control/enable_user_register_protection.info" ] ; then
-    touch $Plr/sites/all/modules/enable_user_register_protection.info
+
+  _PLR_CTRL_FILE="$Plr/sites/all/modules/boa_platform_control.ini"
+
+  if [ -e "$User/static/control/enable_user_register_protection.info" ] && [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+    cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+    chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
+    chmod 0664 $_PLR_CTRL_FILE
   fi
-  if [ ! -e "$Dir/modules/disable_user_register_protection.info" ] ; then
-    Prm=$(drush vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
+
+  if [ -e "$_PLR_CTRL_FILE" ] ; then
+    _ENABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^enable_user_register_protection = TRUE" $_PLR_CTRL_FILE)
+    if [[ "$_ENABLE_USER_REGISTER_PROTECTION_TEST" =~ "enable_user_register_protection = TRUE" ]] ; then
+      _ENABLE_USER_REGISTER_PROTECTION=YES
+    else
+      _ENABLE_USER_REGISTER_PROTECTION=NO
+    fi
+  else
+    _ENABLE_USER_REGISTER_PROTECTION=NO
+  fi
+
+  if [ "$_ENABLE_USER_REGISTER_PROTECTION" = "NO" ] && [ -e "$User/static/control/enable_user_register_protection.info" ] ; then
+    sed -i "s/.*enable_user_register_protection.*/enable_user_register_protection = TRUE/g" $_PLR_CTRL_FILE &> /dev/null
+    _ENABLE_USER_REGISTER_PROTECTION=YES
+  fi
+
+  _DIR_CTRL_FILE="$Dir/modules/boa_site_control.ini"
+
+  if [ -e "$_DIR_CTRL_FILE" ] ; then
+    _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_DIR_CTRL_FILE)
+    if [[ "$_DISABLE_USER_REGISTER_PROTECTION_TEST" =~ "disable_user_register_protection = TRUE" ]] ; then
+      _DISABLE_USER_REGISTER_PROTECTION=YES
+    else
+      _DISABLE_USER_REGISTER_PROTECTION=NO
+    fi
+  else
+    _DISABLE_USER_REGISTER_PROTECTION=NO
+  fi
+
+  if [ "$_DISABLE_USER_REGISTER_PROTECTION" = "NO" ] ; then
+    Prm=$(drush4 vget ^user_register$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
     Prm=${Prm//[^0-2]/}
     echo Prm user_register for $Dom is $Prm
-    if [ -e "$Plr/sites/all/modules/enable_user_register_protection.info" ] ; then
+    if [ "$_ENABLE_USER_REGISTER_PROTECTION" = "YES" ] ; then
       drush4 vset --always-set user_register 0 &> /dev/null
     else
       if [ "$Prm" = "1" ] || [ -z "$Prm" ] ; then
@@ -166,6 +201,25 @@ sql_convert () {
   su - ${_THIS_HM_USER}.ftp -c "sqlmagic convert to-innodb"
 }
 
+check_site_status () {
+  _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*Successful'")
+  if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
+    _STATUS=OK
+  else
+    _STATUS=BROKEN
+    echo "WARNING: THIS SITE IS BROKEN! $Dir"
+  fi
+}
+
+check_file_with_wildcard_path () {
+  _WILDCARD_TEST=$(ls $1 2> /dev/null)
+  if [ -z "$_WILDCARD_TEST" ] ; then
+    _FILE_EXISTS=NO
+  else
+    _FILE_EXISTS=YES
+  fi
+}
+
 fix_modules () {
   if [ "$_MODULES_FIX" = "YES" ] ; then
     searchStringA="pressflow-5.23.50"
@@ -174,39 +228,172 @@ fix_modules () {
       *)
       if [ -e "$Dir/drushrc.php" ] ; then
         cd $Dir
-        if [ "$_SQL_CONVERT" = "YES" ] ; then
-          _TIMESTAMP=`date +%y%m%d-%H%M`
-          echo "$_TIMESTAMP sql conversion for $Dom started"
-          sql_convert
-          _TIMESTAMP=`date +%y%m%d-%H%M`
-          echo "$_TIMESTAMP sql conversion for $Dom completed"
-        fi
-        fix_user_register_protection
-        if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
-          run_drush_cmd "@hostmaster dis cache syslog dblog -y"
-          echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
-          chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
-        elif [ -e "$Plr/modules/o_contrib" ] ; then
-          disable_modules "$_MODULES_OFF_SIX"
-          enable_modules "$_MODULES_ON_SIX"
-          run_drush_cmd "sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\""
-        elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
-          disable_modules "$_MODULES_OFF_SEVEN"
-          if [ ! -e "$Plr/sites/all/modules/entitycache_dont_enable.info" ] ; then
-            enable_modules "entitycache"
+        check_site_status
+        if [ "$_STATUS" = "OK" ] ; then
+          if [ "$_SQL_CONVERT" = "YES" ] ; then
+            _TIMESTAMP=`date +%y%m%d-%H%M`
+            echo "$_TIMESTAMP sql conversion for $Dom started"
+            sql_convert
+            _TIMESTAMP=`date +%y%m%d-%H%M`
+            echo "$_TIMESTAMP sql conversion for $Dom completed"
           fi
-          enable_modules "$_MODULES_ON_SEVEN"
-        fi
-        _VIEWS_TEST=$(run_drush_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(views\)")
-        if [[ "$_VIEWS_TEST" =~ "Views" ]] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
-          if [ ! -e "$Plr/sites/all/modules/views_cache_bully_dont_enable.info" ] ; then
-            if [ -e "$Plr/modules/o_contrib_seven/views_cache_bully" ] || [ -e "$Plr/modules/o_contrib/views_cache_bully" ] ; then
-              enable_modules "views_cache_bully"
+          fix_user_register_protection
+
+          _AUTO_DETECT_FACEBOOK_INTEGRATION=NO
+          if [ -e "$Plr/sites/all/modules/fb/fb_settings.inc" ] || [ -e "$Plr/sites/all/modules/contrib/fb/fb_settings.inc" ] ; then
+            _AUTO_DETECT_FACEBOOK_INTEGRATION=YES
+          else
+            check_file_with_wildcard_path "$Plr/profiles/*/modules/fb/fb_settings.inc"
+            if [ "$_FILE_EXISTS" = "YES" ] ; then
+              _AUTO_DETECT_FACEBOOK_INTEGRATION=YES
+            else
+              check_file_with_wildcard_path "$Plr/profiles/*/modules/contrib/fb/fb_settings.inc"
+              if [ "$_FILE_EXISTS" = "YES" ] ; then
+                _AUTO_DETECT_FACEBOOK_INTEGRATION=YES
+              fi
             fi
           fi
-          if [ ! -e "$Plr/sites/all/modules/views_content_cache_dont_enable.info" ] ; then
-            if [ -e "$Plr/modules/o_contrib_seven/views_content_cache" ] || [ -e "$Plr/modules/o_contrib/views_content_cache" ] ; then
-              enable_modules "views_content_cache"
+          if [ "$_AUTO_DETECT_FACEBOOK_INTEGRATION" = "YES" ] ; then
+            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
+              chmod 0664 $_PLR_CTRL_FILE
+            fi
+            if [ -e "$_PLR_CTRL_FILE" ] ; then
+              _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = TRUE" $_PLR_CTRL_FILE)
+              if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = TRUE" ]] ; then
+                true
+              else
+                ###
+                ### Do this only for the platform level ini file, so the site level ini file can disable
+                ### this check by setting it explicitly to auto_detect_facebook_integration = FALSE
+                ###
+                sed -i "s/.*auto_detect_facebook_integration.*/auto_detect_facebook_integration = TRUE/g" $_PLR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          else
+            if [ -e "$_PLR_CTRL_FILE" ] ; then
+              _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = FALSE" $_PLR_CTRL_FILE)
+              if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = FALSE" ]] ; then
+                true
+              else
+                sed -i "s/.*auto_detect_facebook_integration.*/auto_detect_facebook_integration = FALSE/g" $_PLR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          fi
+
+          _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=NO
+          if [ -e "$Plr/sites/all/modules/domain/settings.inc" ] || [ -e "$Plr/sites/all/modules/contrib/domain/settings.inc" ] ; then
+            _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=YES
+          else
+            check_file_with_wildcard_path "$Plr/profiles/*/modules/domain/settings.inc"
+            if [ "$_FILE_EXISTS" = "YES" ] ; then
+              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=YES
+            else
+              check_file_with_wildcard_path "$Plr/profiles/*/modules/contrib/domain/settings.inc"
+              if [ "$_FILE_EXISTS" = "YES" ] ; then
+                _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION=YES
+              fi
+            fi
+          fi
+          if [ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION" = "YES" ] ; then
+            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
+              chmod 0664 $_PLR_CTRL_FILE
+            fi
+            if [ -e "$_PLR_CTRL_FILE" ] ; then
+              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = TRUE" $_PLR_CTRL_FILE)
+              if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = TRUE" ]] ; then
+                true
+              else
+                ###
+                ### Do this only for the platform level ini file, so the site level ini file can disable
+                ### this check by setting it explicitly to auto_detect_domain_access_integration = FALSE
+                ###
+                sed -i "s/.*auto_detect_domain_access_integration.*/auto_detect_domain_access_integration = TRUE/g" $_PLR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          else
+            if [ -e "$_PLR_CTRL_FILE" ] ; then
+              _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = FALSE" $_PLR_CTRL_FILE)
+              if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = FALSE" ]] ; then
+                true
+              else
+                sed -i "s/.*auto_detect_domain_access_integration.*/auto_detect_domain_access_integration = FALSE/g" $_PLR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          fi
+
+          if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _ENTITYCACHE_DONT_ENABLE_TEST=$(grep "^entitycache_dont_enable = TRUE" $_PLR_CTRL_FILE)
+            if [[ "$_ENTITYCACHE_DONT_ENABLE_TEST" =~ "entitycache_dont_enable = TRUE" ]] ; then
+              _ENTITYCACHE_DONT_ENABLE=YES
+            else
+              _ENTITYCACHE_DONT_ENABLE=NO
+            fi
+          else
+            _ENTITYCACHE_DONT_ENABLE=NO
+          fi
+
+          if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _VIEWS_CACHE_BULLY_DONT_ENABLE_TEST=$(grep "^views_cache_bully_dont_enable = TRUE" $_PLR_CTRL_FILE)
+            if [[ "$_VIEWS_CACHE_BULLY_DONT_ENABLE_TEST" =~ "views_cache_bully_dont_enable = TRUE" ]] ; then
+              _VIEWS_CACHE_BULLY_DONT_ENABLE=YES
+            else
+              _VIEWS_CACHE_BULLY_DONT_ENABLE=NO
+            fi
+          else
+            _VIEWS_CACHE_BULLY_DONT_ENABLE=NO
+          fi
+
+          if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _VIEWS_CONTENT_CACHE_DONT_ENABLE_TEST=$(grep "^views_content_cache_dont_enable = TRUE" $_PLR_CTRL_FILE)
+            if [[ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE_TEST" =~ "views_content_cache_dont_enable = TRUE" ]] ; then
+              _VIEWS_CONTENT_CACHE_DONT_ENABLE=YES
+            else
+              _VIEWS_CONTENT_CACHE_DONT_ENABLE=NO
+            fi
+          else
+            _VIEWS_CONTENT_CACHE_DONT_ENABLE=NO
+          fi
+
+          if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
+            run_drush4_cmd "@hostmaster dis cache syslog dblog -y"
+            echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
+            chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
+          elif [ -e "$Plr/modules/o_contrib" ] ; then
+            if [ ! -e "$Plr/modules/user" ] || [ ! -e "$Plr/sites/all/modules" ] || [ ! -e "$Plr/profiles" ] ; then
+              echo "WARNING: THIS PLATFORM IS BROKEN! $Plr"
+            elif [ ! -e "$Plr/modules/path_alias_cache" ] ; then
+              echo "WARNING: THIS PLATFORM IS NOT A VALID PRESSFLOW PLATFORM! $Plr"
+            elif [ -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] ; then
+              disable_modules "$_MODULES_OFF_SIX"
+              enable_modules "$_MODULES_ON_SIX"
+              run_drush4_cmd "sqlq \"UPDATE system SET weight = '-1' WHERE type = 'module' AND name = 'path_alias_cache'\""
+            fi
+          elif [ -e "$Plr/modules/o_contrib_seven" ] ; then
+            if [ ! -e "$Plr/modules/user" ] || [ ! -e "$Plr/sites/all/modules" ] || [ ! -e "$Plr/profiles" ] ; then
+              echo "WARNING: THIS PLATFORM IS BROKEN! $Plr"
+            else
+              disable_modules "$_MODULES_OFF_SEVEN"
+              if [ "$_ENTITYCACHE_DONT_ENABLE" = "NO" ] ; then
+                enable_modules "entitycache"
+              fi
+              enable_modules "$_MODULES_ON_SEVEN"
+            fi
+          fi
+          _VIEWS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(views\)")
+          if [[ "$_VIEWS_TEST" =~ "Views" ]] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
+            if [ "$_VIEWS_CACHE_BULLY_DONT_ENABLE" = "NO" ] ; then
+              if [ -e "$Plr/modules/o_contrib_seven/views_cache_bully" ] || [ -e "$Plr/modules/o_contrib/views_cache_bully" ] ; then
+                enable_modules "views_cache_bully"
+              fi
+            fi
+            if [ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE" = "NO" ] ; then
+              if [ -e "$Plr/modules/o_contrib_seven/views_content_cache" ] || [ -e "$Plr/modules/o_contrib/views_content_cache" ] ; then
+                enable_modules "views_content_cache"
+              fi
             fi
           fi
         fi
@@ -277,6 +464,114 @@ fix_permissions () {
   chown -L -R $_THIS_HM_USER:www-data $Dir/private/config &> /dev/null
 }
 
+convert_controls_orig () {
+  if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "$User/static/control/$1.info" ] ; then
+    if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
+      cp -af $_CTRL_FILE_TPL $_CTRL_FILE
+    fi
+    sed -i "s/.*$1.*/$1 = TRUE/g" $_CTRL_FILE &> /dev/null
+    rm -f $_CTRL_DIR/$1.info
+  fi
+}
+
+convert_controls_orig_no_global () {
+  if [ -e "$_CTRL_DIR/$1.info" ] ; then
+    if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
+      cp -af $_CTRL_FILE_TPL $_CTRL_FILE
+    fi
+    sed -i "s/.*$1.*/$1 = TRUE/g" $_CTRL_FILE &> /dev/null
+    rm -f $_CTRL_DIR/$1.info
+  fi
+}
+
+convert_controls_value () {
+  if [ -e "$_CTRL_DIR/$1.info" ] || [ -e "$User/static/control/$1.info" ] ; then
+    if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
+      cp -af $_CTRL_FILE_TPL $_CTRL_FILE
+    fi
+    if [ "$1" = "nginx_cache_day" ] ; then
+      _TTL=86400
+    elif [ "$1" = "nginx_cache_hour" ] ; then
+      _TTL=3600
+    elif [ "$1" = "nginx_cache_quarter" ] ; then
+      _TTL=900
+    fi
+    sed -i "s/.*speed_booster_anon_cache_ttl.*/speed_booster_anon_cache_ttl = $_TTL/g" $_CTRL_FILE &> /dev/null
+    rm -f $_CTRL_DIR/$1.info
+  fi
+}
+
+convert_controls_renamed () {
+  if [ -e "$_CTRL_DIR/$1.info" ] ; then
+    if [ ! -e "$_CTRL_FILE" ] && [ -e "$_CTRL_FILE_TPL" ] ; then
+      cp -af $_CTRL_FILE_TPL $_CTRL_FILE
+    fi
+    if [ "$1" = "cookie_domain" ] ; then
+      sed -i "s/.*server_name_cookie_domain.*/server_name_cookie_domain = TRUE/g" $_CTRL_FILE &> /dev/null
+    fi
+    rm -f $_CTRL_DIR/$1.info
+  fi
+}
+
+fix_control_settings () {
+  _CTRL_NAME_ORIG="redis_lock_enable redis_cache_disable disable_admin_dos_protection allow_anon_node_add allow_private_file_downloads"
+  _CTRL_NAME_VALUE="nginx_cache_day nginx_cache_hour nginx_cache_quarter"
+  _CTRL_NAME_RENAMED="cookie_domain"
+  for ctrl in $_CTRL_NAME_ORIG; do
+    convert_controls_orig "$ctrl"
+  done
+  for ctrl in $_CTRL_NAME_VALUE; do
+    convert_controls_value "$ctrl"
+  done
+  for ctrl in $_CTRL_NAME_RENAMED; do
+    convert_controls_renamed "$ctrl"
+  done
+}
+
+fix_platform_system_control_settings () {
+  _CTRL_NAME_ORIG="enable_user_register_protection entitycache_dont_enable views_cache_bully_dont_enable views_content_cache_dont_enable"
+  for ctrl in $_CTRL_NAME_ORIG; do
+    convert_controls_orig "$ctrl"
+  done
+}
+
+fix_site_system_control_settings () {
+  _CTRL_NAME_ORIG="disable_user_register_protection"
+  for ctrl in $_CTRL_NAME_ORIG; do
+    convert_controls_orig_no_global "$ctrl"
+  done
+}
+
+fix_platform_control_files () {
+  if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] ; then
+    if [ ! -e "$Plr/sites/all/modules/default.boa_platform_control.ini" ] || [ "$_CTRL_FORCE_UPDATE" = "YES" ] ; then
+      cp -af /var/xdrago/conf/default.boa_platform_control.ini $Plr/sites/all/modules/ &> /dev/null
+      chown $_THIS_HM_USER:users $Plr/sites/all/modules/default.boa_platform_control.ini
+      chmod 0664 $Plr/sites/all/modules/default.boa_platform_control.ini
+    fi
+    _CTRL_FILE_TPL="$Plr/sites/all/modules/default.boa_platform_control.ini"
+    _CTRL_FILE="$Plr/sites/all/modules/boa_platform_control.ini"
+    _CTRL_DIR="$Plr/sites/all/modules"
+    fix_control_settings
+    fix_platform_system_control_settings
+  fi
+}
+
+fix_site_control_files () {
+  if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] ; then
+    if [ ! -e "$Dir/modules/default.boa_site_control.ini" ] || [ "$_CTRL_FORCE_UPDATE" = "YES" ] ; then
+      cp -af /var/xdrago/conf/default.boa_site_control.ini $Dir/modules/ &> /dev/null
+      chown $_THIS_HM_USER:users $Dir/modules/default.boa_site_control.ini
+      chmod 0664 $Dir/modules/default.boa_site_control.ini
+    fi
+    _CTRL_FILE_TPL="$Dir/modules/default.boa_site_control.ini"
+    _CTRL_FILE="$Dir/modules/boa_site_control.ini"
+    _CTRL_DIR="$Dir/modules"
+    fix_control_settings
+    fix_site_system_control_settings
+  fi
+}
+
 process () {
   for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
@@ -286,6 +581,8 @@ process () {
       echo Dom is $Dom
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      fix_site_control_files
+      fix_platform_control_files
       fix_o_contrib_symlink
       searchStringD="dev."
       searchStringF="devel."
