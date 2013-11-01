@@ -413,7 +413,7 @@ for i in $REVISIONS; do
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
     rm -f -r /data/all/$i/o_contrib_seven/boost/.git
     wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-7.x-2.1.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.x-dev.tar.gz
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.2.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-7.x-2.x-dev.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-7.x-1.0-rc2.tar.gz
     wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-7.x-2.3.tar.gz
@@ -495,7 +495,7 @@ download_o_contrib_seven () {
   wget -q -U iCab http://files.aegir.cc/dev/contrib/cdn-7.x-2.6.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/config_perms-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/css_emimage-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.x-dev.tar.gz
+  wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.2.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/esi-7.x-3.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-7.x-2.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/flood_control-7.x-1.x-dev.tar.gz
