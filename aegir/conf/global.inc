@@ -69,17 +69,18 @@ $drupal_seven = FALSE;
 $drupal_six   = FALSE;
 $force_redis  = FALSE;
 $high_traffic = FALSE;
-$ini_src      = FALSE;
+$ini_loc_src  = FALSE;
+$ini_plr_src  = FALSE;
 $is_backend   = FALSE;
 $is_dev       = FALSE;
 $is_test      = FALSE;
 $known_bot    = FALSE;
-$local_ini    = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
 $use_cache    = TRUE;  // Standard Redis integration for 6.x and 7.x core is enabled by default
 $use_redis    = FALSE;
-$usr_ini      = FALSE;
+$usr_loc_ini  = FALSE;
+$usr_plr_ini  = FALSE;
 
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
   // Detect known bots
@@ -196,8 +197,8 @@ $boa_ini = array(
   'disable_admin_dos_protection' => FALSE,
   'allow_private_file_downloads' => FALSE,
   'server_name_cookie_domain' => FALSE,
-  'auto_detect_facebook_integration' => FALSE,
-  'auto_detect_domain_access_integration' => FALSE,
+  'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
+  'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
 );
 
 /**
@@ -208,26 +209,40 @@ if (is_readable('/data/conf/settings.global.inc')) {
 }
 
 /**
- * Optional site or platform level settings defined in the ini files
- * Note: platform-level ini file is ignored when site-level ini file exists
+ * Optional site and platform level settings defined in the ini files
+ * Note: the site-level ini file takes precedence over platform level ini
  */
+$all_ini = $boa_ini;
+if (is_readable('sites/all/modules/boa_platform_control.ini')) {
+  $ini_plr_src = 'sites/all/modules/boa_platform_control.ini';
+}
+if ($ini_plr_src) {
+  $usr_plr_ini = array();
+  $usr_plr_ini = parse_ini_file($ini_plr_src);
+}
 if (is_readable('sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini')) {
-  $ini_src = 'sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini';
+  $ini_loc_src = 'sites/'. $_SERVER['SERVER_NAME'] .'/modules/boa_site_control.ini';
 }
-elseif (is_readable('sites/all/modules/boa_platform_control.ini')) {
-  $ini_src = 'sites/all/modules/boa_platform_control.ini';
+if ($ini_plr_src) {
+  $usr_loc_ini = array();
+  $usr_loc_ini = parse_ini_file($ini_plr_src);
 }
-if ($ini_src) {
-  $usr_ini = array();
-  $usr_ini = parse_ini_file($ini_src);
+if (is_array($usr_plr_ini) && $usr_plr_ini) {
+  $all_ini = array_merge($all_ini, $usr_plr_ini);
 }
-if (is_array($usr_ini) && $usr_ini) {
-  $all_ini = array_merge($boa_ini, $usr_ini);
-else {
-  $all_ini = $boa_ini;
+if (is_array($usr_loc_ini) && $usr_loc_ini) {
+  $all_ini = array_merge($all_ini, $usr_loc_ini);
 }
 if (is_array($all_ini) && $is_dev) {
-  header("X-Ini-Src: " . $ini_src);
+  if ($ini_plr_src) {
+    header("X-Ini-Plr-Src: " . $ini_plr_src);
+  }
+  if ($ini_loc_src) {
+    header("X-Ini-Loc-Src: " . $ini_loc_src);
+  }
+  if (!$ini_plr_src && !$ini_loc_src) {
+    header("X-Ini-Src: BOA-Default");
+  }
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -279,8 +294,7 @@ if ($conf['install_profile'] == 'managingnews') {
   // http://drupal.org/node/912682#comment-3503636
 }
 
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/allow_private_file_downloads.info') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_private_file_downloads.info'))) {
+if (isset($_SERVER['SERVER_NAME']) && $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads
   if ($is_dev) {
     header('X-Is-Cart: YES');
@@ -291,8 +305,7 @@ if (file_exists('/var/run/redis.pid')) {
   $redis_up = TRUE;
 }
 
-if (isset($_SERVER['SERVER_NAME']) && (file_exists('sites/all/modules/redis_cache_disable.info') ||
-    file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_cache_disable.info'))) {
+if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
   $use_cache = FALSE;
 }
 
@@ -460,7 +473,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $base_url = 'http://' . $_SERVER['HTTP_HOST'];
   }
 
-  if (file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/cookie_domain.info')) {
+  if ($all_ini['server_name_cookie_domain']) {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
@@ -491,25 +504,16 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       $test_sess_name = 'SESS'. md5($cookie_domain);
     }
     if (!isset($_COOKIE[$test_sess_name])) {
-      if (file_exists('sites/all/modules/nginx_cache_quarter.info') ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_quarter.info')) {
-        $expire_in_seconds = '900';
-        header('X-Limit-Booster: 900');
-      }
-      elseif (file_exists('sites/all/modules/nginx_cache_hour.info') || $force_redis || $high_traffic ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_hour.info')) {
-        $expire_in_seconds = '3600';
-        header('X-Limit-Booster: 3600');
-      }
-      elseif (file_exists('sites/all/modules/nginx_cache_day.info') ||
-          file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/nginx_cache_day.info')) {
-        $expire_in_seconds = '86400';
-        header('X-Limit-Booster: 86400');
+      if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
+        if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
+          $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
+          header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
+        }
       }
     }
     if (!isset($_COOKIE[$test_sess_name])) {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
-        if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/allow_anon_node_add.info')) {
+        if (!$all_ini['allow_anon_node_add']) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
@@ -518,7 +522,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
-        if (!file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/disable_admin_dos_protection.info')) {
+        if (!$all_ini['disable_admin_dos_protection']) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
@@ -610,8 +614,7 @@ if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if (file_exists('sites/all/modules/redis_lock_enable.info') ||
-        file_exists('sites/'. $_SERVER['SERVER_NAME'] .'/modules/redis_lock_enable.info')) {
+    if ($all_ini['redis_lock_enable']) {
       $redis_lock = TRUE;
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
@@ -743,6 +746,6 @@ if (extension_loaded('newrelic')) {
  */
 if (!$is_dev) {
   unset($boa_ini);
-  unset($usr_ini);
+  unset($usr_plr_ini);
   unset($all_ini);
 }
