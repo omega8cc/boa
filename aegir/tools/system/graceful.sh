@@ -28,8 +28,12 @@ action()
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  rm -f /tmp/{boost*,*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,drupal*,ns*,superfish*,context*,.htaccess}
-  rm -f -r /tmp/{drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root}
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    rm -f /tmp/*
+  else
+    rm -f /tmp/{add*,entity*,box*,comm*,*png,*jpg,*gif,five*,magic*,mail*,rules*,social*,views*,test*,xls*,poll*,voting*,Order*,boost*,jquery*,wsc*,*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,drupal*,ns*,superfish*,context*,.htaccess}
+  fi
+  rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root,tmp*}
   rm -f /opt/tomcat6/logs/*
   rm -f /var/log/jetty{7,8,9}/*
   `killall -9 java`;
@@ -67,6 +71,16 @@ action()
   fi
   touch /var/xdrago/log/graceful.done
 }
+
+###--------------------###
+_NOW=`date +%y%m%d-%H%M`
+_HOST_TEST=`uname -n 2>&1`
+_VM_TEST=`uname -a 2>&1`
+if [[ "$_VM_TEST" =~ beng ]] ; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
 
 if test -f /var/run/boa_run.pid ; then
   exit
