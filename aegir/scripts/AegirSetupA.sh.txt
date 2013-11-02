@@ -353,10 +353,7 @@ for i in $REVISIONS; do
     wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-6.x-2.x-dev.tar.gz
     if [ "$_PURGE_MODE" = "ON" ] ; then
       wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-6.x-1.6.tar.gz
-      ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git /data/all/$i/o_contrib/purge &> /dev/null
-      git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib/expire &> /dev/null
-      ### rm -f -r /data/all/$i/o_contrib/purge/.git
-      rm -f -r /data/all/$i/o_contrib/expire/.git
+      wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-6.x-1.x-dev.tar.gz
     fi
     for archive in ./*.tar.gz; do
       tar -xzf "$archive" &> /dev/null
@@ -404,10 +401,6 @@ for i in $REVISIONS; do
       cd /data/all/$i/o_contrib_seven
       wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-7.x-1.6.tar.gz
       wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-7.x-1.0-beta1.tar.gz
-      ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git /data/all/$i/o_contrib_seven/purge &> /dev/null
-      ### git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git /data/all/$i/o_contrib_seven/expire &> /dev/null
-      ### rm -f -r /data/all/$i/o_contrib_seven/purge/.git
-      ### rm -f -r /data/all/$i/o_contrib_seven/expire/.git
     fi
     cd /data/all/$i/o_contrib_seven
     git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
@@ -519,12 +512,9 @@ download_o_contrib_seven () {
   wget -q -U iCab http://files.aegir.cc/dev/contrib/views404-7.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
-    git clone --branch 7.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
-    rm -f -r expire/.git
     rm -f -r purge*
     wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-7.x-1.6.tar.gz
-    ### git clone --branch 7.x-1.x http://git.drupal.org/project/purge.git &> /dev/null
-    ### rm -f -r purge/.git
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-7.x-1.0-beta1.tar.gz
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
@@ -584,13 +574,10 @@ download_o_contrib_six () {
   wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-6.x-2.x-dev.tar.gz
   wget -q -U iCab http://files.aegir.cc/dev/contrib/views404-6.x-1.x-dev.tar.gz
   if [ "$_PURGE_MODE" = "ON" ] ; then
-    rm -f -r expire*
-    git clone --branch 6.x-1.x http://git.drupal.org/project/expire.git &> /dev/null
-    rm -f -r expire/.git
     rm -f -r purge*
+    rm -f -r expire*
     wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-6.x-1.6.tar.gz
-    ### git clone --branch 6.x-1.x-revert git://github.com/omega8cc/purge.git &> /dev/null
-    ### rm -f -r purge/.git
+    wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-6.x-1.x-dev.tar.gz
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
