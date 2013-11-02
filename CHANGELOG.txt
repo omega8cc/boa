@@ -1,4 +1,470 @@
 
+### Stable BOA-2.1.0 Release - Full Edition - Now NSA-proof
+### Date: Sat Nov  2 18:15:19 EDT 2013
+### Includes Aegir 2.x-boa-custom version.
+
+
+# Release Notes:
+
+  There are some really important changes and improvements in this release
+  you should be aware of before running your BOA system upgrade.
+
+  Even if you are on a hosted BOA system with upgrades managed for you,
+  it is very important to read at least this release notes.
+
+  And if you are more curious, read also the giant changelog further below.
+
+  Besides all changes, fixes and improvements, all currently supported
+  Drupal distributions have been upgraded to use latest Drupal core versions.
+
+  Plus, there are seven (7) NEW platforms included!
+
+#-### Control files to customize your BOA system per platform and per site
+
+  Almost all control files are now replaced with two centralized,
+  platform and site specific INI files, using standard PHP INI format.
+
+  The platform specific INI file template with extensive documentation
+  included, has filename default.boa_platform_control.ini and is located
+  in the sites/all/modules directory.
+
+  The site specific INI file template with extensive documentation
+  included, has filename default.boa_site_control.ini and is located
+  in the sites/foo.com/modules directory.
+
+  Any existing control files, both on the platform and site level
+  will be automatically converted into active INI files and then deleted
+  to avoid confusion, also automatically, on the first run of the special
+  maintenance script: /var/xdrago/daily.sh but defaults in the global.inc
+  file will allow for smooth, fully automated transition.
+
+  This change will improve customizing your BOA system maintanailibility
+  and overall system performance/load thanks to minimized files checks.
+
+#-### Empty and not used platforms auto-cleanup
+
+  BOA has finally the ability to auto-delete, during daily maintenance,
+  which happens each morning (server time zone), all empty and not used
+  platforms. While on all hosted instances the TTL (time-to-live) is set
+  to 60 days (counted since last verify task date/time on the platform),
+  it can be configured per instance in the /root/.USER.octopus.cnf file
+  by changing value of _DEL_OLD_EMPTY_PLATFORMS variable to anything
+  higher than 0 (days), which is default (and means the feature is OFF).
+
+  Note that every Octopus instance upgrade re-verifies all existing platforms,
+  so if you will configure the TTL to 90 days but you will run the upgrade
+  every month or every two months, no platforms will ever be deleted.
+
+  If you wish to have this TTL customized on the hosted instance, where
+  it is set to 60 (days) by default, please open a support ticket via:
+  https://omega8.cc/support
+
+  Remotely managed BOA systems can have this feature enabled and configured
+  upon request submitted via https://omega8.cc/support
+
+#-### All-in-One Site Health Check in your Aegir control panel
+
+  You will notice a new Task available on every site page in your Aegir
+  Control Panel, named "Run health check". This new task will run a few
+  important tests on your site and will store all results in the Task Log,
+  so you easily review all results by clicking on the "View" button to the
+  right of the task, when it is complete. Make sure to check all details
+  by clicking on the "Expand" links in the log.
+
+  What are the tests included?
+
+  1. The "drush clean-modules" command will be run for you to make sure
+     there is no module left in the system table as "enabled" while it
+     no longer even exists on the system. This part will utilize (behind
+     the scenes) extension: https://drupal.org/project/clean_missing_modules
+     If it will find any such leftover, it will clean it up, automatically.
+
+  2. The "drush6 pm-updatestatus" command is a native Drush command which
+     tells you if there are any waiting module/code updates in the site.
+     Note: it will *not* upgrade anything, it is a check only.
+     Of course there should be no updates waiting if you follow Aegir
+     site upgrade best practices and your site's code is up to date.
+     Yes, this check will automatically enable the "update" module for you,
+     but it will not auto-disable it afterwards (to not break things in case
+     it is required by some other module or feature).
+
+  3. The "drush6 status-report" command is a native Drush command
+     which provides you a complete overview of your site status.
+     Instead of logging into the site, you can review it easily here.
+
+  4. The "drush6 updatedb-status" command is a native Drush command
+     which tells you if there are any waiting database updates in the site.
+     Note: it will *not* apply these updates, it is a check only.
+     Of course there should be no updates waiting if you follow Aegir
+     site upgrade best practices, but who knows, hence the check.
+
+  5. The "drush security-review" command will run only on Drupal 7 based sites
+     and provides some additional information by using (behind the scenes)
+     this extension: https://drupal.org/project/security_review
+
+#-### PFS (Perfect Forward Secrecy) support in Nginx
+
+  BOA now fuly supports the most secure, yet still compatible with most
+  used systems and browsers SSL configuration.
+
+  All hosted BOA instances have been already upgraded automatically and
+  you don't need to do anything to make it work -- it is already done
+  for you -- both on any SSL enabled site with dedicated certificate
+  and IP address and also on the standard, system-wide SSL proxy level,
+  which is available for every hosted site -- just type HTTPS:// in the URL.
+
+  On self-hosted instances it needs to be enabled by adding a line in your
+  /root/.barracuda.cnf file: _NGINX_FORWARD_SECRECY=YES before the upgrade.
+  Note that depending on the system used, it may auto-install some
+  requirements like latest OpenSSL libraries and packages.
+
+  Remotely managed BOA systems can have this feature enabled upon request
+  submitted via https://omega8.cc/support
+
+#-### SPDY (new networking protocol) support in Nginx
+
+  BOA now fully supports the advanced, new protocol which allows to run
+  sites over HTTPS with much better performance than plain HTTP.
+
+  While not all browsers support this protocol yet, it is already enabled
+  by default on all hosted BOA instances (but obviously works only when you
+  access the site via HTTPS:// in the URL).
+
+  On self-hosted instances it needs to be enabled by adding a line in your
+  /root/.barracuda.cnf file: _NGINX_SPDY=YES before the upgrade.
+  Note that depending on the system used, it may auto-install some
+  requirements like latest OpenSSL libraries and packages.
+
+  Remotely managed BOA systems can have this feature enabled upon request
+  submitted via https://omega8.cc/support
+
+#-### Zend OPcache replaced APC in PHP
+
+  Newer versions of PHP already come with next generation opcode cache
+  from Zend, which is now open-sourced and available also as an extension
+  for older PHP versions, including 5.2 and 5.3
+
+  BOA leverages this opportunity and now uses Zend OPcache instead of APC.
+
+  This change is introduced automatically on all systems, both hosted
+  and managed for you and also self-hosted.
+
+  Only Debian Squeeze and Ubuntu Precise systems which are using PHP
+  installed from packages and not from sources, so with _BUILD_FROM_SRC=NO
+  set in the /root/.barracuda.cnf file, still use APC by default.
+  You can install Zend OPcache by changing it to _BUILD_FROM_SRC=YES
+  before running the upgrade.
+
+  Note that Zend OPcache default configuration caches every script for
+  60 seconds, so any changes you will introduce, will be visible with
+  up to 1 minute delay. However, if there is .dev. or .devel. in the site
+  name, this delay is lowered automatically to just 1 second.
+
+  You can change the default per site permanently by adding in the
+  local.settings.php preferred value, for example, to set it to 10 seconds:
+  ini_set('opcache.revalidate_freq', '10'); -- but remember that you will
+  override default (1 second) for dev URLs using this method.
+
+  Enjoy the most advanced, NSA-proof BOA Edition yet!
+
+
+# New Octopus platforms:
+
+  ### Drupal 7.23.3
+
+  Open Academy 1.0-rc3 --------- http://drupal.org/project/openacademy
+  Open Atrium 2.0 -------------- http://drupal.org/project/openatrium
+  OpenBlog 1.0-a2 -------------- http://drupal.org/project/openblog
+  OpenScholar 3.8.1 ------------ http://openscholar.harvard.edu
+  Recruiter 1.1 ---------------- http://drupal.org/project/recruiter
+  Spark 1.0-a9 ----------------- http://drupal.org/project/spark
+  Totem 1.1 -------------------- http://drupal.org/project/totem
+
+# Updated Octopus platforms:
+
+  ### Drupal 7.23.3
+
+  Commerce 1.20 ---------------- http://drupal.org/project/commerce_kickstart
+  Commerce 2.9 ----------------- http://drupal.org/project/commerce_kickstart
+  Commons 3.4 ------------------ http://drupal.org/project/commons
+  Conference 1.0-a2 ------------ http://drupal.org/project/cod
+  Drupal 7.23.3 ---------------- http://drupal.org/drupal-7.23
+  Open Deals 1.27 -------------- http://drupal.org/project/opendeals
+  Open Outreach 1.2 ------------ http://drupal.org/project/openoutreach
+  OpenChurch 1.11-b14 ---------- http://drupal.org/project/openchurch
+  Panopoly 1.0-rc5 ------------- http://drupal.org/project/panopoly
+  Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
+
+  ### Pressflow 6.28.2
+
+  Commons 2.13 ----------------- http://drupal.org/project/commons
+  Feature Server 1.2 ----------- http://bit.ly/fserver
+  Managing News 1.2.3 ---------- http://drupal.org/project/managingnews
+  Open Atrium 1.7.1 ------------ http://drupal.org/project/openatrium
+  Pressflow 6.28.2 ------------- http://pressflow.org
+  ProsePoint 0.46 -------------- http://prosepoint.org
+  Ubercart 2.12.1 -------------- http://drupal.org/project/ubercart
+
+# New features and enhancements in this release:
+
+  * Add a workaround for an edge case problem -- a missing /etc/resolv.conf
+  * Add auto-config for AdvAgg on both Drupal 7 and Drupal 6.
+  * Add command to check for available updates: `drushextra check updates`
+  * Add gems for Omega 4 by default.
+  * Add sass-globbing gem by default.
+  * Allow to install latest OpenSSH from sources with _SSH_FROM_SOURCES
+  * Allow to install latest OpenSSL from sources with _SSL_FROM_SOURCES
+  * Anonymize lshell intro message.
+  * Better code sharing with central core dirs for all built-in platforms.
+  * BOA installer wrapper depends on curl instead of wget.
+  * Do not stop/start cron if /root/.upstart.cnf control file exists.
+  * Drush: Add embedded how-to for aliased commands.
+  * Enable views_cache_bully and views_content_cache if views is enabled.
+  * Firewall: Disable incoming ping/ICMP.
+  * Firewall: Protect port 80 only with CONNLIMIT and remove it from PORTFLOOD.
+  * Firewall: Update config template and enable port/syn flood protection
+  * FTP: Allow to list/see up to 3000 files/subdirs in a directory.
+  * Improve daily.sh performance.
+  * Improve dist-upgrade procedure.
+  * Improve docs/MODULES.txt
+  * Improve meta-installers auto-update procedures.
+  * Improve SQL limits auto-configuration.
+  * Install pdnsd as a last service.
+  * Issue #2000932 - Add also zen-grids.
+  * Issue #2015553 - Fix the logic for protected registration of new accounts.
+  * Issue #2044589 - SPDY Nginx support.
+  * Issue #2052703 - Conversion from control files to ini includes.
+  * Issue #2092599 - Switch to disable MySQL password reset on upgrades.
+  * Issue #2105477 - Add support for bundler gem.
+  * Issue #2116387 - Nginx and PHP: Improve system hardening.
+  * Issue #2116395 - Nginx: Better protection and 404 instead of 403.
+  * Issue #2118393 - Mark drush/cron as newrelic_background_job
+  * Make Bazaar installation optional with BZR keyword required in _XTRAS_LIST
+  * Nginx: Use forced HTTPS-only access for Chive and SQL Buddy.
+  * PHP: Add experimental support for 5.4 and 5.5
+  * PHP: Install Zend OPcache instead of deprecated APC by default.
+  * PHP: Reload FPM hourly unless /root/.high_traffic.cnf exists.
+  * Restart db server when backup is complete if /root/.my.optimize.cnf exists.
+  * Restore support for Expire and Purge modules.
+  * Shell: Add gunzip to allowed commands.
+  * Shell: Disable mc on the fly unless /root/.allow.mc.cnf control file exists.
+  * Shell: Use MySecureShell 1.31 for SFTP by default.
+  * Try to download wrapper 4 times before it gives up.
+  * Use MySQLTuner to better tune SQL configuration on install and upgrade.
+  * Use sqlmagic to fix errors caused by duplicate keys in the db dump.
+  * Use standard D7 profile for Ubercart 3 and update related contrib.
+  * We no longer depend on drupal.org for any downloads.
+  * Add optional, configurable per site, automated and smart (via sqlmagic tool)
+    DB table format/engine conversion, enabled per instance with non-default
+    _SQL_CONVERT=YES option.
+  * Add support for _MODULES_SKIP variable and make the auto-disable agent
+    much smarter to never disable any module defined as required by any other
+    module or feature.
+  * Improve auto-recovery from manual permissions/ownership big mistakes
+    related to critical files and dirs.
+  * Issue #2067193 - PFS (Perfect Forward Secrecy) support in Nginx with
+    _NGINX_FORWARD_SECRECY=YES config option.
+  * Use _DEL_OLD_EMPTY_PLATFORMS to enable and define auto-cleanup for old,
+    empty platforms with no sites hosted, separately per Satellite instance
+    (it does not affect Master instance).
+  * Issue #2000932 - Add more Compass tools/extensions: (compass_radix,
+    zurb-foundation) and make sure the gems are updated on upgrade.
+  * Nginx: Add support for domain specific /robots.txt mapped to static
+    files/$host.robots.txt to make it possible to manage it per domain
+    also when Domain Access module is used.
+  * Improve the logic for daily permissions fix (no longer enabled by default)
+    and make it configurable via _PERMISSIONS_FIX variable.
+  * Improve the logic for daily modules fix (still enabled by default)
+    and make it configurable via _MODULES_FIX variable.
+  * Generate static sites/foo.com/files/robots.txt file per site, which is
+    mapped to /robots.txt
+
+# New and updated Aegir modules or extensions:
+
+  * Add security_review extension
+  * Use registry_rebuild 7.x-2.x
+
+# New o_contrib modules:
+
+  * Add Advagg 6 and 7 to all platforms.
+  * Add force_password_change to all platforms.
+  * Add views_cache_bully to all platforms.
+
+# Changes in this release:
+
+  * Chive 1.3
+  * cURL 7.33.0 as an option.
+  * Drush 5.10.0 and 6.1.0 (available as drush5 and drush6)
+  * Git 1.8.4.1
+  * Lshell 0.9.16.4-om8
+  * MariaDB 5.5.33a
+  * Nginx 1.5.6
+  * Nginx: ngx_cache_purge-2.1
+  * OpenSSH 6.3p1 as an option.
+  * Percona 5.5.33
+  * PHP 5.4.21 and 5.5.5 as an option.
+  * Redis 2.6.16
+  * Vnstat 1.11
+  * Deprecate CiviCRM as a separate platform.
+  * Remove obsolete MartPlug distro.
+  * Move OpenPublish to unsupported.
+  * Move NodeStream to unsupported.
+  * Do not include D6 core translations, never included also in D7 platforms.
+  * Do not include notoriously buggy backup_migrate module.
+
+# Fixes in this release:
+
+  * Add all extra, non-standard options in the barracuda.cnf docs template.
+  * Add built-in support for Domain Access also for sites/all/modules/contrib
+  * Add exception to support commerce_multicurrency module properly.
+  * Add info about self-signed SSL certificate in the welcome e-mail (again).
+  * Add support for /usr/etc/sshd_config if exists.
+  * Always force update_newrelic - even if there is no new PHP version.
+  * Better check for GitHub partial downtime.
+  * Better logic for clean resolvconf re-install when needed.
+  * Contrib: Make the list readable.
+  * Delete too old pid files if any exists.
+  * Do not allow to break working DNS cache server with parent system overrides.
+  * Do not allow to install OpenSSL and cURL from sources also on Precise.
+  * Do not install rsyslog on VZ based VM.
+  * Do not set session.cookie_secure on SSL requests for sites < D7
+  * Enable dev mode also when HTTP_HOST begins with dev.
+  * Firewall: Adjust some defaults to improve flood protection,
+  * Firewall: Always upgrade, unless _CUSTOM_CONFIG_CSF is set to YES.
+  * Firewall: Better support for auto-whitelisting multi-IP systems.
+  * Firewall: Fix csf.uidignore file to whitelist important system uids.
+  * Firewall: Fix for csf template on VZ.
+  * Firewall: Improve some flood protection defaults.
+  * Firewall: Improve whitelisted IPs msg.
+  * Firewall: Remove deprecated monitoring for now closed port 25 (incoming).
+  * Firewall: Update config template.
+  * Firewall: VZ compatibility.
+  * Fix for /etc/resolv.conf and curl requirement in the BOA Meta Installer.
+  * Fix for cron tasks queue.
+  * Fix for forced pdnsd and resolvconf upgrades.
+  * Fix for incorrect nproc discovery results on some VM systems.
+  * Fix for proper handling mysql connections leftovers.
+  * Fix for selected packages hold status.
+  * Fix for the auto-update logic -- now it is default.
+  * Fix permissions for control files to avoid leftovers on delete task.
+  * Fix permissions on default backup_migrate dirs.
+  * Fix the auto-healing to avoid killing all php-fpm processes at midnight.
+  * Fix the automatic generation of static robots.txt file per site.
+  * Fix the daily enable/disable logic and use faster drush version.
+  * Fix the logic for chained installs from sources on upgrade.
+  * Fix the makefiles to avoid issues after d.o upgrade.
+  * Fix the not really working auto-healing to properly restart mysqld.
+  * Fix the not really working lshell logs monitor.
+  * Force clean pdnsd and resolvconf reinstall when needed.
+  * Force contrib update to include redis module stable release.
+  * Force cURL and OpenSSH re-install from sources when OpenSSL is from src.
+  * Force Git rebuild from sources if SSL/cURL was built from sources.
+  * Force Lshell rebuild when OpenSSL is installed from sources.
+  * Force MSS and FTP rebuild when OpenSSL is installed from sources.
+  * Force Nginx, PHP and Pure-FTPd re-install when OpenSSL is from sources.
+  * Force PHP-FPM restart if 9+ connections with 499 in the last 60 seconds.
+  * Generate 2048 bit long DH parameters when _NGINX_FORWARD_SECRECY=YES
+  * IDS monitor should use lower defaults after introducing last min checks.
+  * Improve gem and bundler allowed/denied restrictions.
+  * Improve procs monitoring and whitelist backend tasks properly.
+  * Improvements for Ubercart 2 installation + contrib updates.
+  * Install latest CGP, collectd 5 compatible.
+  * Issue #1751916 - Add Spark 1.0-a9
+  * Issue #1874786 - Fix for GNU Mailutils support.
+  * Issue #1991312 - Fix support and auto-config for AdvAgg 7 and HTTPRL.
+  * Issue #1991658 - Firewall: Close port 25 for incoming connections
+  * Issue #1994346 - DoS protection for not cached URLs doesn't respect $scheme
+  * Issue #1994346 - Fix the logic for SSESS/SESS prefix in the cookie name.
+  * Issue #1995342 - X-Accel-Expires is never send when $expire_in_seconds == 0
+  * Issue #2002678 - barracuda up-stable system adds annoying extra delay.
+  * Issue #2005116 - 403 on every attempt to log in from Hostmaster homepage.
+  * Issue #2015551 - Fix for broken dev mode support switch.
+  * Issue #2015551 - Fix the keyword check used to trigger "dev" mode.
+  * Issue #2020043 - Send PUT requests for *.json URI to Drupal.
+  * Issue #2032379 - _AUTOPILOT=YES should be forced also for "silent" modes.
+  * Issue #2083373 - drush dl foo --destination=/path/ should be restricted.
+  * Issue #2101193 - Support Drupal for Facebook from sites/all/modules/contrib
+  * Issue #2105259 - All Platforms Installation Fails with Permission Denied.
+  * Issue #2116177 - Use phpredis 2.2.4
+  * Lshell: Better settings for newer Drush versions.
+  * Lshell: Fix for env_path
+  * Lshell: version update and monitoring improvements.
+  * Make sure o_contrib is updated also on head-to-head upgrades.
+  * Make sure to rebuild PHP if cURL is installed from sources.
+  * Make the upgrade e-mail generic.
+  * More compact code for downloads.
+  * Move csf/lfd corrections after pdnsd install.
+  * Move the giant modules list from README.txt to docs/MODULES.txt
+  * Nginx: Add access protection for .txt files in the modules|themes|libraries.
+  * Nginx: Add access protection with fast 404 also for authorize.php
+  * Nginx: Add access protection with fast 404 for extra .php known URLs.
+  * Nginx: Add example site specific config for legacy .php URIs 301 redirects.
+  * Nginx: Better support for static and dynamic .json requests/URIs
+  * Nginx: Deny spiders on glossary/* URI, as they are never allowed to crawl.
+  * Nginx: Fix for dynamically generated PDFs.
+  * Nginx: Fix for redirects for legacy URLs with asp/aspx extension.
+  * Nginx: Improve auto-whitelisting in the access log monitor.
+  * Nginx: Improve POST requests monitoring.
+  * Nginx: Move AJAX and webform requests location after civicrm location.
+  * Nginx: Normalize newlines and spacing when fixing proxy config files.
+  * Nginx: Remove 'results' from the bots-protected URI regex.
+  * Nginx: Remove deprecated conf.d directory, if exists.
+  * Nginx: Replace legacy keyword gulag with neutral limreq everywhere.
+  * Nginx: Replace the zone legacy name also in Provision.
+  * Nginx: Rewrite legacy requests with /index.php to extension-free URL.
+  * Nginx: The /admin* URI protection logic has been moved to global.inc
+  * Nginx: Update gzip_types to list all expected mime.types
+  * Nginx: Update headers for AdvAgg compatibility.
+  * Nginx: Update mime.types
+  * Nginx: Use more precise wildcard in paths for replacements.
+  * PHP: 5.4 requires uploadprogress-1.0.3.1
+  * PHP: Disable ionCube Loader for PHP 5.5
+  * PHP: Do not force extensions re-install unless _PHP_FORCE_REINSTALL=YES
+  * PHP: Fix config overrides for 5.4 and 5.5
+  * PHP: Fix possible issues with legacy 5.2 support logic.
+  * PHP: Fix unintended overrides in the ini files.
+  * PHP: Force All Extensions Rebuild when _FROM_SOURCES=NO
+  * PHP: Force APC instead of Zend OPcache on Squeeze/Precise on no-src install.
+  * PHP: Force legacy version rebuild if exists.
+  * PHP: Improve rebuild logic if SSL/cURL was built from sources.
+  * PHP: Make sure that latest version of ionCube loader is installed.
+  * PHP: Rebuild extensions also for 5.2, even if _PHP_MODERN_ONLY=YES
+  * PHP: Set opcache.revalidate_freq to 1 second on dev alias/URL on the fly.
+  * PHP: Start more FPM workers by default to avoid Nginx 499 and timeouts.
+  * PHP: Use correct version of ioncube_loader for 5.4
+  * PHP: Use pecl-jsmin-0.1.1 with newer PHP versions.
+  * PHP: Zend OPcache is a zend_extension and needs full path in the php.ini
+  * Redis: Make redis_client_password optional and none by default.
+  * Reload PHP-FPM before auto-healing will force its restart after midnight.
+  * Remove already deprecated platforms.
+  * Remove insecure files from libraries/plupload/examples.
+  * Remove lock files before adding new users.
+  * Security updates for selected contrib on all affected D7 platforms.
+  * Shell: Fix FTPS compatibility after switching to MySecureShell
+  * Shell: Sync IdleTimeOut for MSS with SSH and FTPS default 15m.
+  * Shorten some too long status messages.
+  * Silent Mode Option: aegir == Only stock Aegir forced up-head upgrade.
+  * Simplify vnstat setup.
+  * Split usage monitor into two separate scripts.
+  * SQL auto-healing should always stop-stop-start and not just restart it.
+  * SQL: Allow the engine to manage correct innodb_thread_concurrency value.
+  * SSH: Make sure that 'UseDNS no' is always set.
+  * Sync $cookie_domain validation with Drupal 7 core.
+  * Sync dates with BOA defaults.
+  * Unify apt-get options order.
+  * Update for Redis config template.
+  * Update or create /etc/apt/sources.list early enough.
+  * Update PHP and SQL config early enough to avoid issues during upgrade.
+  * Use --force-yes option if apt-get -y is used.
+  * Use correct version of /etc/apt/preferences
+  * Use drush6 only when required.
+  * Use extended GitHub tests on HEAD and non-stock build only.
+  * Use forced symlinks mode if possible.
+  * Use is_readable() check instead of file_exists() for all includes.
+  * Use mirror downloads for all contrib and patches to make it faster.
+  * Use more restrictive permissions on lshell log files.
+
+
 ### Stable BOA-2.0.9 Release - Barracuda Edition
 ### Date: Thu May  9 11:25:59 EDT 2013
 ### Includes Aegir from BOA-2.0.8 Edition
