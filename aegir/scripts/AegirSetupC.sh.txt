@@ -1079,19 +1079,14 @@ if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6D ]] ; then
 msg "DISTRO: $_F_DRUPAL6_D installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
-    fi
-    cd $_CORE
-    mkdir -p $_SHRD_PLPATH
-    nocore_d6_dist_clean
-    enable_drupal6_admin
-    add_old_short_name_acquia
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
+  if [ ! -e "$_D6_CORE_DIR" ] ; then
+    prepare_drupal6_core
   fi
+  cd $_CORE
+  mkdir -p $_SHRD_PLPATH
+  nocore_d6_dist_clean
+  enable_drupal6_admin
+  add_old_short_name_acquia
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_D installation completed"
@@ -1110,19 +1105,14 @@ if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6S ]] ; then
 msg "DISTRO: $_F_DRUPAL6_S installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
-    fi
-    cd $_CORE
-    mkdir -p $_SHRD_PLPATH
-    nocore_d6_dist_clean
-    enable_drupal6_admin
-    add_old_short_name_acquia
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
+  if [ ! -e "$_D6_CORE_DIR" ] ; then
+    prepare_drupal6_core
   fi
+  cd $_CORE
+  mkdir -p $_SHRD_PLPATH
+  nocore_d6_dist_clean
+  enable_drupal6_admin
+  add_old_short_name_acquia
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_S installation completed"
@@ -1141,19 +1131,14 @@ if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D6P ]] ; then
 msg "DISTRO: $_F_DRUPAL6 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
-  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [ ! -e "$_D6_CORE_DIR" ] ; then
-      prepare_drupal6_core
-    fi
-    cd $_CORE
-    mkdir -p $_SHRD_PLPATH
-    nocore_d6_dist_clean
-    enable_drupal6_admin
-    add_old_short_name_acquia
-  else
-    cd $_CORE
-    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
+  if [ ! -e "$_D6_CORE_DIR" ] ; then
+    prepare_drupal6_core
   fi
+  cd $_CORE
+  mkdir -p $_SHRD_PLPATH
+  nocore_d6_dist_clean
+  enable_drupal6_admin
+  add_old_short_name_acquia
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6 installation completed"
@@ -2407,13 +2392,13 @@ fi
 fi
 }
 
+drupal6_install
+drupal7_install
 
 commerce_7_1_install
 commerce_7_2_install
 commons_6_install
 commons_7_install
-drupal6_install
-drupal7_install
 fserver_install
 managingnews_install
 openacademy_install
