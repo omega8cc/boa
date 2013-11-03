@@ -724,7 +724,7 @@ octopus_cnf () {
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
     echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf
-    echo "### NOTE: the group of settings displayed bellow will be *overriden*" >> /root/.$_USER.octopus.cnf
+    echo "### NOTE: the group of settings displayed bellow will be *overridden*" >> /root/.$_USER.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.$_USER.octopus.cnf
     echo "### but only on upgrade." >> /root/.$_USER.octopus.cnf
     echo "###" >> /root/.$_USER.octopus.cnf

@@ -2598,7 +2598,7 @@ barracuda_cnf () {
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
-    echo "### NOTE: the group of settings displayed bellow will *not* be overriden" >> /root/.barracuda.cnf
+    echo "### NOTE: the group of settings displayed bellow will *not* be overridden" >> /root/.barracuda.cnf
     echo "### on upgrade by the Barracuda script nor by this configuration file." >> /root/.barracuda.cnf
     echo "### They can be defined only on initial Barracuda install." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf

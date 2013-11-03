@@ -38,7 +38,7 @@
   maintenance script: /var/xdrago/daily.sh but defaults in the global.inc
   file will allow for smooth, fully automated transition.
 
-  This change will improve customizing your BOA system maintanailibility
+  This change will improve customizing your BOA system maintainability
   and overall system performance/load thanks to minimized files checks.
 
 #-### Empty and not used platforms auto-cleanup
@@ -104,7 +104,7 @@
 
 #-### PFS (Perfect Forward Secrecy) support in Nginx
 
-  BOA now fuly supports the most secure, yet still compatible with most
+  BOA now fully supports the most secure, yet still compatible with most
   used systems and browsers SSL configuration.
 
   All hosted BOA instances have been already upgraded automatically and
@@ -2127,7 +2127,7 @@
 * Improved web server self-healing monitor.
 * PHP notices no longer displayed for dev subdomains, only errors.
 * Many improvements in the Nginx configuration - now it's faster.
-* Permisions on uploaded modules, themes and files are now
+* Permissions on uploaded modules, themes and files are now
   automatically fixed every morning to help with post-import issues.
 * Almost all 6.x platforms now come with performance related
   modules already enabled and configured on site install by default.
@@ -2273,7 +2273,7 @@ Added/Fixed: (upgrade for all pre-A14.A required)
 4.  Octopus can define its separate IP address
     if available.
 
-5.  Fixed issue with too aggresive Hot Sauce check,
+5.  Fixed issue with too aggressive Hot Sauce check,
     causing creating not shared copies of code
     for platforms on every install or upgrade.
 
@@ -2377,7 +2377,7 @@ Added/Fixed: (upgrade recommended)
 
 10. Nginx version set to 0.8.50.
 
-11. By defult Aegir 0.4-HEAD instead of alpha13
+11. By default Aegir 0.4-HEAD instead of alpha13
     is now installed to fix critical issues with
     importing sites.
 
@@ -2442,7 +2442,7 @@ Added/Fixed: (upgrade recommended because it works!)
 
 Added/Fixed: (upgrade recommended)
 
-1. By defult Aegir 0.4-HEAD with Drush 3.3
+1. By default Aegir 0.4-HEAD with Drush 3.3
    is now installed to fix critical issues with
    importing sites. The fix is also available
    as a patch for alpha12:
@@ -2499,7 +2499,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By defult Aegir 0.4-alpha12 with Drush 3.3
+1. By default Aegir 0.4-alpha12 with Drush 3.3
    is now installed.
 
 2. Introduced new Octopus and Barracuda installers.
@@ -2513,7 +2513,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By defult Aegir 0.4-HEAD with Drush 3.3
+1. By default Aegir 0.4-HEAD with Drush 3.3
    is now installed.
 
 2. Introduced support for Virtuozzo/OpenVZ IP address
@@ -2524,7 +2524,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By defult Aegir 0.4-alpha11 with Drush 3.3
+1. By default Aegir 0.4-alpha11 with Drush 3.3
    is now installed.
 
 2. PHP-FPM version is now 5.2.14.
@@ -2540,7 +2540,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade from previous versions recommended)
 
-1. By defult Aegir 0.4-alpha10 with Drush 3.3
+1. By default Aegir 0.4-alpha10 with Drush 3.3
    is now installed.
 
 2. Nginx version is now 0.8.49, MariaDB is 5.1.49
@@ -2557,7 +2557,7 @@ Added/Fixed: (upgrade from previous versions recommended)
 
 Added/Fixed: (upgrade of existing installs not required)
 
-1. By defult latest HEAD from git.aegirproject.org
+1. By default latest HEAD from git.aegirproject.org
    is now installed, due to critical bug found,
    see this for details: http://drupal.org/node/874716
    The default install will be reverted to 0.4-alpha10
@@ -2581,7 +2581,7 @@ Added/Fixed: (upgrade of existing installs not required)
    change of URL to the required php library:
    http://drupal.org/node/875196
 
-2. Aegir version is now configurable. By defult latest
+2. Aegir version is now configurable. By default latest
    0.4-alpha9 will be installed, but it is also possible
    to install latest HEAD from git.aegirproject.org.
 

@@ -4,7 +4,7 @@
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
 ###
-### NOTE: the group of settings displayed bellow will *not* be overriden
+### NOTE: the group of settings displayed bellow will *not* be overridden
 ### on upgrade by the Barracuda script nor by this configuration file.
 ### They can be defined only on initial Barracuda install.
 ###

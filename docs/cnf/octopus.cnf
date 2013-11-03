@@ -30,7 +30,7 @@ _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 _SQL_CONVERT=NO #--------------- Allows to run DB auto-conversion daily when YES
 ###
-### NOTE: the group of settings displayed bellow will be *overriden*
+### NOTE: the group of settings displayed bellow will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
 ### but only on upgrade.
 ###

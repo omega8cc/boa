@@ -44,7 +44,7 @@
          which is default. The special "stock" option allows you to install
          non-BOA, vanilla Aegir 2.x version, useful for testing/debugging,
          but it will automatically force in-head install, because Aegir 2.x
-         vanilla is by definition unstable, unstested and shouldn't be used
+         vanilla is by definition unstable, untested and shouldn't be used
          in any production environment, only for testing and debugging.
          The last {newrelickey} part is optional, if you wish to install
          and auto-magically enable both New Relic Apps and Server Monitor.
