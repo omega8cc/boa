@@ -1,0 +1,131 @@
+You can modify some system defaults on the fly by using control files,
+which will affect either some system-wide services, maintenance agents
+behaviours and/or all hosted Aegir instances, so these controls belong
+to the system root, and are located, if needed, in the root home directory.
+
+These system-level control files use .cnf file extension, so for extra
+clarity we will list here also some other .cnf files which either have
+special purpose or should never be edited, because they are manage
+by the BOA install and upgrade tools exclusively.
+
+
+ ### The .cnf file to never touch
+
+   /root/.my.cnf
+
+ This is a mysql specific file, which holds your database server
+ master (root) password. This file allows you to access your db server
+ with root privileges when you are logged in as a system root without
+ the need to type mysql root password. It also allows various BOA specific
+ maintenance agents to monitor your system status and perform auto-healing,
+ databases maintenance, repairs and backups.
+
+ By the way, there is also directly associated /root/.my.pass.txt file
+ which includes mysql root password generated. You should never touch
+ nor modify this file as well.
+
+
+ ### Special purpose .cnf files
+
+   /root/.barracuda.cnf
+
+ This is your BOA system master configuration file. Please read its
+ template in docs/cnf/barracuda.cnf for more information.
+
+   /root/.USER.octopus.cnf
+
+ This is your Octopus Satellite instance configuration file. If you have
+ more Octopus instances, you have a separate file per instance, where
+ the USER is a keyword for the instance main system account. Please read
+ its template in docs/cnf/octopus.cnf for more information.
+
+
+ ### All other (empty) .cnf control files
+
+   /root/.mysql.no.new.password.cnf
+
+ This file, if exists, allows to skip the otherwise default procedure
+ designed to generate new mysql root password on every barracuda upgrade.
+
+   /root/.redis.no.new.password.cnf
+
+ This file, if exists, allows to skip the otherwise default procedure
+ designed to generate new Redis password on every barracuda upgrade.
+
+   /root/.allow.mc.cnf
+
+ This file, if exists, allows to open an access for all limited shell users
+ to the Midnight Commander (mc) -- a file manager available on command
+ line, a Unix clone of Norton Commander known in the ancient DOS days.
+
+ While very useful for novice users, can affect your system access separation
+ because it doesn't respect built-in virtual chroot/jail enforced normally
+ both in the limited shell and in SFTP via MySecureShell. Do not use it,
+ unless you don't open shell access for untrusted users.
+
+   /root/.high_traffic.cnf
+
+ This file, if exists, allows to skip PHP-FPM server reloads, which normally
+ happen hourly, always 9 minutes after the full hour. Recommended if you
+ have a very busy site(s) hosted and enough memory to keep it running
+ all the time. Note that it will be reloaded daily anyway, at midnight.
+
+ This file prevents also the daily Speed Booster cache forced cleanup,
+ which also happens at midnight.
+
+ Furthermore, it prevents PHP-FPM restarts when the system detects segfault.
+
+   /root/.home.no.wildcard.chmod.cnf
+
+ This file, if exists, allows to avoid setting restrictive (but recommended)
+ permissions on all directories in the /home/* directory tree, where normally
+ non-system users have their account home directories.
+
+ Without this file the system will run 'chmod 700 /home/*' every 5 minutes.
+
+   /root/.my.optimize.cnf
+
+ This file, if exists, will enable non-standard procedure during nightly
+ (global) databases backup, which normally starts at 1:18 AM.
+
+ It will run 'OPTIMIZE TABLE foo;' on every table in every database.
+
+ While it usually allows to defragment and shrink the binary space used
+ by database tables, it may easily cause serious I/O load and subsequent
+ system load (and slowdown) if you happen to host many sites on a weak
+ VPS or machine with slow disks or not fast enough CPU etc.
+
+ It will also restart database server once all tables in all databases
+ are optimized.
+
+ Note: this is a system-wide setting.
+
+ There is a similar option: _SQL_CONVERT (defaults to NO), available in every
+ Octopus instance /root/.USER.octopus.cnf file, which has very similar purpose,
+ because it will trigger automatic 'to-innodb' smart conversion performed
+ via 'sqlmagic' tool (it knows how to do that well), and since it uses
+ the 'ALTER TABLE' command, in turn it performs auto-optimization on the fly.
+
+ This optional conversion starts daily at 4:18 AM and runs until the agent
+ completes all tasks included in the /var/xdrago/daily.sh script.
+
+ By the way, you can modify this auto-conversion default 'to-innodb' behaviour
+ by creating an empty control file like sites/foo.com/modules/to-myisam.info
+
+ It will reverse the logic for that site and will convert most of tables
+ to MyISAM format, while keeping some tables at InnoDB -- exceptions are
+ defined with regex: (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog)
+
+ Note also that sites/foo.com/modules/to-innodb.info file, if present, will
+ only confirm/force the default logic, while having both to-innodb.info and
+ to-myisam.info in the sites/foo.com/modules/ dir will exclude the site from
+ any conversion, otherwise applied to all sites on the same Octopus instance.
+
+   /root/.upstart.cnf
+
+ This is rarely needed file, which allows to skip stopping cron during
+ barracuda upgrade to limit downtime for any running services, so it allows
+ the auto-healing to run all the time. Note that it may break upgrade
+ if the auto-healing will act too fast to bring up a service which is
+ stopped and started during the upgrade.
+

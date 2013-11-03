@@ -42,3 +42,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Octopus version BOA-2.1.0
 ###
+
+###
+### HINT: Check also control files docs in: docs/ctrl/system.ctrl
+###

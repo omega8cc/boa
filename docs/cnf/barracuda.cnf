@@ -87,6 +87,10 @@ _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 ###
 
 ###
+### HINT: Check also control files docs in: docs/ctrl/system.ctrl
+###
+
+###
 ### You can force Nginx, PHP and/or DB server
 ### reinstall, even if there are no updates
 ### available, when set to YES.
@@ -120,3 +124,4 @@ _LENNY_TO_SQUEEZE=NO
 ### See also docs/SOLR.txt
 ###
 _TOMCAT_TO_JETTY=NO
+
