@@ -635,6 +635,12 @@ if [[ "$_DOMAIN" =~ "v182q.nyc." ]] || [[ "$_DOMAIN" =~ "ocean.nyc." ]] ; then
 fi
 
 
+###---### Prepare D6 and D7 shared core
+#
+prepare_drupal6_core
+prepare_drupal7_core
+
+
 acquia_install () {
 ###---### Acquia
 #
