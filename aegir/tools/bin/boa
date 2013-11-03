@@ -132,7 +132,7 @@ set_pin_priority ()
   fi
   _THIS_DO=$(grep "Ubuntu 12.04" /etc/issue.net)
   if [[ "$_THIS_DO" =~ "Ubuntu 12.04" ]] ; then
-    _THIS_DO=Precise
+    _THIS_DO=YesPrecise
   else
     _THIS_DO=Other
   fi
@@ -176,7 +176,7 @@ init_setup ()
       curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     elif [ "$cmmand" = "in-stable" ] ; then
-      if [ "$_THIS_DO" = "Precise" ] ; then
+      if [ "$_THIS_DO" = "NotPrecise" ] ; then
         curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       else
         curl -s -A iCab "http://files.aegir.cc/versions/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
