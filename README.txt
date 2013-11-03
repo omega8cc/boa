@@ -137,6 +137,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
 * LDAP Nginx support via third-party module.
 * SPDY Nginx support.
+* PFS (Perfect Forward Secrecy) support in Nginx.
 * MongoDB driver for PHP 5.3
 * GEOS extension for PHP 5.3 (experimental).
 * FFmpeg support.
