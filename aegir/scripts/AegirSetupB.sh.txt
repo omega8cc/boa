@@ -449,6 +449,7 @@ else
   msg "$_STATUS B: Hostmaster STATUS: upgrade start"
   mrun "sleep 1"
   msg "$_STATUS B: Running hostmaster-migrate, please wait..."
+  mv -f $_ROOT/.drush/security_review/security_review.drush.inc $_ROOT/.drush/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   cd $_PREV_AEGIR_ROOT
   if [ "$_DEBUG_MODE" = "YES" ] ; then
@@ -457,6 +458,7 @@ else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text
+  mv -f $_ROOT/.drush/security_review/foo.txt $_ROOT/.drush/security_review/security_review.drush.inc  &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
   ln -sf $_AEGIR_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN

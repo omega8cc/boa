@@ -185,6 +185,7 @@ hostmaster_go_up () {
 #
 hostmaster_mi_up () {
   msg "INFO: Running hostmaster-migrate, please wait..."
+  mv -f $_ROOT/.drush/security_review/security_review.drush.inc $_ROOT/.drush/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
@@ -195,6 +196,7 @@ hostmaster_mi_up () {
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text
+  mv -f $_ROOT/.drush/security_review/foo.txt $_ROOT/.drush/security_review/security_review.drush.inc  &> /dev/null
   mkdir -p $_ROOT/backups/system/old_hostmaster
   chmod 700 $_ROOT/backups/system/old_hostmaster
   chmod 700 $_ROOT/backups/system
