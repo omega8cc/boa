@@ -239,6 +239,41 @@ fix_modules () {
           fi
           fix_user_register_protection
 
+          _AUTO_CONFIG_ADVAGG=NO
+          if [ -e "$Plr/sites/all/modules/advagg" ] || [ -e "$Plr/modules/o_contrib/advagg" ] || [ -e "$Plr/modules/o_contrib_seven/advagg" ] ; then
+            _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \(advagg\)")
+            if [[ "$_MODULE_TEST" =~ "(advagg)" ]] ; then
+              _AUTO_CONFIG_ADVAGG=YES
+            fi
+          fi
+          if [ "$_AUTO_CONFIG_ADVAGG" = "YES" ] ; then
+            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+              chmod 0664 $_DIR_CTRL_FILE
+            fi
+            if [ -e "$_DIR_CTRL_FILE" ] ; then
+              _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = TRUE" $_DIR_CTRL_FILE)
+              if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = TRUE" ]] ; then
+                true
+              else
+                ###
+                ### Do this only for the site level ini file.
+                ###
+                sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = TRUE/g" $_DIR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          else
+            if [ -e "$_DIR_CTRL_FILE" ] ; then
+              _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = FALSE" $_DIR_CTRL_FILE)
+              if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = FALSE" ]] ; then
+                true
+              else
+                sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          fi
+
           _AUTO_DETECT_FACEBOOK_INTEGRATION=NO
           if [ -e "$Plr/sites/all/modules/fb/fb_settings.inc" ] || [ -e "$Plr/sites/all/modules/contrib/fb/fb_settings.inc" ] ; then
             _AUTO_DETECT_FACEBOOK_INTEGRATION=YES

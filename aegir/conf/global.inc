@@ -205,6 +205,7 @@ $boa_ini = array(
   'server_name_cookie_domain' => FALSE,
   'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
+  'advagg_auto_configuration' => FALSE, // Will be set to TRUE in boa_site_control.ini if the module is enabled
 );
 
 /**
@@ -258,6 +259,7 @@ if (is_array($all_ini) && $is_dev) {
   header("X-Ini-Server-Name-Cookie-Domain: " . $all_ini['server_name_cookie_domain']);
   header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
   header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
+  header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
 }
 
 /**
@@ -377,7 +379,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $this_device = 'normal';
   }
 
-  if (!$is_dev && $drupal_six && (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
+  if (!$is_dev && $drupal_six && $all_ini['advagg_auto_configuration'] && (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
       is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['preprocess_css'] = 0; // css aggregation disabled
     $conf['preprocess_js'] = 0;  // js aggregation disabled
@@ -402,7 +404,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     $conf['advagg_rebuild_on_flush'] = 0;
     $conf['advagg_server_addr'] = "-1";
   }
-  elseif (!$is_dev && $drupal_seven && (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
+  elseif (!$is_dev && $drupal_seven && $all_ini['advagg_auto_configuration'] && (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
           is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
     $conf['advagg_bundler_active'] = 1;
     $conf['advagg_cache_level'] = 1;
