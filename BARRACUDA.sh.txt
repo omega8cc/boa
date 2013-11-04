@@ -4251,7 +4251,7 @@ update_newrelic () {
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
         st_runner "apt-get update -y" &> /dev/null
         st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-        NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        PHPAPI=$_PHP_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
         if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
           echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
           echo "license_key=$_NEWRELIC_KEY" >> /etc/newrelic/newrelic.cfg
