@@ -26,8 +26,13 @@ run_drush4_nosilent_cmd () {
   su -s /bin/bash $_THIS_HM_USER -c "drush4 $1"
 }
 
+run_drush6_nosilent_cmd () {
+  su -s /bin/bash $_THIS_HM_USER -c "drush6 cache-clear drush &> /dev/null"
+  su -s /bin/bash $_THIS_HM_USER -c "drush6 $1"
+}
+
 check_if_required () {
-  _REQ_TEST=$(run_drush4_nosilent_cmd "pmi --fields=required_by $1 | grep 'Required by.*none'")
+  _REQ_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*none'")
   if [[ "$_REQ_TEST" =~ "Required by" ]] ; then
     _REQ=NO
   elif [[ "$_REQ_TEST" =~ "was not found" ]] ; then
@@ -35,13 +40,21 @@ check_if_required () {
   else
     _REQ=YES
   fi
-  _RET_TEST=$(run_drush4_nosilent_cmd "pmi --fields=required_by $1 | grep 'Required by.*hacked'")
+  _REM_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*minimal'")
+  if [[ "$_REM_TEST" =~ "Required by" ]] ; then
+    _REQ=NO
+  fi
+  _RES_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*standard'")
+  if [[ "$_RES_TEST" =~ "Required by" ]] ; then
+    _REQ=NO
+  fi
+  _RET_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*testing'")
   if [[ "$_RET_TEST" =~ "Required by" ]] ; then
-    _RET=NO
-  elif [[ "$_RET_TEST" =~ "was not found" ]] ; then
-    _RET=NULL
-  else
-    _RET=YES
+    _REQ=NO
+  fi
+  _REH_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*hacked'")
+  if [[ "$_REH_TEST" =~ "Required by" ]] ; then
+    _REQ=NO
   fi
 }
 
@@ -64,10 +77,10 @@ disable_modules () {
       _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
       if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
         check_if_required "$m"
-        if [ "$_REQ" = "NO" ] || [ "$_RET" = "NO" ] ; then
+        if [ "$_REQ" = "NO" ] ; then
           run_drush4_cmd "dis $m -y"
           echo $m disabled in $Dom
-        elif [ "$_REQ" = "NULL" ] || [ "$_RET" = "NULL" ] ; then
+        elif [ "$_REQ" = "NULL" ] ; then
           echo $m is not used in $Dom
         else
           echo $m is required and can not be disabled in $Dom
