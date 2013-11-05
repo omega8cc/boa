@@ -80,8 +80,16 @@ up_action ()
 {
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      apt-get update -qq &> /dev/null
+      update-rc.d -f longview remove &> /dev/null
+      rm -f /etc/init.d/longview
+      apt-get remove linode-longview -y --force-yes &> /dev/null
       apt-get purge linode-longview -y --force-yes &> /dev/null
+      apt-get autoremove -y --force-yes &> /dev/null
+      update-rc.d -f longview remove &> /dev/null
+      rm -f /etc/init.d/longview
+      apt-get remove linode-longview -y --force-yes &> /dev/null
+      apt-get purge linode-longview -y --force-yes &> /dev/null
+      apt-get autoremove -y --force-yes &> /dev/null
     else
       mkdir -p /var/backups/old-firewall-monitor/$_NOW
       mv -f /var/xdrago/monitor/*.log /var/backups/old-firewall-monitor/$_NOW/ &> /dev/null
