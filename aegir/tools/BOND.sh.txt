@@ -1161,9 +1161,11 @@ EOF
 echo " "
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
   true
-  msg "INFO: We will stop cron and then wait 30 seconds..."
-  service cron stop &> /dev/null
-  mrun "sleep 30"
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    msg "INFO: We will stop cron and then wait 30 seconds..."
+    service cron stop &> /dev/null
+    mrun "sleep 30"
+  fi
   msg "INFO: Tuning in progress, please wait..."
   mrun "sleep 1"
   if [ -e "/root/.barracuda.cnf" ] ; then
@@ -1181,9 +1183,11 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   msg "INFO: Tuning completed"
   mrun "sleep 1"
 else
-  msg "INFO: We will stop cron and then wait 30 seconds..."
-  service cron stop &> /dev/null
-  mrun "sleep 30"
+  if [ ! -e "/root/.upstart.cnf" ] ; then
+    msg "INFO: We will stop cron and then wait 30 seconds..."
+    service cron stop &> /dev/null
+    mrun "sleep 30"
+  fi
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi

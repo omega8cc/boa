@@ -955,7 +955,9 @@ else
       msg "$_STATUS A: Switching user and running AegirSetupB..."
       mrun "sleep 1"
       rm -f /opt/tmp/testecho*
-      service cron stop &> /dev/null
+      if [ ! -e "/root/.upstart.cnf" ] ; then
+        service cron stop &> /dev/null
+      fi
       _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       chown -R $_USER:$_USRG $_ROOT/.drush
@@ -1139,7 +1141,9 @@ else
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
       true
       _DIST_INSTALL=YES
-      service cron stop &> /dev/null
+      if [ ! -e "/root/.upstart.cnf" ] ; then
+        service cron stop &> /dev/null
+      fi
       rm -f /opt/tmp/testecho*
       create_shared_dirs
       manage_o_contrib
