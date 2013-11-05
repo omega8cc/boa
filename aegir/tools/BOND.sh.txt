@@ -1203,7 +1203,9 @@ fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
 rm -f /var/run/boa_run.pid
-service cron start &> /dev/null
+if [ ! -e "/root/.upstart.cnf" ] ; then
+  service cron start &> /dev/null
+fi
 msg "INFO: Cron started again"
 msg "BYE!"
 

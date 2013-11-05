@@ -1860,8 +1860,10 @@ else
   o_contrib_update_global
   o_contrib_seven_update_global
 fi
-msg "$_STATUS A: Starting the cron now"
-service cron start &> /dev/null
+if [ ! -e "/root/.upstart.cnf" ] ; then
+  msg "$_STATUS A: Starting the cron now"
+  service cron start &> /dev/null
+fi
 msg "$_STATUS A: All done!"
 msg "BYE!"
 
