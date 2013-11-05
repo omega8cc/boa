@@ -195,8 +195,8 @@ if [ -e "$_ROOT/aegir.sh" ] ; then
   rm -f $_ROOT/aegir.sh
 fi
 touch $_ROOT/aegir.sh
-chmod 0755 $_ROOT/aegir.sh &> /dev/null
-echo -e "#!/bin/bash\n\nPATH=~/bin:$_L_PHP_CLI:/sbin:/bin:/usr/sbin:/usr/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null 2>&1
+chmod 0700 $_ROOT/aegir.sh &> /dev/null
+echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch $_ROOT/$_USER-task.done" | tee -a $_ROOT/aegir.sh >/dev/null
 
 mkdir -p $_ROOT/aegir/distro
 mkdir -p $_ROOT/distro/$_DISTRO
