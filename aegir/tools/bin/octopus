@@ -120,7 +120,8 @@ up_one ()
       sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
-      if [ -e "$User/log/up-$_TODAY" ] && [ -z "$mcmode" ] ; then
+      _IS_OLD=`find $User/.drush/provision/ -maxdepth 1 -mindepth 1 -mtime +30 -type d | grep platform`
+      if [ -z "$_IS_OLD" ] && [ -z "$mcmode" ] && [ -e "$User/.drush/provision" ] ; then
         echo
         echo "This Aegir Instance is already up to date!"
         echo "If you wish to run/force the upgrade again,"
@@ -130,7 +131,11 @@ up_one ()
         echo "Usage: $(basename "$0") $cmmand $second {aegir|platforms|both}"
         echo
       else
-        up_mode
+        if [ -e "$User/.drush/provision" ] ; then
+          up_mode
+        else
+          echo "$User/.drush/provision does not exist!"
+        fi
       fi
     else
       echo "OCTOPUS.sh.txt installer not available - try again"
