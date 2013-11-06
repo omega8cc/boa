@@ -73,6 +73,7 @@ $ini_loc_src  = FALSE;
 $ini_plr_src  = FALSE;
 $is_backend   = FALSE;
 $is_dev       = FALSE;
+$is_install   = FALSE;
 $is_test      = FALSE;
 $known_bot    = FALSE;
 $redis_lock   = FALSE;
@@ -87,12 +88,66 @@ if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|track
   $known_bot = TRUE;
 }
 
+if (function_exists('drush_get_command')) {
+  $command = drush_get_command();
+  $command = explode(" ", $command['command']);
+  if ($command && !preg_match("/^help/", $command[0])) {
+    $is_backend = TRUE;
+  }
+  if (preg_match("/^provision-install/", $command[0])) {
+    $is_install = TRUE;
+  }
+}
+
+/**
+ * Core detection and Caching auto-conf
+ */
+if (file_exists('web.config')) {
+  if (file_exists('core')) {
+    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 8
+    $drupal_eight = TRUE;
+    if ($is_dev && !$is_backend) {
+      header('X-Backend: A');
+    }
+  }
+  else {
+    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 7
+    $drupal_seven = TRUE;
+    $use_redis = TRUE;
+    if ($is_dev && !$is_backend) {
+      header('X-Backend: B');
+    }
+  }
+}
+elseif (file_exists('modules/path_alias_cache')) {
+  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 6
+  $drupal_six = TRUE;
+  $use_redis = TRUE;
+  if ($is_dev && !$is_backend) {
+    header('X-Backend: C');
+  }
+}
+elseif (file_exists('modules/watchdog')) {
+  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 5
+  $drupal_five = TRUE;
+  if ($is_dev && !$is_backend) {
+    header('X-Backend: D');
+  }
+}
+else {
+  $conf['cache'] = 1; // Enable hardcoded standard caching
+  $drupal_unknown = TRUE;
+  if ($is_dev && !$is_backend) {
+    header('X-Backend: E');
+  }
+}
+
 /**
  * CI URLs protection
  */
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
   // Deny known search bots on some protected CI subdomains
-  if ($known_bot) {
+  if ($known_bot && !$is_backend) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: https://omega8.cc/");
@@ -106,7 +161,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:bi
  */
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
-  if ($known_bot) {
+  if ($known_bot && !$is_backend) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://www.aegirproject.org/");
@@ -121,7 +176,7 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i",
  */
 if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
   // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
-  if ($known_bot) {
+  if ($known_bot && !$is_backend) {
     header('X-Accel-Expires: 5');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://www.aegirproject.org/");
@@ -132,52 +187,9 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
 }
 
 /**
- * Core detection and Caching auto-conf
- */
-if (file_exists('web.config')) {
-  if (file_exists('core')) {
-    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 8
-    $drupal_eight = TRUE;
-    if ($is_dev) {
-      header('X-Backend: A');
-    }
-  }
-  else {
-    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 7
-    $drupal_seven = TRUE;
-    $use_redis = TRUE;
-    if ($is_dev) {
-      header('X-Backend: B');
-    }
-  }
-}
-elseif (file_exists('modules/path_alias_cache')) {
-  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 6
-  $drupal_six = TRUE;
-  $use_redis = TRUE;
-  if ($is_dev) {
-    header('X-Backend: C');
-  }
-}
-elseif (file_exists('modules/watchdog')) {
-  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 5
-  $drupal_five = TRUE;
-  if ($is_dev) {
-    header('X-Backend: D');
-  }
-}
-else {
-  $conf['cache'] = 1; // Enable hardcoded standard caching
-  $drupal_unknown = TRUE;
-  if ($is_dev) {
-    header('X-Backend: E');
-  }
-}
-
-/**
  * Dev mode switch
  */
-if ($is_dev) {
+if ($is_dev && !$is_backend) {
   error_reporting(E_ALL & ~E_NOTICE);
   ini_set('display_errors', TRUE);
   ini_set('display_startup_errors', TRUE);
@@ -240,7 +252,7 @@ if (is_array($usr_plr_ini) && $usr_plr_ini) {
 if (is_array($usr_loc_ini) && $usr_loc_ini) {
   $all_ini = array_merge($all_ini, $usr_loc_ini);
 }
-if (is_array($all_ini) && $is_dev) {
+if (is_array($all_ini) && $is_dev && !$is_backend) {
   if ($ini_plr_src) {
     header("X-Ini-Plr-Src: " . $ini_plr_src);
   }
@@ -268,7 +280,7 @@ if (is_array($all_ini) && $is_dev) {
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
   if (!file_exists('/data/conf/no-https-aegir.inc')) {
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
-    if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
+    if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) && !$is_backend) { // we force secure connection here
       header('X-Accel-Expires: 5');
       header("HTTP/1.1 301 Moved Permanently");
       header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
@@ -279,7 +291,7 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // Disable hardcoded caching
   ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
-  if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST'])) {
+  if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST']) && !$is_backend) {
     if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
         preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
         preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
@@ -290,7 +302,9 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
       exit;
     }
   }
-  header('X-Accel-Expires: 1');
+  if (!$is_backend) {
+    header('X-Accel-Expires: 1');
+  }
 }
 
 /**
@@ -304,7 +318,7 @@ if ($conf['install_profile'] == 'managingnews') {
 
 if (isset($_SERVER['SERVER_NAME']) && $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads
-  if ($is_dev) {
+  if ($is_dev && !$is_backend) {
     header('X-Is-Cart: YES');
   }
 }
@@ -322,14 +336,14 @@ if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUES
 }
 
 if ($redis_up && $use_cache && $use_redis && !$force_redis) {
-  if ($is_dev) {
+  if ($is_dev && !$is_backend) {
     header('X-Allow-Redis: YES');
   }
 }
 elseif ($redis_up && $force_redis) {
   $use_cache = TRUE;
   $use_redis = TRUE;
-  if ($is_dev) {
+  if ($is_dev && !$is_backend) {
     header('X-Force-Redis: YES');
   }
 }
@@ -337,7 +351,7 @@ else {
   if (!$is_dev) {
     $conf['cache'] = 1; // Enable standard db caching if redis is not allowed or not available
   }
-  if ($is_dev) {
+  if ($is_dev && !$is_backend) {
     header('X-Allow-Redis: NO');
   }
 }
@@ -357,17 +371,10 @@ if ($all_ini['auto_detect_domain_access_integration']) {
   }
 }
 
-if (function_exists('drush_get_command')) {
-  $command = drush_get_command();
-  $command = explode(" ", $command['command']);
-  if ($command && !preg_match("/^help/", $command[0])) {
-    $is_backend = TRUE;
-  }
-  if (preg_match("/^provision-install/", $command[0])) {
-    $use_redis = FALSE;
-    $use_cache = FALSE;
-    $da_inc    = FALSE;
-  }
+if ($is_install) {
+  $use_redis = FALSE;
+  $use_cache = FALSE;
+  $da_inc    = FALSE;
 }
 
 if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
@@ -438,19 +445,19 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
 
   if (is_readable('modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    if ($is_dev) {
+    if ($is_dev && !$is_backend) {
       header('X-Purge-Level: 6');
     }
   }
   elseif (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
     $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
-    if ($is_dev) {
+    if ($is_dev && !$is_backend) {
       header('X-Purge-Level: 7');
     }
   }
   else {
-    if ($is_dev) {
+    if ($is_dev && !$is_backend) {
       header('X-Purge-Level: none');
     }
   }
@@ -464,12 +471,12 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         $_SERVER['HTTPS'] = 'on';
         if ($drupal_seven || $drupal_eight) {
           ini_set('session.cookie_secure', TRUE);
-          if ($is_dev) {
+          if ($is_dev && !$is_backend) {
             header('X-Cookie-Sec: YES');
           }
         }
       }
-      if ($is_dev) {
+      if ($is_dev && !$is_backend) {
         header('X-Local-Proto: https');
       }
     }
@@ -491,11 +498,13 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
     @ini_set('session.cookie_domain', $domain);
     $cookie_domain = $domain;
-    header("X-Cookie-Domain: " . $cookie_domain);
+    if (!$is_backend) {
+      header("X-Cookie-Domain: " . $cookie_domain);
+    }
   }
 
-  if ($is_dev) {
   $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_';
+  if ($is_dev && !$is_backend) {
     header("X-Redis-Prefix: " . $this_prefix);
   }
 
@@ -515,13 +524,15 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
         if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
           $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
-          header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
+          if (!$is_backend) {
+            header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
+          }
         }
       }
     }
     if (!isset($_COOKIE[$test_sess_name])) {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
-        if (!$all_ini['allow_anon_node_add']) {
+        if (!$all_ini['allow_anon_node_add'] && !$is_backend) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
@@ -530,7 +541,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
-        if (!$all_ini['disable_admin_dos_protection']) {
+        if (!$all_ini['disable_admin_dos_protection'] && !$is_backend) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
@@ -553,17 +564,19 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
           setcookie('NoCacheID', 'NC' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '1';
-        header('X-Limit-Booster: 1');
+        if (!$is_backend) {
+          header('X-Limit-Booster: 1');
+        }
       }
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
-        if ($is_dev) {
+        if ($is_dev && !$is_backend) {
           header('X-Skip-Booster: AjaxRU');
         }
       }
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
-        if ($is_dev) {
+        if ($is_dev && !$is_backend) {
           header('X-Skip-Booster: AjaxQS');
         }
       }
@@ -573,7 +586,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
           setcookie('NoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '0';
-        if ($is_dev) {
+        if ($is_dev && !$is_backend) {
           header('X-Skip-Booster: PostRM');
         }
       }
@@ -581,12 +594,12 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     if ($known_bot) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '86400';
-        if ($is_dev) {
+        if ($is_dev && !$is_backend) {
           header('X-Bot-Booster: 86400');
         }
       }
     }
-    if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
+    if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1) && !$is_backend) {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
   }
