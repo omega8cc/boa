@@ -87,14 +87,14 @@ Contrib [S]upported and [B]undled:
  textile -------------------- [D6,D7] --- [S] [B]
  variable_clean ------------- [D6,D7] --- [S] [B]
  vars ----------------------- [D7] ------ [S] [B]
+ views_cache_bully ---------- [D6,D7] --- [S] [B]
+ views_content_cache -------- [D6,D7] --- [S] [B]
  views404 ------------------- [D6,D7] --- [S] [B]
 
 Contrib [F]orce[E]nabled
 
- entitycache ---------------- [D7] ------ [S] [B] [FE] unless sites/all/modules/entitycache_dont_enable.info exists
- robotstxt ------------------ [D6,D7] --- [S] [B] [FE]
- views_cache_bully ---------- [D6,D7] --- [S] [B] [FE] unless sites/all/modules/views_cache_bully_dont_enable.info exists
- views_content_cache -------- [D6,D7] --- [S] [B] [FE] unless sites/all/modules/views_content_cache_dont_enable.info exists
+ entitycache ---------------- [D7] ------ [S] [B] [FE] unless entitycache_dont_enable = TRUE
+ robotstxt ------------------ [D6,D7] --- [S] [B] [FE] static file is generated in sites/foo.com/files/robots.txt
 
 Contrib [F]orce[D]isabled
 
