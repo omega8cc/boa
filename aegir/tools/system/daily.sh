@@ -592,7 +592,7 @@ fix_site_system_control_settings () {
 
 fix_platform_control_files () {
   if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] ; then
-    if [ ! -e "$Plr/sites/all/modules/default.boa_platform_control.ini" ] || [ "$_CTRL_FORCE_UPDATE" = "YES" ] ; then
+    if [ ! -e "$Plr/sites/all/modules/default.boa_platform_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
       cp -af /var/xdrago/conf/default.boa_platform_control.ini $Plr/sites/all/modules/ &> /dev/null
       chown $_THIS_HM_USER:users $Plr/sites/all/modules/default.boa_platform_control.ini
       chmod 0664 $Plr/sites/all/modules/default.boa_platform_control.ini
@@ -607,7 +607,7 @@ fix_platform_control_files () {
 
 fix_site_control_files () {
   if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] ; then
-    if [ ! -e "$Dir/modules/default.boa_site_control.ini" ] || [ "$_CTRL_FORCE_UPDATE" = "YES" ] ; then
+    if [ ! -e "$Dir/modules/default.boa_site_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
       cp -af /var/xdrago/conf/default.boa_site_control.ini $Dir/modules/ &> /dev/null
       chown $_THIS_HM_USER:users $Dir/modules/default.boa_site_control.ini
       chmod 0664 $Dir/modules/default.boa_site_control.ini
@@ -748,6 +748,7 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
 else
   _VMFAMILY="XEN"
 fi
+_CTRL_TPL_FORCE_UPDATE=YES
 #
 # Check for last all nr
 if [ -e "/data/all" ] ; then
