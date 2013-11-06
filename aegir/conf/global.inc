@@ -494,8 +494,8 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = $_SERVER['SERVER_NAME'] . '_';
   if ($is_dev) {
+  $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_';
     header("X-Redis-Prefix: " . $this_prefix);
   }
 
