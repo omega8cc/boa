@@ -5889,6 +5889,7 @@ else
 fi
 if [ "$_VMFAMILY" = "VZ" ] ; then
   _SYSLOGD=sysklogd
+   mrun "apt-get purge rsyslog -y" &> /dev/null
 else
   _SYSLOGD=rsyslog
 fi
