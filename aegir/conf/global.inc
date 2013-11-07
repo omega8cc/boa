@@ -20,6 +20,9 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
   $_SERVER['SERVER_NAME'] = $_SERVER['HTTP_HOST'];
 }
 
+/**
+ * Forced defaults
+ */
 $conf['page_compression'] = 0;    // Required in Nginx, since it already compresses everything
 $conf['boost_crawl_on_cron'] = 0; // Deny Boost crawler
 $conf['cron_safe_threshold'] = 0; // Disable poormanscron
@@ -58,6 +61,9 @@ ini_set('session.gc_maxlifetime', 86400);  // Set it also to 24 hours max
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 
+/**
+ * Vars init
+ */
 $custom_cache = FALSE;
 $custom_da    = FALSE;
 $custom_fb    = FALSE;
@@ -83,11 +89,17 @@ $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
 
+/**
+ * Bots detection
+ */
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
   // Detect known bots
   $known_bot = TRUE;
 }
 
+/**
+ * Backend and task detection
+ */
 if (function_exists('drush_get_command')) {
   $command = drush_get_command();
   $command = explode(" ", $command['command']);
@@ -205,7 +217,7 @@ if ($is_dev && !$is_backend) {
 }
 
 /**
- * BOA defaults
+ * BOA INI defaults
  */
 $boa_ini = array(
   'redis_lock_enable' => FALSE,
