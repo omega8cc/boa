@@ -75,7 +75,6 @@ $drupal_eight = FALSE;
 $drupal_five  = FALSE;
 $drupal_seven = FALSE;
 $drupal_six   = FALSE;
-$force_redis  = FALSE;
 $high_traffic = FALSE;
 $ini_loc_src  = FALSE;
 $ini_plr_src  = FALSE;
@@ -86,7 +85,6 @@ $is_test      = FALSE;
 $known_bot    = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
-$use_cache    = TRUE;  // Standard Redis integration for 6.x and 7.x core is enabled by default
 $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
@@ -332,34 +330,33 @@ if (isset($_SERVER['SERVER_NAME']) && $all_ini['allow_private_file_downloads']) 
   }
 }
 
-if (file_exists('/var/run/redis.pid')) {
-  $redis_up = TRUE;
-}
-
 if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
-  $use_cache = FALSE;
+  $use_redis = FALSE;
 }
 
 if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
-if ($redis_up && $use_cache && $use_redis && !$force_redis) {
+if ($use_redis && !$is_install && !$custom_cache) {
+  $redis = new Redis();
+  $redis->connect('127.0.0.1', 6379);
+  if ($redis->IsConnected()) {
+  //$redis->auth('isfoobared');
+    $response = $redis->ping();
+    if (strpos($response, 'PONG')) {
+      $redis_up = TRUE;
+    }
+    $redis->close();
+  }
+}
+
+if ($redis_up && $use_redis) {
   if ($is_dev && !$is_backend) {
     header('X-Allow-Redis: YES');
   }
 }
-elseif ($redis_up && $force_redis) {
-  $use_cache = TRUE;
-  $use_redis = TRUE;
-  if ($is_dev && !$is_backend) {
-    header('X-Force-Redis: YES');
-  }
-}
 else {
-  if (!$is_dev) {
-    $conf['cache'] = 1; // Enable standard db caching if redis is not allowed or not available
-  }
   if ($is_dev && !$is_backend) {
     header('X-Allow-Redis: NO');
   }
@@ -382,7 +379,6 @@ if ($all_ini['auto_detect_domain_access_integration']) {
 
 if ($is_install) {
   $use_redis = FALSE;
-  $use_cache = FALSE;
   $da_inc    = FALSE;
 }
 
@@ -622,7 +618,7 @@ if (is_readable('/data/conf/override.global.inc')) {
 }
 
 // Use Redis caching and lock support only for d6 and d7 profiles
-if ($redis_up && $use_cache && $use_redis && !$custom_cache) {
+if ($redis_up && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
   if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
