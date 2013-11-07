@@ -47,6 +47,7 @@ _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with valid number
 _PHP_ZEND_OPCACHE=YES #--------- Allows to install deprecated APC when NO
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
+_NGINX_NAXSI=YES #-------------- Installs Nginx NAXSI WAF when YES (default)
 _NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
 _NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental

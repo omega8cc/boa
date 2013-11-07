@@ -896,6 +896,15 @@ _NGINX_DOS_LIMIT=300
 _NGINX_LDAP=NO
 
 ###
+### NAXSI means Nginx Anti XSS & SQL Injection
+### and is a third-party Nginx module, used
+### by default. If you don't want to use it,
+### change this option to _NGINX_NAXSI=NO
+### below or in the /root/.barracuda.cnf file.
+###
+_NGINX_NAXSI=YES
+
+###
 ### When set to YES, it will also force
 ### OpenSSL ans cURL re-install from sources
 ### on systems other than Debian Wheezy,
@@ -2640,6 +2649,7 @@ barracuda_cnf () {
     echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
+    echo "_NGINX_NAXSI=$_NGINX_NAXSI" >> /root/.barracuda.cnf
     echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
     echo "_NGINX_FORWARD_SECRECY=$_NGINX_FORWARD_SECRECY" >> /root/.barracuda.cnf
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
@@ -2916,6 +2926,12 @@ barracuda_cnf () {
       true
     else
       echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
+    fi
+    _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI /root/.barracuda.cnf)
+    if [[ "$_NGINX_NAXSI_TEST" =~ "_NGINX_NAXSI" ]] ; then
+      true
+    else
+      echo "_NGINX_NAXSI=$_NGINX_NAXSI" >> /root/.barracuda.cnf
     fi
     _NGINX_SPDY_TEST=$(grep _NGINX_SPDY /root/.barracuda.cnf)
     if [[ "$_NGINX_SPDY_TEST" =~ "_NGINX_SPDY" ]] ; then
@@ -4021,6 +4037,14 @@ install_upgrade_nginx () {
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
         fi
       fi
+      if [ "$_NGINX_NAXSI" = "YES" ] ; then
+        if [[ "$_NGINX_V_INSTALLED" =~ "nginx-naxsi" ]] ; then
+          true
+        else
+          _NGINX_INSTALL_REQUIRED=YES
+          msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include NAXSI module"
+        fi
+      fi
       if [ "$_NGINX_SPDY" = "YES" ] ; then
         if [[ "$_NGINX_V_INSTALLED" =~ "http_spdy_module" ]] ; then
           true
@@ -4086,9 +4110,18 @@ install_upgrade_nginx () {
     fi
     if [ "$_NGINX_LDAP" = "YES" ] ; then
       cd /var/opt
+      rm -f -r /var/opt/nginx-auth-ldap*
       git clone --branch master git://github.com/omega8cc/nginx-auth-ldap &> /dev/null
       if [ -e "/var/opt/nginx-auth-ldap" ] ; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ $_NGINX_EXTRA"
+      fi
+    fi
+    if [ "$_NGINX_NAXSI" = "YES" ] ; then
+      cd /var/opt
+      rm -f -r /var/opt/nginx-naxsi*
+      git clone --branch master git://github.com/omega8cc/naxsi nginx-naxsi &> /dev/null
+      if [ -e "/var/opt/nginx-naxsi" ] ; then
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/ $_NGINX_EXTRA"
       fi
     fi
     if [ "$_NGINX_SPDY" = "YES" ] ; then
