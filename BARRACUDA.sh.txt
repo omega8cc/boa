@@ -897,12 +897,12 @@ _NGINX_LDAP=NO
 
 ###
 ### NAXSI means Nginx Anti XSS & SQL Injection
-### and is a third-party Nginx module, used
-### by default. If you don't want to use it,
-### change this option to _NGINX_NAXSI=NO
+### and is a third-party Nginx module not used
+### by default. If you want to test / use it,
+### change this option to _NGINX_NAXSI=YES
 ### below or in the /root/.barracuda.cnf file.
 ###
-_NGINX_NAXSI=YES
+_NGINX_NAXSI=NO
 
 ###
 ### When set to YES, it will also force
@@ -4038,7 +4038,7 @@ install_upgrade_nginx () {
         fi
       fi
       if [ "$_NGINX_NAXSI" = "YES" ] ; then
-        if [[ "$_NGINX_V_INSTALLED" =~ "nginx-naxsi" ]] ; then
+        if [[ "$_NGINX_V_INSTALLED" =~ "naxsi" ]] ; then
           true
         else
           _NGINX_INSTALL_REQUIRED=YES
@@ -4121,7 +4121,7 @@ install_upgrade_nginx () {
       rm -f -r /var/opt/nginx-naxsi*
       git clone --branch master git://github.com/omega8cc/naxsi nginx-naxsi &> /dev/null
       if [ -e "/var/opt/nginx-naxsi" ] ; then
-        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/ $_NGINX_EXTRA"
+        _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ $_NGINX_EXTRA"
       fi
     fi
     if [ "$_NGINX_SPDY" = "YES" ] ; then
