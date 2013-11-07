@@ -46,20 +46,22 @@ $conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issue
 $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
 $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do not allow to turn it on by default
 $update_free_access = FALSE;
-
-if ($conf['install_profile'] == 'totem') {
-  ini_set('session.cookie_lifetime', 0); // Set it to 24 hours max
-}
-else {
-  ini_set('session.cookie_lifetime', 86400); // Set it to 24 hours max
-}
-
 ini_set('session.cache_expire', 86400);    // Set it also to 24 hours max
 ini_set('session.gc_maxlifetime', 86400);  // Set it also to 24 hours max
 // Improve sessions management if module session_expire and/or Pressflow core is not used
 // It is already enabled in the php.ini, but we are forcing it here, just in case
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
+if ($conf['install_profile'] == 'totem') {
+  ini_set('session.cookie_lifetime', 0); // Set it to 24 hours max
+}
+else {
+  ini_set('session.cookie_lifetime', 86400); // Set it to 24 hours max
+}
+if ($conf['install_profile'] == 'managingnews') {
+  ini_set('auto_detect_line_endings', TRUE);
+  // http://drupal.org/node/912682#comment-3503636
+}
 
 /**
  * Vars init
@@ -322,11 +324,6 @@ if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'
 /**
  * Main section starts here
  */
-
-if ($conf['install_profile'] == 'managingnews') {
-  ini_set('auto_detect_line_endings', TRUE);
-  // http://drupal.org/node/912682#comment-3503636
-}
 
 if (isset($_SERVER['SERVER_NAME']) && $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads
