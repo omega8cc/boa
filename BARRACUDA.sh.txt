@@ -5944,7 +5944,14 @@ if [ ! -z "$_EXTRA_PACKAGES" ] ; then
 else
   _EXTRA_PACKAGES="screen"
 fi
-if [ "$_VMFAMILY" = "VZ" ] ; then
+_ETH_TEST=`ifconfig 2>&1`
+_VM_TEST=`uname -a 2>&1`
+if [[ "$_ETH_TEST" =~ "venet0" ]] || [ -e "/proc/bean_counters" ] ; then
+  _IS_VZ="YES"
+else
+  _IS_VZ="NO"
+fi
+if [ "$_IS_VZ" = "YES" ] ; then
   _SYSLOGD=sysklogd
    mrun "apt-get purge rsyslog -y" &> /dev/null
 else
