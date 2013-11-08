@@ -9,7 +9,7 @@ api = 2
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.28.2.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.28.3.tar.gz"
 
 projects[cck][type] = "module"
 ;projects[cck][version] = "2.9"
