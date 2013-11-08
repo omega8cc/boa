@@ -437,7 +437,7 @@ for i in $REVISIONS; do
     get_dev_contrib "speedy-7.x-1.8.tar.gz"
     get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
     get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
-    get_dev_contrib "views_content_cache-7.x-3.x-dev.tar.gz"
+    get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
     if [ -d "/data/all/$i/o_contrib_seven/redis" ] ; then
       rm -f -r /data/all/$i/o_contrib_seven/redis
     fi
@@ -528,7 +528,7 @@ download_o_contrib_seven () {
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "vars-7.x-2.0-alpha10.tar.gz"
   get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
-  get_dev_contrib "views_content_cache-7.x-3.x-dev.tar.gz"
+  get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.x-dev.tar.gz"
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
