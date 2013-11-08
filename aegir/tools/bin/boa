@@ -121,12 +121,12 @@ set_pin_priority ()
     if [ "$_THIS_OS" = "Debian" ] ; then
       _THIS_RV=$(grep "6.0" /etc/issue.net)
       if [[ "$_THIS_RV" =~ "6.0" ]] ; then
-        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+        curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
       else
-        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+        curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Ubuntu" ] ; then
-      curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+      curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
     fi
     rm -f /var/backups/etc-apt-preferences-*
   fi
@@ -179,9 +179,9 @@ init_setup ()
       if [ "$_THIS_DO" = "NotPrecise" ] ; then
         curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       else
-        curl -s -A iCab "http://files.aegir.cc/versions/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+        curl -s -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       fi
-      curl -s -A iCab "http://files.aegir.cc/versions/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+      curl -s -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     fi
   fi
   barracuda_install
@@ -192,10 +192,10 @@ init_setup ()
 download_wrapper ()
 {
   if [ ! -e "$_THIS_FILE" ] ; then
-    echo "I can not connect to github.com at the moment"
+    echo "I can not connect to files.aegir.cc at the moment"
     echo "I will try again in 15 seconds, please wait..."
     sleep 15
-    curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+    curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   fi
 }
 
@@ -204,7 +204,7 @@ check_wrapper ()
   mkdir -p /var/backups
   rm -f /var/backups/$(basename "$0")-now-*
   _THIS_FILE="/var/backups/$(basename "$0")-now-$_NOW"
-  curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
+  curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/$(basename "$0")" -o $_THIS_FILE
   if [ ! -e "$_THIS_FILE" ] ; then
     download_wrapper
     if [ ! -e "$_THIS_FILE" ] ; then
@@ -213,7 +213,7 @@ check_wrapper ()
         download_wrapper
         if [ ! -e "$_THIS_FILE" ] ; then
           echo "Sorry, I gave up."
-          echo "Please check https://status.github.com and try again later."
+          echo "Please check http://stats.pingdom.com/x0s6yrbopal6/801243 and try again later."
           exit 1
         fi
       fi

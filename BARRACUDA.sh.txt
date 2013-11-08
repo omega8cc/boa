@@ -1225,6 +1225,122 @@ find_correct_ip () {
   _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
 }
 #
+# Extract archive.
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+  fi
+}
+#
+# Download and extract archive from dev mirror.
+get_dev_arch () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/$1" | extract_archive -
+  fi
+}
+#
+# Download and extract from dev/version mirror.
+get_dev_ext () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | extract_archive -
+  fi
+}
+#
+# Download and extract from dev/contrib mirror.
+get_dev_contrib () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/$1" | extract_archive -
+  fi
+}
+#
+# Download and extract archive from dev/src mirror.
+get_dev_src () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/src/$1" | extract_archive -
+  fi
+}
+#
+# Check repo status.
+check_git_repos_status () {
+  _GITHUB_WORKS=NO
+  _DRUPAL_WORKS=NO
+  _GITORIOUS_WORKS=NO
+  if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
+    msg "INFO: We will use forced GitHub mirror without testing connection"
+    _GITHUB_WORKS=YES
+    _DRUPAL_WORKS=NO
+    _GITORIOUS_WORKS=NO
+    sleep 1
+  elif [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
+    msg "INFO: We will use forced Drupal repository without testing connection"
+    _GITHUB_WORKS=NO
+    _DRUPAL_WORKS=YES
+    _GITORIOUS_WORKS=NO
+    sleep 1
+  elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
+    msg "INFO: We will use forced Gitorious mirror without testing connection"
+    _GITHUB_WORKS=NO
+    _DRUPAL_WORKS=NO
+    _GITORIOUS_WORKS=YES
+    sleep 1
+  else
+    msg "INFO: Testing repository mirror servers availability..."
+    sleep 1
+    _GITHUB_WORKS=YES
+    _DRUPAL_WORKS=YES
+    _GITORIOUS_WORKS=YES
+    if ! netcat -w 8 -z github.com 9418 ; then
+      _GITHUB_WORKS=NO
+      msg "WARN: The GitHub mirror repository server doesn't respond..."
+    elif ! netcat -w 8 -z git.drupal.org 80 ; then
+      _DRUPAL_WORKS=NO
+      msg "WARN: The Drupal master repository server doesn't respond..."
+    elif ! netcat -w 8 -z code.aegir.cc 9418 ; then
+      _GITORIOUS_WORKS=NO
+      msg "WARN: The Gitorious mirror repository server doesn't respond..."
+    fi
+  fi
+  if [ "$_GITHUB_WORKS" = "YES" ] ; then
+    _BOA_REPO_NAME="nginx-for-drupal"
+    _BOA_REPO_GIT_URL="git://github.com/omega8cc"
+    msg "INFO: GitHub mirror repository will be used"
+  elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
+    _BOA_REPO_NAME="barracuda"
+    _BOA_REPO_GIT_URL="http://git.drupal.org/project"
+    msg "INFO: Drupal master repository will be used"
+  elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
+    _BOA_REPO_NAME="barracuda-octopus"
+    _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
+    msg "INFO: Gitorious mirror repository will be used"
+  else
+    cat <<EOF
+
+    None of repository servers responded in 8 seconds,
+    so we can't continue this installation.
+
+    Please try again later or check if your firewall has port 9418 open.
+
+    Bye.
+
+EOF
+    exit 1
+  fi
+  _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
+}
+#
 # Fix php.ini files to remove mailparse.so
 fix_php_ini_mailparse () {
   if [ -e "$_THIS_FILE" ] ; then
@@ -1342,8 +1458,7 @@ install_redis_src () {
   fi
   cd /var/opt
   rm -f -r redis*
-  wget -q -U iCab http://files.aegir.cc/dev/redis-$_REDIS_VERSION.tar.gz
-  tar -xzf redis-$_REDIS_VERSION.tar.gz
+  get_dev_src "redis-$_REDIS_VERSION.tar.gz" &> /dev/null
   cd redis-$_REDIS_VERSION
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
@@ -1452,8 +1567,7 @@ fix_sftp_ftps_modern () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r mysecureshell*
-    wget -q -U iCab http://files.aegir.cc/dev/mysecureshell-$_MSS_VERSION.tar.gz
-    tar -xzf mysecureshell-$_MSS_VERSION.tar.gz
+    get_dev_src "mysecureshell-$_MSS_VERSION.tar.gz" &> /dev/null
     cd /var/opt/mysecureshell-$_MSS_VERSION
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -2227,8 +2341,14 @@ tune_sql_memory_limits () {
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     rm -f /var/opt/mysqltuner*
-    curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    ### curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
+      mrun "sleep 60"
+      curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    fi
+    if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
+      mrun "sleep 60"
       curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     fi
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
@@ -3170,16 +3290,14 @@ install_ioncube () {
         mrun "sleep 1"
         cd /var/opt
         rm -f -r ioncube_loaders*
-        wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86-64.tar.gz
-        tar -xzf ioncube_loaders_lin_x86-64.tar.gz
+        get_dev_arch "ioncube_loaders_lin_x86-64.tar.gz" &> /dev/null
       else
         SYSTEMARCH="x86"
         msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
         mrun "sleep 1"
         cd /var/opt
         rm -f -r ioncube_loaders*
-        wget -q -U iCab http://files.aegir.cc/dev/ioncube_loaders_lin_x86.tar.gz
-        tar -xzf ioncube_loaders_lin_x86.tar.gz
+        get_dev_arch "ioncube_loaders_lin_x86.tar.gz" &> /dev/null
       fi
       rm -f /usr/local/ioncube/*
       cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
@@ -3196,8 +3314,7 @@ install_libmemcached () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r libmemcached*
-    wget -q -U iCab http://files.aegir.cc/dev/libmemcached-0.53.tar.gz
-    tar -xzf libmemcached-0.53.tar.gz
+    get_dev_src "libmemcached-0.53.tar.gz" &> /dev/null
     if [ -e "/var/opt/libmemcached-0.53" ] ; then
       cd /var/opt/libmemcached-0.53
       st_runner "sh ./configure" 2> /dev/null
@@ -3218,8 +3335,7 @@ install_php_scr_build_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r APC*
-    wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
-    tar -xzf APC-$_APC_VERSION.tgz
+    get_dev_src "APC-$_APC_VERSION.tgz" &> /dev/null
     cd /var/opt/APC-$_APC_VERSION
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3232,8 +3348,7 @@ install_php_scr_build_extensions () {
   mrun "sleep 1"
   cd /var/opt
   rm -f -r imagick*
-  wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-  tar -xzf imagick-$_IMAGICK_VERSION.tgz
+  get_dev_src "imagick-$_IMAGICK_VERSION.tgz" &> /dev/null
   cd /var/opt/imagick-$_IMAGICK_VERSION
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3252,8 +3367,7 @@ install_php_scr_build_extensions () {
     else
       cd /var/opt
       rm -f -r memcached*
-      wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-      tar -xzf memcached-1.0.2.tgz
+      get_dev_src "memcached-1.0.2.tgz" &> /dev/null
       if [ -e "/var/opt/memcached-1.0.2" ] ; then
         cd /var/opt/memcached-1.0.2
         st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
@@ -3278,8 +3392,7 @@ install_php_universal_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r zendopcache*
-      wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-      tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tgz" &> /dev/null
       cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3293,7 +3406,8 @@ install_php_universal_extensions () {
   mrun "sleep 1"
   cd /var/opt
   rm -f -r phpredis*
-  git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
+  ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
+  get_dev_src "phpredis.tar.gz" &> /dev/null
   cd /var/opt/phpredis
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3305,8 +3419,7 @@ install_php_universal_extensions () {
   mrun "sleep 1"
   cd /var/opt
   rm -f -r uploadprogress*
-  wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.3.1.tgz
-  tar -xzf uploadprogress-1.0.3.1.tgz
+  get_dev_src "uploadprogress-1.0.3.1.tgz" &> /dev/null
   cd /var/opt/uploadprogress-1.0.3.1
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3319,13 +3432,11 @@ install_php_universal_extensions () {
   cd /var/opt
   if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
     rm -f -r pecl-jsmin*
-    wget -q -U iCab http://files.aegir.cc/dev/pecl-jsmin-0.1.1.tar.gz
-    tar -xzf pecl-jsmin-0.1.1.tar.gz
+    get_dev_src "pecl-jsmin-0.1.1.tar.gz" &> /dev/null
     cd /var/opt/pecl-jsmin-0.1.1
   else
     rm -f -r php-jsmin*
-    wget -q -U iCab http://files.aegir.cc/dev/php-jsmin-1.0.tgz
-    tar -xzf php-jsmin-1.0.tgz
+    get_dev_src "php-jsmin-1.0.tgz" &> /dev/null
     cd /var/opt/php-jsmin-1.0
   fi
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
@@ -3345,8 +3456,7 @@ install_php_universal_extensions () {
       fi
       cd /var/opt
       rm -f -r geos*
-      wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
-      tar -xjf geos-3.3.7.tar.bz2
+      get_dev_src "geos-3.3.7.tar.bz2" &> /dev/null
       cd geos-3.3.7
       st_runner "sh ./configure --enable-php" 2> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
@@ -3363,8 +3473,7 @@ install_php_universal_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r mongo*
-      wget -q -U iCab http://files.aegir.cc/dev/mongo-1.3.4.tgz
-      tar -xzf mongo-1.3.4.tgz
+      get_dev_src "mongo-1.3.4.tgz" &> /dev/null
       cd /var/opt/mongo-1.3.4
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3386,8 +3495,7 @@ update_php_scr_build_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r APC*
-      wget -q -U iCab http://files.aegir.cc/dev/APC-$_APC_VERSION.tgz
-      tar -xzf APC-$_APC_VERSION.tgz
+      get_dev_src "APC-$_APC_VERSION.tgz" &> /dev/null
       cd /var/opt/APC-$_APC_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3402,8 +3510,7 @@ update_php_scr_build_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r imagick*
-    wget -q -U iCab http://files.aegir.cc/dev/imagick-$_IMAGICK_VERSION.tgz
-    tar -xzf imagick-$_IMAGICK_VERSION.tgz
+    get_dev_src "imagick-$_IMAGICK_VERSION.tgz" &> /dev/null
     cd /var/opt/imagick-$_IMAGICK_VERSION
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3418,8 +3525,7 @@ update_php_scr_build_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r memcached*
-      wget -q -U iCab http://files.aegir.cc/dev/memcached-1.0.2.tgz
-      tar -xzf memcached-1.0.2.tgz
+      get_dev_src "memcached-1.0.2.tgz" &> /dev/null
       if [ -e "/var/opt/memcached-1.0.2" ] ; then
         cd /var/opt/memcached-1.0.2
         st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
@@ -3444,8 +3550,7 @@ update_php_universal_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r zendopcache*
-      wget -q -U iCab http://files.aegir.cc/dev/zendopcache-$_ZEND_OPCACHE_VERSION.tgz
-      tar -xzf zendopcache-$_ZEND_OPCACHE_VERSION.tgz
+      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tgz" &> /dev/null
       cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3460,7 +3565,8 @@ update_php_universal_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r phpredis*
-    git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
+    ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
+    get_dev_src "phpredis.tar.gz" &> /dev/null
     cd /var/opt/phpredis
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3474,8 +3580,7 @@ update_php_universal_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r uploadprogress*
-    wget -q -U iCab http://files.aegir.cc/dev/uploadprogress-1.0.3.1.tgz
-    tar -xzf uploadprogress-1.0.3.1.tgz
+    get_dev_src "uploadprogress-1.0.3.1.tgz" &> /dev/null
     cd /var/opt/uploadprogress-1.0.3.1
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3490,13 +3595,11 @@ update_php_universal_extensions () {
     cd /var/opt
     if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
       rm -f -r pecl-jsmin*
-      wget -q -U iCab http://files.aegir.cc/dev/pecl-jsmin-0.1.1.tar.gz
-      tar -xzf pecl-jsmin-0.1.1.tar.gz
+      get_dev_src "pecl-jsmin-0.1.1.tar.gz" &> /dev/null
       cd /var/opt/pecl-jsmin-0.1.1
     else
       rm -f -r php-jsmin*
-      wget -q -U iCab http://files.aegir.cc/dev/php-jsmin-1.0.tgz
-      tar -xzf php-jsmin-1.0.tgz
+      get_dev_src "php-jsmin-1.0.tgz" &> /dev/null
       cd /var/opt/php-jsmin-1.0
     fi
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
@@ -3517,8 +3620,7 @@ update_php_universal_extensions () {
       fi
       cd /var/opt
       rm -f -r geos*
-      wget -q -U iCab http://files.aegir.cc/dev/geos-3.3.7.tar.bz2
-      tar -xjf geos-3.3.7.tar.bz2
+      get_dev_src "geos-3.3.7.tar.bz2" &> /dev/null
       cd geos-3.3.7
       st_runner "sh ./configure --enable-php" 2> /dev/null
       find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
@@ -3535,8 +3637,7 @@ update_php_universal_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r mongo*
-      wget -q -U iCab http://files.aegir.cc/dev/mongo-1.3.4.tgz
-      tar -xzf mongo-1.3.4.tgz
+      get_dev_src "mongo-1.3.4.tgz" &> /dev/null
       cd /var/opt/mongo-1.3.4
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3569,8 +3670,7 @@ install_php_modern () {
     msg "NOTE! This step may take longer than 8 minutes, please wait..."
     cd /var/opt
     rm -f -r php*
-    wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION_NEW.tar.gz
-    tar -xzf php-$_PHP_VERSION_NEW.tar.gz
+    get_dev_src "php-$_PHP_VERSION_NEW.tar.gz" &> /dev/null
     msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
     mrun "sleep 1"
     cd /var/opt/php-$_PHP_VERSION_NEW
@@ -3654,10 +3754,8 @@ install_php_legacy () {
   cd /var/opt
   rm -f -r php*
   rm -f /etc/init.d/php-fpm*
-  wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/php-$_PHP_VERSION-fpm-0.5.14.diff.gz
-  tar -xzf php-$_PHP_VERSION.tar.gz
-  gunzip -q php-$_PHP_VERSION-fpm-0.5.14.diff.gz
+  get_dev_src "php-$_PHP_VERSION.tar.gz" &> /dev/null
+  get_dev_src "php-$_PHP_VERSION-fpm-0.5.14.diff.gz" &> /dev/null
   cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
   mrun "sleep 1"
@@ -3727,8 +3825,7 @@ install_latest_git () {
       msg "INFO: Installing latest Git from sources, please wait..."
       cd /var/opt
       rm -f -r git*
-      wget -q -U iCab http://files.aegir.cc/dev/git-$_GIT_VERSION.tar.gz
-      tar -xzf git-$_GIT_VERSION.tar.gz
+      get_dev_src "git-$_GIT_VERSION.tar.gz" &> /dev/null
       cd /var/opt/git-$_GIT_VERSION
       st_runner "make configure" 2> /dev/null
       st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
@@ -4077,24 +4174,11 @@ install_upgrade_nginx () {
     fi
     mrun "sleep 1"
     cd /var/opt; rm -f -r nginx*
-    if [[ "$_BOA_REPO_GIT_URL" =~ "drupal" ]] ; then
-      _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
-    else
-      _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
-    fi
-    if [ "$_REL_VERSION" = "incompatible" ] ; then
-      true
-    else
-      git clone --branch v0.9.0 $_BOA_REPO_GIT_URL_LOCAL/nginx-upload-progress-module.git &> /dev/null
-    fi
+    get_dev_src "nginx-upload-progress-module.tar.gz" &> /dev/null
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      wget -q -U iCab http://files.aegir.cc/dev/ngx_cache_purge-2.1.tar.gz
-      tar -xzf ngx_cache_purge-2.1.tar.gz
-      mv ngx_cache_purge-2.1 ngx-cache-purge
-      ### perl -p -i -e "s/\(c->node->length\s+.*\;/c->node->fs_size\;/g" /var/opt/ngx-cache-purge/ngx_cache_purge_module.c &> /dev/null
+      get_dev_src "ngx-cache-purge.tar.gz" &> /dev/null
     fi
-    wget -q -U iCab http://files.aegir.cc/dev/nginx-$_NGINX_VERSION.tar.gz
-    tar -xzf nginx-$_NGINX_VERSION.tar.gz
+    get_dev_src "nginx-$_NGINX_VERSION.tar.gz" &> /dev/null
     sed -i "s/nginx/$_CUSTOM_NAME/g" /var/opt/nginx-$_NGINX_VERSION/src/core/nginx.h &> /dev/null
     if [ "$_PURGE_MODE" = "ON" ] && [ -z "$_NGINX_EXTRA_CONF" ] ; then
       _NGINX_EXTRA="--add-module=/var/opt/ngx-cache-purge/"
@@ -4111,7 +4195,7 @@ install_upgrade_nginx () {
     if [ "$_NGINX_LDAP" = "YES" ] ; then
       cd /var/opt
       rm -f -r /var/opt/nginx-auth-ldap*
-      git clone --branch master git://github.com/omega8cc/nginx-auth-ldap &> /dev/null
+      get_dev_src "nginx-auth-ldap.tar.gz" &> /dev/null
       if [ -e "/var/opt/nginx-auth-ldap" ] ; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-auth-ldap/ $_NGINX_EXTRA"
       fi
@@ -4119,7 +4203,7 @@ install_upgrade_nginx () {
     if [ "$_NGINX_NAXSI" = "YES" ] ; then
       cd /var/opt
       rm -f -r /var/opt/nginx-naxsi*
-      git clone --branch master git://github.com/omega8cc/naxsi nginx-naxsi &> /dev/null
+      get_dev_src "nginx-naxsi.tar.gz" &> /dev/null
       if [ -e "/var/opt/nginx-naxsi" ] ; then
         _NGINX_EXTRA="--add-module=/var/opt/nginx-naxsi/naxsi_src/ $_NGINX_EXTRA"
       fi
@@ -4155,16 +4239,14 @@ install_upgrade_libevent () {
     msg "INFO: Installing libevent, please wait..."
     cd /var/opt
     rm -f -r libevent*
-    wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
-    tar -xzf libevent-2.0.11-stable.tar.gz
+    get_dev_src "libevent-2.0.11-stable.tar.gz" &> /dev/null
     cd /var/opt/libevent-2.0.11-stable
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     cd /var/opt
     rm -f -r libevent*
-    wget -q -U iCab http://files.aegir.cc/dev/libevent-2.0.11-stable.tar.gz
-    tar -xzf libevent-2.0.11-stable.tar.gz
+    get_dev_src "libevent-2.0.11-stable.tar.gz" &> /dev/null
     cd /var/opt/libevent-2.0.11-stable
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -4185,8 +4267,7 @@ install_wkhtmltopdf () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltopdf*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2
-      tar -xjf wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2
+      get_dev_arch "wkhtmltopdf-0.10.0_rc2-static-amd64.tar.bz2" &> /dev/null
       cp -af wkhtmltopdf-amd64 /usr/bin/wkhtmltopdf &> /dev/null
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
@@ -4196,8 +4277,7 @@ install_wkhtmltopdf () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltopdf*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2
-      tar -xjf wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2
+      get_dev_arch "wkhtmltopdf-0.10.0_rc2-static-i386.tar.bz2" &> /dev/null
       cp -af wkhtmltopdf-i386 /usr/bin/wkhtmltopdf &> /dev/null
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
@@ -4217,8 +4297,7 @@ install_wkhtmltoimage () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltoimage*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2
-      tar -xjf wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2
+      get_dev_arch "wkhtmltoimage-0.10.0_rc2-static-amd64.tar.bz2" &> /dev/null
       cp -af wkhtmltoimage-amd64 /usr/bin/wkhtmltoimage &> /dev/null
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
@@ -4228,8 +4307,7 @@ install_wkhtmltoimage () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r wkhtmltoimage*
-      wget -q -U iCab http://files.aegir.cc/dev/wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2
-      tar -xjf wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2
+      get_dev_arch "wkhtmltoimage-0.10.0_rc2-static-i386.tar.bz2" &> /dev/null
       cp -af wkhtmltoimage-i386 /usr/bin/wkhtmltoimage &> /dev/null
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
@@ -4336,30 +4414,6 @@ install_newrelic () {
   fi
 }
 #
-# Download and extract archive from dev, then delete.
-get_dev_arch () {
-  ###--------------------###
-  if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/$1" | tar -xzf -
-  fi
-}
-#
-# Download and extract from dev/version, then delete.
-get_dev_ext () {
-  ###--------------------###
-  if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | tar -xzf -
-  fi
-}
-#
-# Download and extract from d.o, then delete.
-get_drupal_project () {
-  ###--------------------###
-  if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/$1" | tar -xzf -
-  fi
-}
-#
 # Install or update Drush versions.
 get_drush_versions () {
   ###--------------------###
@@ -4460,8 +4514,8 @@ update_sources_list () {
           msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
           mkdir -p /opt/tmp/helpers
           cd /opt/tmp/helpers
-          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
-          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/apt-list-ubuntu.txt" -o apt-list-ubuntu.txt
+          curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
+          curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/apt-list-ubuntu.txt" -o apt-list-ubuntu.txt
           _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
           _MIRROR=`bash ffmirror.sh.txt < apt-list-ubuntu.txt`
           echo " "
@@ -4496,7 +4550,7 @@ update_sources_list () {
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+        curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
       fi
     elif [ "$_THIS_OS" = "Debian" ] ; then
       _MIRROR_CHECK=NO
@@ -4518,8 +4572,8 @@ update_sources_list () {
           msg "INFO: Now looking for the best/fastest $_THIS_OS mirror, this may take a while, please wait..."
           mkdir -p /opt/tmp/helpers
           cd /opt/tmp/helpers
-          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
-          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/helpers/apt-list-debian.txt" -o apt-list-debian.txt
+          curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/ffmirror.sh.txt" -o ffmirror.sh.txt
+          curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/apt-list-debian.txt" -o apt-list-debian.txt
           _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
           _MIRROR=`bash ffmirror.sh.txt < apt-list-debian.txt`
           echo " "
@@ -4555,14 +4609,14 @@ update_sources_list () {
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
           else
-            curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+            curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
           fi
         fi
         if [ "$_REL_VERSION" = "squeeze" ] ; then
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
           else
-            curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+            curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
           fi
           if [ "$_FROM_SOURCES" = "NO" ] ; then
             echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
@@ -4589,20 +4643,20 @@ update_sources_list () {
       if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt" ] ; then
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-ubuntu.txt /etc/apt/preferences
       else
-        curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
+        curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-ubuntu.txt" -o /etc/apt/preferences
       fi
     else
       if [ "$_REL_VERSION" = "wheezy" ] ; then
         if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
         else
-          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
+          curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-wheezy.txt" -o /etc/apt/preferences
         fi
       else
         if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt" ] ; then
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-squeeze.txt /etc/apt/preferences
         else
-          curl -s -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
+          curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
         fi
       fi
     fi
@@ -4624,8 +4678,7 @@ install_ssh_src () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r openssh*
-    wget -q -U iCab http://files.aegir.cc/dev/openssh-$_OPENSSH_VERSION.tar.gz
-    tar -xzf openssh-$_OPENSSH_VERSION.tar.gz
+    get_dev_src "openssh-$_OPENSSH_VERSION.tar.gz" &> /dev/null
     cd /var/opt/openssh-$_OPENSSH_VERSION
     st_runner "sh ./configure --without-openssl-header-check --prefix=/usr --with-pam" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -4658,8 +4711,7 @@ install_curl_src () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r curl*
-    wget -q -U iCab http://files.aegir.cc/dev/curl-$_CURL_VERSION.tar.gz
-    tar -xzf curl-$_CURL_VERSION.tar.gz
+    get_dev_src "curl-$_CURL_VERSION.tar.gz" &> /dev/null
     cd /var/opt/curl-$_CURL_VERSION
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -4699,8 +4751,7 @@ install_ssl_src () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r zlib*
-    wget -q -U iCab http://files.aegir.cc/dev/zlib-$_ZLIB_VERSION.tar.gz
-    tar -xzf zlib-$_ZLIB_VERSION.tar.gz
+    get_dev_src "zlib-$_ZLIB_VERSION.tar.gz" &> /dev/null
     cd /var/opt/zlib-$_ZLIB_VERSION
     st_runner "./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -4710,8 +4761,7 @@ install_ssl_src () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r openssl*
-    wget -q -U iCab http://files.aegir.cc/dev/openssl-$_OPENSSL_VERSION.tar.gz
-    tar -xzf openssl-$_OPENSSL_VERSION.tar.gz
+    get_dev_src "openssl-$_OPENSSL_VERSION.tar.gz" &> /dev/null
     cd /var/opt/openssl-$_OPENSSL_VERSION
     _X86_64_IF=`uname -m`
     if [ "$_X86_64_IF" = "x86_64" ] ; then
@@ -5160,14 +5210,13 @@ check_connection ()
     fi
   fi
 }
-check_connection
-
 
 if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+  check_connection
   _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/test-provision 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
-    msg "EXIT on error due to GitHub downtime"
+    msg "EXIT on error (provision) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
@@ -5176,7 +5225,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
   _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git /opt/tmp/test-hostmaster 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
-    msg "EXIT on error due to GitHub downtime"
+    msg "EXIT on error (hostmaster) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
@@ -5187,7 +5236,7 @@ if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
   _GITHUB_TEST=`git clone git://github.com/omega8cc/nginx-for-drupal.git /opt/tmp/test-nginx-for-drupal 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
-    msg "EXIT on error due to GitHub downtime"
+    msg "EXIT on error (nginx-for-drupal) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
@@ -5226,70 +5275,12 @@ fi
 
 
 ###--------------------###
-_GITHUB_WORKS=NO
-_DRUPAL_WORKS=NO
-_GITORIOUS_WORKS=NO
-if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
-  msg "INFO: We will use forced GitHub mirror without testing connection"
-  _GITHUB_WORKS=YES
-  _DRUPAL_WORKS=NO
-  _GITORIOUS_WORKS=NO
-  sleep 1
-elif [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
-  msg "INFO: We will use forced Drupal repository without testing connection"
-  _GITHUB_WORKS=NO
-  _DRUPAL_WORKS=YES
-  _GITORIOUS_WORKS=NO
-  sleep 1
-elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
-  msg "INFO: We will use forced Gitorious mirror without testing connection"
-  _GITHUB_WORKS=NO
-  _DRUPAL_WORKS=NO
-  _GITORIOUS_WORKS=YES
-  sleep 1
-else
-  msg "INFO: Testing repository mirror servers availability..."
-  sleep 1
-  _GITHUB_WORKS=YES
-  _DRUPAL_WORKS=YES
-  _GITORIOUS_WORKS=YES
-  if ! netcat -w 8 -z github.com 9418 ; then
-    _GITHUB_WORKS=NO
-    msg "WARN: The GitHub mirror repository server doesn't respond..."
-  elif ! netcat -w 8 -z git.drupal.org 80 ; then
-    _DRUPAL_WORKS=NO
-    msg "WARN: The Drupal master repository server doesn't respond..."
-  elif ! netcat -w 8 -z code.aegir.cc 9418 ; then
-    _GITORIOUS_WORKS=NO
-    msg "WARN: The Gitorious mirror repository server doesn't respond..."
-  fi
-fi
-if [ "$_GITHUB_WORKS" = "YES" ] ; then
-  _BOA_REPO_NAME="nginx-for-drupal"
-  _BOA_REPO_GIT_URL="git://github.com/omega8cc"
-  msg "INFO: GitHub mirror repository will be used"
-elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
-  _BOA_REPO_NAME="barracuda"
-  _BOA_REPO_GIT_URL="http://git.drupal.org/project"
-  msg "INFO: Drupal master repository will be used"
-elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
-  _BOA_REPO_NAME="barracuda-octopus"
-  _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
-  msg "INFO: Gitorious mirror repository will be used"
-else
-  cat <<EOF
-
-  None of repository servers responded in 8 seconds,
-  so we can't continue this installation.
-
-  Please try again later or check if your firewall has port 9418 open.
-
-  Bye.
-
-EOF
-  exit 1
-fi
+_BOA_REPO_NAME="nginx-for-drupal"
+_BOA_REPO_GIT_URL="git://github.com/omega8cc"
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
+if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+  check_git_repos_status
+fi
 
 
 ###--------------------###
@@ -5319,7 +5310,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     fi
   fi
 else
-  curl -s -A iCab "http://files.aegir.cc/versions/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
+  curl -s -A iCab "http://files.aegir.cc/versions/stable/tar/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="nginx-for-drupal"
 fi
 #
@@ -6348,8 +6339,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     msg "INFO: Installing VnStat monitor..."
     cd /var/opt
     rm -f -r vnstat*
-    wget -q -U iCab http://files.aegir.cc/dev/vnstat-$_VNSTAT_VERSION.tar.gz
-    tar -xzf vnstat-$_VNSTAT_VERSION.tar.gz
+    get_dev_src "vnstat-$_VNSTAT_VERSION.tar.gz" &> /dev/null
     cd vnstat-$_VNSTAT_VERSION
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
@@ -6503,8 +6493,7 @@ if [ "$_USE_MEMCACHED" = "YES" ] ; then
     rm -f /opt/bin/memcached
     rm -f /usr/bin/memcached
     rm -f /usr/local/bin/memcached
-    wget -q -U iCab http://files.aegir.cc/dev/memcached-1.4.9.tar.gz
-    tar -xzf memcached-1.4.9.tar.gz
+    get_dev_src "memcached-1.4.9.tar.gz" &> /dev/null
     cd /var/opt/memcached-1.4.9
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
@@ -6792,8 +6781,7 @@ if [[ "$_XTRAS_LIST" =~ "BZR" ]] ; then
       fi
       cd /var/opt
       rm -f -r bzr*
-      wget -q -U iCab http://files.aegir.cc/dev/bzr-$_BZR_VERSION.tar.gz
-      tar -xzf bzr-$_BZR_VERSION.tar.gz
+      get_dev_src "bzr-$_BZR_VERSION.tar.gz" &> /dev/null
       cd /var/opt/bzr-$_BZR_VERSION
       st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
@@ -6860,7 +6848,7 @@ if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/va
   mrun "sleep 1"
   cd /var/opt
   rm -f -r lshell*
-  git clone --branch $_LSHELL_VERSION git://github.com/omega8cc/lshell.git lshell-$_LSHELL_VERSION &> /dev/null
+  get_dev_src "lshell-$_LSHELL_VERSION.tar.gz" &> /dev/null
   for Files in `find /var/opt/lshell-$_LSHELL_VERSION -type f` ; do
     sed -i "s/kicked/logged/g" $Files &> /dev/null
     sed -i "s/Kicked/Logged/g" $Files &> /dev/null
@@ -6913,8 +6901,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     cd /var/opt
     rm -f -r pure-ftpd*
     mkdir -p /usr/local/etc
-    wget -q -U iCab http://files.aegir.cc/dev/pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
-    tar -xzf pure-ftpd-$_PURE_FTPD_VERSION.tar.gz
+    get_dev_src "pure-ftpd-$_PURE_FTPD_VERSION.tar.gz" &> /dev/null
     cd pure-ftpd-$_PURE_FTPD_VERSION
     st_runner "sh ./configure --with-everything --with-virtualchroot --without-humor --with-tls --with-diraliases --with-pam --with-certfile=/etc/ssl/private/pure-ftpd.pem" 2> /dev/null
     st_runner "make install-strip" 2> /dev/null
@@ -7059,7 +7046,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       if [ ! -e "/opt/tika9" ] ; then
         cd /var/opt
         rm -f -r apachesolr_attachments*
-        get_drupal_project "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
+        get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
         cd /var/opt/solr-$_SOLR_4_VERSION/example/solr/collection1/conf/
         patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
         ln -sf /opt/jetty9/lib /opt/tika9
@@ -7075,7 +7062,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       if [ ! -e "/opt/solr4/search_api_solr-7.x-1.3.log" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
-        get_drupal_project "search_api_solr-7.x-1.3.tar.gz" &> /dev/null
+        get_dev_contrib "search_api_solr-7.x-1.3.tar.gz" &> /dev/null
         for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
           cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
         done
@@ -7152,7 +7139,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       if [ ! -e "/opt/tika8" ] ; then
         cd /var/opt
         rm -f -r apachesolr_attachments*
-        get_drupal_project "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
+        get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
         cd /var/opt/apache-solr-$_SOLR_3_VERSION/example/solr/conf
         patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
         ln -sf /opt/jetty8/lib /opt/tika8
@@ -7168,7 +7155,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       if [ ! -e "/opt/solr3/search_api_solr-7.x-1.3.log" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
-        get_drupal_project "search_api_solr-7.x-1.3.tar.gz" &> /dev/null
+        get_dev_contrib "search_api_solr-7.x-1.3.tar.gz" &> /dev/null
         for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
           cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
         done
@@ -7234,7 +7221,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
       if [ ! -e "/opt/tika7" ] ; then
         cd /var/opt
         rm -f -r apachesolr_attachments*
-        get_drupal_project "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
+        get_dev_contrib "apachesolr_attachments-7.x-1.x-dev.tar.gz" &> /dev/null
         cd /var/opt/apache-solr-$_SOLR_1_VERSION/example/solr/conf
         patch -p0 < /var/opt/apachesolr_attachments/solrconfig.tika.patch &> /dev/null
         ln -sf /opt/jetty7/lib /opt/tika7
@@ -7250,7 +7237,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
       if [ ! -e "/opt/solr1/search_api_solr-7.x-1.3.log" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
-        get_drupal_project "search_api_solr-7.x-1.3.tar.gz" &> /dev/null
+        get_dev_contrib "search_api_solr-7.x-1.3.tar.gz" &> /dev/null
         for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
           cp -af /var/opt/search_api_solr/solr-conf/1.4/* $Dir/ &> /dev/null
         done
@@ -7641,9 +7628,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       mrun "sleep 1"
       cd /var/www
       rm -f -r /var/www/chive &> /dev/null
-      wget -q -U iCab http://files.aegir.cc/dev/chive_$_CHIVE_VERSION.tar.gz
-      tar -xzf chive_$_CHIVE_VERSION.tar.gz
-      rm -f chive_$_CHIVE_VERSION.tar.gz
+      get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
       chown -R www-data:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
       validate_public_ip &> /dev/null
@@ -7669,9 +7654,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     mrun "sleep 1"
     rm -f -r /var/www/chive
     cd /var/www
-    wget -q -U iCab http://files.aegir.cc/dev/chive_$_CHIVE_VERSION.tar.gz
-    tar -xzf chive_$_CHIVE_VERSION.tar.gz
-    rm -f chive_$_CHIVE_VERSION.tar.gz
+    get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
     chown -R www-data:www-data /var/www/chive
     touch /var/log/chive_$_CHIVE_VERSION.log
   fi
@@ -7704,9 +7687,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       msg "INFO: Installing SQL Buddy $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
-      wget -q -U iCab http://files.aegir.cc/dev/sqlbuddy_1_3_3.tar.gz
-      tar -xzf sqlbuddy_1_3_3.tar.gz &> /dev/null
-      rm -f sqlbuddy_1_3_3.tar.gz
+      get_dev_arch "sqlbuddy_1_3_3.tar.gz" &> /dev/null
       chown -R www-data:www-data /var/www/sqlbuddy
       _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
       validate_public_ip &> /dev/null
@@ -7743,9 +7724,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
-        wget -q -U iCab http://files.aegir.cc/dev/cgp.tar.gz
-        tar -xzf cgp.tar.gz &> /dev/null
-        rm -f cgp.tar.gz
+        get_dev_arch "cgp.tar.gz" &> /dev/null
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
         chown -R www-data:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
@@ -8357,11 +8336,11 @@ csf_install () {
   cd /var/opt
   rm -f /var/xdrago/log/lastFire
   if ! netcat -w 8 -z www.configserver.com 80 ; then
-    wget -q -U iCab http://files.aegir.cc/dev/csf.tgz
+    get_dev_arch "csf.tgz" &> /dev/null
   else
     wget -q -U iCab http://www.configserver.com/free/csf.tgz
+    extract_archive "csf.tgz"
   fi
-  tar -xzf csf.tgz
   cd csf
   st_runner "sh install.sh" 2> /dev/null
   cd /var/opt

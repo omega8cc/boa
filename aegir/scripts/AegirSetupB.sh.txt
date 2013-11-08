@@ -146,10 +146,37 @@ mrun () {
   fi
 }
 #
-# Download and extract from dev, then delete.
+# Extract archive.
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+  fi
+}
+#
+# Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | extract_archive -
+  fi
+}
+#
+# Download and extract from dev/contrib mirror.
+get_dev_contrib () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/$1" | extract_archive -
   fi
 }
 #
@@ -332,9 +359,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r $_ROOT/.drush/*/.git
   get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
 else
-  wget -q -U iCab http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz
-  tar -xzf provision-$_AEGIR_VERSION.tar.gz
-  rm provision-$_AEGIR_VERSION.tar.gz
+  curl -s -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | extract_archive -
   if [ "$_STATUS" = "UPGRADE" ] ; then
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
@@ -498,8 +523,8 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_cdn.git           &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_platform_git.git  &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_site_backup.git   &> /dev/null
-  git clone --branch master git://github.com/omega8cc/hosting_advanced_cron.git  &> /dev/null
-  git clone --branch 6.x-3.x git://github.com/omega8cc/hosting_tasks_extra.git    &> /dev/null
+  git clone --branch master  git://github.com/omega8cc/hosting_advanced_cron.git &> /dev/null
+  git clone --branch 6.x-3.x git://github.com/omega8cc/hosting_tasks_extra.git   &> /dev/null
   rm -f -r */.git
 else
   get_dev_ext "hosting_advanced_cron.tar.gz" &> /dev/null
@@ -519,15 +544,15 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mv -f $_AEGIR_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     cd $_AEGIR_ROOT/profiles/hostmaster/modules/
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/ctools-6.x-1.10.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/features_extra-6.x-1.x-dev.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/hosting_backup_queue-6.x-1.x-dev.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/hosting_task_gc-6.x-1.0-alpha1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/protect_critical_users-6.x-1.1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/revision_deletion-6.x-1.x-dev.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/strongarm-6.x-2.2.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/userprotect-6.x-1.5.tar.gz" | tar -xzf -
+    get_dev_contrib "ctools-6.x-1.10.tar.gz"
+    get_dev_contrib "features_extra-6.x-1.x-dev.tar.gz"
+    get_dev_contrib "features-6.x-1.2.tar.gz"
+    get_dev_contrib "hosting_backup_queue-6.x-1.x-dev.tar.gz"
+    get_dev_contrib "hosting_task_gc-6.x-1.0-alpha1.tar.gz"
+    get_dev_contrib "protect_critical_users-6.x-1.1.tar.gz"
+    get_dev_contrib "revision_deletion-6.x-1.x-dev.tar.gz"
+    get_dev_contrib "strongarm-6.x-2.2.tar.gz"
+    get_dev_contrib "userprotect-6.x-1.5.tar.gz"
   fi
   sed -i "s/backup_delete/backup-delete/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_backup_gc/hosting_backup_gc.module &> /dev/null
   sed -i "s/Platform pathauto settings/Platform pathauto/g" $_AEGIR_ROOT/profiles/hostmaster/modules/hosting_platform_pathauto/hosting_platform_pathauto.module &> /dev/null

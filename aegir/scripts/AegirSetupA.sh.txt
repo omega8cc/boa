@@ -214,6 +214,33 @@ sanitize_string () {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
 }
 #
+# Extract archive.
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+  fi
+}
+#
+# Download and extract from dev/contrib mirror.
+get_dev_contrib () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/$1" | extract_archive -
+  fi
+}
+#
 # Set or update Redis password.
 update_redis_password () {
   if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
@@ -308,7 +335,7 @@ for i in $REVISIONS; do
   if [ -d "/data/all/$i/fserver" ] ; then
     if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
       cd /data/all/$i/fserver/profiles/feature_server/modules/
-      curl -s -A iCab "http://files.aegir.cc/dev/contrib/strongarm-6.x-2.2.tar.gz" | tar -xzf -
+      get_dev_contrib "strongarm-6.x-2.2.tar.gz"
       cd /data/all/$i/fserver/profiles/feature_server
       rm -f feature_server.make
       rm -f feature_server.profile
@@ -342,23 +369,18 @@ for i in $REVISIONS; do
       fi
     done
     cd /data/all/$i/o_contrib
-    git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib/boost &> /dev/null
-    rm -f -r /data/all/$i/o_contrib/boost/.git
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-6.x-3.4.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-6.x-2.5.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/phpass-6.x-2.0.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-6.x-3.0.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-6.x-2.x-dev.tar.gz
+    get_dev_contrib "boost-6.x-1.x.tar.gz"
+    get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+    get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
+    get_dev_contrib "fpa-6.x-2.5.tar.gz"
+    get_dev_contrib "httprl-6.x-1.x-dev.tar.gz"
+    get_dev_contrib "phpass-6.x-2.0.tar.gz"
+    get_dev_contrib "views_cache_bully-6.x-3.x-dev.tar.gz"
+    get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-6.x-1.6.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-6.x-1.x-dev.tar.gz
+      get_dev_contrib "purge-6.x-1.6.tar.gz"
+      get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
     fi
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
     if [ -d "/data/all/$i/o_contrib/cache_backport" ] ; then
       rm -f -r /data/all/$i/o_contrib/cache_backport
     fi
@@ -399,26 +421,21 @@ for i in $REVISIONS; do
     done
     if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
       cd /data/all/$i/o_contrib_seven
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-7.x-1.6.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-7.x-1.0-beta1.tar.gz
+      get_dev_contrib "purge-7.x-1.6.tar.gz"
+      get_dev_contrib "expire-7.x-1.0-beta1.tar.gz"
     fi
     cd /data/all/$i/o_contrib_seven
-    git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git /data/all/$i/o_contrib_seven/boost &> /dev/null
-    rm -f -r /data/all/$i/o_contrib_seven/boost/.git
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-7.x-2.1.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.2.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-7.x-2.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-7.x-1.0-rc2.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-7.x-2.3.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/speedy-7.x-1.8.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_edge-7.x-1.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-7.x-3.0.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-7.x-3.x-dev.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
+    get_dev_contrib "advagg-7.x-2.1.tar.gz"
+    get_dev_contrib "boost-7.x-1.x.tar.gz"
+    get_dev_contrib "entitycache-7.x-1.2.tar.gz"
+    get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
+    get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
+    get_dev_contrib "fpa-7.x-2.3.tar.gz"
+    get_dev_contrib "httprl-7.x-1.x-dev.tar.gz"
+    get_dev_contrib "speedy-7.x-1.8.tar.gz"
+    get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
+    get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
+    get_dev_contrib "views_content_cache-7.x-3.x-dev.tar.gz"
     if [ -d "/data/all/$i/o_contrib_seven/redis" ] ; then
       rm -f -r /data/all/$i/o_contrib_seven/redis
     fi
@@ -482,50 +499,45 @@ download_textile () {
 download_o_contrib_seven () {
   touch update-025.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/admin-7.x-2.0-beta3.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-7.x-2.1.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/blockcache_alter-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/cdn-7.x-2.6.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/config_perms-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/css_emimage-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/entitycache-7.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/esi-7.x-3.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/flood_control-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-7.x-1.0-rc2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-7.x-2.3.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-7.x-1.12.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/login_security-7.x-1.7.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/nocurrent_pass-7.x-1.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/readonlymode-7.x-1.1.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/reroute_email-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/robotstxt-7.x-1.1.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/securesite-7.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/site_verify-7.x-1.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/speedy-7.x-1.8.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_edge-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/textile-7.x-2.0-rc11.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/variable_clean-7.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/vars-7.x-2.0-alpha10.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-7.x-3.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-7.x-3.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views404-7.x-1.x-dev.tar.gz
+  get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
+  get_dev_contrib "advagg-7.x-2.1.tar.gz"
+  get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "boost-7.x-1.x.tar.gz"
+  get_dev_contrib "cdn-7.x-2.6.tar.gz"
+  get_dev_contrib "config_perms-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "css_emimage-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "entitycache-7.x-1.2.tar.gz"
+  get_dev_contrib "esi-7.x-3.x-dev.tar.gz"
+  get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "flood_control-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
+  get_dev_contrib "fpa-7.x-2.3.tar.gz"
+  get_dev_contrib "httprl-7.x-1.12.tar.gz"
+  get_dev_contrib "login_security-7.x-1.7.tar.gz"
+  get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
+  get_dev_contrib "readonlymode-7.x-1.1.tar.gz"
+  get_dev_contrib "reroute_email-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "robotstxt-7.x-1.1.tar.gz"
+  get_dev_contrib "securesite-7.x-2.x-dev.tar.gz"
+  get_dev_contrib "site_verify-7.x-1.0.tar.gz"
+  get_dev_contrib "speedy-7.x-1.8.tar.gz"
+  get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
+  get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
+  get_dev_contrib "vars-7.x-2.0-alpha10.tar.gz"
+  get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
+  get_dev_contrib "views_content_cache-7.x-3.x-dev.tar.gz"
+  get_dev_contrib "views404-7.x-1.x-dev.tar.gz"
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
     rm -f -r expire*
     rm -f -r purge*
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-7.x-1.6.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-7.x-1.0-beta1.tar.gz
+    get_dev_contrib "expire-7.x-1.0-beta1.tar.gz"
+    get_dev_contrib "purge-7.x-1.6.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
     rm -f -r expire*
   fi
-  git clone --branch 7.x-1.x git://github.com/omega8cc/boost.git &> /dev/null
-  rm -f -r boost/.git
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
   touch ctrl-$_INSTALLER_VERSION
   if [ ! -L "./redis" ] ; then
     ln -sf /data/all/000/modules/redis redis
@@ -535,8 +547,7 @@ download_o_contrib_seven () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
-    git clone --branch 7.x-2.x-o8 git://github.com/omega8cc/redis.git &> /dev/null
-    rm -f -r redis/.git
+    get_dev_contrib "redis-7.x-2.x-o8.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-025.info
   fi
@@ -546,49 +557,44 @@ download_o_contrib_seven () {
 download_o_contrib_six () {
   touch update-025.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/admin-6.x-2.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/advagg-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/blockcache_alter-6.x-1.5.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/cdn-6.x-2.6.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/config_perms-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/css_emimage-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/dbtuner-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/esi-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_nginx_progress-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/force_password_change-6.x-3.4.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/fpa-6.x-2.5.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/httprl-6.x-1.12.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/image-6.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/login_security-6.x-1.4.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/phpass-6.x-2.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/private_upload-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/readonlymode-6.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/reroute_email-6.x-1.2.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/robotstxt-6.x-1.3.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/securesite-6.x-2.4.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/site_verify-6.x-1.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/taxonomy_edge-6.x-1.7.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/textile-6.x-2.4.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/variable_clean-6.x-1.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_cache_bully-6.x-3.0.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views_content_cache-6.x-2.x-dev.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/views404-6.x-1.x-dev.tar.gz
+  get_dev_contrib "admin-6.x-2.0.tar.gz"
+  get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "blockcache_alter-6.x-1.5.tar.gz"
+  get_dev_contrib "cdn-6.x-2.6.tar.gz"
+  get_dev_contrib "config_perms-6.x-2.x-dev.tar.gz"
+  get_dev_contrib "css_emimage-6.x-2.x-dev.tar.gz"
+  get_dev_contrib "dbtuner-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "esi-6.x-2.x-dev.tar.gz"
+  get_dev_contrib "filefield_nginx_progress-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
+  get_dev_contrib "fpa-6.x-2.5.tar.gz"
+  get_dev_contrib "httprl-6.x-1.12.tar.gz"
+  get_dev_contrib "image-6.x-1.2.tar.gz"
+  get_dev_contrib "login_security-6.x-1.4.tar.gz"
+  get_dev_contrib "phpass-6.x-2.0.tar.gz"
+  get_dev_contrib "private_upload-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "readonlymode-6.x-1.2.tar.gz"
+  get_dev_contrib "reroute_email-6.x-1.2.tar.gz"
+  get_dev_contrib "robotstxt-6.x-1.3.tar.gz"
+  get_dev_contrib "securesite-6.x-2.4.tar.gz"
+  get_dev_contrib "site_verify-6.x-1.0.tar.gz"
+  get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
+  get_dev_contrib "textile-6.x-2.4.tar.gz"
+  get_dev_contrib "variable_clean-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "views_cache_bully-6.x-3.x-dev.tar.gz"
+  get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
+  get_dev_contrib "views404-6.x-1.x-dev.tar.gz"
+  get_dev_contrib "boost-6.x-1.x.tar.gz"
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r purge*
     rm -f -r expire*
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/purge-6.x-1.6.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/expire-6.x-1.x-dev.tar.gz
+    get_dev_contrib "purge-6.x-1.6.tar.gz"
+    get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
   else
     rm -f -r nginx_accel_redirect*
     rm -f -r purge*
     rm -f -r expire*
   fi
-  git clone --branch 6.x-1.x git://github.com/omega8cc/boost.git &> /dev/null
-  rm -f -r boost/.git
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
   touch ctrl-$_INSTALLER_VERSION
   if [ ! -L "./redis" ] ; then
     ln -sf /data/all/000/modules/redis redis
@@ -601,11 +607,7 @@ download_o_contrib_six () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/cache_backport-6.x-1.0-rc1.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
+    get_dev_contrib "cache_backport-6.x-1.0-rc1.tar.gz"
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
     echo update > cache_backport/update-025.info
   fi
@@ -613,8 +615,7 @@ download_o_contrib_six () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
-    git clone --branch 7.x-2.x-o8 git://github.com/omega8cc/redis.git &> /dev/null
-    rm -f -r redis/.git
+    get_dev_contrib "redis-7.x-2.x-o8.tar.gz"
     rm -f redis/redis.info
     echo update > redis/update-025.info
   fi

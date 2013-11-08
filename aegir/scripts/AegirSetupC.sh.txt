@@ -191,12 +191,37 @@ mrun () {
   fi
 }
 #
-# Download and extract from dev/distro, then delete.
+# Extract archive.
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+  fi
+}
+#
+# Download and extract from dev/contrib mirror.
+get_dev_contrib () {
+  if [ ! -z $1 ] ; then
+    curl -s -A iCab "http://files.aegir.cc/dev/contrib/$1" | extract_archive -
+  fi
+}
+#
+# Download and extract from distro.
 get_distro_ext () {
   if [ ! -z $1 ] ; then
-    wget -q -U iCab http://files.aegir.cc/distro/$1
-    tar -xzf $1
-    rm -f $1
+    curl -s -A iCab "http://files.aegir.cc/distro/$1" | extract_archive -
   fi
 }
 #
@@ -326,7 +351,7 @@ prepare_drupal6_core () {
   if [ ! -e "$_D6_CORE_DIR" ] ; then
     rm -f -r $_D6_CORE_DIR
     cd /data/all/000/core
-    curl -s -A iCab "http://files.aegir.cc/dev/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/core/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
     cd $_D6_CORE_DIR/
     fix_dirs_files
     patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch &> /dev/null
@@ -336,8 +361,8 @@ prepare_drupal6_core () {
     cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
     cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
     cd $_D6_CORE_DIR/themes
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/rubik-6.x-3.0-beta5.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.tar.gz" | tar -xzf -
+    get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
+    get_dev_contrib "tao-6.x-3.3.tar.gz"
     rm -f $_D6_CORE_DIR/sites/all/*.txt
     cd $_CORE
   fi
@@ -348,7 +373,7 @@ prepare_drupal7_core () {
   if [ ! -e "$_D7_CORE_DIR" ] ; then
     rm -f -r $_D7_CORE_DIR
     cd /data/all/000/core
-    curl -s -A iCab "http://files.aegir.cc/dev/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
     cd $_D7_CORE_DIR/
     fix_dirs_files
     rename_drupal7_profiles
@@ -357,8 +382,8 @@ prepare_drupal7_core () {
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
     cd $_D7_CORE_DIR/themes
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/rubik-7.x-4.0-beta9.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/tao-7.x-3.0-beta4.tar.gz" | tar -xzf -
+    get_dev_contrib "rubik-7.x-4.0-beta9.tar.gz"
+    get_dev_contrib "tao-7.x-3.0-beta4.tar.gz"
     cd $_CORE
   fi
 }
@@ -368,7 +393,7 @@ prepare_drupal8_core () {
   if [ ! -e "$_D8_CORE_DIR" ] ; then
     rm -f -r $_D8_CORE_DIR
     cd /data/all/000/core
-    curl -s -A iCab "http://files.aegir.cc/dev/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
     cd $_D8_CORE_DIR/
     fix_dirs_files
     rename_drupal8_profiles
@@ -487,12 +512,8 @@ add_old_short_name_acquia () {
 # Upgrade contrib less.
 upgrade_contrib_less () {
   rm -f -r {context,entity}
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/context-7.x-3.1.tar.gz
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
-  for archive in ./*.tar.gz; do
-    tar -xzf "$archive" &> /dev/null
-  done
-  rm -f *.tar.gz
+  get_dev_contrib "context-7.x-3.1.tar.gz" &> /dev/null
+  get_dev_contrib "entity-7.x-1.2.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # http://drupal.org/node/1766338#comment-6445882
@@ -870,11 +891,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_COMMERCE = "7.x-1.20" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {rules}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.6.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -929,11 +946,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_COM_MERCE = "7.x-2.9" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {message_notify}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/message_notify-7.x-2.5.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "message_notify-7.x-2.5.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1280,7 +1293,7 @@ msg "DISTRO: $_F_DRUPAL_EDGE_8 installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   cd $_CORE
-  wget -q -U iCab http://files.aegir.cc/dev/contrib/drupal-8.x-dev.tar.gz
+  get_dev_contrib "drupal-8.x-dev.tar.gz" &> /dev/null
   tar -xzf drupal-8.x-dev.tar.gz
   rm -f drupal-8.x-dev.tar.gz
   mv drupal-8.x-dev $_SHRD_PLNAME
@@ -1319,11 +1332,6 @@ msg "DISTRO: $_F_FSERVER installation in progress..."
 mrun "sleep 1"
 if [ ! -d "$_SHRD_PLPATH" ] ; then
   if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
-    if [[ $_BOA_REPO_GIT_URL =~ drupal ]] ; then
-      _BOA_REPO_GIT_URL_LOCAL="git://github.com/omega8cc"
-    else
-      _BOA_REPO_GIT_URL_LOCAL="$_BOA_REPO_GIT_URL"
-    fi
     if [ ! -e "$_D6_CORE_DIR" ] ; then
       prepare_drupal6_core
     fi
@@ -1332,10 +1340,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     echo "core = 6.x" >> fserver.make
     echo "projects[pressflow][type] = \"core\"" >> fserver.make
     echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/dev/pressflow-6.28.3.tar.gz\"" >> fserver.make
+    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/core/pressflow-6.28.3.tar.gz\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][type] = \"profile\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][download][type] = \"git\"" >> fserver.make
-    echo "projects[$_REAL_PRNAME][download][url] = \"$_BOA_REPO_GIT_URL_LOCAL/$_REAL_PRNAME.git\"" >> fserver.make
+    echo "projects[$_REAL_PRNAME][download][url] = \"git://github.com/omega8cc/$_REAL_PRNAME.git\"" >> fserver.make
     $_DRUSHCMD make fserver.make $_SHRD_PLNAME &> /dev/null
     nocore_d6_dist_clean
     rm -f fserver.make
@@ -1394,20 +1402,20 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,ctools,data,features,feeds,imageapi,imagecache,libraries,mapbox,openlayers,spaces,views,views_rss}
     cd $_SHRD_PRPATH/modules/contrib/
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/boxes-6.x-1.1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/context-6.x-3.1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/ctools-6.x-1.10.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/data-6.x-1.1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/feeds-6.x-1.0-beta13.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/imageapi-6.x-1.10.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/imagecache-6.x-2.x-dev.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/libraries-6.x-1.0.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/mapbox-6.x-2.0-alpha1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/openlayers-6.x-2.0-beta1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/spaces-6.x-3.6.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/views_rss-6.x-2.0-rc3.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/views-6.x-2.13.tar.gz" | tar -xzf -
+    get_dev_contrib "boxes-6.x-1.1.tar.gz"
+    get_dev_contrib "context-6.x-3.1.tar.gz"
+    get_dev_contrib "ctools-6.x-1.10.tar.gz"
+    get_dev_contrib "data-6.x-1.1.tar.gz"
+    get_dev_contrib "features-6.x-1.2.tar.gz"
+    get_dev_contrib "feeds-6.x-1.0-beta13.tar.gz"
+    get_dev_contrib "imageapi-6.x-1.10.tar.gz"
+    get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
+    get_dev_contrib "libraries-6.x-1.0.tar.gz"
+    get_dev_contrib "mapbox-6.x-2.0-alpha1.tar.gz"
+    get_dev_contrib "openlayers-6.x-2.0-beta1.tar.gz"
+    get_dev_contrib "spaces-6.x-3.6.tar.gz"
+    get_dev_contrib "views_rss-6.x-2.0-rc3.tar.gz"
+    get_dev_contrib "views-6.x-2.13.tar.gz"
     cd views
     # http://drupal.org/node/853864#comment-3898996
     curl -s -O -A iCab http://files.aegir.cc/dev/patches/views-853864_2.patch
@@ -1421,8 +1429,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
     cd $_SHRD_PRPATH/themes
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/rubik-6.x-3.0-beta5.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/tao-6.x-3.3.tar.gz" | tar -xzf -
+    get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
+    get_dev_contrib "tao-6.x-3.3.tar.gz"
     nocore_d6_dist_clean
     enable_drupal6_admin
     rm -f -r $_SHRD_PLPATH/profiles/default
@@ -1524,11 +1532,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_OPENACADEMY = "7.x-1.0-rc3" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {ds}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/ds-7.x-1.9.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "ds-7.x-1.9.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1583,12 +1587,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     git clone git://github.com/nuvoleweb/atrium_folders.git &> /dev/null
     rm -f -r atrium_folders/.git
     cd $_SHRD_PRPATH/modules/atrium_features/
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/ideation-6.x-1.0-rc1.tar.gz" | tar -xzf -
+    get_dev_contrib "ideation-6.x-1.0-rc1.tar.gz"
     cd $_SHRD_PRPATH/modules/contrib/
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/better_exposed_filters-6.x-1.0.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/data-6.x-1.1.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/fivestar-6.x-1.20.tar.gz" | tar -xzf -
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/votingapi-6.x-2.3.tar.gz" | tar -xzf -
+    get_dev_contrib "better_exposed_filters-6.x-1.0.tar.gz"
+    get_dev_contrib "data-6.x-1.1.tar.gz"
+    get_dev_contrib "fivestar-6.x-1.20.tar.gz"
+    get_dev_contrib "votingapi-6.x-2.3.tar.gz"
     cd $_CORE
   else
     cd $_CORE
@@ -1687,11 +1691,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_OPENBLOG = "7.x-1.0-alpha2" ] ; then
       cd $_SHRD_PRPATH/themes/contrib
       rm -f -r {subtle_simplicity}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/subtle_simplicity-7.x-2.x-dev.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "subtle_simplicity-7.x-2.x-dev.tar.gz" &> /dev/null
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
@@ -1793,11 +1793,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_OPENDEALS = "7.x-1.27" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {diff}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/diff-7.x-3.2.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "diff-7.x-3.2.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1848,12 +1844,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_OPENOUTREACH = "7.x-1.0-rc10" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {comment_notify,libraries}
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/comment_notify-7.x-1.2.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.1.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "comment_notify-7.x-1.2.tar.gz" &> /dev/null
+      get_dev_contrib "libraries-7.x-2.1.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1905,24 +1897,20 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,diff,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,xmlsitemap}
       cd $_SHRD_PRPATH/modules/contrib
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/boxes-7.x-1.1.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/context-7.x-3.0-beta6.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/diff-7.x-3.2.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/entity_autocomplete-7.x-1.0-beta3.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/features_override-7.x-2.0-beta2.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield_sources-7.x-1.7.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-7.x-1.4.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/imce-7.x-1.7.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/link-7.x-1.1.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/plupload-7.x-1.1.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/recaptcha-7.x-1.9.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/references-7.x-2.1.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
-      wget -q -U iCab http://files.aegir.cc/dev/contrib/xmlsitemap-7.x-2.0-rc2.tar.gz
-      for archive in ./*.tar.gz; do
-        tar -xzf "$archive" &> /dev/null
-      done
-      rm -f *.tar.gz
+      get_dev_contrib "boxes-7.x-1.1.tar.gz" &> /dev/null
+      get_dev_contrib "context-7.x-3.0-beta6.tar.gz" &> /dev/null
+      get_dev_contrib "diff-7.x-3.2.tar.gz" &> /dev/null
+      get_dev_contrib "entity_autocomplete-7.x-1.0-beta3.tar.gz" &> /dev/null
+      get_dev_contrib "features_override-7.x-2.0-beta2.tar.gz" &> /dev/null
+      get_dev_contrib "filefield_sources-7.x-1.7.tar.gz" &> /dev/null
+      get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
+      get_dev_contrib "imce-7.x-1.7.tar.gz" &> /dev/null
+      get_dev_contrib "link-7.x-1.1.tar.gz" &> /dev/null
+      get_dev_contrib "plupload-7.x-1.1.tar.gz" &> /dev/null
+      get_dev_contrib "recaptcha-7.x-1.9.tar.gz" &> /dev/null
+      get_dev_contrib "references-7.x-2.1.tar.gz" &> /dev/null
+      get_dev_contrib "token-7.x-1.5.tar.gz" &> /dev/null
+      get_dev_contrib "xmlsitemap-7.x-2.0-rc2.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -2268,36 +2256,32 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d6_dist_clean
     rm -f -r $_SHRD_PLPATH/profiles/default
     cd $_SHRD_PLPATH/profiles
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/uberdrupal.tar.gz" | tar -xzf -
+    get_dev_contrib "uberdrupal.tar.gz"
     cd $_CORE
     mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
     cd $_SHRD_PRPATH/libraries
-    wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
-    unzip -qq master.zip &> /dev/null
-    rm -f master.zip
+    curl -s -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    unzip -qq colorbox-master.zip &> /dev/null
+    rm -f colorbox-master.zip
     mv -f colorbox-master colorbox
     cd $_SHRD_PRPATH/modules
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/admin_menu-6.x-3.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/cck-6.x-2.9.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-6.x-1.4.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/date-6.x-2.9.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/filefield-6.x-3.11.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-6.x-3.6.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/imageapi-6.x-1.10.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/imagecache-6.x-2.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/imagefield-6.x-3.11.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-6.x-1.0.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/lightbox2-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-6.x-1.5.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/skinr-6.x-1.6.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/token-6.x-1.19.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/ubercart-6.x-2.12.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/views-6.x-3.0.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/webform-6.x-3.19.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
+    get_dev_contrib "admin_menu-6.x-3.x-dev.tar.gz" &> /dev/null
+    get_dev_contrib "cck-6.x-2.9.tar.gz" &> /dev/null
+    get_dev_contrib "colorbox-6.x-1.4.tar.gz" &> /dev/null
+    get_dev_contrib "date-6.x-2.9.tar.gz" &> /dev/null
+    get_dev_contrib "filefield-6.x-3.11.tar.gz" &> /dev/null
+    get_dev_contrib "google_analytics-6.x-3.6.tar.gz" &> /dev/null
+    get_dev_contrib "imageapi-6.x-1.10.tar.gz" &> /dev/null
+    get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz" &> /dev/null
+    get_dev_contrib "imagefield-6.x-3.11.tar.gz" &> /dev/null
+    get_dev_contrib "libraries-6.x-1.0.tar.gz" &> /dev/null
+    get_dev_contrib "lightbox2-6.x-1.x-dev.tar.gz" &> /dev/null
+    get_dev_contrib "rules-6.x-1.5.tar.gz" &> /dev/null
+    get_dev_contrib "skinr-6.x-1.6.tar.gz" &> /dev/null
+    get_dev_contrib "token-6.x-1.19.tar.gz" &> /dev/null
+    get_dev_contrib "ubercart-6.x-2.12.tar.gz" &> /dev/null
+    get_dev_contrib "views-6.x-3.0.tar.gz" &> /dev/null
+    get_dev_contrib "webform-6.x-3.19.tar.gz" &> /dev/null
     ### http://drupal.org/node/1167276#comment-5138248
     cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
@@ -2306,12 +2290,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     curl -s -O -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     cd $_SHRD_PRPATH/themes
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/fusion-6.x-1.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/acquia_prosper-6.x-1.1.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
+    get_dev_contrib "fusion-6.x-1.x-dev.tar.gz" &> /dev/null
+    get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz" &> /dev/null
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -2358,26 +2338,22 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PLPATH/profiles/minimal
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
-    wget -q -U iCab https://github.com/jackmoore/colorbox/archive/master.zip
-    unzip -qq master.zip &> /dev/null
-    rm -f master.zip
+    curl -s -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    unzip -qq colorbox-master.zip &> /dev/null
+    rm -f colorbox-master.zip
     mv -f colorbox-master colorbox
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/colorbox-7.x-2.4.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/ctools-7.x-1.3.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/entity-7.x-1.2.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/google_analytics-7.x-1.4.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/libraries-7.x-2.x-dev.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/pathauto-7.x-1.2.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/rules-7.x-2.6.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/token-7.x-1.5.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/ubercart-7.x-3.5.tar.gz
-    wget -q -U iCab http://files.aegir.cc/dev/contrib/views-7.x-3.7.tar.gz
-    for archive in ./*.tar.gz; do
-      tar -xzf "$archive" &> /dev/null
-    done
-    rm -f *.tar.gz
+    get_dev_contrib "colorbox-7.x-2.4.tar.gz" &> /dev/null
+    get_dev_contrib "ctools-7.x-1.3.tar.gz" &> /dev/null
+    get_dev_contrib "entity-7.x-1.2.tar.gz" &> /dev/null
+    get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
+    get_dev_contrib "libraries-7.x-2.x-dev.tar.gz" &> /dev/null
+    get_dev_contrib "pathauto-7.x-1.2.tar.gz" &> /dev/null
+    get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
+    get_dev_contrib "token-7.x-1.5.tar.gz" &> /dev/null
+    get_dev_contrib "ubercart-7.x-3.5.tar.gz" &> /dev/null
+    get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
     # http://drupal.org/node/1766338#comment-6445882
     curl -s -O -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch

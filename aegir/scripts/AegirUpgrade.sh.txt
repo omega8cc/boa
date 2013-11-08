@@ -83,9 +83,28 @@ update_php_cli_drush () {
   fi
 }
 #
+extract_archive () {
+  if [ ! -z $1 ] ; then
+    case $1 in
+      *.tar.bz2)   tar xjf $1    ;;
+      *.tar.gz)    tar xzf $1    ;;
+      *.bz2)       bunzip2 $1    ;;
+      *.rar)       unrar x $1    ;;
+      *.gz)        gunzip -q $1  ;;
+      *.tar)       tar xf $1     ;;
+      *.tbz2)      tar xjf $1    ;;
+      *.tgz)       tar xzf $1    ;;
+      *.zip)       unzip -qq $1  ;;
+      *.Z)         uncompress $1 ;;
+      *.7z)        7z x $1       ;;
+      *)           echo "'$1' cannot be extracted via >extract<" ;;
+    esac
+  fi
+}
+#
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | tar -xzf -
+    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | extract_archive -
   fi
 }
 #
@@ -163,7 +182,7 @@ hostmaster_go_up () {
       git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost   &> /dev/null
     else
       cd $_ROOT/.drush
-      curl -s -A iCab "http://files.aegir.cc/versions/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+      curl -s -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       msg "INFO: Downloading Drush and Provision extensions..."
       _G_EXT="drush_ecl provision_boost provision_cdn registry_rebuild security_review"
       for e in $_G_EXT; do
