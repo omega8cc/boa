@@ -734,15 +734,11 @@ tune_sql_memory_limits () {
     msg "INFO: Running MySQLTuner check on all databases..."
     msg "NOTE! This step may take a LONG time, please wait..."
     rm -f /var/opt/mysqltuner*
-    ### curl -s -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
-    curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    ### curl -s --retry 10 --retry-delay 15 -A iCab "https://raw.github.com/major/MySQLTuner-perl/master/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+    curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
       mrun "sleep 60"
-      curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
-    fi
-    if [ ! -e "/var/opt/mysqltuner.pl" ] ; then
-      mrun "sleep 60"
-      curl -s -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
+      curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/mysqltuner.pl" -o /var/opt/mysqltuner.pl
     fi
     if [ -e "/var/opt/mysqltuner.pl" ] ; then
       perl /var/opt/mysqltuner.pl > /var/opt/mysqltuner-$_INSTALLER_VERSION-$_NOW.txt
@@ -1140,7 +1136,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd /opt/tmp
   fi
 else
-  curl -s -A iCab "http://files.aegir.cc/versions/stable/tar/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
+  curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="nginx-for-drupal"
 fi
 #

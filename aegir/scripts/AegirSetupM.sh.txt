@@ -90,13 +90,15 @@ extract_archive () {
       *.7z)        7z x $1       ;;
       *)           echo "'$1' cannot be extracted via >extract<" ;;
     esac
+    rm -f $1
   fi
 }
 #
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1" | extract_archive -
+    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    extract_archive "$1"
   fi
 }
 #
@@ -237,7 +239,7 @@ else
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
   else
     cd $_AEGIR_HOME/.drush
-    curl -s -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+    curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
     msg "INFO: Downloading Drush and Provision extensions..."
     get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
     get_dev_ext "drush_ecl.tar.gz"             &> /dev/null

@@ -231,13 +231,15 @@ extract_archive () {
       *.7z)        7z x $1       ;;
       *)           echo "'$1' cannot be extracted via >extract<" ;;
     esac
+    rm -f $1
   fi
 }
 #
 # Download and extract from dev/contrib mirror.
 get_dev_contrib () {
   if [ ! -z $1 ] ; then
-    curl -s -A iCab "http://files.aegir.cc/dev/contrib/$1" | extract_archive -
+    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
+    extract_archive "$1"
   fi
 }
 #

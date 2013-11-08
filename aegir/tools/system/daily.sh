@@ -158,7 +158,7 @@ fix_user_register_protection () {
 
 fix_robots_txt () {
   if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] && [ "$_STATUS" = "OK" ] ; then
-    curl -s -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
+    curl -s --retry 3 --retry-delay 15 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
     if [ -e "$Dir/files/robots.txt" ] ; then
       echo >> $Dir/files/robots.txt
     fi
@@ -818,10 +818,10 @@ fi
 ###--------------------###
 echo "INFO: Checking BARRACUDA version"
 rm -f /opt/tmp/barracuda-version.txt*
-curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+curl -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
 if [ ! -e "/opt/tmp/barracuda-version.txt" ] ; then
   sleep 30
-  curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+  curl -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
 fi
 if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   _INSTALLER_VERSION=`cat /opt/tmp/barracuda-version.txt`

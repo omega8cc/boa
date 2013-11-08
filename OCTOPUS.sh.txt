@@ -1359,7 +1359,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd /opt/tmp
   fi
 else
-  curl -s -A iCab "http://files.aegir.cc/versions/stable/tar/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
+  curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="nginx-for-drupal"
 fi
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
