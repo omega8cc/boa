@@ -6,7 +6,7 @@ core = 6.x
 
 projects[pressflow][type] = "core"
 projects[pressflow][download][type] = "get"
-projects[pressflow][download][url] = "http://files.aegir.cc/dev/pressflow-6.28.3.tar.gz"
+projects[pressflow][download][url] = "http://files.aegir.cc/core/pressflow-6.28.3.tar.gz"
 
 projects[cod][type] = "profile"
 projects[cod][download][type] = "git"
