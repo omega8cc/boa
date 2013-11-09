@@ -220,7 +220,7 @@ if ($is_dev && !$is_backend) {
  * BOA INI defaults
  */
 $boa_ini = array(
-  'redis_lock_enable' => FALSE,
+  'redis_lock_enable' => TRUE,
   'redis_cache_disable' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
