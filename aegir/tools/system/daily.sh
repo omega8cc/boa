@@ -436,13 +436,16 @@ fix_modules () {
           fi
           if [ -e "$User/static/control/enable_views_cache_bully.info" ] || [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
             _VIEWS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(views\)")
+            if [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
+              _CTOOLS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(ctools\)")
+            fi
             if [[ "$_VIEWS_TEST" =~ "Views" ]] && [ ! -e "$Plr/profiles/hostmaster" ] ; then
               if [ "$_VIEWS_CACHE_BULLY_DONT_ENABLE" = "NO" ] && [ -e "$User/static/control/enable_views_cache_bully.info" ] ; then
                 if [ -e "$Plr/modules/o_contrib_seven/views_cache_bully" ] || [ -e "$Plr/modules/o_contrib/views_cache_bully" ] ; then
                   enable_modules "views_cache_bully"
                 fi
               fi
-              if [ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE" = "NO" ] && [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
+              if [[ "$_CTOOLS_TEST" =~ "Chaos" ]] && [ "$_VIEWS_CONTENT_CACHE_DONT_ENABLE" = "NO" ] && [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
                 if [ -e "$Plr/modules/o_contrib_seven/views_content_cache" ] || [ -e "$Plr/modules/o_contrib/views_content_cache" ] ; then
                   enable_modules "views_content_cache"
                 fi
