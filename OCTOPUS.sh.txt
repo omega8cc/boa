@@ -180,7 +180,7 @@ _PHP_CLI_VERSION=5.3
 ### OOH ----------- Open Outreach
 ### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
-### PPT ----------- ProsePoint
+### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### SRK ----------- Spark

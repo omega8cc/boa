@@ -38,7 +38,7 @@
 ### OOH ----------- Open Outreach
 ### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
-### PPT ----------- ProsePoint
+### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
 ### SRK ----------- Spark

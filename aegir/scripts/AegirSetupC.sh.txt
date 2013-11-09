@@ -2429,7 +2429,6 @@ opendeals_install
 openoutreach_install
 openscholar_install
 panopoly_install
-prosepoint_install
 recruiter_install
 spark_install
 totem_install
@@ -2446,6 +2445,7 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
   drupal8_install
   nodestream7_install
   openpublish_install
+  prosepoint_install
 fi
 
 
