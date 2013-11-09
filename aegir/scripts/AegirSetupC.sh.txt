@@ -609,7 +609,7 @@ _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM6="Open Atrium 1.7.1 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENATRIUM7="Open Atrium 2.0.4 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENBLOG="OpenBlog 1.0-a2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENBLOG="OpenBlog 1.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.11-b14 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.2 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1696,6 +1696,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {subtle_simplicity}
       get_dev_contrib "subtle_simplicity-7.x-2.x-dev.tar.gz" &> /dev/null
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {filefield_sources,honeypot,markdown,google_analytics,r4032login}
+      get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
+      get_dev_contrib "honeypot-7.x-1.15.tar.gz" &> /dev/null
+      get_dev_contrib "markdown-7.x-1.2.tar.gz" &> /dev/null
+      get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
+      get_dev_contrib "r4032login-7.x-1.7.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
