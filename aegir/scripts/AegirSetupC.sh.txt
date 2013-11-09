@@ -607,7 +607,7 @@ _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0-rc3 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENATRIUM6="Open Atrium 1.7.1 $_SMALLCORE6 P.$_THIS_CORE"
+_F_OPENATRIUM6="Open Atrium 1.7.2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENATRIUM7="Open Atrium 2.0.4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENBLOG="OpenBlog 1.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.11-b14 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1603,6 +1603,14 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "data-6.x-1.1.tar.gz"
     get_dev_contrib "fivestar-6.x-1.20.tar.gz"
     get_dev_contrib "votingapi-6.x-2.3.tar.gz"
+    rm -f -r {context,l10n_client,markdown,spaces}
+    get_dev_contrib "context-6.x-3.3.tar.gz"
+    get_dev_contrib "l10n_client-6.x-2.2.tar.gz"
+    get_dev_contrib "markdown-6.x-1.4.tar.gz"
+    get_dev_contrib "spaces-6.x-3.7.tar.gz"
+    cd $_SHRD_PRPATH/themes/
+    rm -f -r {rubik}
+    get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
     cd $_CORE
   else
     cd $_CORE
