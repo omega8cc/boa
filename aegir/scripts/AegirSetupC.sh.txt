@@ -1711,7 +1711,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {subtle_simplicity}
       get_dev_contrib "subtle_simplicity-7.x-2.x-dev.tar.gz" &> /dev/null
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {filefield_sources,honeypot,markdown,google_analytics,r4032login}
+      rm -f -r {entitycache,filefield_sources,honeypot,markdown,google_analytics,r4032login}
       get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
       get_dev_contrib "honeypot-7.x-1.15.tar.gz" &> /dev/null
       get_dev_contrib "markdown-7.x-1.2.tar.gz" &> /dev/null
@@ -1984,6 +1984,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_OPENSCHOLAR = "7.x-3.8.1" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {entitycache}
       upgrade_contrib_less
     fi
   else
@@ -2311,6 +2312,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "imageapi-6.x-1.10.tar.gz" &> /dev/null
     get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz" &> /dev/null
     get_dev_contrib "imagefield-6.x-3.11.tar.gz" &> /dev/null
+    get_dev_contrib "jquery_update-6.x-2.0-alpha1.tar.gz" &> /dev/null
     get_dev_contrib "libraries-6.x-1.0.tar.gz" &> /dev/null
     get_dev_contrib "lightbox2-6.x-1.x-dev.tar.gz" &> /dev/null
     get_dev_contrib "rules-6.x-1.5.tar.gz" &> /dev/null
