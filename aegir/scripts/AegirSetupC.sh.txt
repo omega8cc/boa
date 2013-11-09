@@ -617,7 +617,7 @@ _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 3.8.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
-_F_RECRUITER="Recruiter 1.1 $_SMALLCORE7 P.$_THIS_CORE"
+_F_RECRUITER="Recruiter 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_SPARK="Spark 1.0-a9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
@@ -2121,6 +2121,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_RECRUITER = "7.x-1.1" ] ; then
       cd $_SHRD_PRPATH/modules
+      rm -f -r {rules}
+      get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
