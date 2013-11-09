@@ -431,7 +431,8 @@ fix_modules () {
               enable_modules "$_MODULES_ON_SEVEN"
             fi
           fi
-          if [ -e "$Plr/profiles/commerce_kickstart" ] || [ -e "$Plr/sites/all/modules/commerce" ] || [ -e "$Plr/sites/all/modules/contrib/commerce" ] ; then
+          _COMMERCE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(commerce\)")
+          if [[ "$_COMMERCE_TEST" =~ "Commerce" ]] ; then
             disable_modules "views_cache_bully"
           fi
           if [ -e "$User/static/control/enable_views_cache_bully.info" ] || [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
