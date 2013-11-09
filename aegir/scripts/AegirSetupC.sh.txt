@@ -1008,8 +1008,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     sed -i "s/'Commons'/'Commons 2'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
     if [ $_D6COMMONS = "6.x-2.13" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {context}
+      rm -f -r {context,flag,password_policy}
       get_dev_contrib "context-6.x-3.3.tar.gz"
+      get_dev_contrib "flag-6.x-2.1.tar.gz"
+      get_dev_contrib "password_policy-6.x-1.6.tar.gz"
     fi
   else
     cd $_CORE
