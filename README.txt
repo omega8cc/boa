@@ -160,7 +160,7 @@ Octopus can install the platforms listed below:
  Commons 3.4 ------------------ http://drupal.org/project/commons
  Drupal 7.23.3 ---------------- http://drupal.org/drupal-7.23
  Open Academy 1.0-rc3 --------- http://drupal.org/project/openacademy
- Open Atrium 2.0 -------------- http://drupal.org/project/openatrium
+ Open Atrium 2.0.4 ------------ http://drupal.org/project/openatrium
  Open Deals 1.27 -------------- http://drupal.org/project/opendeals
  Open Outreach 1.2 ------------ http://drupal.org/project/openoutreach
  OpenBlog 1.0-a2 -------------- http://drupal.org/project/openblog
