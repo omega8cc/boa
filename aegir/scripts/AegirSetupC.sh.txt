@@ -618,7 +618,7 @@ _F_OPENSCHOLAR="OpenScholar 3.8.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
-_F_SPARK="Spark 1.0-a9 $_SMALLCORE7 P.$_THIS_CORE"
+_F_SPARK="Spark 1.0-a10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart $_UBERCART $_SMALLCORE6 P.$_THIS_CORE"
@@ -2171,7 +2171,13 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     if [ $_SPARK = "7.x-1.0-alpha9" ] ; then
+      cd $_SHRD_PRPATH/themes/contrib
+      rm -f -r {ember}
+      get_dev_contrib "ember-7.x-2.0-alpha1.tar.gz" &> /dev/null
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {breakpoints,module_filter}
+      get_dev_contrib "breakpoints-7.x-1.1.tar.gz" &> /dev/null
+      get_dev_contrib "module_filter-7.x-1.8.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
