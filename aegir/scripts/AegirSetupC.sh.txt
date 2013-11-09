@@ -597,7 +597,7 @@ _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COM_MERCE="Commerce 2.9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.20 $_SMALLCORE7 P.$_THIS_CORE"
-_F_D6COMMONS="Commons 2.13 $_SMALLCORE6 P.$_THIS_CORE"
+_F_D6COMMONS="Commons 2.13.2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_D7COMMONS="Commons 3.4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
@@ -1006,6 +1006,11 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
     sed -i "s/'Commons'/'Commons 2'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
+    if [ $_D6COMMONS = "6.x-2.13" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {context}
+      get_dev_contrib "context-6.x-3.3.tar.gz"
+    fi
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -1406,7 +1411,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,ctools,data,features,feeds,imageapi,imagecache,libraries,mapbox,openlayers,spaces,views,views_rss}
     cd $_SHRD_PRPATH/modules/contrib/
     get_dev_contrib "boxes-6.x-1.1.tar.gz"
-    get_dev_contrib "context-6.x-3.1.tar.gz"
+    get_dev_contrib "context-6.x-3.3.tar.gz"
     get_dev_contrib "ctools-6.x-1.10.tar.gz"
     get_dev_contrib "data-6.x-1.1.tar.gz"
     get_dev_contrib "features-6.x-1.2.tar.gz"
@@ -1907,7 +1912,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,diff,entity_autocomplete,features_override,filefield_sources,google_analytics,imce,link,plupload,recaptcha,references,token,xmlsitemap}
       cd $_SHRD_PRPATH/modules/contrib
       get_dev_contrib "boxes-7.x-1.1.tar.gz" &> /dev/null
-      get_dev_contrib "context-7.x-3.0-beta6.tar.gz" &> /dev/null
+      get_dev_contrib "context-7.x-3.1.tar.gz" &> /dev/null
       get_dev_contrib "diff-7.x-3.2.tar.gz" &> /dev/null
       get_dev_contrib "entity_autocomplete-7.x-1.0-beta3.tar.gz" &> /dev/null
       get_dev_contrib "features_override-7.x-2.0-beta2.tar.gz" &> /dev/null
