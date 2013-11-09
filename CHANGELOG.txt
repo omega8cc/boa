@@ -1,4 +1,105 @@
 
+### Stable BOA-2.1.1 Release - Full Edition
+### Date: Sat Nov  9 17:00:00 EST 2013
+### Includes Aegir 2.x-boa-custom version.
+
+
+# Release Notes:
+
+  There are some important bug fixes in this release, along with changes
+  to the Auto-(En|Dis)able agent, explained in greater detail in embedded docs
+  included in platform specific INI file template.
+
+  Note that the system agent doesn't modify any existing and active INI file,
+  so updated docs are included only in the updated each morning INI templates:
+  default.boa_platform_control.ini and default.boa_site_control.ini
+
+  You can find both INI templates also online at: https://omega8.cc/node/293
+
+  We have also added some docs to help you if you experience any issues
+  with cached, Views based pages and panels: https://omega8.cc/node/292
+
+  Enjoy!
+
+# Updated Octopus platforms:
+
+  ### Drupal 7.23.3
+
+  Open Atrium 2.0.4 ------------ http://drupal.org/project/openatrium
+  Open Deals 1.31 -------------- http://drupal.org/project/opendeals
+  OpenBlog 1.0-a3 -------------- http://drupal.org/project/openblog
+  Recruiter 1.1.2 -------------- http://drupal.org/project/recruiter
+  Spark 1.0-a10 ---------------- http://drupal.org/project/spark
+  Totem 1.1.2 ------------------ http://drupal.org/project/totem
+
+  ### Pressflow 6.28.3
+
+  Commons 2.13.2 --------------- http://drupal.org/project/commons
+  Open Atrium 1.7.2 ------------ http://drupal.org/project/openatrium
+
+# New features and enhancements in this release:
+
+  * Document all system-level control files in docs/ctrl/system.ctrl
+  * Fast Redis lock implementation is now enabled by default for D6 and D7.
+  * Nginx: Add NAXSI (Nginx Anti XSS & SQL Injection) WAF as an option.
+  * Use 100% static downloads in stable to remove dependency on github and d.o
+  * Use extended connection check procedure before exit 1.
+  * Use reliable Redis UP check via PING/PONG instead of pid file check.
+
+# Updated o_contrib modules:
+
+  * Contrib update: views_content_cache-7.x-3.0-alpha3
+  * Contrib update: views_cache_bully-7.x-3.x
+  * Contrib update: views_cache_bully-6.x-3.x
+  * Contrib update: httprl-6.x-1.13
+  * Contrib update: httprl-7.x-1.13
+
+# Changes in this release:
+
+  * Introducing Pressflow 6.28.3 to include fix for #2130865
+  * Updated INI docs for views_cache_bully and views_content_cache.
+  * ProsePoint moved to unsupported.
+
+  * Private files mode in D7 requires allow_private_file_downloads = TRUE in
+    boa_site_control.ini or boa_platform_control.ini and is disabled by default.
+
+  * Do not enable views_cache_bully and views_content_cache, unless special
+    control files exist and related variables in the platform specific INI
+    are not set to TRUE.
+
+  * Auto-Disable views_cache_bully on sites with commerce module enabled, but
+    allow to override it with ~/static/control/enable_views_cache_bully.info
+    and views_cache_bully_dont_enable = FALSE
+
+# Fixes in this release:
+
+  * All-in-One Site Health Check in Aegir not displayed for non-uid=1 users.
+  * Always prepare shared D6 and D7 cores.
+  * Always remove www. from the Redis cache key prefix.
+  * Better check for not yet updated Octopus instances in a batch upgraded mode.
+  * Check if ctools is enabled before attempting to enable views_content_cache.
+  * Do not force HEAD on Precise.
+  * Fix for /root/.upstart.cnf consistency.
+  * Fix for PATH in aegir.sh
+  * Fix still too aggressive procs monitoring.
+  * Fix the check_if_required() logic in the Auto-Disable agent.
+  * Improve all cURL based downloads with auto-continue mode.
+  * Issue #1980250 - Fix for broken cache_page bin in Redis integration module.
+  * Issue #2127237 - NewRelic: Unable to initialize module on Debian Wheezy.
+  * Issue #2128233 - Rsyslog is still installed and consumes all CPU on OpenVZ.
+  * Issue #2128819 - Better exceptions in too aggressive process monitoring.
+  * Make sure to never set any HTTP headers or redirects in the backend.
+  * Nginx: Do not use separate location for /images/ URI shortcut.
+  * Nginx: Fix for regression in "Rewrite for legacy requests with /index.php".
+  * Nginx: Fix the logic for restricted access to /authorize.php and /update.php
+  * Nginx: Map URI shortcuts early to avoid overrides in other locations.
+  * Remove rsyslog on VZ, if installed.
+  * Restore backward compatibility with IP and not wildcard based vhosts.
+  * Use silent upgrade mode in _LENNY_TO_SQUEEZE and _SQUEEZE_TO_WHEEZY.
+  * Issue #2127329 - AdvAgg (D6 version) presence in o_contrib should not
+    auto-disable standard aggregation, unless the module is enabled.
+
+
 ### Stable BOA-2.1.0 Release - Full Edition - Now NSA-proof
 ### Date: Sat Nov  2 18:15:19 EDT 2013
 ### Includes Aegir 2.x-boa-custom version.
