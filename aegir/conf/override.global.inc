@@ -48,3 +48,18 @@ $custom_da    = FALSE; // When set to TRUE in the /data/conf/override.global.inc
                        // must set to TRUE also $custom_cache and copy all its logic in your
                        // /data/conf/override.global.inc file, because Domain Access must be included
                        // *after* any cache-related settings to work properly.
+
+
+/**
+ * Custom Speed Booster TTL override, for example to force caching
+ * on HTTPS-only site, where otherwise default TTL is just 1 second
+ */
+if (isset($_COOKIE[$test_sess_name])) {
+  // Custom forced Speed Booster cache for logged in users
+  $expire_in_seconds = 300;
+}
+else {
+  // Custom forced Speed Booster cache for anonymous visitors
+  $expire_in_seconds = 3600;
+}
+header("X-Accel-Expires: " . $expire_in_seconds);
