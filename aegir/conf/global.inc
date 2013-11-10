@@ -652,7 +652,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($all_ini['redis_lock_enable']) {
       $redis_lock = TRUE;
     }
-    if (is_readable($cache_lock_path) && $redis_lock) {
+    if (is_readable($cache_lock_path) && $redis_lock && !$is_backend) {
       $conf['lock_inc']                       = $cache_lock_path;
       if ($is_dev && !$is_backend) {
         header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
