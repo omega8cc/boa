@@ -1512,7 +1512,7 @@ install_redis_src () {
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
     ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
   fi
-  touch /var/log/redis-$_REDIS_VERSION.log
+  touch /var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION.log
 }
 #
 # Set xterm.
@@ -6954,7 +6954,7 @@ else
     mrun "sleep 1"
   fi
 fi
-if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION.log" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION.log" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
