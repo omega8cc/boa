@@ -87,11 +87,12 @@
 
 # Updated o_contrib modules:
 
-  * Contrib update: views_content_cache-7.x-3.0-alpha3
-  * Contrib update: views_cache_bully-7.x-3.x
-  * Contrib update: views_cache_bully-6.x-3.x
   * Contrib update: httprl-6.x-1.13
   * Contrib update: httprl-7.x-1.13
+  * Contrib update: redis-7.x-2.3
+  * Contrib update: views_cache_bully-6.x-3.x
+  * Contrib update: views_cache_bully-7.x-3.x
+  * Contrib update: views_content_cache-7.x-3.0-alpha3
 
 # Changes in this release:
 
