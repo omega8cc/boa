@@ -853,17 +853,17 @@ EOF
   fi
 fi
 #
-if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION-fix.info" ] ; then
+if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION-fixed.info" ] ; then
   echo "INFO: Fixing permissions in the /data/all tree..."
   find /data/all -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
-  find /data/conf -type d -exec chmod 0711 {} \; &> /dev/null
+  find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
   chown -R root:root /data/conf
   chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   chown -R root:root /data/all
   chown -R root:users /data/all/*/*/sites
-  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fix.info
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed.info
 fi
 echo "INFO: Daily maintenance complete"
 exit 0
