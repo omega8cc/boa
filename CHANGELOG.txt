@@ -19,7 +19,46 @@
   We have also added some docs to help you if you experience any issues
   with cached, Views based pages and panels: https://omega8.cc/node/292
 
-  Enjoy!
+  Note also that since BOA-2.1.0 all D6 based sites are forced to use PHP 5.3.27
+  on hosted and managed Aegir instances, even if they were previously configured
+  to use deprecated, insecure, unstable and outdated PHP 5.2 for D6 based sites.
+
+  This means that if you are using either too old D6 core (older than 6.28.x)
+  some features will stop working, namely imagecache, /update.php and any
+  feature which depends on contrib modules not yet compatible with PHP 5.3
+
+  We have allowed to use PHP 5.2 for too long, to give enough time (in years)
+  to upgrade to latest Pressflow 6.x version and we no longer can extend
+  this allowance, for obvious security and systems stability reasons.
+
+  Furthermore, sticking with PHP 5.2 would not allow us to use latest Aegir 2.x
+  version (BOA still includes a bit older Aegir 2.x for backward compatibility),
+  since newer Aegir versions need newer Drush (BOA still uses ancient Drush 4.6)
+  and newer Drush requires newer PHP version.
+
+  It is even more important because Drupal 8 will not run on older PHP nor Drush
+  older than 7.x, so there is basically no choice other than make all your sites
+  compatible with PHP 5.3, or you will miss all future BOA system upgrades.
+
+  Now even PHP 5.3 is officially in the EOL (End-of-Live) phase, with only
+  security fixes expected, but also only until July 2014 and then it will be
+  completely deprecated, so we will have to switch to modern PHP 5.5, first
+  introduced as an option, later this year.
+
+  Upgrading to latest Pressflow 6.x is *very* easy. Just add all contrib modules
+  you are using in your outdated 6.x platform to the latest Pressflow 6.x
+  platform we provide by default, reverify the new platform, clone the site
+  in the old platform, migrate the cloned copy to the new platform and if
+  everything works fine, migrate also your live site. It will take less than
+  15 minutes and there is absolutely no excuse to not upgrade.
+
+  If you experience issues with your site due to the old core used on now forced
+  PHP 5.3, we can temporarily revert it to PHP 5.2 for the last time, but it is
+  really a bad idea. Much better idea is to find those 15 minutes and upgrade
+  your site, so we could continue to provide future upgrades and new amazing
+  features also for your Aegir instance.
+
+  Enjoy new, shiny BOA Edition!
 
 # Updated Octopus platforms:
 
@@ -393,6 +432,7 @@
 
 # Changes in this release:
 
+  * All D6 based sites are forced to use latest PHP 5.3.27 version.
   * Chive 1.3
   * cURL 7.33.0 as an option.
   * Drush 5.10.0 and 6.1.0 (available as drush5 and drush6)
