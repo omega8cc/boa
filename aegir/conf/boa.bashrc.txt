@@ -22,6 +22,8 @@ HISTCONTROL=ignoredups:ignorespace
 
 #export TERM=xterm-color
 
+export PATH=$PATH:/usr/local/bin
+
 case "$TERM" in
 xterm*|rxvt*|vt100)
   export PS1='\h:\w\$ '
