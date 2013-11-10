@@ -115,7 +115,7 @@
   * All-in-One Site Health Check in Aegir not displayed for non-uid=1 users.
   * Always prepare shared D6 and D7 cores.
   * Always remove www. from the Redis cache key prefix.
-  * Better check for not yet updated Octopus instances in a batch upgraded mode.
+  * Better check for not yet updated Octopus instances in a batch upgrade mode.
   * Check if ctools is enabled before attempting to enable views_content_cache.
   * Do not force HEAD on Precise.
   * Fix for /root/.upstart.cnf consistency.
