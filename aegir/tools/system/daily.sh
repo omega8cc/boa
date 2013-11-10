@@ -855,6 +855,11 @@ fi
 #
 if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION.info" ] ; then
   echo "INFO: Fixing permissions in the /data/all tree..."
+  find /data/all -type d -exec chmod 0711 {} \; &> /dev/null
+  find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
+  find /data/conf -type d -exec chmod 0711 {} \; &> /dev/null
+  find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
+  chown -R root:root /data/conf
   chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   chown -R root:root /data/all
   chown -R root:users /data/all/*/*/sites
