@@ -624,17 +624,26 @@ if ($redis_up && $use_redis && !$custom_cache) {
   if (is_readable('modules/o_contrib/cache_backport/cache.inc')) {
     $cache_backport = TRUE;
     $cache_backport_path = 'modules/o_contrib/cache_backport/cache.inc';
+    if ($is_dev && !$is_backend) {
+      header("X-Redis-Cache-Backport-Is-Readable: " . $cache_backport_path);
+    }
   }
   if (is_readable('modules/o_contrib_seven/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_backport = FALSE;
     $cache_redis_path = 'modules/o_contrib_seven/redis/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib_seven/redis/redis.lock.inc';
+    if ($is_dev && !$is_backend) {
+      header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+    }
   }
   elseif (is_readable('modules/o_contrib/redis/redis.autoload.inc')) {
     $cache_redis = TRUE;
     $cache_redis_path = 'modules/o_contrib/redis/redis.autoload.inc';
     $cache_lock_path = 'modules/o_contrib/redis/redis.lock.d6.inc';
+    if ($is_dev && !$is_backend) {
+      header("X-Redis-Autoload-Is-Readable: " . $cache_redis_path);
+    }
   }
   if ($cache_redis) {
     if ($cache_backport) {
@@ -645,6 +654,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
+      }
     }
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
