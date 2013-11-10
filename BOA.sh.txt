@@ -43,6 +43,7 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
+export PATH=$PATH:/usr/local/bin
 _TODAY=`date +%y%m%d`
 
 setup ()
