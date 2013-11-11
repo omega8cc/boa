@@ -32,28 +32,33 @@ run_drush6_nosilent_cmd () {
 }
 
 check_if_required () {
-  _REQ_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*none'")
+  _REI_TEST=$(run_drush6_nosilent_cmd "pmi $1")
+  _REQ_TEST=$(echo $_REI_TEST | grep 'Required by.*none')
   if [[ "$_REQ_TEST" =~ "Required by" ]] ; then
     _REQ=NO
-  elif [[ "$_REQ_TEST" =~ "was not found" ]] ; then
+  elif [[ "$_REI_TEST" =~ "was not found" ]] ; then
     _REQ=NULL
   else
     _REQ=YES
   fi
-  _REM_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*minimal'")
+  _REM_TEST=$(echo $_REI_TEST | grep 'Required by.*minimal')
   if [[ "$_REM_TEST" =~ "Required by" ]] ; then
     _REQ=NO
   fi
-  _RES_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*standard'")
+  _RES_TEST=$(echo $_REI_TEST | grep 'Required by.*standard')
   if [[ "$_RES_TEST" =~ "Required by" ]] ; then
     _REQ=NO
   fi
-  _RET_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*testing'")
+  _RET_TEST=$(echo $_REI_TEST | grep 'Required by.*testing')
   if [[ "$_RET_TEST" =~ "Required by" ]] ; then
     _REQ=NO
   fi
-  _REH_TEST=$(run_drush6_nosilent_cmd "pmi $1 | grep 'Required by.*hacked'")
+  _REH_TEST=$(echo $_REI_TEST | grep 'Required by.*hacked')
   if [[ "$_REH_TEST" =~ "Required by" ]] ; then
+    _REQ=NO
+  fi
+  _RED_TEST=$(echo $_REI_TEST | grep 'Required by.*devel')
+  if [[ "$_RED_TEST" =~ "Required by" ]] ; then
     _REQ=NO
   fi
 }
