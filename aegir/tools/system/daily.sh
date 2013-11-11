@@ -503,6 +503,7 @@ fix_permissions () {
   chown $_THIS_HM_USER:users $Dir &> /dev/null
   chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php} &> /dev/null
   find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
+  chmod 0640 $Dir/civicrm.settings.php &> /dev/null
   ### modules,themes,libraries - site level
   chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
   chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
