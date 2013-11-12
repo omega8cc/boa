@@ -871,6 +871,11 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:users /data/all/*/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed.info
 fi
+if [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION-post-up.info" ] ; then
+  find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
+  find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-post-up.info
+fi
 echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2013###
