@@ -332,8 +332,6 @@ rename_drupal7_profiles () {
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
     sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
   done
-  sed -i "s/Vanilla Minimal/Vanilla Minimal\nold_short_name = testing/g" ./profiles/minimal/minimal.info
-  sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" ./profiles/standard/standard.info
   rm -f -r ./profiles/testing
 }
 #
@@ -344,8 +342,6 @@ rename_drupal8_profiles () {
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
     sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
   done
-  sed -i "s/Vanilla Minimal/Vanilla Minimal\nold_short_name = testing/g" ./core/profiles/minimal/minimal.info
-  sed -i "s/Vanilla Standard/Vanilla Standard\nold_short_name = minimal/g" ./core/profiles/standard/standard.info
   rm -f -r ./core/profiles/testing
 }
 #
@@ -488,12 +484,6 @@ remove_default_core_seven_profiles () {
   rm -f -r $_SHRD_PLPATH/profiles/testing
 }
 #
-# Add old short name seven.
-add_old_short_name_seven () {
-  sed -i "s/Drupal Minimal/Drupal Minimal\nold_short_name = testing/g" $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
-  sed -i "s/Drupal Standard/Drupal Standard\nold_short_name = minimal/g" $_SHRD_PLPATH/profiles/standard/standard.info &> /dev/null
-}
-#
 # Init this distro root.
 init_this_distro_root () {
   mkdir -p $_OCTO_PLPATH
@@ -540,7 +530,6 @@ create_drupal7_basic () {
       prepare_drupal7_core
     fi
     nocore_d7_dist_clean
-    add_old_short_name_seven
   fi
   init_this_distro_root
 }
