@@ -446,9 +446,15 @@ fix_modules () {
               enable_modules "$_MODULES_ON_SEVEN"
             fi
           fi
-          _COMMERCE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(commerce\)")
-          if [[ "$_COMMERCE_TEST" =~ "Commerce" ]] ; then
-            disable_modules "views_cache_bully"
+          if [ ! -e "$Dir/modules/commerce_ubercart_check.info" ] ; then
+            _COMMERCE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(commerce\)")
+            _UBERCART_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(uc_cart\)")
+            if [[ "$_COMMERCE_TEST" =~ "Commerce" ]] || [[ "$_UBERCART_TEST" =~ "Ubercart" ]] ; then
+              disable_modules "views_cache_bully"
+            fi
+            echo OK > $Dir/modules/commerce_ubercart_check.info
+            chown $_THIS_HM_USER:users $Dir/modules/commerce_ubercart_check.info
+            chmod 0664 $Dir/modules/commerce_ubercart_check.info
           fi
           if [ -e "$User/static/control/enable_views_cache_bully.info" ] || [ -e "$User/static/control/enable_views_content_cache.info" ] ; then
             _VIEWS_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --no-core --type=module | grep \(views\)")

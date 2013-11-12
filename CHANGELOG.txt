@@ -141,11 +141,21 @@
 
 # Known Issues on systems upgraded to initial BOA-2.1.1 release
 
+  ==> Updated on Tue Nov 12 14:44:16 EST 2013
+
   * Fast Redis lock may cause problems on node edit, with temporary error
-    saying that the node was changed by "another user".
+    saying that the node was changed by "another user", because current
+    implementation was not multisite-aware enough.
+
+  * Views Cache Bully module, if enabled after upgrade to BOA-2.1.0, may break
+    the cart and checkout on sites using Ubercart, and should be disabled
+    automatically like it is done for Commerce based sites since BOA-2.1.1
 
   * The version of Redis integration module included: 7.x-2.3 causes warnings
-    for D6 sites, visible either on dev URLs or on comand line.
+    for D6 sites, visible either on dev URLs or on command line and may break
+    some advanced Views configurations if custom caching is not yet enabled.
+    It may also break menu updates due to not aggressive enough clearing
+    cache_meny bin.
 
   * Permissions set daily on the civicrm.settings.php file are too restrictive
     and since provision_civicrm extension does not make this file writable
@@ -172,6 +182,10 @@
   $ cd;rm -f boa-fix-upgrade.sh.txt*
   $ wget -q -U iCab http://files.aegir.cc/update/boa-fix-upgrade.sh.txt
   $ bash boa-fix-upgrade.sh.txt
+
+  This script is updated once there is any new regression or bug discovered,
+  so it is safe and recommended to run it again if the list of known issues
+  have been updated.
 
   You can also run another upgrade with "barracuda up-stable system" command,
   followed by "octopus up-stable all both log" since all fixes have been applied
