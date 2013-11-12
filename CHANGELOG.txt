@@ -141,7 +141,7 @@
 
 # Known Issues on systems upgraded to initial BOA-2.1.1 release
 
-  ==> Updated on Tue Nov 12 14:44:16 EST 2013
+  ==> Updated on Tue Nov 12 14:44:16 EST 2013 with all fixes applied to stable.
 
   * Fast Redis lock may cause problems on node edit, with temporary error
     saying that the node was changed by "another user", because current
