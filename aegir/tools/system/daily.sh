@@ -325,6 +325,11 @@ fix_modules () {
               fi
             fi
           else
+            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
+              chmod 0664 $_PLR_CTRL_FILE
+            fi
             if [ -e "$_PLR_CTRL_FILE" ] ; then
               _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = FALSE" $_PLR_CTRL_FILE)
               if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = FALSE" ]] ; then
@@ -368,6 +373,11 @@ fix_modules () {
               fi
             fi
           else
+            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
+              chmod 0664 $_PLR_CTRL_FILE
+            fi
             if [ -e "$_PLR_CTRL_FILE" ] ; then
               _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = FALSE" $_PLR_CTRL_FILE)
               if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = FALSE" ]] ; then
