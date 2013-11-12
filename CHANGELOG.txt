@@ -139,6 +139,45 @@
   * Issue #2127329 - AdvAgg (D6 version) presence in o_contrib should not
     auto-disable standard aggregation, unless the module is enabled.
 
+# Known Issues on systems upgraded to initial BOA-2.1.1 release
+
+  * Fast Redis lock may cause problems on node edit, with temporary error
+    saying that the node was changed by "another user".
+
+  * The version of Redis integration module included: 7.x-2.3 causes warnings
+    for D6 sites, visible either on dev URLs or on comand line.
+
+  * Permissions set daily on the civicrm.settings.php file are too restrictive
+    and since provision_civicrm extension does not make this file writable
+    before attempting to re-create it, as it should, all tasks on CiviCRM
+    enabled sites fail.
+
+  * Permissions on sites/all/{modules,theme,libraries} on newly added, empty
+    platforms with no sites created yet, so not included in the running daily
+    permissions fix, are initially not group writable, as they should be.
+
+  * The check_if_required procedure in the running daily maintenance agent to
+    detect if the module is required by any other module or feature or by
+    installation profile, is 6 (six) slower than it should be and never disables
+    devel module properly.
+
+  * The running daily maintenance agent does not disable files checks for
+    Drupal for Facebook (fb) and Domain Access modules as it should in the
+    platform level INI file, unless those modules are detected.
+
+# HotFix for known post-upgrade issues
+
+  Run the boa-fix-upgrade script when logged in as system root:
+
+  $ cd;rm boa-fix-upgrade.sh.txt*
+  $ wget -q -U iCab http://files.aegir.cc/update/boa-fix-upgrade.sh.txt
+  $ bash boa-fix-upgrade.sh.txt
+
+  You can also run another upgrade with "barracuda up-stable system" command,
+  followed by "octopus up-stable all both log" since all fixes have been applied
+  to current stable as well, but boa-fix-upgrade script is faster than running
+  complete upgrade again.
+
 
 ### Stable BOA-2.1.0 Release - Full Edition - Now NSA-proof
 ### Date: Sat Nov  2 18:15:19 EDT 2013
