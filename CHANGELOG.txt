@@ -154,8 +154,8 @@
   * The version of Redis integration module included: 7.x-2.3 causes warnings
     for D6 sites, visible either on dev URLs or on command line and may break
     some advanced Views configurations if custom caching is not yet enabled.
-    It may also break menu updates due to not aggressive enough clearing
-    cache_meny bin.
+    It may also break menu updates due to not aggressive enough cache clear
+    policy for cache_menu bin.
 
   * Permissions set daily on the civicrm.settings.php file are too restrictive
     and since provision_civicrm extension does not make this file writable
