@@ -169,7 +169,7 @@
 
   Run the boa-fix-upgrade script when logged in as system root:
 
-  $ cd;rm boa-fix-upgrade.sh.txt*
+  $ cd;rm -f boa-fix-upgrade.sh.txt*
   $ wget -q -U iCab http://files.aegir.cc/update/boa-fix-upgrade.sh.txt
   $ bash boa-fix-upgrade.sh.txt
 
