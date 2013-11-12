@@ -2351,7 +2351,7 @@ fi
 ubercart7_install () {
 ###---### Ubercart 3
 #
-_REAL_PRNAME="standard"
+_REAL_PRNAME="minimal"
 _VIRT_PRNAME="ubercart"
 _SHRD_PLNAME="$_VIRT_PRNAME-$_UBER_CART_SEVEN-$_SMALLCORE7"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
@@ -2373,8 +2373,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     mkdir -p $_SHRD_PLPATH
     nocore_d7_dist_clean
-    sed -i "s/old_short_name = minimal/old_short_name = acquia/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
-    rm -f -r $_SHRD_PLPATH/profiles/minimal
+    rm -f -r $_SHRD_PLPATH/profiles/standard
+    rm -f -r $_SHRD_PLPATH/profiles/testing
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
     curl -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
