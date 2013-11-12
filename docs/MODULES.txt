@@ -32,7 +32,7 @@ this module is used without the need to enable it.
 
 NOTE: Both [F]orce[E]nabled and [F]orce[D]isabled list can be skipped
       with _MODULES_FIX=NO in /root/.barracuda.cnf (default: YES)
-      However, this options is now smart enough to check if the module
+      However, this procedure is now smart enough to check if the module
       is defined as required by any other module or feature and will
       skip such module automatically, to avoid disabling innocent modules
       via feature or any other dependency. You can also use _MODULES_SKIP
