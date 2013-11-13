@@ -134,7 +134,7 @@ sub global_action
        chomp($timedate);
       `echo "B $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $K =~ /php/ && ($X =~ /(drush|-d)/ || $Z =~ /magic/) && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $K =~ /php/ && ($X =~ /(drush|-d)/ || $Z =~ /magic/) && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
@@ -155,21 +155,21 @@ sub global_action
        chomp($timedate);
       `echo "D $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /(drush|-d)/ || $X =~ /magic/) && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /(drush|-d)/ || $X =~ /magic/) && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
       `echo "E $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[2-9]{1,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /drush/ || $X =~ /^(dis|en)/) && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[2-9]{1,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /drush/ || $X =~ /^(dis|en)/) && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
     {
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
       `echo "F $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
     }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
+    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
     {
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
