@@ -4833,6 +4833,8 @@ finale () {
   rm -f -r /var/opt/*
   rm -f -r /opt/tmp/*
   rm -f /var/xdrago/monitor/acrashsql.sh
+  rm -f /var/xdrago/acrashsql.sh
+  rm -f /var/xdrago/usage.sh
   rm -f -r /tmp/drush_make_tmp*
   rm -f -r /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
