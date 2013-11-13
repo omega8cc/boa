@@ -53,7 +53,7 @@ ini_set('session.gc_maxlifetime', 86400);  // Set it also to 24 hours max
 ini_set('session.gc_probability', 1);
 ini_set('session.gc_divisor', 1000);
 if ($conf['install_profile'] == 'totem') {
-  ini_set('session.cookie_lifetime', 0); // Set it to 24 hours max
+  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
 }
 else {
   ini_set('session.cookie_lifetime', 86400); // Set it to 24 hours max
