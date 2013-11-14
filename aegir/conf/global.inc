@@ -217,6 +217,13 @@ if ($is_dev && !$is_backend) {
 }
 
 /**
+ * Set sane default opcache TTL on non-dev sites
+ */
+if (!$is_dev && !$is_backend) {
+  ini_set('opcache.revalidate_freq', '5');
+}
+
+/**
  * BOA INI defaults
  */
 $boa_ini = array(
