@@ -2717,7 +2717,7 @@ barracuda_cnf () {
       _PHP_API=20100525
       _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      _PHP_VERSION_NEW=5.5.5
+      _PHP_VERSION_NEW=5.5.6
       _PHP_API=20100525
       _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
@@ -3202,7 +3202,7 @@ barracuda_cnf () {
       _PHP_API=20100525
       _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      _PHP_VERSION_NEW=5.5.5
+      _PHP_VERSION_NEW=5.5.6
       _PHP_API=20100525
       _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
