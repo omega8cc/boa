@@ -1,5 +1,5 @@
 ###
-### Barracuda version BOA-2.1.1
+### Barracuda version BOA-2.1.2-dev
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -72,7 +72,7 @@ _MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable.
 _SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
 _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 ###
-### Barracuda version BOA-2.1.1
+### Barracuda version BOA-2.1.2-dev
 ###
 
 
