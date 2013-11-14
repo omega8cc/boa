@@ -112,6 +112,21 @@ if (function_exists('drush_get_command')) {
 }
 
 /**
+ * Dev mode detection and URLs protection
+ */
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
+  // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
+  if ($known_bot && !$is_backend) {
+    header('X-Accel-Expires: 5');
+    header("HTTP/1.1 301 Moved Permanently");
+    header("Location: http://www.aegirproject.org/");
+    header("Connection: close");
+    exit;
+  }
+  $is_dev = TRUE;
+}
+
+/**
  * Core detection and Caching auto-conf
  */
 if (file_exists('web.config')) {
@@ -181,21 +196,6 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i",
     exit;
   }
   $is_test = TRUE;
-}
-
-/**
- * Dev mode detection and URLs protection
- */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
-  if ($known_bot && !$is_backend) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
-    header("Connection: close");
-    exit;
-  }
-  $is_dev = TRUE;
 }
 
 /**
