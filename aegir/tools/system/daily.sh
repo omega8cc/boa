@@ -282,12 +282,59 @@ fix_modules () {
               fi
             fi
           else
+            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+              chmod 0664 $_DIR_CTRL_FILE
+            fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
               _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = FALSE" $_DIR_CTRL_FILE)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = FALSE" ]] ; then
                 true
               else
                 sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+              fi
+            fi
+          fi
+
+          if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+            _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS=NO
+            Pri=$(drush4 vget ^file_default_scheme$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
+            Pri=${Pri//[^a-z]/}
+            echo Pri file_default_scheme for $Dom is $Pri
+            if [ "$Pri" = "private" ] ; then
+              _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS=YES
+            fi
+            if [ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS" = "YES" ] ; then
+              if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+                cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+                chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+                chmod 0664 $_DIR_CTRL_FILE
+              fi
+              if [ -e "$_DIR_CTRL_FILE" ] ; then
+                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = TRUE" $_DIR_CTRL_FILE)
+                if [[ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST" =~ "allow_private_file_downloads = TRUE" ]] ; then
+                  true
+                else
+                  ###
+                  ### Do this only for the site level ini file.
+                  ###
+                  sed -i "s/.*allow_private_file_downloads.*/allow_private_file_downloads = TRUE/g" $_DIR_CTRL_FILE &> /dev/null
+                fi
+              fi
+            else
+              if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+                cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+                chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+                chmod 0664 $_DIR_CTRL_FILE
+              fi
+              if [ -e "$_DIR_CTRL_FILE" ] ; then
+                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = FALSE" $_DIR_CTRL_FILE)
+                if [[ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST" =~ "allow_private_file_downloads = FALSE" ]] ; then
+                  true
+                else
+                  sed -i "s/.*allow_private_file_downloads.*/allow_private_file_downloads = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+                fi
               fi
             fi
           fi
