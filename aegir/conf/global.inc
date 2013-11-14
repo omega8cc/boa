@@ -227,7 +227,7 @@ if (!$is_dev && !$is_backend) {
  * BOA INI defaults
  */
 $boa_ini = array(
-  'redis_use_edge' => FALSE,
+  'redis_use_modern' => FALSE,
   'redis_lock_enable' => FALSE,
   'redis_cache_disable' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -282,7 +282,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   if (!$ini_plr_src && !$ini_loc_src) {
     header("X-Ini-Src: BOA-Default");
   }
-  header("X-Ini-Redis-Use-Edge: " . $all_ini['redis_use_edge']);
+  header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -630,10 +630,10 @@ if (is_readable('/data/conf/override.global.inc')) {
 if ($redis_up && $use_redis && !$custom_cache) {
   $cache_backport = FALSE;
   $cache_redis = FALSE;
-  if ($all_ini['redis_use_edge']) {
+  if ($all_ini['redis_use_modern']) {
     $redis_dirname = 'redis_edge';
     if ($is_dev && !$is_backend) {
-      header("X-Redis-Version-Is: Edge");
+      header("X-Redis-Version-Is: Modern");
     }
     if ($drupal_six) {
       $conf['redis_flush_mode']             = 1; // Redis default is 0
@@ -642,7 +642,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['redis_flush_mode_cache_menu']  = 2; // Redis default is 0
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Edge-Custom: 6");
+        header("X-Redis-Modern-Custom: 6");
       }
     }
   }
@@ -680,7 +680,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($cache_backport) {
       $conf['cache_inc']                      = $cache_backport_path;
     }
-    if ($all_ini['redis_use_edge'] && $all_ini['redis_lock_enable']) {
+    if ($all_ini['redis_use_modern'] && $all_ini['redis_lock_enable']) {
       $redis_lock = TRUE;
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
@@ -703,7 +703,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
     $conf['cache_default_class']              = 'Redis_Cache';
     $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
-    if ($conf['install_profile'] == 'hostmaster' && !$all_ini['redis_use_edge']) {
+    if ($conf['install_profile'] == 'hostmaster' && !$all_ini['redis_use_modern']) {
       $conf['cache_class_cache']              = 'DrupalDatabaseCache';
     }
   }
