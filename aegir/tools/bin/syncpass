@@ -6,7 +6,7 @@ _NOW=`date +%y%m%d-%H%M`
 
 # Remove dangerous stuff from the string.
 sanitize_string () {
-  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@]//g' | sed 's/\(['"'"'\]\)//g'
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g' | sed 's/\(['"'"'\]\)//g'
 }
 
 check_generate () {
