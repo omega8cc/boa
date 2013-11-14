@@ -3407,8 +3407,12 @@ install_php_universal_extensions () {
   mrun "sleep 1"
   cd /var/opt
   rm -f -r phpredis*
-  ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
-  get_dev_src "phpredis.tar.gz" &> /dev/null
+  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+    get_dev_src "phpredis_master.tar.gz" &> /dev/null
+  else
+    ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
+    get_dev_src "phpredis.tar.gz" &> /dev/null
+  fi
   cd /var/opt/phpredis
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3566,6 +3570,12 @@ update_php_universal_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r phpredis*
+    if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+      get_dev_src "phpredis_master.tar.gz" &> /dev/null
+    else
+      ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
+      get_dev_src "phpredis.tar.gz" &> /dev/null
+    fi
     ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
     get_dev_src "phpredis.tar.gz" &> /dev/null
     cd /var/opt/phpredis
