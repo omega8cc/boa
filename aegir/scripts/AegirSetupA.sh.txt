@@ -360,10 +360,10 @@ fi
 # Update o_contrib.
 #
 o_contrib_update_global () {
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully views_content_cache"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-030.info" ] ; then
+  if [ -d "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-031.info" ] || [ ! -e "/data/all/000/modules/redis_edge" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
@@ -395,7 +395,10 @@ for i in $REVISIONS; do
     if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
       ln -sf /data/all/000/modules/redis /data/all/$i/o_contrib/redis
     fi
-    touch /data/all/$i/o_contrib/update-030.info
+    if [ -e "/data/all/000/modules/redis_edge" ] && [ ! -L "/data/all/$i/o_contrib/redis_edge" ] ; then
+      ln -sf /data/all/000/modules/redis_edge /data/all/$i/o_contrib/redis_edge
+    fi
+    touch /data/all/$i/o_contrib/update-031.info
   fi
   if [ -d "/data/all/$i" ] ; then
     for p in `find /data/all/$i/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -411,10 +414,10 @@ cd
 # Update o_contrib_seven.
 #
 o_contrib_seven_update_global () {
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033"
+REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
 RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully views_content_cache"
 for i in $REVISIONS; do
-  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-030.info" ] ; then
+  if [ -d "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-031.info" ] || [ ! -e "/data/all/000/modules/redis_edge" ]; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
@@ -444,7 +447,10 @@ for i in $REVISIONS; do
     if [ -e "/data/all/000/modules/redis" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
       ln -sf /data/all/000/modules/redis /data/all/$i/o_contrib_seven/redis
     fi
-    touch /data/all/$i/o_contrib_seven/update-030.info
+    if [ -e "/data/all/000/modules/redis_edge" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis_edge" ] ; then
+      ln -sf /data/all/000/modules/redis_edge /data/all/$i/o_contrib_seven/redis_edge
+    fi
+    touch /data/all/$i/o_contrib_seven/update-031.info
   fi
 done
 cd
@@ -499,7 +505,7 @@ download_textile () {
 #
 # Download o_contrib_seven.
 download_o_contrib_seven () {
-  touch update-030.info
+  touch update-031.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "advagg-7.x-2.1.tar.gz"
@@ -545,19 +551,27 @@ download_o_contrib_seven () {
     ln -sf /data/all/000/modules/redis redis
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/redis/update-030.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-031.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-030.info
+    echo update > redis/update-031.info
+  fi
+  if [ ! -e "/data/all/000/modules/redis_edge/update-031.info" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/redis_edge
+    get_dev_contrib "redis_edge-7.x-2.x-o8-2.5.tar.gz"
+    rm -f redis_edge/redis.info
+    echo update > redis_edge/update-031.info
   fi
 }
 #
 # Download o_contrib_six.
 download_o_contrib_six () {
-  touch update-030.info
+  touch update-031.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   get_dev_contrib "admin-6.x-2.0.tar.gz"
   get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
@@ -605,21 +619,29 @@ download_o_contrib_six () {
     ln -sf /data/all/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/cache_backport/update-030.info" ] ; then
+  if [ ! -e "/data/all/000/modules/cache_backport/update-031.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc1.tar.gz"
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
-    echo update > cache_backport/update-030.info
+    echo update > cache_backport/update-031.info
   fi
-  if [ ! -e "/data/all/000/modules/redis/update-030.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-031.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-030.info
+    echo update > redis/update-031.info
+  fi
+  if [ ! -e "/data/all/000/modules/redis_edge/update-031.info" ] ; then
+    mkdir -p /data/all/000/modules
+    cd /data/all/000/modules
+    rm -f -r /data/all/000/modules/redis_edge
+    get_dev_contrib "redis_edge-7.x-2.x-o8-2.5.tar.gz"
+    rm -f redis_edge/redis.info
+    echo update > redis_edge/update-031.info
   fi
 }
 #
@@ -654,7 +676,7 @@ fi
 if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
-if [ ! -e "/data/all/000/modules/redis/update-030.info" ] ; then
+if [ ! -e "/data/all/000/modules/redis/update-031.info" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
