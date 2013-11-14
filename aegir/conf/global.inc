@@ -634,6 +634,9 @@ if ($redis_up && $use_redis && !$custom_cache) {
       $conf['redis_flush_mode_cache_block'] = 2; // Redis default is 1
       $conf['redis_flush_mode_cache_menu']  = 2; // Redis default is 0
       // See http://bit.ly/1drmi35 for more information
+      if ($is_dev && !$is_backend) {
+        header("X-Redis-Edge-Custom: 6");
+      }
     }
   }
   else {
