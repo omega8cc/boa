@@ -216,7 +216,7 @@ fix_o_contrib_symlink () {
 }
 
 sql_convert () {
-  su - ${_THIS_HM_USER}.ftp -c "sqlmagic convert to-innodb"
+  sudo -u ${_THIS_HM_USER}.ftp sqlmagic convert to-innodb
 }
 
 check_site_status () {
