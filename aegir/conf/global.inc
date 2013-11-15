@@ -228,6 +228,7 @@ if (!$is_dev && !$is_backend) {
  */
 $boa_ini = array(
   'redis_use_modern' => FALSE,
+  'redis_flush_forced_mode' => FALSE,
   'redis_lock_enable' => FALSE,
   'redis_cache_disable' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
@@ -283,6 +284,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
     header("X-Ini-Src: BOA-Default");
   }
   header("X-Ini-Redis-Use-Modern: " . $all_ini['redis_use_modern']);
+  header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
@@ -635,14 +637,14 @@ if ($redis_up && $use_redis && !$custom_cache) {
     if ($is_dev && !$is_backend) {
       header("X-Redis-Version-Is: Modern");
     }
-    if ($drupal_six) {
+    if ($all_ini['redis_flush_forced_mode']) {
       $conf['redis_flush_mode']             = 1; // Redis default is 0
       $conf['redis_flush_mode_cache_page']  = 2; // Redis default is 1
       $conf['redis_flush_mode_cache_block'] = 2; // Redis default is 1
       $conf['redis_flush_mode_cache_menu']  = 2; // Redis default is 0
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
-        header("X-Redis-Modern-Custom: 6");
+        header("X-Redis-Flush-Forced-Mode: Forced");
       }
     }
   }
