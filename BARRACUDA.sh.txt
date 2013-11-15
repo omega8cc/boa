@@ -2727,7 +2727,7 @@ barracuda_cnf () {
       _PHP_VERSION_NEW=5.3.27
       _PHP_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      _PHP_VERSION_NEW=5.4.21
+      _PHP_VERSION_NEW=5.4.22
       _PHP_API=20100525
       _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
@@ -3219,7 +3219,7 @@ barracuda_cnf () {
       _PHP_VERSION_NEW=5.3.27
       _PHP_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      _PHP_VERSION_NEW=5.4.21
+      _PHP_VERSION_NEW=5.4.22
       _PHP_API=20100525
       _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
