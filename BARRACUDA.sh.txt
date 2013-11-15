@@ -817,6 +817,17 @@ _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_REDIS=NO
 
 ###
+### Define the amount of RAM you want to keep
+### reserved for other services installed which
+### are not controlled by BOA, so it will
+### assume that available RAM is the value of
+### $_RAM - $_RESERVED_RAM (in MB).
+###
+### Example for 256MB: _RESERVED_RAM=256
+###
+_RESERVED_RAM=0
+
+###
 ### CiviCRM 4.2 and newer requires more SQL
 ### privileges (the SUPER which can't be added
 ### for obvious security reasons) or binary
@@ -2447,6 +2458,9 @@ tune_memory_limits () {
     _CPU_VS=2
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
+  if [ "$_RESERVED_RAM" -gt "0" ] ; then
+    let "_RAM = (($_RAM - $_RESERVED_RAM))"
+  fi
   let "_USE = (($_RAM / 4))"
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
@@ -2794,6 +2808,7 @@ barracuda_cnf () {
     echo "_MODULES_SKIP=\"$_MODULES_SKIP\"" >> /root/.barracuda.cnf
     echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
+    echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -3113,6 +3128,12 @@ barracuda_cnf () {
       true
     else
       echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
+    fi
+    _RESERVED_RAM_TEST=$(grep _RESERVED_RAM /root/.barracuda.cnf)
+    if [[ "$_RESERVED_RAM_TEST" =~ "_RESERVED_RAM" ]] ; then
+      true
+    else
+      echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`

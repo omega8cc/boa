@@ -837,6 +837,9 @@ tune_memory_limits () {
     _CPU_VS=2
   fi
   _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
+  if [ ! -z "$_RESERVED_RAM" ] && [ "$_RESERVED_RAM" -gt "0" ] ; then
+    let "_RAM = (($_RAM - $_RESERVED_RAM))"
+  fi
   let "_USE = (($_RAM / 4))"
   if [ "$_VMFAMILY" = "VS" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [ "$_VMFAMILY" = "VS" ] ; then
