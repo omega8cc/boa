@@ -5686,7 +5686,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
     service tomcat stop &> /dev/null
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
-    killall -9 java &> /dev/null
+    kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
   if [ -d "/var/www/cgp" ] ; then
     mrun "apt-get remove collectd -y --force-yes" 2> /dev/null
@@ -5762,7 +5762,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
     service tomcat stop &> /dev/null
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
-    killall -9 java &> /dev/null
+    kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
   if [ -d "/var/www/cgp" ] ; then
     mrun "apt-get remove collectd -y --force-yes" &> /dev/null

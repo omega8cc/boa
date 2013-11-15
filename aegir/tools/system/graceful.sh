@@ -34,10 +34,23 @@ action()
     rm -f /tmp/{add*,entity*,box*,comm*,*png,*jpg,*gif,five*,magic*,mail*,rules*,social*,views*,test*,xls*,poll*,voting*,Order*,boost*,jquery*,wsc*,*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,drupal*,ns*,superfish*,context*,.htaccess}
   fi
   rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root,tmp*}
+  if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
+    /etc/init.d/tomcat stop
+  fi
+  if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
+    /etc/init.d/jetty9 stop
+  fi
+  if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
+    /etc/init.d/jetty8 stop
+  fi
+  if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
+    /etc/init.d/jetty7 stop
+  fi
+  sleep 5
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   rm -f /opt/tomcat6/logs/*
   rm -f /var/log/jetty{7,8,9}/*
-  `killall -9 java`;
-  sleep 2
   if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
     /etc/init.d/tomcat start
   fi
