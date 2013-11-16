@@ -1399,7 +1399,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ -d "$_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old" ] ; then
       mv $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL-old $_CORE/$_REAL_PRNAME-$_MANAGINGNEWS_DL
     fi
-    rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,ctools,data,features,feeds,imageapi,imagecache,libraries,mapbox,openlayers,spaces,views,views_rss}
+    rm -f -r $_SHRD_PRPATH/modules/contrib/{boxes,context,ctools,data,features,feeds,imageapi,imagecache,jquery_ui,libraries,mapbox,openlayers,spaces,strongarm,views_rss,views}
     cd $_SHRD_PRPATH/modules/contrib/
     get_dev_contrib "boxes-6.x-1.1.tar.gz"
     get_dev_contrib "context-6.x-3.3.tar.gz"
@@ -1409,10 +1409,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "feeds-6.x-1.0-beta13.tar.gz"
     get_dev_contrib "imageapi-6.x-1.10.tar.gz"
     get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz"
+    get_dev_contrib "jquery_ui-6.x-1.5.tar.gz"
     get_dev_contrib "libraries-6.x-1.0.tar.gz"
     get_dev_contrib "mapbox-6.x-2.0-alpha1.tar.gz"
-    get_dev_contrib "openlayers-6.x-2.0-beta1.tar.gz"
-    get_dev_contrib "spaces-6.x-3.6.tar.gz"
+    get_dev_contrib "openlayers-6.x-2.0-beta3.tar.gz"
+    get_dev_contrib "spaces-6.x-3.7.tar.gz"
+    get_dev_contrib "strongarm-6.x-2.2.tar.gz"
     get_dev_contrib "views_rss-6.x-2.0-rc3.tar.gz"
     get_dev_contrib "views-6.x-2.13.tar.gz"
     cd views
