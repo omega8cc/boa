@@ -693,6 +693,11 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
+      $conf['cache_class_cache_menu']         = 'DrupalDatabaseCache';
+      if ($drupal_six) {
+        $conf['cache_class_cache_views']      = 'DrupalDatabaseCache';
+        $conf['cache_class_cache']            = 'DrupalDatabaseCache';
+      }
       if ($is_dev && !$is_backend) {
         header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
       }
