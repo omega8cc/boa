@@ -435,6 +435,24 @@ fix_modules () {
             fi
           fi
 
+          ###
+          ### Disable redis_lock_enable in case it is enabled until https://drupal.org/node/2135545 is fixed
+          ### You can still enable it for testing either in local.settings.php or /data/conf/override.global.inc
+          ### with line $all_ini['redis_lock_enable'] = TRUE;
+          ###
+          if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _REDIS_LOCK_ENABLE_TEST=$(grep "^redis_lock_enable = TRUE" $_PLR_CTRL_FILE)
+            if [[ "$_REDIS_LOCK_ENABLE_TEST" =~ "redis_lock_enable = TRUE" ]] ; then
+              sed -i "s/.*redis_lock_enable.*/;redis_lock_enable = FALSE/g" $_PLR_CTRL_FILE &> /dev/null
+            fi
+          fi
+          if [ -e "$_DIR_CTRL_FILE" ] ; then
+            _REDIS_LOCK_ENABLE_TEST=$(grep "^redis_lock_enable = TRUE" $_DIR_CTRL_FILE)
+            if [[ "$_REDIS_LOCK_ENABLE_TEST" =~ "redis_lock_enable = TRUE" ]] ; then
+              sed -i "s/.*redis_lock_enable.*/;redis_lock_enable = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+            fi
+          fi
+
           if [ -e "$_PLR_CTRL_FILE" ] ; then
             _ENTITYCACHE_DONT_ENABLE_TEST=$(grep "^entitycache_dont_enable = TRUE" $_PLR_CTRL_FILE)
             if [[ "$_ENTITYCACHE_DONT_ENABLE_TEST" =~ "entitycache_dont_enable = TRUE" ]] ; then

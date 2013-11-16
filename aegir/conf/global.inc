@@ -295,6 +295,15 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 }
 
 /**
+ * Disable redis_lock_enable in case it is enabled until https://drupal.org/node/2135545 is fixed
+ * You can still enable it for testing either in local.settings.php or /data/conf/override.global.inc
+ */
+$all_ini['redis_lock_enable'] = FALSE;
+if ($is_dev && !$is_backend) {
+  header('X-Redis-Lock-Forced: OFF');
+}
+
+/**
  * Hostmaster specific settings
  */
 if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
