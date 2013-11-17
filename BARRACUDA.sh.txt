@@ -3808,7 +3808,7 @@ install_php_legacy () {
   _LOC_PHP_PATH=/usr/local/bin
   install_php_scr_build_extensions
   install_php_universal_extensions
-  echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev.log
+  echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev-fix.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
@@ -6624,7 +6624,20 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=NO
       msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     fi
+    _BROKEN_CURL_TEST=$(curl --version 2> /dev/null)
+    if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
+      install_curl_src
+    fi
+    _BROKEN_LIBCURL_TEST=$($_PHP_NEW_BIN -v 2> /dev/null)
+    if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+      _PHP_INSTALL_REQUIRED_NEW=YES
+      msg "INFO: Installed PHP version $_PHP_INSTALLED, libcurl broken, rebuild required"
+    fi
   else
+    _BROKEN_CURL_TEST=$(curl --version 2> /dev/null)
+    if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
+      install_curl_src
+    fi
     if [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=YES
       msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
@@ -6654,7 +6667,7 @@ if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
   else
     _PHP_INSTALL_REQUIRED=YES
   fi
-  if [ ! -e "/var/log/libcurl4-openssl-dev.log" ] ; then
+  if [ ! -e "/var/log/libcurl4-openssl-dev-fix.log" ] ; then
     _PHP_INSTALL_REQUIRED=YES
     if [ "$_STATUS" = "UPGRADE" ] ; then
       msg "INFO: PHP $_PHP_VERSION rebuild required to include libcurl4-openssl-dev"
