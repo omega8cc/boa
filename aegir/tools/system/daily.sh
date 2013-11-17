@@ -891,6 +891,9 @@ else
   _VMFAMILY="XEN"
 fi
 _CTRL_TPL_FORCE_UPDATE=YES
+sed -i "s/58 9/58 2/g" /var/spool/cron/crontabs/root &> /dev/null
+chown root:crontab /var/spool/cron/crontabs/root
+chmod 600 /var/spool/cron/crontabs/root
 #
 # Check for last all nr
 if [ -e "/data/all" ] ; then

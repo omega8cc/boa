@@ -1616,7 +1616,7 @@ enable_purge_cruft_machine () {
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
-    echo "18 6    * * 1   root    bash /var/xdrago/purge_cruft.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "18 6    * * 2   root    bash /var/xdrago/purge_cruft.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 #
@@ -1625,7 +1625,7 @@ enable_weekly_usage_monitor () {
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
-    echo "28 6    * * 1   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "28 6    * * 2   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 #
