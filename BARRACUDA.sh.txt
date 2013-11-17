@@ -4725,6 +4725,13 @@ install_ssh_src () {
     if [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold openssh-server openssh-client ssh &> /dev/null
     fi
+  else
+    aptitude hold openssh-server &> /dev/null
+    aptitude hold openssh-client &> /dev/null
+    aptitude hold ssh &> /dev/null
+    echo "openssh-server hold" | dpkg --set-selections &> /dev/null
+    echo "openssh-client hold" | dpkg --set-selections &> /dev/null
+    echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
@@ -4760,6 +4767,15 @@ install_curl_src () {
     if [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold curl libcurl3 libcurl3-gnutls libcurl4-openssl-dev &> /dev/null
     fi
+  else
+    aptitude hold curl &> /dev/null
+    aptitude hold libcurl3 &> /dev/null
+    aptitude hold libcurl3-gnutls &> /dev/null
+    aptitude hold libcurl4-openssl-dev &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
@@ -4818,6 +4834,17 @@ install_ssl_src () {
     if [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold libssl-dev openssl zlibc zlib1g zlib1g-dev &> /dev/null
     fi
+  else
+    aptitude hold libssl-dev &> /dev/null
+    aptitude hold openssl &> /dev/null
+    aptitude hold zlibc &> /dev/null
+    aptitude hold zlib1g &> /dev/null
+    aptitude hold zlib1g-dev &> /dev/null
+    echo "libssl-dev hold" | dpkg --set-selections &> /dev/null
+    echo "openssl hold" | dpkg --set-selections &> /dev/null
+    echo "zlibc hold" | dpkg --set-selections &> /dev/null
+    echo "zlib1g hold" | dpkg --set-selections &> /dev/null
+    echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
