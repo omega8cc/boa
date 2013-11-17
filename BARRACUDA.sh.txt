@@ -4737,6 +4737,15 @@ install_ssh_src () {
 #
 # Install cURL from sources.
 install_curl_src () {
+  echo "libcurl3 install" | dpkg --set-selections &> /dev/null
+  echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
+  echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
+  st_runner "aptitude install libcurl3 libcurl3-gnutls libcurl4-openssl-dev -y" &> /dev/null
+  aptitude hold curl &> /dev/null
+  echo "curl hold" | dpkg --set-selections &> /dev/null
+  if [ "$_REL_VERSION" = "precise" ] ; then
+    apt-mark hold curl &> /dev/null
+  fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
@@ -4744,7 +4753,6 @@ install_curl_src () {
   else
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
-    st_runner "aptitude remove libcurl4-openssl-dev -y" &> /dev/null
   fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
     msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
@@ -4756,27 +4764,7 @@ install_curl_src () {
     st_runner "sh ./configure --prefix=/usr" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    aptitude hold curl &> /dev/null
-    aptitude hold libcurl3 &> /dev/null
-    aptitude hold libcurl3-gnutls &> /dev/null
-    aptitude hold libcurl4-openssl-dev &> /dev/null
-    echo "curl hold" | dpkg --set-selections &> /dev/null
-    echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
-    echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
-    echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
     _UP_PHP=YES
-    if [ "$_REL_VERSION" = "precise" ] ; then
-      apt-mark hold curl libcurl3 libcurl3-gnutls libcurl4-openssl-dev &> /dev/null
-    fi
-  else
-    aptitude hold curl &> /dev/null
-    aptitude hold libcurl3 &> /dev/null
-    aptitude hold libcurl3-gnutls &> /dev/null
-    aptitude hold libcurl4-openssl-dev &> /dev/null
-    echo "curl hold" | dpkg --set-selections &> /dev/null
-    echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
-    echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
-    echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
   fi
 }
 #
@@ -6020,7 +6008,7 @@ else
   _SSB_SRC=NO
 fi
 if [ "$_SSB_SRC" = "YES" ] ; then
-  true
+  _EXTRA_PACKAGES="libcurl4-openssl-dev $_EXTRA_PACKAGES"
 else
   _EXTRA_PACKAGES="curl libcurl4-openssl-dev $_EXTRA_PACKAGES"
 fi
