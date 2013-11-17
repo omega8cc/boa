@@ -854,6 +854,7 @@ action () {
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 1"
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
         fi
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           rm -f -r $User/clients/admin &> /dev/null
@@ -891,7 +892,7 @@ else
   _VMFAMILY="XEN"
 fi
 _CTRL_TPL_FORCE_UPDATE=YES
-sed -i "s/58 9/58 2/g" /var/spool/cron/crontabs/root &> /dev/null
+sed -i "s/58 15/58 2/g" /var/spool/cron/crontabs/root &> /dev/null
 chown root:crontab /var/spool/cron/crontabs/root
 chmod 600 /var/spool/cron/crontabs/root
 #
@@ -1005,6 +1006,9 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:root /data/all
   chown -R root:users /data/all/*/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed.info
+fi
+if [ ! -e "/root/.upstart.cnf" ] ; then
+  service cron reload &> /dev/null
 fi
 echo "INFO: Daily maintenance complete"
 exit 0
