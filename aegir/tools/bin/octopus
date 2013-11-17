@@ -331,7 +331,7 @@ check_dns_curl ()
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     fi
   fi
-  _CURL_TEST=$(curl -s -I "http://files.aegir.cc")
+  _CURL_TEST=$(curl -s -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     true
   else
