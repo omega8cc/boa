@@ -1,6 +1,6 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.1.2-dev
+Your Aegir Hosting System has been upgraded to version BOA-2.1.2
 
   https://aegir.dragon.ny.host8.biz
 
