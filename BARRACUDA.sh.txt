@@ -3431,8 +3431,8 @@ install_php_universal_extensions () {
   if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     get_dev_src "phpredis_master.tar.gz" &> /dev/null
   else
-    ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
-    get_dev_src "phpredis.tar.gz" &> /dev/null
+    ### git clone --branch master git://github.com/omega8cc/phpredis.git &> /dev/null
+    get_dev_src "phpredis_new.tar.gz" &> /dev/null
   fi
   cd /var/opt/phpredis
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
@@ -3594,8 +3594,8 @@ update_php_universal_extensions () {
     if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       get_dev_src "phpredis_master.tar.gz" &> /dev/null
     else
-      ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
-      get_dev_src "phpredis.tar.gz" &> /dev/null
+      ### git clone --branch master git://github.com/omega8cc/phpredis.git &> /dev/null
+      get_dev_src "phpredis_new.tar.gz" &> /dev/null
     fi
     ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
     get_dev_src "phpredis.tar.gz" &> /dev/null
