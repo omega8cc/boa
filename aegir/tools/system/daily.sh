@@ -686,6 +686,48 @@ fix_site_system_control_settings () {
   done
 }
 
+cleanup_ini () {
+  if [ -e "$_CTRL_FILE" ] ; then
+    sed -i "s/^;;.*//g" $_CTRL_FILE &> /dev/null
+    sed -i "/^$/d" $_CTRL_FILE &> /dev/null
+    sed -i "s/^\[/\n\[/g" $_CTRL_FILE &> /dev/null
+  fi
+}
+
+add_note_platform_ini () {
+  if [ -e "$_CTRL_FILE" ] ; then
+    echo "" >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+    echo ";;  This is a platform level ACTIVE INI file which can be used to modify"    >> $_CTRL_FILE
+    echo ";;  default BOA system behaviour for all sites hosted on this platform."     >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
+    echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"            >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.1.2"        >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+    echo ";;  Note that it takes ~5 seconds to see any modification results in action" >> $_CTRL_FILE
+    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."         >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+  fi
+}
+
+add_note_site_ini () {
+  if [ -e "$_CTRL_FILE" ] ; then
+    echo "" >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+    echo ";;  This is a site level ACTIVE INI file which can be used to modify"        >> $_CTRL_FILE
+    echo ";;  default BOA system behaviour for this site only."                        >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
+    echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.1.2"        >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+    echo ";;  Note that it takes ~5 seconds to see any modification results in action" >> $_CTRL_FILE
+    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."         >> $_CTRL_FILE
+    echo ";;" >> $_CTRL_FILE
+  fi
+}
+
 fix_platform_control_files () {
   if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] ; then
     if [ ! -e "$Plr/sites/all/modules/default.boa_platform_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
@@ -698,6 +740,8 @@ fix_platform_control_files () {
     _CTRL_DIR="$Plr/sites/all/modules"
     fix_control_settings
     fix_platform_system_control_settings
+    cleanup_ini
+    add_note_platform_ini
   fi
 }
 
@@ -713,6 +757,8 @@ fix_site_control_files () {
     _CTRL_DIR="$Dir/modules"
     fix_control_settings
     fix_site_system_control_settings
+    cleanup_ini
+    add_note_site_ini
   fi
 }
 
