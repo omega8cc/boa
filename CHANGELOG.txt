@@ -63,10 +63,6 @@
   * Newer aegir_custom_settings 6.x-2.3 with site clone added for client role.
   * Newer registry_rebuild 7.x-2.1 with fixed critical bug - see: #2130905
 
-# Updated o_contrib modules:
-
-  * Contrib update: redis-7.x-2.3
-
 # Changes in this release:
 
   * Auto-Disable views_cache_bully also when Ubercart is enabled.
