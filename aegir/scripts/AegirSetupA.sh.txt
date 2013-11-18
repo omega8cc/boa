@@ -361,7 +361,7 @@ fi
 #
 o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully views_content_cache"
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully views_content_cache panels_content_cache"
 for i in $REVISIONS; do
   if [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-037.info" ] ; then
     _FORCE_UP_SIX=YES
@@ -380,11 +380,12 @@ for i in $REVISIONS; do
       fi
     done
     cd /data/all/$i/o_contrib
-    get_dev_contrib "boost-6.x-1.x.tar.gz"
     get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+    get_dev_contrib "boost-6.x-1.x.tar.gz"
     get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
     get_dev_contrib "fpa-6.x-2.5.tar.gz"
     get_dev_contrib "httprl-6.x-1.13.tar.gz"
+    get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
     get_dev_contrib "phpass-6.x-2.0.tar.gz"
     get_dev_contrib "views_cache_bully-6.x-3.x-dev.tar.gz"
     get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
@@ -429,7 +430,7 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully views_content_cache"
+RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully views_content_cache panels_content_cache"
 for i in $REVISIONS; do
   if [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-037.info" ] ; then
     _FORCE_UP_SEVEN=YES
@@ -460,6 +461,7 @@ for i in $REVISIONS; do
     get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
     get_dev_contrib "fpa-7.x-2.3.tar.gz"
     get_dev_contrib "httprl-7.x-1.13.tar.gz"
+    get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
     get_dev_contrib "speedy-7.x-1.8.tar.gz"
     get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
     get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
@@ -551,6 +553,7 @@ download_o_contrib_seven () {
   get_dev_contrib "httprl-7.x-1.13.tar.gz"
   get_dev_contrib "login_security-7.x-1.7.tar.gz"
   get_dev_contrib "nocurrent_pass-7.x-1.0.tar.gz"
+  get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
   get_dev_contrib "readonlymode-7.x-1.1.tar.gz"
   get_dev_contrib "reroute_email-7.x-1.x-dev.tar.gz"
   get_dev_contrib "robotstxt-7.x-1.1.tar.gz"
@@ -611,6 +614,7 @@ download_o_contrib_six () {
   get_dev_contrib "admin-6.x-2.0.tar.gz"
   get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
   get_dev_contrib "blockcache_alter-6.x-1.5.tar.gz"
+  get_dev_contrib "boost-6.x-1.x.tar.gz"
   get_dev_contrib "cdn-6.x-2.6.tar.gz"
   get_dev_contrib "config_perms-6.x-2.x-dev.tar.gz"
   get_dev_contrib "css_emimage-6.x-2.x-dev.tar.gz"
@@ -622,6 +626,7 @@ download_o_contrib_six () {
   get_dev_contrib "httprl-6.x-1.13.tar.gz"
   get_dev_contrib "image-6.x-1.2.tar.gz"
   get_dev_contrib "login_security-6.x-1.4.tar.gz"
+  get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
   get_dev_contrib "phpass-6.x-2.0.tar.gz"
   get_dev_contrib "private_upload-6.x-1.x-dev.tar.gz"
   get_dev_contrib "readonlymode-6.x-1.2.tar.gz"
@@ -635,7 +640,6 @@ download_o_contrib_six () {
   get_dev_contrib "views_cache_bully-6.x-3.x-dev.tar.gz"
   get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
   get_dev_contrib "views404-6.x-1.x-dev.tar.gz"
-  get_dev_contrib "boost-6.x-1.x.tar.gz"
   if [ "$_PURGE_MODE" = "ON" ] ; then
     rm -f -r purge*
     rm -f -r expire*
