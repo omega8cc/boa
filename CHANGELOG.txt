@@ -83,10 +83,13 @@
 
   * Always fix permissions on contrib on upgrade and in daily.sh agent.
   * Avoid files checks for Drupal for Facebook and Domain Access by default.
+  * Better auto-recovery when broken libcurl is detected.
+  * Fix for cron auto-correction.
   * Fix for post-upgrade permissions issues affecting modules|themes|libraries.
   * Fix for too restrictive permissions in /data/all/000/*
   * Fix regression in the logic for dev URLs detection and auto-configuration.
   * Fix the forced contrib upgrade logic.
+  * Fix the logic for cURL install from sources.
   * Improve procs monitoring agent with better whitelisting.
   * Improve sanitize_string() filtering to avoid issues with strong passwords.
   * Issue #1860706 - Native, unified support also for D6 lock backend.
@@ -117,7 +120,7 @@
 
   * Part of the Site Health Check task (the `drush6 status-report` command)
     breaks permissions on the site directory, which blocks any further tasks
-    like Clone, Migrate and Backup. This regressions was introduced in previous
+    like Clone, Migrate and Backup. This regression was introduced in the
     BOA-2.1.0 release.
 
 # HotFix for known post-upgrade issues
