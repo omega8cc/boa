@@ -66,6 +66,7 @@ Contrib [S]upported and [B]undled:
  config_perms --------------- [D6,D7] --- [S] [B]
  css_emimage ---------------- [D6,D7] --- [S] [B]
  dbtuner -------------------- [D6] ------ [S] [B]
+ display_cache -------------- [D7] ------ [S] [B]
  esi ------------------------ [D6,D7] --- [S] [B]
  expire --------------------- [D6,D7] --- [S] [B]
  filefield_nginx_progress --- [D6,D7] --- [S] [B]
