@@ -111,6 +111,23 @@
   * Set less restrictive permissions on civicrm.settings.php since
     provision_civicrm does not make the file writable temporarily as it should.
 
+# Known Issues on systems upgraded to initial BOA-2.1.2 release
+
+  ==> Updated on Mon Nov 18 09:22:10 SGT 2013 with all fixes applied to stable.
+
+  * Part of the Site Health Check task (the `drush6 status-report` command)
+    breaks permissions on the site directory, which blocks any further tasks
+    like Clone, Migrate and Backup. This regressions was introduced in previous
+    BOA-2.1.0 release.
+
+# HotFix for known post-upgrade issues
+
+  Replace the file in the provision_tasks_extra extension directory as shown
+  below. Note that USER is a placeholedr for your real Aegir system user.
+
+  $ cd /data/disk/USER/.drush/provision_tasks_extra
+  $ curl -s -A iCab "http://files.aegir.cc/update/pte-fix.txt" -o provision_tasks_extra.drush.inc
+
 
 ### Stable BOA-2.1.1 Release - Full Edition
 ### Date: Sat Nov  9 17:00:00 EST 2013
