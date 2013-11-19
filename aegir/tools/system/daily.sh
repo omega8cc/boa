@@ -234,7 +234,7 @@ fix_o_contrib_symlink () {
 }
 
 sql_convert () {
-  sudo -u ${_THIS_HM_USER}.ftp -H sqlmagic convert to-innodb
+  sudo -u ${_THIS_HM_USER}.ftp -H sqlmagic convert to-${_SQL_CONVERT}
 }
 
 check_site_status () {
@@ -277,12 +277,17 @@ fix_modules () {
         cd $Dir
         check_site_status
         if [ "$_STATUS" = "OK" ] ; then
-          if [ "$_SQL_CONVERT" = "YES" ] ; then
-            _TIMESTAMP=`date +%y%m%d-%H%M`
-            echo "$_TIMESTAMP sql conversion for $Dom started"
-            sql_convert
-            _TIMESTAMP=`date +%y%m%d-%H%M`
-            echo "$_TIMESTAMP sql conversion for $Dom completed"
+          if [ ! -z "$_SQL_CONVERT" ] ; then
+            if [ "$_SQL_CONVERT" = "YES" ] ; then
+              _SQL_CONVERT=innodb
+            fi
+            if [ "$_SQL_CONVERT" = "myisam" ] || [ "$_SQL_CONVERT" = "innodb" ] ; then
+              _TIMESTAMP=`date +%y%m%d-%H%M`
+              echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} for $Dom started"
+              sql_convert
+              _TIMESTAMP=`date +%y%m%d-%H%M`
+              echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} for $Dom completed"
+            fi
           fi
           fix_user_register_protection
 
