@@ -116,7 +116,16 @@
 
 # Known Issues on systems upgraded to initial BOA-2.1.2 release
 
-  ==> Updated on Mon Nov 18 09:22:10 SGT 2013 with all fixes applied to stable.
+  ==> Updated on Tue Nov 19 11:42:45 SGT 2013 with all fixes applied to stable.
+
+  * There is regression introduced in the maintenance agent logic, which
+    results with dependency check effectively ignored. This may cause various
+    disastrous effects, like disabling all modules chained via feature or
+    via apps module, because apps module requires update module, which is
+    normally disabled. While any feature which requires dblog or update module
+    enabled is considered as a serious developer error and should be avoided,
+    we have to respect all dependencies defined to never break any site by
+    forcefully disabling modules.
 
   * Part of the Site Health Check task (the `drush6 status-report` command)
     breaks permissions on the site directory, which blocks any further tasks
