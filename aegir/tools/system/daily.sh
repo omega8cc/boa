@@ -238,12 +238,23 @@ sql_convert () {
 }
 
 check_site_status () {
-  _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*Successful'")
-  if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
-    _STATUS=OK
+  _SITE_TEST=$(drush4 status 2>&1)
+  if [[ "$_SITE_TEST" =~ "Error:" ]] || [[ "$_SITE_TEST" =~ "Drush was attempting to connect" ]] ; then
+    _SITE_TEST_RESULT=ERROR
+  else
+    _SITE_TEST_RESULT=OK
+  fi
+  if [ "$_SITE_TEST_RESULT" = "OK" ] ; then
+    _STATUS_TEST=$(run_drush4_nosilent_cmd "status | grep 'Drupal bootstrap.*:.*Successful'")
+    if [[ "$_STATUS_TEST" =~ "Successful" ]] ; then
+      _STATUS=OK
+    else
+      _STATUS=BROKEN
+      echo "WARNING: THIS SITE IS BROKEN! $Dir"
+    fi
   else
     _STATUS=BROKEN
-    echo "WARNING: THIS SITE IS BROKEN! $Dir"
+    echo "WARNING: THIS SITE IS PROBABLY BROKEN! $Dir"
   fi
 }
 
@@ -316,12 +327,22 @@ fix_modules () {
           fi
 
           if [ -e "$Plr/modules/o_contrib_seven" ] ; then
+            _PRIV_TEST=$(drush4 vget ^file_default_scheme$ 2>&1)
+            if [[ "$_PRIV_TEST" =~ "No matching variable" ]] ; then
+              _PRIV_TEST_RESULT=NONE
+            else
+              _PRIV_TEST_RESULT=OK
+            fi
             _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS=NO
-            Pri=$(drush4 vget ^file_default_scheme$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
-            Pri=${Pri//[^a-z]/}
-            echo Pri file_default_scheme for $Dom is $Pri
-            if [ "$Pri" = "private" ] ; then
-              _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS=YES
+            if [ "$_PRIV_TEST_RESULT" = "OK" ] ; then
+              Pri=$(drush4 vget ^file_default_scheme$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)
+              Pri=${Pri//[^a-z]/}
+              if [ "$Pri" = "private" ] || [ "$Pri" = "public" ] ; then
+                echo Pri file_default_scheme for $Dom is $Pri
+              fi
+              if [ "$Pri" = "private" ] ; then
+                _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS=YES
+              fi
             fi
             if [ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS" = "YES" ] ; then
               if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
