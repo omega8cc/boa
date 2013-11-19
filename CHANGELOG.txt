@@ -134,13 +134,7 @@
 
 # HotFix for known post-upgrade issues
 
-  Replace the file in the provision_tasks_extra extension directory as shown
-  below. Note that USER is a placeholder for your real Aegir system user.
-
-  $ cd /data/disk/USER/.drush/provision_tasks_extra
-  $ curl -s -A iCab "http://files.aegir.cc/update/pte-fix.txt" -o provision_tasks_extra.drush.inc
-
-  You can also run the boa-fix-upgrade script when logged in as system root:
+  Run the boa-fix-upgrade script when logged in as system root:
 
   $ cd;rm -f boa-fix-upgrade.sh.txt*
   $ wget -q -U iCab http://files.aegir.cc/update/boa-fix-upgrade.sh.txt
