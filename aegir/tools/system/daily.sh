@@ -32,34 +32,52 @@ run_drush6_nosilent_cmd () {
 }
 
 check_if_required () {
-  _REI_TEST=$(run_drush6_nosilent_cmd "pmi $1")
-  _REQ_TEST=$(echo $_REI_TEST | grep 'Required by.*none')
+  _REI_TEST=$(run_drush6_nosilent_cmd "pmi $1 --fields=required_by")
+  _REQ_TEST=$(echo $_REI_TEST | grep 'Required by.*:.*none')
   if [[ "$_REQ_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+    echo _REQ for $1 is $_REQ in $Dom == 0 == via $_REQ_TEST
   elif [[ "$_REI_TEST" =~ "was not found" ]] ; then
     _REQ=NULL
+    echo _REQ for $1 is $_REQ in $Dom == 1 == via $_REI_TEST
   else
     _REQ=YES
+    echo _REQ for $1 is $_REQ in $Dom == 2 == via $_REQ_TEST
   fi
   _REM_TEST=$(echo $_REI_TEST | grep 'Required by.*minimal')
   if [[ "$_REM_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+    echo _REQ for $1 is $_REQ in $Dom == 3 == via $_REM_TEST
   fi
   _RES_TEST=$(echo $_REI_TEST | grep 'Required by.*standard')
   if [[ "$_RES_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+    echo _REQ for $1 is $_REQ in $Dom == 4 == via $_RES_TEST
   fi
   _RET_TEST=$(echo $_REI_TEST | grep 'Required by.*testing')
   if [[ "$_RET_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+    echo _REQ for $1 is $_REQ in $Dom == 5 == via $_RET_TEST
   fi
   _REH_TEST=$(echo $_REI_TEST | grep 'Required by.*hacked')
   if [[ "$_REH_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+    echo _REQ for $1 is $_REQ in $Dom == 6 == via $_REH_TEST
   fi
   _RED_TEST=$(echo $_REI_TEST | grep 'Required by.*devel')
   if [[ "$_RED_TEST" =~ "Required by" ]] ; then
     _REQ=NO
+    echo _REQ for $1 is $_REQ in $Dom == 7 == via $_RED_TEST
+  fi
+  _REA_TEST=$(echo $_REI_TEST | grep 'Required by.*apps')
+  if [[ "$_REA_TEST" =~ "Required by" ]] ; then
+    _REQ=YES
+    echo _REQ for $1 is $_REQ in $Dom == 8 == via $_REA_TEST
+  fi
+  _REF_TEST=$(echo $_REI_TEST | grep 'Required by.*features')
+  if [[ "$_REF_TEST" =~ "Required by" ]] ; then
+    _REQ=YES
+    echo _REQ for $1 is $_REQ in $Dom == 9 == via $_REF_TEST
   fi
 }
 
