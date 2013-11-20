@@ -549,7 +549,7 @@ action () {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
   do
     NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-    CTL_LOAD=888
+    CTL_LOAD=1555
     if [ -e "$User/config/server_master/nginx/vhost.d" ] ; then
       if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
         SumDir=0
