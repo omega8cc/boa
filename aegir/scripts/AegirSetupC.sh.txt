@@ -359,6 +359,8 @@ prepare_drupal6_core () {
     ln -s $_CORE/o_contrib modules/o_contrib
     cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
     cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
+    rm -f -r $_D6_CORE_DIR/scripts
+    rm -f -r $_D6_CORE_DIR/themes/{bluemarine,chameleon,pushbutton,README.txt}
     cd $_D6_CORE_DIR/themes
     get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
     get_dev_contrib "tao-6.x-3.3.tar.gz"
@@ -380,6 +382,7 @@ prepare_drupal7_core () {
     rm -f $_D7_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+    rm -f -r $_D7_CORE_DIR/scripts
     cd $_D7_CORE_DIR/themes
     get_dev_contrib "rubik-7.x-4.0-beta9.tar.gz"
     get_dev_contrib "tao-7.x-3.0-beta4.tar.gz"
@@ -2442,17 +2445,13 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
 fi
 
 
-###---### Remove some module and themes for all.
+###---### Remove some unused core files.
 #
 echo " "
-msg "$_STATUS C: Removing some old core themes..."
-rm -f -r $_CORE/*/themes/bluemarine
-rm -f -r $_CORE/*/themes/chameleon
-rm -f -r $_CORE/*/themes/pushbutton
+msg "$_STATUS C: Removing some unused core files..."
+rm -f -r $_CORE/*/themes/{bluemarine,chameleon,pushbutton,README.txt}
 rm -f -r $_CORE/*/scripts
-rm -f $_CORE/*/themes/README.txt
-rm -f $_CORE/*.make
-rm -f $_CORE/*.tar.gz
+rm -f $_CORE/*{.make,.tar,.tar.gz,.zip}
 cd $_CORE
 
 
