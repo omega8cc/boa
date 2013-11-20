@@ -52,7 +52,7 @@
 ### to define the _USER value only, since
 ### _DOMAIN etc. will be auto-discovered
 ### and you can't override it here nor even
-### in the /root/.$_USER.octopus.cnf file.
+### in the /root/.${_USER}.octopus.cnf file.
 ###
 _USER=o1
 _DOMAIN=$_USER.`uname -n`
@@ -425,8 +425,40 @@ _USE_CURRENT=YES
 ### no sites hosted, during daily cleanup,
 ### if verified more than X days ago, where X
 ### is a number of days defined below.
+### If "0" then this option is disabled.
 ###
 _DEL_OLD_EMPTY_PLATFORMS="0"
+
+
+###----------------------------------------###
+### DELETE OLD BACKUPS                     ###
+###----------------------------------------###
+###
+### Change to any number greater than "0" to
+### automatically delete backups stored in the
+### /data/disk/U/backups/ directory and in all
+### hosted sites backup_migrate directories,
+### during daily cleanup, if created more
+### than X days ago, where X is a number
+### of days defined below. If "0" then
+### this option is disabled.
+###
+_DEL_OLD_BACKUPS="0"
+
+
+###----------------------------------------###
+### DELETE OLD TMP FILES                   ###
+###----------------------------------------###
+###
+### Change to any number greater than "0" to
+### automatically delete temporary files
+### in all hosted sites files/tmp/ and also
+### private/temp/ directories, during daily
+### cleanup, if created more than X days ago,
+### where X is a number of days defined below.
+### If "0" then this option is disabled.
+###
+_DEL_OLD_TMP="0"
 
 
 ###----------------------------------------###
@@ -749,7 +781,7 @@ EOF
 #
 # Read or create Octopus cnf file.
 octopus_cnf () {
-  if [ ! -e "/root/.$_USER.octopus.cnf" ] ; then
+  if [ ! -e "/root/.${_USER}.octopus.cnf" ] ; then
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -760,65 +792,67 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    msg "INFO: Creating your /root/.$_USER.octopus.cnf config file"
+    msg "INFO: Creating your /root/.${_USER}.octopus.cnf config file"
     sleep 1
-    echo "###" > /root/.$_USER.octopus.cnf
-    echo "### Configuration created on $_NOW with" >> /root/.$_USER.octopus.cnf
-    echo "### Octopus version $_INSTALLER_VERSION" >> /root/.$_USER.octopus.cnf
-    echo "###" >> /root/.$_USER.octopus.cnf
-    echo "### NOTE: the group of settings displayed bellow" >> /root/.$_USER.octopus.cnf
-    echo "### will *override* all listed settings in the Octopus script." >> /root/.$_USER.octopus.cnf
-    echo "###" >> /root/.$_USER.octopus.cnf
-    echo "_USER=\"$_USER\"" >> /root/.$_USER.octopus.cnf
-    echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.$_USER.octopus.cnf
-    echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\"" >> /root/.$_USER.octopus.cnf
-    echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.$_USER.octopus.cnf
-    echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.$_USER.octopus.cnf
-    echo "_HM_ONLY=$_HM_ONLY" >> /root/.$_USER.octopus.cnf
-    echo "_O_CONTRIB_UP=$_O_CONTRIB_UP" >> /root/.$_USER.octopus.cnf
-    echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.$_USER.octopus.cnf
-    echo "_MY_OWNIP=$_MY_OWNIP" >> /root/.$_USER.octopus.cnf
-    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.$_USER.octopus.cnf
-    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.$_USER.octopus.cnf
-    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.$_USER.octopus.cnf
-    echo "_HOT_SAUCE=$_HOT_SAUCE" >> /root/.$_USER.octopus.cnf
-    echo "_USE_CURRENT=$_USE_CURRENT" >> /root/.$_USER.octopus.cnf
-    echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.$_USER.octopus.cnf
-    echo "_REMOTE_CACHE_IP=$_REMOTE_CACHE_IP" >> /root/.$_USER.octopus.cnf
-    echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.$_USER.octopus.cnf
-    echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
-    echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
-    echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
-    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
-    echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.$_USER.octopus.cnf
-    echo "###" >> /root/.$_USER.octopus.cnf
-    echo "### NOTE: the group of settings displayed bellow will be *overridden*" >> /root/.$_USER.octopus.cnf
-    echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.$_USER.octopus.cnf
-    echo "### but only on upgrade." >> /root/.$_USER.octopus.cnf
-    echo "###" >> /root/.$_USER.octopus.cnf
-    echo "_DOMAIN=\"$_DOMAIN\"" >> /root/.$_USER.octopus.cnf
-    echo "_CLIENT_EMAIL=\"$_CLIENT_EMAIL\"" >> /root/.$_USER.octopus.cnf
-    echo "_CLIENT_OPTION=\"$_CLIENT_OPTION\"" >> /root/.$_USER.octopus.cnf
-    echo "_CLIENT_SUBSCR=\"$_CLIENT_SUBSCR\"" >> /root/.$_USER.octopus.cnf
-    echo "_CLIENT_CORES=\"$_CLIENT_CORES\"" >> /root/.$_USER.octopus.cnf
-    echo "###" >> /root/.$_USER.octopus.cnf
-    echo "### Configuration created on $_NOW with" >> /root/.$_USER.octopus.cnf
-    echo "### Octopus version $_INSTALLER_VERSION" >> /root/.$_USER.octopus.cnf
-    echo "###" >> /root/.$_USER.octopus.cnf
+    echo "###" > /root/.${_USER}.octopus.cnf
+    echo "### Configuration created on $_NOW with" >> /root/.${_USER}.octopus.cnf
+    echo "### Octopus version $_INSTALLER_VERSION" >> /root/.${_USER}.octopus.cnf
+    echo "###" >> /root/.${_USER}.octopus.cnf
+    echo "### NOTE: the group of settings displayed bellow" >> /root/.${_USER}.octopus.cnf
+    echo "### will *override* all listed settings in the Octopus script." >> /root/.${_USER}.octopus.cnf
+    echo "###" >> /root/.${_USER}.octopus.cnf
+    echo "_USER=\"$_USER\"" >> /root/.${_USER}.octopus.cnf
+    echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.${_USER}.octopus.cnf
+    echo "_PLATFORMS_LIST=\"$_PLATFORMS_LIST\"" >> /root/.${_USER}.octopus.cnf
+    echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.${_USER}.octopus.cnf
+    echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.${_USER}.octopus.cnf
+    echo "_HM_ONLY=$_HM_ONLY" >> /root/.${_USER}.octopus.cnf
+    echo "_O_CONTRIB_UP=$_O_CONTRIB_UP" >> /root/.${_USER}.octopus.cnf
+    echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.${_USER}.octopus.cnf
+    echo "_MY_OWNIP=$_MY_OWNIP" >> /root/.${_USER}.octopus.cnf
+    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.${_USER}.octopus.cnf
+    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.${_USER}.octopus.cnf
+    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.${_USER}.octopus.cnf
+    echo "_HOT_SAUCE=$_HOT_SAUCE" >> /root/.${_USER}.octopus.cnf
+    echo "_USE_CURRENT=$_USE_CURRENT" >> /root/.${_USER}.octopus.cnf
+    echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.${_USER}.octopus.cnf
+    echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS" >> /root/.${_USER}.octopus.cnf
+    echo "_DEL_OLD_TMP=$_DEL_OLD_TMP" >> /root/.${_USER}.octopus.cnf
+    echo "_REMOTE_CACHE_IP=$_REMOTE_CACHE_IP" >> /root/.${_USER}.octopus.cnf
+    echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.${_USER}.octopus.cnf
+    echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.${_USER}.octopus.cnf
+    echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.${_USER}.octopus.cnf
+    echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
+    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
+    echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
+    echo "###" >> /root/.${_USER}.octopus.cnf
+    echo "### NOTE: the group of settings displayed bellow will be *overridden*" >> /root/.${_USER}.octopus.cnf
+    echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.${_USER}.octopus.cnf
+    echo "### but only on upgrade." >> /root/.${_USER}.octopus.cnf
+    echo "###" >> /root/.${_USER}.octopus.cnf
+    echo "_DOMAIN=\"$_DOMAIN\"" >> /root/.${_USER}.octopus.cnf
+    echo "_CLIENT_EMAIL=\"$_CLIENT_EMAIL\"" >> /root/.${_USER}.octopus.cnf
+    echo "_CLIENT_OPTION=\"$_CLIENT_OPTION\"" >> /root/.${_USER}.octopus.cnf
+    echo "_CLIENT_SUBSCR=\"$_CLIENT_SUBSCR\"" >> /root/.${_USER}.octopus.cnf
+    echo "_CLIENT_CORES=\"$_CLIENT_CORES\"" >> /root/.${_USER}.octopus.cnf
+    echo "###" >> /root/.${_USER}.octopus.cnf
+    echo "### Configuration created on $_NOW with" >> /root/.${_USER}.octopus.cnf
+    echo "### Octopus version $_INSTALLER_VERSION" >> /root/.${_USER}.octopus.cnf
+    echo "###" >> /root/.${_USER}.octopus.cnf
   else
-    msg "INFO: Reading your /root/.$_USER.octopus.cnf config file"
+    msg "INFO: Reading your /root/.${_USER}.octopus.cnf config file"
     sleep 1
-    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.$_USER.octopus.cnf)
+    _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.${_USER}.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       true
     else
-      echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.$_USER.octopus.cnf
+      echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.${_USER}.octopus.cnf
     fi
-    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.$_USER.octopus.cnf)
+    _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.${_USER}.octopus.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
       true
     else
-      echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.$_USER.octopus.cnf
+      echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.${_USER}.octopus.cnf
     fi
     _CHECK_HOST=`uname -n`
     if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -829,60 +863,74 @@ octopus_cnf () {
     if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
-      sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.$_USER.octopus.cnf &> /dev/null
+      sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
     if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
       _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
-      sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.$_USER.octopus.cnf &> /dev/null
+      sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
-    _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.$_USER.octopus.cnf)
+    _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
       true
     else
-      echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.$_USER.octopus.cnf
+      echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.${_USER}.octopus.cnf
     fi
-    _USE_STOCK_TEST=$(grep _USE_STOCK /root/.$_USER.octopus.cnf)
+    _USE_STOCK_TEST=$(grep _USE_STOCK /root/.${_USER}.octopus.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
       true
     else
-      echo "_USE_STOCK=$_USE_STOCK" >> /root/.$_USER.octopus.cnf
+      echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
     fi
-    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS /root/.$_USER.octopus.cnf)
+    _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_EMPTY_PLATFORMS_TEST" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]] ; then
       true
     else
-      echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.$_USER.octopus.cnf
+      echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.${_USER}.octopus.cnf
+    fi
+    _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS /root/.${_USER}.octopus.cnf)
+    if [[ "$_DEL_OLD_BACKUPS_TEST" =~ "_DEL_OLD_BACKUPS" ]] ; then
+      true
+    else
+      echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS" >> /root/.${_USER}.octopus.cnf
+    fi
+    _DEL_OLD_TMP_TEST=$(grep _DEL_OLD_TMP /root/.${_USER}.octopus.cnf)
+    if [[ "$_DEL_OLD_TMP_TEST" =~ "_DEL_OLD_TMP" ]] ; then
+      true
+    else
+      echo "_DEL_OLD_TMP=$_DEL_OLD_TMP" >> /root/.${_USER}.octopus.cnf
     fi
     if [ "$_LD_DOM" = "YES" ] ; then
       _STRONG_PASSWORDS=YES
     fi
-    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.$_USER.octopus.cnf)
+    _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.${_USER}.octopus.cnf)
     if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
       true
     else
-      echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.$_USER.octopus.cnf
+      echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
     fi
-    _SQL_CONVERT_TEST=$(grep _SQL_CONVERT /root/.$_USER.octopus.cnf)
+    _SQL_CONVERT_TEST=$(grep _SQL_CONVERT /root/.${_USER}.octopus.cnf)
     if [[ "$_SQL_CONVERT_TEST" =~ "_SQL_CONVERT" ]] ; then
       true
     else
-      echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.$_USER.octopus.cnf
+      echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
     fi
     msg "NOTE! Please review all config options displayed below"
     sleep 3
     echo " "
     while read line ; do
       echo "$line"
-    done < /root/.$_USER.octopus.cnf
+    done < /root/.${_USER}.octopus.cnf
     echo " "
-    source /root/.$_USER.octopus.cnf
+    if [ -e "/root/.${_USER}.octopus.cnf" ] ; then
+      source /root/.${_USER}.octopus.cnf
+    fi
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
-        msg "EXIT: stored in the /root/.$_USER.octopus.cnf config file"
+        msg "EXIT: stored in the /root/.${_USER}.octopus.cnf config file"
         exit 1
       fi
     fi
@@ -1432,7 +1480,7 @@ if [ -d "$_ROOT" ] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
-        msg "EXIT: stored both in the /root/.$_USER.octopus.cnf config file **and**"
+        msg "EXIT: stored both in the /root/.${_USER}.octopus.cnf config file **and**"
         msg "EXIT: in the /data/disk/$_USER/log/email.txt file"
         msg "EXIT: Bye (1)"
         exit 1
@@ -1445,7 +1493,7 @@ if [ -d "$_ROOT" ] ; then
         true
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
-        msg "EXIT: stored both in the /root/.$_USER.octopus.cnf config file **and**"
+        msg "EXIT: stored both in the /root/.${_USER}.octopus.cnf config file **and**"
         msg "EXIT: in the /data/disk/$_USER/log/email.txt file"
         msg "EXIT: Bye (2)"
         exit 1

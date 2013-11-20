@@ -1611,12 +1611,11 @@ fix_sftp_ftps_modern () {
   fi
 }
 #
-# Enable Purge Cruft Machine (Monday).
-enable_purge_cruft_machine () {
+# Disable Old Purge Cruft Machine.
+disable_old_purge_cruft_machine () {
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     sed -i "s/.*purge_cruft.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
-    echo "18 6    * * 2   root    bash /var/xdrago/purge_cruft.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 #
@@ -2036,7 +2035,7 @@ fix_on_upgrade () {
   kill_nash
   fix_sftp_ftps_modern
   fix_ftps_pam
-  enable_purge_cruft_machine
+  disable_old_purge_cruft_machine
   enable_weekly_usage_monitor
   update_php_conf
   update_sql_conf
@@ -4884,6 +4883,7 @@ finale () {
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
   rm -f /var/xdrago/usage.sh
+  rm -f /var/xdrago/purge_cruft.sh
   rm -f -r /tmp/drush_make_tmp*
   rm -f -r /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
@@ -6263,7 +6263,7 @@ if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
 fi
 kill_nash
 fix_sftp_ftps_modern
-enable_purge_cruft_machine
+disable_old_purge_cruft_machine
 enable_weekly_usage_monitor
 install_wkhtmltopdf
 install_wkhtmltoimage
