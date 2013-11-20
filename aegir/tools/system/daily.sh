@@ -612,6 +612,7 @@ fix_permissions () {
   ### modules,themes,libraries - platform level
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries}
+    find $Plr/sites/all/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
     chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
@@ -630,6 +631,8 @@ fix_permissions () {
   find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
   chmod 0640 $Dir/civicrm.settings.php &> /dev/null
   ### modules,themes,libraries - site level
+  find $Dir/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
+  rm -f $Dir/modules/local-allow.info
   chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
   chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
   find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
