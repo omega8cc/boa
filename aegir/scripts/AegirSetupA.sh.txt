@@ -330,31 +330,61 @@ create_shared_dirs () {
 # Fix for FServer broken due to required now strongarm.
 #
 feature_server_fix_002 () {
-if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
-msg "$_STATUS A: Adding missing strongarm module to old fserver platforms"
-REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014"
-for i in $REVISIONS; do
-  if [ -d "/data/all/$i/fserver" ] ; then
-    if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
-      cd /data/all/$i/fserver/profiles/feature_server/modules/
-      get_dev_contrib "strongarm-6.x-2.2.tar.gz"
-      cd /data/all/$i/fserver/profiles/feature_server
-      rm -f feature_server.make
-      rm -f feature_server.profile
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.make ./
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.profile ./
-      if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
-        _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-        cd _THIS_HOSTMASTER &> /dev/null
-        su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=$_ROOT/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
+  if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
+    msg "$_STATUS A: Adding missing strongarm module to old FServer platforms"
+    REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/fserver" ] ; then
+        if [ ! -d "/data/all/$i/fserver/profiles/feature_server/modules/strongarm" ] ; then
+          cd /data/all/$i/fserver/profiles/feature_server/modules/
+          get_dev_contrib "strongarm-6.x-2.2.tar.gz"
+          cd /data/all/$i/fserver/profiles/feature_server
+          rm -f feature_server.make
+          rm -f feature_server.profile
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.make ./
+          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/makefiles/feature_server.profile ./
+          if [ -e "$_ROOT/.drush/hostmaster.alias.drushrc.php" ] ; then
+            _THIS_HOSTMASTER=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep 'site_path' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+            cd _THIS_HOSTMASTER &> /dev/null
+            su -s /bin/bash - $_USER -c "$_DRUSHCMD --root=$_ROOT/distro/$i/fserver provision-save @platform_FeatureServerPF$i &> /dev/null"
+          fi
+          msg "$_STATUS A: Missing strongarm added to /data/all/$i/fserver"
+        fi
       fi
-      msg "$_STATUS A: Missing strongarm added to /data/all/$i/fserver"
-    fi
+    done
+    touch /var/log/feature-server-fixed-002.log
+    cd
   fi
-done
-touch /var/log/feature-server-fixed-002.log
-cd
-fi
+}
+#
+# Fix for FServer broken due to incorrect context version downloaded in fserver-6.28.3.
+#
+feature_server_fix_004 () {
+  if [ ! -e "/var/log/feature-server-fixed-004.log" ] ; then
+    msg "$_STATUS A: Fixing context version in FServer platforms"
+    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/fserver-6.28.3" ] ; then
+        _CONTEXT_TEST=`grep "7.x" /data/all/$i/fserver-6.28.3/profiles/feature_server/modules/context/context.info 2>&1`
+        if [[ "$_CONTEXT_TEST" =~ "7.x" ]] ; then
+          cd /data/all/$i/fserver-6.28.3/profiles/feature_server/modules/
+          rm -f -r context
+          get_dev_contrib "context-6.x-3.3.tar.gz"
+          msg "$_STATUS A: Correct context version added to /data/all/$i/fserver-6.28.3"
+        fi
+      elif [ -d "/data/all/$i/fserver-6.28.2" ] ; then
+        _CONTEXT_TEST=`grep "7.x" /data/all/$i/fserver-6.28.2/profiles/feature_server/modules/context/context.info 2>&1`
+        if [[ "$_CONTEXT_TEST" =~ "7.x" ]] ; then
+          cd /data/all/$i/fserver-6.28.2/profiles/feature_server/modules/
+          rm -f -r context
+          get_dev_contrib "context-6.x-3.3.tar.gz"
+          msg "$_STATUS A: Correct context version added to /data/all/$i/fserver-6.28.2"
+        fi
+      fi
+    done
+    touch /var/log/feature-server-fixed-004.log
+    cd
+  fi
 }
 #
 # Update o_contrib.
@@ -1940,6 +1970,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
 else
   feature_server_fix_002
+  feature_server_fix_004
   o_contrib_update_global
   o_contrib_seven_update_global
 fi
