@@ -22,7 +22,7 @@ echo ...we have to wait...
 fi
 }
 
-if test -f /var/run/boa_wait.pid ; then
+if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-purge
   exit
 else

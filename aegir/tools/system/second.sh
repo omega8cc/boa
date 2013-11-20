@@ -17,7 +17,7 @@ hold()
 
 terminate()
 {
-  if test -f /var/run/boa_run.pid ; then
+  if [ -e "/var/run/boa_run.pid" ] ; then
     sleep 1
   else
     killall -9 php drush.php wget

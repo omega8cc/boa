@@ -63,7 +63,7 @@ action()
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
     /etc/init.d/jetty7 start
   fi
-  if test -f /root/.high_traffic.cnf ; then
+  if [ -e "/root/.high_traffic.cnf" ] ; then
     true
   else
     rm -f -r /var/lib/nginx/speed/*
@@ -95,7 +95,7 @@ else
   _VMFAMILY="XEN"
 fi
 
-if test -f /var/run/boa_run.pid ; then
+if [ -e "/var/run/boa_run.pid" ] ; then
   exit
 else
   touch /var/run/boa_wait.pid

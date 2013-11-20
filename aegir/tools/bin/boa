@@ -93,10 +93,10 @@ fi
 
 init_start ()
 {
-  if test -f /var/run/boa_run.pid ; then
+  if [ -e "/var/run/boa_run.pid" ] ; then
     echo Another BOA installer is running probably - /var/run/boa_run.pid exists
     exit 1
-  elif test -f /var/run/boa_wait.pid ; then
+  elif [ -e "/var/run/boa_wait.pid" ] ; then
     echo Some important system task is running probably - /var/run/boa_wait.pid exists
     exit 1
   else

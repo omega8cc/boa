@@ -14,7 +14,7 @@ action()
   touch /var/xdrago/log/enableStatus.done
 }
 
-if test -f /var/run/boa_wait.pid ; then
+if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/optimizemysqlrunning-enabler
   exit
 else

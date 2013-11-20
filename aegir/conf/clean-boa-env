@@ -21,13 +21,13 @@ case "$1" in
   start)
     echo -n "Starting $DESC: "
     touch $PIDFILE
-    if test -f /var/run/boa_wait.pid ; then
+    if [ -e "/var/run/boa_wait.pid" ] ; then
       rm -f /var/run/boa_wait.pid
       echo "$NAME 1 done."
     else
       echo "$NAME 1 nothing to do."
     fi
-    if test -f /var/run/boa_run.pid ; then
+    if [ -e "/var/run/boa_run.pid" ] ; then
       rm -f /var/run/boa_run.pid
       echo "$NAME 2 done."
     else
@@ -36,13 +36,13 @@ case "$1" in
   ;;
   stop)
     echo -n "Stopping $DESC: "
-    if test -f /var/run/boa_wait.pid ; then
+    if [ -e "/var/run/boa_wait.pid" ] ; then
       rm -f /var/run/boa_wait.pid
       echo "$NAME done."
     else
       echo "$NAME nothing to do."
     fi
-    if test -f /var/run/boa_run.pid ; then
+    if [ -e "/var/run/boa_run.pid" ] ; then
       rm -f /var/run/boa_run.pid
       echo "$NAME 2 done."
     else
@@ -58,13 +58,13 @@ case "$1" in
 
   status)
     echo -n "$DESC status: "
-    if test -f /var/run/boa_wait.pid ; then
+    if [ -e "/var/run/boa_wait.pid" ] ; then
       echo "fail 1"
     else
       echo "OK 1"
       exit 1
     fi
-    if test -f /var/run/boa_run.pid ; then
+    if [ -e "/var/run/boa_run.pid" ] ; then
       echo "fail 2"
     else
       echo "OK 2"

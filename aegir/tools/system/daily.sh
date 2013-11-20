@@ -953,11 +953,13 @@ else
 fi
 #
 mkdir -p /var/xdrago/log/daily
-if test -f /var/run/boa_wait.pid ; then
+if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-counter
   exit 1
 else
-  source /root/.barracuda.cnf
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+  fi
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     _PERMISSIONS_FIX=YES
     _MODULES_FIX=YES

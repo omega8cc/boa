@@ -3188,7 +3188,9 @@ barracuda_cnf () {
       echo "$line"
     done < /root/.barracuda.cnf
     echo " "
-    source /root/.barracuda.cnf
+    if [ -e "/root/.barracuda.cnf" ] ; then
+      source /root/.barracuda.cnf
+    fi
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
