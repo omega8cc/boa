@@ -116,7 +116,14 @@
 
 # Known Issues on systems upgraded to initial BOA-2.1.2 release
 
-  ==> Updated on Tue Nov 19 11:42:45 SGT 2013 with all fixes applied to stable.
+  ==> Updated on Thu Nov 21 01:28:23 SGT 2013 with all fixes applied to stable.
+
+  * Feature Server platform is broken since BOA-2.1.0 due to incorrect context
+    module version downloaded via makefile. This bug affects only some instances
+    upgraded to head and not stable, but since in the first 24 hours after
+    BOA-2.1.2 release our static downloads were still out of sync on two of
+    our mirrors, it is safe to assume that you should run the HotFix via
+    boa-fix-upgrade.sh.txt anyway.
 
   * There is regression introduced in the maintenance agent logic, which
     results with dependency check effectively ignored. This may cause various
