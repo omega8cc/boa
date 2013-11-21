@@ -277,18 +277,7 @@ fix_modules () {
         cd $Dir
         check_site_status
         if [ "$_STATUS" = "OK" ] ; then
-          if [ ! -z "$_SQL_CONVERT" ] ; then
-            if [ "$_SQL_CONVERT" = "YES" ] ; then
-              _SQL_CONVERT=innodb
-            fi
-            if [ "$_SQL_CONVERT" = "myisam" ] || [ "$_SQL_CONVERT" = "innodb" ] ; then
-              _TIMESTAMP=`date +%y%m%d-%H%M`
-              echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} for $Dom started"
-              sql_convert
-              _TIMESTAMP=`date +%y%m%d-%H%M`
-              echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} for $Dom completed"
-            fi
-          fi
+
           fix_user_register_protection
 
           _AUTO_CONFIG_ADVAGG=NO
@@ -581,6 +570,42 @@ fix_modules () {
                   enable_modules "views_content_cache"
                 fi
               fi
+            fi
+          fi
+
+          ###
+          ### Detect db conversion mode, if set per platform or per site.
+          ###
+          if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_PLR_CTRL_FILE)
+            if [[ "$_SQL_INNODB_CONVERSION_TEST" =~ "sql_conversion_mode = innodb" ]] ; then
+              _SQL_CONVERT=innodb
+            fi
+            _SQL_MYISAM_CONVERSION_TEST=$(grep "^sql_conversion_mode = myisam" $_PLR_CTRL_FILE)
+            if [[ "$_SQL_MYISAM_CONVERSION_TEST" =~ "sql_conversion_mode = myisam" ]] ; then
+              _SQL_CONVERT=myisam
+            fi
+          fi
+          if [ -e "$_DIR_CTRL_FILE" ] ; then
+            _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_DIR_CTRL_FILE)
+            if [[ "$_SQL_INNODB_CONVERSION_TEST" =~ "sql_conversion_mode = innodb" ]] ; then
+              _SQL_CONVERT=innodb
+            fi
+            _SQL_MYISAM_CONVERSION_TEST=$(grep "^sql_conversion_mode = myisam" $_DIR_CTRL_FILE)
+            if [[ "$_SQL_MYISAM_CONVERSION_TEST" =~ "sql_conversion_mode = myisam" ]] ; then
+              _SQL_CONVERT=myisam
+            fi
+          fi
+          if [ ! -z "$_SQL_CONVERT" ] ; then
+            if [ "$_SQL_CONVERT" = "YES" ] ; then
+              _SQL_CONVERT=innodb
+            fi
+            if [ "$_SQL_CONVERT" = "myisam" ] || [ "$_SQL_CONVERT" = "innodb" ] ; then
+              _TIMESTAMP=`date +%y%m%d-%H%M`
+              echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} for $Dom started"
+              sql_convert
+              _TIMESTAMP=`date +%y%m%d-%H%M`
+              echo "$_TIMESTAMP sql conversion to-${_SQL_CONVERT} for $Dom completed"
             fi
           fi
         fi
