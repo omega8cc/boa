@@ -17,7 +17,7 @@
 
 # Updated Octopus platforms:
 
-  ### Drupal 7.23.3
+  ### Drupal 7.24.1
 
   Open Atrium 2.0.9 ------------ http://drupal.org/project/openatrium
   OpenScholar 3.9.3 ------------ http://openscholar.harvard.edu
