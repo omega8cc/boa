@@ -606,7 +606,7 @@ _F_OPENCHURCH="OpenChurch 1.11-b14 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENSCHOLAR="OpenScholar 3.8.1 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENSCHOLAR="OpenScholar 3.9.3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1976,7 +1976,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENSCHOLAR = "7.x-3.8.1" ] ; then
+    if [ $_OPENSCHOLAR = "7.x-3.9.3" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {entitycache}
       upgrade_contrib_less
