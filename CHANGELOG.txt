@@ -58,6 +58,7 @@
   * Allow to install unsupported distros only in head, not stable.
   * Contrib update: advagg-7.x-2.3
   * Map drush to drush6 on command line. You can still use drush4 and drush5.
+  * MariaDB 5.5.34
   * New contrib: display_cache
   * New contrib: panels_content_cache
   * Nginx 1.5.7 -- security upgrade.
