@@ -83,6 +83,25 @@
   * Issue #2138811 - Maintenance agent disables modules from its standard
     turn-off list, even if they are required by other modules, apps or features.
 
+# Known Issues on systems upgraded to initial BOA-2.1.2 release
+
+  ==> Updated on Fri Nov 22 04:32:11 SGT 2013 with all fixes applied to stable.
+
+  * Issue #2141283 - Drush aliases like `drush dbup` no longer work properly.
+
+# HotFix for known post-upgrade issues
+
+  Run the boa-fix-upgrade script when logged in as system root:
+
+  $ cd;rm -f boa-fix-upgrade.sh.txt*
+  $ wget -q -U iCab http://files.aegir.cc/update/boa-fix-upgrade.sh.txt
+  $ bash boa-fix-upgrade.sh.txt
+
+  This script is updated once there is any new regression or bug discovered,
+  so it is safe and recommended to run it again if the list of known issues
+  have been updated. Note that this script will detect and fix all Octopus
+  instances on your system at once.
+
 
 ### Stable BOA-2.1.2 Release - Full Edition
 ### Date: Mon Nov 18 00:03:30 SGT 2013
