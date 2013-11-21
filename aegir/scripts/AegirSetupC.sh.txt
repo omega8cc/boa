@@ -2433,7 +2433,7 @@ ubercart6_install
 ubercart7_install
 
 
-if [ "$_ALLOW_UNSUPPORTED" = "YES" ] ; then
+if [ "$_ALLOW_UNSUPPORTED" = "YES" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   acquia_install
   civicrm_m6_install
   civicrm_m7_install
