@@ -5264,6 +5264,7 @@ check_connection ()
 }
 
 if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+  rm -f -r /opt/tmp/test-*
   check_connection
   _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/test-provision 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
@@ -5272,6 +5273,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
+    rm -f -r /opt/tmp/test-*
     exit 1
   fi
   _GITHUB_TEST=`git clone git://github.com/omega8cc/hostmaster.git /opt/tmp/test-hostmaster 2>&1`
@@ -5281,10 +5283,13 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
+    rm -f -r /opt/tmp/test-*
     exit 1
   fi
+  rm -f -r /opt/tmp/test-*
 fi
 if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
+  rm -f -r /opt/tmp/test-*
   _GITHUB_TEST=`git clone git://github.com/omega8cc/nginx-for-drupal.git /opt/tmp/test-nginx-for-drupal 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
@@ -5292,8 +5297,10 @@ if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
+    rm -f -r /opt/tmp/test-*
     exit 1
   fi
+  rm -f -r /opt/tmp/test-*
 fi
 
 
