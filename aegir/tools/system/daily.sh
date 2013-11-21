@@ -775,7 +775,7 @@ add_note_platform_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"            >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.1.2"        >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.1.3"        >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~5 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."         >> $_CTRL_FILE
@@ -792,7 +792,7 @@ add_note_site_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.1.2"        >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.1.3"        >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~5 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."         >> $_CTRL_FILE
