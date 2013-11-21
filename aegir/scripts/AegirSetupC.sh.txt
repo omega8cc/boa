@@ -507,9 +507,10 @@ add_old_short_name_acquia () {
 #
 # Upgrade contrib less.
 upgrade_contrib_less () {
-  rm -f -r {context,entity}
+  rm -f -r {context,entity,entityreference}
   get_dev_contrib "context-7.x-3.1.tar.gz" &> /dev/null
   get_dev_contrib "entity-7.x-1.2.tar.gz" &> /dev/null
+  get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # http://drupal.org/node/1766338#comment-6445882
@@ -2238,11 +2239,11 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
     if [ $_TOTEM = "7.x-1.1" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {filefield_sources,mimemail,plupload,location}
+      rm -f -r {filefield_sources,location,mimemail,plupload}
       get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
+      get_dev_contrib "location-7.x-3.1.tar.gz" &> /dev/null
       get_dev_contrib "mimemail-7.x-1.0-beta1.tar.gz" &> /dev/null
       get_dev_contrib "plupload-7.x-1.4.tar.gz" &> /dev/null
-      get_dev_contrib "location-7.x-3.1.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
