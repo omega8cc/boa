@@ -507,10 +507,11 @@ add_old_short_name_acquia () {
 #
 # Upgrade contrib less.
 upgrade_contrib_less () {
-  rm -f -r {context,entity,entityreference}
+  rm -f -r {context,entity,entityreference,og}
   get_dev_contrib "context-7.x-3.1.tar.gz" &> /dev/null
   get_dev_contrib "entity-7.x-1.2.tar.gz" &> /dev/null
   get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
+  get_dev_contrib "og-7.x-2.4.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # http://drupal.org/node/1766338#comment-6445882
@@ -1652,7 +1653,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENATRIUM7 = "7.x-2.0" ] ; then
+    if [ $_OPENATRIUM7 = "7.x-2.09" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
@@ -1762,6 +1763,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
     if [ $_OPENCHURCH = "7.x-1.11-beta14" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {filefield_sources}
+      get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
