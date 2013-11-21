@@ -292,6 +292,12 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
   header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
   header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
+  header("X-Ini-Sql-Conversion-Mode: " . $all_ini['sql_conversion_mode']);
+  header("X-Ini-Enable-User-Register-Protection: " . $all_ini['enable_user_register_protection']);
+  header("X-Ini-Entitycache-Dont-Enable: " . $all_ini['entitycache_dont_enable']);
+  header("X-Ini-Views-Cache-Bully-Dont-Enable: " . $all_ini['views_cache_bully_dont_enable']);
+  header("X-Ini-Views-Content-Cache-Dont-Enable: " . $all_ini['views_content_cache_dont_enable']);
+  header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
 }
 
 /**
