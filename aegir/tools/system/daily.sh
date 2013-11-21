@@ -932,7 +932,9 @@ purge_cruft_machine () {
   find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/static/*/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/static/*/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/static/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/static/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/static/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/static/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/static/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
