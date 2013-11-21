@@ -153,12 +153,12 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 
 Octopus can install the platforms listed below:
 
-### Drupal 7.23.3
+### Drupal 7.24.1
 
  Commerce 1.20 ---------------- http://drupal.org/project/commerce_kickstart
  Commerce 2.9 ----------------- http://drupal.org/project/commerce_kickstart
  Commons 3.4 ------------------ http://drupal.org/project/commons
- Drupal 7.23.3 ---------------- http://drupal.org/drupal-7.23
+ Drupal 7.24.1 ---------------- http://drupal.org/drupal-7.24
  Open Academy 1.0-rc3 --------- http://drupal.org/project/openacademy
  Open Atrium 2.0.4 ------------ http://drupal.org/project/openatrium
  Open Deals 1.31 -------------- http://drupal.org/project/opendeals
@@ -172,19 +172,19 @@ Octopus can install the platforms listed below:
  Totem 1.1.2 ------------------ http://drupal.org/project/totem
  Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
 
-### Pressflow 6.28.3
+### Pressflow 6.29.1
 
  Commons 2.13.2 --------------- http://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.4 ---------- http://drupal.org/project/managingnews
  Open Atrium 1.7.2 ------------ http://drupal.org/project/openatrium
- Pressflow 6.28.3 ------------- http://pressflow.org
+ Pressflow 6.29.1 ------------- http://pressflow.org
  Ubercart 2.12.1 -------------- http://drupal.org/project/ubercart
 
-All D7 platforms have been enhanced using Drupal 7.23.3 +Extra core:
-https://github.com/omega8cc/7x/tree/7.23.3
+All D7 platforms have been enhanced using Drupal 7.24.1 +Extra core:
+https://github.com/omega8cc/7x/tree/7.x-om8
 
-All D6 platforms have been enhanced using Pressflow 6.28.3 +Extra core:
+All D6 platforms have been enhanced using Pressflow 6.29.1 +Extra core:
 https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 
