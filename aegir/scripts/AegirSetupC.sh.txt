@@ -511,7 +511,7 @@ upgrade_contrib_less () {
   get_dev_contrib "context-7.x-3.1.tar.gz" &> /dev/null
   get_dev_contrib "entity-7.x-1.2.tar.gz" &> /dev/null
   get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
-  get_dev_contrib "og-7.x-2.4.tar.gz" &> /dev/null
+  get_dev_contrib "og-7.x-2.4-patch.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # http://drupal.org/node/1766338#comment-6445882
