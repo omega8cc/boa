@@ -1382,7 +1382,7 @@ fix_php_ini_jsmin () {
   if [ -e "$_THIS_FILE" ] ; then
     _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=jsmin.so" >> $_THIS_FILE
     fi
@@ -1394,13 +1394,13 @@ fix_php_ini_redis () {
   if [ -e "$_THIS_FILE" ] ; then
     _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=redis.so" >> $_THIS_FILE
     fi
     _REDIS_PID_TEST=$(grep "/var/run:" $_THIS_FILE)
     if [[ "$_REDIS_PID_TEST" =~ "/var/run:" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       sed -i "s/:\/var\/www/:\/var\/run:\/var\/www/g" $_THIS_FILE &> /dev/null
     fi
@@ -1451,7 +1451,7 @@ update_redis_password () {
     fi
     _REDIS_PWD_TEST=`grep "'$RPASS'" /data/conf/global.inc 2>&1`
     if [[ "$_REDIS_PWD_TEST" =~ "'$RPASS'" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ ! -z "$RPASS" ] ; then
         mkdir -p /data/conf
@@ -1503,7 +1503,7 @@ install_redis_src () {
   if [ -e "/etc/redis/redis.conf" ] && [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
-        true
+        _DO_NOTHING=YES
       else
         if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] ; then
           cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
@@ -1538,11 +1538,11 @@ set_xterm () {
 kill_nash () {
   _L_VM_TEST=`uname -a 2>&1`
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     _NASH_TEST=$(grep nash-hotplug /etc/rc.local)
     if [[ "$_NASH_TEST" =~ "nash-hotplug" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /etc/rc.local /etc/rc.local.bak.$_NOW
       sed -i "s/exit 0//g" /etc/rc.local &> /dev/null
@@ -1559,7 +1559,7 @@ fix_ftps_pam () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/ftpusers /etc/ftpusers
   fi
   if [ "$_REL_VERSION" = "lenny" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -i "s/pam_stack.so/pam_unix.so/g" /etc/pam.d/pure-ftpd &> /dev/null
     sed -i "s/ service=system-auth//g"    /etc/pam.d/pure-ftpd &> /dev/null
@@ -1571,7 +1571,7 @@ fix_sftp_ftps_modern () {
   if [ "$_REL_VERSION" != "lenny" ] ; then
     _LSHELL_PATH_TEST=$(grep "/usr/bin/lshell" /etc/shells)
     if [[ "$_LSHELL_PATH_TEST" =~ "/usr/bin/lshell" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "/usr/bin/lshell" >> /etc/shells
       ### we don't need this replace, so it is here just for reference:
@@ -1600,7 +1600,7 @@ fix_sftp_ftps_modern () {
   fi
   _MSS_PATH_TEST=$(grep "/usr/bin/MySecureShell" /etc/shells)
   if [[ "$_MSS_PATH_TEST" =~ "/usr/bin/MySecureShell" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     echo "/usr/bin/MySecureShell" >> /etc/shells
   fi
@@ -1669,13 +1669,13 @@ fix_php_ini_newrelic () {
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       cat $_NR_TPL >> $_THIS_FILE
     fi
     _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" $_THIS_FILE)
     if [[ "$_NEWRELIC_INI_TEST_B" =~ "newrelic.framework.drupal.modules" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
@@ -1708,7 +1708,7 @@ fix_php_ini_opcache () {
     if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
       _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
       if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "; Zend OPcache"                     >> $_THIS_FILE
         if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
@@ -1730,7 +1730,7 @@ fix_php_ini_opcache () {
     else
       _OPCACHE_INI_TEST=$(grep "extension=apc.so" $_THIS_FILE)
       if [[ "$_OPCACHE_INI_TEST" =~ "extension=apc.so" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "; APC"                              >> $_THIS_FILE
         echo "extension=apc.so"                   >> $_THIS_FILE
@@ -1759,7 +1759,7 @@ fix_php_ini_geos () {
   if [ -e "$_THIS_FILE" ] ; then
     _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=geos.so" >> $_THIS_FILE
     fi
@@ -1781,7 +1781,7 @@ fix_php_ini_mongo () {
   if [ -e "$_THIS_FILE" ] ; then
     _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> $_THIS_FILE
     fi
@@ -1818,7 +1818,7 @@ update_php_conf () {
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
@@ -1828,7 +1828,7 @@ update_php_conf () {
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
@@ -1916,7 +1916,7 @@ update_php_conf () {
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
     sed -i "s/,shell_exec//g" /opt/local/etc/php53.ini &> /dev/null
@@ -1951,7 +1951,7 @@ update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [ "$_CUSTOM_CONFIG_SQL" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
@@ -1968,7 +1968,7 @@ update_sql_conf () {
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
     sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
@@ -2705,7 +2705,7 @@ barracuda_cnf () {
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-          true
+          _DO_NOTHING=YES
         else
           _BUILD_FROM_SRC=YES
           _DB_SERVER=MariaDB
@@ -2819,7 +2819,7 @@ barracuda_cnf () {
     fi
     if [ "$_CHECK_OS" = "U12" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         _R_M=BND
         _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
@@ -2828,7 +2828,7 @@ barracuda_cnf () {
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
@@ -2870,7 +2870,7 @@ barracuda_cnf () {
     fi
     _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
     if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
       echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
@@ -2882,31 +2882,31 @@ barracuda_cnf () {
     fi
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     fi
     _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_ONE_TEST" =~ "_LOAD_LIMIT_ONE" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
     fi
     _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_TWO_TEST" =~ "_LOAD_LIMIT_TWO" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
     fi
@@ -2960,43 +2960,43 @@ barracuda_cnf () {
     fi
     _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX /root/.barracuda.cnf)
     if [[ "$_SPEED_VALID_MAX_TEST" =~ "_SPEED_VALID_MAX" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
     fi
     _NGINX_DOS_LIMIT_TEST=$(grep _NGINX_DOS_LIMIT /root/.barracuda.cnf)
     if [[ "$_NGINX_DOS_LIMIT_TEST" =~ "_NGINX_DOS_LIMIT" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
     fi
     _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY /root/.barracuda.cnf)
     if [[ "$_SYSTEM_UPGRADE_ONLY_TEST" =~ "_SYSTEM_UPGRADE_ONLY" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
     fi
     _AEGIR_UPGRADE_ONLY_TEST=$(grep _AEGIR_UPGRADE_ONLY /root/.barracuda.cnf)
     if [[ "$_AEGIR_UPGRADE_ONLY_TEST" =~ "_AEGIR_UPGRADE_ONLY" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_AEGIR_UPGRADE_ONLY=$_AEGIR_UPGRADE_ONLY" >> /root/.barracuda.cnf
     fi
     _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED /root/.barracuda.cnf)
     if [[ "$_USE_MEMCACHED_TEST" =~ "_USE_MEMCACHED" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_REDIS_TEST" =~ "_CUSTOM_CONFIG_REDIS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
     fi
     _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC /root/.barracuda.cnf)
     if [[ "$_BUILD_FROM_SRC_TEST" =~ "_BUILD_FROM_SRC" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
     fi
@@ -3007,7 +3007,7 @@ barracuda_cnf () {
     fi
     _NEWRELIC_KEY_TEST=$(grep _NEWRELIC_KEY /root/.barracuda.cnf)
     if [[ "$_NEWRELIC_KEY_TEST" =~ "_NEWRELIC_KEY" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ ! -z "$_NEWRELIC_KEY" ] ; then
         echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
@@ -3022,115 +3022,115 @@ barracuda_cnf () {
     fi
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.barracuda.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
     fi
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf)
     if [[ "$_EXTRA_PACKAGES_TEST" =~ "_EXTRA_PACKAGES" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_EXTRA_PACKAGES=$_EXTRA_PACKAGES" >> /root/.barracuda.cnf
     fi
     _PHP_EXTRA_CONF_TEST=$(grep _PHP_EXTRA_CONF /root/.barracuda.cnf)
     if [[ "$_PHP_EXTRA_CONF_TEST" =~ "_PHP_EXTRA_CONF" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     fi
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf)
     if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
     fi
     _DB_BINARY_LOG_TEST=$(grep _DB_BINARY_LOG /root/.barracuda.cnf)
     if [[ "$_DB_BINARY_LOG_TEST" =~ "_DB_BINARY_LOG" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
     fi
     _DB_ENGINE_TEST=$(grep _DB_ENGINE /root/.barracuda.cnf)
     if [[ "$_DB_ENGINE_TEST" =~ "_DB_ENGINE" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
     fi
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP /root/.barracuda.cnf)
     if [[ "$_NGINX_LDAP_TEST" =~ "_NGINX_LDAP" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     fi
     _NGINX_NAXSI_TEST=$(grep _NGINX_NAXSI /root/.barracuda.cnf)
     if [[ "$_NGINX_NAXSI_TEST" =~ "_NGINX_NAXSI" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_NGINX_NAXSI=$_NGINX_NAXSI" >> /root/.barracuda.cnf
     fi
     _NGINX_SPDY_TEST=$(grep _NGINX_SPDY /root/.barracuda.cnf)
     if [[ "$_NGINX_SPDY_TEST" =~ "_NGINX_SPDY" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
     fi
     _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY /root/.barracuda.cnf)
     if [[ "$_NGINX_FORWARD_SECRECY_TEST" =~ "_NGINX_FORWARD_SECRECY" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_NGINX_FORWARD_SECRECY=$_NGINX_FORWARD_SECRECY" >> /root/.barracuda.cnf
     fi
     _PHP_GEOS_TEST=$(grep _PHP_GEOS /root/.barracuda.cnf)
     if [[ "$_PHP_GEOS_TEST" =~ "_PHP_GEOS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
     fi
     _PHP_MONGODB_TEST=$(grep _PHP_MONGODB /root/.barracuda.cnf)
     if [[ "$_PHP_MONGODB_TEST" =~ "_PHP_MONGODB" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     fi
     _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE /root/.barracuda.cnf)
     if [[ "$_PHP_ZEND_OPCACHE_TEST" =~ "_PHP_ZEND_OPCACHE" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
     fi
     _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf)
     if [[ "$_PERMISSIONS_FIX_TEST" =~ "_PERMISSIONS_FIX" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
     fi
     _MODULES_FIX_TEST=$(grep _MODULES_FIX /root/.barracuda.cnf)
     if [[ "$_MODULES_FIX_TEST" =~ "_MODULES_FIX" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
     fi
     _MODULES_SKIP_TEST=$(grep _MODULES_SKIP /root/.barracuda.cnf)
     if [[ "$_MODULES_SKIP_TEST" =~ "_MODULES_SKIP" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_MODULES_SKIP=\"$_MODULES_SKIP\"" >> /root/.barracuda.cnf
     fi
     _SSL_FROM_SOURCES_TEST=$(grep _SSL_FROM_SOURCES /root/.barracuda.cnf)
     if [[ "$_SSL_FROM_SOURCES_TEST" =~ "_SSL_FROM_SOURCES" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
     fi
     _SSH_FROM_SOURCES_TEST=$(grep _SSH_FROM_SOURCES /root/.barracuda.cnf)
     if [[ "$_SSH_FROM_SOURCES_TEST" =~ "_SSH_FROM_SOURCES" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
     fi
     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM /root/.barracuda.cnf)
     if [[ "$_RESERVED_RAM_TEST" =~ "_RESERVED_RAM" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
     fi
@@ -3142,7 +3142,7 @@ barracuda_cnf () {
     fi
     if [ "$_CHECK_OS" = "U12" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         _R_M=BND
         _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
@@ -3151,7 +3151,7 @@ barracuda_cnf () {
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
@@ -3194,7 +3194,7 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-          true
+          _DO_NOTHING=YES
         else
           _BUILD_FROM_SRC=YES
           _DB_SERVER=MariaDB
@@ -3256,14 +3256,14 @@ barracuda_cnf () {
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "Installation aborted by you"
         exit 1
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "Upgrade aborted by you"
         exit 1
@@ -3303,7 +3303,7 @@ install_ioncube () {
   ###--------------------###
   if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       mkdir -p /usr/local/ioncube
       _X86_64_TEST=`uname -m`
@@ -3352,7 +3352,7 @@ install_libmemcached () {
 install_php_scr_build_extensions () {
   ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
@@ -3409,7 +3409,7 @@ install_php_universal_extensions () {
   ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
@@ -3515,7 +3515,7 @@ install_php_universal_extensions () {
 update_php_scr_build_extensions () {
   ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3571,7 +3571,7 @@ update_php_universal_extensions () {
   ###--------------------###
   if [ "$_PHP_ZEND_OPCACHE" = "YES" ] && [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
@@ -3728,7 +3728,7 @@ install_php_modern () {
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
@@ -3853,7 +3853,7 @@ install_latest_git () {
   if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] || [ "$_SSB_SRC" = "YES" ] ; then
     _GIT_TEST=$(git --version)
     if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       msg "INFO: Installing latest Git from sources, please wait..."
       cd /var/opt
@@ -3987,7 +3987,7 @@ hostmaster_frontend_dbpass_sync () {
 # Upgrade Aegir Master Instance.
 upgrade_aegir_master () {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
-    true
+    _DO_NOTHING=YES
     mrun "sleep 1"
     msg "INFO: Running Aegir Master Instance upgrade"
     mrun "sleep 1"
@@ -4098,7 +4098,7 @@ detect_cdorked_malware () {
     gcc -o /var/opt/foo_bar /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/dump_cdorked_config.c &> /dev/null
     _C_DORKED_TEST=$(/var/opt/foo_bar)
     if [[ "$_C_DORKED_TEST" =~ "No shared memory matching Cdorked signature was found" ]] ; then
-      true
+      _DO_NOTHING=YES
       ### msg "INFO: No Linux/Cdorked.A malware traces found - system clean"
     else
       msg "ALRT: Your system is probably infected by Linux/Cdorked.A malware!"
@@ -4136,7 +4136,7 @@ install_upgrade_nginx () {
     fi
     if [ "$_NGINX_F_INSTALLED" = "$_NGINX_F_VERSION" ] ; then
       if [[ "$_NGINX_V_INSTALLED" =~ "geoip" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include geoip module"
@@ -4146,14 +4146,14 @@ install_upgrade_nginx () {
         msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
       fi
       if [[ "$_NGINX_V_INSTALLED" =~ "http_flv_module" ]] && [[ "$_NGINX_V_INSTALLED" =~ "http_mp4_module" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         _NGINX_INSTALL_REQUIRED=YES
         msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include pseudo-streaming support"
       fi
       if [ "$_NGINX_LDAP" = "YES" ] ; then
         if [[ "$_NGINX_V_INSTALLED" =~ "nginx-auth-ldap" ]] ; then
-          true
+          _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include LDAP support"
@@ -4161,7 +4161,7 @@ install_upgrade_nginx () {
       fi
       if [ "$_PURGE_MODE" = "ON" ] ; then
         if [[ "$_NGINX_V_INSTALLED" =~ "purge" ]] ; then
-          true
+          _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include purge module"
@@ -4169,7 +4169,7 @@ install_upgrade_nginx () {
       fi
       if [ "$_NGINX_NAXSI" = "YES" ] ; then
         if [[ "$_NGINX_V_INSTALLED" =~ "naxsi" ]] ; then
-          true
+          _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include NAXSI module"
@@ -4177,7 +4177,7 @@ install_upgrade_nginx () {
       fi
       if [ "$_NGINX_SPDY" = "YES" ] ; then
         if [[ "$_NGINX_V_INSTALLED" =~ "http_spdy_module" ]] ; then
-          true
+          _DO_NOTHING=YES
         else
           _NGINX_INSTALL_REQUIRED=YES
           msg "INFO: Installed Nginx version $_NGINX_F_INSTALLED, forced rebuild to include SPDY support"
@@ -4249,9 +4249,9 @@ install_upgrade_nginx () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
-      true
+      _DO_NOTHING=YES
     elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       st_runner "service nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
@@ -4515,7 +4515,7 @@ update_sources_list () {
     if [ "$_REL_VERSION" = "squeeze" ] ; then
       _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list)
       if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         _APT_SOURCES_REWRITE=YES
       fi
@@ -4701,7 +4701,7 @@ install_ssh_src () {
   _SSH_INSTALL_REQUIRED=NO
   _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
   if [ "$_SSH_INSTALLED" = "$_OPENSSH_VERSION" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     _SSH_INSTALL_REQUIRED=YES
     msg "INFO: Installed OpenSSH version $_SSH_INSTALLED, upgrade required"
@@ -4741,7 +4741,7 @@ install_curl_src () {
   _CURL_INSTALL_REQUIRED=NO
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
-    true
+    _CURL_INSTALL_REQUIRED=NO
   else
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
@@ -4751,7 +4751,7 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL $_CURL_INSTALLED upgrade required"
   fi
-  if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_PHP_NEW_BIN_BROKEN" = "YES" ] || [ "$_PHP_LEGACY_BIN_BROKEN" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
@@ -4799,7 +4799,7 @@ install_ssl_src () {
   _SSL_INSTALL_REQUIRED=NO
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     _SSL_INSTALL_REQUIRED=YES
     _NGX_FORCE_REINSTALL=YES
@@ -4926,7 +4926,7 @@ finale () {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     if [[ "$_THISHOST" =~ ".host8." ]] ; then
       if [ "$_VMFAMILY" = "VS" ] ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
         echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
@@ -5224,7 +5224,7 @@ fi
 ###--------------------###
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
   if [ "$_REL_VERSION" = "precise" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     _FROM_SOURCES=YES
   fi
@@ -5390,7 +5390,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       git checkout 2.0.5-dev &> /dev/null
       cd /opt/tmp
     else
-      true
+      _DO_NOTHING=YES
     fi
   fi
 else
@@ -5507,7 +5507,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       _S_E=${_S_Q%*.*}
       if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
         if [ "$_EASY_LOCALHOST" = "YES" ] ; then
-          true
+          _DO_NOTHING=YES
         else
           sed -i "s/^$_MY_OWNIP.*//g" /etc/hosts &> /dev/null
           echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN $_S_E" >> /etc/hosts
@@ -5655,7 +5655,7 @@ EOF
 EOF
   echo " "
   if prompt_yes_no "Do you want to proceed with the install?" ; then
-    true
+    _DO_NOTHING=YES
   else
     echo "Installation aborted by you"
     exit 1
@@ -5686,7 +5686,7 @@ else ### if [ "$_STATUS" = "UPGRADE" ] ; then
 EOF
   echo " "
   if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-    true
+    _DO_NOTHING=YES
   else
     echo "Upgrade aborted by you"
     exit 1
@@ -6172,7 +6172,7 @@ if [ ! -e "/etc/aliases" ] ; then
 fi
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
   if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     install_ssl_src
     install_ssh_src
@@ -6258,7 +6258,7 @@ else
     install_with_aptitude_sql
     _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
     if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
       sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
@@ -6390,7 +6390,7 @@ if ! netcat -w 8 -z smtp.gmail.com 25 ; then
 EOF
   exit 1
 else
-  true
+  _DO_NOTHING=YES
 fi
 ###
 ### required if you have closed outgoing smtp port and you have to use smtp relay
@@ -6409,7 +6409,7 @@ fi
 if [ "$_FROM_SOURCES" = "NO" ] ; then
   _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
   if [[ "$_X_INIT_TEST" =~ "test_nginx_config" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx-squeeze-init /etc/init.d/nginx
@@ -6497,7 +6497,7 @@ if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php"
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
         sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
@@ -6548,7 +6548,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
         sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
@@ -6674,6 +6674,7 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
   fi
   _BROKEN_LIBCURL_TEST=$($_PHP_NEW_BIN -v 2>&1)
   if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+    _PHP_NEW_BIN_BROKEN=YES
     _PHP_INSTALL_REQUIRED_NEW=YES
     msg "INFO: Installed PHP version $_PHP_INSTALLED, libcurl broken, rebuild required"
     install_curl_src
@@ -6706,6 +6707,7 @@ if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
   if [ -x "$_PHP_LEGACY_BIN" ] ; then
     _BROKEN_LIBCURL_TEST=$($_PHP_LEGACY_BIN -v 2>&1)
     if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+      _PHP_LEGACY_BIN_BROKEN=YES
       _PHP_INSTALL_REQUIRED=YES
       msg "INFO: Installed PHP version $_PHP_VERSION, libcurl broken, rebuild required"
       install_curl_src
@@ -6884,7 +6886,7 @@ install_newrelic
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BZR" ]] ; then
   if [ "$_REL_VERSION" = "lenny" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     _PATH_BZR="/usr/local/bin/bzr"
     if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
@@ -6930,7 +6932,7 @@ fi
 ###--------------------###
 if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
   fi
@@ -6940,7 +6942,7 @@ if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
 fi
 if [ ! -e "/var/log/src_umask_fixed_shell_sftp.log" ] && [ -e "/usr/etc/sshd_config" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
   fi
@@ -7137,7 +7139,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
     fi
     echo " "
     if prompt_yes_no "Do you want to install Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
       mrun "sleep 1"
       cd /var/opt
@@ -7207,7 +7209,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
       if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
         sed -i "s/9090/8080/g" /opt/jetty9/bin/jetty.sh &> /dev/null
@@ -7236,7 +7238,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
   if [ ! -d "/opt/solr3" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 3 with Jetty 8?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
       mrun "sleep 1"
       cd /var/opt
@@ -7318,7 +7320,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
   if [ ! -d "/opt/solr1" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 1 with Jetty 7?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."
       mrun "sleep 1"
       cd /var/opt
@@ -7558,9 +7560,9 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 ###--------------------###
   if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] && [ "$_USE_STOCK" = "NO" ] ; then
-    true
+    _DO_NOTHING=YES
   elif [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
     msg "HINT: Please check /var/aegir/install.log for more information on errors occured"
@@ -7740,7 +7742,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   if [ ! -e "/var/www/chive/index.php" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing Chive $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
@@ -7800,7 +7802,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing SQL Buddy $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
@@ -7836,7 +7838,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
     if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/www/cgp/collectd5.support.txt" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
-        true
+        _DO_NOTHING=YES
         msg "INFO: Installing Collectd Graph Panel..."
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
@@ -7889,7 +7891,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
   if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing Webmin Control Panel..."
       mrun "sleep 1"
       cd /var/opt
@@ -7924,7 +7926,7 @@ if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
   if [ ! -e "/usr/sbin/named" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
-      true
+      _DO_NOTHING=YES
       msg "INFO: Installing Bind9 DNS Server..."
       mrun "sleep 1"
       if [ -z "$_THISHTIP" ] ; then
@@ -7954,7 +7956,7 @@ fi
 
 ###--------------------###
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
-  true
+  _DO_NOTHING=YES
 else
   if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
     if [ "$_STATUS" = "INIT" ] ; then
@@ -7965,7 +7967,7 @@ else
     if [ ! -e "/var/log/compass-bundler-$_INSTALLER_VERSION.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
-        true
+        _DO_NOTHING=YES
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
         mrun "sleep 1"
         if [ "$_STATUS" = "INIT" ] || [ ! -e "/var/log/compass-bundler-$_INSTALLER_VERSION.log" ] ; then
@@ -8300,7 +8302,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     st_runner "sh /usr/sbin/apticron"
   fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     _AEGIR_LOGIN_URL=`grep "^http://$_THIS_FRONT" /var/aegir/install.log 2> /dev/null`
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then
@@ -8400,7 +8402,7 @@ fix_lfd_uidignore () {
   if [ -e "$_THIS_FILE" ] ; then
     _CSF_UIDIGNORE_TEST=$(grep "pdnsd" $_THIS_FILE)
     if [[ "$_CSF_UIDIGNORE_TEST" =~ "pdnsd" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "#root"          >> /etc/csf/csf.uidignore &> /dev/null
       echo `id -u root`     >> /etc/csf/csf.uidignore &> /dev/null
@@ -8414,7 +8416,7 @@ fix_lfd_uidignore () {
     if [ -e "/usr/sbin/named" ] ; then
       _CSF_UIDIGNORE_TEST=$(grep "bind" $_THIS_FILE)
       if [[ "$_CSF_UIDIGNORE_TEST" =~ "bind" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "#bind"        >> /etc/csf/csf.uidignore &> /dev/null
         echo `id -u bind`   >> /etc/csf/csf.uidignore &> /dev/null
@@ -8430,7 +8432,7 @@ fix_lfd_whitelist () {
   if [ -e "$_THIS_FILE" ] ; then
     _CSF_WHITELIST_TEST=$(grep "jetty" $_THIS_FILE)
     if [[ "$_CSF_WHITELIST_TEST" =~ "jetty" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       sed -i "s/.*\/tmp\/.*//g" $_THIS_FILE &> /dev/null
       sed -i "/^$/d"            $_THIS_FILE &> /dev/null
@@ -8488,7 +8490,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
-        true
+        _DO_NOTHING=YES
         _CSF_MODE=install
         csf_install
       else
@@ -8510,7 +8512,7 @@ fi
 if [ -e "/usr/sbin/csf" ] ; then
   if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] || [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       _CSF_MODE=upgrade
       csf_install
@@ -8622,7 +8624,7 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
     if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
-        true
+        _DO_NOTHING=YES
         install_pdnsd_cache
         msg "INFO: DNS cache pdnsd server installation completed"
         mrun "sleep 1"

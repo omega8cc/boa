@@ -266,7 +266,7 @@ fix_php_ini_jsmin () {
   if [ -e "$_THIS_FILE" ] ; then
     _JSMIN_INI_TEST=$(grep "extension=jsmin.so" $_THIS_FILE)
     if [[ "$_JSMIN_INI_TEST" =~ "extension=jsmin.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=jsmin.so" >> $_THIS_FILE
     fi
@@ -278,13 +278,13 @@ fix_php_ini_redis () {
   if [ -e "$_THIS_FILE" ] ; then
     _REDIS_INI_TEST=$(grep "extension=redis.so" $_THIS_FILE)
     if [[ "$_REDIS_INI_TEST" =~ "extension=redis.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=redis.so" >> $_THIS_FILE
     fi
     _REDIS_PID_TEST=$(grep "/var/run:" $_THIS_FILE)
     if [[ "$_REDIS_PID_TEST" =~ "/var/run:" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       sed -i "s/:\/var\/www/:\/var\/run:\/var\/www/g" $_THIS_FILE &> /dev/null
     fi
@@ -297,13 +297,13 @@ fix_php_ini_newrelic () {
   if [ -e "$_THIS_FILE" ] ; then
     _NEWRELIC_INI_TEST_A=$(grep "extension=newrelic.so" $_THIS_FILE)
     if [[ "$_NEWRELIC_INI_TEST_A" =~ "extension=newrelic.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       cat $_NR_TPL >> $_THIS_FILE
     fi
     _NEWRELIC_INI_TEST_B=$(grep "newrelic.framework.drupal.modules" $_THIS_FILE)
     if [[ "$_NEWRELIC_INI_TEST_B" =~ "newrelic.framework.drupal.modules" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
@@ -336,7 +336,7 @@ fix_php_ini_opcache () {
     if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
       _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
       if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "; Zend OPcache"                     >> $_THIS_FILE
         if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
@@ -358,7 +358,7 @@ fix_php_ini_opcache () {
     else
       _OPCACHE_INI_TEST=$(grep "extension=apc.so" $_THIS_FILE)
       if [[ "$_OPCACHE_INI_TEST" =~ "extension=apc.so" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "; APC"                              >> $_THIS_FILE
         echo "extension=apc.so"                   >> $_THIS_FILE
@@ -387,7 +387,7 @@ fix_php_ini_geos () {
   if [ -e "$_THIS_FILE" ] ; then
     _GEOS_INI_TEST=$(grep "extension=geos.so" $_THIS_FILE)
     if [[ "$_GEOS_INI_TEST" =~ "extension=geos.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=geos.so" >> $_THIS_FILE
     fi
@@ -409,7 +409,7 @@ fix_php_ini_mongo () {
   if [ -e "$_THIS_FILE" ] ; then
     _MONGODB_INI_TEST=$(grep "extension=mongo.so" $_THIS_FILE)
     if [[ "$_MONGODB_INI_TEST" =~ "extension=mongo.so" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "extension=mongo.so" >> $_THIS_FILE
     fi
@@ -446,7 +446,7 @@ update_php_conf () {
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
@@ -456,7 +456,7 @@ update_php_conf () {
   fi
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
@@ -544,7 +544,7 @@ update_php_conf () {
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
   if [[ "$_THISHOST" =~ "test.host8." ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
     sed -i "s/,shell_exec//g" /opt/local/etc/php53.ini &> /dev/null
@@ -615,7 +615,7 @@ restore_default_sql () {
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   if [[ "$_DB_SERVER_TEST" =~ "5.5." ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
     sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
@@ -627,7 +627,7 @@ restore_default_sql () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/minute.sh ./
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
         sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
@@ -1174,7 +1174,7 @@ cat <<EOF
 EOF
 echo " "
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
-  true
+  _DO_NOTHING=YES
   if [ ! -e "/root/.upstart.cnf" ] ; then
     msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null

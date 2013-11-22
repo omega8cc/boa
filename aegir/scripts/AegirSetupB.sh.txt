@@ -569,7 +569,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   if [[ "$_DOMAIN" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
       $_DRUSHCMD @hostmaster pm-uninstall hosting_backup_queue -y &> /dev/null
@@ -601,7 +601,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster vset --always-set clone 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_send_welcome 1 &> /dev/null
   if [ ! -e "$_ROOT/log/custom_cron" ] ; then
-    true
+    _DO_NOTHING=YES
   fi
   $_DRUSHCMD @hostmaster vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1 &> /dev/null

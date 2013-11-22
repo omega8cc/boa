@@ -17,7 +17,7 @@ sanitize_string () {
 add_ltd_group_if_not_exists () {
   _LTD_EXISTS=$(getent group ltd-shell 2>&1)
   if [[ "$_LTD_EXISTS" =~ "ltd-shell" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     addgroup --system ltd-shell &> /dev/null
   fi

@@ -54,7 +54,7 @@ setup ()
   else
     _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
     if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
       echo "nameserver 8.8.8.8" >/etc/resolv.conf
@@ -63,7 +63,7 @@ setup ()
   fi
   _CURL_TEST=$(curl -s -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null

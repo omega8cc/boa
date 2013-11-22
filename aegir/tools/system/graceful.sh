@@ -64,7 +64,7 @@ action()
     /etc/init.d/jetty7 start
   fi
   if [ -e "/root/.high_traffic.cnf" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     rm -f -r /var/lib/nginx/speed/*
   fi

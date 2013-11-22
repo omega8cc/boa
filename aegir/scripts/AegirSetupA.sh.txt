@@ -279,7 +279,7 @@ update_redis_password () {
     fi
     _REDIS_PWD_TEST=`grep "'$RPASS'" /data/conf/global.inc 2>&1`
     if [[ "$_REDIS_PWD_TEST" =~ "'$RPASS'" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ ! -z "$RPASS" ] ; then
         mkdir -p /data/conf
@@ -1056,7 +1056,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
-    true
+    _DO_NOTHING=YES
     mrun "sleep 1"
     if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
       msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
@@ -1164,7 +1164,7 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
   if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
     _SSL_TEST=`grep no-https-aegir /data/conf/global.inc 2>&1`
     if [[ "$_SSL_TEST" =~ "no-https-aegir" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       msg "$_STATUS A: Installing forced SSL settings for all Satellite Hostmasters"
       mrun "sleep 1"
@@ -1250,7 +1250,7 @@ else
   else
     echo " "
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
-      true
+      _DO_NOTHING=YES
       _DIST_INSTALL=YES
       if [ ! -e "/root/.upstart.cnf" ] ; then
         service cron stop &> /dev/null
@@ -1487,7 +1487,7 @@ rm -f $_USER_HD/{.profile,.bash_logout,.bashrc}
 ###---### Reading or creating pass.txt.
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
-  true
+  _DO_NOTHING=YES
 else
   if [ -e "$_ROOT/pass.txt" ] ; then
     _PASWD=`cat $_ROOT/pass.txt`
@@ -1775,7 +1775,7 @@ fi
 ###---### Create other dirs and symlinks if not exist.
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
-  true
+  _DO_NOTHING=YES
 else
   if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
     mkdir -p $_ROOT/distro/$_THIS_CORE/keys
@@ -1812,7 +1812,7 @@ fi
 ###---### Preparing setupmail.txt.
 #
 if [ "$_HM_ONLY" = "YES" ] ; then
-  true
+  _DO_NOTHING=YES
 else
 msg "$_STATUS A: Preparing setupmail.txt"
 mrun "sleep 1"
@@ -1954,7 +1954,7 @@ if [ -d "$_CORE/$_DRUPAL7" ] ; then
 fi
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     _AEGIR_LOGIN_URL=`grep "^http://$_DOMAIN" $_ROOT/log/install.log 2> /dev/null`
     if [ ! -z "$_AEGIR_LOGIN_URL" ] ; then

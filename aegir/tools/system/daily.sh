@@ -117,7 +117,7 @@ enable_modules () {
   for m in $1; do
     _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
     if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       run_drush4_cmd "en $m -y"
       echo $m enabled in $Dom
@@ -296,7 +296,7 @@ fix_modules () {
             if [ -e "$_DIR_CTRL_FILE" ] ; then
               _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = TRUE" $_DIR_CTRL_FILE)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = TRUE" ]] ; then
-                true
+                _DO_NOTHING=YES
               else
                 ###
                 ### Do this only for the site level ini file.
@@ -313,7 +313,7 @@ fix_modules () {
             if [ -e "$_DIR_CTRL_FILE" ] ; then
               _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = FALSE" $_DIR_CTRL_FILE)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = FALSE" ]] ; then
-                true
+                _DO_NOTHING=YES
               else
                 sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
               fi
@@ -347,7 +347,7 @@ fix_modules () {
               if [ -e "$_DIR_CTRL_FILE" ] ; then
                 _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = TRUE" $_DIR_CTRL_FILE)
                 if [[ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST" =~ "allow_private_file_downloads = TRUE" ]] ; then
-                  true
+                  _DO_NOTHING=YES
                 else
                   ###
                   ### Do this only for the site level ini file.
@@ -364,7 +364,7 @@ fix_modules () {
               if [ -e "$_DIR_CTRL_FILE" ] ; then
                 _AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST=$(grep "^allow_private_file_downloads = FALSE" $_DIR_CTRL_FILE)
                 if [[ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS_TEST" =~ "allow_private_file_downloads = FALSE" ]] ; then
-                  true
+                  _DO_NOTHING=YES
                 else
                   sed -i "s/.*allow_private_file_downloads.*/allow_private_file_downloads = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
                 fi
@@ -395,7 +395,7 @@ fix_modules () {
             if [ -e "$_PLR_CTRL_FILE" ] ; then
               _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = TRUE" $_PLR_CTRL_FILE)
               if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = TRUE" ]] ; then
-                true
+                _DO_NOTHING=YES
               else
                 ###
                 ### Do this only for the platform level ini file, so the site level ini file can disable
@@ -413,7 +413,7 @@ fix_modules () {
             if [ -e "$_PLR_CTRL_FILE" ] ; then
               _AUTO_DETECT_FACEBOOK_INTEGRATION_TEST=$(grep "^auto_detect_facebook_integration = FALSE" $_PLR_CTRL_FILE)
               if [[ "$_AUTO_DETECT_FACEBOOK_INTEGRATION_TEST" =~ "auto_detect_facebook_integration = FALSE" ]] ; then
-                true
+                _DO_NOTHING=YES
               else
                 sed -i "s/.*auto_detect_facebook_integration.*/auto_detect_facebook_integration = FALSE/g" $_PLR_CTRL_FILE &> /dev/null
               fi
@@ -443,7 +443,7 @@ fix_modules () {
             if [ -e "$_PLR_CTRL_FILE" ] ; then
               _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = TRUE" $_PLR_CTRL_FILE)
               if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = TRUE" ]] ; then
-                true
+                _DO_NOTHING=YES
               else
                 ###
                 ### Do this only for the platform level ini file, so the site level ini file can disable
@@ -461,7 +461,7 @@ fix_modules () {
             if [ -e "$_PLR_CTRL_FILE" ] ; then
               _AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST=$(grep "^auto_detect_domain_access_integration = FALSE" $_PLR_CTRL_FILE)
               if [[ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION_TEST" =~ "auto_detect_domain_access_integration = FALSE" ]] ; then
-                true
+                _DO_NOTHING=YES
               else
                 sed -i "s/.*auto_detect_domain_access_integration.*/auto_detect_domain_access_integration = FALSE/g" $_PLR_CTRL_FILE &> /dev/null
               fi
@@ -873,7 +873,7 @@ delete_this_platform () {
 check_old_empty_platforms () {
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ "v182q.nyc." ]] || [[ "$_HOST_TEST" =~ "ocean.nyc." ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       _DEL_OLD_EMPTY_PLATFORMS="60"
     fi
@@ -1061,7 +1061,7 @@ else
     for File in `find /etc/ssl/private/*.key -type f` ; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         openssl dhparam -rand - 2048 >> $File
       fi
@@ -1069,7 +1069,7 @@ else
     for File in `find /etc/ssl/private/*.crt -type f` ; do
       _PFS_TEST=$(grep "DH PARAMETERS" $File)
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         openssl dhparam -rand - 2048 >> $File
       fi

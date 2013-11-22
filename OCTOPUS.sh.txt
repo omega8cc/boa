@@ -682,7 +682,7 @@ fi
 check_id () {
   _ID_EXISTS=$(getent passwd $_USER 2>&1)
   if [ -z "$_ID_EXISTS" ] ; then
-    true
+    _DO_NOTHING=YES
   elif [[ "$_ID_EXISTS" =~ "$_USER" ]] ; then
     msg "ERROR: $_USER username is already taken"
     msg "Please choose different _USER"
@@ -785,7 +785,7 @@ octopus_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] || [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        true
+        _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address"
         msg "EXIT: in the _MY_EMAIL **and** _CLIENT_EMAIL variables"
@@ -844,13 +844,13 @@ octopus_cnf () {
     sleep 1
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.${_USER}.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.${_USER}.octopus.cnf
     fi
     _PHP_CLI_VERSION_TEST=$(grep _PHP_CLI_VERSION /root/.${_USER}.octopus.cnf)
     if [[ "$_PHP_CLI_VERSION_TEST" =~ "_PHP_CLI_VERSION" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.${_USER}.octopus.cnf
     fi
@@ -872,31 +872,31 @@ octopus_cnf () {
     fi
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_ALLOW_UNSUPPORTED=$_ALLOW_UNSUPPORTED" >> /root/.${_USER}.octopus.cnf
     fi
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.${_USER}.octopus.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
     fi
     _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_EMPTY_PLATFORMS_TEST" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.${_USER}.octopus.cnf
     fi
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_BACKUPS_TEST" =~ "_DEL_OLD_BACKUPS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS" >> /root/.${_USER}.octopus.cnf
     fi
     _DEL_OLD_TMP_TEST=$(grep _DEL_OLD_TMP /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_TMP_TEST" =~ "_DEL_OLD_TMP" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_DEL_OLD_TMP=$_DEL_OLD_TMP" >> /root/.${_USER}.octopus.cnf
     fi
@@ -905,13 +905,13 @@ octopus_cnf () {
     fi
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.${_USER}.octopus.cnf)
     if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
     fi
     _SQL_CONVERT_TEST=$(grep _SQL_CONVERT /root/.${_USER}.octopus.cnf)
     if [[ "$_SQL_CONVERT_TEST" =~ "_SQL_CONVERT" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
     fi
@@ -927,7 +927,7 @@ octopus_cnf () {
     fi
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        true
+        _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _MY_EMAIL variable"
         msg "EXIT: stored in the /root/.${_USER}.octopus.cnf config file"
@@ -940,7 +940,7 @@ octopus_cnf () {
     fi
     if [ ! -x "/usr/local/bin/php" ] || [[ "$_PHP_CLI_LEGACY" =~ "5.3" ]] || [[ "$_PHP_CLI_LEGACY" =~ "5.4" ]] || [[ "$_PHP_CLI_LEGACY" =~ "5.5" ]] ; then
       if [[ "$_CHECK_HOST" =~ ".host8." ]] && [ -e "/data/disk/$_USER/log/cli.txt" ] && [ -e "/data/disk/$_USER/log/fpm.txt" ] ; then
-        true
+        _DO_NOTHING=YES
       else
         if [ "$_PHP_CLI_LEGACY" = "5.4" ] ; then
           _PHP_FPM_VERSION=5.4
@@ -961,14 +961,14 @@ octopus_cnf () {
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "Installation aborted by you"
         exit 1
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        true
+        _DO_NOTHING=YES
       else
         echo "Upgrade aborted by you"
         exit 1
@@ -1361,7 +1361,7 @@ fi
 #
 #
 if [[ "$_DOMAIN" =~ ".xhost8." ]] ; then
-  true
+  _DO_NOTHING=YES
 else
   octopus_cnf
 fi
@@ -1484,7 +1484,7 @@ if [ -d "$_ROOT" ] ; then
       _CLIENT_EMAIL=`cat /data/disk/$_USER/log/email.txt`
       _CLIENT_EMAIL=`echo -n $_CLIENT_EMAIL | tr -d "\n"`
       if [[ "$_CLIENT_EMAIL" =~ "@" ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
         msg "EXIT: stored both in the /root/.${_USER}.octopus.cnf config file **and**"
@@ -1497,7 +1497,7 @@ if [ -d "$_ROOT" ] ; then
     if [[ "$_CLIENT_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        true
+        _DO_NOTHING=YES
       else
         msg "EXIT: You must enter **your** valid e-mail address in the _CLIENT_EMAIL variable"
         msg "EXIT: stored both in the /root/.${_USER}.octopus.cnf config file **and**"
@@ -1564,7 +1564,7 @@ fi
 #
 #
 if [ ! -f "/var/aegir/config/server_master/nginx/vhost.d/$_DOMAIN" ] ; then
-  true
+  _DO_NOTHING=YES
 else
   msg "ERROR: Your defined domain: $_DOMAIN is already used on the Aegir Master Instance"
   msg "Please change the value for _DOMAIN to make it unique"
@@ -1583,7 +1583,7 @@ if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
   find_correct_ip
   _THISRDIP="$_LOC_IP"
   if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
-    true
+    _DO_NOTHING=YES
   else
     msg "ERROR: Your defined domain: $_DOMAIN doesn't point to your IP: $_THISHTIP"
     msg "Please make sure you have valid IN A or IN CNAME record in your DNS"
@@ -1638,7 +1638,7 @@ EOF
 fi
 echo " "
 if prompt_yes_no "Do you want to proceed?" ; then
-  true
+  _DO_NOTHING=YES
 else
   echo "Installation/upgrade aborted by you"
   exit 1

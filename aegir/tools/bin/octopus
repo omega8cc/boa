@@ -47,7 +47,7 @@ check_report ()
   _SEND_ALERT=NO
   _RESULT_BYE=$(grep "BYE" $_UP_LOG)
   if [[ "$_RESULT_BYE" =~ "BYE" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     _SEND_ALERT=YES
   fi
@@ -102,7 +102,7 @@ up_one ()
     sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
-        true
+        _DO_NOTHING=YES
       else
         sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
         sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"             /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
@@ -310,7 +310,7 @@ check_wrapper ()
   echo "### $_TODAY ###" >> $_THIS_FILE
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
   if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     bash /var/backups/$(basename "$0")-now-$_NOW $*
   fi
@@ -324,7 +324,7 @@ check_dns_curl ()
   else
     _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
     if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-      true
+      _DO_NOTHING=YES
     else
       rm -f /etc/resolv.conf
       echo "nameserver 8.8.8.8" >/etc/resolv.conf
@@ -333,7 +333,7 @@ check_dns_curl ()
   fi
   _CURL_TEST=$(curl -s -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
-    true
+    _DO_NOTHING=YES
   else
     apt-get clean -qq &> /dev/null
     apt-get update -qq &> /dev/null

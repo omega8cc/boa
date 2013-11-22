@@ -118,7 +118,7 @@ EOF
 detect_vanilla_core () {
   if [ ! -e "$Plr/core" ] ; then
     if [ -e "$Plr/web.config" ] ; then
-      true
+      _DO_NOTHING=YES
     else
       if [ -e "$Plr/modules/watchdog" ] ; then
         if [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then

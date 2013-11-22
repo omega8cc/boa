@@ -134,7 +134,7 @@ _MYSQLTEST=`mysql -h$_AEGIR_HOST_IP  -uINVALIDLOGIN  -pINVALIDPASS 2>&1 >/dev/nu
 
 if [ -z `echo $_MYSQLTEST | grep -q "ERROR \(2003\|1130\)"` ] ; then
   msg  "MySQL is listening on $_AEGIR_HOST_IP."
-  true
+  _DO_NOTHING=YES
 else
   msg "FATAL ERROR: MySQL is not configured to listen on $_AEGIR_HOST_IP"
   msg "FATAL ERROR: Aborting AegirSetupM installer NOW!"
