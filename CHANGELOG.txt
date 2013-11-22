@@ -86,16 +86,16 @@
 
   ==> Updated on Fri Nov 22 21:18:33 SGT 2013 with all fixes applied to stable.
 
-  @=> Issues which can be fixed only with `barracuda up-stable system`:
+  @=> Issues which will trigger `barracuda up-stable system` if discovered:
 
-  * MariaDB 5.5.34 just released.
   * PHP: Fix for broken cURL from sources install logic.
   * PHP: Fix for forced rebuild mode if lib curl is broken or updated.
   * Use dummy variable instead of 'true' to avoid breaking the logic.
 
-  @=> Issues which can be fixed with boa-fix-upgrade.sh.txt script:
+  @=> Issues which will NOT trigger `barracuda up-stable system` if discovered:
 
   * Issue #2141283 - Drush aliases like `drush dbup` no longer work properly.
+  * MariaDB 5.5.34 just released.
 
 # HotFix for known post-upgrade issues
 
