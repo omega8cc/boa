@@ -78,6 +78,7 @@
   * Fix the logic for cURL install from sources.
   * Nginx: Add Access-Control-Allow-Origin header also for static .json
   * Nginx: Protect also .md files in modules|themes|libraries dirs.
+  * PHP: Fix for forced rebuild mode if lib curl is broken or updated.
   * Issue #2137583 - Permissions on the site directory are broken after running,
     how ironically, the Health Check task.
   * Issue #2138811 - Maintenance agent disables modules from its standard

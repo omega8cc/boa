@@ -3895,7 +3895,7 @@ check_apt_updates () {
       if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
         _UP_PHP=YES
       else
-        _UP_PHP=NO
+        _UP_PHP=YES
       fi
     else
       _UP_PHP=YES
@@ -6633,20 +6633,7 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=NO
       msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     fi
-    _BROKEN_CURL_TEST=$(curl --version 2> /dev/null)
-    if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
-      install_curl_src
-    fi
-    _BROKEN_LIBCURL_TEST=$($_PHP_NEW_BIN -v 2> /dev/null)
-    if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, libcurl broken, rebuild required"
-    fi
   else
-    _BROKEN_CURL_TEST=$(curl --version 2> /dev/null)
-    if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
-      install_curl_src
-    fi
     if [ "$_FROM_SOURCES" = "YES" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=YES
       msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
@@ -6655,6 +6642,15 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=NO
       msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     fi
+  fi
+  _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
+    install_curl_src
+  fi
+  _BROKEN_LIBCURL_TEST=$($_PHP_NEW_BIN -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+    _PHP_INSTALL_REQUIRED_NEW=YES
+    msg "INFO: Installed PHP version $_PHP_INSTALLED, libcurl broken, rebuild required"
   fi
 else
   _PHP_INSTALL_REQUIRED_NEW=YES
