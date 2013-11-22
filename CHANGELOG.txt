@@ -37,7 +37,7 @@
     option set to 7 days by default on all hosted instances, as per our
     backups policy: https://omega8.cc/backups
 
-    The same logic applies to _DEL_OLD_TMP which defines for how log the
+    The same logic applies to _DEL_OLD_TMP which defines for how long the
     temporary files in all hosted sites files/tmp/ and private/temp/ directories
     are kept before deleting them during running daily maintenance.
 
