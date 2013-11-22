@@ -101,6 +101,7 @@ Contrib [F]orce[E]nabled
 Contrib [F]orce[D]isabled
 
  background_process --------- [D6,D7] ----------- [FD]
+ coder ---------------------- [D6,D7] ----------- [FD]
  css_gzip ------------------- [D6] -------------- [FD]
  devel ---------------------- [D6,D7] ----------- [FD]
  javascript_aggregator ------ [D6] -------------- [FD]
