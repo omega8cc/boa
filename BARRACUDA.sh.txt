@@ -6699,20 +6699,6 @@ if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
   else
     _PHP_INSTALL_REQUIRED=YES
   fi
-  if [ -x "/usr/local/bin/php52" ] ; then
-    _PHP_LEGACY_BIN="/usr/local/bin/php52"
-  else
-    _PHP_LEGACY_BIN="/usr/local/bin/php"
-  fi
-  if [ -x "$_PHP_LEGACY_BIN" ] ; then
-    _BROKEN_LIBCURL_TEST=$($_PHP_LEGACY_BIN -v 2>&1)
-    if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
-      _PHP_LEGACY_BIN_BROKEN=YES
-      _PHP_INSTALL_REQUIRED=YES
-      msg "INFO: Installed PHP version $_PHP_VERSION, libcurl broken, rebuild required"
-      install_curl_src
-    fi
-  fi
   if [ ! -e "/var/log/libcurl4-openssl-dev-fix.log" ] ; then
     _PHP_INSTALL_REQUIRED=YES
     if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -6796,6 +6782,16 @@ if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ ! -e "
   _PHP_INSTALL_REQUIRED=YES
   _PHP_MODERN_ONLY=NO
   msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
+fi
+if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
+  _BROKEN_LIBCURL_TEST_LEGACY=$(/usr/local/bin/php52 -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST_LEGACY" =~ "libcurl.so.4" ]] ; then
+    _PHP_INSTALL_REQUIRED=YES
+    _PHP_LEGACY_BIN_BROKEN=YES
+    _PHP_MODERN_ONLY=NO
+    msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
+    install_curl_src
+  fi
 fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   _PHP_EXTRA=""
