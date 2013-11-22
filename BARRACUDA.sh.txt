@@ -3895,7 +3895,7 @@ check_apt_updates () {
       if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
         _UP_PHP=YES
       else
-        _UP_PHP=YES
+        _UP_PHP=NO
       fi
     else
       _UP_PHP=YES
@@ -4738,15 +4738,6 @@ install_ssh_src () {
 #
 # Install cURL from sources.
 install_curl_src () {
-  echo "libcurl3 install" | dpkg --set-selections &> /dev/null
-  echo "libcurl3-gnutls install" | dpkg --set-selections &> /dev/null
-  echo "libcurl4-openssl-dev install" | dpkg --set-selections &> /dev/null
-  st_runner "aptitude install libcurl3 libcurl3-gnutls libcurl4-openssl-dev -y" &> /dev/null
-  aptitude hold curl &> /dev/null
-  echo "curl hold" | dpkg --set-selections &> /dev/null
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    apt-mark hold curl &> /dev/null
-  fi
   _CURL_INSTALL_REQUIRED=NO
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
@@ -4755,7 +4746,28 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
   fi
+  _BROKEN_CURL_TEST=$(curl --version 2>&1)
+  if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]]; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed libcurl is broken, cURL $_CURL_INSTALLED upgrade required"
+  fi
+  if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    _CURL_INSTALL_REQUIRED=YES
+    msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
+  fi
   if [ "$_CURL_INSTALL_REQUIRED" = "YES" ] ; then
+    ###--------------------###
+    echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    aptitude hold libcurl3 &> /dev/null
+    aptitude hold libcurl3-gnutls &> /dev/null
+    aptitude hold libcurl4-openssl-dev &> /dev/null
+    aptitude hold curl &> /dev/null
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      apt-mark hold curl &> /dev/null
+    fi
     msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
     mrun "sleep 1"
     cd /var/opt
@@ -4766,6 +4778,19 @@ install_curl_src () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     _UP_PHP=YES
+  else
+    ###--------------------###
+    echo "libcurl3 hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl3-gnutls hold" | dpkg --set-selections &> /dev/null
+    echo "libcurl4-openssl-dev hold" | dpkg --set-selections &> /dev/null
+    echo "curl hold" | dpkg --set-selections &> /dev/null
+    aptitude hold libcurl3 &> /dev/null
+    aptitude hold libcurl3-gnutls &> /dev/null
+    aptitude hold libcurl4-openssl-dev &> /dev/null
+    aptitude hold curl &> /dev/null
+    if [ "$_REL_VERSION" = "precise" ] ; then
+      apt-mark hold curl &> /dev/null
+    fi
   fi
 }
 #
@@ -6651,6 +6676,7 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
   if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
     _PHP_INSTALL_REQUIRED_NEW=YES
     msg "INFO: Installed PHP version $_PHP_INSTALLED, libcurl broken, rebuild required"
+    install_curl_src
   fi
 else
   _PHP_INSTALL_REQUIRED_NEW=YES
@@ -6671,6 +6697,19 @@ if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
     fi
   else
     _PHP_INSTALL_REQUIRED=YES
+  fi
+  if [ -x "/usr/local/bin/php52" ] ; then
+    _PHP_LEGACY_BIN="/usr/local/bin/php52"
+  else
+    _PHP_LEGACY_BIN="/usr/local/bin/php"
+  fi
+  if [ -x "$_PHP_LEGACY_BIN" ] ; then
+    _BROKEN_LIBCURL_TEST=$($_PHP_LEGACY_BIN -v 2>&1)
+    if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+      _PHP_INSTALL_REQUIRED=YES
+      msg "INFO: Installed PHP version $_PHP_VERSION, libcurl broken, rebuild required"
+      install_curl_src
+    fi
   fi
   if [ ! -e "/var/log/libcurl4-openssl-dev-fix.log" ] ; then
     _PHP_INSTALL_REQUIRED=YES
