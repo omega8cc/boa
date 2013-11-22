@@ -6784,8 +6784,9 @@ if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ ! -e "
   msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
 fi
 if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
-  _BROKEN_LIBCURL_TEST_LEGACY=$(/usr/local/bin/php52 -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST_LEGACY" =~ "libcurl.so.4" ]] ; then
+  _BROKEN_LIBCURL_TEST_LEGACY_A=$(/usr/local/bin/php52 -v 2>&1)
+  _BROKEN_LIBCURL_TEST_LEGACY_B=$(/usr/local/bin/php -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST_LEGACY_A" =~ "libcurl.so.4" ]] || [[ "$_BROKEN_LIBCURL_TEST_LEGACY_B" =~ "libcurl.so.4" ]] ; then
     _PHP_INSTALL_REQUIRED=YES
     _PHP_LEGACY_BIN_BROKEN=YES
     _PHP_MODERN_ONLY=NO
