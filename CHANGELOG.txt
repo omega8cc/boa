@@ -84,13 +84,14 @@
 
 # Known Issues on systems upgraded to initial BOA-2.1.3 release
 
-  ==> Updated on Fri Nov 22 11:29:34 SGT 2013 with all fixes applied to stable.
+  ==> Updated on Fri Nov 22 21:18:33 SGT 2013 with all fixes applied to stable.
 
   @=> Issues which can be fixed only with `barracuda up-stable system`:
 
-  * PHP: Fix for forced rebuild mode if lib curl is broken or updated.
-  * PHP: Fix for broken cURL from sources install logic.
   * MariaDB 5.5.34 just released.
+  * PHP: Fix for broken cURL from sources install logic.
+  * PHP: Fix for forced rebuild mode if lib curl is broken or updated.
+  * Use dummy variable instead of 'true' to avoid breaking the logic.
 
   @=> Issues which can be fixed with boa-fix-upgrade.sh.txt script:
 
