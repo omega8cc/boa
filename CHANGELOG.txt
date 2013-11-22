@@ -58,7 +58,6 @@
   * Allow to install unsupported distros only in head, not stable.
   * Contrib update: advagg-7.x-2.3
   * Map drush to drush6 on command line. You can still use drush4 and drush5.
-  * MariaDB 5.5.34
   * New contrib: display_cache
   * New contrib: panels_content_cache
   * Nginx 1.5.7 -- security upgrade.
@@ -78,7 +77,6 @@
   * Fix the logic for cURL install from sources.
   * Nginx: Add Access-Control-Allow-Origin header also for static .json
   * Nginx: Protect also .md files in modules|themes|libraries dirs.
-  * PHP: Fix for forced rebuild mode if lib curl is broken or updated.
   * Issue #2137583 - Permissions on the site directory are broken after running,
     how ironically, the Health Check task.
   * Issue #2138811 - Maintenance agent disables modules from its standard
@@ -86,7 +84,15 @@
 
 # Known Issues on systems upgraded to initial BOA-2.1.3 release
 
-  ==> Updated on Fri Nov 22 04:32:11 SGT 2013 with all fixes applied to stable.
+  ==> Updated on Fri Nov 22 11:29:34 SGT 2013 with all fixes applied to stable.
+
+  @=> Issues which can be fixed only with `barracuda up-stable system`:
+
+  * PHP: Fix for forced rebuild mode if lib curl is broken or updated.
+  * PHP: Fix for broken cURL from sources install logic.
+  * MariaDB 5.5.34 just released.
+
+  @=> Issues which can be fixed with boa-fix-upgrade.sh.txt script:
 
   * Issue #2141283 - Drush aliases like `drush dbup` no longer work properly.
 
