@@ -137,6 +137,21 @@ up_one ()
           echo "$User/.drush/provision does not exist!"
         fi
       fi
+      if [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
+        if [ -e "$User/.drush/uberdrupal.patch" ] ; then
+          cd $User/.drush
+          patch -p1 < uberdrupal.patch &> /dev/null
+        fi
+        if [ -e "$User/.drush/bm.patch" ] ; then
+          cd $User/.drush
+          patch -p1 < bm.patch &> /dev/null
+        fi
+        if [ -e "$User/.drush/custom.patch" ] ; then
+          cd $User/.drush
+          patch -p1 < custom.patch &> /dev/null
+        fi
+        cd /var/backups
+      fi
     else
       echo "OCTOPUS.sh.txt installer not available - try again"
       exit 1
