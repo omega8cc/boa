@@ -5759,9 +5759,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
     kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
-  if [ -d "/var/www/cgp" ] ; then
-    mrun "apt-get remove collectd -y --force-yes" 2> /dev/null
-  fi
+  mrun "apt-get remove collectd -y --force-yes" 2> /dev/null
   touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   mrun "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
   mrun "apt-get autoremove -y --force-yes" &> /dev/null
@@ -5835,9 +5833,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
     kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
-  if [ -d "/var/www/cgp" ] ; then
-    mrun "apt-get remove collectd -y --force-yes" &> /dev/null
-  fi
+  mrun "apt-get remove collectd -y --force-yes" &> /dev/null
   if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
     if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
       mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
