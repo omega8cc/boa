@@ -1098,6 +1098,12 @@ fi
 #
 if [ `whoami` = "root" ] ; then
   chmod a+w /dev/null
+  if [ ! -e "/dev/fd" ] ; then
+    if [ -e "/proc/self/fd" ] ; then
+      rm -rf /dev/fd
+      ln -s /proc/self/fd /dev/fd
+    fi
+  fi
   msg "INFO: This script is ran as a root user"
 else
   msg "ERROR: This script should be ran as a root user - please `sudo -i` first"
