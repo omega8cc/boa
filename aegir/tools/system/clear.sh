@@ -43,8 +43,11 @@ if [ -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
   resolvconf -u &> /dev/null
 fi
 if [ -d "/dev/disk" ] ; then
-  swapoff -a
-  swapon -a
+  _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
+  if [ -z $_IF_CDP ] ; then
+    swapoff -a
+    swapon -a
+  fi
 fi
 touch /var/xdrago/log/clear.done
 ###EOF2013###

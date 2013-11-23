@@ -8262,8 +8262,11 @@ if [ ! -e "/var/log/sysctl.conf.vm.swap.cache.tuned.log" ] ; then
     mrun "sleep 1"
     echo "vm.overcommit_memory = 0" >> /etc/sysctl.conf
     sysctl -p /etc/sysctl.conf &> /dev/null
-    st_runner "swapoff -a" &> /dev/null
-    st_runner "swapon -a" &> /dev/null
+    _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
+    if [ -z $_IF_CDP ] ; then
+      st_runner "swapoff -a" &> /dev/null
+      st_runner "swapon -a" &> /dev/null
+    fi
   else
     sysctl -p /etc/sysctl.conf &> /dev/null
   fi
