@@ -42,6 +42,11 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+   /root/.no.swap.clear.cnf
+
+ This file, if exists, allows to skip the otherwise default procedure
+ designed to clear system (memory) swap hourly.
+
    /root/.mysql.no.new.password.cnf
 
  This file, if exists, allows to skip the otherwise default procedure

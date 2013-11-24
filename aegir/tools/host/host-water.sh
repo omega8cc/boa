@@ -161,7 +161,7 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
 fi
 ntpdate pool.ntp.org
 _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
-if [ -z $_IF_CDP ] ; then
+if [ -z $_IF_CDP ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
   swapoff -a
   swapon -a
 fi
