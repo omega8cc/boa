@@ -1,0 +1,61 @@
+diff --git a/modules/file/file.install b/modules/file/file.install
+index 47ee4fd0014b3f29c87da274968a1d969d61224a..33334b84aecab28299516554bffbf196c063ac93 100644
+--- a/modules/file/file.install
++++ b/modules/file/file.install
+@@ -53,10 +53,29 @@ function file_requirements($phase) {
+ 
+   // Check the server's ability to indicate upload progress.
+   if ($phase == 'runtime') {
+-    $implementation = file_progress_implementation();
+-    $apache = strpos($_SERVER['SERVER_SOFTWARE'], 'Apache') !== FALSE;
+-    $fastcgi = strpos($_SERVER['SERVER_SOFTWARE'], 'mod_fastcgi') !== FALSE || strpos($_SERVER["SERVER_SOFTWARE"], 'mod_fcgi') !== FALSE;
+     $description = NULL;
++
++    // Test the web server identity.
++    if (isset($_SERVER['SERVER_SOFTWARE']) && preg_match("/(?:ApacheSolaris|Nginx)/i", $_SERVER['SERVER_SOFTWARE'])) {
++      $is_nginx = TRUE;
++    }
++    else {
++      $is_nginx = FALSE;
++    }
++
++    if ($is_nginx) {
++      // It is running on BOA with PECL uploadprogress installed and Nginx
++      // so let's Make-Drupal-Happy-With-Fake-Apache-Identity.
++      $apache = TRUE;
++      $implementation = 'uploadprogress';
++      $fastcgi = FALSE;
++    }
++    else {
++      $implementation = file_progress_implementation();
++      $apache = strpos($_SERVER['SERVER_SOFTWARE'], 'Apache') !== FALSE;
++      $fastcgi = strpos($_SERVER['SERVER_SOFTWARE'], 'mod_fastcgi') !== FALSE || strpos($_SERVER["SERVER_SOFTWARE"], 'mod_fcgi') !== FALSE;
++    }
++
+     if (!$apache) {
+       $value = t('Not enabled');
+       $description = t('Your server is not capable of displaying file upload progress. File upload progress requires an Apache server running PHP with mod_php.');
+diff --git a/modules/system/system.install b/modules/system/system.install
+index 54092316522e332ca53bd6f3c6340dd8b9fcef57..fcce12f08ad14ef3bd407800a99a8be7dfea7813 100644
+--- a/modules/system/system.install
++++ b/modules/system/system.install
+@@ -264,14 +264,17 @@ function system_requirements($phase) {
+ 
+   // Test the web server identity.
+   if (isset($_SERVER['SERVER_SOFTWARE']) && preg_match("/(?:ApacheSolaris|Nginx)/i", $_SERVER['SERVER_SOFTWARE'])) {
+-    $is_nginx = TRUE; // Skip this on BOA since .htaccess is never used in Nginx.
++    // Skip this on BOA and Nginx since .htaccess is never used in Nginx.
++    $is_nginx = TRUE;
+   }
+   elseif (!isset($_SERVER['SERVER_SOFTWARE'])) {
+-    $is_nginx = TRUE; // Skip this on BOA since .htaccess is never used in Nginx.
++    // Skip this in Aegir backend where SERVER_SOFTWARE is not set, since .htaccess is never used in Nginx.
++    $is_nginx = TRUE;
+   }
+   else {
+     $is_nginx = FALSE;
+   }
++
+   // Test the contents of the .htaccess files.
+   if ($phase == 'runtime' && !$is_nginx) {
+     // Try to write the .htaccess files first, to prevent false alarms in case

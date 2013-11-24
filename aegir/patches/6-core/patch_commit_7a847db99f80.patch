@@ -1,0 +1,24 @@
+diff --git a/modules/system/system.install b/modules/system/system.install
+index 953ad1631f15d42529d76aeb9b7fe0adcfe1b2e4..4a75da5c1c0280c82df953ef8d620687b5f7e1ec 100644
+--- a/modules/system/system.install
++++ b/modules/system/system.install
+@@ -119,14 +119,17 @@ function system_requirements($phase) {
+ 
+   // Test the web server identity.
+   if (isset($_SERVER['SERVER_SOFTWARE']) && preg_match("/(?:ApacheSolaris|Nginx)/i", $_SERVER['SERVER_SOFTWARE'])) {
+-    $is_nginx = TRUE; // Skip this on BOA since .htaccess is never used in Nginx.
++    // Skip this on BOA and Nginx since .htaccess is never used in Nginx.
++    $is_nginx = TRUE;
+   }
+   elseif (!isset($_SERVER['SERVER_SOFTWARE'])) {
+-    $is_nginx = TRUE; // Skip this on BOA since .htaccess is never used in Nginx.
++    // Skip this in Aegir backend where SERVER_SOFTWARE is not set, since .htaccess is never used in Nginx.
++    $is_nginx = TRUE;
+   }
+   else {
+     $is_nginx = FALSE;
+   }
++
+   // Test the contents of the .htaccess files.
+   if ($phase == 'runtime' && !$is_nginx) {
+     // Try to write the .htaccess files first, to prevent false alarms in case
