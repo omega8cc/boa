@@ -108,7 +108,6 @@ _PLATFORMS_ONLY=EDIT_PLATFORMS_ONLY
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
-_REMOTE_CACHE_IP=EDIT_REMOTE_CACHE_IP
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
@@ -242,58 +241,6 @@ get_dev_contrib () {
     extract_archive "$1"
   fi
 }
-#
-# Set or update Redis password.
-update_redis_password () {
-  if [ ! -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    msg "$_STATUS A: Generate random password for Redis server"
-    touch /root/.redis.pass.txt
-    chmod 0600 /root/.redis.pass.txt &> /dev/null
-    _ESC_RPASS=""
-    _LEN_RPASS=0
-    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
-      _ESC_RPASS=$(randpass 32 alnum)
-      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
-      _LEN_RPASS=$(echo ${#_ESC_RPASS})
-    fi
-    if [ -z "$_ESC_RPASS" ] || [ $_LEN_RPASS -lt 19 ] ; then
-      _ESC_RPASS=`pwgen -v -s -1`
-      _ESC_RPASS=`echo -n $_ESC_RPASS | tr -d "\n"`
-      _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
-    fi
-    echo "$_ESC_RPASS" > /root/.redis.pass.txt
-    sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
-    sed -i "s/^requirepass /# requirepass /g" /etc/redis/redis.conf &> /dev/null
-    chown redis:redis /etc/redis/redis.conf
-    chmod 0600 /etc/redis/redis.conf
-    service redis-server stop &> /dev/null
-    killall -9 redis-server &> /dev/null
-    service redis-server start &> /dev/null
-  fi
-  if [ -e "/root/.redis.pass.txt" ] && [ -e "/etc/redis/redis.conf" ] ; then
-    if [ -z "$_ESC_RPASS" ] ; then
-      RPASS=`cat /root/.redis.pass.txt`
-      RPASS=`echo -n $RPASS | tr -d "\n"`
-    else
-      RPASS="$_ESC_RPASS"
-    fi
-    _REDIS_PWD_TEST=`grep "'$RPASS'" /data/conf/global.inc 2>&1`
-    if [[ "$_REDIS_PWD_TEST" =~ "'$RPASS'" ]] ; then
-      _DO_NOTHING=YES
-    else
-      if [ ! -z "$RPASS" ] ; then
-        mkdir -p /data/conf
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
-        sed -i "s/isfoobared/$RPASS/g" /data/conf/global.inc &> /dev/null
-      fi
-    fi
-    if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
-      rm -f /var/aegir/config/includes/global.inc
-      ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
-    fi
-  fi
-}
-#
 #
 _SRCDIR=/opt/tmp/files
 _LOG=/var/backups/octopus-$_USER-$_NOW.log
@@ -1174,34 +1121,6 @@ if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; th
   fi
 fi
 cd $_ROOT
-
-
-###---### Set or update Redis password.
-#
-update_redis_password
-
-
-###---### Set/rewrite _REMOTE_CACHE_IP if defined and disable local caches.
-#
-if [ ! -z "$_REMOTE_CACHE_IP" ] ; then
-  if [ "$_REMOTE_CACHE_IP" = "127.0.0.1" ] ; then
-    _SKIP_THIS_IP=YES
-  else
-    msg "$_STATUS A: Set/rewrite remote cache IP address and disable local caches"
-    mrun "sleep 1"
-    sed -i "s/'127.0.0.1'/'$_REMOTE_CACHE_IP'/g" /data/conf/global.inc &> /dev/null
-    service redis-server stop &> /dev/null
-    update-rc.d -f redis-server remove &> /dev/null
-    service redis stop &> /dev/null
-    update-rc.d -f redis remove &> /dev/null
-    mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
-    mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
-    killall -9 redis-server &> /dev/null
-    rm -f /var/run/redis.pid
-    mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
-    killall -9 memcached &> /dev/null
-  fi
-fi
 
 
 ###---### Set permissions for all.

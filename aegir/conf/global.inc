@@ -705,6 +705,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
+  //$conf['redis_cache_socket']               = '/var/run/redis/redis.sock';
     $conf['redis_client_host']                = '127.0.0.1';
     $conf['redis_client_port']                = '6379';
   //$conf['redis_client_password']            = 'isfoobared';

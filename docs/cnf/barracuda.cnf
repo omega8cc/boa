@@ -32,6 +32,7 @@ _DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona DB server
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_ENGINE=InnoDB #------------- Allows to specify default engine for Drupal 6
+_REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror

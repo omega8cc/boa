@@ -477,6 +477,30 @@ _DB_SERVER=MariaDB
 
 
 ###----------------------------------------###
+### REDIS LISTEN MODE                      ###
+###----------------------------------------###
+###
+### If set to PORT (old default) Redis will
+### listen on standard port and 127.0.0.1 IP.
+###
+### You can also change this option to SOCKET
+### to improve caching backend performance.
+###
+### When set to any other IP address, it will
+### switch ALL your Aegir Satellite Instances
+### along with your Aegir Master Instance from
+### local Redis server to the remote Redis
+### server you have installed in your network.
+### It will also permanently disable your
+### local Redis server. Make sure to specify
+### correct IP when using this mode and also
+### modify /etc/csf/csf.conf to allow outgoing
+### TCP connections via port 6379.
+###
+_REDIS_LISTEN_MODE=PORT
+
+
+###----------------------------------------###
 ### SSH CUSTOM PORT                        ###
 ###----------------------------------------###
 ###
@@ -1398,12 +1422,6 @@ fix_php_ini_redis () {
     else
       echo "extension=redis.so" >> $_THIS_FILE
     fi
-    _REDIS_PID_TEST=$(grep "/var/run:" $_THIS_FILE)
-    if [[ "$_REDIS_PID_TEST" =~ "/var/run:" ]] ; then
-      _DO_NOTHING=YES
-    else
-      sed -i "s/:\/var\/www/:\/var\/run:\/var\/www/g" $_THIS_FILE &> /dev/null
-    fi
   fi
 }
 #
@@ -1494,6 +1512,8 @@ install_redis_src () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
+  mkdir -p /var/run/redis
+  chown redis:redis /var/run/redis
   mkdir -p /var/log/redis
   chown redis:redis /var/log/redis
   mkdir -p /var/lib/redis
@@ -1522,6 +1542,42 @@ install_redis_src () {
   update_redis_password
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
     ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
+  fi
+  if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      _REDIS_LISTEN_MODE=SOCKET
+    fi
+    if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] ; then
+      sed -i "s/redis_client_host/redis_cache_socket/g"       /data/conf/global.inc &> /dev/null
+      sed -i "s/'127.0.0.1'/'/var/run/redis/redis.sock'/g"    /data/conf/global.inc &> /dev/null
+      sed -i "s/^port 6379/port 0/g"                          /etc/redis/redis.conf &> /dev/null
+      sed -i "s/^bind 127.0.0.1/# bind 127.0.0.1/g"           /etc/redis/redis.conf &> /dev/null
+      sed -i "s/^# unixsocket/unixsocket/g"                   /etc/redis/redis.conf &> /dev/null
+    elif [ "$_REDIS_LISTEN_MODE" = "PORT" ] || [ "$_REDIS_LISTEN_MODE" = "127.0.0.1" ] ; then
+      _DO_NOTHING=YES
+    else
+      _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
+      if [ ! -z "$_REDIS_LISTEN_MODE" ] ; then
+        if [[ "$_REDIS_LISTEN_MODE" =~ "192.168." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "172.16." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "127.0." ]] ; then
+          sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g" /etc/redis/redis.conf &> /dev/null
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"        /data/conf/global.inc &> /dev/null
+        else
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"        /data/conf/global.inc &> /dev/null
+          service redis-server stop &> /dev/null
+          update-rc.d -f redis-server remove &> /dev/null
+          service redis stop &> /dev/null
+          update-rc.d -f redis remove &> /dev/null
+          mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
+          mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
+          killall -9 redis-server &> /dev/null
+          rm -f /var/run/redis/redis.pid
+          mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
+          killall -9 memcached &> /dev/null
+          msg "INFO: Remote Redis IP set to $_REDIS_LISTEN_MODE with local instance disabled"
+          mrun "sleep 1"
+        fi
+      fi
+    fi
   fi
   touch /var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION.log
 }
@@ -2768,6 +2824,7 @@ barracuda_cnf () {
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
     echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
     echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
+    echo "_REDIS_LISTEN_MODE=$_REDIS_LISTEN_MODE" >> /root/.barracuda.cnf
     echo "_SSH_PORT=$_SSH_PORT" >> /root/.barracuda.cnf
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
@@ -2834,6 +2891,7 @@ barracuda_cnf () {
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
@@ -3056,6 +3114,12 @@ barracuda_cnf () {
     else
       echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
     fi
+    _REDIS_LISTEN_MODE_TEST=$(grep _REDIS_LISTEN_MODE /root/.barracuda.cnf)
+    if [[ "$_REDIS_LISTEN_MODE_TEST" =~ "_REDIS_LISTEN_MODE" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_REDIS_LISTEN_MODE=$_REDIS_LISTEN_MODE" >> /root/.barracuda.cnf
+    fi
     _NGINX_LDAP_TEST=$(grep _NGINX_LDAP /root/.barracuda.cnf)
     if [[ "$_NGINX_LDAP_TEST" =~ "_NGINX_LDAP" ]] ; then
       _DO_NOTHING=YES
@@ -3157,6 +3221,7 @@ barracuda_cnf () {
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
@@ -7071,7 +7136,7 @@ else
     mrun "sleep 1"
   fi
 fi
-if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION.log" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 

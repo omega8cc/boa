@@ -81,7 +81,6 @@ _CLIENT_CORES=8
 ### _AEGIR_VERSION=HEAD
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
-### _REMOTE_CACHE_IP=127.0.0.1
 ### _LOCAL_NETWORK_IP="127.0.1.1"
 ### _DOMAIN=$_USER.sub.aegir.local
 ###
@@ -462,22 +461,6 @@ _DEL_OLD_TMP="0"
 
 
 ###----------------------------------------###
-### REMOTE CACHE IP ADDRESS                ###
-###----------------------------------------###
-###
-### Use this option only when you want to
-### switch ALL your Aegir Satellite Instances
-### along with your Aegir Master Instance
-### from local Redis and Memcache servers
-### to the remote caches in your network.
-### It will also permanently disable your
-### local instances of Redis and Memcache.
-### By default your server localhost is used.
-###
-_REMOTE_CACHE_IP=127.0.0.1
-
-
-###----------------------------------------###
 ### LOCALHOST ON LOCAL NETWORK             ###
 ###----------------------------------------###
 ###
@@ -818,7 +801,6 @@ octopus_cnf () {
     echo "_DEL_OLD_EMPTY_PLATFORMS=$_DEL_OLD_EMPTY_PLATFORMS" >> /root/.${_USER}.octopus.cnf
     echo "_DEL_OLD_BACKUPS=$_DEL_OLD_BACKUPS" >> /root/.${_USER}.octopus.cnf
     echo "_DEL_OLD_TMP=$_DEL_OLD_TMP" >> /root/.${_USER}.octopus.cnf
-    echo "_REMOTE_CACHE_IP=$_REMOTE_CACHE_IP" >> /root/.${_USER}.octopus.cnf
     echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.${_USER}.octopus.cnf
@@ -1103,7 +1085,6 @@ do
   sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
   sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
   sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_REMOTE_CACHE_IP/$_REMOTE_CACHE_IP/g"     $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
@@ -1338,7 +1319,6 @@ if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost
-  _REMOTE_CACHE_IP=127.0.0.1
   _DOMAIN="$_USER.sub.aegir.local"
   _LOCAL_NETWORK_IP="127.0.1.1"
   _MY_OWNIP="$_LOCAL_NETWORK_IP"

@@ -282,12 +282,6 @@ fix_php_ini_redis () {
     else
       echo "extension=redis.so" >> $_THIS_FILE
     fi
-    _REDIS_PID_TEST=$(grep "/var/run:" $_THIS_FILE)
-    if [[ "$_REDIS_PID_TEST" =~ "/var/run:" ]] ; then
-      _DO_NOTHING=YES
-    else
-      sed -i "s/:\/var\/www/:\/var\/run:\/var\/www/g" $_THIS_FILE &> /dev/null
-    fi
   fi
 }
 #
