@@ -7,7 +7,7 @@ index 1158df5756ca13516f8eb16c34ba16a2742c95ed..4ce8cebf9583c17a5d335f2e691bba9e
    fastcgi_param  SERVER_PROTOCOL     $server_protocol;
    fastcgi_param  GATEWAY_INTERFACE   CGI/1.1;
 -  fastcgi_param  SERVER_SOFTWARE     ApacheSolaris/$nginx_version;
-+  fastcgi_param  SERVER_SOFTWARE     ApacheSolaris (nginx)/$nginx_version;
++  fastcgi_param  SERVER_SOFTWARE     ApacheSolarisNginx/$nginx_version;
    fastcgi_param  REMOTE_ADDR         $remote_addr;
    fastcgi_param  REMOTE_PORT         $remote_port;
    fastcgi_param  SERVER_ADDR         $server_addr;
@@ -20,7 +20,7 @@ index 70d62e38d15a93c5ce3bb8502664290c7efd95a7..e1991a74580e1b11f6942506f71de992
  fastcgi_param  SERVER_PROTOCOL    $server_protocol;
  fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
 -fastcgi_param  SERVER_SOFTWARE    ApacheSolaris/$nginx_version;
-+fastcgi_param  SERVER_SOFTWARE    ApacheSolaris (nginx)/$nginx_version;
++fastcgi_param  SERVER_SOFTWARE    ApacheSolarisNginx/$nginx_version;
  fastcgi_param  REMOTE_ADDR        $remote_addr;
  fastcgi_param  REMOTE_PORT        $remote_port;
  fastcgi_param  SERVER_ADDR        $server_addr;
@@ -33,7 +33,7 @@ index c24a765bcfe90216283d8177f9acead6bb749d46..2b7eedaf06eb12aa17017059c25f9a45
  fastcgi_param  SERVER_PROTOCOL    $server_protocol;
  fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
 -fastcgi_param  SERVER_SOFTWARE    SSLApacheSolaris/$nginx_version;
-+fastcgi_param  SERVER_SOFTWARE    ApacheSolarisSSL (nginx)/$nginx_version;
++fastcgi_param  SERVER_SOFTWARE    ApacheSolarisSSLNginx/$nginx_version;
  fastcgi_param  REMOTE_ADDR        $remote_addr;
  fastcgi_param  REMOTE_PORT        $remote_port;
  fastcgi_param  SERVER_ADDR        $server_addr;
