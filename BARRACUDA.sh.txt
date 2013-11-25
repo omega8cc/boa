@@ -1443,10 +1443,10 @@ forced_redis_password_update () {
     _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
   fi
   echo "$_ESC_RPASS" > /root/.redis.pass.txt
-  touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log
+  touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log
   _FORCE_REDIS_RESTART=YES
+  sed -i "s/^# requirepass /requirepass /g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
-  sed -i "s/^requirepass /# requirepass /g" /etc/redis/redis.conf &> /dev/null
   chown redis:redis /etc/redis/redis.conf
   chmod 0600 /etc/redis/redis.conf
 }
@@ -1460,21 +1460,21 @@ fix_redis_mode () {
       _REDIS_LISTEN_MODE=SOCKET
     fi
     if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] ; then
-      sed -i "s/redis_client_host/redis_cache_socket/g"          /data/conf/global.inc &> /dev/null
-      sed -i "s/'127.0.0.1';/'\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
-      sed -i "s/^port 0/port 6379/g"                             /etc/redis/redis.conf &> /dev/null
-      sed -i "s/^# bind 127.0.0.1/bind 127.0.0.1/g"              /etc/redis/redis.conf &> /dev/null
-      sed -i "s/^# unixsocket/unixsocket/g"                      /etc/redis/redis.conf &> /dev/null
+      sed -i "s/redis_client_host/redis_client_socket/g"               /data/conf/global.inc &> /dev/null
+      sed -i "s/  = '127.0.0.1';/= '\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
+      sed -i "s/^port 0/port 6379/g"                                   /etc/redis/redis.conf &> /dev/null
+      sed -i "s/^# bind 127.0.0.1/bind 127.0.0.1/g"                    /etc/redis/redis.conf &> /dev/null
+      sed -i "s/^# unixsocket/unixsocket/g"                            /etc/redis/redis.conf &> /dev/null
     elif [ "$_REDIS_LISTEN_MODE" = "PORT" ] || [ "$_REDIS_LISTEN_MODE" = "127.0.0.1" ] ; then
       _DO_NOTHING=YES
     else
       _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
       if [ ! -z "$_REDIS_LISTEN_MODE" ] ; then
         if [[ "$_REDIS_LISTEN_MODE" =~ "192.168." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "172.16." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "127.0." ]] ; then
-          sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g"  /etc/redis/redis.conf &> /dev/null
-          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"         /data/conf/global.inc &> /dev/null
+          sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g"        /etc/redis/redis.conf &> /dev/null
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"               /data/conf/global.inc &> /dev/null
         else
-          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"         /data/conf/global.inc &> /dev/null
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"               /data/conf/global.inc &> /dev/null
           service redis-server stop &> /dev/null
           update-rc.d -f redis-server remove &> /dev/null
           service redis stop &> /dev/null
@@ -1496,7 +1496,7 @@ fix_redis_mode () {
 # Set or update Redis password.
 update_redis_password () {
   if [ -e "/etc/redis/redis.conf" ] ; then
-    if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+    if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log" ] ; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
          forced_redis_password_update
       fi

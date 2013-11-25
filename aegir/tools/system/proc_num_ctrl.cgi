@@ -4,7 +4,7 @@
 ### this is a monitor for this server
 ###
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
-`/etc/init.d/redis-server start` if (!-f "/var/run/redis/redis.pid");
+`/etc/init.d/redis-server restart` if (!-f "/var/run/redis/redis.pid" || !-e "/var/run/redis/redis.sock");
 &mysqld_action;
 &global_action;
 foreach $USER (sort keys %li_cnt) {

@@ -360,7 +360,7 @@ if ($use_redis && !$is_install && !$custom_cache) {
   $redis = new Redis();
   $redis->connect('127.0.0.1', 6379);
   if ($redis->IsConnected()) {
-  //$redis->auth('isfoobared');
+    $redis->auth('isfoobared');
     $response = $redis->ping();
     if (strpos($response, 'PONG')) {
       $redis_up = TRUE;
@@ -694,21 +694,15 @@ if ($redis_up && $use_redis && !$custom_cache) {
     }
     if (is_readable($cache_lock_path) && $redis_lock) {
       $conf['lock_inc']                       = $cache_lock_path;
-      $conf['cache_class_cache_menu']         = 'DrupalDatabaseCache';
-      if ($drupal_six) {
-        $conf['cache_class_cache_views']      = 'DrupalDatabaseCache';
-        $conf['cache_class_cache']            = 'DrupalDatabaseCache';
-      }
       if ($is_dev && !$is_backend) {
         header("X-Redis-Lock-Is-Readable: " . $cache_lock_path);
       }
     }
     $conf['cache_backends'][]                 = $cache_redis_path;
     $conf['redis_client_interface']           = 'PhpRedis';
-  //$conf['redis_cache_socket']               = '/var/run/redis/redis.sock';
     $conf['redis_client_host']                = '127.0.0.1';
     $conf['redis_client_port']                = '6379';
-  //$conf['redis_client_password']            = 'isfoobared';
+    $conf['redis_client_password']            = 'isfoobared';
     $conf['cache_prefix']                     = $this_prefix;
     $conf['page_cache_invoke_hooks']          = TRUE;  // D7 == Do not use Aggressive Mode
     $conf['page_cache_without_database']      = FALSE; // D7 == Do not use Aggressive Mode
