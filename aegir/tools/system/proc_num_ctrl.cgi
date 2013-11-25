@@ -1,10 +1,16 @@
 #!/usr/bin/perl
 
 ###
-### this is a monitor for this server
+### System Services Monitor running every 10 seconds
 ###
-`/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
-`/etc/init.d/redis-server restart` if (!-f "/var/run/redis/redis.pid" || !-e "/var/run/redis/redis.sock");
+local(@RSARR) = `grep "redis_client_socket" /data/conf/global.inc 2>&1`;
+foreach $line (@RSARR) {
+  if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
+  print "\n Redis socket mode detected...\n";
+}
+`/etc/init.d/redis-server restart` if (!-e "/var/run/redis/redis.sock" && $redissocket);
+sleep(2);
+`/etc/init.d/redis-server restart` if (!-f "/var/run/redis/redis.pid");
 &mysqld_action;
 &global_action;
 foreach $USER (sort keys %li_cnt) {
@@ -74,6 +80,7 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
 `/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9");
 `/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
 `/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd");
+`/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
 if (-f "/usr/local/sbin/pure-config.pl") {
   `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
 }
