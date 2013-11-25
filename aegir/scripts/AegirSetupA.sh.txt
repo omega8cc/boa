@@ -1097,29 +1097,6 @@ fi
 #
 force_advanced_nginx_config
 st_runner "service nginx reload" &> /dev/null
-
-
-###---### Force global.inc update.
-#
-mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
-
-
-###---### Forced SSL settings.
-#
-if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
-  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
-    _SSL_TEST=`grep no-https-aegir /data/conf/global.inc 2>&1`
-    if [[ "$_SSL_TEST" =~ "no-https-aegir" ]] ; then
-      _DO_NOTHING=YES
-    else
-      msg "$_STATUS A: Installing forced SSL settings for all Satellite Hostmasters"
-      mrun "sleep 1"
-      mv -f /data/conf/global.inc /data/conf/global.inc-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc /data/conf/global.inc
-    fi
-  fi
-fi
 cd $_ROOT
 
 

@@ -1451,6 +1451,48 @@ forced_redis_password_update () {
   chmod 0600 /etc/redis/redis.conf
 }
 #
+# Fix Redis mode.
+fix_redis_mode () {
+  mkdir -p /var/run/redis
+  chown redis:redis /var/run/redis
+  if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      _REDIS_LISTEN_MODE=SOCKET
+    fi
+    if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] ; then
+      sed -i "s/redis_client_host/redis_cache_socket/g"          /data/conf/global.inc &> /dev/null
+      sed -i "s/'127.0.0.1';/'\/var\/run\/redis\/redis.sock';/g" /data/conf/global.inc &> /dev/null
+      sed -i "s/^port 0/port 6379/g"                             /etc/redis/redis.conf &> /dev/null
+      sed -i "s/^# bind 127.0.0.1/bind 127.0.0.1/g"              /etc/redis/redis.conf &> /dev/null
+      sed -i "s/^# unixsocket/unixsocket/g"                      /etc/redis/redis.conf &> /dev/null
+    elif [ "$_REDIS_LISTEN_MODE" = "PORT" ] || [ "$_REDIS_LISTEN_MODE" = "127.0.0.1" ] ; then
+      _DO_NOTHING=YES
+    else
+      _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
+      if [ ! -z "$_REDIS_LISTEN_MODE" ] ; then
+        if [[ "$_REDIS_LISTEN_MODE" =~ "192.168." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "172.16." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "127.0." ]] ; then
+          sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g"  /etc/redis/redis.conf &> /dev/null
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"         /data/conf/global.inc &> /dev/null
+        else
+          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"         /data/conf/global.inc &> /dev/null
+          service redis-server stop &> /dev/null
+          update-rc.d -f redis-server remove &> /dev/null
+          service redis stop &> /dev/null
+          update-rc.d -f redis remove &> /dev/null
+          mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
+          mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
+          killall -9 redis-server &> /dev/null
+          rm -f /var/run/redis/redis.pid
+          mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
+          killall -9 memcached &> /dev/null
+          msg "INFO: Remote Redis IP set to $_REDIS_LISTEN_MODE with local instance disabled"
+          mrun "sleep 1"
+        fi
+      fi
+    fi
+  fi
+}
+#
 # Set or update Redis password.
 update_redis_password () {
   if [ -e "/etc/redis/redis.conf" ] ; then
@@ -1480,6 +1522,7 @@ update_redis_password () {
     if [ -e "/var/aegir/config/includes" ] && [ ! -L "/var/aegir/config/includes/global.inc" ] && [ -e "/data/conf/global.inc" ] ; then
       ln -sf /data/conf/global.inc /var/aegir/config/includes/global.inc
     fi
+    fix_redis_mode
   fi
 }
 #
@@ -1542,42 +1585,6 @@ install_redis_src () {
   update_redis_password
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
     ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
-  fi
-  if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      _REDIS_LISTEN_MODE=SOCKET
-    fi
-    if [ "$_REDIS_LISTEN_MODE" = "SOCKET" ] ; then
-      sed -i "s/redis_client_host/redis_cache_socket/g"         /data/conf/global.inc &> /dev/null
-      sed -i "s/'127.0.0.1'/'\/var\/run\/redis\/redis.sock'/g"  /data/conf/global.inc &> /dev/null
-      sed -i "s/^port 6379/port 0/g"                            /etc/redis/redis.conf &> /dev/null
-      sed -i "s/^bind 127.0.0.1/# bind 127.0.0.1/g"             /etc/redis/redis.conf &> /dev/null
-      sed -i "s/^# unixsocket/unixsocket/g"                     /etc/redis/redis.conf &> /dev/null
-    elif [ "$_REDIS_LISTEN_MODE" = "PORT" ] || [ "$_REDIS_LISTEN_MODE" = "127.0.0.1" ] ; then
-      _DO_NOTHING=YES
-    else
-      _REDIS_LISTEN_MODE=${_REDIS_LISTEN_MODE//[^0-9.]/}
-      if [ ! -z "$_REDIS_LISTEN_MODE" ] ; then
-        if [[ "$_REDIS_LISTEN_MODE" =~ "192.168." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "172.16." ]] || [[ "$_REDIS_LISTEN_MODE" =~ "127.0." ]] ; then
-          sed -i "s/^bind 127.0.0.1/bind $_REDIS_LISTEN_MODE/g" /etc/redis/redis.conf &> /dev/null
-          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"        /data/conf/global.inc &> /dev/null
-        else
-          sed -i "s/'127.0.0.1'/'$_REDIS_LISTEN_MODE'/g"        /data/conf/global.inc &> /dev/null
-          service redis-server stop &> /dev/null
-          update-rc.d -f redis-server remove &> /dev/null
-          service redis stop &> /dev/null
-          update-rc.d -f redis remove &> /dev/null
-          mv -f /etc/init.d/redis /etc/init.d/redis-off &> /dev/null
-          mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
-          killall -9 redis-server &> /dev/null
-          rm -f /var/run/redis/redis.pid
-          mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
-          killall -9 memcached &> /dev/null
-          msg "INFO: Remote Redis IP set to $_REDIS_LISTEN_MODE with local instance disabled"
-          mrun "sleep 1"
-        fi
-      fi
-    fi
   fi
   touch /var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-fix.log
 }
