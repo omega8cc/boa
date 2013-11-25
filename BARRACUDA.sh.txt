@@ -2268,7 +2268,7 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
-  sed -i "s/ 90;/ 300;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
+  sed -i "s/ 90;/ 180;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
   if [ "$_NGINX_SPDY" = "YES" ] ; then
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
@@ -2338,9 +2338,9 @@ tune_web_server_config () {
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g"                       /etc/nginx/nginx.conf &> /dev/null
   fi
-  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 30s/g"       /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 60s/g"       /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 300s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 180s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
   sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
