@@ -113,8 +113,8 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * PHP-FPM 5.3.27 with Zend OPcache or APC, phpredis, uploadprogress and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
-* Limited shell, SFTP and FTPS separate accounts per Octopus instance.
-* Limited Shell and FTPS accounts per Aegir Client with per site access.
+* Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
+* Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
 * Drush and Drush Make access - drush4, drush5 and drush6 on command line.
 * HTTPS access with self-signed certificate for all hosted sites.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
