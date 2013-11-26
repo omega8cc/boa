@@ -5,7 +5,8 @@ SHELL=/bin/bash
 
 sqlmagic_fix() {
   if [ -f "$source" ] ; then
-    cat $source | sed 's|/\\*!50001 CREATE ALGORITHM=UNDEFINED \\*/|/\\*!50001 CREATE \\*/|g; s|/\\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\\*/||g' | sed '/\\*!50013 DEFINER=.*/ d' | sed '/^INSERT INTO/INSERT IGNORE INTO/g' > $target
+    cat $source | sed 's|/\\*!50001 CREATE ALGORITHM=UNDEFINED \\*/|/\\*!50001 CREATE \\*/|g; s|/\\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\\*/||g' | sed '/\\*!50013 DEFINER=.*/ d' > $target
+    sed -i "s/^INSERT INTO/INSERT IGNORE INTO/g" $target
     echo "Fixed database dump stored as $target"
     exit 0
   else
