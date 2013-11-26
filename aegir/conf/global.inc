@@ -102,10 +102,6 @@ if (function_exists('drush_get_command')) {
   $command = explode(" ", $command['command']);
   if ($command && !preg_match("/^help/", $command[0])) {
     $is_backend = TRUE;
-    // Required to avoid incorrect results in the Site Health Check task in Aegir
-    if (!isset($_SERVER['SERVER_SOFTWARE'])) {
-      $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolaris (nginx)';
-    }
   }
   if (preg_match("/^provision-install/", $command[0])) {
     $is_install = TRUE;
