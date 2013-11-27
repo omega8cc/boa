@@ -294,6 +294,7 @@ fix_modules () {
               chmod 0664 $_DIR_CTRL_FILE
             fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
+              _AUTO_CONFIG_ADVAGG_PRESENT=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE)
               _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = TRUE" $_DIR_CTRL_FILE)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = TRUE" ]] ; then
                 _DO_NOTHING=YES
@@ -301,7 +302,11 @@ fix_modules () {
                 ###
                 ### Do this only for the site level ini file.
                 ###
-                sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = TRUE/g" $_DIR_CTRL_FILE &> /dev/null
+                if [[ "$_AUTO_CONFIG_ADVAGG_PRESENT" =~ "advagg_auto_configuration" ]] ; then
+                  sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = TRUE/g" $_DIR_CTRL_FILE &> /dev/null
+                else
+                  echo "advagg_auto_configuration = TRUE" >> $_DIR_CTRL_FILE
+                fi
               fi
             fi
           else
@@ -311,11 +316,19 @@ fix_modules () {
               chmod 0664 $_DIR_CTRL_FILE
             fi
             if [ -e "$_DIR_CTRL_FILE" ] ; then
+              _AUTO_CONFIG_ADVAGG_PRESENT=$(grep "advagg_auto_configuration" $_DIR_CTRL_FILE)
               _AUTO_CONFIG_ADVAGG_TEST=$(grep "^advagg_auto_configuration = FALSE" $_DIR_CTRL_FILE)
               if [[ "$_AUTO_CONFIG_ADVAGG_TEST" =~ "advagg_auto_configuration = FALSE" ]] ; then
                 _DO_NOTHING=YES
               else
-                sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+                if [[ "$_AUTO_CONFIG_ADVAGG_PRESENT" =~ "advagg_auto_configuration" ]] ; then
+                  sed -i "s/.*advagg_auto_configuration.*/advagg_auto_configuration = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+                else
+                  echo ";advagg_auto_configuration = FALSE" >> $_DIR_CTRL_FILE
+                fi
+              fi
+            fi
+          fi
               fi
             fi
           fi
@@ -469,20 +482,88 @@ fix_modules () {
           fi
 
           ###
-          ### Disable redis_lock_enable in case it is enabled until https://drupal.org/node/2135545 is fixed
-          ### You can still enable it for testing either in local.settings.php or /data/conf/override.global.inc
-          ### with line $all_ini['redis_lock_enable'] = TRUE;
+          ### Add new INI variables if missing
           ###
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _REDIS_LOCK_ENABLE_TEST=$(grep "^redis_lock_enable = TRUE" $_PLR_CTRL_FILE)
-            if [[ "$_REDIS_LOCK_ENABLE_TEST" =~ "redis_lock_enable = TRUE" ]] ; then
-              sed -i "s/.*redis_lock_enable.*/;redis_lock_enable = FALSE/g" $_PLR_CTRL_FILE &> /dev/null
+            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_use_modern = FALSE" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_flush_forced_mode = FALSE" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_lock_enable = FALSE" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";speed_booster_anon_cache_ttl = 10" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";allow_private_file_downloads = FALSE" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "entitycache_dont_enable" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "entitycache_dont_enable" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";entitycache_dont_enable = FALSE" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "views_cache_bully_dont_enable" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "views_cache_bully_dont_enable" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";views_cache_bully_dont_enable = FALSE" >> $_PLR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "views_content_cache_dont_enable" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "views_content_cache_dont_enable" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";views_content_cache_dont_enable = FALSE" >> $_PLR_CTRL_FILE
             fi
           fi
           if [ -e "$_DIR_CTRL_FILE" ] ; then
-            _REDIS_LOCK_ENABLE_TEST=$(grep "^redis_lock_enable = TRUE" $_DIR_CTRL_FILE)
-            if [[ "$_REDIS_LOCK_ENABLE_TEST" =~ "redis_lock_enable = TRUE" ]] ; then
-              sed -i "s/.*redis_lock_enable.*/;redis_lock_enable = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+            _VAR_IF_PRESENT=$(grep "redis_use_modern" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_use_modern = FALSE" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_flush_forced_mode = FALSE" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_lock_enable = FALSE" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";speed_booster_anon_cache_ttl = 10" >> $_DIR_CTRL_FILE
+            fi
+             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";allow_private_file_downloads = FALSE" >> $_DIR_CTRL_FILE
             fi
           fi
 
@@ -577,6 +658,12 @@ fix_modules () {
           ### Detect db conversion mode, if set per platform or per site.
           ###
           if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _SQL_INNODB_CONVERSION_PRESENT=$(grep "sql_conversion_mode" $_PLR_CTRL_FILE)
+            if [[ "$_SQL_INNODB_CONVERSION_PRESENT" =~ "sql_conversion_mode" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";sql_conversion_mode = NO" >> $_PLR_CTRL_FILE
+            fi
             _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_PLR_CTRL_FILE)
             if [[ "$_SQL_INNODB_CONVERSION_TEST" =~ "sql_conversion_mode = innodb" ]] ; then
               _SQL_CONVERT=innodb
@@ -587,6 +674,12 @@ fix_modules () {
             fi
           fi
           if [ -e "$_DIR_CTRL_FILE" ] ; then
+            _SQL_INNODB_CONVERSION_PRESENT=$(grep "sql_conversion_mode" $_DIR_CTRL_FILE)
+            if [[ "$_SQL_INNODB_CONVERSION_PRESENT" =~ "sql_conversion_mode" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";sql_conversion_mode = NO" >> $_DIR_CTRL_FILE
+            fi
             _SQL_INNODB_CONVERSION_TEST=$(grep "^sql_conversion_mode = innodb" $_DIR_CTRL_FILE)
             if [[ "$_SQL_INNODB_CONVERSION_TEST" =~ "sql_conversion_mode = innodb" ]] ; then
               _SQL_CONVERT=innodb
