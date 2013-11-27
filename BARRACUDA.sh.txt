@@ -8464,6 +8464,12 @@ else
   sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
+  validate_public_ip &> /dev/null
+  _CRON_IP=${_THISHTIP//[^0-9.]/}
+  if [ ! -z "$_CRON_IP" ] ; then
+    sed -i "s/127.0.0.1;/$_CRON_IP;/g" /data/disk/*/config/includes/*.conf &> /dev/null
+    sed -i "s/127.0.0.1;/$_CRON_IP;/g" /var/aegir/config/includes/*.conf &> /dev/null
+  fi
   st_runner "service nginx reload" &> /dev/null
 fi
 
