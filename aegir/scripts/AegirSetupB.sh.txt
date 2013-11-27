@@ -606,7 +606,7 @@ if [ -e "$_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster vset --always-set hosting_advanced_cron_default_interval 10800 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_cron_frequency 53222400 &> /dev/null
-  $_DRUSHCMD @hostmaster vset --always-set hosting_cron_use_backend 1 &> /dev/null
+  $_DRUSHCMD @hostmaster vset --always-set hosting_cron_use_backend 0 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_ignore_default_profiles 0 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_tasks_frequency 5 &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_queue_tasks_items 5 &> /dev/null

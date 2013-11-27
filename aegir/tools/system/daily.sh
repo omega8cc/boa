@@ -1106,7 +1106,7 @@ action () {
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 1"
+          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
           run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
         fi
