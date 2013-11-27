@@ -76,23 +76,14 @@ $high_traffic = FALSE;
 $ini_loc_src  = FALSE;
 $ini_plr_src  = FALSE;
 $is_backend   = FALSE;
+$is_bot       = FALSE;
 $is_dev       = FALSE;
 $is_install   = FALSE;
-$is_test      = FALSE;
-$known_bot    = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
 $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
-
-/**
- * Bots detection
- */
-if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
-  // Detect known bots
-  $known_bot = TRUE;
-}
 
 /**
  * Backend and task detection
@@ -109,18 +100,25 @@ if (function_exists('drush_get_command')) {
 }
 
 /**
+ * Bots detection
+ */
+if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
+  $is_bot = TRUE;
+}
+
+/**
  * Dev mode detection and URLs protection
  */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
-  if ($known_bot && !$is_backend) {
-    header('X-Accel-Expires: 5');
+if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i", $_SERVER['HTTP_HOST']) && !$is_backend) {
+  $is_dev = TRUE;
+  if ($is_bot) {
+    // Deny known search bots on ^(dev|foo.(dev|devel)).domain subdomains
+    header('X-Accel-Expires: 60');
     header("HTTP/1.1 301 Moved Permanently");
     header("Location: http://www.aegirproject.org/");
     header("Connection: close");
     exit;
   }
-  $is_dev = TRUE;
 }
 
 /**
@@ -167,57 +165,53 @@ else {
 }
 
 /**
- * CI URLs protection
+ * Logic for the front-end only
  */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
-  // Deny known search bots on some protected CI subdomains
-  if ($known_bot && !$is_backend) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: https://omega8.cc/");
-    header("Connection: close");
-    exit;
+if (!$is_backend) {
+  if (isset($_SERVER['HTTP_HOST']) && $is_bot) {
+    if (preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST'])) {
+      // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
+      header('X-Accel-Expires: 60');
+      header("HTTP/1.1 301 Moved Permanently");
+      header("Location: http://www.aegirproject.org/");
+      header("Connection: close");
+      exit;
+    }
+    elseif (preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
+      // Deny known search bots on some protected CI subdomains
+      header('X-Accel-Expires: 60');
+      header("HTTP/1.1 301 Moved Permanently");
+      header("Location: https://omega8.cc/");
+      header("Connection: close");
+      exit;
+    }
   }
-}
 
-/**
- * Test and tmp URLs protection
- */
-if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^tmp\.|\.test\.|\.tmp\.)/i", $_SERVER['HTTP_HOST']) && isset($_SERVER['HTTP_USER_AGENT'])) {
-  // Deny known search bots on ^(tmp|foo.(tmp|test)).domain subdomains
-  if ($known_bot && !$is_backend) {
-    header('X-Accel-Expires: 5');
-    header("HTTP/1.1 301 Moved Permanently");
-    header("Location: http://www.aegirproject.org/");
-    header("Connection: close");
-    exit;
+  if ($is_dev) {
+    // Dev mode switch
+    error_reporting(E_ALL & ~E_NOTICE);
+    ini_set('display_errors', TRUE);
+    ini_set('display_startup_errors', TRUE);
+    ini_set('opcache.revalidate_freq', '1');
+    unset($conf['cache']);          // Stop hardcoding caching
+    unset($conf['preprocess_css']); // Stop hardcoding css aggregation
+    unset($conf['preprocess_js']);  // Stop hardcoding js aggregation
+    unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // Do not force on dev URLs
+    unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // Do not force on dev URLs
+    unset($conf['error_level']);    // Stop hardcoding no errors on screen
+    $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
+    $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
   }
-  $is_test = TRUE;
-}
-
-/**
- * Dev mode switch
- */
-if ($is_dev && !$is_backend) {
-  error_reporting(E_ALL & ~E_NOTICE);
-  ini_set('display_errors', TRUE);
-  ini_set('display_startup_errors', TRUE);
-  ini_set('opcache.revalidate_freq', '1');
-  unset($conf['cache']);          // Stop hardcoding caching
-  unset($conf['preprocess_css']); // Stop hardcoding css aggregation
-  unset($conf['preprocess_js']);  // Stop hardcoding js aggregation
-  unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // Do not force on dev URLs
-  unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // Do not force on dev URLs
-  unset($conf['error_level']);    // Stop hardcoding no errors on screen
-  $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
-  $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
-}
-
-/**
- * Set sane default opcache TTL on non-dev sites
- */
-if (!$is_dev && !$is_backend) {
-  ini_set('opcache.revalidate_freq', '5');
+  else {
+    if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) || preg_match("/^\/core\/cron\.php/", $_SERVER['REQUEST_URI'])) {
+      // Set longer opcache TTL for web based cron
+      ini_set('opcache.revalidate_freq', '3600');
+    }
+    else {
+      // Set sane default opcache TTL on non-dev sites
+      ini_set('opcache.revalidate_freq', '5');
+    }
+  }
 }
 
 /**
@@ -305,40 +299,39 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 /**
  * Hostmaster specific settings
  */
-if ($conf['install_profile'] == 'hostmaster' && isset($_SERVER['HTTP_USER_AGENT'])) {
-  if (!file_exists('/data/conf/no-https-aegir.inc')) {
-    $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
-    if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) && !$is_backend) { // we force secure connection here
-      header('X-Accel-Expires: 5');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
-      header("Connection: close");
-      exit;
-    }
-  }
+if ($conf['install_profile'] == 'hostmaster') {
   $conf['hosting_require_disable_before_delete'] = 0;
   unset($conf['cache']); // Disable hardcoded caching
-  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
-  if (preg_match("/(?:host8|omega8|aegir\.cc)/i", $_SERVER['HTTP_HOST']) && !$is_backend) {
-    if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
-        preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
-      header('X-Accel-Expires: 5');
-      header("HTTP/1.1 301 Moved Permanently");
-      header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
-      header("Connection: close");
-      exit;
-    }
-  }
   if (!$is_backend) {
+    ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
     header('X-Accel-Expires: 1');
+    if (!file_exists('/data/conf/no-https-aegir.inc')) {
+      $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
+      if ($request_type != "SSL" && !preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI'])) { // we force secure connection here
+        header('X-Accel-Expires: 5');
+        header("HTTP/1.1 301 Moved Permanently");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+        header("Connection: close");
+        exit;
+      }
+    }
+    if (isset($_SERVER['HTTP_HOST']) && preg_match("/\.(?:host8|aegir|boa|o8)\.(?:biz|cc|io)$/i", $_SERVER['HTTP_HOST'])) {
+      if (preg_match("/^\/admin\/user\/user\/create/", $_SERVER['REQUEST_URI']) ||
+          preg_match("/^\/node\/add\/server/", $_SERVER['REQUEST_URI']) ||
+          preg_match("/^\/node\/(?:1|2|4|5|7|8|10)\/(?:edit|delete)/", $_SERVER['REQUEST_URI'])) {
+        header('X-Accel-Expires: 5');
+        header("HTTP/1.1 301 Moved Permanently");
+        header("Location: https://" . $_SERVER['HTTP_HOST'] . "/hosting/sites");
+        header("Connection: close");
+        exit;
+      }
+    }
   }
 }
 
 /**
  * Main section starts here
  */
-
 if (isset($_SERVER['SERVER_NAME']) && $all_ini['allow_private_file_downloads']) {
   unset($conf['file_downloads']); // Disable hardcoded public downloads
   if ($is_dev && !$is_backend) {
@@ -398,71 +391,83 @@ if ($is_install) {
   $da_inc    = FALSE;
 }
 
-if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
+if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
+  $this_device = $_SERVER['USER_DEVICE'];
+}
+else {
+  $this_device = 'normal';
+}
 
-  if (isset($_SERVER['HTTP_USER_AGENT']) && isset($_SERVER['USER_DEVICE'])) {
-    $this_device = $_SERVER['USER_DEVICE'];
-  }
-  else {
-    $this_device = 'normal';
-  }
+/**
+ * Logic for no-dev URLs only
+ */
+if (!$is_dev) {
+  if ($all_ini['advagg_auto_configuration']) {
 
-  if (!$is_dev && $drupal_six && $all_ini['advagg_auto_configuration'] && (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
-      is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
-    $conf['preprocess_css'] = 0; // css aggregation disabled
-    $conf['preprocess_js'] = 0;  // js aggregation disabled
-    $conf['advagg_aggregate_mode'] = 1;
-    $conf['advagg_async_generation'] = 0;
-    $conf['advagg_checksum_mode'] = "md5";
-    $conf['advagg_closure'] = 1;
-    $conf['advagg_css_compress_agg_files'] = 1;
-    $conf['advagg_css_compress_compressor_level'] = "sane";
-    $conf['advagg_css_compress_inline'] = 1;
-    $conf['advagg_css_compressor'] = 2;
-    $conf['advagg_debug'] = 0;
-    $conf['advagg_dir_htaccess'] = 0;
-    $conf['advagg_enabled'] = 1;
-    $conf['advagg_gzip_compression'] = 1;
-    $conf['advagg_js_compress_agg_files'] = 1;
-    $conf['advagg_js_compress_callback'] = 1;
-    $conf['advagg_js_compress_inline'] = 1;
-    $conf['advagg_js_compress_packer_enable'] = 0;
-    $conf['advagg_js_compressor'] = 1;
-    $conf['advagg_page_cache_mode'] = 0;
-    $conf['advagg_rebuild_on_flush'] = 0;
-    $conf['advagg_server_addr'] = "-1";
-  }
-  elseif (!$is_dev && $drupal_seven && $all_ini['advagg_auto_configuration'] && (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
-          is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module'))) {
-    $conf['advagg_bundler_active'] = 1;
-    $conf['advagg_cache_level'] = 1;
-    $conf['advagg_combine_css_media'] = 0;
-    $conf['advagg_core_groups'] = 0;
-    $conf['advagg_css_compressor'] = 2;
-    $conf['advagg_css_inline_compressor'] = 2;
-    $conf['advagg_css_inline_compress_if_not_cacheable'] = 1;
-    $conf['advagg_enabled'] = 1;
-    $conf['advagg_gzip'] = 1;
-    $conf['advagg_ie_css_selector_limiter'] = 1;
-    $conf['advagg_js_compressor'] = 3;
-    $conf['advagg_js_compress_packer'] = 0;
-    $conf['advagg_js_inline_compressor'] = 3;
-    $conf['advagg_js_inline_compress_if_not_cacheable'] = 1;
-    $conf['preprocess_css'] = 1;
-    $conf['preprocess_js'] = 1;
-  }
+    if ($drupal_six) {
+      if (is_readable('modules/o_contrib/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
+        $conf['preprocess_css'] = 0; // css aggregation disabled
+        $conf['preprocess_js'] = 0;  // js aggregation disabled
+        $conf['advagg_aggregate_mode'] = 1;
+        $conf['advagg_async_generation'] = 0;
+        $conf['advagg_checksum_mode'] = "md5";
+        $conf['advagg_closure'] = 1;
+        $conf['advagg_css_compress_agg_files'] = 1;
+        $conf['advagg_css_compress_compressor_level'] = "sane";
+        $conf['advagg_css_compress_inline'] = 1;
+        $conf['advagg_css_compressor'] = 2;
+        $conf['advagg_debug'] = 0;
+        $conf['advagg_dir_htaccess'] = 0;
+        $conf['advagg_enabled'] = 1;
+        $conf['advagg_gzip_compression'] = 1;
+        $conf['advagg_js_compress_agg_files'] = 1;
+        $conf['advagg_js_compress_callback'] = 1;
+        $conf['advagg_js_compress_inline'] = 1;
+        $conf['advagg_js_compress_packer_enable'] = 0;
+        $conf['advagg_js_compressor'] = 1;
+        $conf['advagg_page_cache_mode'] = 0;
+        $conf['advagg_rebuild_on_flush'] = 0;
+        $conf['advagg_server_addr'] = "-1";
+      }
+    }
+    elseif ($drupal_seven) {
+      if (is_readable('modules/o_contrib_seven/advagg/advagg_bundler/advagg_bundler.module') ||
+          is_readable('sites/all/modules/advagg/advagg_bundler/advagg_bundler.module')) {
+        $conf['advagg_bundler_active'] = 1;
+        $conf['advagg_cache_level'] = 1;
+        $conf['advagg_combine_css_media'] = 0;
+        $conf['advagg_core_groups'] = 0;
+        $conf['advagg_css_compressor'] = 2;
+        $conf['advagg_css_inline_compressor'] = 2;
+        $conf['advagg_css_inline_compress_if_not_cacheable'] = 1;
+        $conf['advagg_enabled'] = 1;
+        $conf['advagg_gzip'] = 1;
+        $conf['advagg_ie_css_selector_limiter'] = 1;
+        $conf['advagg_js_compressor'] = 3;
+        $conf['advagg_js_compress_packer'] = 0;
+        $conf['advagg_js_inline_compressor'] = 3;
+        $conf['advagg_js_inline_compress_if_not_cacheable'] = 1;
+        $conf['preprocess_css'] = 1;
+        $conf['preprocess_js'] = 1;
+      }
+    }
 
-  if (!$is_dev && (is_readable('modules/o_contrib/httprl/httprl.module') || is_readable('modules/o_contrib_seven/httprl/httprl.module'))) {
-    $conf['advagg_use_httprl'] = 1;
-    $conf['httprl_background_callback'] = 1;
-    $conf['httprl_connect_timeout'] = 3;
-    $conf['httprl_dns_timeout'] = 3;
-    $conf['httprl_global_timeout'] = "60";
-    $conf['httprl_server_addr'] = "-1";
-    $conf['httprl_timeout'] = "10";
-    $conf['httprl_ttfb_timeout'] = "5";
-    ### $conf['drupal_http_request_function'] = "httprl_override_core";
+    if ($drupal_six || $drupal_seven) {
+      if (is_readable('modules/o_contrib/httprl/httprl.module') || is_readable('modules/o_contrib_seven/httprl/httprl.module')) {
+        $conf['advagg_use_httprl'] = 1;
+        $conf['httprl_background_callback'] = 1;
+        $conf['httprl_connect_timeout'] = 3;
+        $conf['httprl_dns_timeout'] = 3;
+        $conf['httprl_global_timeout'] = "60";
+        $conf['httprl_server_addr'] = "-1";
+        $conf['httprl_timeout'] = "10";
+        $conf['httprl_ttfb_timeout'] = "5";
+        ### $conf['drupal_http_request_function'] = "httprl_override_core";
+      }
+    }
   }
+}
 
 if ($all_ini['purge_expire_auto_configuration']) {
   if (is_readable('modules/o_contrib/purge/purge.inc')) {
@@ -490,6 +495,10 @@ else {
   }
 }
 
+/**
+ * More logic for the front-end only
+ */
+if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
@@ -499,12 +508,12 @@ else {
         $_SERVER['HTTPS'] = 'on';
         if ($drupal_seven || $drupal_eight) {
           ini_set('session.cookie_secure', TRUE);
-          if ($is_dev && !$is_backend) {
+          if ($is_dev) {
             header('X-Cookie-Sec: YES');
           }
         }
       }
-      if ($is_dev && !$is_backend) {
+      if ($is_dev) {
         header('X-Local-Proto: https');
       }
     }
@@ -526,13 +535,11 @@ else {
   if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
     @ini_set('session.cookie_domain', $domain);
     $cookie_domain = $domain;
-    if (!$is_backend) {
-      header("X-Cookie-Domain: " . $cookie_domain);
-    }
+    header("X-Cookie-Domain: " . $cookie_domain);
   }
 
   $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_';
-  if ($is_dev && !$is_backend) {
+  if ($is_dev) {
     header("X-Redis-Prefix: " . $this_prefix);
   }
 
@@ -552,15 +559,13 @@ else {
       if ($all_ini['speed_booster_anon_cache_ttl'] && preg_match("/^[0-9]{2,}$/", $all_ini['speed_booster_anon_cache_ttl'])) {
         if ($all_ini['speed_booster_anon_cache_ttl'] > 10) {
           $expire_in_seconds = $all_ini['speed_booster_anon_cache_ttl'];
-          if (!$is_backend) {
-            header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
-          }
+          header('X-Limit-Booster:' . $all_ini['speed_booster_anon_cache_ttl']);
         }
       }
     }
     if (!isset($_COOKIE[$test_sess_name])) {
       if (preg_match("/\/(?:node\/[0-9]+\/edit|node\/add)/", $_SERVER['REQUEST_URI'])) {
-        if (!$all_ini['allow_anon_node_add'] && !$is_backend) {
+        if (!$all_ini['allow_anon_node_add']) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
@@ -569,7 +574,7 @@ else {
         }
       }
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:admin|logout|privatemsg|approve)/", $_SERVER['REQUEST_URI'])) {
-        if (!$all_ini['disable_admin_dos_protection'] && !$is_backend) {
+        if (!$all_ini['disable_admin_dos_protection']) {
           $deny_anon = TRUE;
           header("HTTP/1.1 301 Moved Permanently");
           header("Location: " . $base_url . "/");
@@ -583,7 +588,7 @@ else {
     if ($conf['install_profile'] == 'feature_server' || $conf['install_profile'] == 'hostmaster') {
       $conf['user_register'] = 0; // Force "Only site administrators can create new user accounts"
     }
-    if (!$known_bot && !$high_traffic && !$deny_anon) {
+    if (!$is_bot && !$high_traffic && !$deny_anon) {
       if (preg_match("/^\/(?:[a-z]{2}\/)?(?:user|admin|cart|checkout|logout|privatemsg)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/\/(?:node\/[0-9]+\/edit|node\/add|comment\/reply|approve|users|ajax_comments|commerce_currency_select)/", $_SERVER['REQUEST_URI']) ||
           preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/", $_SERVER['HTTP_HOST'])) {
@@ -592,19 +597,17 @@ else {
           setcookie('NoCacheID', 'NC' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '1';
-        if (!$is_backend) {
-          header('X-Limit-Booster: 1');
-        }
+        header('X-Limit-Booster: 1');
       }
       if (isset($_SERVER['REQUEST_URI']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '0';
-        if ($is_dev && !$is_backend) {
+        if ($is_dev) {
           header('X-Skip-Booster: AjaxRU');
         }
       }
       if (isset($_SERVER['QUERY_STRING']) && preg_match("/(?:x-progress-id|ahah|progress\/|autocomplete|ajax|batch|js\/.*)/i", $_SERVER['QUERY_STRING'])) {
         $expire_in_seconds = '0';
-        if ($is_dev && !$is_backend) {
+        if ($is_dev) {
           header('X-Skip-Booster: AjaxQS');
         }
       }
@@ -614,20 +617,20 @@ else {
           setcookie('NoCacheID', 'POST' . $identity, $_SERVER['REQUEST_TIME'] + $lifetime, '/', $cookie_domain);
         }
         $expire_in_seconds = '0';
-        if ($is_dev && !$is_backend) {
+        if ($is_dev) {
           header('X-Skip-Booster: PostRM');
         }
       }
     }
-    if ($known_bot) {
+    if ($is_bot) {
       if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
         $expire_in_seconds = '86400';
-        if ($is_dev && !$is_backend) {
+        if ($is_dev) {
           header('X-Bot-Booster: 86400');
         }
       }
     }
-    if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1) && !$is_backend) {
+    if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
     }
   }

@@ -4,4 +4,3 @@
 
 // Settings useful for very high traffic sites
 $high_traffic = TRUE; // no side effects expected
-$force_redis  = TRUE; // some side effects possible
