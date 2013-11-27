@@ -235,7 +235,8 @@ $boa_ini = array(
   'server_name_cookie_domain' => FALSE,
   'auto_detect_facebook_integration' => TRUE,      // For backward compatibility until next release, then FALSE
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
-  'advagg_auto_configuration' => FALSE, // Will be set to TRUE in boa_site_control.ini if the module is enabled
+  'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
+  'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
 );
 
 /**
@@ -292,6 +293,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Auto-Detect-Facebook-Integration: " . $all_ini['auto_detect_facebook_integration']);
   header("X-Ini-Auto-Detect-Domain-Access-Integration: " . $all_ini['auto_detect_domain_access_integration']);
   header("X-Ini-Advagg-Auto-Configuration: " . $all_ini['advagg_auto_configuration']);
+  header("X-Ini-Purge-Expire-Auto-Configuration: " . $all_ini['purge_expire_auto_configuration']);
   header("X-Ini-Sql-Conversion-Mode: " . $all_ini['sql_conversion_mode']);
   header("X-Ini-Enable-User-Register-Protection: " . $all_ini['enable_user_register_protection']);
   header("X-Ini-Entitycache-Dont-Enable: " . $all_ini['entitycache_dont_enable']);
@@ -462,6 +464,7 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
     ### $conf['drupal_http_request_function'] = "httprl_override_core";
   }
 
+if ($all_ini['purge_expire_auto_configuration']) {
   if (is_readable('modules/o_contrib/purge/purge.inc')) {
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     if ($is_dev && !$is_backend) {
@@ -480,6 +483,12 @@ if (isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'])) {
       header('X-Purge-Level: none');
     }
   }
+}
+else {
+  if ($is_dev && !$is_backend) {
+    header('X-Purge-Level: none');
+  }
+}
 
   if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) || isset($_SERVER['HTTPS'])) {
     $conf['https'] = TRUE;

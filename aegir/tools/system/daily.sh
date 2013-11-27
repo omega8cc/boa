@@ -329,6 +329,53 @@ fix_modules () {
               fi
             fi
           fi
+
+          _AUTO_CONFIG_PURGE_EXPIRE=NO
+          if [ -e "$Plr/modules/o_contrib/purge" ] || [ -e "$Plr/modules/o_contrib_seven/purge" ] ; then
+            _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \(purge\)")
+            if [[ "$_MODULE_TEST" =~ "(purge)" ]] ; then
+              _AUTO_CONFIG_PURGE_EXPIRE=YES
+            fi
+          fi
+          if [ "$_AUTO_CONFIG_PURGE_EXPIRE" = "YES" ] ; then
+            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+              chmod 0664 $_DIR_CTRL_FILE
+            fi
+            if [ -e "$_DIR_CTRL_FILE" ] ; then
+              _AUTO_CONFIG_PURGE_EXPIRE_PRESENT=$(grep "purge_expire_auto_configuration" $_DIR_CTRL_FILE)
+              _AUTO_CONFIG_PURGE_EXPIRE_TEST=$(grep "^purge_expire_auto_configuration = TRUE" $_DIR_CTRL_FILE)
+              if [[ "$_AUTO_CONFIG_PURGE_EXPIRE_TEST" =~ "purge_expire_auto_configuration = TRUE" ]] ; then
+                _DO_NOTHING=YES
+              else
+                ###
+                ### Do this only for the site level ini file.
+                ###
+                if [[ "$_AUTO_CONFIG_PURGE_EXPIRE_PRESENT" =~ "purge_expire_auto_configuration" ]] ; then
+                  sed -i "s/.*purge_expire_auto_configuration.*/purge_expire_auto_configuration = TRUE/g" $_DIR_CTRL_FILE &> /dev/null
+                else
+                  echo "purge_expire_auto_configuration = TRUE" >> $_DIR_CTRL_FILE
+                fi
+              fi
+            fi
+          else
+            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+              chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
+              chmod 0664 $_DIR_CTRL_FILE
+            fi
+            if [ -e "$_DIR_CTRL_FILE" ] ; then
+              _AUTO_CONFIG_PURGE_EXPIRE_PRESENT=$(grep "purge_expire_auto_configuration" $_DIR_CTRL_FILE)
+              _AUTO_CONFIG_PURGE_EXPIRE_TEST=$(grep "^purge_expire_auto_configuration = FALSE" $_DIR_CTRL_FILE)
+              if [[ "$_AUTO_CONFIG_PURGE_EXPIRE_TEST" =~ "purge_expire_auto_configuration = FALSE" ]] ; then
+                _DO_NOTHING=YES
+              else
+                if [[ "$_AUTO_CONFIG_PURGE_EXPIRE_PRESENT" =~ "purge_expire_auto_configuration" ]] ; then
+                  sed -i "s/.*purge_expire_auto_configuration.*/purge_expire_auto_configuration = FALSE/g" $_DIR_CTRL_FILE &> /dev/null
+                else
+                  echo ";purge_expire_auto_configuration = FALSE" >> $_DIR_CTRL_FILE
+                fi
               fi
             fi
           fi
