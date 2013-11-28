@@ -8035,7 +8035,7 @@ else
     else
       _L_ST="upgrade"
     fi
-    if [ ! -e "/var/log/compass-tools-$_INSTALLER_VERSION.log" ] ; then
+    if [ ! -e "/var/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         _DO_NOTHING=YES
@@ -8068,7 +8068,7 @@ else
           st_runner "gem update sass-globbing" 2> /dev/null
           st_runner "gem update bundler" 2> /dev/null
         fi
-        echo "compass-$_INSTALLER_VERSION" > /var/log/compass-tools-$_INSTALLER_VERSION.log
+        echo "compass-$_INSTALLER_VERSION" > /var/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log
         msg "INFO: Compass Tools $_L_ST completed"
         mrun "sleep 1"
       else
