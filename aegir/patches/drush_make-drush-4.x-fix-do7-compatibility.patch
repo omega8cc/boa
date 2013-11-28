@@ -1,0 +1,28 @@
+diff --git a/drush_make.drush.inc b/drush_make.drush.inc
+index c8a9b42..f6c541f 100644
+--- a/drush_make.drush.inc
++++ b/drush_make.drush.inc
+@@ -310,10 +310,22 @@ function drush_make_update_xml_download($project) {
+   // Make an array of releases.
+   foreach ($project['release_history']->releases->release as $release) {
+     $version = (string) $release->version_major;
++    // Work around drupal.org D7 upgrade inconsistently including version_patch
++    // see https://drupal.org/node/2140621.
++    if (empty($release->version_patch)) {
++      $release->version_patch = 0;
++    }
+     // there should be version_patch attribute for every stable release
+     // so checking whether the attribute exists should be enough
+     if (isset($release->version_patch) && ((string) $release->version_extra) != 'dev') {
+-      $version .= '.' . (string) $release->version_patch;
++      // Set point version accounting for drupal.org D7 upgrade
++      // As of the drupal.org D7 upgrade version_minor replaces version_patch.
++      if (isset($release->version_minor) ) {
++        $version .= '.' . (string) $release->version_minor;
++      }
++      else {
++        $version .= '.' . (string) $release->version_patch;
++      }
+     }
+     // if version_patch attribute does not exist, then it should be a dev release
+     // and the version string should be in format MAJOR_VERSION.x-dev
