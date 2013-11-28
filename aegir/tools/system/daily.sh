@@ -27,7 +27,6 @@ run_drush4_nosilent_cmd () {
 }
 
 run_drush6_nosilent_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush6 cache-clear drush &> /dev/null"
   su -s /bin/bash $_THIS_HM_USER -c "drush6 $1"
 }
 
@@ -1094,6 +1093,7 @@ action () {
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
         echo User $User
+        su -s /bin/bash $_THIS_HM_USER -c "drush6 cache-clear drush &> /dev/null"
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
