@@ -653,11 +653,12 @@ if ($redis_up && $use_redis && !$custom_cache) {
       header("X-Redis-Version-Is: Modern");
     }
     if ($all_ini['redis_flush_forced_mode']) {
-      $conf['redis_perm_ttl']               = 21600; // 6 hours max
-      $conf['redis_flush_mode']             = 1; // Redis default is 0
-      $conf['redis_flush_mode_cache_page']  = 2; // Redis default is 1
-      $conf['redis_flush_mode_cache_block'] = 2; // Redis default is 1
-      $conf['redis_flush_mode_cache_menu']  = 2; // Redis default is 0
+      $conf['redis_perm_ttl']                  = 21600; // 6 hours max
+      $conf['redis_flush_mode']                = 1; // Redis default is 0
+      $conf['redis_flush_mode_cache_page']     = 2; // Redis default is 1
+      $conf['redis_flush_mode_cache_block']    = 2; // Redis default is 1
+      $conf['redis_flush_mode_cache_menu']     = 2; // Redis default is 0
+      $conf['redis_flush_mode_cache_metatag']  = 2; // Redis default is 0
       // See http://bit.ly/1drmi35 for more information
       if ($is_dev && !$is_backend) {
         header("X-Redis-Flush-Forced-Mode: Forced");
