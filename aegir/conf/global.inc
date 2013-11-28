@@ -834,5 +834,6 @@ if (extension_loaded('newrelic')) {
 if (!$is_dev) {
   unset($boa_ini);
   unset($usr_plr_ini);
+  unset($usr_loc_ini);
   unset($all_ini);
 }
