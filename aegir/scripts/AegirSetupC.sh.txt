@@ -254,7 +254,7 @@ fix_dirs_files () {
   echo empty > ./sites/all/modules/EMPTY.txt
   echo empty > ./sites/all/libraries/EMPTY.txt
   echo empty > ./sites/all/themes/EMPTY.txt
-  chmod 02775 ./profiles &> /dev/null
+  chmod 0751 ./profiles &> /dev/null
   chmod 0751 ./sites
   chmod 0751 ./sites/all
   chmod 02775 ./sites/all/{modules,libraries,themes}
