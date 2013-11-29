@@ -1284,6 +1284,13 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:users /data/all/000/core/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-B.info
 fi
+if [ ! -e "/var/backups/fix-sites-all-permsissions-2.1.3.txt" ] ; then
+  chmod 0751  /data/disk/*/distro/*/*/sites
+  chmod 0751  /data/disk/*/distro/*/*/sites/all
+  chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}
+  echo FIXED > /var/backups/fix-sites-all-permsissions-2.1.3.txt
+  echo "Permissions in sites/all tree just fixed"
+fi
 if [ ! -e "/root/.upstart.cnf" ] ; then
   service cron reload &> /dev/null
 fi
