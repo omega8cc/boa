@@ -164,7 +164,7 @@ up_action_all ()
   for User in `find /data/disk/ -maxdepth 1 | sort`
   do
     NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-    CTL_LOAD=1555
+    CTL_LOAD=1500
     if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
       if [ $NOW_LOAD -lt $CTL_LOAD ]; then
         _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
@@ -203,7 +203,7 @@ up_action_one ()
 {
   User="/data/disk/$second"
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-  CTL_LOAD=1555
+  CTL_LOAD=1500
   if [ -d "$User/config/server_master/nginx/vhost.d" ] && [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
     if [ $NOW_LOAD -lt $CTL_LOAD ]; then
       _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`

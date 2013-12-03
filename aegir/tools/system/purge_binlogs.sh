@@ -6,7 +6,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 action()
 {
 NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-CTL_LOAD=1555
+CTL_LOAD=1500
 if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
 echo load is $NOW_LOAD while maxload is $CTL_LOAD
 echo ... now doing CTL...

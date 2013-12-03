@@ -39,13 +39,13 @@ nginx_high_load_off()
 control()
 {
 ONEX_LOAD=`awk '{print $1*100}' /proc/loadavg`
+CTL_ONEX_LOAD_CRIT=2500
+CTL_ONEX_LOAD=1500
+CTL_ONEX_SPIDER_LOAD=500
 FIVX_LOAD=`awk '{print $2*100}' /proc/loadavg`
-CTL_ONEX_SPIDER_LOAD=699
-CTL_FIVX_SPIDER_LOAD=699
-CTL_ONEX_LOAD=1555
-CTL_FIVX_LOAD=999
-CTL_ONEX_LOAD_CRIT=1999
-CTL_FIVX_LOAD_CRIT=1555
+CTL_FIVX_LOAD_CRIT=1500
+CTL_FIVX_LOAD=1000
+CTL_FIVX_SPIDER_LOAD=500
 if [ $ONEX_LOAD -ge $CTL_ONEX_SPIDER_LOAD ] && [ $ONEX_LOAD -lt $CTL_ONEX_LOAD ] && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then
   nginx_high_load_on
 elif [ $FIVX_LOAD -ge $CTL_FIVX_SPIDER_LOAD ] && [ $FIVX_LOAD -lt $CTL_FIVX_LOAD ] && [ -e "/data/conf/nginx_high_load_off.conf" ] ; then

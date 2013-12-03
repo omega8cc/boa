@@ -10,7 +10,7 @@ action()
 for Runner in `find /var/xdrago -maxdepth 1 -mindepth 1 -type f | grep run- | uniq | sort`
 do
   NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-  CTL_LOAD=388
+  CTL_LOAD=500
   if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
     echo load is $NOW_LOAD while maxload is $CTL_LOAD
     n=$((RANDOM%9+2))
