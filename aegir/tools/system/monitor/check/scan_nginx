@@ -7,11 +7,12 @@
 $| = 1;
 $this_filename = "scan_nginx";
 $times = `date +%y%m%d-%H%M%S`;
-$myip = `hostname -i`;
+$myhn = `hostname --fqdn`;
+$myip = `echo $(getent ahostsv4 $myhn) | cut -d: -f2 | awk '{ print $1}'`;
 chomp($times);
 chomp($myip);
 &makeactions;
-print "CONTROL complete for $myip\n";
+print "CONTROL complete for $myip ($myhn)\n";
 exit;
 
 #############################################################################

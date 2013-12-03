@@ -279,7 +279,8 @@ else
   sleep 3
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
-  _THISHTIP=`hostname -i`
+  _THISHTNM=`hostname --fqdn`
+  _THISHTIP=`echo $(getent ahostsv4 $_THISHTNM) | cut -d: -f2 | awk '{ print $1}'`
   sed -i "s/8.8.8.8/$_THISHTIP/g" $_THIS_LTD_CONF
   if [ ! -e "/root/.allow.mc.cnf" ] ; then
     sed -i "s/'mc', //g" $_THIS_LTD_CONF
