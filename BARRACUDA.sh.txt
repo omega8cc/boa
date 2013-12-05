@@ -1568,14 +1568,14 @@ install_redis_src () {
       if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
         _DO_NOTHING=YES
       else
-        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-fix.log" ] ; then
+        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
           cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
         fi
       fi
     fi
   else
-    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-fix.log" ] ; then
+    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
       if [ -e "/etc/redis/redis.conf" ] ; then
         cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
       fi
@@ -1586,7 +1586,7 @@ install_redis_src () {
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
     ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
   fi
-  touch /var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-fix.log
+  touch /var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log
 }
 #
 # Set xterm.
@@ -2898,7 +2898,6 @@ barracuda_cnf () {
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
@@ -2914,6 +2913,7 @@ barracuda_cnf () {
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -3228,7 +3228,6 @@ barracuda_cnf () {
         sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
@@ -3250,6 +3249,7 @@ barracuda_cnf () {
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -7144,7 +7144,7 @@ else
     mrun "sleep 1"
   fi
 fi
-if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-fix.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
