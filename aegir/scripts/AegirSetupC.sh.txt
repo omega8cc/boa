@@ -272,6 +272,7 @@ create_d6_symlinks () {
     ln -sf $_D6_CORE_DIR/includes includes
     ln -sf $_D6_CORE_DIR/index.php index.php
     ln -sf $_D6_CORE_DIR/install.php install.php
+    ln -sf $_D6_CORE_DIR/js.php js.php
     ln -sf $_D6_CORE_DIR/misc misc
     ln -sf $_D6_CORE_DIR/modules modules
     ln -sf $_D6_CORE_DIR/themes themes
@@ -295,6 +296,7 @@ create_d7_symlinks () {
     ln -sf $_D7_CORE_DIR/includes includes
     ln -sf $_D7_CORE_DIR/index.php index.php
     ln -sf $_D7_CORE_DIR/install.php install.php
+    ln -sf $_D7_CORE_DIR/js.php js.php
     ln -sf $_D7_CORE_DIR/misc misc
     ln -sf $_D7_CORE_DIR/modules modules
     ln -sf $_D7_CORE_DIR/themes themes
@@ -357,6 +359,7 @@ prepare_drupal6_core () {
     rm -f $_D6_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib
     ln -s $_CORE/o_contrib modules/o_contrib
+    ln -s $_CORE/o_contrib/js/js.php js.php
     cp -af $_CORE/o_contrib/image/image.imagemagick.inc includes/
     cp -af $_CORE/o_contrib/boost/stats/boost_stats.php ./ &> /dev/null
     rm -f -r $_D6_CORE_DIR/scripts
@@ -382,6 +385,7 @@ prepare_drupal7_core () {
     rm -f $_D7_CORE_DIR/modules/taxonomy/taxonomy.module.orig
     rm -f modules/o_contrib_seven
     ln -s $_CORE/o_contrib_seven modules/o_contrib_seven
+    ln -s $_CORE/o_contrib_seven/js/js.php js.php
     rm -f -r $_D7_CORE_DIR/scripts
     cd $_D7_CORE_DIR/themes
     get_dev_contrib "rubik-7.x-4.0-beta9.tar.gz"

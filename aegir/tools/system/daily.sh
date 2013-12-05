@@ -781,6 +781,16 @@ fix_static_permissions () {
   fi
 }
 
+fix_expected_symlinks () {
+  if [ ! -e "$Plr/js.php" ] ; then
+    if [ -e "$Plr/modules/o_contrib_seven" ] && [ -e "$_O_CONTRIB_SEVEN/js/js.php" ] ; then
+      ln -s $_O_CONTRIB_SEVEN/js/js.php $Plr/js.php &> /dev/null
+    elif [ -e "$Plr/modules/o_contrib" ] && [ -e "$_O_CONTRIB/js/js.php" ] ; then
+      ln -s $_O_CONTRIB/js/js.php $Plr/js.php &> /dev/null
+    fi
+  fi
+}
+
 fix_permissions () {
   ### modules,themes,libraries - profile level in ~/static
   searchStringG="/static/"
@@ -799,6 +809,8 @@ fix_permissions () {
     chmod 0751 $Plr/sites/all &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+    ### expected symlinks
+    fix_expected_symlinks
     ### known exceptions
     chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
     chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null

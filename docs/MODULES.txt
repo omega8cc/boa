@@ -74,6 +74,7 @@ Contrib [S]upported and [B]undled:
  force_password_change ------ [D6,D7] --- [S] [B]
  fpa ------------------------ [D6,D7] --- [S] [B]
  httprl --------------------- [D6,D7] --- [S] [B]
+ js ------------------------- [D6,D7] --- [S] [B]
  login_security ------------- [D6,D7] --- [S] [B]
  nocurrent_pass ------------- [D7] ------ [S] [B]
  panels_content_cache ------- [D6,D7] --- [S] [B]
