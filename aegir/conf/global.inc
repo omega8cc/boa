@@ -205,11 +205,11 @@ if (!$is_backend) {
   else {
     if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) || preg_match("/^\/core\/cron\.php/", $_SERVER['REQUEST_URI'])) {
       // Set longer opcache TTL for web based cron
-      ini_set('opcache.revalidate_freq', '3600');
+      ini_set('opcache.revalidate_freq', '300');
     }
     else {
       // Set sane default opcache TTL on non-dev sites
-      ini_set('opcache.revalidate_freq', '5');
+      ini_set('opcache.revalidate_freq', '60');
     }
   }
 }
