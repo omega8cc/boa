@@ -46,6 +46,9 @@ EOFMYSQL
 }
 
 backup_this_database () {
+  n=$((RANDOM%15+5))
+  echo waiting $n sec
+  sleep $n
   mysqldump --opt --skip-lock-tables --order-by-primary --single-transaction --default-character-set=utf8 -Q --hex-blob $DB | gzip -c > $SAVELOCATION/$DB.sql.gz
 }
 
