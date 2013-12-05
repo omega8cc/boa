@@ -218,9 +218,9 @@ if (!$is_backend) {
  * BOA INI defaults
  */
 $boa_ini = array(
-  'redis_use_modern' => FALSE,
-  'redis_flush_forced_mode' => FALSE,
-  'redis_lock_enable' => FALSE,
+  'redis_use_modern' => TRUE,
+  'redis_flush_forced_mode' => TRUE,
+  'redis_lock_enable' => TRUE,
   'redis_cache_disable' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
