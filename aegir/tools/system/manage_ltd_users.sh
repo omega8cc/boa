@@ -10,7 +10,7 @@ _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 #
 # Remove dangerous stuff from the string.
 sanitize_string () {
-  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g' | sed 's/\(['"'"'\]\)//g'
+  echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\$\@\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 #
 # Add ltd-shell group if not exists.
