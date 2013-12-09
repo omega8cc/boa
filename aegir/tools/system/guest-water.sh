@@ -18,7 +18,7 @@ local_ip_rg()
       _IP_CHECK=$(cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s" | grep $_IP 2>&1)
       if [ -z $_IP_CHECK ] ; then
         echo "$_IP not yet listed in /root/.local.IP.list"
-        echo "$_IP" >> /root/.local.IP.list
+        echo "$_IP # local IP address" >> /root/.local.IP.list
       else
         echo "$_IP already listed in /root/.local.IP.list"
       fi
