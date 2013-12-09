@@ -334,6 +334,7 @@ rename_drupal7_profiles () {
     sed -i "s/name = Minimal/name = Vanilla Minimal/g"   $Files &> /dev/null
     sed -i "s/name = Standard/name = Vanilla Standard/g" $Files &> /dev/null
     sed -i "s/name = Testing/name = Vanilla Testing/g"   $Files &> /dev/null
+    sed -i "s/hidden = TRUE//g"                          $Files &> /dev/null
   done
 }
 #
@@ -2377,6 +2378,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     rm -f -r $_SHRD_PLPATH/profiles/standard
     rm -f -r $_SHRD_PLPATH/profiles/testing
+    sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
     curl -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
