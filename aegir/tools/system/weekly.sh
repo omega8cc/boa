@@ -121,7 +121,7 @@ detect_vanilla_core () {
       _DO_NOTHING=YES
     else
       if [ -e "$Plr/modules/watchdog" ] ; then
-        if [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
+        if [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] && [[ "$Plr" =~ "static" ]] && [ ! -e "$Plr/modules/cookie_cache_bypass" ] ; then
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
             echo Vanilla Drupal 5.x Platform detected in $Plr
             read_account_data
@@ -131,7 +131,7 @@ detect_vanilla_core () {
       else
         if [ ! -e "$Plr/modules/path_alias_cache" ] && [ -e "$Plr/modules/user" ] && [[ "$Plr" =~ "static" ]] ; then
           echo Vanilla Drupal 6.x Platform detected in $Plr
-          if [ ! -e "/boot/grub/menu.lst" ] ; then
+          if [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
             if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
               read_account_data
               send_notice_core
@@ -578,7 +578,7 @@ action () {
         echo HomSiz is $HomSiz or $HomSizH MB
         echo SumDir is $SumDir or $SumDirH MB
         echo SumDat is $SumDat or $SumDatH MB
-        if [ ! -e "/boot/grub/menu.lst" ] ; then
+        if [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
             check_limits
             if [ -e "$_THIS_HM_SITE" ] ; then

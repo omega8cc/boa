@@ -887,7 +887,7 @@ tune_memory_limits () {
         _L_NGINX_WORKERS=$_NGINX_WORKERS
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
-      if [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+      if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         _USE_PHP=1024
         _USE_OPC=1024
         _PRC_SQL=50
