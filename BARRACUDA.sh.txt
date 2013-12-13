@@ -4937,6 +4937,19 @@ install_ssl_src () {
   fi
 }
 #
+# Fix multi-IP cron access.
+fix_multi_ip_cron_access () {
+  rm -f /root/.local.IP.list.allow
+  for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
+  echo "  deny         all;" >> /root/.local.IP.list.allow
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /data/disk/*/config/includes/*.conf &> /dev/null
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /var/aegir/config/includes/*.conf &> /dev/null
+  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+d;};' /data/disk/*/config/includes/*.conf &> /dev/null
+  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+d;};' /var/aegir/config/includes/*.conf &> /dev/null
+}
+#
 # Final cleanup.
 finale () {
   ###--------------------###
@@ -8479,9 +8492,21 @@ else
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
   validate_public_ip &> /dev/null
   _CRON_IP=${_THISHTIP//[^0-9.]/}
-  if [ ! -z "$_CRON_IP" ] ; then
-    sed -i "s/127.0.0.1;/$_CRON_IP;/g" /data/disk/*/config/includes/*.conf &> /dev/null
-    sed -i "s/127.0.0.1;/$_CRON_IP;/g" /var/aegir/config/includes/*.conf &> /dev/null
+  if [ ! -e "/root/.local.IP.list" ] ; then
+    rm -f /root/.tmp.IP.list*
+    rm -f /root/.local.IP.list*
+    for _IP in `hostname -I`;do echo $_IP >> /root/.tmp.IP.list;done
+    for _IP in `cat /root/.tmp.IP.list | sort | uniq`;do echo "$_IP # local IP address" >> /root/.local.IP.list;done
+    rm -f /root/.tmp.IP.list*
+  fi
+  _IP_IF_PRESENT=$(grep "$_CRON_IP" /root/.local.IP.list)
+  if [[ "$_IP_IF_PRESENT" =~ "$_CRON_IP" ]] ; then
+    _IP_PRESENT=YES
+  else
+    _IP_PRESENT=NO
+  fi
+  if [ ! -z "$_CRON_IP" ] && [ "$_IP_PRESENT" = "YES" ] && [ -e "/root/.local.IP.list" ] ; then
+    fix_multi_ip_cron_access
   fi
   st_runner "service nginx reload" &> /dev/null
 fi
