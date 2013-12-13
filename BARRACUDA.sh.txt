@@ -1074,7 +1074,7 @@ _DRUSH6_VERSION=6.2.0
 _GEOS_VERSION=3.3.7
 _GIT_VERSION=1.8.4.1
 _IMAGICK_VERSION=3.2.0RC1
-_IONCUBE_VERSION=4.4.1
+_IONCUBE_VERSION=4.4.4
 _JETTY_7_VERSION=7.6.10.v20130312
 _JETTY_8_VERSION=8.1.10.v20130312
 _JETTY_9_VERSION=9.0.0.v20130308
@@ -1995,7 +1995,7 @@ update_php_conf () {
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
   ###
-  if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
+  if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
   fi
@@ -3376,7 +3376,7 @@ run_silent_aptitude_full_upgrade () {
 install_ioncube () {
   ###--------------------###
   if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.1" ] ; then
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
       _DO_NOTHING=YES
     else
       mkdir -p /usr/local/ioncube
