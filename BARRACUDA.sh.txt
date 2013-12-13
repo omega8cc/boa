@@ -976,7 +976,7 @@ _PHP_EXTRA_CONF=""
 ### It is forced to NO when _BUILD_FROM_SRC
 ### is set to NO (default) on Squeeze
 ### and Precise, because of known bug
-### affecting versions older than 5.3.27
+### affecting versions older than 5.3.28
 ### https://bugs.php.net/bug.php?id=64827
 ###
 _PHP_ZEND_OPCACHE=YES
@@ -2788,7 +2788,7 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      _PHP_VERSION_NEW=5.3.27
+      _PHP_VERSION_NEW=5.3.28
       _PHP_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
       _PHP_VERSION_NEW=5.4.22
@@ -3291,7 +3291,7 @@ barracuda_cnf () {
       fi
     fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      _PHP_VERSION_NEW=5.3.27
+      _PHP_VERSION_NEW=5.3.28
       _PHP_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
       _PHP_VERSION_NEW=5.4.22
