@@ -537,12 +537,6 @@ update_php_conf () {
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
-  if [[ "$_THISHOST" =~ "test.host8." ]] ; then
-    _DO_NOTHING=YES
-  else
-    sed -i "s/,shell_exec//g" /opt/etc/php.ini &> /dev/null
-    sed -i "s/,shell_exec//g" /opt/local/etc/php53.ini &> /dev/null
-  fi
   ###
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/etc/php.ini &> /dev/null
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /usr/local/lib/php.ini &> /dev/null
