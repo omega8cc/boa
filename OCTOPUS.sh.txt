@@ -943,14 +943,14 @@ octopus_cnf () {
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
-        _DO_NOTHING=YES
+        true
       else
         echo "Installation aborted by you"
         exit 1
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        _DO_NOTHING=YES
+        true
       else
         echo "Upgrade aborted by you"
         exit 1
@@ -1651,7 +1651,7 @@ EOF
 fi
 echo " "
 if prompt_yes_no "Do you want to proceed?" ; then
-  _DO_NOTHING=YES
+  true
 else
   echo "Installation/upgrade aborted by you"
   exit 1

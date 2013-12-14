@@ -1174,7 +1174,7 @@ cat <<EOF
 EOF
 echo " "
 if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above values?" ; then
-  _DO_NOTHING=YES
+  true
   if [ ! -e "/root/.upstart.cnf" ] ; then
     msg "INFO: We will stop cron and then wait 30 seconds..."
     service cron stop &> /dev/null

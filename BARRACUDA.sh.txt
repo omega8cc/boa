@@ -3330,14 +3330,14 @@ barracuda_cnf () {
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
-        _DO_NOTHING=YES
+        true
       else
         echo "Installation aborted by you"
         exit 1
       fi
     else
       if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-        _DO_NOTHING=YES
+        true
       else
         echo "Upgrade aborted by you"
         exit 1
@@ -4061,7 +4061,7 @@ hostmaster_frontend_dbpass_sync () {
 # Upgrade Aegir Master Instance.
 upgrade_aegir_master () {
   if prompt_yes_no "Do you want to upgrade Aegir Master Instance?" ; then
-    _DO_NOTHING=YES
+    true
     mrun "sleep 1"
     msg "INFO: Running Aegir Master Instance upgrade"
     mrun "sleep 1"
@@ -5749,7 +5749,7 @@ EOF
 EOF
   echo " "
   if prompt_yes_no "Do you want to proceed with the install?" ; then
-    _DO_NOTHING=YES
+    true
   else
     echo "Installation aborted by you"
     exit 1
@@ -5780,7 +5780,7 @@ else ### if [ "$_STATUS" = "UPGRADE" ] ; then
 EOF
   echo " "
   if prompt_yes_no "Do you want to proceed with the upgrade?" ; then
-    _DO_NOTHING=YES
+    true
   else
     echo "Upgrade aborted by you"
     exit 1
@@ -7226,7 +7226,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
     fi
     echo " "
     if prompt_yes_no "Do you want to install Experimental MultiCore Apache Solr 4 with Jetty $_REAL_JETTY?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
       mrun "sleep 1"
       cd /var/opt
@@ -7325,7 +7325,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
   if [ ! -d "/opt/solr3" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 3 with Jetty 8?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing MultiCore Apache Solr 3 with Jetty 8..."
       mrun "sleep 1"
       cd /var/opt
@@ -7407,7 +7407,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
   if [ ! -d "/opt/solr1" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install MultiCore Apache Solr 1 with Jetty 7?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing MultiCore Apache Solr 1 with Jetty 7..."
       mrun "sleep 1"
       cd /var/opt
@@ -7829,7 +7829,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   if [ ! -e "/var/www/chive/index.php" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing Chive $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
@@ -7889,7 +7889,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   if [ ! -d "/var/www/sqlbuddy" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing SQL Buddy $_DB_SERVER Manager..."
       mrun "sleep 1"
       cd /var/www
@@ -7925,7 +7925,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
     if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/www/cgp/collectd5.support.txt" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
-        _DO_NOTHING=YES
+        true
         msg "INFO: Installing Collectd Graph Panel..."
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
@@ -7978,7 +7978,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
   if [ ! -d "/etc/webmin" ] && [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Webmin Control Panel?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing Webmin Control Panel..."
       mrun "sleep 1"
       cd /var/opt
@@ -8013,7 +8013,7 @@ if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
   if [ ! -e "/usr/sbin/named" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
-      _DO_NOTHING=YES
+      true
       msg "INFO: Installing Bind9 DNS Server..."
       mrun "sleep 1"
       if [ -z "$_THISHTIP" ] ; then
@@ -8054,7 +8054,7 @@ else
     if [ ! -e "/var/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
-        _DO_NOTHING=YES
+        true
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
         if [ ! -e "/usr/lib/ruby/1.9.1/rubygems.rb" ] ; then
           _RUBY_UPGRADE=YES
@@ -8607,7 +8607,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
     if [ ! -e "/usr/sbin/csf" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install csf/lfd firewall?" ; then
-        _DO_NOTHING=YES
+        true
         _CSF_MODE=install
         csf_install
       else
@@ -8741,7 +8741,7 @@ if [ ! -e "/usr/sbin/pdnsd" ] ; then
     if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
-        _DO_NOTHING=YES
+        true
         install_pdnsd_cache
         msg "INFO: DNS cache pdnsd server installation completed"
         mrun "sleep 1"

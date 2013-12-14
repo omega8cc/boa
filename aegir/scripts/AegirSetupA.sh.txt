@@ -1007,7 +1007,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 else
   echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
-    _DO_NOTHING=YES
+    true
     mrun "sleep 1"
     if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
       msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
@@ -1150,7 +1150,7 @@ else
   else
     echo " "
     if prompt_yes_no "Do you want to install some latest, ready to use platforms?" ; then
-      _DO_NOTHING=YES
+      true
       _DIST_INSTALL=YES
       if [ ! -e "/root/.upstart.cnf" ] ; then
         service cron stop &> /dev/null
