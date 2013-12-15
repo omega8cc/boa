@@ -50,7 +50,7 @@ while most of the code, which is over 1700 MB total, is shared.
 
 Sharing the code between instances is of critical importance,
 because it allows you to dramatically lower RAM and CPU usage,
-because most of the actively used code is opcode cached with APC.
+because most of the actively used code is opcode cached.
 
 With multi-install system you have to remember that all of them
 will use the same Nginx server, so you could break the system
@@ -110,7 +110,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 database server with Chive manager.
 * Latest version of Nginx web server.
-* PHP-FPM 5.3.28 with Zend OPcache or APC, phpredis, uploadprogress and ionCube.
+* PHP-FPM 5.3.28 with Zend OPcache, phpredis, uploadprogress and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
@@ -141,7 +141,7 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * MongoDB driver for PHP 5.3
 * GEOS extension for PHP 5.3 (experimental).
 * FFmpeg support.
-* PHP-FPM 5.2.17 with Zend OPcache or APC and phpredis (deprecated).
+* PHP-FPM 5.2.17 with Zend OPcache and phpredis (deprecated).
 * Bind9 DNS server.
 * Webmin Control Panel.
 * SQL Buddy database manager.

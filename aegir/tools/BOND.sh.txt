@@ -324,49 +324,34 @@ fix_php_ini_newrelic_all () {
   fi
 }
 #
-# Fix FMP php.ini file to add opcache.so or apc.so
+# Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
-    if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-      _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
-      if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
-        _DO_NOTHING=YES
-      else
-        echo "; Zend OPcache"                     >> $_THIS_FILE
-        if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-          echo "extension=opcache.so"             >> $_THIS_FILE
-        else
-          echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
-        fi
-        echo "opcache.memory_consumption=181"     >> $_THIS_FILE
-        echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
-        echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
-        echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
-        echo "opcache.enable_file_override=1"     >> $_THIS_FILE
-        echo "opcache.inherited_hack=1"           >> $_THIS_FILE
-        echo "opcache.dups_fix=1"                 >> $_THIS_FILE
-        echo "opcache.log_verbosity_level=3"      >> $_THIS_FILE
-        echo "opcache.fast_shutdown=1"            >> $_THIS_FILE
-        echo ""                                   >> $_THIS_FILE
-      fi
+    _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
+    if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
+      _DO_NOTHING=YES
     else
-      _OPCACHE_INI_TEST=$(grep "extension=apc.so" $_THIS_FILE)
-      if [[ "$_OPCACHE_INI_TEST" =~ "extension=apc.so" ]] ; then
-        _DO_NOTHING=YES
+      echo "; Zend OPcache"                     >> $_THIS_FILE
+      if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+        echo "extension=opcache.so"             >> $_THIS_FILE
       else
-        echo "; APC"                              >> $_THIS_FILE
-        echo "extension=apc.so"                   >> $_THIS_FILE
-        echo "apc.shm_size = 181M"                >> $_THIS_FILE
-        echo "apc.stat = 1"                       >> $_THIS_FILE
-        echo "apc.stat_ctime = 1"                 >> $_THIS_FILE
-        echo "apc.include_once_override = 0"      >> $_THIS_FILE
-        echo ""                                   >> $_THIS_FILE
+        echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
       fi
+      echo "opcache.memory_consumption=181"     >> $_THIS_FILE
+      echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
+      echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
+      echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
+      echo "opcache.enable_file_override=1"     >> $_THIS_FILE
+      echo "opcache.inherited_hack=1"           >> $_THIS_FILE
+      echo "opcache.dups_fix=1"                 >> $_THIS_FILE
+      echo "opcache.log_verbosity_level=3"      >> $_THIS_FILE
+      echo "opcache.fast_shutdown=1"            >> $_THIS_FILE
+      echo ""                                   >> $_THIS_FILE
     fi
   fi
 }
 #
-# Fix all FMP php.ini files to add Zend OPcache or APC
+# Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all () {
   _THIS_FILE=/opt/etc/php.ini
   _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
@@ -458,37 +443,6 @@ update_php_conf () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
     fi
   fi
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
-      mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -sf /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
-    fi
-    if [ -e "/etc/php5/cli/php.ini" ] && [ ! -L "/etc/php5/cli/php.ini" ] ; then
-      mv -f /etc/php5/cli/php.ini /var/backups/dragon/t/etc-php5-cli-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -sf /opt/local/lib/php.ini /etc/php5/cli/php.ini
-    fi
-    if [ -x "/usr/sbin/php5-fpm" ] && [ ! -L "/opt/local/sbin/php-fpm" ] ; then
-      mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
-      mkdir -p /opt/local/sbin
-      ln -sf /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
-    fi
-    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API /var/backups/ &> /dev/null
-    fi
-    if [ -e "/usr/lib/php5/$_PHP_API" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/$_PHP_API /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
-      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-      fi
-    elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/$_PHP_API+lfs /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
-      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-      fi
-    fi
-  fi
   ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -504,13 +458,6 @@ update_php_conf () {
   sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/lib/php.ini &> /dev/null
-  ###
-  if [ "$_USE_MEMCACHED" = "NO" ] ; then
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/etc/php.ini &> /dev/null
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /usr/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/lib/php.ini &> /dev/null
-  fi
   ###
   _THIS_FILE=/opt/etc/php.ini
   fix_php_ini_redis
@@ -547,6 +494,11 @@ update_php_conf () {
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
+  ###
+  sed -i "s/.*extension=memcached.so.*//g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/local/lib/php.ini &> /dev/null
   ###
   if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null

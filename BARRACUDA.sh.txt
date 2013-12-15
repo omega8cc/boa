@@ -69,7 +69,6 @@ _MY_EMAIL="notify@omega8.cc"
 ### Barracuda with only some options/services
 ### enabled, as listed below:
 ###
-### _BUILD_FROM_SRC=NO
 ### _PHP_MODERN_ONLY=YES
 ### _XTRAS_LIST="PDS CSF CHV FTP"
 ### _HTTP_WILDCARD=YES
@@ -127,7 +126,6 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Barracuda with only safe options/services
 ### enabled, as listed below:
 ###
-### _BUILD_FROM_SRC=NO
 ### _PHP_MODERN_ONLY=YES
 ### _XTRAS_LIST="PDS CHV"
 ### _HTTP_WILDCARD=YES
@@ -177,43 +175,6 @@ _EASY_LOCALHOST=NO
 ### below when both 'EASY PUBLIC SETUP MODE'
 ### and 'EASY LOCALHOST MODE' are *disabled*
 ###
-
-
-###----------------------------------------###
-### PHP INSTALL METHOD                     ###
-###----------------------------------------###
-###
-### This option is used only in Debian Squeeze
-### Debian Wheezy and Ubuntu Precise.
-###
-### By default Barracuda uses Dotdeb packages
-### to install PHP 5.3 on Debian Squeeze and
-### standard Ubuntu packages to install
-### PHP 5.3 on Ubuntu Precise.
-###
-### They are sometimes not fully up to date
-### when new version of PHP is released, so
-### even if it is slower to build from sources
-### it may be useful.
-###
-### If you want to build PHP 5.3 from sources
-### on Squeeze or Precise, change this to:
-###
-### _BUILD_FROM_SRC=YES
-###
-### Note that Debian Wheezy will force the
-### build from sources, at least until there
-### are Dotdeb packages for PHP 5.3 available.
-###
-### Note that PHP 5.2, if used, will be always
-### installed from sources in all supported
-### OS flavors.
-###
-### NOTE! We have switched to always build
-### Nginx from sources, because the packages
-### based version is really bloated.
-###
-_BUILD_FROM_SRC=NO
 
 
 ###----------------------------------------###
@@ -825,12 +786,6 @@ _STRONG_PASSWORDS=NO
 _EXTRA_PACKAGES=""
 
 ###
-### Use YES to still install memcached, even
-### if it is no longer used by default.
-###
-_USE_MEMCACHED=NO
-
-###
 ### Use YES to avoid overwriting configuration
 ### for listed services on upgrade.
 ###
@@ -970,18 +925,6 @@ _NGINX_EXTRA_CONF=""
 _PHP_EXTRA_CONF=""
 
 ###
-### Change to NO if you prefer the old,
-### no longer maintained APC extension.
-###
-### It is forced to NO when _BUILD_FROM_SRC
-### is set to NO (default) on Squeeze
-### and Precise, because of known bug
-### affecting versions older than 5.3.28
-### https://bugs.php.net/bug.php?id=64827
-###
-_PHP_ZEND_OPCACHE=YES
-
-###
 ### Change to YES to always compile in
 ### MongoDB driver. Works for PHP 5.3 only.
 ###
@@ -994,15 +937,6 @@ _PHP_MONGODB=NO
 ### http://drupal.org/node/1913488
 ###
 _PHP_GEOS=NO
-
-###
-### Nginx version used in the apt-get based
-### installs tends to be overloaded with
-### never used modules, causing some issues
-### so we force building from sources
-### by default, while leaving you a choice.
-###
-_NGINX_FROM_SOURCES=YES
 
 ###
 ### When set to YES, it will force
@@ -1064,7 +998,6 @@ _INSTALLER_VERSION=BOA-2.1.4-dev
 ###
 ### Software versions
 ###
-_APC_VERSION=3.1.13
 _BZR_VERSION=2.6b2
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.33.0
@@ -1483,7 +1416,7 @@ fix_redis_mode () {
           mv -f /etc/init.d/redis-server /etc/init.d/redis-server-off &> /dev/null
           killall -9 redis-server &> /dev/null
           rm -f /var/run/redis/redis.pid
-          mv -f /var/xdrago/memcache.sh /var/xdrago/memcache.sh-off &> /dev/null
+          rm -f /var/xdrago/memcache.sh* &> /dev/null
           killall -9 memcached &> /dev/null
           msg "INFO: Remote Redis IP set to $_REDIS_LISTEN_MODE with local instance disabled"
           mrun "sleep 1"
@@ -1693,36 +1626,34 @@ enable_weekly_usage_monitor () {
 #
 # Fix PHP Extensions.
 fix_php_ext () {
-  if [ "$_FROM_SOURCES" = "YES" ] ; then
-    if [ -e "/usr/lib/php5/$_PHP_API" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mkdir -p /var/backups/php53-$_PHP_API
-      mv -f /usr/lib/php5/$_PHP_API/*.so /var/backups/php53-$_PHP_API/ &> /dev/null
-      if [ -e "/var/backups/php53-$_PHP_API/newrelic.so" ] ; then
-        mv -f /var/backups/php53-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-      fi
-      if [ -e "/var/backups/php53-$_PHP_API/mongo.so" ] ; then
-        mv -f /var/backups/php53-$_PHP_API/mongo.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-      fi
-      if [ -e "/var/backups/php53-$_PHP_API/geos.so" ] ; then
-        mv -f /var/backups/php53-$_PHP_API/geos.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-      fi
-    elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mkdir -p /var/backups/php53-$_PHP_API+lfs
-      mv -f /usr/lib/php5/$_PHP_API+lfs/* /var/backups/php53-$_PHP_API+lfs/ &> /dev/null
-      if [ -e "/var/backups/php53-$_PHP_API+lfs/newrelic.so" ] ; then
-        mv -f /var/backups/php53-$_PHP_API+lfs/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-      fi
-      if [ -e "/var/backups/php53-$_PHP_API+lfs/mongo.so" ] ; then
-        mv -f /var/backups/php53-$_PHP_API+lfs/mongo.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-      fi
-      if [ -e "/var/backups/php53-$_PHP_API+lfs/geos.so" ] ; then
-        mv -f /var/backups/php53-$_PHP_API+lfs/geos.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-      fi
+  if [ -e "/usr/lib/php5/$_PHP_API" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
+    mkdir -p /var/backups/php53-$_PHP_API
+    mv -f /usr/lib/php5/$_PHP_API/*.so /var/backups/php53-$_PHP_API/ &> /dev/null
+    if [ -e "/var/backups/php53-$_PHP_API/newrelic.so" ] ; then
+    mv -f /var/backups/php53-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
     fi
-    if [ -e "/etc/php5/conf.d" ] ; then
-      mkdir -p /var/backups/php53-conf-d
-      mv -f /etc/php5/conf.d/*.ini /var/backups/php53-conf-d/ &> /dev/null
+    if [ -e "/var/backups/php53-$_PHP_API/mongo.so" ] ; then
+    mv -f /var/backups/php53-$_PHP_API/mongo.so /usr/lib/php5/$_PHP_API/ &> /dev/null
     fi
+    if [ -e "/var/backups/php53-$_PHP_API/geos.so" ] ; then
+    mv -f /var/backups/php53-$_PHP_API/geos.so /usr/lib/php5/$_PHP_API/ &> /dev/null
+    fi
+  elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
+    mkdir -p /var/backups/php53-$_PHP_API+lfs
+    mv -f /usr/lib/php5/$_PHP_API+lfs/* /var/backups/php53-$_PHP_API+lfs/ &> /dev/null
+    if [ -e "/var/backups/php53-$_PHP_API+lfs/newrelic.so" ] ; then
+    mv -f /var/backups/php53-$_PHP_API+lfs/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
+    fi
+    if [ -e "/var/backups/php53-$_PHP_API+lfs/mongo.so" ] ; then
+    mv -f /var/backups/php53-$_PHP_API+lfs/mongo.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
+    fi
+    if [ -e "/var/backups/php53-$_PHP_API+lfs/geos.so" ] ; then
+    mv -f /var/backups/php53-$_PHP_API+lfs/geos.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
+    fi
+  fi
+  if [ -e "/etc/php5/conf.d" ] ; then
+    mkdir -p /var/backups/php53-conf-d
+    mv -f /etc/php5/conf.d/*.ini /var/backups/php53-conf-d/ &> /dev/null
   fi
 }
 #
@@ -1765,49 +1696,34 @@ fix_php_ini_newrelic_all () {
   fi
 }
 #
-# Fix FMP php.ini file to add opcache.so or apc.so
+# Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
-    if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-      _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
-      if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
-        _DO_NOTHING=YES
-      else
-        echo "; Zend OPcache"                     >> $_THIS_FILE
-        if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-          echo "extension=opcache.so"             >> $_THIS_FILE
-        else
-          echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
-        fi
-        echo "opcache.memory_consumption=181"     >> $_THIS_FILE
-        echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
-        echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
-        echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
-        echo "opcache.enable_file_override=1"     >> $_THIS_FILE
-        echo "opcache.inherited_hack=1"           >> $_THIS_FILE
-        echo "opcache.dups_fix=1"                 >> $_THIS_FILE
-        echo "opcache.log_verbosity_level=3"      >> $_THIS_FILE
-        echo "opcache.fast_shutdown=1"            >> $_THIS_FILE
-        echo ""                                   >> $_THIS_FILE
-      fi
+    _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
+    if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
+      _DO_NOTHING=YES
     else
-      _OPCACHE_INI_TEST=$(grep "extension=apc.so" $_THIS_FILE)
-      if [[ "$_OPCACHE_INI_TEST" =~ "extension=apc.so" ]] ; then
-        _DO_NOTHING=YES
+      echo "; Zend OPcache"                     >> $_THIS_FILE
+      if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+        echo "extension=opcache.so"             >> $_THIS_FILE
       else
-        echo "; APC"                              >> $_THIS_FILE
-        echo "extension=apc.so"                   >> $_THIS_FILE
-        echo "apc.shm_size = 181M"                >> $_THIS_FILE
-        echo "apc.stat = 1"                       >> $_THIS_FILE
-        echo "apc.stat_ctime = 1"                 >> $_THIS_FILE
-        echo "apc.include_once_override = 0"      >> $_THIS_FILE
-        echo ""                                   >> $_THIS_FILE
+        echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
       fi
+      echo "opcache.memory_consumption=181"     >> $_THIS_FILE
+      echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
+      echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
+      echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
+      echo "opcache.enable_file_override=1"     >> $_THIS_FILE
+      echo "opcache.inherited_hack=1"           >> $_THIS_FILE
+      echo "opcache.dups_fix=1"                 >> $_THIS_FILE
+      echo "opcache.log_verbosity_level=3"      >> $_THIS_FILE
+      echo "opcache.fast_shutdown=1"            >> $_THIS_FILE
+      echo ""                                   >> $_THIS_FILE
     fi
   fi
 }
 #
-# Fix all FMP php.ini files to add Zend OPcache or APC
+# Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all () {
   _THIS_FILE=/opt/etc/php.ini
   _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
@@ -1899,37 +1815,6 @@ update_php_conf () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
     fi
   fi
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    if [ -e "/etc/php5/fpm/php.ini" ] && [ ! -L "/etc/php5/fpm/php.ini" ] ; then
-      mv -f /etc/php5/fpm/php.ini /var/backups/dragon/t/etc-php5-fpm-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -sf /opt/local/etc/php53.ini /etc/php5/fpm/php.ini
-    fi
-    if [ -e "/etc/php5/cli/php.ini" ] && [ ! -L "/etc/php5/cli/php.ini" ] ; then
-      mv -f /etc/php5/cli/php.ini /var/backups/dragon/t/etc-php5-cli-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      ln -sf /opt/local/lib/php.ini /etc/php5/cli/php.ini
-    fi
-    if [ -x "/usr/sbin/php5-fpm" ] && [ ! -L "/opt/local/sbin/php-fpm" ] ; then
-      mv -f /opt/local/sbin/php-fpm /opt/local/sbin/php-fpm-old &> /dev/null
-      mkdir -p /opt/local/sbin
-      ln -sf /usr/sbin/php5-fpm /opt/local/sbin/php-fpm
-    fi
-    if [ -d "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mv -f /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API /var/backups/ &> /dev/null
-    fi
-    if [ -e "/usr/lib/php5/$_PHP_API" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/$_PHP_API /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
-      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-      fi
-    elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ ! -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-      mkdir -p /opt/local/lib/php/extensions
-      ln -sf /usr/lib/php5/$_PHP_API+lfs /opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API
-      if [ -e "/var/backups/no-debug-non-zts-$_PHP_API/newrelic.so" ] ; then
-        mv -f /var/backups/no-debug-non-zts-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-      fi
-    fi
-  fi
   ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
@@ -1945,13 +1830,6 @@ update_php_conf () {
   sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/lib/php.ini &> /dev/null
-  ###
-  if [ "$_USE_MEMCACHED" = "NO" ] ; then
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/etc/php.ini &> /dev/null
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /usr/local/lib/php.ini &> /dev/null
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*extension=memcached.so.*/;extension=memcached.so/g" /opt/local/lib/php.ini &> /dev/null
-  fi
   ###
   _THIS_FILE=/opt/etc/php.ini
   fix_php_ini_redis
@@ -1988,6 +1866,11 @@ update_php_conf () {
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
+  ###
+  sed -i "s/.*extension=memcached.so.*//g" /opt/etc/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /usr/local/lib/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/local/lib/php.ini &> /dev/null
   ###
   if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
     sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
@@ -2766,7 +2649,6 @@ barracuda_cnf () {
         if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
           _DO_NOTHING=YES
         else
-          _BUILD_FROM_SRC=YES
           _DB_SERVER=MariaDB
         fi
       else
@@ -2787,11 +2669,9 @@ barracuda_cnf () {
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
       _PHP_VERSION_NEW=5.4.23
       _PHP_API=20100525
-      _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
       _PHP_VERSION_NEW=5.5.7
       _PHP_API=20100525
-      _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
     fi
     msg "INFO: Creating your /root/.barracuda.cnf config file"
@@ -2835,12 +2715,10 @@ barracuda_cnf () {
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
-    echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
     echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
-    echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     echo "_NGINX_NAXSI=$_NGINX_NAXSI" >> /root/.barracuda.cnf
@@ -2857,7 +2735,6 @@ barracuda_cnf () {
     echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
-    echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
     echo "_EXTRA_PACKAGES=$_EXTRA_PACKAGES" >> /root/.barracuda.cnf
@@ -2891,7 +2768,6 @@ barracuda_cnf () {
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
@@ -2927,7 +2803,8 @@ barracuda_cnf () {
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
-      sed -i "s/.*_USE_SPEED_BOOSTER.*/### _USE_SPEED_BOOSTER=YES ### Enabled by default/g" /root/.barracuda.cnf &> /dev/null
+      sed -i "s/.*_USE_SPEED_BOOSTER.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _WORKERS_TEST=$(grep _NGINX_WORKERS /root/.barracuda.cnf)
     if [[ "$_WORKERS_TEST" =~ "_NGINX_WORKERS" ]] ; then
@@ -3045,9 +2922,8 @@ barracuda_cnf () {
     fi
     _USE_MEMCACHED_TEST=$(grep _USE_MEMCACHED /root/.barracuda.cnf)
     if [[ "$_USE_MEMCACHED_TEST" =~ "_USE_MEMCACHED" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_USE_MEMCACHED=$_USE_MEMCACHED" >> /root/.barracuda.cnf
+      sed -i "s/.*_USE_MEMCACHED.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _CUSTOM_CONFIG_REDIS_TEST=$(grep _CUSTOM_CONFIG_REDIS /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_REDIS_TEST" =~ "_CUSTOM_CONFIG_REDIS" ]] ; then
@@ -3057,9 +2933,8 @@ barracuda_cnf () {
     fi
     _BUILD_FROM_SRC_TEST=$(grep _BUILD_FROM_SRC /root/.barracuda.cnf)
     if [[ "$_BUILD_FROM_SRC_TEST" =~ "_BUILD_FROM_SRC" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_BUILD_FROM_SRC=$_BUILD_FROM_SRC" >> /root/.barracuda.cnf
+      sed -i "s/.*_BUILD_FROM_SRC.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _USE_RESTRICTED_WWW_SHELL_TEST=$(grep _USE_RESTRICTED_WWW_SHELL /root/.barracuda.cnf)
     if [[ "$_USE_RESTRICTED_WWW_SHELL_TEST" =~ "_USE_RESTRICTED_WWW_SHELL" ]] ; then
@@ -3161,9 +3036,8 @@ barracuda_cnf () {
     fi
     _PHP_ZEND_OPCACHE_TEST=$(grep _PHP_ZEND_OPCACHE /root/.barracuda.cnf)
     if [[ "$_PHP_ZEND_OPCACHE_TEST" =~ "_PHP_ZEND_OPCACHE" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_PHP_ZEND_OPCACHE=$_PHP_ZEND_OPCACHE" >> /root/.barracuda.cnf
+      sed -i "s/.*_PHP_ZEND_OPCACHE.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _PERMISSIONS_FIX_TEST=$(grep _PERMISSIONS_FIX /root/.barracuda.cnf)
     if [[ "$_PERMISSIONS_FIX_TEST" =~ "_PERMISSIONS_FIX" ]] ; then
@@ -3221,7 +3095,6 @@ barracuda_cnf () {
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g"                          /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
@@ -3264,7 +3137,6 @@ barracuda_cnf () {
         if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
           _DO_NOTHING=YES
         else
-          _BUILD_FROM_SRC=YES
           _DB_SERVER=MariaDB
         fi
       else
@@ -3273,10 +3145,6 @@ barracuda_cnf () {
         msg "EXIT: Bye (2)"
         exit 1
       fi
-    fi
-    if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-      _BUILD_FROM_SRC=YES
-      sed -i "s/^_BUILD_FROM_SRC=.*/_BUILD_FROM_SRC=YES/g" /root/.barracuda.cnf &> /dev/null
     fi
     if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
       if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
@@ -3290,11 +3158,9 @@ barracuda_cnf () {
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
       _PHP_VERSION_NEW=5.4.23
       _PHP_API=20100525
-      _BUILD_FROM_SRC=YES
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
       _PHP_VERSION_NEW=5.5.7
       _PHP_API=20100525
-      _BUILD_FROM_SRC=YES
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
     fi
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
@@ -3397,43 +3263,8 @@ install_ioncube () {
   fi
 }
 #
-# Install libmemcached.
-install_libmemcached () {
-  ###--------------------###
-  if [ ! -e "/var/log/fixed-libmemcached-0.53.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Installing libmemcached for PHP-FPM, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r libmemcached*
-    get_dev_src "libmemcached-0.53.tar.gz" &> /dev/null
-    if [ -e "/var/opt/libmemcached-0.53" ] ; then
-      cd /var/opt/libmemcached-0.53
-      st_runner "sh ./configure" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "libmemcached-0.53" > /var/log/fixed-libmemcached-0.53.log
-    fi
-  fi
-}
-#
 # Install extensions for PHP built from sources.
 install_php_scr_build_extensions () {
-  ###--------------------###
-  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    _DO_NOTHING=YES
-  else
-    msg "INFO: Installing APC for PHP-FPM $_LOC_PHP_VERSION..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r APC*
-    get_dev_src "APC-$_APC_VERSION.tgz" &> /dev/null
-    cd /var/opt/APC-$_APC_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "apc-$_APC_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
-  fi
   ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
@@ -3446,51 +3277,25 @@ install_php_scr_build_extensions () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
-  ###--------------------###
-  if [ "$_USE_MEMCACHED" = "YES" ] ; then
-    msg "INFO: Installing memcached for PHP-FPM $_LOC_PHP_VERSION, please wait..."
-    mrun "sleep 1"
-    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-      st_runner "$_INSTAPP libcloog-ppl0" 2> /dev/null
-    fi
-    if [ "$_FROM_SOURCES" = "NO" ] ; then
-      st_runner "$_INSTAPP php5-memcached" 2> /dev/null
-    else
-      cd /var/opt
-      rm -f -r memcached*
-      get_dev_src "memcached-1.0.2.tgz" &> /dev/null
-      if [ -e "/var/opt/memcached-1.0.2" ] ; then
-        cd /var/opt/memcached-1.0.2
-        st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-        st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-        st_runner "make --quiet" 2> /dev/null
-        st_runner "make --quiet install" 2> /dev/null
-        echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
-        mrun "sleep 1"
-      fi
-    fi
-  fi
 }
 #
 # Install extensions for PHP installed from packages or built from sources.
 install_php_universal_extensions () {
   ###--------------------###
-  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-      _DO_NOTHING=YES
-    else
-      msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
-      mrun "sleep 1"
-      cd /var/opt
-      rm -f -r zendopcache*
-      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tgz" &> /dev/null
-      cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
-    fi
+  if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+    _DO_NOTHING=YES
+  else
+    msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r zendopcache*
+    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tgz" &> /dev/null
+    cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3582,24 +3387,6 @@ install_php_universal_extensions () {
 # Update extensions for PHP built from sources.
 update_php_scr_build_extensions () {
   ###--------------------###
-  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-    _DO_NOTHING=YES
-  else
-    if [ ! -e "/var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing APC upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-      mrun "sleep 1"
-      cd /var/opt
-      rm -f -r APC*
-      get_dev_src "APC-$_APC_VERSION.tgz" &> /dev/null
-      cd /var/opt/APC-$_APC_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "apc-$_APC_VERSION-$_LOC_PHP_VERSION $_NOW" > /var/log/apc-$_APC_VERSION-$_LOC_PHP_VERSION.log
-    fi
-  fi
-  ###--------------------###
   if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
@@ -3613,31 +3400,12 @@ update_php_scr_build_extensions () {
     st_runner "make --quiet install" 2> /dev/null
     echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
   fi
-  ###--------------------###
-  if [ "$_USE_MEMCACHED" = "YES" ] ; then
-   if [ ! -e "/var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing memcached upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-      mrun "sleep 1"
-      cd /var/opt
-      rm -f -r memcached*
-      get_dev_src "memcached-1.0.2.tgz" &> /dev/null
-      if [ -e "/var/opt/memcached-1.0.2" ] ; then
-        cd /var/opt/memcached-1.0.2
-        st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-        st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-        st_runner "make --quiet" 2> /dev/null
-        st_runner "make --quiet install" 2> /dev/null
-        echo "memcached-1.0.2-$_LOC_PHP_VERSION" > /var/log/fixed-memcached-1.0.2-$_LOC_PHP_VERSION.log
-        mrun "sleep 1"
-      fi
-    fi
-  fi
 }
 #
 # Update extensions for PHP installed from packages or built from sources.
 update_php_universal_extensions () {
   ###--------------------###
-  if [ "$_PHP_ZEND_OPCACHE" = "YES" ] && [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
       _DO_NOTHING=YES
     else
@@ -3752,48 +3520,32 @@ update_php_universal_extensions () {
 # Install modern PHP version
 install_php_modern () {
   ###--------------------###
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW, please wait..."
-    if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
-      _EXTRA_PHP_DEB="php5-dev php5-ffmpeg"
-    else
-      _EXTRA_PHP_DEB="php5-dev"
-    fi
-    if [ "$_REL_VERSION" = "precise" ] ; then
-      _EXTRA_PHP_APC=php-apc
-    else
-      _EXTRA_PHP_APC=php5-apc
-    fi
-    _MODERN_PHP_DEB="php5-cli php5-common php5-curl $_EXTRA_PHP_DEB php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-json php5-ldap php5-mcrypt php5-mhash php5-mysql php-pear php5-sqlite php5-xmlrpc php5-xsl"
-    st_runner "$_INSTAPP $_MODERN_PHP_DEB $_EXTRA_PHP_APC" 2> /dev/null
-  else
-    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
-    msg "NOTE! This step may take longer than 8 minutes, please wait..."
-    cd /var/opt
-    rm -f -r php*
-    get_dev_src "php-$_PHP_VERSION_NEW.tar.gz" &> /dev/null
-    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
-    mrun "sleep 1"
-    cd /var/opt/php-$_PHP_VERSION_NEW
-    if [ "$_PHP_VERSION_NEW" = "5.3.15" ] || [ "$_PHP_VERSION_NEW" = "5.3.16" ] || [ "$_PHP_VERSION_NEW" = "5.3.17" ] ; then
-      ### _FPM_PATCH=remove_usr1_usr2_fpm_unix.patch
-      _FPM_PATCH=bug62886.patch
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_FPM_PATCH ./
-      patch -p1 < $_FPM_PATCH &> /dev/null
-    fi
-    st_runner "sh ./buildconf --force" 2> /dev/null
-    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
-      patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
-    fi
-    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
-    mrun "sleep 1"
-    st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
-    msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
-    mrun "sleep 1"
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
+  msg "NOTE! This step may take longer than 8 minutes, please wait..."
+  cd /var/opt
+  rm -f -r php*
+  get_dev_src "php-$_PHP_VERSION_NEW.tar.gz" &> /dev/null
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
+  mrun "sleep 1"
+  cd /var/opt/php-$_PHP_VERSION_NEW
+  if [ "$_PHP_VERSION_NEW" = "5.3.15" ] || [ "$_PHP_VERSION_NEW" = "5.3.16" ] || [ "$_PHP_VERSION_NEW" = "5.3.17" ] ; then
+    ### _FPM_PATCH=remove_usr1_usr2_fpm_unix.patch
+    _FPM_PATCH=bug62886.patch
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_FPM_PATCH ./
+    patch -p1 < $_FPM_PATCH &> /dev/null
   fi
+  st_runner "sh ./buildconf --force" 2> /dev/null
+  if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
+    patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+  fi
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
+  mrun "sleep 1"
+  st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
+  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
+  mrun "sleep 1"
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
   if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
       _DO_NOTHING=YES
@@ -3802,11 +3554,7 @@ install_php_modern () {
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
     fi
   fi
-  _NEW_LTS=NO
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    _NEW_LTS=YES
-  fi
-  if [ -f "/usr/bin/php" ] && [ "$_FROM_SOURCES" = "YES" ] && [ -f "/opt/local/bin/php" ] ; then
+  if [ -f "/usr/bin/php" ] && [ -f "/opt/local/bin/php" ] ; then
     mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
     ln -sf /opt/local/bin/php /usr/bin/php
     if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
@@ -3814,21 +3562,9 @@ install_php_modern () {
       ln -sf /opt/local/bin/phpize /usr/bin/phpize
     fi
   fi
-  if [ ! -x "/opt/local/bin/php" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
-    mkdir -p /opt/local/bin
-    ln -sf /usr/bin/php /opt/local/bin/php
-  fi
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    _LOC_PHP_PATH=/usr/bin
-  else
-    if [ -x "/usr/bin/phpize" ] ; then
-      _LOC_PHP_PATH=/usr/bin
-    elif [ -x "/opt/local/bin/phpize" ] ; then
-      _LOC_PHP_PATH=/opt/local/bin
-    fi
-    install_php_scr_build_extensions
-  fi
+  _LOC_PHP_PATH=/opt/local/bin
+  install_php_scr_build_extensions
   install_php_universal_extensions
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
@@ -3837,10 +3573,6 @@ install_php_modern () {
     echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
   fi
   rm -f /etc/init.d/php53-fpm*
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    st_runner "service php5-fpm stop" &> /dev/null
-    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-  fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
   chmod 755 /etc/init.d/php53-fpm
   st_runner "update-rc.d php53-fpm defaults" &> /dev/null
@@ -3895,16 +3627,8 @@ install_php_legacy () {
 # Update modern PHP version
 update_php_modern () {
   _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    _LOC_PHP_PATH=/usr/bin
-  else
-    if [ -x "/usr/bin/phpize" ] ; then
-      _LOC_PHP_PATH=/usr/bin
-    elif [ -x "/opt/local/bin/phpize" ] ; then
-      _LOC_PHP_PATH=/opt/local/bin
-    fi
-    update_php_scr_build_extensions
-  fi
+  _LOC_PHP_PATH=/opt/local/bin
+  update_php_scr_build_extensions
   update_php_universal_extensions
 }
 #
@@ -3950,11 +3674,9 @@ check_apt_updates () {
       *linux-*)     _UP_LNX=YES ;;
       *mariadb*)    _UP_PHP=YES ;;
       *newrelic*)   _UP_NRC=YES ;;
-      *nginx*)      _UP_NGX=YES ;;
       *openjdk*)    _UP_JDK=YES ;;
       *openssl*)    _YP_PHP=YES ;;
       *percona*)    _UP_PHP=YES ;;
-      *php5*)       _UP_FPM=YES ;;
       *)  ;;
     esac
   done
@@ -4086,7 +3808,6 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -4256,12 +3977,6 @@ install_upgrade_nginx () {
   else
     _NGINX_INSTALL_REQUIRED=YES
   fi
-  if [ "$_UP_NGX" = "YES" ] ; then
-    if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-      _NGINX_INSTALL_REQUIRED=YES
-      msg "INFO: Nginx rebuild required to avoid apt-get overwrite"
-    fi
-  fi
   detect_cdorked_malware
   if [ "$_C_DORKED" = "YES" ] ; then
     _NGINX_INSTALL_REQUIRED=YES
@@ -4326,34 +4041,10 @@ install_upgrade_nginx () {
       mrun "sleep 1"
       st_runner "service nginx start" &> /dev/null
     fi
-    _UP_NGX=NO
     _NGINX_INSTALL_REQUIRED=NO
   fi
   if [ ! -L "/usr/bin/nginx" ] ; then
     ln -sf /usr/sbin/nginx /usr/bin/nginx
-  fi
-}
-#
-# Install or upgrade libevent.
-install_upgrade_libevent () {
-  if [ ! -f "/var/log/fixed-libevent-2.0.11-stable.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Installing libevent, please wait..."
-    cd /var/opt
-    rm -f -r libevent*
-    get_dev_src "libevent-2.0.11-stable.tar.gz" &> /dev/null
-    cd /var/opt/libevent-2.0.11-stable
-    st_runner "sh ./configure --prefix=/usr" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    cd /var/opt
-    rm -f -r libevent*
-    get_dev_src "libevent-2.0.11-stable.tar.gz" &> /dev/null
-    cd /var/opt/libevent-2.0.11-stable
-    st_runner "sh ./configure" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    st_runner "ldconfig" 2> /dev/null
-    echo "libevent-2.0.11-stable" > /var/log/fixed-libevent-2.0.11-stable.log
   fi
 }
 #
@@ -4719,20 +4410,6 @@ update_sources_list () {
           else
             curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/etc-apt-preferences-squeeze.txt" -o /etc/apt/preferences
           fi
-          if [ "$_FROM_SOURCES" = "NO" ] ; then
-            echo "## Dotdeb APT Repository" > /etc/apt/sources.list.d/dotdeb.list
-            echo "deb http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-            echo "deb-src http://packages.dotdeb.org squeeze all" >> /etc/apt/sources.list.d/dotdeb.list
-            _KEYS_SERVER_TEST=FALSE
-            until [[ "$_KEYS_SERVER_TEST" =~ "GnuPG" ]] ; do
-              rm -f dotdeb.gpg*
-              wget -q -U iCab http://www.dotdeb.org/dotdeb.gpg
-              _KEYS_SERVER_TEST=`grep GnuPG dotdeb.gpg 2> /dev/null`
-              sleep 2
-            done
-            cat dotdeb.gpg | apt-key add - &> /dev/null
-            rm -f dotdeb.gpg*
-          fi
         fi
       fi
     fi
@@ -4990,6 +4667,7 @@ finale () {
   rm -f /var/xdrago/monitor/acrashsql.sh
   rm -f /var/xdrago/acrashsql.sh
   rm -f /var/xdrago/usage.sh
+  rm -f /var/xdrago/memcache.sh*
   rm -f /var/xdrago/purge_cruft.sh
   rm -f -r /tmp/drush_make_tmp*
   rm -f -r /tmp/make_tmp*
@@ -5148,7 +4826,6 @@ else
   fi
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     msg "INFO: Easy Localhost Setup Mode Active"
-    _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CHV"
     _HTTP_WILDCARD=YES
@@ -5164,7 +4841,6 @@ else
     _LOCAL_NETWORK_HN="aegir.local"
   elif [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "INFO: Easy Public Setup Mode Active"
-    _BUILD_FROM_SRC=NO
     _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CSF CHV FTP"
     _HTTP_WILDCARD=YES
@@ -5294,29 +4970,6 @@ fi
 echo " "
 msg "Aegir on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
 echo " "
-
-
-###--------------------###
-if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] ; then
-  if [ "$_BUILD_FROM_SRC" = "YES" ] ; then
-    _FROM_SOURCES=YES
-  else
-    _FROM_SOURCES=NO
-    _PHP_ZEND_OPCACHE=NO ### Forced APC due to bug affecting older versions: https://bugs.php.net/bug.php?id=64827
-  fi
-else
-  _FROM_SOURCES=YES
-fi
-
-
-###--------------------###
-if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "precise" ] ; then
-    _DO_NOTHING=YES
-  else
-    _FROM_SOURCES=YES
-  fi
-fi
 
 
 ###--------------------###
@@ -5835,8 +5488,6 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   msg "HINT: in another terminal window to watch details"
   mrun "sleep 1"
   _FULL_FORCE_REINSTALL=YES
-  _BUILD_FROM_SRC=YES
-  _FROM_SOURCES=YES
   _PURGE_MODE=OFF
   rm -f /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   if [ -e "/etc/init.d/bind" ] ; then
@@ -5868,9 +5519,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   mrun "apt-get autoremove -y" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-    install_upgrade_nginx
-  fi
+  install_upgrade_nginx
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
@@ -5941,9 +5590,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get install libgeoip1 libgeoip-dev geoip-database -y --force-yes" 2> /dev/null
   install_latest_git
-  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-    install_upgrade_nginx
-  fi
+  install_upgrade_nginx
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
   fi
@@ -6008,18 +5655,21 @@ if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude autoclean -y" &> /dev/null
 else
   echo "gnupg-curl install" | dpkg --set-selections &> /dev/null
-  if [ "$_FROM_SOURCES" = "YES" ] ; then
+  if [ -e "/etc/php5/conf.d" ] ; then
     touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
-    st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
-    st_runner "apt-get autoremove -y" &> /dev/null
-    st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
-    st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
-    st_runner "aptitude remove php5-apc -y" &> /dev/null
-    st_runner "aptitude remove php-apc -y" &> /dev/null
+  fi
+  st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
+  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
+  st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
+  st_runner "aptitude remove php5-apc -y" &> /dev/null
+  st_runner "aptitude remove php-apc -y" &> /dev/null
+  if [ -e "/etc/php5/conf.d" ] ; then
     rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
-    if [ "$_REL_VERSION" = "squeeze" ] ; then
-      rm -f /etc/apt/sources.list.d/dotdeb.list
-    fi
+  fi
+  if [ "$_REL_VERSION" = "squeeze" ] ; then
+    rm -f /etc/apt/sources.list.d/dotdeb.list
+  fi
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
@@ -6033,10 +5683,8 @@ else
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
   done
-  _UP_FPM=NO
   _UP_JDK=NO
   _UP_LNX=NO
-  _UP_NGX=NO
   _UP_NRC=NO
   _UP_PHP=NO
   check_apt_updates
@@ -6051,30 +5699,15 @@ else
   if [ ! -e "/etc/init.d/php5-fpm" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php5-fpm-init-vanilla /etc/init.d/php5-fpm
   fi
-  if [ "$_FROM_SOURCES" = "NO" ] && [ "$_UP_FPM" = "YES" ] ; then
-    msg "INFO: Now waiting 60 seconds for php-fpm pre-upgrade shutdown..."
-    mrun "sleep 60"
-    st_runner "service php53-fpm stop" &> /dev/null
-    killall -9 php-fpm &> /dev/null
-  fi
 fi
 msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-      _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx-extras"
-    else
-      _APT_XTRA="openjdk-6-jdk nginx-extras"
-    fi
-    _APT_ELSE="netcat nginx"
+  if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+    _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx"
   else
-    if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-      _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx"
-    else
-      _APT_XTRA="openjdk-6-jdk nginx"
-    fi
-    _APT_ELSE="netcat nginx"
+    _APT_XTRA="openjdk-6-jdk nginx"
   fi
+  _APT_ELSE="netcat nginx"
 else
   if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
     _APT_XTRA="openjdk-7-jdk openjdk-6-jdk"
@@ -6093,11 +5726,7 @@ else
     rm -f /usr/local/bin/redis-server
   fi
 fi
-if [ "$_USE_MEMCACHED" = "YES" ] ; then
-  _EXTRA_LIB_APT="libmcrypt-dev libmemcache-dev"
-else
-  _EXTRA_LIB_APT="libmcrypt-dev"
-fi
+_EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
   _EXTRA_PACKAGES="screen $_EXTRA_PACKAGES"
 else
@@ -6268,12 +5897,7 @@ if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
 fi
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   install_latest_git
-  if [ "$_USE_MEMCACHED" = "YES" ] ; then
-    install_upgrade_libevent
-  fi
-  if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-    install_upgrade_nginx
-  fi
+  install_upgrade_nginx
 fi
 
 
@@ -6369,14 +5993,7 @@ install_with_aptitude_deps
 st_runner "service php5-fpm stop" &> /dev/null
 st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 install_latest_git
-if [ "$_SQUEEZE_TO_WHEEZY" = "NO" ] && [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
-  if [ "$_FROM_SOURCES" = "YES" ] && [ "$_USE_MEMCACHED" = "YES" ] ; then
-    install_upgrade_libevent
-  fi
-fi
-if [ "$_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FROM_SOURCES" = "YES" ] ; then
-  install_upgrade_nginx
-fi
+install_upgrade_nginx
 kill_nash
 fix_sftp_ftps_modern
 disable_old_purge_cruft_machine
@@ -6490,24 +6107,13 @@ fi
 
 
 ###--------------------###
-if [ "$_FROM_SOURCES" = "NO" ] ; then
-  _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
-  if [[ "$_X_INIT_TEST" =~ "test_nginx_config" ]] ; then
-    _DO_NOTHING=YES
-  else
-    mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx-squeeze-init /etc/init.d/nginx
-    chmod 755 /etc/init.d/nginx &> /dev/null
-  fi
+_X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
+if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
+  sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
 else
-  _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
-  if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
-    sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
-  else
-    mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
-    chmod 755 /etc/init.d/nginx &> /dev/null
-  fi
+  mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
+  chmod 755 /etc/init.d/nginx &> /dev/null
 fi
 
 
@@ -6662,27 +6268,6 @@ chmod 700 /var/xdrago &> /dev/null
 
 
 ###--------------------###
-if [ "$_USE_MEMCACHED" = "YES" ] ; then
-  if [ ! -e "/var/log/memcached-1.4.9.log" ] || [ ! -x "/usr/local/bin/memcached" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    msg "INFO: Installing Memcached server, please wait..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r memcached*
-    rm -f /opt/bin/memcached
-    rm -f /usr/bin/memcached
-    rm -f /usr/local/bin/memcached
-    get_dev_src "memcached-1.4.9.tar.gz" &> /dev/null
-    cd /var/opt/memcached-1.4.9
-    st_runner "sh ./configure" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    ln -sf /usr/local/bin/memcached /usr/bin/memcached
-    echo "memcached-1.4.9" > /var/log/memcached-1.4.9.log
-  fi
-fi
-
-
-###--------------------###
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
@@ -6705,17 +6290,6 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
       fi
     fi
   fi
-  ###--------------------###
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    if [ -f "/usr/bin/php" ] && [ -f "/opt/local/bin/php" ] && [ ! -L "/opt/local/bin/php" ] ; then
-      mv -f /opt/local/bin/php /opt/local/bin/php-old &> /dev/null
-      ln -sf /usr/bin/php /opt/local/bin/php
-    fi
-    if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
-      mv -f /opt/local/bin/phpize /opt/local/bin/phpize-old &> /dev/null
-      ln -sf /usr/bin/phpize /opt/local/bin/phpize
-    fi
-  fi
 fi
 if [ -x "/usr/bin/php" ] ; then
   _PHP_NEW_BIN="/usr/bin/php"
@@ -6729,21 +6303,7 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
     _PHP_INSTALLED=`$_PHP_NEW_BIN -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   fi
   if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
-    if [ "$_FROM_SOURCES" = "YES" ] ; then
-      if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
-        _PHP_INSTALL_REQUIRED_NEW=YES
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-        fix_php_ext
-      else
-        _PHP_INSTALL_REQUIRED_NEW=NO
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
-      fi
-    else
-      _PHP_INSTALL_REQUIRED_NEW=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
-    fi
-  else
-    if [ "$_FROM_SOURCES" = "YES" ] ; then
+    if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
       _PHP_INSTALL_REQUIRED_NEW=YES
       msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
       fix_php_ext
@@ -6751,6 +6311,10 @@ if [ -x "$_PHP_NEW_BIN" ] ; then
       _PHP_INSTALL_REQUIRED_NEW=NO
       msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
     fi
+  else
+    _PHP_INSTALL_REQUIRED_NEW=YES
+    msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    fix_php_ext
   fi
   _BROKEN_CURL_TEST=$(curl --version 2>&1)
   if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
@@ -6793,47 +6357,31 @@ if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
 fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  _NEW_LTS=NO
-  if [ "$_FROM_SOURCES" = "NO" ] ; then
-    _NEW_LTS=YES
-  fi
-  if [ ! -e "/etc/php5/conf.d/geoip.ini" ] && [ "$_NEW_LTS" = "YES" ] ; then
-    if [ -x "/usr/local/bin/php" ] ; then
-      _PHP_INSTALL_REQUIRED=YES
-    fi
-    _PHP_INSTALL_REQUIRED_NEW=YES
-    msg "INFO: PHP rebuild required to install $_PHP_VERSION_NEW from Dotdeb.org"
-    mrun "sleep 1"
-  fi
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ "$_FROM_SOURCES" = "YES" ] ; then
-      if [ ! -e "/var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
-        _PHP_INSTALL_REQUIRED=YES
-        echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
-        msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
-        mrun "sleep 1"
-      fi
-      if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log" ] ; then
-        _PHP_INSTALL_REQUIRED_NEW=YES
-        echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log
-        msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include MariaDB $_MARIADB_VERSION libs"
-        mrun "sleep 1"
-      fi
+    if [ ! -e "/var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
+      _PHP_INSTALL_REQUIRED=YES
+      echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
+      mrun "sleep 1"
+    fi
+    if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log" ] ; then
+      _PHP_INSTALL_REQUIRED_NEW=YES
+      echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log
+      msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include MariaDB $_MARIADB_VERSION libs"
+      mrun "sleep 1"
     fi
   else
-    if [ "$_FROM_SOURCES" = "YES" ] ; then
-      if [ ! -e "/var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
-        _PHP_INSTALL_REQUIRED=YES
-        echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
-        msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
-        mrun "sleep 1"
-      fi
-      if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log" ] ; then
-        _PHP_INSTALL_REQUIRED_NEW=YES
-        echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
-        msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include Percona $_PERCONA_VERSION libs"
-        mrun "sleep 1"
-      fi
+    if [ ! -e "/var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
+      _PHP_INSTALL_REQUIRED=YES
+      echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
+      mrun "sleep 1"
+    fi
+    if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log" ] ; then
+      _PHP_INSTALL_REQUIRED_NEW=YES
+      echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
+      msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include Percona $_PERCONA_VERSION libs"
+      mrun "sleep 1"
     fi
   fi
 fi
@@ -6856,18 +6404,18 @@ if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
     mrun "sleep 1"
   fi
 fi
-if [ "$_UP_PHP" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
+if [ "$_UP_PHP" = "YES" ] ; then
   _PHP_INSTALL_REQUIRED=YES
   _PHP_INSTALL_REQUIRED_NEW=YES
   msg "INFO: PHP rebuild required to include upgraded libs"
   fix_php_ext
 fi
-if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] && [ ! -e "/var/log/php52-rebuild-$_INSTALLER_VERSION" ] ; then
+if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ ! -e "/var/log/php52-rebuild-$_INSTALLER_VERSION" ] ; then
   _PHP_INSTALL_REQUIRED=YES
   _PHP_MODERN_ONLY=NO
   msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
 fi
-if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ "$_FROM_SOURCES" = "YES" ] ; then
+if [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
   _BROKEN_LIBCURL_TEST_LEGACY_A=$(/usr/local/bin/php52 -v 2>&1)
   _BROKEN_LIBCURL_TEST_LEGACY_B=$(/usr/local/bin/php -v 2>&1)
   if [[ "$_BROKEN_LIBCURL_TEST_LEGACY_A" =~ "libcurl.so.4" ]] || [[ "$_BROKEN_LIBCURL_TEST_LEGACY_B" =~ "libcurl.so.4" ]] ; then
@@ -6888,9 +6436,6 @@ if [ ! -z "$_PHP_EXTRA_CONF" ] ; then
 fi
 if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
-  if [ "$_USE_MEMCACHED" = "YES" ] ; then
-    install_libmemcached
-  fi
 fi
 if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
   if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
@@ -6903,9 +6448,7 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   if [ "$_PHP_MODERN_ONLY" = "NO" ] || [ -e "/usr/local/lib/php/extensions/no-debug-non-zts-20060613" ] ; then
     if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-      if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-        rm -f /var/log/zendopcache-*
-      fi
+      rm -f /var/log/zendopcache-*
       rm -f /var/log/phpredis-*
       rm -f /var/log/uploadprogress-*
       rm -f /var/log/php-jsmin-*
@@ -6927,13 +6470,6 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   fi
   update_php_modern
 fi
-if [ "$_REL_VERSION" = "precise" ] && [ ! -e "/var/log/precise-apc-fixed.log" ] && [ "$_FROM_SOURCES" = "NO" ] ; then
-  st_runner "$_INSTAPP php-apc" 2> /dev/null
-  touch /var/log/precise-apc-fixed.log
-fi
-#if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  update_newrelic
-#fi
 st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
 st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 if [ ! -L "/usr/bin/php-cli" ] ; then
@@ -6942,21 +6478,6 @@ if [ ! -L "/usr/bin/php-cli" ] ; then
 fi
 if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] ; then
   install_ioncube
-fi
-if [ "$_FROM_SOURCES" = "NO" ] ; then
-  if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-    if [ "$_PHP_ZEND_OPCACHE" = "YES" ] ; then
-      rm -f /var/log/zendopcache-*
-    fi
-    rm -f /var/log/phpredis-*
-    rm -f /var/log/uploadprogress-*
-    rm -f /var/log/php-jsmin-*
-    rm -f /var/log/php-geos-*
-    rm -f /var/log/php-mongo-*
-    rm -f /var/log/apc-*
-    rm -f /var/log/imagick-*
-  fi
-  update_php_modern
 fi
 
 
@@ -7660,7 +7181,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
-    sed -i "s/EDIT_FROM_SOURCES/$_FROM_SOURCES/g"          $Files &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
     sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files &> /dev/null

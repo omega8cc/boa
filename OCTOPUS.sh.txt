@@ -396,7 +396,7 @@ _HOT_SAUCE=NO
 ###
 ### It will also allow you to add some newer
 ### platforms to the existing shared code,
-### which helps to keep your APC memory usage
+### which helps to keep your opcache memory
 ### as low as possible without fragmentation.
 ###
 ### When set to _USE_CURRENT=NO it will force
