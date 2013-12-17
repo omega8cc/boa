@@ -10,12 +10,12 @@
 # Description:       starts the PHP FastCGI Process Manager daemon
 ### END INIT INFO
 
-prefix=/opt/local
+prefix=/opt/php53
 exec_prefix=${prefix}
-php_fpm_BIN=/opt/local/sbin/php-fpm
-php_fpm_CONF=/opt/local/etc/php53-fpm.conf
+php_fpm_BIN=/opt/php53/sbin/php-fpm
+php_fpm_CONF=/opt/php53/etc/php53-fpm.conf
 php_fpm_PID=/var/run/php53-fpm.pid
-php_opts="--fpm-config $php_fpm_CONF -c /opt/local/etc/php53.ini"
+php_opts="--fpm-config $php_fpm_CONF -c /opt/php53/etc/php53.ini"
 
 wait_for_pid () {
   try=0
