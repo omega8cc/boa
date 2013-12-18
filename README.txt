@@ -73,14 +73,18 @@ to the standard production settings.
 
 ### SUPPORTED LTS OS 32/64bit - Minimal on server or Desktop on localhost
 
-* Debian 6.0 Squeeze (recommended) - 12 min install, 3 min upgrade
-* Debian 7.0 Wheezy - 30 min install, 15 min upgrade
-* Ubuntu Precise 12.04 - 12 min install, 3 min upgrade
-* Ubuntu Lucid 10.04 - 30 min install, 15 min upgrade
+* Debian 7 Wheezy (recommended)
+* Debian 6 Squeeze (fully supported)
+* Ubuntu Precise 12.04 (very limited support)
+* Ubuntu Lucid 10.04 (very limited support)
 
-NOTE: Average time to install and upgrade tested with PHP 5.3 option
-      _PHP_MODERN_ONLY=YES (default), using Barracuda installer only.
-      Upgrade time is applicable when PHP upgrade is required.
+NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
+      we recommend Debian 7 Wheezy. We don't use and rarely test Ubuntu,
+      so if you have any good reason to use Ubuntu, don't blame us
+      if it will not survive next upgrade. We are trying to include it as
+      (barely) supported OS only for those who can't use Debian because of
+      company or organization policy etc. But we strongly suggest to avoid
+      Ubuntu and instead use Debian, wherever possible, for best results.
 
 
 ### PREVIOUSLY SUPPORTED OS (deprecated)
@@ -110,7 +114,8 @@ NOTE: Average time to install and upgrade tested with PHP 5.3 option
 * All libraries & tools required to install and run Nginx based Aegir system.
 * Latest release of MariaDB 5.5 database server with Chive manager.
 * Latest version of Nginx web server.
-* PHP-FPM 5.3.28 with Zend OPcache, phpredis, uploadprogress and ionCube.
+* PHP-FPM 5.5, 5.4, 5.3 - multi-install mode, configured per Octopus instance.
+* PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
