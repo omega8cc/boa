@@ -1013,6 +1013,7 @@ _JETTY_7_VERSION=7.6.14.v20131031
 _JETTY_8_VERSION=8.1.14.v20131031
 _JETTY_9_VERSION=9.1.0.v20131115
 _LSHELL_VERSION=0.9.16.5-om8
+_MAILPARSE_VERSION=2.1.6
 _MARIADB_VERSION=5.5.34
 _MSS_VERSION=1.32
 _NGINX_VERSION=1.5.8
@@ -1318,22 +1319,24 @@ EOF
   _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 }
 #
-# Fix php.ini files to remove mailparse.so
-fix_php_ini_mailparse () {
-  if [ -e "$_THIS_FILE" ] ; then
-    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
-    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
-      sed -i "s/.*mailparse.*//g" $_THIS_FILE &> /dev/null
-    fi
-  fi
-}
-#
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin () {
   if [ -e "$_THIS_FILE" ] ; then
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
       sed -i "s/.*suhosin.*//g" $_THIS_FILE &> /dev/null
+    fi
+  fi
+}
+#
+# Fix php.ini files to add mailparse.so
+fix_php_ini_mailparse () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
+    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mailparse.so" >> $_THIS_FILE
     fi
   fi
 }
@@ -3410,6 +3413,18 @@ install_php_extensions () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
+  ###--------------------###
+  msg "INFO: Installing MailParse for PHP-FPM $_LOC_PHP_VERSION..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r mailparse*
+  get_dev_src "mailparse-$_MAILPARSE_VERSION.tgz" &> /dev/null
+  cd /var/opt/mailparse-$_MAILPARSE_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "mailparse-$_MAILPARSE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/mailparse-$_MAILPARSE_VERSION-$_LOC_PHP_VERSION.log
 }
 #
 # Update extensions for PHP built from sources.
@@ -3538,6 +3553,20 @@ update_php_extensions () {
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
+  fi
+  ###--------------------###
+  if [ ! -e "/var/xdrago/log/mailparse-$_MAILPARSE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    msg "INFO: Installing MailParse upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r mailparse*
+    get_dev_src "mailparse-$_MAILPARSE_VERSION.tgz" &> /dev/null
+    cd /var/opt/mailparse-$_MAILPARSE_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "mailparse-$_MAILPARSE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/mailparse-$_MAILPARSE_VERSION-$_LOC_PHP_VERSION.log
   fi
 }
 #

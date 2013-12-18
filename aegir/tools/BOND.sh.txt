@@ -243,22 +243,24 @@ find_correct_ip () {
   _LOC_IP=`echo $(getent ahostsv4 $_LOC_DOM) | cut -d: -f2 | awk '{ print $1}'`
 }
 #
-# Fix php.ini files to remove mailparse.so
-fix_php_ini_mailparse () {
-  if [ -e "$_THIS_FILE" ] ; then
-    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
-    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
-      sed -i "s/.*mailparse.*//g" $_THIS_FILE &> /dev/null
-    fi
-  fi
-}
-#
 # Fix php.ini files to remove suhosin.so
 fix_php_ini_suhosin () {
   if [ -e "$_THIS_FILE" ] ; then
     _SUHOSIN_INI_TEST=$(grep "extension=suhosin.so" $_THIS_FILE)
     if [[ "$_SUHOSIN_INI_TEST" =~ "extension=suhosin.so" ]] ; then
       sed -i "s/.*suhosin.*//g" $_THIS_FILE &> /dev/null
+    fi
+  fi
+}
+#
+# Fix php.ini files to add mailparse.so
+fix_php_ini_mailparse () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _MAILPARSE_INI_TEST=$(grep "extension=mailparse.so" $_THIS_FILE)
+    if [[ "$_MAILPARSE_INI_TEST" =~ "extension=mailparse.so" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=mailparse.so" >> $_THIS_FILE
     fi
   fi
 }
