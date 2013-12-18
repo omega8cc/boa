@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 find /var/xdrago/log/*.pid -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
 if [ -e "/etc/cron.daily/logrotate" ] ; then
@@ -12,24 +12,40 @@ if [ -e "/etc/cron.daily/logrotate" ] ; then
     echo system logs rotated
   fi
 fi
-echo rotate > /var/log/php/php-fpm-error.log
-echo rotate > /var/log/php/php-fpm-slow.log
+echo rotate > /var/log/php/php55-fpm-error.log
+echo rotate > /var/log/php/php55-fpm-slow.log
+echo rotate > /var/log/php/php54-fpm-error.log
+echo rotate > /var/log/php/php54-fpm-slow.log
 echo rotate > /var/log/php/php53-fpm-error.log
 echo rotate > /var/log/php/php53-fpm-slow.log
-echo rotate > /var/log/php/error_log_52
+echo rotate > /var/log/php/php52-fpm-error.log
+echo rotate > /var/log/php/php52-fpm-slow.log
+echo rotate > /var/log/php/error_log_55
+echo rotate > /var/log/php/error_log_54
 echo rotate > /var/log/php/error_log_53
-echo rotate > /var/log/php/error_log_cli_52
+echo rotate > /var/log/php/error_log_52
+echo rotate > /var/log/php/error_log_cli_55
+echo rotate > /var/log/php/error_log_cli_54
 echo rotate > /var/log/php/error_log_cli_53
+echo rotate > /var/log/php/error_log_cli_52
 echo rotate > /var/log/redis/redis-server.log
 echo rotate > /var/log/mysql/sql-slow-query.log
 if [ -e "/root/.high_traffic.cnf" ] ; then
   echo rotate > /var/log/nginx/access.log
 else
   touch /var/run/fmp_wait.pid
-  if [ -e "/etc/init.d/php-fpm" ] ; then
-    /etc/init.d/php-fpm reload
+  if [ -e "/etc/init.d/php55-fpm" ] ; then
+    /etc/init.d/php55-fpm reload
   fi
-  /etc/init.d/php53-fpm reload
+  if [ -e "/etc/init.d/php54-fpm" ] ; then
+    /etc/init.d/php54-fpm reload
+  fi
+  if [ -e "/etc/init.d/php53-fpm" ] ; then
+    /etc/init.d/php53-fpm reload
+  fi
+  if [ -e "/etc/init.d/php52-fpm" ] ; then
+    /etc/init.d/php52-fpm reload
+  fi
   sleep 8
   rm -f /var/run/fmp_wait.pid
 fi

@@ -69,7 +69,6 @@ _MY_EMAIL="notify@omega8.cc"
 ### Barracuda with only some options/services
 ### enabled, as listed below:
 ###
-### _PHP_MODERN_ONLY=YES
 ### _XTRAS_LIST="PDS CSF CHV FTP"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
@@ -126,7 +125,6 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Barracuda with only safe options/services
 ### enabled, as listed below:
 ###
-### _PHP_MODERN_ONLY=YES
 ### _XTRAS_LIST="PDS CHV"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
@@ -178,31 +176,31 @@ _EASY_LOCALHOST=NO
 
 
 ###----------------------------------------###
-### PHP INSTALL MODE                       ###
+### PHP MULTI INSTALL                      ###
 ###----------------------------------------###
 ###
-### By default Barracuda installs only 5.3,
-### so it supports out of the box Drupal 8.x,
-### but breaks support for Drupal 5.x and
-### maybe some still not fully compatible
-### Drupal 6.x contrib modules.
+### By default Barracuda installs only PHP 5.3
+### but this option allows you to install also
+### other experimental PHP versions and then
+### choose different version for PHP-FPM and
+### PHP-CLI per Aegir Master and per Satellite
+### Instance with variables: _PHP_FPM_VERSION
+### and _PHP_CLI_VERSION.
 ###
-### To be able to install both 5.2 and 5.3,
-### so you could choose version for PHP-FPM
-### and PHP-CLI *separately* and per Aegir
-### Master and Satellite Instance below with
+### Available options: 5.5, 5.4, 5.3, 5.2
+###
+### Example: _PHP_MULTI_INSTALL="5.3 5.5"
+###
+### Note that removing any version from this
+### list once it is already installed, will
+### NOT uninstall anything.
+###
+### Do not confuse this with other settings
 ### _PHP_FPM_VERSION and _PHP_CLI_VERSION,
-### change this to:
+### which are used to define version to be
+### used by Master or Satellite Instance.
 ###
-### _PHP_MODERN_ONLY=NO
-###
-### Note that this option is always forced
-### to NO automatically when 5.2 is already
-### installed and available, so while you can
-### easily add 5.2 on upgrade by changing it
-### to NO below, you can't remove it later.
-###
-_PHP_MODERN_ONLY=YES
+_PHP_MULTI_INSTALL="5.3"
 
 
 ###----------------------------------------###
@@ -213,16 +211,16 @@ _PHP_MODERN_ONLY=YES
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
-### Available options:
+### Available options (if installed):
 ###
-### _PHP_FPM_VERSION=5.2
-### _PHP_FPM_VERSION=5.3
-### _PHP_FPM_VERSION=5.4
 ### _PHP_FPM_VERSION=5.5
+### _PHP_FPM_VERSION=5.4
+### _PHP_FPM_VERSION=5.3
+### _PHP_FPM_VERSION=5.2
 ###
-### This option is useful only with its parent
-### option set to _PHP_MODERN_ONLY=NO, which
-### is not default.
+### Note that 5.3 will be set automatically
+### if you specify any other, not installed
+### version.
 ###
 _PHP_FPM_VERSION=5.3
 
@@ -235,19 +233,16 @@ _PHP_FPM_VERSION=5.3
 ### Master and Satellite Instance - both on
 ### install and upgrade.
 ###
-### Note that PHP-CLI 5.3 is required by
-### Drupal 8.x, but breaks support for 5.x
+### Available options (if installed):
 ###
-### Available options:
-###
-### _PHP_CLI_VERSION=5.2
-### _PHP_CLI_VERSION=5.3
-### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.5
+### _PHP_CLI_VERSION=5.4
+### _PHP_CLI_VERSION=5.3
+### _PHP_CLI_VERSION=5.2
 ###
-### This option is useful only with its parent
-### option set to _PHP_MODERN_ONLY=NO, which
-### is not default.
+### Note that 5.3 will be set automatically
+### if you specify any other, not installed
+### version.
 ###
 _PHP_CLI_VERSION=5.3
 
@@ -294,6 +289,10 @@ _PHP_CLI_VERSION=5.3
 ### _XTRAS_LIST="ALL"
 ### _XTRAS_LIST="ALL GIT SR3"
 ### _XTRAS_LIST="PDS CSF CGP CHV FTP"
+###
+### Note that removing any item from this
+### list once it is already installed, will
+### NOT uninstall anything.
 ###
 _XTRAS_LIST="PDS CSF CHV FTP"
 
@@ -790,8 +789,10 @@ _EXTRA_PACKAGES=""
 ### for listed services on upgrade.
 ###
 _CUSTOM_CONFIG_CSF=NO
-_CUSTOM_CONFIG_PHP_5_2=NO
-_CUSTOM_CONFIG_PHP_5_3=NO
+_CUSTOM_CONFIG_PHP55=NO
+_CUSTOM_CONFIG_PHP54=NO
+_CUSTOM_CONFIG_PHP53=NO
+_CUSTOM_CONFIG_PHP52=NO
 _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_REDIS=NO
 
@@ -1018,7 +1019,10 @@ _NGINX_VERSION=1.5.8
 _OPENSSH_VERSION=6.4p1
 _OPENSSL_VERSION=1.0.1e
 _PERCONA_VERSION=5.5.34
-_PHP_VERSION=5.2.17
+_PHP52_VERSION=5.2.17
+_PHP53_VERSION=5.3.28
+_PHP54_VERSION=5.4.23
+_PHP55_VERSION=5.5.7
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.3
 _SOLR_1_VERSION=1.4.1
@@ -1041,7 +1045,7 @@ _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
 _SPINNER=YES
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
@@ -1376,7 +1380,7 @@ forced_redis_password_update () {
     _ESC_RPASS=`sanitize_string "$_ESC_RPASS"`
   fi
   echo "$_ESC_RPASS" > /root/.redis.pass.txt
-  touch /var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log
+  touch /var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log
   _FORCE_REDIS_RESTART=YES
   sed -i "s/^# requirepass /requirepass /g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^requirepass.*/requirepass $_ESC_RPASS/g" /etc/redis/redis.conf &> /dev/null
@@ -1429,7 +1433,7 @@ fix_redis_mode () {
 # Set or update Redis password.
 update_redis_password () {
   if [ -e "/etc/redis/redis.conf" ] ; then
-    if [ ! -e "/var/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log" ] ; then
+    if [ ! -e "/var/xdrago/log/sec-redis-pass-$_INSTALLER_VERSION-$_NOW-new-a.log" ] ; then
       if [ ! -e "/root/.redis.no.new.password.cnf" ] || [ ! -e "/root/.redis.pass.txt" ] ; then
          forced_redis_password_update
       fi
@@ -1501,14 +1505,14 @@ install_redis_src () {
       if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
         _DO_NOTHING=YES
       else
-        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
+        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
           cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
         fi
       fi
     fi
   else
-    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
+    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
       if [ -e "/etc/redis/redis.conf" ] ; then
         cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
       fi
@@ -1519,7 +1523,7 @@ install_redis_src () {
   if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
     ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
   fi
-  touch /var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log
+  touch /var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log
 }
 #
 # Set xterm.
@@ -1574,7 +1578,7 @@ fix_sftp_ftps_modern () {
       ### sed -i "s/usr\/bin\/lshell/usr\/local\/bin\/lshell/g" /etc/passwd &> /dev/null
     fi
   fi
-  if [ ! -e "/var/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log" ] || [ ! -e "/etc/ssh/sftp_config" ] || [ ! -e "/usr/bin/MySecureShell" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+  if [ ! -e "/var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log" ] || [ ! -e "/etc/ssh/sftp_config" ] || [ ! -e "/usr/bin/MySecureShell" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
     msg "INFO: Installing MySecureShell $_MSS_VERSION..."
     mrun "sleep 1"
     cd /var/opt
@@ -1584,7 +1588,7 @@ fix_sftp_ftps_modern () {
     st_runner "sh ./configure" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "sh ./install.sh yesall" 2> /dev/null
-    echo "mss-$_MSS_VERSION $_NOW" > /var/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
+    echo "mss-$_MSS_VERSION $_NOW" > /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sftp_config /etc/ssh/sftp_config
     st_runner "service ssh restart" &> /dev/null
   fi
@@ -1600,10 +1604,10 @@ fix_sftp_ftps_modern () {
   else
     echo "/usr/bin/MySecureShell" >> /etc/shells
   fi
-  if [ ! -e "/var/log/fixed-sftp-idle.log" ] ; then
+  if [ ! -e "/var/xdrago/log/fixed-sftp-idle.log" ] ; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
     st_runner "service ssh reload" &> /dev/null
-    echo fixed-sftp-idle > /var/log/fixed-sftp-idle.log
+    echo fixed-sftp-idle > /var/xdrago/log/fixed-sftp-idle.log
   fi
 }
 #
@@ -1621,39 +1625,6 @@ enable_weekly_usage_monitor () {
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
     echo "28 6    * * 2   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
-  fi
-}
-#
-# Fix PHP Extensions.
-fix_php_ext () {
-  if [ -e "/usr/lib/php5/$_PHP_API" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-    mkdir -p /var/backups/php53-$_PHP_API
-    mv -f /usr/lib/php5/$_PHP_API/*.so /var/backups/php53-$_PHP_API/ &> /dev/null
-    if [ -e "/var/backups/php53-$_PHP_API/newrelic.so" ] ; then
-    mv -f /var/backups/php53-$_PHP_API/newrelic.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-    fi
-    if [ -e "/var/backups/php53-$_PHP_API/mongo.so" ] ; then
-    mv -f /var/backups/php53-$_PHP_API/mongo.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-    fi
-    if [ -e "/var/backups/php53-$_PHP_API/geos.so" ] ; then
-    mv -f /var/backups/php53-$_PHP_API/geos.so /usr/lib/php5/$_PHP_API/ &> /dev/null
-    fi
-  elif [ -e "/usr/lib/php5/$_PHP_API+lfs" ] && [ -L "/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API" ] ; then
-    mkdir -p /var/backups/php53-$_PHP_API+lfs
-    mv -f /usr/lib/php5/$_PHP_API+lfs/* /var/backups/php53-$_PHP_API+lfs/ &> /dev/null
-    if [ -e "/var/backups/php53-$_PHP_API+lfs/newrelic.so" ] ; then
-    mv -f /var/backups/php53-$_PHP_API+lfs/newrelic.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-    fi
-    if [ -e "/var/backups/php53-$_PHP_API+lfs/mongo.so" ] ; then
-    mv -f /var/backups/php53-$_PHP_API+lfs/mongo.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-    fi
-    if [ -e "/var/backups/php53-$_PHP_API+lfs/geos.so" ] ; then
-    mv -f /var/backups/php53-$_PHP_API+lfs/geos.so /usr/lib/php5/$_PHP_API+lfs/ &> /dev/null
-    fi
-  fi
-  if [ -e "/etc/php5/conf.d" ] ; then
-    mkdir -p /var/backups/php53-conf-d
-    mv -f /etc/php5/conf.d/*.ini /var/backups/php53-conf-d/ &> /dev/null
   fi
 }
 #
@@ -1685,13 +1656,25 @@ fix_php_ini_newrelic_all () {
       _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
       _NEWRELIC_KEY=`echo -n $_NEWRELIC_KEY | tr -d "\n"`
     fi
-    _THIS_FILE=/opt/etc/php.ini
+
+    _THIS_FILE=/opt/php55/etc/php55.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/usr/local/lib/php.ini
+    _THIS_FILE=/opt/php55/lib/php.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/opt/local/etc/php53.ini
+
+    _THIS_FILE=/opt/php54/etc/php54.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/opt/local/lib/php.ini
+    _THIS_FILE=/opt/php54/lib/php.ini
+    fix_php_ini_newrelic
+
+    _THIS_FILE=/opt/php53/etc/php53.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/php53/lib/php.ini
+    fix_php_ini_newrelic
+
+    _THIS_FILE=/opt/php52/etc/php52.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/php52/lib/php.ini
     fix_php_ini_newrelic
   fi
 }
@@ -1725,12 +1708,23 @@ fix_php_ini_opcache () {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all () {
-  _THIS_FILE=/opt/etc/php.ini
-  _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
+
+  _THIS_FILE=/opt/php55/etc/php55.ini
+  _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
   fix_php_ini_opcache
-  _THIS_FILE=/opt/local/etc/php53.ini
-  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API/opcache.so"
+
+  _THIS_FILE=/opt/php54/etc/php54.ini
+  _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
   fix_php_ini_opcache
+
+  _THIS_FILE=/opt/php53/etc/php53.ini
+  _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
+  fix_php_ini_opcache
+
+  _THIS_FILE=/opt/php52/etc/php52.ini
+  _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
+  fix_php_ini_opcache
+
 }
 #
 # Fix php.ini file to add geos.so
@@ -1748,9 +1742,9 @@ fix_php_ini_geos () {
 # Fix 5.3 php.ini files to add geos.so
 fix_php_ini_geos_all () {
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    _THIS_FILE=/opt/local/etc/php53.ini
+    _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_geos
-    _THIS_FILE=/opt/local/lib/php.ini
+    _THIS_FILE=/opt/php53/lib/php.ini
     fix_php_ini_geos
   fi
 }
@@ -1770,9 +1764,9 @@ fix_php_ini_mongo () {
 # Fix 5.3 php.ini files to add mongo.so
 fix_php_ini_mongo_all () {
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    _THIS_FILE=/opt/local/etc/php53.ini
+    _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_mongo
-    _THIS_FILE=/opt/local/lib/php.ini
+    _THIS_FILE=/opt/php53/lib/php.ini
     fix_php_ini_mongo
   fi
 }
@@ -1787,102 +1781,176 @@ update_php_conf () {
   if [ ! -e "/opt/etc" ] ; then
     mkdir -p /opt/etc
   fi
-  if [ ! -e "/opt/local/etc/php53.ini" ] ; then
-    mkdir -p /opt/local/etc
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+  if [ ! -e "/opt/php55/etc/php55.ini" ] ; then
+    mkdir -p /opt/php55/etc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini &> /dev/null
   fi
-  if [ ! -e "/opt/local/lib/php.ini" ] ; then
-    mkdir -p /opt/local/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+  if [ ! -e "/opt/php54/etc/php54.ini" ] ; then
+    mkdir -p /opt/php54/etc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini &> /dev/null
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
+  if [ ! -e "/opt/php53/etc/php53.ini" ] ; then
+    mkdir -p /opt/php53/etc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini &> /dev/null
+  fi
+  if [ ! -e "/opt/php52/etc/php52.ini" ] ; then
+    mkdir -p /opt/php52/etc
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini &> /dev/null
+  fi
+  if [ ! -e "/opt/php55/lib/php.ini" ] ; then
+    mkdir -p /opt/php55/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
+  fi
+  if [ ! -e "/opt/php54/lib/php.ini" ] ; then
+    mkdir -p /opt/php54/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+  fi
+  if [ ! -e "/opt/php53/lib/php.ini" ] ; then
+    mkdir -p /opt/php53/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+  fi
+  if [ ! -e "/opt/php52/lib/php.ini" ] ; then
+    mkdir -p /opt/php52/lib
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini &> /dev/null
+  fi
+  if [ "$_CUSTOM_CONFIG_PHP55" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP55" = "YES" ] ; then
       _DO_NOTHING=YES
     else
-      cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-      cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+      cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini &> /dev/null
+      cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
     fi
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP54" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP54" = "YES" ] ; then
       _DO_NOTHING=YES
     else
-      cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-      cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+      cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini &> /dev/null
+      cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+    fi
+  fi
+  if [ "$_CUSTOM_CONFIG_PHP53" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP53" = "YES" ] ; then
+      _DO_NOTHING=YES
+    else
+      cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini &> /dev/null
+      cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+    fi
+  fi
+  if [ "$_CUSTOM_CONFIG_PHP52" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP52" = "YES" ] ; then
+      _DO_NOTHING=YES
+    else
+      cp -af /opt/php52/etc/php52.ini /var/backups/dragon/t/etc-php52.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini &> /dev/null
+      cp -af /opt/php52/lib/php.ini /var/backups/dragon/t/lib-php52.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini &> /dev/null
     fi
   fi
   ###
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
-  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-fpm.conf /opt/php55/etc/php55-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-fpm.conf /opt/php54/etc/php54-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-fpm.conf /opt/php52/etc/php52-fpm.conf &> /dev/null
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/php55/etc/php55-fpm.conf &> /dev/null
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/php54/etc/php54-fpm.conf &> /dev/null
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g"                                     /opt/php52/etc/php52-fpm.conf &> /dev/null
   ###
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/php55/etc/php55.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/php54/etc/php54.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/php52/etc/php52.ini &> /dev/null
   ###
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php55/etc/php55.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php55/lib/php.ini   &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php54/etc/php54.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php54/lib/php.ini   &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php53/lib/php.ini   &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php52/lib/php.ini   &> /dev/null
   ###
-  _THIS_FILE=/opt/etc/php.ini
+
+  _THIS_FILE=/opt/php55/etc/php55.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  _THIS_FILE=/usr/local/lib/php.ini
+  _THIS_FILE=/opt/php55/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  _THIS_FILE=/opt/local/etc/php53.ini
+
+  _THIS_FILE=/opt/php54/etc/php54.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  _THIS_FILE=/opt/local/lib/php.ini
+  _THIS_FILE=/opt/php54/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
+
+  _THIS_FILE=/opt/php53/etc/php53.ini
+  fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  fix_php_ini_mailparse
+  _THIS_FILE=/opt/php53/lib/php.ini
+  fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  fix_php_ini_mailparse
+
+  _THIS_FILE=/opt/php52/etc/php52.ini
+  fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  fix_php_ini_mailparse
+  _THIS_FILE=/opt/php52/lib/php.ini
+  fix_php_ini_redis
+  fix_php_ini_jsmin
+  fix_php_ini_suhosin
+  fix_php_ini_mailparse
+
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
+
   ###
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/lib/php.ini &> /dev/null
   ###
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/lib/php.ini &> /dev/null
   ###
-  sed -i "s/.*extension=memcached.so.*//g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/.*extension=memcached.so.*//g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/.*extension=memcached.so.*//g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/.*extension=memcached.so.*//g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php53/lib/php.ini &> /dev/null
   ###
   if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
-    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/php53/lib/php.ini &> /dev/null
   fi
   if [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
-    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/local/lib/php.ini &> /dev/null
-  fi
-  if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-    sed -i "s/20090626/$_PHP_API/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/20090626/$_PHP_API/g" /opt/local/lib/php.ini &> /dev/null
+    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/php53/lib/php.ini &> /dev/null
   fi
 }
 #
@@ -1937,20 +2005,20 @@ update_sql_conf () {
 #
 # Update Nginx Config.
 update_nginx_conf () {
-  if [ ! -e "/var/log/nginx-config-fixed-$_INSTALLER_VERSION" ] && [ -d "/var/aegir" ] ; then
+  if [ ! -e "/var/xdrago/log/nginx-config-fixed-$_INSTALLER_VERSION" ] && [ -d "/var/aegir" ] ; then
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf" ] && [ -e "/etc/nginx/nginx.conf" ] ; then
       mv -f /etc/nginx/nginx.conf-* /var/backups/dragon/t/ &> /dev/null
       mv -f /etc/nginx/mime.types-pre-* /var/backups/dragon/t/ &> /dev/null
       mv -f /etc/nginx/nginx.conf /var/backups/dragon/t/nginx.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
-      touch /var/log/nginx-config-fixed-$_INSTALLER_VERSION
+      touch /var/xdrago/log/nginx-config-fixed-$_INSTALLER_VERSION
     fi
   fi
   if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
+      if [ ! -e "/var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
         cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-        touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+        touch /var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION
       fi
     fi
   fi
@@ -2185,7 +2253,7 @@ sub_force_advanced_nginx_config () {
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
     fi
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
@@ -2228,9 +2296,6 @@ force_advanced_nginx_config () {
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-    sed -i "s/9000/9090/g" /var/aegir/config/includes/nginx_compact_include.conf &> /dev/null
-  fi
   if [ -e "/var/aegir/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
       ln -sf /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
@@ -2267,26 +2332,26 @@ tune_web_server_config () {
     _START_LEGACY_FPM=3
   fi
   if [ ! -z "$_START_FPM" ] ; then
-    sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g"         /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g"         /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/pm.start_servers =.*/pm.start_servers = $_START_FPM/g"           /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/pm.max_spare_servers =.*/pm.max_spare_servers = $_START_FPM/g"   /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"               /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g"         /opt/php52/etc/php52-fpm.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g"         /opt/php53/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/pm.start_servers =.*/pm.start_servers = $_START_FPM/g"           /opt/php53/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/pm.max_spare_servers =.*/pm.max_spare_servers = $_START_FPM/g"   /opt/php53/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"               /opt/php53/etc/php53-fpm.conf &> /dev/null
   fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g"       /etc/nginx/nginx.conf &> /dev/null
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g"                       /etc/nginx/nginx.conf &> /dev/null
   fi
-  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 60s/g"       /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 180s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 60s/g"       /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 180s/g"  /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/php53/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/300s/180s/g"                                                     /opt/php52/etc/php52-fpm.conf &> /dev/null
+    sed -i "s/300s/180s/g"                                                     /opt/php53/etc/php53-fpm.conf &> /dev/null
   fi
 }
 #
@@ -2472,8 +2537,8 @@ tune_memory_limits () {
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
-        sed -i "s/8000/64000/g"  /opt/local/etc/php53.ini &> /dev/null
-        sed -i "s/8000/64000/g"  /opt/etc/php.ini &> /dev/null
+        sed -i "s/8000/64000/g"  /opt/php53/etc/php53.ini &> /dev/null
+        sed -i "s/8000/64000/g"  /opt/php52/etc/php52.ini &> /dev/null
       else
         _USE_PHP=512
         _USE_OPC=512
@@ -2544,16 +2609,16 @@ tune_memory_limits () {
   if [ "$_USE_PHP" -lt "196" ] ; then
     _USE_PHP=196
   fi
-  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/181/$_USE_OPC/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/iso-.*-1/iso-8859-1/g" /opt/etc/php.ini &> /dev/null
-  if [ -e "/opt/local/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/iso-.*-1/iso-8859-1/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/iso-.*-1/iso-8859-1/g" /opt/php52/etc/php52.ini &> /dev/null
+  if [ -e "/opt/php53/etc/php53.ini" ] ; then
+    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/iso-.*-1/iso-8859-1/g" /opt/php53/etc/php53.ini &> /dev/null
   fi
-  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
     sed -i "s/= 191/= $_PRC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null
@@ -2657,21 +2722,15 @@ barracuda_cnf () {
         exit 1
       fi
     fi
-    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
-      fi
-    fi
     if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      _PHP_VERSION_NEW=5.3.28
-      _PHP_API=20090626
+      _PHP_VERSION=5.3.28
+      _PHP53_API=20090626
     elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      _PHP_VERSION_NEW=5.4.23
-      _PHP_API=20100525
+      _PHP_VERSION=5.4.23
+      _PHP54_API=20100525
     elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      _PHP_VERSION_NEW=5.5.7
-      _PHP_API=20100525
+      _PHP_VERSION=5.5.7
+      _PHP55_API=20100525
       _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
     fi
     msg "INFO: Creating your /root/.barracuda.cnf config file"
@@ -2715,7 +2774,7 @@ barracuda_cnf () {
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
     echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
-    echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
+    echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
@@ -2732,8 +2791,10 @@ barracuda_cnf () {
     echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP55=$_CUSTOM_CONFIG_PHP55" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP54=$_CUSTOM_CONFIG_PHP54" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP53=$_CUSTOM_CONFIG_PHP53" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP52=$_CUSTOM_CONFIG_PHP52" >> /root/.barracuda.cnf
     echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
@@ -2794,12 +2855,6 @@ barracuda_cnf () {
     sleep 1
     msg "NOTE! Please review all config options displayed below"
     msg "NOTE! It will *override* all settings in the Barracuda script"
-    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
-      fi
-    fi
     sed -i "s/_SPEED_VALID_MAX=300/_SPEED_VALID_MAX=3600/g" /root/.barracuda.cnf &> /dev/null
     _USE_SPEED_BOOSTER_TEST=$(grep _USE_SPEED_BOOSTER /root/.barracuda.cnf)
     if [[ "$_USE_SPEED_BOOSTER_TEST" =~ "_USE_SPEED_BOOSTER" ]] ; then
@@ -2818,11 +2873,19 @@ barracuda_cnf () {
       sed -i "s/.*_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
-    _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
-    if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
+    _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL /root/.barracuda.cnf)
+    if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_MODERN_ONLY=$_PHP_MODERN_ONLY" >> /root/.barracuda.cnf
+      if [ -x "/usr/local/bin/php52" ] ; then
+        _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.2"
+      fi
+      echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
+    fi
+    _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
+    if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
+      sed -i "s/.*_PHP_MODERN_ONLY.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
@@ -2850,51 +2913,39 @@ barracuda_cnf () {
     fi
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_CSF_TEST" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
-      if [ -e "/var/log/custom.csf.log" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_CSF.*/_CUSTOM_CONFIG_CSF=YES ### Forced because /var/log/custom.csf.log exists./g" /root/.barracuda.cnf &> /dev/null
-      fi
+      _DO_NOTHING=YES
     else
-      if [ -e "/var/log/custom.csf.log" ] ; then
-        echo "_CUSTOM_CONFIG_CSF=YES" >> /root/.barracuda.cnf
-      else
-        echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
-      fi
+      echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_SQL_TEST=$(grep _CUSTOM_CONFIG_SQL /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_SQL_TEST" =~ "_CUSTOM_CONFIG_SQL" ]] ; then
-      if [ -e "/etc/mysql/custom.my.cnf" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_SQL.*/_CUSTOM_CONFIG_SQL=YES ### Forced because /etc/mysql/custom.my.cnf exists./g" /root/.barracuda.cnf &> /dev/null
-      fi
+      _DO_NOTHING=YES
     else
-      if [ -e "/etc/mysql/custom.my.cnf" ] ; then
-        echo "_CUSTOM_CONFIG_SQL=YES" >> /root/.barracuda.cnf
-      else
-        echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
-      fi
+      echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
     fi
-    _CUSTOM_CONFIG_PHP_5_2_TEST=$(grep _CUSTOM_CONFIG_PHP_5_2 /root/.barracuda.cnf)
-    if [[ "$_CUSTOM_CONFIG_PHP_5_2_TEST" =~ "_CUSTOM_CONFIG_PHP_5_2" ]] ; then
-      if [ -e "/opt/etc/custom.php.ini" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_2.*/_CUSTOM_CONFIG_PHP_5_2=YES ### Forced because /opt/etc/custom.php.ini exists./g" /root/.barracuda.cnf &> /dev/null
-      fi
+    _CUSTOM_CONFIG_PHP55_TEST=$(grep _CUSTOM_CONFIG_PHP55 /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_PHP55_TEST" =~ "_CUSTOM_CONFIG_PHP55" ]] ; then
+      _DO_NOTHING=YES
     else
-      if [ -e "/opt/etc/custom.php.ini" ] ; then
-        echo "_CUSTOM_CONFIG_PHP_5_2=YES" >> /root/.barracuda.cnf
-      else
-        echo "_CUSTOM_CONFIG_PHP_5_2=$_CUSTOM_CONFIG_PHP_5_2" >> /root/.barracuda.cnf
-      fi
+      echo "_CUSTOM_CONFIG_PHP55=$_CUSTOM_CONFIG_PHP55" >> /root/.barracuda.cnf
     fi
-    _CUSTOM_CONFIG_PHP_5_3_TEST=$(grep _CUSTOM_CONFIG_PHP_5_3 /root/.barracuda.cnf)
-    if [[ "$_CUSTOM_CONFIG_PHP_5_3_TEST" =~ "_CUSTOM_CONFIG_PHP_5_3" ]] ; then
-      if [ -e "/opt/etc/custom.php53.ini" ] ; then
-        sed -i "s/.*_CUSTOM_CONFIG_PHP_5_3.*/_CUSTOM_CONFIG_PHP_5_3=YES ### Forced because /opt/etc/custom.php53.ini exists./g" /root/.barracuda.cnf &> /dev/null
-      fi
+    _CUSTOM_CONFIG_PHP54_TEST=$(grep _CUSTOM_CONFIG_PHP54 /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_PHP54_TEST" =~ "_CUSTOM_CONFIG_PHP54" ]] ; then
+      _DO_NOTHING=YES
     else
-      if [ -e "/opt/etc/custom.php53.ini" ] ; then
-        echo "_CUSTOM_CONFIG_PHP_5_3=YES" >> /root/.barracuda.cnf
-      else
-        echo "_CUSTOM_CONFIG_PHP_5_3=$_CUSTOM_CONFIG_PHP_5_3" >> /root/.barracuda.cnf
-      fi
+      echo "_CUSTOM_CONFIG_PHP54=$_CUSTOM_CONFIG_PHP54" >> /root/.barracuda.cnf
+    fi
+    _CUSTOM_CONFIG_PHP53_TEST=$(grep _CUSTOM_CONFIG_PHP53 /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_PHP53_TEST" =~ "_CUSTOM_CONFIG_PHP53" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_CUSTOM_CONFIG_PHP53=$_CUSTOM_CONFIG_PHP53" >> /root/.barracuda.cnf
+    fi
+    _CUSTOM_CONFIG_PHP52_TEST=$(grep _CUSTOM_CONFIG_PHP52 /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_PHP52_TEST" =~ "_CUSTOM_CONFIG_PHP52" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_CUSTOM_CONFIG_PHP52=$_CUSTOM_CONFIG_PHP52" >> /root/.barracuda.cnf
     fi
     _SPEED_VALID_MAX_TEST=$(grep _SPEED_VALID_MAX /root/.barracuda.cnf)
     if [[ "$_SPEED_VALID_MAX_TEST" =~ "_SPEED_VALID_MAX" ]] ; then
@@ -3103,13 +3154,11 @@ barracuda_cnf () {
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=YES/g"                        /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_MODERN_ONLY=.*/_PHP_MODERN_ONLY=YES/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -3145,23 +3194,6 @@ barracuda_cnf () {
         msg "EXIT: Bye (2)"
         exit 1
       fi
-    fi
-    if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-      if [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-        _PHP_FPM_VERSION=5.3
-        _PHP_CLI_VERSION=5.3
-      fi
-    fi
-    if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-      _PHP_VERSION_NEW=5.3.28
-      _PHP_API=20090626
-    elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-      _PHP_VERSION_NEW=5.4.23
-      _PHP_API=20100525
-    elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-      _PHP_VERSION_NEW=5.5.7
-      _PHP_API=20100525
-      _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
     fi
     _NGX_FORCE_REINSTALL_TEST=$(grep _NGX_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_NGX_FORCE_REINSTALL_TEST" =~ "_NGX_FORCE_REINSTALL" ]] ; then
@@ -3212,14 +3244,14 @@ run_aptitude_full_upgrade () {
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ ! -e "/var/log/fixed-mytop-mariadb.log" ] ; then
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ ! -e "/var/xdrago/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "aptitude remove mytop -y" &> /dev/null
     st_runner "apt-get purge mytop -y --force-yes" &> /dev/null
     rm -f /usr/bin/mytop
-    echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
+    echo "fixed-mytop-mariadb" > /var/xdrago/log/fixed-mytop-mariadb.log
   fi
   st_runner "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold" 2> /dev/null
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ -e "/var/log/fixed-mytop-mariadb.log" ] ; then
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ -e "/var/xdrago/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "$_INSTAPP mytop" 2> /dev/null
   fi
 }
@@ -3235,7 +3267,7 @@ run_silent_aptitude_full_upgrade () {
 # Install IonCube.
 install_ioncube () {
   ###--------------------###
-  if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
       _DO_NOTHING=YES
     else
@@ -3258,29 +3290,13 @@ install_ioncube () {
       fi
       rm -f /usr/local/ioncube/*
       cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-      echo "ioncube-$_IONCUBE_VERSION" > /var/log/ioncube-$_IONCUBE_VERSION.log
+      echo "ioncube-$_IONCUBE_VERSION" > /var/xdrago/log/ioncube-$_IONCUBE_VERSION.log
     fi
   fi
 }
 #
-# Install extensions for PHP built from sources.
-install_php_scr_build_extensions () {
-  ###--------------------###
-  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION..."
-  mrun "sleep 1"
-  cd /var/opt
-  rm -f -r imagick*
-  get_dev_src "imagick-$_IMAGICK_VERSION.tgz" &> /dev/null
-  cd /var/opt/imagick-$_IMAGICK_VERSION
-  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
-}
-#
-# Install extensions for PHP installed from packages or built from sources.
-install_php_universal_extensions () {
+# Install PHP extensions.
+install_php_extensions () {
   ###--------------------###
   if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
     _DO_NOTHING=YES
@@ -3295,7 +3311,7 @@ install_php_universal_extensions () {
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+    echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3313,7 +3329,7 @@ install_php_universal_extensions () {
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
+  echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/phpredis-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing UploadProgress for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
@@ -3325,34 +3341,34 @@ install_php_universal_extensions () {
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
+  echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing JSMin for PHP-FPM $_LOC_PHP_VERSION..."
   mrun "sleep 1"
   cd /var/opt
-  if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
-    rm -f -r pecl-jsmin*
-    get_dev_src "pecl-jsmin-0.1.1.tar.gz" &> /dev/null
-    cd /var/opt/pecl-jsmin-0.1.1
-  else
+  if [ "$_LOC_PHP_VERSION" = "5.2.17" ] ; then
     rm -f -r php-jsmin*
     get_dev_src "php-jsmin-1.0.tgz" &> /dev/null
     cd /var/opt/php-jsmin-1.0
+  else
+    rm -f -r pecl-jsmin*
+    get_dev_src "pecl-jsmin-0.1.1.tar.gz" &> /dev/null
+    cd /var/opt/pecl-jsmin-0.1.1
   fi
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log
+  echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log
   ###--------------------###
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] ; then
       msg "INFO: Installing GEOS PHP extension for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
-      if [ ! -e "/var/log/geos-$_INSTALLER_VERSION.log" ] ; then
+      if [ ! -e "/var/xdrago/log/geos-$_INSTALLER_VERSION.log" ] ; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
         st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
-        echo "geos-$_INSTALLER_VERSION" > /var/log/geos-$_INSTALLER_VERSION.log
+        echo "geos-$_INSTALLER_VERSION" > /var/xdrago/log/geos-$_INSTALLER_VERSION.log
       fi
       cd /var/opt
       rm -f -r geos*
@@ -3363,12 +3379,12 @@ install_php_universal_extensions () {
       find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/log/php-geos-$_LOC_PHP_VERSION.log
+      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] ; then
       msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
@@ -3379,33 +3395,27 @@ install_php_universal_extensions () {
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/log/php-mongo-$_LOC_PHP_VERSION.log
+      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_LOC_PHP_VERSION.log
     fi
   fi
+  ###--------------------###
+  msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION..."
+  mrun "sleep 1"
+  cd /var/opt
+  rm -f -r imagick*
+  get_dev_src "imagick-$_IMAGICK_VERSION.tgz" &> /dev/null
+  cd /var/opt/imagick-$_IMAGICK_VERSION
+  st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+  st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet install" 2> /dev/null
+  echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
 }
 #
 # Update extensions for PHP built from sources.
-update_php_scr_build_extensions () {
+update_php_extensions () {
   ###--------------------###
-  if [ ! -e "/var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-    mrun "sleep 1"
-    cd /var/opt
-    rm -f -r imagick*
-    get_dev_src "imagick-$_IMAGICK_VERSION.tgz" &> /dev/null
-    cd /var/opt/imagick-$_IMAGICK_VERSION
-    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-    st_runner "make --quiet" 2> /dev/null
-    st_runner "make --quiet install" 2> /dev/null
-    echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
-  fi
-}
-#
-# Update extensions for PHP installed from packages or built from sources.
-update_php_universal_extensions () {
-  ###--------------------###
-  if [ ! -e "/var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
       _DO_NOTHING=YES
     else
@@ -3419,11 +3429,11 @@ update_php_universal_extensions () {
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
+      echo "zendopcache-$_ZEND_OPCACHE_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
-  if [ ! -e "/var/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
@@ -3441,10 +3451,10 @@ update_php_universal_extensions () {
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/log/phpredis-$_LOC_PHP_VERSION.log
+    echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/phpredis-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ ! -e "/var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing UploadProgress upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
@@ -3455,37 +3465,37 @@ update_php_universal_extensions () {
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
+    echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ ! -e "/var/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing JSMin upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     mrun "sleep 1"
     cd /var/opt
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] ; then
-      rm -f -r pecl-jsmin*
-      get_dev_src "pecl-jsmin-0.1.1.tar.gz" &> /dev/null
-      cd /var/opt/pecl-jsmin-0.1.1
-    else
+    if [ "$_LOC_PHP_VERSION" = "5.2.17" ] ; then
       rm -f -r php-jsmin*
       get_dev_src "php-jsmin-1.0.tgz" &> /dev/null
       cd /var/opt/php-jsmin-1.0
+    else
+      rm -f -r pecl-jsmin*
+      get_dev_src "pecl-jsmin-0.1.1.tar.gz" &> /dev/null
+      cd /var/opt/pecl-jsmin-0.1.1
     fi
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log
+    echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
-      if [ ! -e "/var/log/geos-$_INSTALLER_VERSION.log" ] ; then
+      if [ ! -e "/var/xdrago/log/geos-$_INSTALLER_VERSION.log" ] ; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
         st_runner "$_INSTAPP libgeos-dev libgeos-c1 phpunit" 2> /dev/null
-        echo "geos-$_INSTALLER_VERSION" > /var/log/geos-$_INSTALLER_VERSION.log
+        echo "geos-$_INSTALLER_VERSION" > /var/xdrago/log/geos-$_INSTALLER_VERSION.log
       fi
       cd /var/opt
       rm -f -r geos*
@@ -3496,12 +3506,12 @@ update_php_universal_extensions () {
       find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/log/php-geos-$_LOC_PHP_VERSION.log
+      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION_NEW" ] && [ ! -e "/var/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       mrun "sleep 1"
       cd /var/opt
@@ -3512,70 +3522,23 @@ update_php_universal_extensions () {
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/log/php-mongo-$_LOC_PHP_VERSION.log
+      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_LOC_PHP_VERSION.log
     fi
   fi
-}
-#
-# Install modern PHP version
-install_php_modern () {
   ###--------------------###
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW"
-  msg "NOTE! This step may take longer than 8 minutes, please wait..."
-  cd /var/opt
-  rm -f -r php*
-  get_dev_src "php-$_PHP_VERSION_NEW.tar.gz" &> /dev/null
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 1/3"
-  mrun "sleep 1"
-  cd /var/opt/php-$_PHP_VERSION_NEW
-  if [ "$_PHP_VERSION_NEW" = "5.3.15" ] || [ "$_PHP_VERSION_NEW" = "5.3.16" ] || [ "$_PHP_VERSION_NEW" = "5.3.17" ] ; then
-    ### _FPM_PATCH=remove_usr1_usr2_fpm_unix.patch
-    _FPM_PATCH=bug62886.patch
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_FPM_PATCH ./
-    patch -p1 < $_FPM_PATCH &> /dev/null
+  if [ ! -e "/var/xdrago/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    msg "INFO: Installing Imagick upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+    mrun "sleep 1"
+    cd /var/opt
+    rm -f -r imagick*
+    get_dev_src "imagick-$_IMAGICK_VERSION.tgz" &> /dev/null
+    cd /var/opt/imagick-$_IMAGICK_VERSION
+    st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+    st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    echo "imagick-$_IMAGICK_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/imagick-$_IMAGICK_VERSION-$_LOC_PHP_VERSION.log
   fi
-  st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
-    patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
-  fi
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 2/3"
-  mrun "sleep 1"
-  st_runner "sh ./configure --quiet --prefix=/opt/local --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
-  msg "INFO: Installing PHP-FPM $_PHP_VERSION_NEW part 3/3"
-  mrun "sleep 1"
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
-      _DO_NOTHING=YES
-    else
-      cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-    fi
-  fi
-  if [ -f "/usr/bin/php" ] && [ -f "/opt/local/bin/php" ] ; then
-    mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
-    ln -sf /opt/local/bin/php /usr/bin/php
-    if [ -f "/usr/bin/phpize" ] && [ -f "/opt/local/bin/phpize" ] && [ ! -L "/opt/local/bin/phpize" ] ; then
-      mv -f /usr/bin/phpize /usr/bin/phpize-old &> /dev/null
-      ln -sf /opt/local/bin/phpize /usr/bin/phpize
-    fi
-  fi
-  _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  _LOC_PHP_PATH=/opt/local/bin
-  install_php_scr_build_extensions
-  install_php_universal_extensions
-  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log
-  else
-    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
-  fi
-  rm -f /etc/init.d/php53-fpm*
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
-  chmod 755 /etc/init.d/php53-fpm
-  st_runner "update-rc.d php53-fpm defaults" &> /dev/null
 }
 #
 # Install legacy PHP version
@@ -3587,6 +3550,7 @@ install_php_legacy () {
   cd /var/opt
   rm -f -r php*
   rm -f /etc/init.d/php-fpm*
+  rm -f /etc/init.d/php52-fpm*
   get_dev_src "php-$_PHP_VERSION.tar.gz" &> /dev/null
   get_dev_src "php-$_PHP_VERSION-fpm-0.5.14.diff.gz" &> /dev/null
   cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
@@ -3600,44 +3564,78 @@ install_php_legacy () {
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
   mrun "sleep 1"
-  st_runner "sh ./configure --quiet --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
+  st_runner "sh ./configure --quiet --prefix=/opt/php52 --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
   mrun "sleep 1"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   _LOC_PHP_VERSION="$_PHP_VERSION"
-  _LOC_PHP_PATH=/usr/local/bin
-  install_php_scr_build_extensions
-  install_php_universal_extensions
-  echo "libcurl4-openssl-dev" > /var/log/libcurl4-openssl-dev-fix.log
+  _LOC_PHP_PATH=/opt/php52/bin
+  install_php_extensions
+  echo "libcurl4-openssl-dev" > /var/xdrago/log/libcurl4-openssl-dev-fix.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
+    echo "$_MARIADB_VERSION-MariaDB" > /var/xdrago/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
   else
-    echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
+    echo "$_PERCONA_VERSION-Percona" > /var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
   fi
-  cd /usr/local/sbin
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm ./
-  chmod 755 php-fpm
-  ln -sf /usr/local/sbin/php-fpm /etc/init.d/php-fpm
-  chmod 755 /usr/local/sbin/php-fpm &> /dev/null
-  echo "php52-rebuild-$_INSTALLER_VERSION" > /var/log/php52-rebuild-$_INSTALLER_VERSION
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-fpm /etc/init.d/php52-fpm
+  chmod 755 /etc/init.d/php52-fpm
+  st_runner "update-rc.d php52-fpm defaults" &> /dev/null
+  echo "php52-rebuild-$_INSTALLER_VERSION" > /var/xdrago/log/php52-rebuild-$_INSTALLER_VERSION
 }
 #
-# Update modern PHP version
-update_php_modern () {
-  _LOC_PHP_VERSION="$_PHP_VERSION_NEW"
-  _LOC_PHP_PATH=/opt/local/bin
-  update_php_scr_build_extensions
-  update_php_universal_extensions
+# Install modern PHP version
+install_php_multi () {
+  if [ "$1" = "52" ] ; then
+    install_php_legacy
+  else
+    ###--------------------###
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION"
+    msg "NOTE! This step may take longer than 8 minutes, please wait..."
+    cd /var/opt
+    rm -f -r php*
+    get_dev_src "php-$_PHP_VERSION.tar.gz" &> /dev/null
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
+    mrun "sleep 1"
+    cd /var/opt/php-$_PHP_VERSION
+    st_runner "sh ./buildconf --force" 2> /dev/null
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
+    mrun "sleep 1"
+    st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
+    msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
+    mrun "sleep 1"
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    if [ -f "/usr/bin/php" ] && [ -f "/opt/php53/bin/php" ] ; then
+      mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
+      ln -sf /opt/php53/bin/php /usr/bin/php
+      if [ -f "/usr/bin/phpize" ] && [ -f "/opt/php53/bin/phpize" ] && [ ! -L "/opt/php53/bin/phpize" ] ; then
+        mv -f /usr/bin/phpize /usr/bin/phpize-old &> /dev/null
+        ln -sf /opt/php53/bin/phpize /usr/bin/phpize
+      fi
+    fi
+    _LOC_PHP_VERSION="$_PHP_VERSION"
+    _LOC_PHP_PATH=/opt/local/bin
+    install_php_extensions
+    _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
+    if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+      echo "$_MARIADB_VERSION-MariaDB" > /var/xdrago/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
+    else
+      echo "$_PERCONA_VERSION-Percona" > /var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
+    fi
+    rm -f /etc/init.d/php53-fpm*
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
+    chmod 755 /etc/init.d/php53-fpm
+    st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+  fi
 }
 #
-# Update legacy PHP version
-update_php_legacy () {
+# Update PHP extensions
+update_php_multi () {
   _LOC_PHP_VERSION="$_PHP_VERSION"
-  _LOC_PHP_PATH=/usr/local/bin
-  update_php_scr_build_extensions
-  update_php_universal_extensions
+  _LOC_PHP_PATH=/opt/php$1/bin
+  update_php_extensions "$1"
 }
 #
 # Install latest Git.
@@ -4051,7 +4049,7 @@ install_upgrade_nginx () {
 # Install wkhtmltopdf.
 install_wkhtmltopdf () {
   ###--------------------###
-  if [ ! -e "/var/log/wkhtmltopdf-fix10" ] || [ ! -x "/usr/bin/wkhtmltopdf" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/xdrago/log/wkhtmltopdf-fix10" ] || [ ! -x "/usr/bin/wkhtmltopdf" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       SYSTEMARCH="x86_64"
@@ -4074,14 +4072,14 @@ install_wkhtmltopdf () {
       chown root:root /usr/bin/wkhtmltopdf &> /dev/null
       chmod 755 /usr/bin/wkhtmltopdf &> /dev/null
     fi
-    touch /var/log/wkhtmltopdf-fix10
+    touch /var/xdrago/log/wkhtmltopdf-fix10
   fi
 }
 #
 # Install wkhtmltoimage.
 install_wkhtmltoimage () {
   ###--------------------###
-  if [ ! -e "/var/log/wkhtmltoimage-fix10" ] || [ ! -x "/usr/bin/wkhtmltoimage" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/xdrago/log/wkhtmltoimage-fix10" ] || [ ! -x "/usr/bin/wkhtmltoimage" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
       SYSTEMARCH="x86_64"
@@ -4104,13 +4102,13 @@ install_wkhtmltoimage () {
       chown root:root /usr/bin/wkhtmltoimage &> /dev/null
       chmod 755 /usr/bin/wkhtmltoimage &> /dev/null
     fi
-    touch /var/log/wkhtmltoimage-fix10
+    touch /var/xdrago/log/wkhtmltoimage-fix10
   fi
 }
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron () {
-  if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
+  if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/php53/bin/php" ] ; then
     sed -i "s/^PATH=.*/PATH=\/opt\/local\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
     chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
   elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
@@ -4140,11 +4138,17 @@ update_newrelic () {
       mkdir -p /var/backups/nr
       mv -f /etc/newrelic /var/backups/nr/etc-newrelic-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       _UPDATE_NR=YES
-      _PHP_EXT_DIR_52="/usr/local/lib/php/extensions/no-debug-non-zts-20060613"
-      _PHP_EXT_DIR_53="/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API"
-      if [ -e "$_PHP_EXT_DIR_52" ] && [ ! -e "$_PHP_EXT_DIR_52/newrelic.so" ] ; then
+      _PHP_EXT_DIR_55="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API"
+      _PHP_EXT_DIR_54="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API"
+      _PHP_EXT_DIR_53="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API"
+      _PHP_EXT_DIR_52="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API"
+      if [ -e "$_PHP_EXT_DIR_55" ] && [ ! -e "$_PHP_EXT_DIR_55/newrelic.so" ] ; then
+        _UPDATE_NR=YES
+      elif [ -e "$_PHP_EXT_DIR_54" ] && [ ! -e "$_PHP_EXT_DIR_54/newrelic.so" ] ; then
         _UPDATE_NR=YES
       elif [ -e "$_PHP_EXT_DIR_53" ] && [ ! -e "$_PHP_EXT_DIR_53/newrelic.so" ] ; then
+        _UPDATE_NR=YES
+      elif [ -e "$_PHP_EXT_DIR_52" ] && [ ! -e "$_PHP_EXT_DIR_52/newrelic.so" ] ; then
         _UPDATE_NR=YES
       fi
       if [ "$_UPDATE_NR" = "YES" ] ; then
@@ -4154,7 +4158,18 @@ update_newrelic () {
         echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
         st_runner "apt-get update -y" &> /dev/null
         st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-        PHPAPI=$_PHP_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        if [ -e "$_PHP_EXT_DIR_52" ] ; then
+          PHPAPI=$_PHP52_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ -e "$_PHP_EXT_DIR_53" ] ; then
+          PHPAPI=$_PHP53_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ -e "$_PHP_EXT_DIR_54" ] ; then
+          PHPAPI=$_PHP54_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ -e "$_PHP_EXT_DIR_55" ] ; then
+          PHPAPI=$_PHP55_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
         if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
           echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
           echo "license_key=$_NEWRELIC_KEY" >> /etc/newrelic/newrelic.cfg
@@ -4247,7 +4262,7 @@ get_drush_versions () {
 # Update packages sources list.
 update_sources_list () {
   ###--------------------###
-  if [ -e "/var/log/apt-fast-install-log.txt" ] ; then
+  if [ -e "/var/xdrago/log/apt-fast-install-log.txt" ] || [ -e "/var/log/apt-fast-install-log.txt" ] ; then
     _APT_SOURCES_REWRITE=NO
     if [ ! -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
       _APT_SOURCES_REWRITE=YES
@@ -4413,7 +4428,7 @@ update_sources_list () {
         fi
       fi
     fi
-    touch /var/log/apt-fast-install-log.txt
+    touch /var/xdrago/log/apt-fast-install-log.txt
     cd /var/opt
   fi
   if [ ! -e "/etc/apt/preferences" ] ; then
@@ -4496,7 +4511,7 @@ install_curl_src () {
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed libcurl is broken, cURL $_CURL_INSTALLED upgrade required"
   fi
-  if [ "$_PHP_NEW_BIN_BROKEN" = "YES" ] || [ "$_PHP_LEGACY_BIN_BROKEN" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_PHP_BIN_BROKEN" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, rebuild forced"
   fi
@@ -4549,8 +4564,8 @@ install_ssl_src () {
     _SSL_INSTALL_REQUIRED=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
-    rm -f /var/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
-    rm -f /var/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
+    rm -f /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
+    rm -f /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
     msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, upgrade required"
   fi
   if [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
@@ -4826,7 +4841,6 @@ else
   fi
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     msg "INFO: Easy Localhost Setup Mode Active"
-    _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CHV"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
@@ -4841,7 +4855,6 @@ else
     _LOCAL_NETWORK_HN="aegir.local"
   elif [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "INFO: Easy Public Setup Mode Active"
-    _PHP_MODERN_ONLY=YES
     _XTRAS_LIST="PDS CSF CHV FTP"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
@@ -5507,12 +5520,6 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   mrun "aptitude remove php5-apc -y" &> /dev/null
   mrun "aptitude remove php-apc -y" &> /dev/null
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-    if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
-    fi
-  fi
   mrun "apt-get purge svscan -y" &> /dev/null
   mrun "apt-get purge pound -y" &> /dev/null
   mrun "apt-get update -y" &> /dev/null
@@ -5571,12 +5578,6 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
   mrun "apt-get remove collectd -y --force-yes" &> /dev/null
-  if [ "$_PHP_MODERN_ONLY" = "YES" ] ; then
-    if [ -e "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
-    fi
-  fi
   mrun "apt-get remove libc-client2007b-dev -y" &> /dev/null
   mrun "apt-get purge svscan -y" &> /dev/null
   mrun "apt-get purge pound -y" &> /dev/null
@@ -5618,7 +5619,7 @@ fi
 
 ###--------------------###
 if [ -d "/etc/webmin" ] ; then
-  if [ ! -e "/var/log/webmin_update_apt_src.log" ] ; then
+  if [ ! -e "/var/xdrago/log/webmin_update_apt_src.log" ] ; then
     cd /var/opt
     echo "## Webmin APT Repository" > /etc/apt/sources.list.d/webmin.list
     echo "deb http://download.webmin.com/download/repository sarge contrib" >> /etc/apt/sources.list.d/webmin.list
@@ -5632,7 +5633,7 @@ if [ -d "/etc/webmin" ] ; then
     done
     cat jcameron-key.asc | apt-key add - &> /dev/null
     rm -f jcameron-key.asc*
-    touch /var/log/webmin_update_apt_src.log
+    touch /var/xdrago/log/webmin_update_apt_src.log
   fi
 fi
 
@@ -5857,7 +5858,7 @@ install_with_aptitude_sql () {
   else
     install_mariadb_sql
     st_runner "$_INSTAPP mytop" 2> /dev/null
-    echo "fixed-mytop-mariadb" > /var/log/fixed-mytop-mariadb.log
+    echo "fixed-mytop-mariadb" > /var/xdrago/log/fixed-mytop-mariadb.log
   fi
   st_runner "$_INSTAPP $SQLDEB" 2> /dev/null
   st_runner "$_INSTAPP $SQLADD" 2> /dev/null
@@ -6119,7 +6120,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-  if [ ! -e "/var/log/vnstat-$_VNSTAT_VERSION.log" ] || [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ ! -e "/var/xdrago/log/vnstat-$_VNSTAT_VERSION.log" ] || [ ! -e "/usr/bin/vnstat" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     msg "INFO: Installing VnStat monitor..."
     cd /var/opt
     rm -f -r vnstat*
@@ -6133,7 +6134,7 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     st_runner "update-rc.d vnstat defaults" &> /dev/null
     st_runner "service vnstat start" &> /dev/null
     mrun "sleep 3"
-    echo "vnstat-$_VNSTAT_VERSION $_NOW" > /var/log/vnstat-$_VNSTAT_VERSION.log
+    echo "vnstat-$_VNSTAT_VERSION $_NOW" > /var/xdrago/log/vnstat-$_VNSTAT_VERSION.log
     st_runner "service vnstat restart" &> /dev/null
   fi
 fi
@@ -6275,157 +6276,17 @@ elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; the
   st_runner "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
 fi
+
+
+###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
   msg "INFO: Checking if PHP upgrade is available"
   mrun "sleep 1"
-  ###--------------------###
-  if [ -L "/usr/local/bin/php" ] ; then
-    if [ -x "/usr/local/bin/php52" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-      rm -f /usr/local/bin/php
-      if [ -x "/usr/local/bin/php52" ] ; then
-        _LEGACY_PHP_BINARY=YES
-        mv -f /usr/local/bin/php52 /usr/local/bin/php
-      else
-        _LEGACY_PHP_BINARY=NO
-      fi
-    fi
-  fi
 fi
-if [ -x "/usr/bin/php" ] ; then
-  _PHP_NEW_BIN="/usr/bin/php"
-elif [ -x "/opt/local/bin/php" ] ; then
-  _PHP_NEW_BIN="/opt/local/bin/php"
-fi
-if [ -x "$_PHP_NEW_BIN" ] ; then
-  if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    _PHP_INSTALLED=5.x
-  else
-    _PHP_INSTALLED=`$_PHP_NEW_BIN -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-  fi
-  if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION_NEW" ]] ; then
-    if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-      fix_php_ext
-    else
-      _PHP_INSTALL_REQUIRED_NEW=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
-    fi
-  else
-    _PHP_INSTALL_REQUIRED_NEW=YES
-    msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-    fix_php_ext
-  fi
-  _BROKEN_CURL_TEST=$(curl --version 2>&1)
-  if [[ "$_BROKEN_CURL_TEST" =~ "libcurl.so.4" ]] ; then
-    install_curl_src
-  fi
-  _BROKEN_LIBCURL_TEST=$($_PHP_NEW_BIN -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
-    _PHP_NEW_BIN_BROKEN=YES
-    _PHP_INSTALL_REQUIRED_NEW=YES
-    msg "INFO: Installed PHP version $_PHP_INSTALLED, libcurl broken, rebuild required"
-    install_curl_src
-  fi
-else
-  _PHP_INSTALL_REQUIRED_NEW=YES
-fi
-if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
-  if [ -x "/usr/local/bin/php" ] ; then
-    if [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-      _PHP_INSTALLED=5.x
-    else
-      _PHP_INSTALLED=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-    fi
-    if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
-      _PHP_INSTALL_REQUIRED=NO
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
-    else
-      _PHP_INSTALL_REQUIRED=YES
-      msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-    fi
-  else
-    _PHP_INSTALL_REQUIRED=YES
-  fi
-  if [ ! -e "/var/log/libcurl4-openssl-dev-fix.log" ] ; then
-    _PHP_INSTALL_REQUIRED=YES
-    if [ "$_STATUS" = "UPGRADE" ] ; then
-      msg "INFO: PHP $_PHP_VERSION rebuild required to include libcurl4-openssl-dev"
-      mrun "sleep 1"
-    fi
-  fi
-fi
-if [ "$_STATUS" = "UPGRADE" ] ; then
-  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
-      _PHP_INSTALL_REQUIRED=YES
-      echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
-      msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
-      mrun "sleep 1"
-    fi
-    if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log" ] ; then
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      echo "$_MARIADB_VERSION-MariaDB" > /var/log/installed-$_PHP_VERSION_NEW-$_MARIADB_VERSION-MariaDB.log
-      msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include MariaDB $_MARIADB_VERSION libs"
-      mrun "sleep 1"
-    fi
-  else
-    if [ ! -e "/var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] && [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
-      _PHP_INSTALL_REQUIRED=YES
-      echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
-      msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
-      mrun "sleep 1"
-    fi
-    if [ ! -e "/var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log" ] ; then
-      _PHP_INSTALL_REQUIRED_NEW=YES
-      echo "$_PERCONA_VERSION-Percona" > /var/log/installed-$_PHP_VERSION_NEW-$_PERCONA_VERSION-Percona.log
-      msg "INFO: PHP $_PHP_VERSION_NEW rebuild required to include Percona $_PERCONA_VERSION libs"
-      mrun "sleep 1"
-    fi
-  fi
-fi
-if [ ! -e "/opt/local/etc/php53-fpm.conf" ] ; then
-  mkdir -p /opt/local/etc
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
-  if [ -z "$_THISHTIP" ] ; then
-    _LOC_DOM="$_THISHOST"
-    find_correct_ip
-    _THISHTIP="$_LOC_IP"
-  fi
-  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
-  _PHP_INSTALL_REQUIRED_NEW=YES
-fi
-if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-  _PHP_INSTALL_REQUIRED=YES
-  _PHP_INSTALL_REQUIRED_NEW=YES
-  if [ "$_STATUS" = "UPGRADE" ] ; then
-    msg "INFO: PHP rebuild forced"
-    mrun "sleep 1"
-  fi
-fi
-if [ "$_UP_PHP" = "YES" ] ; then
-  _PHP_INSTALL_REQUIRED=YES
-  _PHP_INSTALL_REQUIRED_NEW=YES
-  msg "INFO: PHP rebuild required to include upgraded libs"
-  fix_php_ext
-fi
-if [ "$_LEGACY_PHP_BINARY" = "YES" ] && [ ! -e "/var/log/php52-rebuild-$_INSTALLER_VERSION" ] ; then
-  _PHP_INSTALL_REQUIRED=YES
-  _PHP_MODERN_ONLY=NO
-  msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
-fi
-if [ "$_LEGACY_PHP_BINARY" = "YES" ] ; then
-  _BROKEN_LIBCURL_TEST_LEGACY_A=$(/usr/local/bin/php52 -v 2>&1)
-  _BROKEN_LIBCURL_TEST_LEGACY_B=$(/usr/local/bin/php -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST_LEGACY_A" =~ "libcurl.so.4" ]] || [[ "$_BROKEN_LIBCURL_TEST_LEGACY_B" =~ "libcurl.so.4" ]] ; then
-    _PHP_INSTALL_REQUIRED=YES
-    _PHP_LEGACY_BIN_BROKEN=YES
-    _PHP_MODERN_ONLY=NO
-    msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
-    install_curl_src
-  fi
-fi
+
+st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
+st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
+
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   _PHP_EXTRA=""
 else
@@ -6434,49 +6295,130 @@ fi
 if [ ! -z "$_PHP_EXTRA_CONF" ] ; then
   _PHP_EXTRA="$_PHP_EXTRA $_PHP_EXTRA_CONF"
 fi
-if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_ioncube
+
+if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
+  _PHP_VERSION="$_PHP55_VERSION"
+  _PHP55_API=20100525
+  _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
+  install_php_multi "55"
 fi
-if [ "$_PHP_MODERN_ONLY" = "NO" ] ; then
-  if [ "$_PHP_INSTALL_REQUIRED" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    install_php_legacy
+if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
+  _PHP_VERSION="$_PHP54_VERSION"
+  _PHP54_API=20100525
+  install_php_multi "54"
+if
+if [[ "$_PHP_MULTI_INSTALL" =~ "5.3" ]] && [ ! -x "/opt/php53/bin/php" ] ; then
+  _PHP_VERSION="$_PHP53_VERSION"
+  _PHP53_API=20090626
+  install_php_multi "53"
+fi
+if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
+  _PHP_VERSION="$_PHP52_VERSION"
+  _PHP52_API=20060613
+  install_php_multi "52"
+fi
+
+#
+# Check if the PHP rebuild is required.
+check_php_rebuild () {
+  if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+    _PHP_INSTALLED=5.x
+    rm -f /var/xdrago/log/zendopcache-*
+    rm -f /var/xdrago/log/phpredis-*
+    rm -f /var/xdrago/log/uploadprogress-*
+    rm -f /var/xdrago/log/php-jsmin-*
+    rm -f /var/xdrago/log/php-geos-*
+    rm -f /var/xdrago/log/php-mongo-*
+    rm -f /var/xdrago/log/imagick-*
+    msg "INFO: PHP to $_PHP_VERSION rebuild forced"
+  else
+    _PHP_INSTALLED=`/opt/php$1/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   fi
-fi
-if [ "$_PHP_INSTALL_REQUIRED_NEW" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-  install_php_modern
-fi
-if [ "$_STATUS" = "UPGRADE" ] ; then
-  if [ "$_PHP_MODERN_ONLY" = "NO" ] || [ -e "/usr/local/lib/php/extensions/no-debug-non-zts-20060613" ] ; then
-    if [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-      rm -f /var/log/zendopcache-*
-      rm -f /var/log/phpredis-*
-      rm -f /var/log/uploadprogress-*
-      rm -f /var/log/php-jsmin-*
-      rm -f /var/log/php-geos-*
-      rm -f /var/log/php-mongo-*
-      rm -f /var/log/apc-*
-      rm -f /var/log/imagick-*
+  if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
+    msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    install_php_multi "$1"
+  else
+    if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
+      if [ "$_UP_PHP" = "YES" ] ; then
+        msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
+        install_php_multi "$1"
+      else
+        msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
+      fi
+    else
+      if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+        _DO_NOTHING=YES
+      else
+        msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+      fi
+      install_php_multi "$1"
     fi
-    update_php_legacy
-    if [ -x "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
+  fi
+  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    if [ ! -e "/var/xdrago/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] ; then
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
+      install_php_multi "$1"
     fi
   else
-    if [ -x "/opt/local/bin/php" ] && [ ! -L "/usr/local/bin/php" ] ; then
-      mv -f /usr/local/bin/php /usr/local/bin/php52 &> /dev/null
-      ln -sf /opt/local/bin/php /usr/local/bin/php &> /dev/null
+    if [ ! -e "/var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] ; then
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
+      install_php_multi "$1"
     fi
   fi
-  update_php_modern
+}
+
+#
+# Check if the PHP build is broken.
+check_php_broken () {
+  _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+    _PHP_BIN_BROKEN=YES
+    msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
+    install_curl_src
+    install_php_multi "$1"
+  fi
+}
+
+if [ -x "/opt/php55/bin/php" ] ; then
+  _PHP_VERSION="$_PHP55_VERSION"
+  _PHP_BIN_BROKEN=NO
+  check_php_broken "55"
+  check_php_rebuild "55"
+  update_php_multi "55"
 fi
-st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
-st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
-if [ ! -L "/usr/bin/php-cli" ] ; then
-  mv -f /usr/bin/php-cli /usr/bin/off-php-cli &> /dev/null
-  ln -sf /opt/local/bin/php /usr/bin/php-cli
+if [ -x "/opt/php54/bin/php" ] ; then
+  _PHP_VERSION="$_PHP54_VERSION"
+  _PHP_BIN_BROKEN=NO
+  check_php_broken "54"
+  check_php_rebuild "54"
+  update_php_multi "54"
 fi
-if [ ! -e "/var/log/ioncube-$_IONCUBE_VERSION.log" ] ; then
+if [ -x "/opt/php53/bin/php" ] ; then
+  _PHP_VERSION="$_PHP53_VERSION"
+  _PHP_BIN_BROKEN=NO
+  check_php_broken "53"
+  check_php_rebuild "53"
+  update_php_multi "53"
+fi
+if [ -x "/opt/php52/bin/php" ] ; then
+  _PHP_VERSION="$_PHP52_VERSION"
+  _PHP_BIN_BROKEN=NO
+  check_php_broken "52"
+  check_php_rebuild "52"
+  update_php_multi "52"
+fi
+
+rm -f /usr/bin/php-cli
+rm -f /usr/bin/off-php-cli
+if [ -x "/opt/php53/bin/php" ] ; then
+  ln -sf /opt/php53/bin/php /usr/bin/php-cli
+elif [ -x "/opt/php54/bin/php" ] ; then
+  ln -sf /opt/php54/bin/php /usr/bin/php-cli
+elif [ -x "/opt/php55/bin/php" ] ; then
+  ln -sf /opt/php55/bin/php /usr/bin/php-cli
+fi
+if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
 fi
 
@@ -6491,7 +6433,7 @@ if [[ "$_XTRAS_LIST" =~ "BZR" ]] ; then
     _DO_NOTHING=YES
   else
     _PATH_BZR="/usr/local/bin/bzr"
-    if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+    if [ ! -e "$_PATH_BZR" ] || [ ! -e "/var/xdrago/log/bzr-$_BZR_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
       msg "INFO: Installing Bazaar (bzr) $_BZR_VERSION, please wait..."
       mrun "sleep 1"
       if [ -e "/usr/local/lib/python2.6/dist-packages/bzrlib" ] ; then
@@ -6506,7 +6448,7 @@ if [[ "$_XTRAS_LIST" =~ "BZR" ]] ; then
       cd /var/opt/bzr-$_BZR_VERSION
       st_runner "python setup.py --quiet install build_ext --allow-python-fallback" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
-      echo "bzr-$_BZR_VERSION" > /var/log/bzr-$_BZR_VERSION.log
+      echo "bzr-$_BZR_VERSION" > /var/xdrago/log/bzr-$_BZR_VERSION.log
       mkdir -p /root/.bazaar
       echo ignore_missing_extensions=True > /root/.bazaar/bazaar.conf
     fi
@@ -6515,7 +6457,7 @@ fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/umask_fixed_new.log" ] ; then
+if [ ! -e "/var/xdrago/log/umask_fixed_new.log" ] ; then
   mkdir -p /var/www
   sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
   echo "UMASK=002" >> /etc/default/login
@@ -6527,12 +6469,12 @@ if [ ! -e "/var/log/umask_fixed_new.log" ] ; then
   sed -i "/^$/d" /etc/pam.d/login &> /dev/null
   echo "umask 002" >> /var/www/.profile
   chown -R www-data:www-data /var/www/* &> /dev/null
-  touch /var/log/umask_fixed_new.log
+  touch /var/xdrago/log/umask_fixed_new.log
 fi
 
 
 ###--------------------###
-if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
+if [ ! -e "/var/xdrago/log/umask_fixed_shell_sftp.log" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _DO_NOTHING=YES
   else
@@ -6540,16 +6482,16 @@ if [ ! -e "/var/log/umask_fixed_shell_sftp.log" ] ; then
   fi
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
   st_runner "service ssh restart" &> /dev/null
-  touch /var/log/umask_fixed_shell_sftp.log
+  touch /var/xdrago/log/umask_fixed_shell_sftp.log
 fi
-if [ ! -e "/var/log/src_umask_fixed_shell_sftp.log" ] && [ -e "/usr/etc/sshd_config" ] ; then
+if [ ! -e "/var/xdrago/log/src_umask_fixed_shell_sftp.log" ] && [ -e "/usr/etc/sshd_config" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _DO_NOTHING=YES
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
   fi
   st_runner "service ssh restart" &> /dev/null
-  touch /var/log/src_umask_fixed_shell_sftp.log
+  touch /var/xdrago/log/src_umask_fixed_shell_sftp.log
 fi
 
 
@@ -6559,7 +6501,7 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   _PATH_LSHELL="/usr/local/bin/lshell"
 fi
-if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/log/lshell-build-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/var/xdrago/log/lshell-build-$_LSHELL_VERSION" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
   if [ "$_STATUS" = "UPGRADE" ] ; then
     msg "INFO: Upgrading Limited Shell to version $_LSHELL_VERSION..."
     cp -af /etc/lshell.conf /etc/lshell.conf-bak-$_NOW &> /dev/null
@@ -6589,7 +6531,7 @@ if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/va
   mkdir -p /var/log/lsh
   chown :lshellg /var/log/lsh
   chmod 770 /var/log/lsh &> /dev/null
-  echo "lshell-$_LSHELL_VERSION" > /var/log/lshell-build-$_LSHELL_VERSION
+  echo "lshell-$_LSHELL_VERSION" > /var/xdrago/log/lshell-build-$_LSHELL_VERSION
   if [ -f "/var/xdrago/manage_ltd_users.sh" ] ; then
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /var/xdrago/conf/lshell.conf
     st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
@@ -6607,7 +6549,7 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
-  if [ ! -e "/var/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+  if [ ! -e "/var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
     msg "INFO: Installing latest Pure-FTPd server, please wait..."
     mrun "sleep 1"
     if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
@@ -6639,7 +6581,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
     mrun "sleep 1"
     st_runner "/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf" &> /dev/null
     cd /var/opt
-    echo "pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION" > /var/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
+    echo "pure-ftpd-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION" > /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
   fi
 fi
 
@@ -6674,7 +6616,7 @@ else
     mrun "sleep 1"
   fi
 fi
-if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
@@ -6687,12 +6629,18 @@ if [ -e "$_NEWRELIC_APP_CFG" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_APP_CFG &> /dev/null
   fi
   sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
-  if [ -e "/etc/init.d/php-fpm" ] ; then
-    st_runner "service php-fpm restart" &> /dev/null
+  if [ -e "/etc/init.d/php55-fpm" ] ; then
+    st_runner "service php55-fpm restart" &> /dev/null
   fi
-  st_runner "service php53-fpm stop" &> /dev/null
-  killall -9 php-fpm &> /dev/null
-  st_runner "service php53-fpm start" &> /dev/null
+  if [ -e "/etc/init.d/php54-fpm" ] ; then
+    st_runner "service php54-fpm restart" &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php53-fpm" ] ; then
+    st_runner "service php53-fpm restart" &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php52-fpm" ] ; then
+    st_runner "service php52-fpm restart" &> /dev/null
+  fi
   st_runner "service newrelic-daemon restart" &> /dev/null
 fi
 
@@ -7400,9 +7348,9 @@ fi
 ###--------------------###
 if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
   if [ "$_PURGE_MODE" = "ON" ] ; then
-    if [ ! -e "/var/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
+    if [ ! -e "/var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-      touch /var/log/nginx-speed-purge-$_INSTALLER_VERSION
+      touch /var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION
     fi
   fi
 fi
@@ -7433,7 +7381,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
       sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-      touch /var/log/chive_$_CHIVE_VERSION.log
+      touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
       mrun "sleep 1"
     else
@@ -7445,16 +7393,16 @@ fi
 
 ###--------------------###
 if [ -e "/var/www/chive/index.php" ] ; then
-  if [ ! -e "/var/log/chive_$_CHIVE_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.log" ] ; then
     msg "INFO: Upgrading Chive $_DB_SERVER Manager..."
     mrun "sleep 1"
     rm -f -r /var/www/chive
     cd /var/www
     get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
     chown -R www-data:www-data /var/www/chive
-    touch /var/log/chive_$_CHIVE_VERSION.log
+    touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
   fi
-  if [ ! -e "/var/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
@@ -7462,7 +7410,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
     sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-    touch /var/log/chive_$_CHIVE_VERSION.vhost.log
+    touch /var/xdrago/log/chive_$_CHIVE_VERSION.vhost.log
   fi
 fi
 
@@ -7584,7 +7532,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "WMN" ]] ; then
       done
       cat jcameron-key.asc | apt-key add - &> /dev/null
       rm -f jcameron-key.asc*
-      touch /var/log/webmin_update_apt_src.log
+      touch /var/xdrago/log/webmin_update_apt_src.log
       st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "$_INSTAPP webmin libxml-simple-perl libcrypt-ssleay-perl" 2> /dev/null
       update-rc.d webmin defaults &> /dev/null
@@ -7641,7 +7589,7 @@ else
     else
       _L_ST="upgrade"
     fi
-    if [ ! -e "/var/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+    if [ ! -e "/var/xdrago/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
@@ -7684,7 +7632,7 @@ else
           st_runner "gem update sass-globbing" 2> /dev/null
           st_runner "gem update bundler" 2> /dev/null
         fi
-        echo "compass-$_INSTALLER_VERSION" > /var/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log
+        echo "compass-$_INSTALLER_VERSION" > /var/xdrago/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log
         msg "INFO: Compass Tools $_L_ST completed"
         mrun "sleep 1"
       else
@@ -7736,16 +7684,25 @@ if [ "$_STATUS" = "INIT" ] ; then
     msg "INFO: Starting Redis, PHP-FPM and Nginx"
     st_runner "service redis-server start" &> /dev/null
     killall -9 nginx php-cgi php-fpm &> /dev/null
+    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     mrun "sleep 1"
     st_runner "update-rc.d cron defaults" &> /dev/null
-    if [ -e "/etc/init.d/php-fpm" ] ; then
-      st_runner "update-rc.d php-fpm defaults" &> /dev/null
-      st_runner "service php-fpm start" &> /dev/null
+    if [ -e "/etc/init.d/php55-fpm" ] ; then
+      st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+      st_runner "service php55-fpm start" &> /dev/null
     fi
-    st_runner "service php5-fpm stop" &> /dev/null
-    st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    st_runner "update-rc.d php53-fpm defaults" &> /dev/null
-    st_runner "service php53-fpm start" &> /dev/null
+    if [ -e "/etc/init.d/php54-fpm" ] ; then
+      st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+      st_runner "service php54-fpm start" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ] ; then
+      st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+      st_runner "service php53-fpm start" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php52-fpm" ] ; then
+      st_runner "update-rc.d php52-fpm defaults" &> /dev/null
+      st_runner "service php52-fpm start" &> /dev/null
+    fi
     st_runner "update-rc.d nginx defaults" &> /dev/null
     st_runner "service nginx start" &> /dev/null
   fi
@@ -7807,20 +7764,43 @@ else
     st_runner "service jetty7 restart" &> /dev/null
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    msg "INFO: Restarting Redis and PHP-FPM, reloading Nginx"
+    msg "INFO: Restarting Redis, PHP-FPM and Nginx"
     mrun "sleep 1"
     st_runner "service redis-server restart" &> /dev/null
-    if [ -e "/etc/init.d/php-fpm" ] ; then
-      st_runner "service php-fpm restart" &> /dev/null
-    fi
-    st_runner "service php5-fpm stop" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    st_runner "service php53-fpm stop" &> /dev/null
+    st_runner "service nginx stop" &> /dev/null
+    if [ -e "/etc/init.d/php55-fpm" ] ; then
+      st_runner "update-rc.d php55-fpm defaults" &> /dev/null
+      st_runner "service php55-fpm stop" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ] ; then
+      st_runner "update-rc.d php54-fpm defaults" &> /dev/null
+      st_runner "service php54-fpm stop" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ] ; then
+      st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+      st_runner "service php53-fpm stop" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php52-fpm" ] ; then
+      st_runner "update-rc.d php52-fpm defaults" &> /dev/null
+      st_runner "service php52-fpm stop" &> /dev/null
+    fi
     killall -9 php-fpm &> /dev/null
     msg "INFO: Restarting $_DB_SERVER server"
     st_runner "service mysql restart" &> /dev/null
-    st_runner "service php53-fpm start" &> /dev/null
-    st_runner "service nginx reload" &> /dev/null
+    if [ -e "/etc/init.d/php55-fpm" ] ; then
+      st_runner "service php55-fpm start" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ] ; then
+      st_runner "service php54-fpm start" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ] ; then
+      st_runner "service php53-fpm start" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php52-fpm" ] ; then
+      st_runner "service php52-fpm start" &> /dev/null
+    fi
+    st_runner "service nginx start" &> /dev/null
   fi
 fi
 
@@ -7941,14 +7921,14 @@ if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
   _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"
 fi
 _LOG_DB_V=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
-_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION_NEW / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
+_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
 echo "$_BARRACUDA_VERSION_INFO" >> /var/log/barracuda_log.txt
 echo "$_BARRACUDA_VERSION_INFO" >> /var/backups/barracuda_log.txt
 msg "INFO: New entry added to /var/log/barracuda_log.txt"
 
 
 ###--------------------###
-if [ ! -e "/var/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+if [ ! -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
   cp -af /etc/sysctl.conf /etc/sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf /etc/sysctl.conf
   if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] ; then
@@ -7963,7 +7943,7 @@ if [ ! -e "/var/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
   else
     sysctl -p /etc/sysctl.conf &> /dev/null
   fi
-  touch /var/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log
+  touch /var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log
 fi
 APTEMAIL=${_MY_EMAIL//\@/\\\@}
 XPTEMAIL=${_MY_EMAIL//\@/\\\\\@}
@@ -8007,8 +7987,8 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   fi
 fi
-if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
-  touch /var/log/cron_aegir_off.pid
+if [ ! -e "/var/xdrago/log/cron_aegir_off.pid" ] ; then
+  touch /var/xdrago/log/cron_aegir_off.pid
 fi
 
 
@@ -8170,14 +8150,14 @@ csf_install () {
   cd csf
   st_runner "sh install.sh" 2> /dev/null
   cd /var/opt
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    _SSH_PORT=22
+  fi
   mv -f /etc/csf/csf.conf /etc/csf/csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf /etc/csf/csf.conf
   sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf &> /dev/null
   sed -i "s/TCP_IN = \"20,21,22,/TCP_IN = \"20,21,$_SSH_PORT,/g" /etc/csf/csf.conf &> /dev/null
   chmod 600 /etc/csf/csf.conf &> /dev/null
-  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    _SSH_PORT=22
-  fi
   sed -i "s/^Port.*/Port $_SSH_PORT/g" /etc/ssh/sshd_config &> /dev/null
   if [ -e "/usr/etc/sshd_config" ] ; then
     sed -i "s/^Port.*/Port $_SSH_PORT/g" /usr/etc/sshd_config &> /dev/null
@@ -8190,7 +8170,7 @@ csf_install () {
     msg "INFO: csf/lfd firewall upgrade completed"
   fi
   mrun "sleep 1"
-  touch /var/log/csf_$_INSTALLER_VERSION.log
+  touch /var/xdrago/log/csf_$_INSTALLER_VERSION.log
 }
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSF" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then

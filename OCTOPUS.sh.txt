@@ -102,15 +102,16 @@ _CLIENT_CORES=8
 ### Satellite Instance - both on install and
 ### upgrade.
 ###
-### Available options:
+### Available options (if installed):
 ###
-### _PHP_FPM_VERSION=5.2
+### _PHP_FPM_VERSION=5.5
+### _PHP_FPM_VERSION=5.4
 ### _PHP_FPM_VERSION=5.3
+### _PHP_FPM_VERSION=5.2
 ###
-### Note that 5.3 will be forced automatically
-### if you installed Barracuda with option
-### _PHP_MODERN_ONLY=YES and there is no 5.2
-### installed/available.
+### Note that 5.3 will be set automatically
+### if you specify any other, not installed
+### version.
 ###
 _PHP_FPM_VERSION=5.3
 
@@ -120,21 +121,19 @@ _PHP_FPM_VERSION=5.3
 ###----------------------------------------###
 ###
 ### You can choose PHP-CLI version per Aegir
-### Master and Satellite Instance - both on
-### install and upgrade.
+### Satellite Instance - both on install and
+### upgrade.
 ###
-### Note that PHP-CLI 5.3 is required by
-### Drupal 8.x, but breaks support for 5.x
+### Available options (if installed):
 ###
-### Available options:
-###
-### _PHP_CLI_VERSION=5.2
+### _PHP_CLI_VERSION=5.5
+### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
+### _PHP_CLI_VERSION=5.2
 ###
-### Note that 5.3 will be forced automatically
-### if you installed Barracuda with option
-### _PHP_MODERN_ONLY=YES and there is no 5.2
-### installed/available.
+### Note that 5.3 will be set automatically
+### if you specify any other, not installed
+### version.
 ###
 _PHP_CLI_VERSION=5.3
 
@@ -585,7 +584,7 @@ _T_BUILD=HEAD
 _TODAY=`date +%y%m%d`
 _USRG=users
 _WEBG=www-data
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
@@ -980,7 +979,7 @@ sub_force_advanced_nginx_config_main () {
       sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
       sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
     fi
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else

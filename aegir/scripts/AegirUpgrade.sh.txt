@@ -49,15 +49,19 @@ _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _USE_STOCK=EDIT_USE_STOCK
-if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
-  _L_PHP_CLI=/opt/local/bin
-else
-  _L_PHP_CLI=/usr/local/bin
+_ROOT="$HOME"
+#
+if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php55/bin
+elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php54/bin
+elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php53/bin
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php52/bin
 fi
-_DRUSHCMD="$_L_PHP_CLI/php /var/aegir/drush/drush.php"
-if [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
-  _DRUSHCMD="/usr/local/bin/php52 /var/aegir/drush/drush.php"
-fi
+_DRUSHCMD="$_L_PHP_CLI/php $_ROOT/drush/drush.php"
+#
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -71,16 +75,25 @@ msg () {
 #
 export DEBIAN_FRONTEND=noninteractive
 #
-#
+# Update php-cli for Drush.
 update_php_cli_drush () {
-  if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
-    sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php52/g"  /var/aegir/drush/drush.php &> /dev/null
+  _DRUSH_FILE="$_ROOT/drush/drush.php"
+  if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php52\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
   else
-    sed -i "s/^#\!\/.*/#\!\/usr\/local\/bin\/php/g"  /var/aegir/drush/drush.php &> /dev/null
+    msg "FATAL ERROR: _PHP_CLI_VERSION must be set to one of supported values"
+    msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+    touch /opt/tmp/status-AegirUpgrade-FAIL
+    exit 1
   fi
 }
+#
 #
 extract_archive () {
   if [ ! -z $1 ] ; then
@@ -200,7 +213,7 @@ hostmaster_go_up () {
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
   fi
-  cd $_PREV_AEGIR_ROOT
+  cd $_PREV_HOSTMASTER_ROOT
 }
 #
 hostmaster_mi_up () {
@@ -211,9 +224,9 @@ hostmaster_mi_up () {
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
-    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y -d
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
-    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_AEGIR_ROOT -y &> /dev/null
+    $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text
   mv -f $_ROOT/.drush/security_review/foo.txt $_ROOT/.drush/security_review/security_review.drush.inc  &> /dev/null
@@ -229,8 +242,7 @@ hostmaster_mi_up () {
 _NOW=`date +%y%m%d-%H%M`
 _LASTNUM=001
 _DISTRO=001
-_ROOT="/var/aegir"
-_PREV_AEGIR_ROOT=`find $_ROOT -maxdepth 1 -type d | grep hostmaster`
+_PREV_HOSTMASTER_ROOT=`find $_ROOT -maxdepth 1 -type d | grep hostmaster`
 
 if [ -d "$_ROOT/host_master" ] ; then
   if [ ! -d "$_ROOT/host_master/000" ] ; then
@@ -246,16 +258,16 @@ if [ -d "$_ROOT/host_master/000" ] ; then
   _LASTNUM=$last
   nextnum=00$((10#${last%%[^0-9]*} + 1))
   nextnum=${nextnum: -3}
-  _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+  _PREV_HOSTMASTER_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
   msg "INFO: Testing previous install..."
-  if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
+  if [ -e "$_PREV_HOSTMASTER_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
     _DISTRO=${nextnum}
-    _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+    _PREV_HOSTMASTER_ROOT="$_ROOT/host_master/$_LASTNUM"
   else
     _DEBUG_MODE=YES
     msg "INFO: Testing previous install... OPS, zombie found, moving it to backups..."
     sleep 1
-    mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW &> /dev/null
+    mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW &> /dev/null
     cd $_ROOT/host_master
     list=([0-9]*)
     last=${list[@]: -1}
@@ -263,17 +275,17 @@ if [ -d "$_ROOT/host_master/000" ] ; then
     nextnum=00$((10#${last%%[^0-9]*} + 1))
     nextnum=${nextnum: -3}
     _DISTRO=${nextnum}
-    _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+    _PREV_HOSTMASTER_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
     msg "INFO: Testing previous install again after removing zombie..."
     sleep 1
-    if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
+    if [ -e "$_PREV_HOSTMASTER_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
       _DISTRO=${nextnum}
-      _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+      _PREV_HOSTMASTER_ROOT="$_ROOT/host_master/$_LASTNUM"
     else
       _DEBUG_MODE=YES
       msg "INFO: Testing previous install... OPS, another zombie found, moving it to backups..."
       sleep 1
-      mv -f $_PREV_AEGIR_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW-sec &> /dev/null
+      mv -f $_PREV_HOSTMASTER_ROOT_TEST $_ROOT/backups/system/empty-host-master-$_LASTNUM-$_NOW-sec &> /dev/null
       cd $_ROOT/host_master
       list=([0-9]*)
       last=${list[@]: -1}
@@ -281,20 +293,20 @@ if [ -d "$_ROOT/host_master/000" ] ; then
       nextnum=00$((10#${last%%[^0-9]*} + 1))
       nextnum=${nextnum: -3}
       _DISTRO=${nextnum}
-      _PREV_AEGIR_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
+      _PREV_HOSTMASTER_ROOT_TEST="$_ROOT/host_master/$_LASTNUM"
       msg "INFO: Testing previous install again after removing second zombie..."
       sleep 1
-      if [ -e "$_PREV_AEGIR_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
+      if [ -e "$_PREV_HOSTMASTER_ROOT_TEST/sites/$_DOMAIN/settings.php" ] ; then
         _DISTRO=${nextnum}
-        _PREV_AEGIR_ROOT="$_ROOT/host_master/$_LASTNUM"
+        _PREV_HOSTMASTER_ROOT="$_ROOT/host_master/$_LASTNUM"
       fi
     fi
   fi
 fi
 
-_AEGIR_ROOT="$_ROOT/host_master/$_DISTRO"
-if [ -d "$_AEGIR_ROOT" ] ; then
-  msg "FATAL ERROR: $_AEGIR_ROOT already exists - too many zombies to delete!"
+_HOSTMASTER_ROOT="$_ROOT/host_master/$_DISTRO"
+if [ -d "$_HOSTMASTER_ROOT" ] ; then
+  msg "FATAL ERROR: $_HOSTMASTER_ROOT already exists - too many zombies to delete!"
   msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
@@ -308,7 +320,7 @@ if [ ! -d "/var/aegir/.drush/provision/http" ] ; then
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1
 fi
-if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
+if [ -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "INFO: Test OK, we can proceed with Hostmaster upgrade"
   hostmaster_mv_up
   hostmaster_dr_up
@@ -316,7 +328,7 @@ if [ -e "$_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   hostmaster_mi_up
 else
   msg "FATAL ERROR: It looks like your setup is already broken because required file"
-  msg "FATAL ERROR: $_PREV_AEGIR_ROOT/sites/$_DOMAIN/settings.php does not exist"
+  msg "FATAL ERROR: $_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php does not exist"
   msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
   touch /opt/tmp/status-AegirUpgrade-FAIL
   exit 1

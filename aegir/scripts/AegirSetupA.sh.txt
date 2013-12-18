@@ -121,18 +121,19 @@ _WEBG=EDIT_WEBG
 #
 _USER=EDIT_USER
 _ROOT="/data/disk/$_USER"
-_AEGIR_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
+_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_HM_DISTRO"
 _DISTRO_ROOT="$_ROOT/distro/$_DISTRO"
 #
-if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/local/bin/php" ] ; then
-  _L_PHP_CLI=/opt/local/bin
-else
-  _L_PHP_CLI=/usr/local/bin
+if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php55/bin
+elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php54/bin
+elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php53/bin
+elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
+  _L_PHP_CLI=/opt/php52/bin
 fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
-if [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php52" ] ; then
-  _DRUSHCMD="/usr/local/bin/php52 $_ROOT/tools/drush/drush.php"
-fi
 #
 SHELL=/bin/bash
 PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -277,7 +278,7 @@ create_shared_dirs () {
 # Fix for FServer broken due to required now strongarm.
 #
 feature_server_fix_002 () {
-  if [ ! -e "/var/log/feature-server-fixed-002.log" ] ; then
+  if [ ! -e "/var/xdrago/log/feature-server-fixed-002.log" ] ; then
     msg "$_STATUS A: Adding missing strongarm module to old FServer platforms"
     REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
@@ -299,7 +300,7 @@ feature_server_fix_002 () {
         fi
       fi
     done
-    touch /var/log/feature-server-fixed-002.log
+    touch /var/xdrago/log/feature-server-fixed-002.log
     cd
   fi
 }
@@ -307,7 +308,7 @@ feature_server_fix_002 () {
 # Fix for FServer broken due to incorrect context version downloaded in fserver-6.28.3.
 #
 feature_server_fix_004 () {
-  if [ ! -e "/var/log/feature-server-fixed-004.log" ] ; then
+  if [ ! -e "/var/xdrago/log/feature-server-fixed-004.log" ] ; then
     msg "$_STATUS A: Fixing context version in FServer platforms"
     REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
     for i in $REVISIONS; do
@@ -329,7 +330,7 @@ feature_server_fix_004 () {
         fi
       fi
     done
-    touch /var/log/feature-server-fixed-004.log
+    touch /var/xdrago/log/feature-server-fixed-004.log
     cd
   fi
 }
@@ -471,7 +472,7 @@ cd
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/local/etc/php53-fpm.conf" ] ; then
+    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
@@ -1082,16 +1083,16 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     echo "include $_ROOT/config/server_master/nginx/vhost.d/*;" > $_ROOT/config/$_USER.nginx.conf
     ln -sf $_ROOT/config/$_USER.nginx.conf /var/aegir/config/server_master/nginx/platform.d/$_USER.conf
   fi
-  chgrp -R $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/files
-  chgrp $_WEBG $_AEGIR_ROOT/sites/$_DOMAIN/settings.php
-  rm -f -r $_AEGIR_ROOT/themes/bluemarine
-  rm -f -r $_AEGIR_ROOT/themes/chameleon
-  rm -f -r $_AEGIR_ROOT/themes/pushbutton
-  rm -f -r $_AEGIR_ROOT/scripts
-  rm -f $_AEGIR_ROOT/themes/README.txt
-  rm -f $_AEGIR_ROOT/*.txt
+  chgrp -R $_WEBG $_HOSTMASTER_ROOT/sites/$_DOMAIN/files
+  chgrp $_WEBG $_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php
+  rm -f -r $_HOSTMASTER_ROOT/themes/bluemarine
+  rm -f -r $_HOSTMASTER_ROOT/themes/chameleon
+  rm -f -r $_HOSTMASTER_ROOT/themes/pushbutton
+  rm -f -r $_HOSTMASTER_ROOT/scripts
+  rm -f $_HOSTMASTER_ROOT/themes/README.txt
+  rm -f $_HOSTMASTER_ROOT/*.txt
   st_runner "service nginx reload" &> /dev/null
-  cd $_AEGIR_ROOT
+  cd $_HOSTMASTER_ROOT
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   cd $_ROOT
 fi
@@ -1106,7 +1107,7 @@ cd $_ROOT
 
 ###---### Set permissions for all.
 #
-chmod 0755 $_AEGIR_ROOT &> /dev/null
+chmod 0755 $_HOSTMASTER_ROOT &> /dev/null
 chmod 0711 $_ROOT/config &> /dev/null
 chmod 0711 $_ROOT/config/includes &> /dev/null
 chmod 0750 $_ROOT/backups &> /dev/null
@@ -1216,10 +1217,10 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 rm -f /var/spool/cron/crontabs/$_USER
-if [ ! -e "/var/log/cron_aegir_off.pid" ] ; then
+if [ ! -e "/var/xdrago/log/cron_aegir_off.pid" ] ; then
   sed -i "s/\*\/1 \* \* \* \* bash \/var\/xdrago\/run/#*\/1 * * * * bash \/var\/xdrago\/run/g" /var/spool/cron/crontabs/root &> /dev/null
   echo -e "* * * * * bash /var/xdrago/runner.sh >/dev/null 2>&1" | tee -a /var/spool/cron/crontabs/root >/dev/null 2>&1
-  touch /var/log/cron_aegir_off.pid
+  touch /var/xdrago/log/cron_aegir_off.pid
 fi
 
 

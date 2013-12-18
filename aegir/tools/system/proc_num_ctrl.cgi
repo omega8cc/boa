@@ -58,31 +58,33 @@ print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
-if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar) {
+if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar && !-f "/var/run/boa_run.pid") {
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
   `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
 }
-if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid") {
+if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid") {
   `bash /var/xdrago/move_sql.sh`;
 }
-if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis")) {
+if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") && !-f "/var/run/boa_run.pid") {
   if (-f "/etc/init.d/redis-server") { `/etc/init.d/redis-server start`; }
   elsif (-f "/etc/init.d/redis") { `/etc/init.d/redis start`; }
 }
-`/etc/init.d/newrelic-daemon restart` if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon");
-`/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond");
-`/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix");
+`/etc/init.d/newrelic-daemon restart` if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
 `killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php-fpm restart` if (!$phpsumar && -f "/etc/init.d/php-fpm");
-`killall -9 php-fpm; /etc/init.d/php53-fpm start` if ((!$fpmsumar || $fpmsumar > 1 ) && -f "/etc/init.d/php53-fpm");
-`/etc/init.d/jetty7 start` if (!$jetty7sumar && -f "/etc/init.d/jetty7");
-`/etc/init.d/jetty8 start` if (!$jetty8sumar && -f "/etc/init.d/jetty8");
-`/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9");
-`/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat");
-`/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd");
+`/etc/init.d/php55-fpm restart` if ((!$fpmsumar || $fpmsumar > 1 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php54-fpm restart` if ((!$fpmsumar || $fpmsumar > 1 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php53-fpm restart` if ((!$fpmsumar || $fpmsumar > 1 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php52-fpm restart` if ((!$phpsumar || !-f "/var/run/php52-fpm.pid") && -f "/etc/init.d/php52-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/jetty7 start` if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/jetty8 start` if (!$jetty8sumar && -f "/etc/init.d/jetty8" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/tomcat start` if (!$tomcatsumar && -f "/etc/init.d/tomcat" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/collectd start` if (!$collectdsumar && -f "/etc/init.d/collectd" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/postfix restart` if (!-f "/var/spool/postfix/pid/master.pid");
 if (-f "/usr/local/sbin/pure-config.pl") {
-  `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar);
+  `/usr/local/sbin/pure-config.pl /usr/local/etc/pure-ftpd.conf` if (!$ftpsumar && !-f "/var/run/boa_run.pid");
 }
 if ($mysqlsumar > 0) {
   $resultmysql5 = `mysqladmin flush-hosts 2>&1`;

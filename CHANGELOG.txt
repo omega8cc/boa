@@ -2136,13 +2136,13 @@
   * You can avoid overwriting /etc/mysql/my.cnf with empty
     control file: $ touch /etc/mysql/custom.my.cnf
 
-  * You can avoid overwriting /opt/etc/php.ini on upgrade
+  * You can avoid overwriting /opt/php52/etc/php52.ini on upgrade
     with empty control file: $ touch /opt/etc/custom.php.ini
 
-  * You can avoid overwriting /usr/local/lib/php.ini on upgrade
+  * You can avoid overwriting /opt/php52/lib/php.ini on upgrade
     with empty control file: $ touch /opt/etc/custom.php.ini
 
-  * You can avoid overwriting /opt/local/etc/php53.ini on upgrade
+  * You can avoid overwriting /opt/php53/etc/php53.ini on upgrade
     with empty control file: $ touch /opt/etc/custom.php53.ini
 
   * You can avoid overwriting /var/spool/cron/crontabs/root on upgrade

@@ -151,17 +151,19 @@ _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
 _SPINNER=YES
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
-if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+  _PHP_API=20100525
+elif [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
+  _PHP_API=20100525
+elif [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
   _PHP_API=20090626
-elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-  _PHP_API=20100525
-elif [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-  _PHP_API=20100525
+elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
+  _PHP_API=20060613
 fi
 
 
@@ -313,13 +315,25 @@ fix_php_ini_newrelic_all () {
       _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
       _NEWRELIC_KEY=`echo -n $_NEWRELIC_KEY | tr -d "\n"`
     fi
-    _THIS_FILE=/opt/etc/php.ini
+
+    _THIS_FILE=/opt/php55/etc/php55.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/usr/local/lib/php.ini
+    _THIS_FILE=/opt/php55/lib/php.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/opt/local/etc/php53.ini
+
+    _THIS_FILE=/opt/php54/etc/php54.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/opt/local/lib/php.ini
+    _THIS_FILE=/opt/php54/lib/php.ini
+    fix_php_ini_newrelic
+
+    _THIS_FILE=/opt/php53/etc/php53.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/php53/lib/php.ini
+    fix_php_ini_newrelic
+
+    _THIS_FILE=/opt/php52/etc/php52.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/php52/lib/php.ini
     fix_php_ini_newrelic
   fi
 }
@@ -353,12 +367,23 @@ fix_php_ini_opcache () {
 #
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all () {
-  _THIS_FILE=/opt/etc/php.ini
-  _OPCACHE_SO="/usr/local/lib/php/extensions/no-debug-non-zts-20060613/opcache.so"
+
+  _THIS_FILE=/opt/php55/etc/php55.ini
+  _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
   fix_php_ini_opcache
-  _THIS_FILE=/opt/local/etc/php53.ini
-  _OPCACHE_SO="/opt/local/lib/php/extensions/no-debug-non-zts-$_PHP_API/opcache.so"
+
+  _THIS_FILE=/opt/php54/etc/php54.ini
+  _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
   fix_php_ini_opcache
+
+  _THIS_FILE=/opt/php53/etc/php53.ini
+  _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
+  fix_php_ini_opcache
+
+  _THIS_FILE=/opt/php52/etc/php52.ini
+  _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
+  fix_php_ini_opcache
+
 }
 #
 # Fix php.ini file to add geos.so
@@ -376,9 +401,9 @@ fix_php_ini_geos () {
 # Fix 5.3 php.ini files to add geos.so
 fix_php_ini_geos_all () {
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    _THIS_FILE=/opt/local/etc/php53.ini
+    _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_geos
-    _THIS_FILE=/opt/local/lib/php.ini
+    _THIS_FILE=/opt/php53/lib/php.ini
     fix_php_ini_geos
   fi
 }
@@ -398,9 +423,9 @@ fix_php_ini_mongo () {
 # Fix 5.3 php.ini files to add mongo.so
 fix_php_ini_mongo_all () {
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    _THIS_FILE=/opt/local/etc/php53.ini
+    _THIS_FILE=/opt/php53/etc/php53.ini
     fix_php_ini_mongo
-    _THIS_FILE=/opt/local/lib/php.ini
+    _THIS_FILE=/opt/php53/lib/php.ini
     fix_php_ini_mongo
   fi
 }
@@ -415,66 +440,64 @@ update_php_conf () {
   if [ ! -e "/opt/etc" ] ; then
     mkdir -p /opt/etc
   fi
-  if [ ! -e "/opt/local/etc/php53.ini" ] ; then
+  if [ ! -e "/opt/php53/etc/php53.ini" ] ; then
     mkdir -p /opt/local/etc
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini &> /dev/null
   fi
-  if [ ! -e "/opt/local/lib/php.ini" ] ; then
+  if [ ! -e "/opt/php53/lib/php.ini" ] ; then
     mkdir -p /opt/local/lib
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_2" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_2" = "YES" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP52" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP52" = "YES" ] ; then
       _DO_NOTHING=YES
     else
-      cp -af /opt/etc/php.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini &> /dev/null
-      cp -af /usr/local/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini &> /dev/null
+      cp -af /opt/php52/etc/php52.ini /var/backups/dragon/t/opt-etc-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini &> /dev/null
+      cp -af /opt/php52/lib/php.ini /var/backups/dragon/t/usr-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini &> /dev/null
     fi
   fi
-  if [ "$_CUSTOM_CONFIG_PHP_5_3" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP_5_3" = "YES" ] ; then
+  if [ "$_CUSTOM_CONFIG_PHP53" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP53" = "YES" ] ; then
       _DO_NOTHING=YES
     else
-      cp -af /opt/local/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini &> /dev/null
-      cp -af /opt/local/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini &> /dev/null
+      cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/opt-etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini &> /dev/null
+      cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/opt-local-lib-php.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
     fi
   fi
   ###
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/etc/php-fpm.conf &> /dev/null
-  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/local/etc/php53-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-fpm.conf /opt/php52/etc/php52-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g" /opt/php52/etc/php52-fpm.conf &> /dev/null
+  sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/php53/etc/php53-fpm.conf &> /dev/null
   ###
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/apc.include_once_override =.*/apc.include_once_override = 0/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/max_file_uploads =.*/max_file_uploads = 50/g" /opt/php53/etc/php53.ini &> /dev/null
   ###
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/allow_url_fopen =.*/allow_url_fopen = On/g" /opt/php53/lib/php.ini &> /dev/null
   ###
-  _THIS_FILE=/opt/etc/php.ini
+  _THIS_FILE=/opt/php52/etc/php52.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  _THIS_FILE=/usr/local/lib/php.ini
+  _THIS_FILE=/opt/php52/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  _THIS_FILE=/opt/local/etc/php53.ini
+  _THIS_FILE=/opt/php53/etc/php53.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
   fix_php_ini_mailparse
-  _THIS_FILE=/opt/local/lib/php.ini
+  _THIS_FILE=/opt/php53/lib/php.ini
   fix_php_ini_redis
   fix_php_ini_jsmin
   fix_php_ini_suhosin
@@ -485,55 +508,43 @@ update_php_conf () {
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
   ###
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/lib/php.ini &> /dev/null
   ###
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/lib/php.ini &> /dev/null
   ###
-  sed -i "s/.*extension=memcached.so.*//g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/.*extension=memcached.so.*//g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/.*extension=memcached.so.*//g" /opt/local/etc/php53.ini &> /dev/null
-  sed -i "s/.*extension=memcached.so.*//g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php53/etc/php53.ini &> /dev/null
+  sed -i "s/.*extension=memcached.so.*//g" /opt/php53/lib/php.ini &> /dev/null
   ###
-  if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
-    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/.*ioncube_loader_lin_5.3.so.*/;ioncube_loader_disabled/g" /opt/local/lib/php.ini &> /dev/null
-  fi
-  if [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
-    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/ioncube_loader_lin_5.3.so/ioncube_loader_lin_5.4.so/g" /opt/local/lib/php.ini &> /dev/null
-  fi
-  if [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-    sed -i "s/20090626/$_PHP_API/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/20090626/$_PHP_API/g" /opt/local/lib/php.ini &> /dev/null
-  fi
 }
 #
 restore_default_php () {
   msg "INFO: Restoring default PHP configuration"
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-fpm.conf /opt/etc/php-fpm.conf           &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/local/etc/php53-fpm.conf &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php.ini /opt/etc/php.ini                     &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/local/etc/php53.ini           &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php-cli.ini /usr/local/lib/php.ini           &> /dev/null
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/local/lib/php.ini         &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-fpm.conf /opt/php52/etc/php52-fpm.conf           &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm.conf /opt/php53/etc/php53-fpm.conf &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini                     &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini           &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini           &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini         &> /dev/null
 }
 #
 tune_php () {
   msg "INFO: Tuning PHP configuration"
-  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/etc/php.ini              &> /dev/null
-  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/etc/php-fpm.conf         &> /dev/null
-  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/local/etc/php53.ini      &> /dev/null
-  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/local/lib/php.ini &> /dev/null
-  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/php52/etc/php52.ini              &> /dev/null
+  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/php52/etc/php52-fpm.conf         &> /dev/null
+  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/php53/etc/php53.ini      &> /dev/null
+  sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g" /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php53/lib/php.ini &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /opt/php53/lib/php.ini &> /dev/null
 }
 #
 restore_default_sql () {
@@ -646,26 +657,26 @@ tune_web_server_config () {
     _START_LEGACY_FPM=3
   fi
   if [ ! -z "$_START_FPM" ] ; then
-    sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g"         /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g"         /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/pm.start_servers =.*/pm.start_servers = $_START_FPM/g"           /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/pm.max_spare_servers =.*/pm.max_spare_servers = $_START_FPM/g"   /opt/local/etc/php53-fpm.conf &> /dev/null
-    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"               /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g"         /opt/php52/etc/php52-fpm.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g"         /opt/php53/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/pm.start_servers =.*/pm.start_servers = $_START_FPM/g"           /opt/php53/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/pm.max_spare_servers =.*/pm.max_spare_servers = $_START_FPM/g"   /opt/php53/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"               /opt/php53/etc/php53-fpm.conf &> /dev/null
   fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g"       /etc/nginx/nginx.conf &> /dev/null
   else
     sed -i "s/worker_processes.*/worker_processes  4;/g"                       /etc/nginx/nginx.conf &> /dev/null
   fi
-  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 60s/g"       /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 180s/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/local/etc/php53-fpm.conf &> /dev/null
-  sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/local/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_slowlog_timeout =.*/request_slowlog_timeout = 60s/g"       /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/;request_terminate_timeout/request_terminate_timeout/g"            /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/request_terminate_timeout =.*/request_terminate_timeout = 180s/g"  /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/emergency_restart_threshold =.*/emergency_restart_threshold = 5/g" /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/emergency_restart_interval =.*/emergency_restart_interval = 1m/g"  /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/process_control_timeout =.*/process_control_timeout = 0s/g"        /opt/php53/etc/php53-fpm.conf &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    sed -i "s/300s/180s/g"                                                     /opt/etc/php-fpm.conf &> /dev/null
-    sed -i "s/300s/180s/g"                                                     /opt/local/etc/php53-fpm.conf &> /dev/null
+    sed -i "s/300s/180s/g"                                                     /opt/php52/etc/php52-fpm.conf &> /dev/null
+    sed -i "s/300s/180s/g"                                                     /opt/php53/etc/php53-fpm.conf &> /dev/null
   fi
 }
 #
@@ -850,8 +861,8 @@ tune_memory_limits () {
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
-        sed -i "s/8000/64000/g"  /opt/local/etc/php53.ini &> /dev/null
-        sed -i "s/8000/64000/g"  /opt/etc/php.ini &> /dev/null
+        sed -i "s/8000/64000/g"  /opt/php53/etc/php53.ini &> /dev/null
+        sed -i "s/8000/64000/g"  /opt/php52/etc/php52.ini &> /dev/null
       else
         _USE_PHP=512
         _USE_OPC=512
@@ -922,16 +933,16 @@ tune_memory_limits () {
   if [ "$_USE_PHP" -lt "196" ] ; then
     _USE_PHP=196
   fi
-  sed -i "s/256/$_USE_FPM/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/181/$_USE_OPC/g" /opt/etc/php.ini &> /dev/null
-  sed -i "s/iso-.*-1/iso-8859-1/g" /opt/etc/php.ini &> /dev/null
-  if [ -e "/opt/local/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/local/etc/php53.ini &> /dev/null
-    sed -i "s/iso-.*-1/iso-8859-1/g" /opt/local/etc/php53.ini &> /dev/null
+  sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini &> /dev/null
+  sed -i "s/iso-.*-1/iso-8859-1/g" /opt/php52/etc/php52.ini &> /dev/null
+  if [ -e "/opt/php53/etc/php53.ini" ] ; then
+    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini &> /dev/null
+    sed -i "s/iso-.*-1/iso-8859-1/g" /opt/php53/etc/php53.ini &> /dev/null
   fi
-  sed -i "s/256/$_USE_PHP/g" /usr/local/lib/php.ini &> /dev/null
-  sed -i "s/256/$_USE_PHP/g" /opt/local/lib/php.ini &> /dev/null
+  sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini &> /dev/null
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
     sed -i "s/= 191/= $_PRC_SQL/g"                                               /etc/mysql/my.cnf &> /dev/null

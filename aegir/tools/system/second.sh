@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 hold()
 {
@@ -9,8 +9,18 @@ hold()
   killall -9 nginx
   sleep 1
   killall -9 nginx
-  /etc/init.d/php-fpm stop
-  /etc/init.d/php53-fpm stop
+  if [ -e "/etc/init.d/php55-fpm" ] ; then
+    /etc/init.d/php55-fpm stop
+  fi
+  if [ -e "/etc/init.d/php54-fpm" ] ; then
+    /etc/init.d/php54-fpm stop
+  fi
+  if [ -e "/etc/init.d/php53-fpm" ] ; then
+    /etc/init.d/php53-fpm stop
+  fi
+  if [ -e "/etc/init.d/php52-fpm" ] ; then
+    /etc/init.d/php52-fpm stop
+  fi
   killall -9 php-fpm php-cgi
   echo load is $ONEX_LOAD:$FIVX_LOAD while maxload is $CTL_ONEX_LOAD:$CTL_FIVX_LOAD
 }

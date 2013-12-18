@@ -83,8 +83,8 @@ mysql> exit
 
 ### On target and source server - as root
 # If you are migrating big sites, you may need to increase max_execution_time:
-$ sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /usr/local/lib/php.ini
-$ sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/local/lib/php.ini
+$ sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php52/lib/php.ini
+$ sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php53/lib/php.ini
 
 ### On target and source server - as root
 # Open port 3306 in /etc/csf/csf.conf - see TCP_IN and TCP_OUT, or add IPs
