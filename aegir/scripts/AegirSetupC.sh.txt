@@ -2317,7 +2317,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "rules-6.x-1.5.tar.gz" &> /dev/null
     get_dev_contrib "skinr-6.x-1.6.tar.gz" &> /dev/null
     get_dev_contrib "token-6.x-1.19.tar.gz" &> /dev/null
-    get_dev_contrib "ubercart-6.x-2.12.tar.gz" &> /dev/null
+    get_dev_contrib "ubercart-6.x-2.13.tar.gz" &> /dev/null
     get_dev_contrib "views-6.x-3.0.tar.gz" &> /dev/null
     get_dev_contrib "webform-6.x-3.19.tar.gz" &> /dev/null
     ### http://drupal.org/node/1167276#comment-5138248

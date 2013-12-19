@@ -625,7 +625,7 @@ _RECRUITER=7.x-1.1
 _SPARK=7.x-1.0-alpha9
 _TOTEM=7.x-1.1
 _UBER_CART_SEVEN=3.6.0
-_UBERCART=2.12.1
+_UBERCART=2.13.0
 
 
 ###---### Functions
