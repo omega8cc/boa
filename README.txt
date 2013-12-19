@@ -175,7 +175,7 @@ Octopus can install the platforms listed below:
  Recruiter 1.1.2 -------------- http://drupal.org/project/recruiter
  Spark 1.0-a10 ---------------- http://drupal.org/project/spark
  Totem 1.1.2 ------------------ http://drupal.org/project/totem
- Ubercart 3.5.1 --------------- http://drupal.org/project/ubercart
+ Ubercart 3.6.0 --------------- http://drupal.org/project/ubercart
 
 ### Pressflow 6.29.1
 
