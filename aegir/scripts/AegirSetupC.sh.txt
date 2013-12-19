@@ -590,7 +590,7 @@ _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COM_MERCE="Commerce 2.9 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COM_MERCE="Commerce 2.10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE="Commerce 1.21 $_SMALLCORE7 P.$_THIS_CORE"
 _F_D6COMMONS="Commons 2.13.2 $_SMALLCORE6 P.$_THIS_CORE"
 _F_D7COMMONS="Commons 3.5 $_SMALLCORE7 P.$_THIS_CORE"
@@ -941,7 +941,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
-    if [ $_COM_MERCE = "7.x-2.9" ] ; then
+    if [ $_COM_MERCE = "7.x-2.10" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {message_notify}
       get_dev_contrib "message_notify-7.x-2.5.tar.gz" &> /dev/null
