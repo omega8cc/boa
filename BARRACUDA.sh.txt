@@ -3797,6 +3797,15 @@ upgrade_aegir_master () {
     if [ ! -e "/root/.upstart.cnf" ] ; then
       service cron stop &> /dev/null
     fi
+    if [ ! -d "/var/aegir/.drush/provision/http" ] ; then
+      cd /var/aegir/.drush
+      rm -f -r /var/aegir/.drush/{provision,drush_make}
+      curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+      get_dev_ext "drush_make.tar.gz" &> /dev/null
+      rm -f -r /var/aegir/drush
+      cd /var/aegir
+      get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+    fi
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries}
