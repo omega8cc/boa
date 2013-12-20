@@ -564,6 +564,46 @@ _SQL_CONVERT=NO
 
 
 ###----------------------------------------###
+### ADVANCED CONFIGURATION OPTIONS         ###
+###----------------------------------------###
+
+###
+### AUTO will default to value calculated
+### on the fly and based on available RAM.
+### You can force workers number for PHP-FPM.
+###
+_PHP_FPM_WORKERS=AUTO
+
+###
+### AUTO will not modify default TTL (180).
+### You can lower it to any number < 180.
+###
+_PHP_FPM_TIMEOUT=AUTO
+
+###
+### You can enable or modify strong PHP
+### protection by changing the list of
+### added to disable_functions in PHP.
+###
+### Example:
+###
+### _PHP_FPM_DENIED="system,exec,shell_exec"
+###
+_PHP_FPM_DENIED=""
+
+###
+### Define the amount of RAM you want to keep
+### reserved for other services installed which
+### are not controlled by BOA, so it will
+### assume that available RAM is the value of
+### $_RAM - $_RESERVED_RAM (in MB).
+###
+### Example for 256MB: _RESERVED_RAM=256
+###
+_RESERVED_RAM=0
+
+
+###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
@@ -658,6 +698,111 @@ else
     esac
  done
 fi
+}
+#
+# Tune FPM workers.
+tune_fpm_workers () {
+  _ETH_TEST=`ifconfig 2>&1`
+  _VM_TEST=`uname -a 2>&1`
+  if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
+    _VMFAMILY="VZ"
+  elif [ -e "/proc/bean_counters" ] ; then
+    _VMFAMILY="VZ"
+  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
+    _VMFAMILY="TG"
+  elif [[ "$_THISHOST" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
+    _VMFAMILY="TG"
+  else
+    _VMFAMILY="XEN"
+  fi
+  if [[ "$_VM_TEST" =~ beng ]] ; then
+    _VMFAMILY="VS"
+  fi
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+    _VMFAMILY="AWS"
+  fi
+  _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
+  if [ "$_RESERVED_RAM" -gt "0" ] ; then
+    let "_RAM = (($_RAM - $_RESERVED_RAM))"
+  fi
+  let "_USE = (($_RAM / 4))"
+  if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
+    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      _L_PHP_FPM_WORKERS=6
+    else
+      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+    fi
+  elif [ "$_USE" -ge "1024" ] ; then
+    if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _L_PHP_FPM_WORKERS=12
+      else
+        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+    elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
+      if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _L_PHP_FPM_WORKERS=12
+        else
+          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+      else
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _L_PHP_FPM_WORKERS=3
+        else
+          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+      fi
+    else
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _L_PHP_FPM_WORKERS=6
+      else
+        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+    fi
+  else
+    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      _L_PHP_FPM_WORKERS=3
+    else
+      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+    fi
+  fi
+}
+#
+# Tune FPM configuration.
+tune_fpm_config () {
+  tune_fpm_workers
+  _LIM_FPM="$_L_PHP_FPM_WORKERS"
+  if [ "$_LIM_FPM" -lt "6" ] ; then
+    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      _LIM_FPM=6
+    fi
+  fi
+  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
+  let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
+  _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+  if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
+    _PHP_FPM_TIMEOUT=180
+  fi
+  _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+  if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] && [ ! -z "$_CHILD_MAX_FPM" ] ; then
+    _PHP_TO="${_PHP_FPM_TIMEOUT}s"
+    if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+      sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      if [ ! -z "$_PHP_FPM_DENIED" ] ; then
+        sed -i "s/system,exec,shell_exec/$_PHP_FPM_DENIED/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      else
+        if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+          _DO_NOTHING=YES
+        else
+          sed -i "s/.*system,exec,shell_exec.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        fi
+      fi
+    fi
+    sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+  fi
 }
 #
 # Make sure that username is unique and not restricted.
@@ -803,9 +948,13 @@ octopus_cnf () {
     echo "_LOCAL_NETWORK_IP=$_LOCAL_NETWORK_IP" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.${_USER}.octopus.cnf
+    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.${_USER}.octopus.cnf
+    echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT" >> /root/.${_USER}.octopus.cnf
+    echo "_PHP_FPM_DENIED=\"$_PHP_FPM_DENIED\"" >> /root/.${_USER}.octopus.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
     echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
+    echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.${_USER}.octopus.cnf
     echo "###" >> /root/.${_USER}.octopus.cnf
     echo "### NOTE: the group of settings displayed bellow will be *overridden*" >> /root/.${_USER}.octopus.cnf
     echo "### by config files stored in the /data/disk/$_USER/log/ directory," >> /root/.${_USER}.octopus.cnf
@@ -823,6 +972,30 @@ octopus_cnf () {
   else
     msg "INFO: Reading your /root/.${_USER}.octopus.cnf config file"
     sleep 1
+    _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS /root/.${_USER}.octopus.cnf)
+    if [[ "$_PHP_FPM_WORKERS_TEST" =~ "_PHP_FPM_WORKERS" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.${_USER}.octopus.cnf
+    fi
+    _PHP_FPM_TIMEOUT_TEST=$(grep _PHP_FPM_TIMEOUT /root/.${_USER}.octopus.cnf)
+    if [[ "$_PHP_FPM_TIMEOUT_TEST" =~ "_PHP_FPM_TIMEOUT" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT" >> /root/.${_USER}.octopus.cnf
+    fi
+    _PHP_FPM_DENIED_TEST=$(grep _PHP_FPM_DENIED /root/.${_USER}.octopus.cnf)
+    if [[ "$_PHP_FPM_DENIED_TEST" =~ "_PHP_FPM_DENIED" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_DENIED=\"$_PHP_FPM_DENIED\"" >> /root/.${_USER}.octopus.cnf
+    fi
+     _RESERVED_RAM_TEST=$(grep _RESERVED_RAM /root/.${_USER}.octopus.cnf)
+    if [[ "$_RESERVED_RAM_TEST" =~ "_RESERVED_RAM" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.${_USER}.octopus.cnf
+    fi
     _PHP_FPM_VERSION_TEST=$(grep _PHP_FPM_VERSION /root/.${_USER}.octopus.cnf)
     if [[ "$_PHP_FPM_VERSION_TEST" =~ "_PHP_FPM_VERSION" ]] ; then
       _DO_NOTHING=YES
@@ -975,13 +1148,11 @@ sub_force_advanced_nginx_config_main () {
       sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
       sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
-      sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
-      sed -i "s/Barracuda 1.0 E/Octopus 1.0 E/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
     fi
     if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:9090/unix:\/var\/run\/$_USER.fpm.socket/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:9000/unix:\/var\/run\/$_USER.fpm.socket/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
         sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
       fi
@@ -1168,6 +1339,7 @@ if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
   exit 1
 fi
 force_advanced_nginx_config_main
+tune_fpm_config
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
 fi
@@ -1292,7 +1464,6 @@ _DISTRO=001
 _HM_DISTRO=001
 _ALL_DISTRO=001
 _STATUS=INIT
-
 
 ###---### START
 #

@@ -94,13 +94,7 @@ chmod 700 /data/disk/arch/sql
 chmod 700 /data/disk/arch
 echo "Permissions fixed"
 
-/etc/init.d/redis-server stop
-killall -9 redis-server
-rm -f /var/run/redis/redis.pid
-rm -f /var/lib/redis/*
-/etc/init.d/redis-server start
-echo "Redis server restarted"
-
+service clean-boa-env start &> /dev/null
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 ###EOF2013###

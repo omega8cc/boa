@@ -27,9 +27,13 @@ _DEL_OLD_TMP=0 #---------------- Delete sites temp files if > X-days-ago
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
 _PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Satellite Instance: 5.{2,3,4,5}
 _PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Satellite Instance: 5.{2,3,4,5}
+_PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
+_PHP_FPM_TIMEOUT=AUTO #--------- Allows to set value < 180 (default in seconds)
+_PHP_FPM_DENIED="" #------------ Customize the disable_functions per instance
 _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (YES) or myisam
+_RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ###
 ### NOTE: the group of settings displayed bellow will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
