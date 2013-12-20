@@ -1144,6 +1144,10 @@ d;};' $_THIS_NGX_PATH/*.conf &> /dev/null
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config_main () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
+    if [ -z "$_PHP_SV" ] ; then
+      _PHP_SV=53
+    fi
+    _PHP_CN="www${_PHP_SV}"
     if [ "$_USE_STOCK" = "NO" ] ; then
       sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
@@ -1151,16 +1155,21 @@ sub_force_advanced_nginx_config_main () {
     fi
     if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9090/unix:\/var\/run\/$_USER.fpm.socket/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-        sed -i "s/127.0.0.1:9000/unix:\/var\/run\/$_USER.fpm.socket/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
     else
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
@@ -1329,6 +1338,7 @@ if [ -z "$_LOCAL_THISHTIP" ] ; then
 fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
 chmod 700 /var/xdrago/run-$_USER &> /dev/null
+tune_fpm_config
 force_advanced_nginx_config_main
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
 bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
@@ -1339,7 +1349,6 @@ if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
   exit 1
 fi
 force_advanced_nginx_config_main
-tune_fpm_config
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
 fi
