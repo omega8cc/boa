@@ -48,7 +48,6 @@ $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do no
 $update_free_access = FALSE;
 ini_set('session.cache_expire', 86400);    // Set it also to 24 hours max
 ini_set('session.gc_maxlifetime', 86400);  // Set it also to 24 hours max
-ini_set('auto_detect_line_endings', TRUE); // http://drupal.org/node/912682
 // Improve sessions management if module session_expire and/or Pressflow core is not used
 // It is already enabled in the php.ini, but we are forcing it here, just in case
 ini_set('session.gc_probability', 1);

@@ -581,15 +581,19 @@ _PHP_FPM_WORKERS=AUTO
 _PHP_FPM_TIMEOUT=AUTO
 
 ###
-### You can enable or modify strong PHP
-### protection by changing the list of
-### added to disable_functions in PHP.
+### You can define custom list of functions
+### to disable besides those already denied
+### in the system level 'disable_functions'.
 ###
 ### Example:
 ###
-### _PHP_FPM_DENIED="system,exec,shell_exec"
+### _PHP_FPM_DENY="system,exec,shell_exec"
 ###
-_PHP_FPM_DENIED=""
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
+###
+_PHP_FPM_DENY=""
 
 ###
 ### Define the amount of RAM you want to keep
@@ -790,13 +794,13 @@ tune_fpm_config () {
     if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
       sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-      if [ ! -z "$_PHP_FPM_DENIED" ] ; then
-        sed -i "s/system,exec,shell_exec/$_PHP_FPM_DENIED/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      if [ ! -z "$_PHP_FPM_DENY" ] ; then
+        sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       else
         if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
           _DO_NOTHING=YES
         else
-          sed -i "s/.*system,exec,shell_exec.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          sed -i "s/.*exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         fi
       fi
     fi
@@ -950,7 +954,7 @@ octopus_cnf () {
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT" >> /root/.${_USER}.octopus.cnf
-    echo "_PHP_FPM_DENIED=\"$_PHP_FPM_DENIED\"" >> /root/.${_USER}.octopus.cnf
+    echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.${_USER}.octopus.cnf
     echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
     echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
@@ -984,11 +988,11 @@ octopus_cnf () {
     else
       echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT" >> /root/.${_USER}.octopus.cnf
     fi
-    _PHP_FPM_DENIED_TEST=$(grep _PHP_FPM_DENIED /root/.${_USER}.octopus.cnf)
-    if [[ "$_PHP_FPM_DENIED_TEST" =~ "_PHP_FPM_DENIED" ]] ; then
+    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY /root/.${_USER}.octopus.cnf)
+    if [[ "$_PHP_FPM_DENY_TEST" =~ "_PHP_FPM_DENY" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "_PHP_FPM_DENIED=\"$_PHP_FPM_DENIED\"" >> /root/.${_USER}.octopus.cnf
+      echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.${_USER}.octopus.cnf
     fi
      _RESERVED_RAM_TEST=$(grep _RESERVED_RAM /root/.${_USER}.octopus.cnf)
     if [[ "$_RESERVED_RAM_TEST" =~ "_RESERVED_RAM" ]] ; then
