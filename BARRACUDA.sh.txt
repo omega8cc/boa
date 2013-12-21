@@ -5694,7 +5694,6 @@ else
   if [ "$_REL_VERSION" = "squeeze" ] ; then
     rm -f /etc/apt/sources.list.d/dotdeb.list
   fi
-  fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
   if [ ! -e "/root/.upstart.cnf" ] ; then
