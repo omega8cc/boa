@@ -162,7 +162,7 @@ Octopus can install the platforms listed below:
 
  Commerce 1.21 ---------------- http://drupal.org/project/commerce_kickstart
  Commerce 2.10 ---------------- http://drupal.org/project/commerce_kickstart
- Commons 3.5 ------------------ http://drupal.org/project/commons
+ Commons 3.6 ------------------ http://drupal.org/project/commons
  Drupal 7.24.1 ---------------- http://drupal.org/drupal-7.24
  Open Academy 1.0-rc3 --------- http://drupal.org/project/openacademy
  Open Atrium 2.12 ------------- http://drupal.org/project/openatrium
