@@ -7952,14 +7952,14 @@ msg "INFO: New entry added to /var/log/barracuda_log.txt"
 
 ###--------------------###
 if [ ! -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
-  cp -af /etc/sysctl.conf /etc/sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /etc/sysctl.conf /var/backups/dragon/t/sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf /etc/sysctl.conf
   if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] ; then
-    msg "INFO: Cleaning up system swap, it may take a moment, please wait..."
-    mrun "sleep 1"
     sysctl -p /etc/sysctl.conf &> /dev/null
     _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
     if [ -z $_IF_CDP ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
+      msg "INFO: Cleaning up system swap, it may take a moment, please wait..."
+      mrun "sleep 1"
       st_runner "swapoff -a" &> /dev/null
       st_runner "swapon -a" &> /dev/null
     fi
