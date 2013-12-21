@@ -7954,6 +7954,15 @@ msg "INFO: New entry added to /var/log/barracuda_log.txt"
 if [ ! -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
   cp -af /etc/sysctl.conf /var/backups/dragon/t/sysctl.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf /etc/sysctl.conf
+  if [ -e "/etc/security/limits.conf" ] ; then
+    _IF_NF=$(grep '524288' /etc/security/limits.conf)
+    if [ -z $_IF_NF ] ; then
+      echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
+      echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
+      echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
+      echo "root      soft    nofile      1048576" >> /etc/security/limits.conf
+    fi
+  fi
   if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] ; then
     sysctl -p /etc/sysctl.conf &> /dev/null
     _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
