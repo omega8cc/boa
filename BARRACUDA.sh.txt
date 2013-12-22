@@ -6364,11 +6364,9 @@ fi
 if [ "$_STATUS" = "UPGRADE" ] ; then
   msg "INFO: Checking if PHP upgrade is available"
   mrun "sleep 1"
+  st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
+  st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 fi
-
-st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
-st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
-
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
   _PHP_EXTRA=""
 else
@@ -6377,26 +6375,32 @@ fi
 if [ ! -z "$_PHP_EXTRA_CONF" ] ; then
   _PHP_EXTRA="$_PHP_EXTRA $_PHP_EXTRA_CONF"
 fi
-
+if [ ! -z "$_PHP_EXTRA" ] ; then
+  msg "INFO: PHP EXTRA is $_PHP_EXTRA"
+fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
   _PHP55_API=20100525
   _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
+  msg "INFO: PHP $_PHP_VERSION will be installed now"
   install_php_multi "55"
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
   _PHP54_API=20100525
+  msg "INFO: PHP $_PHP_VERSION will be installed now"
   install_php_multi "54"
-if
+fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.3" ]] && [ ! -x "/opt/php53/bin/php" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
   _PHP53_API=20090626
+  msg "INFO: PHP $_PHP_VERSION will be installed now"
   install_php_multi "53"
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   _PHP52_API=20060613
+  msg "INFO: PHP $_PHP_VERSION will be installed now"
   install_php_multi "52"
 fi
 
