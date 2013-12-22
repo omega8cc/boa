@@ -2367,6 +2367,7 @@ tune_web_server_config () {
         sed -i "s/.*passthru,pcntl_exec,popen,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_PHP_CN}.conf &> /dev/null
       fi
     fi
+    service php${_PHP_SV}-fpm reload &> /dev/null
   fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
