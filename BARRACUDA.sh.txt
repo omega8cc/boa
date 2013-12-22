@@ -4659,6 +4659,66 @@ d;};' /data/disk/*/config/includes/*.conf &> /dev/null
 d;};' /var/aegir/config/includes/*.conf &> /dev/null
 }
 #
+# Check if the PHP rebuild is required.
+check_php_rebuild () {
+  if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+    _PHP_INSTALLED=5.x
+    rm -f /var/xdrago/log/zendopcache-*
+    rm -f /var/xdrago/log/phpredis-*
+    rm -f /var/xdrago/log/uploadprogress-*
+    rm -f /var/xdrago/log/php-jsmin-*
+    rm -f /var/xdrago/log/php-geos-*
+    rm -f /var/xdrago/log/php-mongo-*
+    rm -f /var/xdrago/log/imagick-*
+    msg "INFO: PHP to $_PHP_VERSION rebuild forced"
+  else
+    _PHP_INSTALLED=`/opt/php$1/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+  fi
+  if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
+    msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+    install_php_multi "$1"
+  else
+    if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
+      if [ "$_UP_PHP" = "YES" ] ; then
+        msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
+        install_php_multi "$1"
+      else
+        msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
+      fi
+    else
+      if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
+        _DO_NOTHING=YES
+      else
+        msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
+      fi
+      install_php_multi "$1"
+    fi
+  fi
+  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+    if [ ! -e "/var/xdrago/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] ; then
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
+      install_php_multi "$1"
+    fi
+  else
+    if [ ! -e "/var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] ; then
+      msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
+      install_php_multi "$1"
+    fi
+  fi
+}
+#
+# Check if the PHP build is broken.
+check_php_broken () {
+  _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
+  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
+    _PHP_BIN_BROKEN=YES
+    msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
+    install_curl_src
+    install_php_multi "$1"
+  fi
+}
+#
 # Final cleanup.
 finale () {
   ###--------------------###
@@ -6321,7 +6381,7 @@ fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
   _PHP55_API=20100525
-  _PHP_EXTRA_CONF="$_PHP_EXTRA_CONF --enable-opcache"
+  _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
   install_php_multi "55"
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
@@ -6339,68 +6399,6 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _PHP52_API=20060613
   install_php_multi "52"
 fi
-
-#
-# Check if the PHP rebuild is required.
-check_php_rebuild () {
-  if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-    _PHP_INSTALLED=5.x
-    rm -f /var/xdrago/log/zendopcache-*
-    rm -f /var/xdrago/log/phpredis-*
-    rm -f /var/xdrago/log/uploadprogress-*
-    rm -f /var/xdrago/log/php-jsmin-*
-    rm -f /var/xdrago/log/php-geos-*
-    rm -f /var/xdrago/log/php-mongo-*
-    rm -f /var/xdrago/log/imagick-*
-    msg "INFO: PHP to $_PHP_VERSION rebuild forced"
-  else
-    _PHP_INSTALLED=`/opt/php$1/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-  fi
-  if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
-    msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-    install_php_multi "$1"
-  else
-    if [[ "$_PHP_INSTALLED" =~ "$_PHP_VERSION" ]] ; then
-      if [ "$_UP_PHP" = "YES" ] ; then
-        msg "INFO: PHP $_PHP_VERSION rebuild required to include upgraded libs"
-        install_php_multi "$1"
-      else
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, OK"
-      fi
-    else
-      if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
-        _DO_NOTHING=YES
-      else
-        msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
-      fi
-      install_php_multi "$1"
-    fi
-  fi
-  _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
-    if [ ! -e "/var/xdrago/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log" ] ; then
-      msg "INFO: PHP $_PHP_VERSION rebuild required to include MariaDB $_MARIADB_VERSION libs"
-      install_php_multi "$1"
-    fi
-  else
-    if [ ! -e "/var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log" ] ; then
-      msg "INFO: PHP $_PHP_VERSION rebuild required to include Percona $_PERCONA_VERSION libs"
-      install_php_multi "$1"
-    fi
-  fi
-}
-
-#
-# Check if the PHP build is broken.
-check_php_broken () {
-  _BROKEN_LIBCURL_TEST=$(/opt/php$1/bin/php -v 2>&1)
-  if [[ "$_BROKEN_LIBCURL_TEST" =~ "libcurl.so.4" ]] ; then
-    _PHP_BIN_BROKEN=YES
-    msg "INFO: PHP $_PHP_VERSION rebuild required to fix broken libcurl"
-    install_curl_src
-    install_php_multi "$1"
-  fi
-}
 
 if [ -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
