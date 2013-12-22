@@ -795,6 +795,7 @@ tune_fpm_config () {
   if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] && [ ! -z "$_CHILD_MAX_FPM" ] ; then
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
+      rm -f /opt/php*/etc/pool.d/${_USER}.conf
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
       sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       if [ ! -z "$_PHP_FPM_DENY" ] ; then
