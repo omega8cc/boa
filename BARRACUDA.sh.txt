@@ -2227,22 +2227,33 @@ validate_local_ip () {
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
+    _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+    if [ -z "$_PHP_SV" ] ; then
+      _PHP_SV=53
+    fi
+    _PHP_CN="www${_PHP_SV}"
     if [ "$_USE_STOCK" = "NO" ] ; then
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
     fi
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
+    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
     else
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
     fi
   fi
@@ -7961,7 +7972,7 @@ if [ ! -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sysctl.conf /etc/sysctl.conf
   if [ -e "/etc/security/limits.conf" ] ; then
     _IF_NF=$(grep '524288' /etc/security/limits.conf)
-    if [ -z $_IF_NF ] ; then
+    if [ -z "$_IF_NF" ] ; then
       echo "*         hard    nofile      524288"  >> /etc/security/limits.conf
       echo "*         soft    nofile      524288"  >> /etc/security/limits.conf
       echo "root      hard    nofile      1048576" >> /etc/security/limits.conf
