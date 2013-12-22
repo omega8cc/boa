@@ -3625,8 +3625,7 @@ install_php_legacy () {
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
   if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
-    patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
   mrun "sleep 1"
@@ -3667,9 +3666,11 @@ install_php_multi () {
     cd /var/opt/php-$_PHP_VERSION
     st_runner "sh ./buildconf --force" 2> /dev/null
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch ./
-      patch -p1 < disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
     fi
+    cd sapi/fpm/fpm
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/fpm_main.c.patch &> /dev/null
+    cd /var/opt/php-$_PHP_VERSION
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
     mrun "sleep 1"
     st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
@@ -4709,6 +4710,7 @@ install_ssl_src () {
 fix_multi_ip_cron_access () {
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
+  echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
   echo "  deny         all;" >> /root/.local.IP.list.allow
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /data/disk/*/config/includes/*.conf &> /dev/null
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /var/aegir/config/includes/*.conf &> /dev/null

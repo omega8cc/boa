@@ -1,0 +1,54 @@
+--- a/fpm_main.c	2013-12-10 14:04:57.000000000 -0500
++++ b/fpm_main.c	2013-12-22 16:55:03.000000000 -0500
+@@ -164,6 +164,7 @@ typedef struct _php_cgi_globals_struct {
+ 	zend_bool rfc2616_headers;
+ 	zend_bool nph;
+ 	zend_bool fix_pathinfo;
++	char *fix_chrootpath;
+ 	zend_bool force_redirect;
+ 	zend_bool discard_path;
+ 	zend_bool fcgi_logging;
+@@ -1058,6 +1059,27 @@ static void init_request_info(TSRMLS_D)
+ 	char *ini;
+ 	int apache_was_here = 0;
+
++	if (CGIG(fix_chrootpath)) {
++		size_t chroot_len = strlen(CGIG(fix_chrootpath));
++		/* remove trail slash */
++		while (chroot_len > 0 && CGIG(fix_chrootpath)[chroot_len-1] == '/') {
++			chroot_len--;
++		}
++		if (chroot_len > 0) {
++			char *env_document_root = sapi_cgibin_getenv("DOCUMENT_ROOT", sizeof("DOCUMENT_ROOT") - 1 TSRMLS_CC);
++
++			if (strncmp(env_path_translated, CGIG(fix_chrootpath), chroot_len) == 0) {
++				env_path_translated += chroot_len;
++				env_path_translated = _sapi_cgibin_putenv("PATH_TRANSLATED", env_path_translated TSRMLS_CC);
++			}
++
++			if (strncmp(env_document_root, CGIG(fix_chrootpath), chroot_len) == 0) {
++				env_document_root += chroot_len;
++				env_document_root = _sapi_cgibin_putenv("DOCUMENT_ROOT", env_document_root TSRMLS_CC);
++			}
++		}
++	}
++
+ 	/* some broken servers do not have script_filename or argv0
+ 	 * an example, IIS configured in some ways.  then they do more
+ 	 * broken stuff and set path_translated to the cgi script location */
+@@ -1446,6 +1468,7 @@ PHP_INI_BEGIN()
+ 	STD_PHP_INI_ENTRY("cgi.force_redirect",      "1",  PHP_INI_SYSTEM, OnUpdateBool,   force_redirect, php_cgi_globals_struct, php_cgi_globals)
+ 	STD_PHP_INI_ENTRY("cgi.redirect_status_env", NULL, PHP_INI_SYSTEM, OnUpdateString, redirect_status_env, php_cgi_globals_struct, php_cgi_globals)
+ 	STD_PHP_INI_ENTRY("cgi.fix_pathinfo",        "1",  PHP_INI_SYSTEM, OnUpdateBool,   fix_pathinfo, php_cgi_globals_struct, php_cgi_globals)
++	STD_PHP_INI_ENTRY("cgi.fix_chrootpath",      NULL, PHP_INI_SYSTEM, OnUpdateString, fix_chrootpath, php_cgi_globals_struct, php_cgi_globals)
+ 	STD_PHP_INI_ENTRY("cgi.discard_path",        "0",  PHP_INI_SYSTEM, OnUpdateBool,   discard_path, php_cgi_globals_struct, php_cgi_globals)
+ 	STD_PHP_INI_ENTRY("fastcgi.logging",         "1",  PHP_INI_SYSTEM, OnUpdateBool,   fcgi_logging, php_cgi_globals_struct, php_cgi_globals)
+ 	STD_PHP_INI_ENTRY("fastcgi.error_header",    NULL, PHP_INI_SYSTEM, OnUpdateString, error_header, php_cgi_globals_struct, php_cgi_globals)
+@@ -1461,6 +1484,7 @@ static void php_cgi_globals_ctor(php_cgi
+ 	php_cgi_globals->force_redirect = 1;
+ 	php_cgi_globals->redirect_status_env = NULL;
+ 	php_cgi_globals->fix_pathinfo = 1;
++	php_cgi_globals->fix_chrootpath = NULL;
+ 	php_cgi_globals->discard_path = 0;
+ 	php_cgi_globals->fcgi_logging = 1;
+ 	zend_hash_init(&php_cgi_globals->user_config_cache, 0, NULL, (dtor_func_t) user_config_cache_entry_dtor, 1);

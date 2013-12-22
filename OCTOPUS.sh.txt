@@ -704,6 +704,20 @@ else
 fi
 }
 #
+# Small spinner.
+mrun () {
+  CMD="$1"
+  touch busy
+  if [ "$_SPINNER" = "YES" ] ; then
+    bash $_SRCDIR/spinner busy &
+  fi
+  if $CMD >> $_LOG; then
+    rm busy
+    sleep 1
+    return 0
+  fi
+}
+#
 # Tune FPM workers.
 tune_fpm_workers () {
   _ETH_TEST=`ifconfig 2>&1`
@@ -810,7 +824,18 @@ tune_fpm_config () {
     fi
     sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-    service php${_PHP_SV}-fpm reload &> /dev/null
+    if [ -e "/etc/init.d/php55-fpm" ] ; then
+      mrun "service php55-fpm reload" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php54-fpm" ] ; then
+      mrun "service php54-fpm reload" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php53-fpm" ] ; then
+      mrun "service php53-fpm reload" &> /dev/null
+    fi
+    if [ -e "/etc/init.d/php52-fpm" ] ; then
+      mrun "service php52-fpm reload" &> /dev/null
+    fi
   fi
 }
 #
@@ -1134,6 +1159,7 @@ octopus_cnf () {
 fix_multi_ip_cron_access () {
   rm -f /root/.local.IP.list.allow
   for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
+  echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
   echo "  deny         all;" >> /root/.local.IP.list.allow
   sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" $_THIS_NGX_PATH/*.conf &> /dev/null
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow

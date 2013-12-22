@@ -1354,10 +1354,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f fserver.make
     rm -f -r $_SHRD_PLPATH/profiles/default
     cd $_SHRD_PLPATH/profiles/$_REAL_PRNAME/themes
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch ./
-    patch -p0 <./singular.patch &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch ./
-    patch -p0 <./singular.mft.patch &> /dev/null
+    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.patch &> /dev/null
+    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/singular.mft.patch &> /dev/null
   else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
