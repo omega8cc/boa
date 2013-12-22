@@ -3668,9 +3668,9 @@ install_php_multi () {
     if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
       patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
     fi
-    cd sapi/fpm/fpm
-    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/fpm_main.c.patch &> /dev/null
-    cd /var/opt/php-$_PHP_VERSION
+    ### cd sapi/fpm/fpm
+    ### patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/fpm_main.c.patch &> /dev/null
+    ### cd /var/opt/php-$_PHP_VERSION
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
     mrun "sleep 1"
     st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
