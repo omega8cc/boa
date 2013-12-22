@@ -3564,7 +3564,7 @@ install_php_legacy () {
   cd /var/opt
   rm -f -r php*
   rm -f /etc/init.d/php-fpm*
-  rm -f /etc/init.d/php52-fpm*
+  rm -f /etc/init.d/php$1-fpm*
   get_dev_src "php-$_PHP_VERSION.tar.gz" &> /dev/null
   get_dev_src "php-$_PHP_VERSION-fpm-0.5.14.diff.gz" &> /dev/null
   cat php-$_PHP_VERSION-fpm-0.5.14.diff | patch -d php-$_PHP_VERSION -p1 &> /dev/null
@@ -3578,13 +3578,13 @@ install_php_legacy () {
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
   mrun "sleep 1"
-  st_runner "sh ./configure --quiet --prefix=/opt/php52 --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
+  st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
   mrun "sleep 1"
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   _LOC_PHP_VERSION="$_PHP_VERSION"
-  _LOC_PHP_PATH=/opt/php52/bin
+  _LOC_PHP_PATH=/opt/php$1/bin
   install_php_extensions
   echo "libcurl4-openssl-dev" > /var/xdrago/log/libcurl4-openssl-dev-fix.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
@@ -3593,10 +3593,10 @@ install_php_legacy () {
   else
     echo "$_PERCONA_VERSION-Percona" > /var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-fpm /etc/init.d/php52-fpm
-  chmod 755 /etc/init.d/php52-fpm
-  st_runner "update-rc.d php52-fpm defaults" &> /dev/null
-  echo "php52-rebuild-$_INSTALLER_VERSION" > /var/xdrago/log/php52-rebuild-$_INSTALLER_VERSION
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php$1-fpm /etc/init.d/php$1-fpm
+  chmod 755 /etc/init.d/php$1-fpm
+  st_runner "update-rc.d php$1-fpm defaults" &> /dev/null
+  echo "php$1-rebuild-$_INSTALLER_VERSION" > /var/xdrago/log/php$1-rebuild-$_INSTALLER_VERSION
 }
 #
 # Install modern PHP version
@@ -3625,16 +3625,16 @@ install_php_multi () {
     mrun "sleep 1"
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    if [ -f "/usr/bin/php" ] && [ -f "/opt/php53/bin/php" ] ; then
+    if [ -f "/usr/bin/php" ] && [ -f "/opt/php$1/bin/php" ] ; then
       mv -f /usr/bin/php /usr/bin/php-old &> /dev/null
-      ln -sf /opt/php53/bin/php /usr/bin/php
-      if [ -f "/usr/bin/phpize" ] && [ -f "/opt/php53/bin/phpize" ] && [ ! -L "/opt/php53/bin/phpize" ] ; then
+      ln -sf /opt/php$1/bin/php /usr/bin/php
+      if [ -f "/usr/bin/phpize" ] && [ -f "/opt/php$1/bin/phpize" ] && [ ! -L "/opt/php$1/bin/phpize" ] ; then
         mv -f /usr/bin/phpize /usr/bin/phpize-old &> /dev/null
-        ln -sf /opt/php53/bin/phpize /usr/bin/phpize
+        ln -sf /opt/php$1/bin/phpize /usr/bin/phpize
       fi
     fi
     _LOC_PHP_VERSION="$_PHP_VERSION"
-    _LOC_PHP_PATH=/opt/local/bin
+    _LOC_PHP_PATH=/opt/php$1/bin
     install_php_extensions
     _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
     if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
@@ -3642,10 +3642,10 @@ install_php_multi () {
     else
       echo "$_PERCONA_VERSION-Percona" > /var/xdrago/log/installed-$_PHP_VERSION-$_PERCONA_VERSION-Percona.log
     fi
-    rm -f /etc/init.d/php53-fpm*
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-fpm /etc/init.d/php53-fpm
-    chmod 755 /etc/init.d/php53-fpm
-    st_runner "update-rc.d php53-fpm defaults" &> /dev/null
+    rm -f /etc/init.d/php$1-fpm*
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php$1-fpm /etc/init.d/php$1-fpm
+    chmod 755 /etc/init.d/php$1-fpm
+    st_runner "update-rc.d php$1-fpm defaults" &> /dev/null
   fi
 }
 #
@@ -7949,7 +7949,7 @@ if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
   _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"
 fi
 _LOG_DB_V=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
-_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_VERSION and $_PHP_VERSION / MODERN-$_PHP_MODERN_ONLY / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
+_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_MULTI_INSTALL / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
 echo "$_BARRACUDA_VERSION_INFO" >> /var/log/barracuda_log.txt
 echo "$_BARRACUDA_VERSION_INFO" >> /var/backups/barracuda_log.txt
 msg "INFO: New entry added to /var/log/barracuda_log.txt"
