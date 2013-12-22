@@ -1096,25 +1096,15 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    _PHP_CLI_LEGACY=5.2
-    if [ -x "/usr/local/bin/php" ] ; then
-      _PHP_CLI_LEGACY=`/usr/local/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
-    fi
-    if [ ! -x "/usr/local/bin/php" ] || [[ "$_PHP_CLI_LEGACY" =~ "5.3" ]] || [[ "$_PHP_CLI_LEGACY" =~ "5.4" ]] || [[ "$_PHP_CLI_LEGACY" =~ "5.5" ]] ; then
-      if [[ "$_CHECK_HOST" =~ ".host8." ]] && [ -e "/data/disk/$_USER/log/cli.txt" ] && [ -e "/data/disk/$_USER/log/fpm.txt" ] ; then
-        _DO_NOTHING=YES
-      else
-        if [ "$_PHP_CLI_LEGACY" = "5.4" ] ; then
-          _PHP_FPM_VERSION=5.4
-          _PHP_CLI_VERSION=5.4
-        elif [ "$_PHP_CLI_LEGACY" = "5.5" ] ; then
-          _PHP_FPM_VERSION=5.5
-          _PHP_CLI_VERSION=5.5
-        else
-          _PHP_FPM_VERSION=5.3
-          _PHP_CLI_VERSION=5.3
-        fi
-      fi
+    if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
+    elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+      _PHP_FPM_VERSION=5.3
+      _PHP_CLI_VERSION=5.3
     fi
     if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
       _DRUSH_CC_REQ=NO
