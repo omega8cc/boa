@@ -4187,13 +4187,16 @@ install_wkhtmltoimage () {
 #
 # Update php-cli in the cron entry.
 update_php_cli_cron () {
-  if [ "$_PHP_CLI_VERSION" != "5.2" ] && [ -x "/opt/php53/bin/php" ] ; then
-    sed -i "s/^PATH=.*/PATH=\/opt\/local\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
-    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
-  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/usr/local/bin/php" ] ; then
-    sed -i "s/^PATH=.*/PATH=\/usr\/local\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
-    chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
+  if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+    sed -i "s/^PATH=.*/PATH=\/opt\/php55\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+    sed -i "s/^PATH=.*/PATH=\/opt\/php54\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+    sed -i "s/^PATH=.*/PATH=\/opt\/php53\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
+    sed -i "s/^PATH=.*/PATH=\/opt\/php52\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" /var/spool/cron/crontabs/aegir &> /dev/null
   fi
+  chown aegir:crontab /var/spool/cron/crontabs/aegir &> /dev/null
 }
 #
 # Update New Relic.
