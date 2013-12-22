@@ -2269,7 +2269,11 @@ sub_force_advanced_nginx_config () {
         fi
       else
         sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        if [ "$_PHP_CN" = "www53" ] ; then
+          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        else
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        fi
       fi
     else
       if [ "$_USE_STOCK" = "NO" ] ; then
