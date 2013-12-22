@@ -157,7 +157,7 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-  _PHP_API=20100525
+  _PHP_API=20121212
 elif [ "$_PHP_FPM_VERSION" = "5.4" ] ; then
   _PHP_API=20100525
 elif [ "$_PHP_FPM_VERSION" = "5.3" ] ; then
