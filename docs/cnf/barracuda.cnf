@@ -53,6 +53,7 @@ _NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
+_PHP_FPM_DENY="" #-------------- Extend the disable_functions list per instance
 _LOAD_LIMIT_ONE=1500 #---------- Defines max 1 min load before disabling Nginx
 _LOAD_LIMIT_TWO=1000 #---------- Defines max 5 min load before disabling Nginx
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES

@@ -785,6 +785,9 @@ tune_fpm_config () {
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+  if [ -z "$_PHP_SV" ] ; then
+    _PHP_SV=53
+  fi
   if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
     _PHP_FPM_TIMEOUT=180
   fi

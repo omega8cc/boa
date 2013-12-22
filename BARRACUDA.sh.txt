@@ -797,6 +797,21 @@ _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_REDIS=NO
 
 ###
+### You can define custom list of functions
+### to disable besides those already denied
+### in the system level 'disable_functions'.
+###
+### Example:
+###
+### _PHP_FPM_DENY="system,exec,shell_exec"
+###
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
+###
+_PHP_FPM_DENY=""
+
+###
 ### Define the amount of RAM you want to keep
 ### reserved for other services installed which
 ### are not controlled by BOA, so it will
@@ -2243,10 +2258,15 @@ sub_force_advanced_nginx_config () {
     fi
     if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        if [ "$_PHP_CN" = "www53" ] ; then
+          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        else
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        fi
       else
         sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
         sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
@@ -2328,6 +2348,22 @@ tune_web_server_config () {
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g" /opt/php52/etc/php52-fpm.conf &> /dev/null
+  _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+  if [ -z "$_PHP_SV" ] ; then
+    _PHP_SV=53
+  fi
+  _PHP_CN="www${_PHP_SV}"
+  if [ ! -z "$_PHP_SV" ] ; then
+    if [ ! -z "$_PHP_FPM_DENY" ] ; then
+      sed -i "s/passthru,pcntl_exec,popen,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_PHP_CN}.conf &> /dev/null
+    else
+      if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+        _DO_NOTHING=YES
+      else
+        sed -i "s/.*passthru,pcntl_exec,popen,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_PHP_CN}.conf &> /dev/null
+      fi
+    fi
+  fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
@@ -2773,6 +2809,7 @@ barracuda_cnf () {
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
     echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.barracuda.cnf
     echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
     echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
@@ -3016,6 +3053,12 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    fi
+    _PHP_FPM_DENY_TEST=$(grep _PHP_FPM_DENY /root/.barracuda.cnf)
+    if [[ "$_PHP_FPM_DENY_TEST" =~ "_PHP_FPM_DENY" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.barracuda.cnf
     fi
     _STRONG_PASSWORDS_TEST=$(grep _STRONG_PASSWORDS /root/.barracuda.cnf)
     if [[ "$_STRONG_PASSWORDS_TEST" =~ "_STRONG_PASSWORDS" ]] ; then
