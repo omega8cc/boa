@@ -70,14 +70,9 @@ by the BOA install and upgrade tools exclusively.
 
    /root/.high_traffic.cnf
 
- This file, if exists, allows to skip PHP-FPM server reloads, which normally
- happen hourly, always 9 minutes after the full hour. Recommended if you
- have a very busy site(s) hosted and enough memory to keep it running
- all the time. Note that it will be reloaded daily anyway, at midnight.
-
- This file prevents also the daily Speed Booster cache forced cleanup,
- which also happens at midnight.
-
+ This file, if exists, will result with Nginx access log cleared hourly.
+ Recommended if you have a very busy site(s) hosted. It also prevents
+ the daily Speed Booster cache forced cleanup, which happens at midnight.
  Furthermore, it prevents PHP-FPM restarts when the system detects segfault.
 
    /root/.home.no.wildcard.chmod.cnf

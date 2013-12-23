@@ -50,19 +50,27 @@ action()
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
     /etc/init.d/jetty7 start
   fi
+  touch /var/run/fmp_wait.pid
+  if [ -e "/etc/init.d/php55-fpm" ] ; then
+    /etc/init.d/php55-fpm reload
+  fi
+  if [ -e "/etc/init.d/php54-fpm" ] ; then
+    /etc/init.d/php54-fpm reload
+  fi
+  if [ -e "/etc/init.d/php53-fpm" ] ; then
+    /etc/init.d/php53-fpm reload
+  fi
+  if [ -e "/etc/init.d/php52-fpm" ] ; then
+    /etc/init.d/php52-fpm reload
+  fi
+  sleep 8
+  rm -f /var/run/fmp_wait.pid
   if [ -e "/root/.high_traffic.cnf" ] ; then
     _DO_NOTHING=YES
   else
     rm -f -r /var/lib/nginx/speed/*
   fi
   /etc/init.d/nginx reload
-  touch /var/run/fmp_wait.pid
-  if [ -e "/etc/init.d/php-fpm" ] ; then
-    /etc/init.d/php-fpm reload
-  fi
-  /etc/init.d/php53-fpm reload
-  sleep 8
-  rm -f /var/run/fmp_wait.pid
   echo rotate > /var/log/nginx/speed_purge.log
   if [ -e "/var/log/newrelic" ] ; then
     echo rotate > /var/log/newrelic/nrsysmond.log

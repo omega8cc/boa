@@ -11,12 +11,23 @@ chomp($now_is);
 if ($fpm_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
   `kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}')`;
-  `/etc/init.d/php-fpm restart`;
-  `/etc/init.d/php53-fpm restart`;
+  if (-f "/etc/init.d/php55-fpm") {
+    `/etc/init.d/php55-fpm restart`;
+  }
+  if (-f "/etc/init.d/php54-fpm") {
+    `/etc/init.d/php54-fpm restart`;
+  }
+  if (-f "/etc/init.d/php53-fpm") {
+    `/etc/init.d/php53-fpm restart`;
+  }
+  if (-f "/etc/init.d/php52-fpm") {
+    `/etc/init.d/php52-fpm restart`;
+  }
   sleep(2);
 }
 if ($java_status ne "CLEAN") {
   `kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}')`;
+  `kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}')`;
   sleep(2);
   if (-f "/etc/default/jetty9" && -f "/etc/init.d/jetty9") {
     `/etc/init.d/jetty9 start`;
