@@ -46,18 +46,6 @@ $conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issue
 $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
 $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do not allow to turn it on by default
 $update_free_access = FALSE;
-ini_set('session.cache_expire', 86400);    // Set it also to 24 hours max
-ini_set('session.gc_maxlifetime', 86400);  // Set it also to 24 hours max
-// Improve sessions management if module session_expire and/or Pressflow core is not used
-// It is already enabled in the php.ini, but we are forcing it here, just in case
-ini_set('session.gc_probability', 1);
-ini_set('session.gc_divisor', 1000);
-if ($conf['install_profile'] == 'totem') {
-  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
-}
-else {
-  ini_set('session.cookie_lifetime', 86400); // Set it to 24 hours max
-}
 
 /**
  * Vars init
@@ -217,6 +205,7 @@ if (!$is_backend) {
  * BOA INI defaults
  */
 $boa_ini = array(
+  'session_cookie_ttl' => '86400',
   'redis_use_modern' => TRUE,
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
@@ -293,6 +282,17 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Views-Cache-Bully-Dont-Enable: " . $all_ini['views_cache_bully_dont_enable']);
   header("X-Ini-Views-Content-Cache-Dont-Enable: " . $all_ini['views_content_cache_dont_enable']);
   header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
+  header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
+}
+
+/**
+ * Session Cookie TTL settings
+ */
+if ($conf['install_profile'] == 'totem') {
+  ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
+}
+else {
+  ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
 }
 
 /**
