@@ -1209,7 +1209,7 @@ d;};' $_THIS_NGX_PATH/*.conf &> /dev/null
 }
 #
 # Sub Force advanced Nginx configuration.
-sub_force_advanced_nginx_config_main () {
+sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
     _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
@@ -1270,11 +1270,11 @@ sub_force_advanced_nginx_config_main () {
 }
 #
 # Force advanced Nginx configuration.
-force_advanced_nginx_config_main () {
+force_advanced_nginx_config () {
   _THIS_NGX_PATH=/data/disk/$_USER/.drush/provision/http/Provision/Service/http
-  sub_force_advanced_nginx_config_main
+  sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
-  sub_force_advanced_nginx_config_main
+  sub_force_advanced_nginx_config
   if [ -e "/data/disk/$_USER/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
       ln -sf /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
@@ -1416,7 +1416,7 @@ fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
 chmod 700 /var/xdrago/run-$_USER &> /dev/null
 tune_fpm_config
-force_advanced_nginx_config_main
+force_advanced_nginx_config
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
 bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
 if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
@@ -1425,7 +1425,8 @@ if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
   touch /opt/tmp/status-Octopus-FAIL
   exit 1
 fi
-force_advanced_nginx_config_main
+force_advanced_nginx_config
+mrun "service nginx reload" &> /dev/null
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
 fi

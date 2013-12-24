@@ -632,12 +632,12 @@ tune_nginx () {
 #
 restart_services () {
   msg "INFO: Reloading services"
-  st_runner "service php-fpm reload"     &> /dev/null
-  st_runner "service php53-fpm reload"   &> /dev/null
-  st_runner "service mysql restart"      &> /dev/null
-  st_runner "service nginx reload"       &> /dev/null
+  mrun "service php-fpm reload"     &> /dev/null
+  mrun "service php53-fpm reload"   &> /dev/null
+  mrun "service mysql restart"      &> /dev/null
+  mrun "service nginx reload"       &> /dev/null
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
-    st_runner "csf -q"                   &> /dev/null
+    mrun "csf -q"                   &> /dev/null
   fi
 }
 #

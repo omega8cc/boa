@@ -479,44 +479,6 @@ done
 cd
 }
 #
-# Sub Force advanced Nginx configuration.
-sub_force_advanced_nginx_config () {
-  if [ -d "$_THIS_NGX_PATH" ] ; then
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php53/etc/php53-fpm.conf" ] ; then
-      if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      else
-        sed -i "s/127.0.0.1:9000/127.0.0.1:9090/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-      fi
-    else
-      if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      else
-        sed -i "s/127.0.0.1:9090/127.0.0.1:9000/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-      fi
-    fi
-  fi
-}
-#
-# Force advanced Nginx configuration.
-force_advanced_nginx_config () {
-  validate_local_ip &> /dev/null
-  _THIS_NGX_PATH=$_ROOT/.drush/provision/http/Provision/Service/http
-  sub_force_advanced_nginx_config
-  _THIS_NGX_PATH=$_ROOT/config/includes
-  sub_force_advanced_nginx_config
-  if [ -e "$_ROOT/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
-    if [ ! -L "$_ROOT/config/includes/nginx_advanced_include.conf" ] ; then
-      rm -f $_ROOT/config/includes/nginx_advanced_include.conf
-      ln -sf $_ROOT/config/includes/nginx_octopus_include.conf $_ROOT/config/includes/nginx_advanced_include.conf
-    fi
-    if [ ! -L "$_ROOT/config/includes/nginx_simple_include.conf" ] ; then
-      rm -f $_ROOT/config/includes/nginx_simple_include.conf
-      ln -sf $_ROOT/config/includes/nginx_legacy_include.conf $_ROOT/config/includes/nginx_simple_include.conf
-    fi
-  fi
-}
-#
 # Download Textile.
 download_textile () {
   cd textile
@@ -1110,18 +1072,11 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   rm -f -r $_HOSTMASTER_ROOT/scripts
   rm -f $_HOSTMASTER_ROOT/themes/README.txt
   rm -f $_HOSTMASTER_ROOT/*.txt
-  st_runner "service nginx reload" &> /dev/null
+  mrun "service nginx reload" &> /dev/null
   cd $_HOSTMASTER_ROOT
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/robots.txt ./
   cd $_ROOT
 fi
-
-
-###---### Force advanced Nginx config.
-#
-force_advanced_nginx_config
-st_runner "service nginx reload" &> /dev/null
-cd $_ROOT
 
 
 ###---### Set permissions for all.

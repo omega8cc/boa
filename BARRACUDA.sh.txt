@@ -1499,7 +1499,7 @@ install_redis_src () {
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
   if [ -e "/var/lib/redis" ] ; then
-    st_runner "service redis-server stop" &> /dev/null
+    mrun "service redis-server stop" &> /dev/null
     mrun "sleep 1"
     killall -9 redis-server &> /dev/null
   fi
@@ -1612,7 +1612,7 @@ fix_sftp_ftps_modern () {
     st_runner "sh ./install.sh yesall" 2> /dev/null
     echo "mss-$_MSS_VERSION $_NOW" > /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/sftp_config /etc/ssh/sftp_config
-    st_runner "service ssh restart" &> /dev/null
+    mrun "service ssh restart" &> /dev/null
   fi
   if [ -e "/usr/bin/MySecureShell" ] && [ -e "/etc/ssh/sftp_config" ] ; then
     _MSS_TEST=$(grep "lshell" /etc/passwd)
@@ -1628,7 +1628,7 @@ fix_sftp_ftps_modern () {
   fi
   if [ ! -e "/var/xdrago/log/fixed-sftp-idle.log" ] ; then
     sed -i "s/IdleTimeOut.*/IdleTimeOut            15m/g" /etc/ssh/sftp_config &> /dev/null
-    st_runner "service ssh reload" &> /dev/null
+    mrun "service ssh reload" &> /dev/null
     echo fixed-sftp-idle > /var/xdrago/log/fixed-sftp-idle.log
   fi
 }
@@ -1708,8 +1708,9 @@ fix_php_ini_opcache () {
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
       _DO_NOTHING=YES
     else
+      echo ";"                                   >> $_THIS_FILE
       echo "; Zend OPcache"                      >> $_THIS_FILE
-      if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+      if [ "$_PHP_V" = "5.5" ] ; then
         echo "extension=opcache.so"              >> $_THIS_FILE
       else
         echo "zend_extension=\"$_OPCACHE_SO\""   >> $_THIS_FILE
@@ -1723,7 +1724,7 @@ fix_php_ini_opcache () {
       echo "opcache.dups_fix=1"                  >> $_THIS_FILE
       echo "opcache.log_verbosity_level=3"       >> $_THIS_FILE
       echo "opcache.fast_shutdown=1"             >> $_THIS_FILE
-      echo ""                                    >> $_THIS_FILE
+      echo ";"                                   >> $_THIS_FILE
     fi
   fi
 }
@@ -1731,18 +1732,21 @@ fix_php_ini_opcache () {
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all () {
 
+  _PHP_V=5.5
   _THIS_FILE=/opt/php55/etc/php55.ini
-  _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
   fix_php_ini_opcache
 
+  _PHP_V=5.4
   _THIS_FILE=/opt/php54/etc/php54.ini
   _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
   fix_php_ini_opcache
 
+  _PHP_V=5.3
   _THIS_FILE=/opt/php53/etc/php53.ini
   _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
   fix_php_ini_opcache
 
+  _PHP_V=5.2
   _THIS_FILE=/opt/php52/etc/php52.ini
   _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
   fix_php_ini_opcache
@@ -3322,37 +3326,33 @@ run_silent_aptitude_full_upgrade () {
 install_ioncube () {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ ! -e "/usr/local/ioncube" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ "$_IONCUBE_VERSION" = "4.4.4" ] ; then
-      _DO_NOTHING=YES
+    mkdir -p /usr/local/ioncube
+    _X86_64_TEST=`uname -m`
+    if [ "$_X86_64_TEST" = "x86_64" ] ; then
+      SYSTEMARCH="x86_64"
+      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r ioncube_loaders*
+      get_dev_arch "ioncube_loaders_lin_x86-64.tar.gz" &> /dev/null
     else
-      mkdir -p /usr/local/ioncube
-      _X86_64_TEST=`uname -m`
-      if [ "$_X86_64_TEST" = "x86_64" ] ; then
-        SYSTEMARCH="x86_64"
-        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
-        mrun "sleep 1"
-        cd /var/opt
-        rm -f -r ioncube_loaders*
-        get_dev_arch "ioncube_loaders_lin_x86-64.tar.gz" &> /dev/null
-      else
-        SYSTEMARCH="x86"
-        msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
-        mrun "sleep 1"
-        cd /var/opt
-        rm -f -r ioncube_loaders*
-        get_dev_arch "ioncube_loaders_lin_x86.tar.gz" &> /dev/null
-      fi
-      rm -f /usr/local/ioncube/*
-      cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
-      echo "ioncube-$_IONCUBE_VERSION" > /var/xdrago/log/ioncube-$_IONCUBE_VERSION.log
+      SYSTEMARCH="x86"
+      msg "INFO: Installing IonCube $SYSTEMARCH version for PHP-FPM..."
+      mrun "sleep 1"
+      cd /var/opt
+      rm -f -r ioncube_loaders*
+      get_dev_arch "ioncube_loaders_lin_x86.tar.gz" &> /dev/null
     fi
+    rm -f /usr/local/ioncube/*
+    cp -af /var/opt/ioncube/* /usr/local/ioncube/ &> /dev/null
+    echo "ioncube-$_IONCUBE_VERSION" > /var/xdrago/log/ioncube-$_IONCUBE_VERSION.log
   fi
 }
 #
 # Install PHP extensions.
 install_php_extensions () {
   ###--------------------###
-  if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+  if [ "$1" = "55" ] ; then
     _DO_NOTHING=YES
   else
     msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3482,7 +3482,7 @@ install_php_extensions () {
 update_php_extensions () {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-    if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
+    if [ "$1" = "55" ] ; then
       _DO_NOTHING=YES
     else
       msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3650,7 +3650,7 @@ install_php_legacy () {
   st_runner "make --quiet install" 2> /dev/null
   _LOC_PHP_VERSION="$_PHP_VERSION"
   _LOC_PHP_PATH=/opt/php$1/bin
-  install_php_extensions
+  install_php_extensions "$1"
   echo "libcurl4-openssl-dev" > /var/xdrago/log/libcurl4-openssl-dev-fix.log
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
@@ -3667,7 +3667,7 @@ install_php_legacy () {
 # Install modern PHP version
 install_php_multi () {
   if [ "$1" = "52" ] ; then
-    install_php_legacy
+    install_php_legacy "$1"
   else
     ###--------------------###
     msg "INFO: Installing PHP-FPM $_PHP_VERSION"
@@ -3702,7 +3702,7 @@ install_php_multi () {
     fi
     _LOC_PHP_VERSION="$_PHP_VERSION"
     _LOC_PHP_PATH=/opt/php$1/bin
-    install_php_extensions
+    install_php_extensions "$1"
     _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
     if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
       echo "$_MARIADB_VERSION-MariaDB" > /var/xdrago/log/installed-$_PHP_VERSION-$_MARIADB_VERSION-MariaDB.log
@@ -4128,10 +4128,10 @@ install_upgrade_nginx () {
     elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
       _DO_NOTHING=YES
     else
-      st_runner "service nginx stop" &> /dev/null
+      mrun "service nginx stop" &> /dev/null
       killall -9 nginx &> /dev/null
       mrun "sleep 1"
-      st_runner "service nginx start" &> /dev/null
+      mrun "service nginx start" &> /dev/null
     fi
     _NGINX_INSTALL_REQUIRED=NO
   fi
@@ -4573,7 +4573,7 @@ install_ssh_src () {
     st_runner "sh ./configure --without-openssl-header-check --prefix=/usr --with-pam" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    st_runner "service ssh restart" &> /dev/null
+    mrun "service ssh restart" &> /dev/null
     aptitude hold openssh-server &> /dev/null
     aptitude hold openssh-client &> /dev/null
     aptitude hold ssh &> /dev/null
@@ -4806,7 +4806,7 @@ finale () {
   msg "CARD: Now charging your credit card for this auto-$_L_ST magic..."
   mrun "sleep 5"
   msg "JOKE: Just kidding! Enjoy your Aegir Hosting System :)"
-  mrun "sleep 3"
+  mrun "sleep 1"
   echo " "
   if [ "$_UP_LNX" = "YES" ] ; then
     msg "ALRT: Your OS kernel has been upgraded!"
@@ -5627,7 +5627,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     echo " "
     upgrade_aegir_master
     mrun "sleep 8"
-    st_runner "service nginx reload" &> /dev/null
+    mrun "service nginx reload" &> /dev/null
     finale
     exit 0
   fi
@@ -6100,8 +6100,8 @@ else
     fi
     msg "INFO: Running $_DB_SERVER upgrade and then PHP-FPM forced rebuild, please wait..."
     mrun "sleep 50"
-    st_runner "service nginx stop" &> /dev/null
-    mrun "sleep 3"
+    mrun "service nginx stop" &> /dev/null
+    mrun "sleep 1"
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -6135,10 +6135,10 @@ else
     _PHP_FORCE_REINSTALL=YES
     mrun "sleep 8"
     msg "INFO: Restarting $_DB_SERVER server, please wait..."
-    st_runner "service mysql restart" &> /dev/null
-    st_runner "service nginx start" &> /dev/null
+    mrun "service mysql restart" &> /dev/null
+    mrun "service nginx start" &> /dev/null
     if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
-      st_runner "csf -e" &> /dev/null
+      mrun "csf -e" &> /dev/null
     fi
     msg "INFO: Restarting $_DB_SERVER server completed"
   fi
@@ -6148,7 +6148,7 @@ fi
 ###--------------------###
 run_aptitude_full_upgrade
 install_with_aptitude_deps
-st_runner "service php5-fpm stop" &> /dev/null
+mrun "service php5-fpm stop" &> /dev/null
 st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
 install_latest_git
 install_upgrade_nginx
@@ -6289,10 +6289,10 @@ if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
     cp -af /var/opt/vnstat-$_VNSTAT_VERSION/examples/init.d/debian/vnstat /etc/init.d/vnstat
     chmod 755 /etc/init.d/vnstat &> /dev/null
     st_runner "update-rc.d vnstat defaults" &> /dev/null
-    st_runner "service vnstat start" &> /dev/null
-    mrun "sleep 3"
+    mrun "service vnstat start" &> /dev/null
+    mrun "sleep 1"
     echo "vnstat-$_VNSTAT_VERSION $_NOW" > /var/xdrago/log/vnstat-$_VNSTAT_VERSION.log
-    st_runner "service vnstat restart" &> /dev/null
+    mrun "service vnstat restart" &> /dev/null
   fi
 fi
 if [ -e "/etc/init.d/vnstat" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
@@ -6427,10 +6427,10 @@ chmod 700 /var/xdrago &> /dev/null
 
 ###--------------------###
 if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
-  st_runner "service nginx stop" &> /dev/null
+  mrun "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
 elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
-  st_runner "service nginx stop" &> /dev/null
+  mrun "service nginx stop" &> /dev/null
   killall -9 nginx &> /dev/null
 fi
 
@@ -6576,7 +6576,7 @@ if [ ! -e "/var/xdrago/log/umask_fixed_shell_sftp.log" ] ; then
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /etc/ssh/sshd_config
   fi
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/sshd
-  st_runner "service ssh restart" &> /dev/null
+  mrun "service ssh restart" &> /dev/null
   touch /var/xdrago/log/umask_fixed_shell_sftp.log
 fi
 if [ ! -e "/var/xdrago/log/src_umask_fixed_shell_sftp.log" ] && [ -e "/usr/etc/sshd_config" ] ; then
@@ -6585,7 +6585,7 @@ if [ ! -e "/var/xdrago/log/src_umask_fixed_shell_sftp.log" ] && [ -e "/usr/etc/s
   else
     sed -e '/Subsystem\ssftp/s:server$:server -u 0002:' -i /usr/etc/sshd_config
   fi
-  st_runner "service ssh restart" &> /dev/null
+  mrun "service ssh restart" &> /dev/null
   touch /var/xdrago/log/src_umask_fixed_shell_sftp.log
 fi
 
@@ -6725,18 +6725,18 @@ if [ -e "$_NEWRELIC_APP_CFG" ] ; then
   fi
   sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
   if [ -e "/etc/init.d/php55-fpm" ] ; then
-    st_runner "service php55-fpm restart" &> /dev/null
+    mrun "service php55-fpm restart" &> /dev/null
   fi
   if [ -e "/etc/init.d/php54-fpm" ] ; then
-    st_runner "service php54-fpm restart" &> /dev/null
+    mrun "service php54-fpm restart" &> /dev/null
   fi
   if [ -e "/etc/init.d/php53-fpm" ] ; then
-    st_runner "service php53-fpm restart" &> /dev/null
+    mrun "service php53-fpm restart" &> /dev/null
   fi
   if [ -e "/etc/init.d/php52-fpm" ] ; then
-    st_runner "service php52-fpm restart" &> /dev/null
+    mrun "service php52-fpm restart" &> /dev/null
   fi
-  st_runner "service newrelic-daemon restart" &> /dev/null
+  mrun "service newrelic-daemon restart" &> /dev/null
 fi
 
 
@@ -6749,7 +6749,7 @@ if [ -e "$_NEWRELIC_SYS_CFG" ] ; then
   fi
   sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_SYS_CFG &> /dev/null
   sed -i "s/.*pidfile=.*/pidfile=\/var\/run\/nrsysmond.pid/g" $_NEWRELIC_SYS_CFG &> /dev/null
-  st_runner "service newrelic-sysmond restart" &> /dev/null
+  mrun "service newrelic-sysmond restart" &> /dev/null
 fi
 
 
@@ -6862,7 +6862,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
       chmod 755 /etc/init.d/jetty9
       st_runner "update-rc.d jetty9 defaults" &> /dev/null
-      st_runner "service jetty9 start" &> /dev/null
+      mrun "service jetty9 start" &> /dev/null
       msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY installation completed"
       mrun "sleep 1"
     else
@@ -6873,7 +6873,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
 fi
 if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty9" ] ; then
   msg "INFO: Jetty 9 restart in progress - required after java upgrade"
-  st_runner "service jetty9 restart" &> /dev/null
+  mrun "service jetty9 restart" &> /dev/null
   msg "INFO: Jetty 9 restart completed"
 fi
 if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
@@ -6888,7 +6888,7 @@ if [ ! -e "$_JETTY_CTRL" ] && [ -e "/opt/jetty9/VERSION.txt" ] ; then
   mrun "sleep 1"
   cd /var/opt
   rm -f -r jetty-distribution-*
-  st_runner "service jetty9 stop" &> /dev/null
+  mrun "service jetty9 stop" &> /dev/null
   mv -f /opt/jetty9 /var/backups/jetty9-$_INSTALLER_VERSION-$_NOW
   if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
     get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
@@ -6907,7 +6907,7 @@ if [ ! -e "$_JETTY_CTRL" ] && [ -e "/opt/jetty9/VERSION.txt" ] ; then
   wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
   cd /var/opt
   chown -R jetty9:jetty9 /opt/jetty9
-  st_runner "service jetty9 start" &> /dev/null
+  mrun "service jetty9 start" &> /dev/null
   msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY upgrade completed"
 fi
 
@@ -6978,7 +6978,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
       chmod 755 /etc/init.d/jetty8
       st_runner "update-rc.d jetty8 defaults" &> /dev/null
-      st_runner "service jetty8 start" &> /dev/null
+      mrun "service jetty8 start" &> /dev/null
       msg "INFO: MultiCore Apache Solr 3 with Jetty 8 installation completed"
       mrun "sleep 1"
     else
@@ -6989,7 +6989,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
 fi
 if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty8" ] ; then
   msg "INFO: Jetty 8 restart in progress - required after java upgrade"
-  st_runner "service jetty8 restart" &> /dev/null
+  mrun "service jetty8 restart" &> /dev/null
   msg "INFO: Jetty 8 restart completed"
 fi
 if [ ! -e "/opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt" ] && [ -e "/opt/jetty8/VERSION.txt" ] ; then
@@ -6998,7 +6998,7 @@ if [ ! -e "/opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt" ] && [ -e "/opt/jett
   cd /var/opt
   rm -f -r jetty-distribution-*
   get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
-  st_runner "service jetty8 stop" &> /dev/null
+  mrun "service jetty8 stop" &> /dev/null
   mv -f /opt/jetty8 /var/backups/jetty8-$_INSTALLER_VERSION-$_NOW
   mv -f /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty8
   echo $_JETTY_8_VERSION > /opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt
@@ -7010,7 +7010,7 @@ if [ ! -e "/opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt" ] && [ -e "/opt/jett
   wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
   cd /var/opt
   chown -R jetty8:jetty8 /opt/jetty8
-  st_runner "service jetty8 start" &> /dev/null
+  mrun "service jetty8 start" &> /dev/null
   msg "INFO: MultiCore Apache Solr 3 with Jetty 8 upgrade completed"
 fi
 
@@ -7082,7 +7082,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
       ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
       chmod 755 /etc/init.d/jetty7
       st_runner "update-rc.d jetty7 defaults" &> /dev/null
-      st_runner "service jetty7 start" &> /dev/null
+      mrun "service jetty7 start" &> /dev/null
       msg "INFO: MultiCore Apache Solr 1 with Jetty 7 installation completed"
       mrun "sleep 1"
     else
@@ -7093,13 +7093,13 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
 fi
 if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty7" ] ; then
   msg "INFO: Jetty 7 restart in progress - required after java upgrade"
-  st_runner "service jetty7 restart" &> /dev/null
+  mrun "service jetty7 restart" &> /dev/null
   msg "INFO: Jetty 7 restart completed"
 fi
 if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] ; then
   msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 in progress..."
   mrun "sleep 1"
-  st_runner "service tomcat stop" &> /dev/null
+  mrun "service tomcat stop" &> /dev/null
   st_runner "update-rc.d tomcat remove" &> /dev/null
   mv -f /etc/init.d/tomcat /etc/init.d/offtomcat &> /dev/null
   mv -f /opt/solr1/solr.xml /opt/solr1/vanilla-solr.xml
@@ -7111,7 +7111,7 @@ if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/
   sed -i "s/8077/8080/g" /opt/solr1/site_00{1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
   sed -i "s/8077/8080/g" /opt/solr1/conf/solrcore.properties &> /dev/null
   msg "INFO: Jetty 7 restart in progress - required after migration from Tomcat"
-  st_runner "service jetty7 restart" &> /dev/null
+  mrun "service jetty7 restart" &> /dev/null
   sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf &> /dev/null
   sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
   msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 completed"
@@ -7122,7 +7122,7 @@ if [ ! -e "/opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt" ] && [ -e "/opt/jett
   cd /var/opt
   rm -f -r jetty-distribution-*
   get_dev_arch "jetty-distribution-$_JETTY_7_VERSION.tar.gz" &> /dev/null
-  st_runner "service jetty7 stop" &> /dev/null
+  mrun "service jetty7 stop" &> /dev/null
   mv -f /opt/jetty7 /var/backups/jetty7-$_INSTALLER_VERSION-$_NOW
   mv -f /var/opt/jetty-distribution-$_JETTY_7_VERSION /opt/jetty7
   echo $_JETTY_7_VERSION > /opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt
@@ -7134,7 +7134,7 @@ if [ ! -e "/opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt" ] && [ -e "/opt/jett
   wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
   cd /var/opt
   chown -R jetty7:jetty7 /opt/jetty7
-  st_runner "service jetty7 start" &> /dev/null
+  mrun "service jetty7 start" &> /dev/null
   msg "INFO: MultiCore Apache Solr 1 with Jetty 7 upgrade completed"
 fi
 
@@ -7170,7 +7170,7 @@ if [ -e "/root/.my.pass.txt" ] ; then
     update_php_conf
     tune_memory_limits
     msg "INFO: Restarting $_DB_SERVER server"
-    st_runner "service mysql restart" &> /dev/null
+    mrun "service mysql restart" &> /dev/null
     msg "INFO: OS and services installation completed"
   else
     msg "INFO: Updating $_DB_SERVER and PHP configuration"
@@ -7323,7 +7323,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx.conf /etc/nginx/nginx.conf
   fi
-  st_runner "service nginx reload" &> /dev/null
+  mrun "service nginx reload" &> /dev/null
   mrun "sleep 1"
   msg "INFO: Aegir Master Instance installation completed"
   mrun "sleep 1"
@@ -7349,7 +7349,7 @@ else
   else
     msg "INFO: Restarting $_DB_SERVER server, please wait..."
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
-    st_runner "service mysql restart" &> /dev/null
+    mrun "service mysql restart" &> /dev/null
     mrun "sleep 8"
     msg "INFO: Upgrading $_DB_SERVER tables if necessary, please wait a minute..."
     mrun "sleep 60"
@@ -7383,7 +7383,7 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
   rm -f /etc/nginx/sites-enabled/default
   sed -i "s/gzip_types.*/gzip_types        text\/plain text\/css application\/javascript application\/x-javascript text\/xml application\/xml application\/xml+rss text\/javascript application\/x-font-ttf font\/opentype application\/vnd.ms-fontobject image\/svg+xml;/g"  /var/aegir/config/server_master/nginx.conf &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
-    st_runner "service nginx reload" &> /dev/null
+    mrun "service nginx reload" &> /dev/null
   fi
 fi
 
@@ -7435,7 +7435,7 @@ EOF
     update_redis_password
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
-    st_runner "service nginx start" &> /dev/null
+    mrun "service nginx start" &> /dev/null
   fi
 fi
 
@@ -7658,7 +7658,7 @@ if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
       cp -af /etc/bind/named.conf.options /var/backups/named.conf.options.pre-$_INSTALLER_VERSION-$_NOW
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/named.conf.options /etc/bind/named.conf.options
       sed -i "s/127.0.1.1/$_THISHTIP/g" /etc/bind/named.conf.options &> /dev/null
-      st_runner "service bind9 restart" &> /dev/null
+      mrun "service bind9 restart" &> /dev/null
       if [ ! -e "/etc/init.d/bind" ] ; then
         ln -sf /etc/init.d/bind9 /etc/init.d/bind
       fi
@@ -7759,47 +7759,47 @@ if [ "$_STATUS" = "INIT" ] ; then
   if [ -e "/usr/etc/sshd_config" ] ; then
     echo "UseDNS no" >> /usr/etc/sshd_config
   fi
-  st_runner "service ssh reload" &> /dev/null
+  mrun "service ssh reload" &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
     msg "INFO: Restarting Jetty 9"
     mrun "sleep 1"
-    st_runner "service jetty9 restart" &> /dev/null
+    mrun "service jetty9 restart" &> /dev/null
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
     msg "INFO: Restarting Jetty 8"
     mrun "sleep 1"
-    st_runner "service jetty8 restart" &> /dev/null
+    mrun "service jetty8 restart" &> /dev/null
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
     msg "INFO: Restarting Jetty 7"
     mrun "sleep 1"
-    st_runner "service jetty7 restart" &> /dev/null
+    mrun "service jetty7 restart" &> /dev/null
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Starting Redis, PHP-FPM and Nginx"
-    st_runner "service redis-server start" &> /dev/null
+    mrun "service redis-server start" &> /dev/null
     killall -9 nginx php-cgi php-fpm &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
     mrun "sleep 1"
     st_runner "update-rc.d cron defaults" &> /dev/null
     if [ -e "/etc/init.d/php55-fpm" ] ; then
       st_runner "update-rc.d php55-fpm defaults" &> /dev/null
-      st_runner "service php55-fpm start" &> /dev/null
+      mrun "service php55-fpm start" &> /dev/null
     fi
     if [ -e "/etc/init.d/php54-fpm" ] ; then
       st_runner "update-rc.d php54-fpm defaults" &> /dev/null
-      st_runner "service php54-fpm start" &> /dev/null
+      mrun "service php54-fpm start" &> /dev/null
     fi
     if [ -e "/etc/init.d/php53-fpm" ] ; then
       st_runner "update-rc.d php53-fpm defaults" &> /dev/null
-      st_runner "service php53-fpm start" &> /dev/null
+      mrun "service php53-fpm start" &> /dev/null
     fi
     if [ -e "/etc/init.d/php52-fpm" ] ; then
       st_runner "update-rc.d php52-fpm defaults" &> /dev/null
-      st_runner "service php52-fpm start" &> /dev/null
+      mrun "service php52-fpm start" &> /dev/null
     fi
     st_runner "update-rc.d nginx defaults" &> /dev/null
-    st_runner "service nginx start" &> /dev/null
+    mrun "service nginx start" &> /dev/null
   fi
 else
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -7829,7 +7829,7 @@ else
       echo "ClientAliveCountMax 3" >> /usr/etc/sshd_config
       sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
     fi
-    st_runner "service ssh reload" &> /dev/null
+    mrun "service ssh reload" &> /dev/null
   else
     sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
     echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -7839,63 +7839,63 @@ else
       echo "UseDNS no" >> /usr/etc/sshd_config
       sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
     fi
-    st_runner "service ssh reload" &> /dev/null
+    mrun "service ssh reload" &> /dev/null
   fi
   fix_on_upgrade
   tune_memory_limits
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
     msg "INFO: Restarting Jetty 9"
     mrun "sleep 1"
-    st_runner "service jetty9 restart" &> /dev/null
+    mrun "service jetty9 restart" &> /dev/null
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
     msg "INFO: Restarting Jetty 8"
     mrun "sleep 1"
-    st_runner "service jetty8 restart" &> /dev/null
+    mrun "service jetty8 restart" &> /dev/null
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
     msg "INFO: Restarting Jetty 7"
     mrun "sleep 1"
-    st_runner "service jetty7 restart" &> /dev/null
+    mrun "service jetty7 restart" &> /dev/null
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting Redis, PHP-FPM and Nginx"
     mrun "sleep 1"
-    st_runner "service redis-server restart" &> /dev/null
+    mrun "service redis-server restart" &> /dev/null
     st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-    st_runner "service nginx stop" &> /dev/null
+    mrun "service nginx stop" &> /dev/null
     if [ -e "/etc/init.d/php55-fpm" ] ; then
       st_runner "update-rc.d php55-fpm defaults" &> /dev/null
-      st_runner "service php55-fpm stop" &> /dev/null
+      mrun "service php55-fpm stop" &> /dev/null
     fi
     if [ -e "/etc/init.d/php54-fpm" ] ; then
       st_runner "update-rc.d php54-fpm defaults" &> /dev/null
-      st_runner "service php54-fpm stop" &> /dev/null
+      mrun "service php54-fpm stop" &> /dev/null
     fi
     if [ -e "/etc/init.d/php53-fpm" ] ; then
       st_runner "update-rc.d php53-fpm defaults" &> /dev/null
-      st_runner "service php53-fpm stop" &> /dev/null
+      mrun "service php53-fpm stop" &> /dev/null
     fi
     if [ -e "/etc/init.d/php52-fpm" ] ; then
       st_runner "update-rc.d php52-fpm defaults" &> /dev/null
-      st_runner "service php52-fpm stop" &> /dev/null
+      mrun "service php52-fpm stop" &> /dev/null
     fi
     killall -9 php-fpm &> /dev/null
     msg "INFO: Restarting $_DB_SERVER server"
-    st_runner "service mysql restart" &> /dev/null
+    mrun "service mysql restart" &> /dev/null
     if [ -e "/etc/init.d/php55-fpm" ] ; then
-      st_runner "service php55-fpm start" &> /dev/null
+      mrun "service php55-fpm start" &> /dev/null
     fi
     if [ -e "/etc/init.d/php54-fpm" ] ; then
-      st_runner "service php54-fpm start" &> /dev/null
+      mrun "service php54-fpm start" &> /dev/null
     fi
     if [ -e "/etc/init.d/php53-fpm" ] ; then
-      st_runner "service php53-fpm start" &> /dev/null
+      mrun "service php53-fpm start" &> /dev/null
     fi
     if [ -e "/etc/init.d/php52-fpm" ] ; then
-      st_runner "service php52-fpm start" &> /dev/null
+      mrun "service php52-fpm start" &> /dev/null
     fi
-    st_runner "service nginx start" &> /dev/null
+    mrun "service nginx start" &> /dev/null
   fi
 fi
 
@@ -7987,7 +7987,7 @@ if [ ! -e "/root/.my.cnf" ] ; then
     sed -i "s/.*skip-name-resolve/#skip-name-resolve/g" /etc/mysql/my.cnf &> /dev/null
   fi
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
-  st_runner "service mysql restart" &> /dev/null
+  mrun "service mysql restart" &> /dev/null
   mrun "sleep 1"
   msg "INFO: $_DB_SERVER setup completed"
   msg "INFO: You can now log in as root by typing only 'mysql' on the command line"
@@ -8111,7 +8111,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   force_advanced_nginx_config
   mrun "sleep 8"
-  st_runner "service nginx restart" &> /dev/null
+  mrun "service nginx restart" &> /dev/null
 else
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
     sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
@@ -8181,7 +8181,7 @@ else
   if [ ! -z "$_CRON_IP" ] && [ "$_IP_PRESENT" = "YES" ] && [ -e "/root/.local.IP.list" ] ; then
     fix_multi_ip_cron_access
   fi
-  st_runner "service nginx reload" &> /dev/null
+  mrun "service nginx reload" &> /dev/null
 fi
 
 
@@ -8267,7 +8267,7 @@ csf_install () {
     sed -i "s/^Port.*/Port $_SSH_PORT/g" /usr/etc/sshd_config &> /dev/null
   fi
   sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
-  st_runner "service ssh restart" &> /dev/null
+  mrun "service ssh restart" &> /dev/null
   if [ "$_CSF_MODE" = "install" ] ; then
     msg "INFO: csf/lfd firewall installation completed"
   else
@@ -8312,9 +8312,9 @@ if [ -e "/usr/sbin/csf" ] ; then
   if [ -e "/var/xdrago/log/lastFire" ] ; then
     sed -i "s/30 \* \* \* \* bash/#30 * * * * bash/g" /var/spool/cron/crontabs/root &> /dev/null
     rm -f /var/xdrago/log/lastFire
-    st_runner "csf -x" &> /dev/null
-    st_runner "csf -e" &> /dev/null
-    st_runner "csf -q" &> /dev/null
+    mrun "csf -x" &> /dev/null
+    mrun "csf -e" &> /dev/null
+    mrun "csf -q" &> /dev/null
   fi
   if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
     sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
@@ -8382,16 +8382,16 @@ install_pdnsd_cache () {
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ] ; then
     sed -i "s/^dns=.*/dns=pdnsd/g" /etc/NetworkManager/NetworkManager.conf &> /dev/null
-    st_runner "service network-manager restart" &> /dev/null
+    mrun "service network-manager restart" &> /dev/null
   fi
-  st_runner "service pdnsd stop" &> /dev/null
+  mrun "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
-  st_runner "service pdnsd start" &> /dev/null
+  mrun "service pdnsd start" &> /dev/null
   mrun "sleep 1"
-  st_runner "service pdnsd stop" &> /dev/null
+  mrun "service pdnsd stop" &> /dev/null
   mrun "sleep 1"
   rm -f /var/cache/pdnsd/pdnsd.cache
-  st_runner "service pdnsd start" &> /dev/null
+  mrun "service pdnsd start" &> /dev/null
 }
 _INSTALL_PDNSD=NO
 _HOSTN_TEST=`hostname -f 2>&1`
