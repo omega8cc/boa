@@ -1678,15 +1678,9 @@ fix_php_ini_newrelic_all () {
       _NEWRELIC_KEY=`grep license_key /etc/newrelic/newrelic.cfg`
       _NEWRELIC_KEY=`echo -n $_NEWRELIC_KEY | tr -d "\n"`
     fi
-
-    _THIS_FILE=/opt/php55/etc/php55.ini
+    _THIS_FILE=/opt/php52/etc/php52.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/opt/php55/lib/php.ini
-    fix_php_ini_newrelic
-
-    _THIS_FILE=/opt/php54/etc/php54.ini
-    fix_php_ini_newrelic
-    _THIS_FILE=/opt/php54/lib/php.ini
+    _THIS_FILE=/opt/php52/lib/php.ini
     fix_php_ini_newrelic
 
     _THIS_FILE=/opt/php53/etc/php53.ini
@@ -1694,9 +1688,14 @@ fix_php_ini_newrelic_all () {
     _THIS_FILE=/opt/php53/lib/php.ini
     fix_php_ini_newrelic
 
-    _THIS_FILE=/opt/php52/etc/php52.ini
+    _THIS_FILE=/opt/php54/etc/php54.ini
     fix_php_ini_newrelic
-    _THIS_FILE=/opt/php52/lib/php.ini
+    _THIS_FILE=/opt/php54/lib/php.ini
+    fix_php_ini_newrelic
+
+    _THIS_FILE=/opt/php55/etc/php55.ini
+    fix_php_ini_newrelic
+    _THIS_FILE=/opt/php55/lib/php.ini
     fix_php_ini_newrelic
   fi
 }
@@ -1704,13 +1703,20 @@ fix_php_ini_newrelic_all () {
 # Fix FMP php.ini file to add opcache.so
 fix_php_ini_opcache () {
   if [ -e "$_THIS_FILE" ] ; then
+    if [ "$1" = "55" ] ; then
+      if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
+        _OPCACHE_SRC=YES
+      else
+        _OPCACHE_SRC=NO
+      fi
+    fi
     _OPCACHE_INI_TEST=$(grep "opcache.so" $_THIS_FILE)
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
       _DO_NOTHING=YES
     else
       echo ";"                                   >> $_THIS_FILE
       echo "; Zend OPcache"                      >> $_THIS_FILE
-      if [ "$_PHP_V" = "5.5" ] ; then
+      if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
         echo "extension=opcache.so"              >> $_THIS_FILE
       else
         echo "zend_extension=\"$_OPCACHE_SO\""   >> $_THIS_FILE
@@ -1732,24 +1738,21 @@ fix_php_ini_opcache () {
 # Fix all FMP php.ini files to add Zend OPcache
 fix_php_ini_opcache_all () {
 
-  _PHP_V=5.5
-  _THIS_FILE=/opt/php55/etc/php55.ini
-  fix_php_ini_opcache
-
-  _PHP_V=5.4
-  _THIS_FILE=/opt/php54/etc/php54.ini
-  _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
-  fix_php_ini_opcache
-
-  _PHP_V=5.3
-  _THIS_FILE=/opt/php53/etc/php53.ini
-  _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
-  fix_php_ini_opcache
-
-  _PHP_V=5.2
   _THIS_FILE=/opt/php52/etc/php52.ini
   _OPCACHE_SO="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API/opcache.so"
-  fix_php_ini_opcache
+  fix_php_ini_opcache "52"
+
+  _THIS_FILE=/opt/php53/etc/php53.ini
+  _OPCACHE_SO="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API/opcache.so"
+  fix_php_ini_opcache "53"
+
+  _THIS_FILE=/opt/php54/etc/php54.ini
+  _OPCACHE_SO="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API/opcache.so"
+  fix_php_ini_opcache "54"
+
+  _THIS_FILE=/opt/php55/etc/php55.ini
+  _OPCACHE_SO="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API/opcache.so"
+  fix_php_ini_opcache "55"
 
 }
 #
@@ -1806,23 +1809,27 @@ update_php_conf () {
   fi
   if [ ! -e "/opt/etc/fpm" ] || [ ! -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     mkdir -p /opt/etc/fpm
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
   fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
+
   if [ ! -e "/opt/php55/etc/php55.ini" ] || [ ! -e "/opt/php55/etc/pool.d/www55.conf" ]  ; then
     mkdir -p /opt/php55/etc/pool.d
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
   fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
+
   if [ ! -e "/opt/php54/etc/php54.ini" ] || [ ! -e "/opt/php54/etc/pool.d/www54.conf" ] ; then
     mkdir -p /opt/php54/etc/pool.d
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm54-pool-www.conf /opt/php54/etc/pool.d/www54.conf
   fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm54-pool-www.conf /opt/php54/etc/pool.d/www54.conf
+
   if [ ! -e "/opt/php53/etc/php53.ini" ] || [ ! -e "/opt/php53/etc/pool.d/www53.conf" ] ; then
     mkdir -p /opt/php53/etc/pool.d
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm53-pool-www.conf /opt/php53/etc/pool.d/www53.conf
   fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm53-pool-www.conf /opt/php53/etc/pool.d/www53.conf
+
   if [ ! -e "/opt/php52/etc/php52.ini" ] ; then
     mkdir -p /opt/php52/etc
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini
@@ -3353,6 +3360,13 @@ install_ioncube () {
 install_php_extensions () {
   ###--------------------###
   if [ "$1" = "55" ] ; then
+    if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
+      _OPCACHE_SRC=YES
+    else
+      _OPCACHE_SRC=NO
+    fi
+  fi
+  if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
     _DO_NOTHING=YES
   else
     msg "INFO: Installing Zend OPcache for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3483,6 +3497,13 @@ update_php_extensions () {
   ###--------------------###
   if [ ! -e "/var/xdrago/log/zendopcache-$_ZEND_OPCACHE_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     if [ "$1" = "55" ] ; then
+      if [[ "$_ZEND_OPCACHE_VERSION" =~ "master" ]] ; then
+        _OPCACHE_SRC=YES
+      else
+        _OPCACHE_SRC=NO
+      fi
+    fi
+    if [ "$1" = "55" ] && [ "$_OPCACHE_SRC" = "NO" ] ; then
       _DO_NOTHING=YES
     else
       msg "INFO: Installing Zend OPcache upgrade for PHP-FPM $_LOC_PHP_VERSION..."
@@ -3687,6 +3708,9 @@ install_php_multi () {
     ### cd /var/opt/php-$_PHP_VERSION
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
     mrun "sleep 1"
+    if [ "$1" = "55" ] ; then
+      _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
+    fi
     st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
     mrun "sleep 1"
@@ -6453,11 +6477,10 @@ fi
 if [ ! -z "$_PHP_EXTRA" ] ; then
   msg "INFO: PHP EXTRA is $_PHP_EXTRA"
 fi
-if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
-  _PHP_VERSION="$_PHP55_VERSION"
-  _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
+if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
+  _PHP_VERSION="$_PHP52_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
-  install_php_multi "55"
+  install_php_multi "52"
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
@@ -6469,25 +6492,18 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.3" ]] && [ ! -x "/opt/php53/bin/php" ] ; then
   msg "INFO: PHP $_PHP_VERSION will be installed now"
   install_php_multi "53"
 fi
-if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
-  _PHP_VERSION="$_PHP52_VERSION"
+if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
+  _PHP_VERSION="$_PHP55_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
-  install_php_multi "52"
+  install_php_multi "55"
 fi
 
-if [ -x "/opt/php55/bin/php" ] ; then
-  _PHP_VERSION="$_PHP55_VERSION"
+if [ -x "/opt/php52/bin/php" ] ; then
+  _PHP_VERSION="$_PHP52_VERSION"
   _PHP_BIN_BROKEN=NO
-  check_php_broken "55"
-  check_php_rebuild "55"
-  update_php_multi "55"
-fi
-if [ -x "/opt/php54/bin/php" ] ; then
-  _PHP_VERSION="$_PHP54_VERSION"
-  _PHP_BIN_BROKEN=NO
-  check_php_broken "54"
-  check_php_rebuild "54"
-  update_php_multi "54"
+  check_php_broken "52"
+  check_php_rebuild "52"
+  update_php_multi "52"
 fi
 if [ -x "/opt/php53/bin/php" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
@@ -6496,12 +6512,19 @@ if [ -x "/opt/php53/bin/php" ] ; then
   check_php_rebuild "53"
   update_php_multi "53"
 fi
-if [ -x "/opt/php52/bin/php" ] ; then
-  _PHP_VERSION="$_PHP52_VERSION"
+if [ -x "/opt/php54/bin/php" ] ; then
+  _PHP_VERSION="$_PHP54_VERSION"
   _PHP_BIN_BROKEN=NO
-  check_php_broken "52"
-  check_php_rebuild "52"
-  update_php_multi "52"
+  check_php_broken "54"
+  check_php_rebuild "54"
+  update_php_multi "54"
+fi
+if [ -x "/opt/php55/bin/php" ] ; then
+  _PHP_VERSION="$_PHP55_VERSION"
+  _PHP_BIN_BROKEN=NO
+  check_php_broken "55"
+  check_php_rebuild "55"
+  update_php_multi "55"
 fi
 
 rm -f /usr/bin/php-cli
