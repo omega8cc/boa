@@ -1708,22 +1708,22 @@ fix_php_ini_opcache () {
     if [[ "$_OPCACHE_INI_TEST" =~ "opcache.so" ]] ; then
       _DO_NOTHING=YES
     else
-      echo "; Zend OPcache"                     >> $_THIS_FILE
+      echo "; Zend OPcache"                      >> $_THIS_FILE
       if [ "$_PHP_FPM_VERSION" = "5.5" ] ; then
-        echo "extension=opcache.so"             >> $_THIS_FILE
+        echo "extension=opcache.so"              >> $_THIS_FILE
       else
-        echo "zend_extension=\"$_OPCACHE_SO\""  >> $_THIS_FILE
+        echo "zend_extension=\"$_OPCACHE_SO\""   >> $_THIS_FILE
       fi
-      echo "opcache.memory_consumption=181"     >> $_THIS_FILE
-      echo "opcache.interned_strings_buffer=8"  >> $_THIS_FILE
-      echo "opcache.max_accelerated_files=8000" >> $_THIS_FILE
-      echo "opcache.revalidate_freq=60"         >> $_THIS_FILE
-      echo "opcache.enable_file_override=1"     >> $_THIS_FILE
-      echo "opcache.inherited_hack=1"           >> $_THIS_FILE
-      echo "opcache.dups_fix=1"                 >> $_THIS_FILE
-      echo "opcache.log_verbosity_level=3"      >> $_THIS_FILE
-      echo "opcache.fast_shutdown=1"            >> $_THIS_FILE
-      echo ""                                   >> $_THIS_FILE
+      echo "opcache.memory_consumption=181"      >> $_THIS_FILE
+      echo "opcache.interned_strings_buffer=8"   >> $_THIS_FILE
+      echo "opcache.max_accelerated_files=64000" >> $_THIS_FILE
+      echo "opcache.revalidate_freq=60"          >> $_THIS_FILE
+      echo "opcache.enable_file_override=1"      >> $_THIS_FILE
+      echo "opcache.inherited_hack=1"            >> $_THIS_FILE
+      echo "opcache.dups_fix=1"                  >> $_THIS_FILE
+      echo "opcache.log_verbosity_level=3"       >> $_THIS_FILE
+      echo "opcache.fast_shutdown=1"             >> $_THIS_FILE
+      echo ""                                    >> $_THIS_FILE
     fi
   fi
 }
@@ -2558,10 +2558,10 @@ tune_memory_limits () {
         else
           _L_NGINX_WORKERS=$_NGINX_WORKERS
         fi
-        sed -i "s/8000/64000/g"  /opt/php53/etc/php55.ini &> /dev/null
-        sed -i "s/8000/64000/g"  /opt/php53/etc/php54.ini &> /dev/null
-        sed -i "s/8000/64000/g"  /opt/php53/etc/php53.ini &> /dev/null
-        sed -i "s/8000/64000/g"  /opt/php52/etc/php52.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php53/etc/php55.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php53/etc/php54.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
+        sed -i "s/64000/128000/g"  /opt/php52/etc/php52.ini &> /dev/null
       else
         _USE_PHP=512
         _USE_OPC=512

@@ -818,12 +818,12 @@ tune_fpm_config () {
         cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
         sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         if [ ! -z "$_PHP_FPM_DENY" ] ; then
-          sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         else
           if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
             _DO_NOTHING=YES
           else
-            sed -i "s/.*exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+            sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system,//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
           fi
         fi
       fi
