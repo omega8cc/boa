@@ -3359,7 +3359,7 @@ install_php_extensions () {
     mrun "sleep 1"
     cd /var/opt
     rm -f -r zendopcache*
-    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tgz" &> /dev/null
+    get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz" &> /dev/null
     cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
@@ -3489,7 +3489,7 @@ update_php_extensions () {
       mrun "sleep 1"
       cd /var/opt
       rm -f -r zendopcache*
-      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tgz" &> /dev/null
+      get_dev_src "zendopcache-$_ZEND_OPCACHE_VERSION.tar.gz" &> /dev/null
       cd /var/opt/zendopcache-$_ZEND_OPCACHE_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
