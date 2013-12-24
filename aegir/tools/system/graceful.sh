@@ -5,14 +5,6 @@ PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin
 
 action()
 {
-  find /data/disk/*/distro/*/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/distro/*/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/static/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/static/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/static/*/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/static/*/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/static/*/*/*/sites/*/files/tmp/* -mtime +1 -type f -exec rm -rf {} \;
-  find /data/disk/*/static/*/*/*/sites/*/private/temp/* -mtime +1 -type f -exec rm -rf {} \;
   mkdir -p /usr/share/GeoIP
   chmod 755 /usr/share/GeoIP
   cd /tmp
@@ -30,8 +22,6 @@ action()
   rm -f /opt/tmp/sess*
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     rm -f /tmp/*
-  else
-    rm -f /tmp/{add*,entity*,box*,comm*,*png,*jpg,*gif,five*,magic*,mail*,rules*,social*,views*,test*,xls*,poll*,voting*,Order*,boost*,jquery*,wsc*,*error*,sess*,file*,upt*,wsdl*,php*,privatemsg*,media*,mobile*,download*,domain*,drupal*,ns*,superfish*,context*,.htaccess}
   fi
   rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root,tmp*}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
@@ -51,6 +41,9 @@ action()
     /etc/init.d/jetty7 start
   fi
   touch /var/run/fmp_wait.pid
+  rm -f /var/log/php/*
+  echo rotate > /var/log/redis/redis-server.log
+  echo rotate > /var/log/mysql/sql-slow-query.log
   if [ -e "/etc/init.d/php55-fpm" ] ; then
     /etc/init.d/php55-fpm reload
   fi
