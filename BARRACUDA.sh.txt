@@ -2634,8 +2634,8 @@ tune_memory_limits () {
   fi
   if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
     mkdir -p /var/xdrago/conf
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
   fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi

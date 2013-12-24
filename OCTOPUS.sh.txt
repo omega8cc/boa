@@ -802,6 +802,15 @@ tune_fpm_config () {
   if [ -z "$_PHP_SV" ] ; then
     _PHP_SV=53
   fi
+  if [ -e "/opt/php55/etc/pool.d/${_USER}.conf" ] ; then
+    _PHP_OLD_SV=55
+  elif [ -e "/opt/php54/etc/pool.d/${_USER}.conf" ] ; then
+    _PHP_OLD_SV=54
+  elif [ -e "/opt/php53/etc/pool.d/${_USER}.conf" ] ; then
+    _PHP_OLD_SV=53
+  else
+    _PHP_OLD_SV=""
+  fi
   if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
     _PHP_FPM_TIMEOUT=180
   fi
@@ -811,8 +820,8 @@ tune_fpm_config () {
     if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
       if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
         mkdir -p /var/xdrago/conf
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
       fi
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
       if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
         rm -f /opt/php*/etc/pool.d/${_USER}.conf
         cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
@@ -830,17 +839,11 @@ tune_fpm_config () {
     fi
     sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-    if [ -e "/etc/init.d/php55-fpm" ] ; then
-      mrun "service php55-fpm reload" &> /dev/null
+    if [ ! -z "$_PHP_OLD_SV" ] && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
+      mrun "service php${_PHP_OLD_SV}-fpm reload" &> /dev/null
     fi
-    if [ -e "/etc/init.d/php54-fpm" ] ; then
-      mrun "service php54-fpm reload" &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php53-fpm" ] ; then
-      mrun "service php53-fpm reload" &> /dev/null
-    fi
-    if [ -e "/etc/init.d/php52-fpm" ] ; then
-      mrun "service php52-fpm reload" &> /dev/null
+    if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+      mrun "service php${_PHP_SV}-fpm reload" &> /dev/null
     fi
   fi
 }

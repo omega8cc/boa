@@ -265,6 +265,7 @@ switch_php()
         fi
         if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
           sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "$_PHP_SV" ] ; then
             _PHP_SV=53
@@ -299,17 +300,11 @@ switch_php()
           _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
           _PHP_TO="${_PHP_FPM_TIMEOUT}s"
           sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
-          if [ -e "/etc/init.d/php55-fpm" ] ; then
-            service php55-fpm reload &> /dev/null
+          if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
+            service php${_PHP_OLD_SV}-fpm reload &> /dev/null
           fi
-          if [ -e "/etc/init.d/php54-fpm" ] ; then
-            service php54-fpm reload &> /dev/null
-          fi
-          if [ -e "/etc/init.d/php53-fpm" ] ; then
-            service php53-fpm reload &> /dev/null
-          fi
-          if [ -e "/etc/init.d/php52-fpm" ] ; then
-            service php52-fpm reload &> /dev/null
+          if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+            service php${_PHP_SV}-fpm reload &> /dev/null
           fi
         fi
       fi
