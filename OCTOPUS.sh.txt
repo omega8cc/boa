@@ -589,6 +589,19 @@ _PHP_FPM_TIMEOUT=AUTO
 ###
 ### _PHP_FPM_DENY="system,exec,shell_exec"
 ###
+### Note: If this option is left empty, BOA
+### will *not* deny access to functions you
+### should normally consider to deny on the
+### Octopus Satellite Instance level:
+###
+###   exec
+###   passthru
+###   pcntl_exec
+###   popen
+###   proc_open
+###   shell_exec
+###   system
+###
 ### Note that while it will improve security
 ### it will also break modules which rely
 ### on any of disabled functions.
@@ -815,7 +828,7 @@ tune_fpm_config () {
     _PHP_FPM_TIMEOUT=180
   fi
   _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-  if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] && [ ! -z "$_CHILD_MAX_FPM" ] ; then
+  if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] ; then
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
       if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
@@ -838,7 +851,14 @@ tune_fpm_config () {
       fi
     fi
     sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-    sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+    if [ ! -z "$_CHILD_MAX_FPM" ] ; then
+      sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+    fi
+    if [ ! -d "/data/disk/$_USER/tmp" ] ; then
+      rm -f -r /data/disk/$_USER/tmp
+      mkdir -p /data/disk/$_USER/tmp
+      chown $_USER:www-data /data/disk/$_USER/tmp &> /dev/null
+    fi
     if [ ! -z "$_PHP_OLD_SV" ] && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
       mrun "service php${_PHP_OLD_SV}-fpm reload" &> /dev/null
     fi
@@ -1415,8 +1435,6 @@ if [ -z "$_LOCAL_THISHTIP" ] ; then
 fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
 chmod 700 /var/xdrago/run-$_USER &> /dev/null
-tune_fpm_config
-force_advanced_nginx_config
 chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
 bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
 if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
@@ -1425,8 +1443,6 @@ if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
   touch /opt/tmp/status-Octopus-FAIL
   exit 1
 fi
-force_advanced_nginx_config
-mrun "service nginx reload" &> /dev/null
 if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
   echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
 fi
@@ -1454,6 +1470,11 @@ if [ -d "/data/all/000" ] ; then
     echo "$_SMALLCORE6" > /data/all/000/core-v-$_SMALLCORE6.txt
     echo "$_SMALLCORE7" > /data/all/000/core-v-$_SMALLCORE7.txt
   fi
+fi
+if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
+  tune_fpm_config
+  force_advanced_nginx_config
+  mrun "service nginx reload" &> /dev/null
 fi
 }
 

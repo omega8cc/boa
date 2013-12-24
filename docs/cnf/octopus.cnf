@@ -29,7 +29,7 @@ _PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Satellite Instance: 5.{2,3,4,5}
 _PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Satellite Instance: 5.{2,3,4,5}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to set value < 180 (default in seconds)
-_PHP_FPM_DENY="" #-------------- Extend the disable_functions list per instance
+_PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
 _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (YES) or myisam
@@ -46,6 +46,33 @@ _CLIENT_SUBSCR="Y" #------------ Currently not used
 _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### Octopus version BOA-2.1.4-dev
+###
+
+###
+### You can define custom list of functions
+### to disable besides those already denied
+### in the system level 'disable_functions'.
+###
+### Example:
+###
+### _PHP_FPM_DENY="system,exec,shell_exec"
+###
+### Note: If this option is left empty, BOA
+### will *not* deny access to functions you
+### should normally consider to deny on the
+### Octopus Satellite Instance level:
+###
+###   exec
+###   passthru
+###   pcntl_exec
+###   popen
+###   proc_open
+###   shell_exec
+###   system
+###
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
 ###
 
 ###
@@ -85,7 +112,6 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### file for some reason.
 ###
 
-
 ###
 ### /data/disk/${_USER}/static/control/cli.info
 ###
@@ -111,4 +137,3 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
 ### file for some reason.
 ###
-

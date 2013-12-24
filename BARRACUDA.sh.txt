@@ -803,11 +803,23 @@ _CUSTOM_CONFIG_REDIS=NO
 ###
 ### Example:
 ###
-### _PHP_FPM_DENY="system,exec,shell_exec"
+### _PHP_FPM_DENY="passthru,popen,system"
 ###
 ### Note that while it will improve security
 ### it will also break modules which rely
 ### on any of disabled functions.
+###
+### Note: If this option is left empty,
+### BOA will *not* deny access on the Aegir
+### Master Instance level to these functions:
+###
+###   passthru
+###   pcntl_exec
+###   popen
+###   system
+###
+### WARNING! Do not add here 'shell_exec'
+### or you will break cron for all sites.
 ###
 _PHP_FPM_DENY=""
 
@@ -2363,22 +2375,10 @@ tune_web_server_config () {
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g" /opt/php52/etc/php52-fpm.conf &> /dev/null
-  _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-  if [ -z "$_PHP_SV" ] ; then
-    _PHP_SV=53
-  fi
-  _PHP_CN="www${_PHP_SV}"
-  if [ ! -z "$_PHP_SV" ] ; then
-    if [ ! -z "$_PHP_FPM_DENY" ] ; then
-      sed -i "s/passthru,pcntl_exec,popen,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_PHP_CN}.conf &> /dev/null
-    else
-      if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-        _DO_NOTHING=YES
-      else
-        sed -i "s/.*passthru,pcntl_exec,popen,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_PHP_CN}.conf &> /dev/null
-      fi
-    fi
-    service php${_PHP_SV}-fpm reload &> /dev/null
+  if [ ! -z "$_PHP_FPM_DENY" ] ; then
+    sed -i "s/passthru,pcntl_exec,popen,system,/$_PHP_FPM_DENY,/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
+    sed -i "s/passthru,pcntl_exec,popen,system,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
+    sed -i "s/passthru,pcntl_exec,popen,system,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
@@ -6747,18 +6747,6 @@ if [ -e "$_NEWRELIC_APP_CFG" ] ; then
     sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_NEWRELIC_APP_CFG &> /dev/null
   fi
   sed -i "s/^loglevel=.*/loglevel=error/g" $_NEWRELIC_APP_CFG &> /dev/null
-  if [ -e "/etc/init.d/php55-fpm" ] ; then
-    mrun "service php55-fpm restart" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php54-fpm" ] ; then
-    mrun "service php54-fpm restart" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php53-fpm" ] ; then
-    mrun "service php53-fpm restart" &> /dev/null
-  fi
-  if [ -e "/etc/init.d/php52-fpm" ] ; then
-    mrun "service php52-fpm restart" &> /dev/null
-  fi
   mrun "service newrelic-daemon restart" &> /dev/null
 fi
 
@@ -7866,20 +7854,22 @@ else
   fi
   fix_on_upgrade
   tune_memory_limits
+  kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
+  kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
     msg "INFO: Restarting Jetty 9"
     mrun "sleep 1"
-    mrun "service jetty9 restart" &> /dev/null
+    mrun "service jetty9 start" &> /dev/null
   fi
   if [ -e "/etc/default/jetty8" ] && [ -e "/etc/init.d/jetty8" ] ; then
     msg "INFO: Restarting Jetty 8"
     mrun "sleep 1"
-    mrun "service jetty8 restart" &> /dev/null
+    mrun "service jetty8 start" &> /dev/null
   fi
   if [ -e "/etc/default/jetty7" ] && [ -e "/etc/init.d/jetty7" ] ; then
     msg "INFO: Restarting Jetty 7"
     mrun "sleep 1"
-    mrun "service jetty7 restart" &> /dev/null
+    mrun "service jetty7 start" &> /dev/null
   fi
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     msg "INFO: Restarting Redis, PHP-FPM and Nginx"

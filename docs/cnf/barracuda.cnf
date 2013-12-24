@@ -53,7 +53,7 @@ _NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
-_PHP_FPM_DENY="" #-------------- Extend the disable_functions list per instance
+_PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
 _LOAD_LIMIT_ONE=1500 #---------- Defines max 1 min load before disabling Nginx
 _LOAD_LIMIT_TWO=1000 #---------- Defines max 5 min load before disabling Nginx
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
@@ -78,6 +78,35 @@ _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ### Barracuda version BOA-2.1.4-dev
 ###
 
+###
+### You can define custom list of functions
+### to disable besides those already denied
+### in the system level 'disable_functions'.
+###
+### Example:
+###
+### _PHP_FPM_DENY="passthru,popen,system"
+###
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
+###
+### Note: If this option is left empty,
+### BOA will *not* deny access on the Aegir
+### Master Instance level to these functions:
+###
+###   passthru
+###   pcntl_exec
+###   popen
+###   system
+###
+### WARNING! Do not add here 'shell_exec'
+### or you will break cron for all sites.
+###
+
+###
+### HINT: Check also control files docs in: docs/ctrl/system.ctrl
+###
 
 ###
 ### Extra, special purpose settings are listed below.
@@ -88,10 +117,6 @@ _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ### manually before running barracuda up-{stable|head} command,
 ### they will be either removed automatically to not affect
 ### normal upgrades, or ignored afterwards.
-###
-
-###
-### HINT: Check also control files docs in: docs/ctrl/system.ctrl
 ###
 
 ###
@@ -128,4 +153,3 @@ _LENNY_TO_SQUEEZE=NO
 ### See also docs/SOLR.txt
 ###
 _TOMCAT_TO_JETTY=NO
-

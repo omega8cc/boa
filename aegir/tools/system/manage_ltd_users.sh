@@ -300,6 +300,11 @@ switch_php()
           _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
           _PHP_TO="${_PHP_FPM_TIMEOUT}s"
           sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          if [ ! -d "/data/disk/${_OWN}/tmp" ] ; then
+            rm -f -r /data/disk/${_OWN}/tmp
+            mkdir -p /data/disk/${_OWN}/tmp
+            chown ${_OWN}:www-data /data/disk/${_OWN}/tmp &> /dev/null
+          fi
           if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
             service php${_PHP_OLD_SV}-fpm reload &> /dev/null
           fi
