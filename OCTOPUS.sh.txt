@@ -809,16 +809,22 @@ tune_fpm_config () {
   if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] && [ ! -z "$_CHILD_MAX_FPM" ] ; then
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
-      rm -f /opt/php*/etc/pool.d/${_USER}.conf
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
-      sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-      if [ ! -z "$_PHP_FPM_DENY" ] ; then
-        sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-      else
-        if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-          _DO_NOTHING=YES
+      if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+        mkdir -p /var/xdrago/conf
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+      fi
+      if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+        rm -f /opt/php*/etc/pool.d/${_USER}.conf
+        cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+        sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        if [ ! -z "$_PHP_FPM_DENY" ] ; then
+          sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
         else
-          sed -i "s/.*exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+            _DO_NOTHING=YES
+          else
+            sed -i "s/.*exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+          fi
         fi
       fi
     fi
@@ -1048,15 +1054,35 @@ octopus_cnf () {
     else
       _LD_DOM=NO
     fi
-    if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
-      _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
+    if [ -e "/data/disk/$_USER/static/control/fpm.info" ] ; then
+      _PHP_FPM_VERSION=`cat /data/disk/$_USER/static/control/fpm.info`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
-      sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+      if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
+        sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+      fi
+    else
+      if [ -e "/data/disk/$_USER/log/fpm.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
+        _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
+        _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
+        if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
+          sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        fi
+      fi
     fi
-    if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
-      _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
+    if [ -e "/data/disk/$_USER/static/control/cli.info" ] ; then
+      _PHP_CLI_VERSION=`cat /data/disk/$_USER/static/control/cli.info`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
-      sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+      if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
+        sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+      fi
+    else
+      if [ -e "/data/disk/$_USER/log/cli.txt" ] && [ "$_LD_DOM" = "YES" ] ; then
+        _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
+        _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
+        if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
+          sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
+        fi
+      fi
     fi
     _ALLOW_UNSUPPORTED_TEST=$(grep _ALLOW_UNSUPPORTED /root/.${_USER}.octopus.cnf)
     if [[ "$_ALLOW_UNSUPPORTED_TEST" =~ "_ALLOW_UNSUPPORTED" ]] ; then
@@ -1122,15 +1148,28 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
-    elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
-    elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
-      _PHP_FPM_VERSION=5.3
-      _PHP_CLI_VERSION=5.3
+    if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      if [ ! -x "/opt/php55/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
+    elif [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      if [ ! -x "/opt/php54/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
+    elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+      if [ ! -x "/opt/php52/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+        _PHP_FPM_VERSION=5.3
+        _PHP_CLI_VERSION=5.3
+      fi
+    fi
+    if [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      if [ ! -x "/opt/php53/bin/php" ] ; then
+        msg "EXIT: You must specify already installed PHP version"
+        msg "EXIT: in both _PHP_FPM_VERSION and _PHP_CLI_VERSION"
+        exit 1
+      fi
     fi
     if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
       _DRUSH_CC_REQ=NO
@@ -1169,6 +1208,7 @@ d;};' $_THIS_NGX_PATH/*.conf &> /dev/null
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config_main () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
+    _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
     if [ -z "$_PHP_SV" ] ; then
       _PHP_SV=53
     fi
@@ -1400,6 +1440,9 @@ if [ ! -e "/data/disk/$_USER/log/fpm.txt" ] ; then
 fi
 if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
   echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
+fi
+if [ ! -e "/data/disk/$_USER/static/control" ] ; then
+  mkdir -p /data/disk/$_USER/static/control
 fi
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ -d "/data/all/000" ] ; then
@@ -1897,6 +1940,7 @@ rm -f -r /tmp/drush_make_tmp*
 rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 action
+chown -R $_USER:$_USRG /data/disk/$_USER/static/control &> /dev/null
 rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*

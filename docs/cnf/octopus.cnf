@@ -51,3 +51,64 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 ### HINT: Check also control files docs in: docs/ctrl/system.ctrl
 ###
+
+###
+### Extra, special purpose control files are listed below.
+###
+### NOTE: the group of control files listed bellow are intended to be used
+### by the instance owner to *overwrite* some settings stored in the
+### /root/.${_USER}.octopus.cnf file without system admin (root) assistance.
+###
+
+###
+### /data/disk/${_USER}/static/control/fpm.info
+###
+### This file, if exists and contains supported and installed PHP version
+### will be used by running every 5 minutes /var/xdrago/manage_ltd_users.sh
+### maintenance script to switch PHP-FPM version for this Octopus instance,
+### if different than defined in the /root/.${_USER}.octopus.cnf file, in the
+### _PHP_FPM_VERSION variable. It will also overwrite _PHP_FPM_VERSION value
+### there to avoid doing it over and over again every 5 minutes.
+###
+### IMPORTANT: If used, it will switch PHP-FPM for all D7 *and* D6 sites hosted
+### on the instance, but it will not affect any D5 site, if still hosted.
+###
+### Supported values which can be written in this file:
+###
+### 5.5
+### 5.4
+### 5.3
+###
+### There must be only one line and one value in this control file. Otherwise
+### it will be ignored. If you will enter 5.2 it will force 5.3, so this file
+### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
+### file for some reason.
+###
+
+
+###
+### /data/disk/${_USER}/static/control/cli.info
+###
+### This file, if exists and contains supported and installed PHP version
+### will be used by running every 5 minutes /var/xdrago/manage_ltd_users.sh
+### maintenance script to switch PHP-CLI version for this Octopus instance,
+### if different than defined in the /root/.${_USER}.octopus.cnf file, in the
+### _PHP_CLI_VERSION variable. It will also overwrite _PHP_CLI_VERSION value
+### there to avoid doing it over and over again every 5 minutes.
+###
+### Note that it is not guaranteed that current Aegir version included in BOA
+### will work with any PHP version newer than 5.3, hence the ability to switch
+### CLI and FPM versions separately.
+###
+### Supported values which can be written in this file:
+###
+### 5.5
+### 5.4
+### 5.3
+###
+### There must be only one line and one value in this control file. Otherwise
+### it will be ignored. If you will enter 5.2 it will force 5.3, so this file
+### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
+### file for some reason.
+###
+

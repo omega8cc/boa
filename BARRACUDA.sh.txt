@@ -2632,6 +2632,10 @@ tune_memory_limits () {
   if [ "$_USE_PHP" -lt "196" ] ; then
     _USE_PHP=196
   fi
+  if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+    mkdir -p /var/xdrago/conf
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
+  fi
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ] ; then
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
@@ -2874,8 +2878,10 @@ barracuda_cnf () {
           sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -2908,11 +2914,21 @@ barracuda_cnf () {
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL /root/.barracuda.cnf)
-    if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] ; then
+    if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
       _DO_NOTHING=YES
     else
+      _CHECK_HOST=`uname -n`
+      _L_VMFAMILY=XEN
+      _L_VM_TEST=`uname -a 2>&1`
+      if [[ "$_L_VM_TEST" =~ beng ]] ; then
+        _L_VMFAMILY="VS"
+      fi
+      if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+        _PHP_MULTI_INSTALL="5.5 5.4 5.3"
+      fi
       if [ -x "/usr/local/bin/php52" ] ; then
         _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.2"
+        mv -f /usr/local/bin/php52 /var/backups/ &> /dev/null
       fi
       echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     fi
@@ -3192,13 +3208,9 @@ barracuda_cnf () {
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                        /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.3/g"                        /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -3206,8 +3218,10 @@ barracuda_cnf () {
           sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi

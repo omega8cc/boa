@@ -3,6 +3,8 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/opt/php55/bin:/opt/php54/bin:/opt/php53/bin:/opt/php52/bin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
+_HOST_TEST=`uname -n 2>&1`
+_VM_TEST=`uname -a 2>&1`
 
 ###----------------------------###
 ##    Manage ltd shell users    ##
@@ -221,6 +223,113 @@ do
 done
 }
 #
+# Update PHP-CLI for Drush.
+update_php_cli_drush ()
+{
+  _DRUSH_FILE="/data/disk/${_OWN}/tools/drush/drush.php"
+  if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php55\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+    _L_PHP_CLI=/opt/php55/bin
+  elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php54\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+    _L_PHP_CLI=/opt/php54/bin
+  elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php53\/bin\/php/g"  $_DRUSH_FILE &> /dev/null
+    _L_PHP_CLI=/opt/php53/bin
+  fi
+  _DRUSHCMD="$_L_PHP_CLI/php /data/disk/${_OWN}/tools/drush/drush.php"
+  if [ -e "/data/disk/${_OWN}/aegir.sh" ] ; then
+    rm -f /data/disk/${_OWN}/aegir.sh
+  fi
+  touch /data/disk/${_OWN}/aegir.sh
+  echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch /data/disk/${_OWN}/${_OWN}-task.done" | tee -a /data/disk/${_OWN}/aegir.sh >/dev/null 2>&1
+  chown ${_OWN}:users /data/disk/${_OWN}/aegir.sh &> /dev/null
+  chmod 0700 /data/disk/${_OWN}/aegir.sh &> /dev/null
+}
+#
+# Switch PHP Version.
+switch_php()
+{
+  if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
+    echo "Custom FPM or CLI settings for $_OWN exist, running switch_php checks"
+    if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
+      source /root/.${_OWN}.octopus.cnf
+    fi
+    if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+      _THIS_NGX_PATH=/data/disk/${_OWN}/config/includes
+      _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
+      _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
+      if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
+        if [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
+          _LOC_PHP_FPM_VERSION=5.3
+        fi
+        if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
+          sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
+          if [ -z "$_PHP_SV" ] ; then
+            _PHP_SV=53
+          fi
+          _PHP_CN="www${_PHP_SV}"
+          if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
+            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+            if [ "$_PHP_CN" = "www53" ] ; then
+              sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+              sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+            else
+              sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+              sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+            fi
+          fi
+          rm -f /opt/php*/etc/pool.d/${_OWN}.conf
+          cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
+          sed -i "s/foo/${_OWN}/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          if [ ! -z "$_PHP_FPM_DENY" ] ; then
+            sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system/$_PHP_FPM_DENY/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          else
+            if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+              _DO_NOTHING=YES
+            else
+              sed -i "s/.*exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system.*//g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+            fi
+          fi
+          if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
+            _PHP_FPM_TIMEOUT=180
+          fi
+          _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+          _PHP_TO="${_PHP_FPM_TIMEOUT}s"
+          sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          if [ -e "/etc/init.d/php55-fpm" ] ; then
+            service php55-fpm reload &> /dev/null
+          fi
+          if [ -e "/etc/init.d/php54-fpm" ] ; then
+            service php54-fpm reload &> /dev/null
+          fi
+          if [ -e "/etc/init.d/php53-fpm" ] ; then
+            service php53-fpm reload &> /dev/null
+          fi
+          if [ -e "/etc/init.d/php52-fpm" ] ; then
+            service php52-fpm reload &> /dev/null
+          fi
+        fi
+      fi
+    fi
+    if [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
+      _LOC_PHP_CLI_VERSION=`cat /data/disk/${_OWN}/static/control/cli.info`
+      _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
+      if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
+        if [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
+          _LOC_PHP_CLI_VERSION=5.3
+        fi
+        if [ "$_LOC_PHP_CLI_VERSION" != "$_PHP_CLI_VERSION" ] ; then
+          sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          update_php_cli_drush
+        fi
+      fi
+    fi
+  fi
+}
+#
 # Manage Primary Users.
 manage_own()
 {
@@ -230,6 +339,7 @@ do
     _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_OWN is == $_OWN == at manage_own"
+    switch_php
     if [ -e "$User/clients" ] && [ ! -z $_OWN ] ; then
       echo Managing Users for $User Instance
       rm -f -r $User/clients/admin &> /dev/null
