@@ -7,9 +7,12 @@
 $| = 1;
 $this_filename = "scan_nginx";
 $times = `date +%y%m%d-%H%M%S`;
-$myhn = `hostname --fqdn`;
-$myip = `echo $(getent ahostsv4 $myhn) | cut -d: -f2 | awk '{ print $1}'`;
 chomp($times);
+$myhn = `hostname --fqdn`;
+chomp($myhn);
+$llip = `echo \$(getent ahostsv4 $myhn) | cut -d: -f2 | awk '{ print $1}'`;
+local($myip, $rest) = split(/\s+/,$llip);
+print "myip is $myip";
 chomp($myip);
 &makeactions;
 print "CONTROL complete for $myip ($myhn)\n";
@@ -58,20 +61,20 @@ sub makeactions
       if ($line =~ /(GET|HEAD|POST)/) {
         local($skip_post) = 0;
         if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress)/) {
-          print "Not Counted Dynamic Request URI: $line\n";
+          ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
         elsif ($line =~ /files\/(imagecache|styles)/) {
-          print "Monitored Dynamic Request URI: $line\n";
+          ### print "Monitored Dynamic Request URI: $line\n";
           $im_li_cnt{$VISITOR}++;
           $skip_post = 1;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
-          print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
         elsif ($line =~ /GET \/timemachine\/[0-9]{4}\//) {
-          print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
         else {
@@ -85,7 +88,7 @@ sub makeactions
         }
         else {
           $li_cnt{$VISITOR}++;
-          print "Counted Not Supported Request Type: $line\n";
+          ### print "Counted Not Supported Request Type: $line\n";
         }
       }
     }
@@ -95,20 +98,20 @@ sub makeactions
       if ($line =~ /(GET|HEAD|POST)/) {
         local($skip_post) = 0;
         if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress)/) {
-          print "Not Counted Dynamic Request URI: $line\n";
+          ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
         elsif ($line =~ /files\/(imagecache|styles)/) {
-          print "Monitored Dynamic Request URI: $line\n";
+          ### print "Monitored Dynamic Request URI: $line\n";
           $im_px_cnt{$PROXY}++;
           $skip_post = 1;
         }
         elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
-          print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
         elsif ($line =~ /GET \/timemachine\/[0-9]{4}\//) {
-          print "Not Counted Static Request URI: $line\n";
+          ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
         else {
@@ -122,7 +125,7 @@ sub makeactions
         }
         else {
           $px_cnt{$PROXY}++;
-          print "Counted Not Supported Request Type: $line\n";
+          ### print "Counted Not Supported Request Type: $line\n";
         }
       }
     }
@@ -268,6 +271,7 @@ sub check_who
     $whoip =~ s/[^0-9\.]//g;
     if ($whoip eq $IP) {
       $isloggedin = 1;
+      print "===[$IP] is AUTH OK===\n";
       last;
     }
   }
@@ -283,6 +287,7 @@ sub check_own_ip
       $ifallowed =~ s/[^0-9\.]//g;
       if ($ifallowed eq $IP) {
         $allowed = 1;
+        print "===[$IP] is MY OK===\n";
         last;
       }
     }
