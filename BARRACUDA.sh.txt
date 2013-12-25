@@ -2287,6 +2287,7 @@ sub_force_advanced_nginx_config () {
         else
           sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
           sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
           sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
           sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
         fi
@@ -2302,6 +2303,7 @@ sub_force_advanced_nginx_config () {
       if [ "$_USE_STOCK" = "NO" ] ; then
         sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
         sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
       else
         sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
         sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
@@ -2312,6 +2314,7 @@ sub_force_advanced_nginx_config () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   validate_local_ip &> /dev/null
   _THIS_NGX_PATH=/var/aegir/.drush/provision/http/Provision/Service/http
   sub_force_advanced_nginx_config
@@ -2336,7 +2339,6 @@ force_advanced_nginx_config () {
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   if [ -e "/var/aegir/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
       ln -sf /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
