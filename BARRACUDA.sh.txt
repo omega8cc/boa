@@ -7510,7 +7510,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     chown -R www-data:www-data /var/www/chive
     touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
   fi
-  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.vhost.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.protected.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
@@ -7518,7 +7518,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
     sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-    touch /var/xdrago/log/chive_$_CHIVE_VERSION.vhost.log
+    touch /var/xdrago/log/chive_$_CHIVE_VERSION.protected.vhost.log
   fi
 fi
 
@@ -7532,12 +7532,13 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
-  if [ ! -d "/var/www/sqlbuddy" ] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -e "/var/xdrago/log/sqlbuddy.protected.vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
       msg "INFO: Installing SQL Buddy $_DB_SERVER Manager..."
       mrun "sleep 1"
+      rm -f -r /var/www/sqlbuddy
       cd /var/www
       get_dev_arch "sqlbuddy_1_3_3.tar.gz" &> /dev/null
       chown -R www-data:www-data /var/www/sqlbuddy
@@ -7548,6 +7549,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
+      touch /var/xdrago/log/sqlbuddy.protected.vhost.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
       mrun "sleep 1"
     else
