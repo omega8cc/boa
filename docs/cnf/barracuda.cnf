@@ -91,17 +91,23 @@ _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 ### it will also break modules which rely
 ### on any of disabled functions.
 ###
-### Note: If this option is left empty,
-### BOA will *not* deny access on the Aegir
-### Master Instance level to these functions:
+### Note: If this option is left empty, BOA
+### will deny access also to function:
 ###
 ###   passthru
-###   pcntl_exec
-###   popen
-###   system
+###
+### If _PHP_FPM_DENY is *not* empty, its value
+### will *replace* default 'passthru', so any
+### denied function must be listed explicitly.
 ###
 ### WARNING! Do not add here 'shell_exec'
-### or you will break cron for all sites.
+### or you will break cron for all sites
+### including all hosted on all Satellite
+### Instances.
+###
+### This option affects only Aegir Master
+### Instance plus all scripts running outside
+### of Octopus Satellite Instances.
 ###
 
 ###

@@ -286,20 +286,22 @@ switch_php()
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
           sed -i "s/foo/${_OWN}/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           if [ ! -z "$_PHP_FPM_DENY" ] ; then
-            sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+            sed -i "s/passthru,shell_exec,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           else
             if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
               _DO_NOTHING=YES
             else
-              sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system,//g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+              sed -i "s/passthru,shell_exec,//g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
             fi
           fi
           if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
             _PHP_FPM_TIMEOUT=180
           fi
           _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
-          _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-          sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          if [ ! -z "$_PHP_FPM_TIMEOUT" ] ; then
+            _PHP_TO="${_PHP_FPM_TIMEOUT}s"
+            sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          fi
           if [ ! -d "/data/disk/${_OWN}/tmp" ] ; then
             rm -f -r /data/disk/${_OWN}/tmp
             mkdir -p /data/disk/${_OWN}/tmp

@@ -809,19 +809,42 @@ _CUSTOM_CONFIG_REDIS=NO
 ### it will also break modules which rely
 ### on any of disabled functions.
 ###
-### Note: If this option is left empty,
-### BOA will *not* deny access on the Aegir
-### Master Instance level to these functions:
+### Note: If this option is left empty, BOA
+### will deny access also to function:
 ###
 ###   passthru
-###   pcntl_exec
-###   popen
-###   system
+###
+### If _PHP_FPM_DENY is *not* empty, its value
+### will *replace* default 'passthru', so any
+### denied function must be listed explicitly.
 ###
 ### WARNING! Do not add here 'shell_exec'
-### or you will break cron for all sites.
+### or you will break cron for all sites
+### including all hosted on all Satellite
+### Instances.
+###
+### This option affects only Aegir Master
+### Instance plus all scripts running outside
+### of Octopus Satellite Instances.
 ###
 _PHP_FPM_DENY=""
+
+###
+### We highly recommend to enable this option
+### to improve system security when certain
+### PHP functions, especially: exec, passthru,
+### shell_exec,system,proc_open,popen are not
+### disabled via option _PHP_FPM_DENY above.
+###
+### WARNING! This option is very aggressive
+### and can break any extra service or binary
+### you have installed which BOA doesn't
+### manage and the binary has system group
+### set to 'root'. BOA will not touch any
+### binary which has non-root group or has
+### setgid or setuid permissions.
+###
+_STRICT_BIN_PERMISSIONS=NO
 
 ###
 ### Define the amount of RAM you want to keep
@@ -1824,18 +1847,30 @@ update_php_conf () {
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-common.conf /opt/etc/fpm/fpm-pool-common.conf
 
+  if [ ! -e "/var/www/www55" ] ; then
+    adduser --system --group --home /var/www/www55 www55 &> /dev/null
+    usermod -aG www-data www55 &> /dev/null
+  fi
   if [ ! -e "/opt/php55/etc/php55.ini" ] || [ ! -e "/opt/php55/etc/pool.d/www55.conf" ]  ; then
     mkdir -p /opt/php55/etc/pool.d
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm55-pool-www.conf /opt/php55/etc/pool.d/www55.conf
 
+  if [ ! -e "/var/www/www54" ] ; then
+    adduser --system --group --home /var/www/www54 www54 &> /dev/null
+    usermod -aG www-data www54 &> /dev/null
+  fi
   if [ ! -e "/opt/php54/etc/php54.ini" ] || [ ! -e "/opt/php54/etc/pool.d/www54.conf" ] ; then
     mkdir -p /opt/php54/etc/pool.d
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini
   fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm54-pool-www.conf /opt/php54/etc/pool.d/www54.conf
 
+  if [ ! -e "/var/www/www53" ] ; then
+    adduser --system --group --home /var/www/www53 www53 &> /dev/null
+    usermod -aG www-data www53 &> /dev/null
+  fi
   if [ ! -e "/opt/php53/etc/php53.ini" ] || [ ! -e "/opt/php53/etc/pool.d/www53.conf" ] ; then
     mkdir -p /opt/php53/etc/pool.d
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini
@@ -2378,9 +2413,9 @@ tune_web_server_config () {
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g" /opt/php52/etc/php52-fpm.conf &> /dev/null
   if [ ! -z "$_PHP_FPM_DENY" ] ; then
-    sed -i "s/passthru,pcntl_exec,popen,system,/$_PHP_FPM_DENY,/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
-    sed -i "s/passthru,pcntl_exec,popen,system,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
-    sed -i "s/passthru,pcntl_exec,popen,system,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
+    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
+    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
+    sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null

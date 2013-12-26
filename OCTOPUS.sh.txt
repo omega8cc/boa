@@ -590,21 +590,22 @@ _PHP_FPM_TIMEOUT=AUTO
 ### _PHP_FPM_DENY="system,exec,shell_exec"
 ###
 ### Note: If this option is left empty, BOA
-### will *not* deny access to functions you
-### should normally consider to deny on the
-### Octopus Satellite Instance level:
+### will deny access also to functions:
 ###
-###   exec
 ###   passthru
-###   pcntl_exec
-###   popen
-###   proc_open
 ###   shell_exec
-###   system
+###
+### If _PHP_FPM_DENY is *not* empty, its value
+### will *replace* passthru,shell_exec so any
+### denied function must be listed explicitly.
 ###
 ### Note that while it will improve security
 ### it will also break modules which rely
 ### on any of disabled functions.
+###
+### This option affects only this Satellite
+### Instance. It is not affected by the same
+### option set in the Barracuda Master.
 ###
 _PHP_FPM_DENY=""
 
@@ -828,28 +829,22 @@ tune_fpm_config () {
     _PHP_FPM_TIMEOUT=180
   fi
   _PHP_FPM_TIMEOUT=${_PHP_FPM_TIMEOUT//[^0-9]/}
+  if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+    mkdir -p /var/xdrago/conf
+  fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
   if [ ! -z "$_PHP_FPM_TIMEOUT" ] && [ ! -z "$_PHP_SV" ] ; then
-    _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-    if [ ! -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
-      if [ ! -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
-        mkdir -p /var/xdrago/conf
-      fi
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf
-      if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
-        rm -f /opt/php*/etc/pool.d/${_USER}.conf
-        cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
-        sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-        if [ ! -z "$_PHP_FPM_DENY" ] ; then
-          sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-        else
-          if [[ "$_THISHOST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-            _DO_NOTHING=YES
-          else
-            sed -i "s/exec,passthru,pcntl_exec,popen,proc_open,shell_exec,system,//g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
-          fi
-        fi
+    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
+      rm -f /opt/php*/etc/pool.d/${_USER}.conf
+      cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+    fi
+    if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
+      sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+      if [ ! -z "$_PHP_FPM_DENY" ] ; then
+        sed -i "s/passthru,shell_exec,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       fi
     fi
+    _PHP_TO="${_PHP_FPM_TIMEOUT}s"
     sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
     if [ ! -z "$_CHILD_MAX_FPM" ] ; then
       sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
