@@ -2887,6 +2887,7 @@ barracuda_cnf () {
     echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
+    echo "_STRICT_BIN_PERMISSIONS=$_STRICT_BIN_PERMISSIONS" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -3229,6 +3230,12 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
+    fi
+    _STRICT_BIN_PERMISSIONS_TEST=$(grep _STRICT_BIN_PERMISSIONS /root/.barracuda.cnf)
+    if [[ "$_STRICT_BIN_PERMISSIONS_TEST" =~ "_STRICT_BIN_PERMISSIONS" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_STRICT_BIN_PERMISSIONS=$_STRICT_BIN_PERMISSIONS" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
@@ -3929,6 +3936,7 @@ upgrade_aegir_master () {
     if [ ! -e "/root/.upstart.cnf" ] ; then
       service cron stop &> /dev/null
     fi
+    usermod -aG users aegir &> /dev/null
     if [ ! -d "/var/aegir/.drush/provision/http" ] ; then
       cd /var/aegir/.drush
       rm -f -r /var/aegir/.drush/{provision,drush_make}
@@ -4853,6 +4861,53 @@ check_php_broken () {
     install_curl_src
     install_php_multi "$1"
   fi
+}
+#
+# Optional Strict Permissions on All Binaries.
+strict_bin_permissions () {
+  _BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/"
+  for p in $_BIN_PATHS; do
+    for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f` ; do
+      chgrp users $f &> /dev/null
+      chmod 750 $f &> /dev/null
+    done
+  done
+  for p in $_BIN_PATHS; do
+    for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f` ; do
+      chgrp users $f &> /dev/null
+      chmod 750 $f &> /dev/null
+    done
+  done
+
+  _WEBSERVER_BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/"
+  for p in $_WEBSERVER_BIN_PATHS; do
+    for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf` ; do
+      if [ -e "$f" ] ; then
+        chgrp www-data $f &> /dev/null
+        chmod 750 $_BIN_ITEM &> /dev/null
+      fi
+    done
+  done
+
+  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert cd chmod compass cp curl mkdir mv pwd rm sass sass-convert scss wget id php php-cli mysql mysqldump redis-server logger"
+  for i in $_BACKEND_ITEMS; do
+    _BIN_ITEM=$(which $i)
+    if [ -e "$_BIN_ITEM" ] ; then
+      chgrp root $_BIN_ITEM &> /dev/null
+      chmod 755 $_BIN_ITEM &> /dev/null
+    fi
+  done
+
+  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state"
+  for i in $_PROTECTED_ITEMS; do
+    _BIN_ITEM=$(which $i)
+    if [ -e "$_BIN_ITEM" ] ; then
+      chgrp root $_BIN_ITEM &> /dev/null
+      chmod 700 $_BIN_ITEM &> /dev/null
+    fi
+  done
+
+  chmod 777 /var/run/screen &> /dev/null
 }
 #
 # Final cleanup.
@@ -7260,8 +7315,9 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   msg "INFO: Installing Aegir Master Instance, please wait..."
   mrun "sleep 1"
-  st_runner "adduser --system --group --home /var/aegir aegir"
-  st_runner "adduser aegir www-data"
+  adduser --system --group --home /var/aegir aegir &> /dev/null
+  usermod -aG www-data aegir &> /dev/null
+  usermod -aG users aegir &> /dev/null
   echo "aegir ALL=NOPASSWD: /etc/init.d/nginx" >> /etc/sudoers
   ln -sf /var/aegir/config/nginx.conf /etc/nginx/conf.d/aegir.conf &> /dev/null
   update_nginx_conf
@@ -8489,6 +8545,9 @@ if [ -e "/usr/sbin/pdnsd" ] ; then
 fi
 fix_lfd_whitelist
 fix_lfd_uidignore
+if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
+  strict_bin_permissions
+fi
 
 
 ###--------------------###
