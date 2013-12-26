@@ -1459,7 +1459,7 @@ fi
 if [ ! -e "/data/disk/$_USER/static/control" ] ; then
   mkdir -p /data/disk/$_USER/static/control
 fi
-rm -f -r /opt/tmp/$_BOA_REPO_NAME
+chown -R $_USER:$_USRG /data/disk/$_USER/static/control &> /dev/null
 if [ -d "/data/all/000" ] ; then
   if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
     echo "$_SMALLCORE6" > /data/all/000/core-v-$_SMALLCORE6.txt
@@ -1960,7 +1960,6 @@ rm -f -r /tmp/drush_make_tmp*
 rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 action
-chown -R $_USER:$_USRG /data/disk/$_USER/static/control &> /dev/null
 rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
