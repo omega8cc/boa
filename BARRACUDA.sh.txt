@@ -4887,7 +4887,7 @@ strict_bin_permissions () {
     done
   done
 
-  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert cd chmod compass cp curl mkdir mv pwd rm sass sass-convert scss wget id php php-cli mysql mysqldump redis-server logger sendmail"
+  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert cd chmod compass cp curl mkdir mv pwd rm sass sass-convert scss wget id php php-cli mysql mysqldump redis-server logger sendmail java java7 java6"
   for i in $_BACKEND_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
