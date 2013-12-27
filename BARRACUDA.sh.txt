@@ -8542,6 +8542,7 @@ fi
 fix_lfd_whitelist
 fix_lfd_uidignore
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
+  usermod -aG users aegir &> /dev/null
   strict_bin_permissions
 fi
 
