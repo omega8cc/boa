@@ -1050,6 +1050,7 @@ _INSTALLER_VERSION=BOA-2.1.4-dev
 ### Software versions
 ###
 _BZR_VERSION=2.6b2
+_CGP_VERSION=0.4.1
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.33.0
 _DRUSH_VERSION=4.6-dev
@@ -7663,7 +7664,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/xdrago/log/collectd.sec1.vhost.log" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/xdrago/log/collectd-$_CGP_VERSION.sec2.vhost.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -7671,7 +7672,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         mrun "sleep 1"
         st_runner "$_INSTAPP collectd" 2> /dev/null
         cd /var/www
-        get_dev_arch "cgp.tar.gz" &> /dev/null
+        get_dev_arch "cgp-$_CGP_VERSION.tar.gz" &> /dev/null
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
         chown -R $_PHP_CN:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
@@ -7689,7 +7690,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo "  include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
         echo "}" >> $_CGP_VHOST
         echo >> $_CGP_VHOST
-        echo collectd5 > /var/xdrago/log/collectd.sec1.vhost.log
+        echo collectd5 > /var/xdrago/log/collectd-$_CGP_VERSION.sec2.vhost.log
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 1"
