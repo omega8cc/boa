@@ -404,14 +404,21 @@ manage_ip_auth_xtras_access ()
 {
   for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list.tmp;done
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
-  echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
-  echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
+  _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list.tmp)
+  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
+    echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
+    echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
+  else
+    rm -f /var/backups/.auth.IP.list.tmp
+  fi
   if [ ! -e "/var/backups/.auth.IP.list" ] ; then
     update_ip_auth_xtras_access
   else
-    _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp /var/backups/.auth.IP.list)
-    if [ ! -z "$_DIFF_TEST" ] ; then
-      update_ip_auth_xtras_access
+    if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+      _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp /var/backups/.auth.IP.list)
+      if [ ! -z "$_DIFF_TEST" ] ; then
+        update_ip_auth_xtras_access
+      fi
     fi
   fi
   rm -f /var/backups/.auth.IP.list.tmp
