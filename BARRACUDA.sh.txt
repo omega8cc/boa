@@ -2070,13 +2070,8 @@ update_nginx_conf () {
       touch /var/xdrago/log/nginx-config-fixed-$_INSTALLER_VERSION
     fi
   fi
-  if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
-    if [ "$_PURGE_MODE" = "ON" ] ; then
-      if [ ! -e "/var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
-        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-        touch /var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION
-      fi
-    fi
+  if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] && [ "$_PURGE_MODE" = "ON" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
   fi
 }
 #
@@ -4801,6 +4796,8 @@ fix_multi_ip_cron_access () {
 d;};' /data/disk/*/config/includes/*.conf &> /dev/null
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' /var/aegir/config/includes/*.conf &> /dev/null
+  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+d;};' /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
 }
 #
 # Check if the PHP rebuild is required.
@@ -7541,17 +7538,6 @@ EOF
     killall -9 nginx &> /dev/null
     mrun "sleep 1"
     mrun "service nginx start" &> /dev/null
-  fi
-fi
-
-
-###--------------------###
-if [ -e "/var/aegir/config/server_master/nginx/pre.d" ] ; then
-  if [ "$_PURGE_MODE" = "ON" ] ; then
-    if [ ! -e "/var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION" ] || [ ! -e "/var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf" ] ; then
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_speed_purge.conf /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
-      touch /var/xdrago/log/nginx-speed-purge-$_INSTALLER_VERSION
-    fi
   fi
 fi
 
