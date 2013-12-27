@@ -373,50 +373,55 @@ do
 done
 }
 #
-# Update IP-Auth Chive Access.
-update_ip_auth_chive_access ()
+# Update IP-Auth Xtras Access.
+update_ip_auth_xtras_access ()
 {
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-  sed -i '/deny         all;/ {r /var/backups/.auth.IP.list.now.${_NOW}
+  if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+    sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-  _NGX_TEST=$(service nginx configtest 2>&1)
-  if [[ "$_NGX_TEST" =~ "successful" ]] ; then
-    service nginx reload &> /dev/null
-  else
-    echo "  allow        127.0.0.1;" >> /var/backups/.auth.IP.list.now.${_NOW}
-    echo "  deny         all;" >> /var/backups/.auth.IP.list.now.${_NOW}
-    sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i '/deny         all;/ {r /var/backups/.auth.IP.list.now.${_NOW}
+    _NGX_TEST=$(service nginx configtest 2>&1)
+    if [[ "$_NGX_TEST" =~ "successful" ]] ; then
+      service nginx reload &> /dev/null
+    else
+      echo "  ### access failr" > /var/backups/.auth.IP.list.ops
+      service nginx reload &>     /var/backups/.auth.IP.list.ops
+      echo "  ### access blank" > /var/backups/.auth.IP.list.tmp
+      sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+      sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    service nginx reload &> /dev/null
-  fi
-  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow        $_IP;" > /var/backups/.auth.IP.list;done
-  sed -i "s/.0;/;/g; s/.;/;/g; s/allow        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list &> /dev/null
-  echo "  deny         all;" >> /var/backups/.auth.IP.list
-}
-#
-# Manage IP-Auth Chive Access.
-manage_ip_auth_chive_access ()
-{
-  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow        $_IP;" > /var/backups/.auth.IP.list.now.${_NOW};done
-  sed -i "s/.0;/;/g; s/.;/;/g; s/allow        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.now.${_NOW} &> /dev/null
-  echo "  deny         all;" >> /var/backups/.auth.IP.list.now.${_NOW}
-  if [ ! -e "/var/backups/.auth.IP.list" ] ; then
-    update_ip_auth_chive_access
-  else
-    _DIFF_TEST=$(diff /var/backups/.auth.IP.list.now.${_NOW} /var/backups/.auth.IP.list)
-    if [ ! -z "$_DIFF_TEST" ] ; then
-      update_ip_auth_chive_access
+      service nginx reload &> /dev/null
     fi
   fi
-  rm -f /var/backups/.auth.IP.list.now.${_NOW}
+  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list;done
+  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list
+  echo "  deny                         all;" >> /var/backups/.auth.IP.list
+  echo "  ### access live"                   >> /var/backups/.auth.IP.list
+}
+#
+# Manage IP-Auth Xtras Access.
+manage_ip_auth_xtras_access ()
+{
+  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list.tmp;done
+  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
+  echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
+  echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
+  if [ ! -e "/var/backups/.auth.IP.list" ] ; then
+    update_ip_auth_xtras_access
+  else
+    _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp /var/backups/.auth.IP.list)
+    if [ ! -z "$_DIFF_TEST" ] ; then
+      update_ip_auth_xtras_access
+    fi
+  fi
+  rm -f /var/backups/.auth.IP.list.tmp
 }
 #
 
 ###-------------SYSTEM-----------------###
 
 _NOW=`date +%y%m%d-%H%M`
-manage_ip_auth_chive_access
+manage_ip_auth_xtras_access
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.$_NOW"

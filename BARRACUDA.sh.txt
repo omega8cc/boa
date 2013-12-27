@@ -6668,7 +6668,7 @@ fi
 
 ###--------------------###
 if [ ! -e "/var/xdrago/log/umask_fixed_new.log" ] ; then
-  mkdir -p /var/www
+  mkdir -p /var/www/nginx-default
   sed -i "s/^UMASK.*//g" /etc/default/login &> /dev/null
   echo "UMASK=002" >> /etc/default/login
   sed -i "/^$/d" /etc/default/login &> /dev/null
@@ -6678,7 +6678,8 @@ if [ ! -e "/var/xdrago/log/umask_fixed_new.log" ] ; then
   echo "session optional pam_umask.so umask=0002" >> /etc/pam.d/login
   sed -i "/^$/d" /etc/pam.d/login &> /dev/null
   echo "umask 002" >> /var/www/.profile
-  chown -R www-data:www-data /var/www/* &> /dev/null
+  chown www-data:www-data /var/www/.profile &> /dev/null
+  chown www-data:www-data /var/www/nginx-default &> /dev/null
   touch /var/xdrago/log/umask_fixed_new.log
 fi
 
@@ -7572,7 +7573,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       cd /var/www
       rm -f -r /var/www/chive &> /dev/null
       get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
-      chown -R www-data:www-data /var/www/chive
+      chown -R $_PHP_CN:www-data /var/www/chive
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
@@ -7598,10 +7599,9 @@ if [ -e "/var/www/chive/index.php" ] ; then
     rm -f -r /var/www/chive
     cd /var/www
     get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
-    chown -R www-data:www-data /var/www/chive
     touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
   fi
-  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.protected.vhost.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.protect.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
@@ -7609,8 +7609,9 @@ if [ -e "/var/www/chive/index.php" ] ; then
     sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
     sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-    touch /var/xdrago/log/chive_$_CHIVE_VERSION.protected.vhost.log
+    touch /var/xdrago/log/chive_$_CHIVE_VERSION.protect.vhost.log
   fi
+  chown -R $_PHP_CN:www-data /var/www/chive
 fi
 
 
@@ -7623,7 +7624,7 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
-  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -e "/var/xdrago/log/sqlbuddy.protected.vhost.log" ] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -e "/var/xdrago/log/sqlbuddy.protect.vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
@@ -7632,7 +7633,6 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       rm -f -r /var/www/sqlbuddy
       cd /var/www
       get_dev_arch "sqlbuddy_1_3_3.tar.gz" &> /dev/null
-      chown -R www-data:www-data /var/www/sqlbuddy
       _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
@@ -7640,7 +7640,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
-      touch /var/xdrago/log/sqlbuddy.protected.vhost.log
+      touch /var/xdrago/log/sqlbuddy.protect.vhost.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
       mrun "sleep 1"
     else
@@ -7648,6 +7648,9 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       mrun "sleep 1"
     fi
   fi
+fi
+if [ -e "/var/www/sqlbuddy" ] ; then
+  chown -R $_PHP_CN:www-data /var/www/sqlbuddy
 fi
 
 
@@ -7661,7 +7664,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/www/cgp/collectd5.support.txt" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/xdrago/log/collectd.protect.vhost.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -7671,22 +7674,23 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         cd /var/www
         get_dev_arch "cgp.tar.gz" &> /dev/null
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
-        chown -R www-data:www-data /var/www/cgp
+        chown -R $_PHP_CN:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
-        echo "   include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-        echo "   limit_conn  limreq 32;" >> $_CGP_VHOST
-        echo "   listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
-        echo "   server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
-        echo "   root        /var/www/cgp;" >> $_CGP_VHOST
-        echo "   index       index.php index.html;" >> $_CGP_VHOST
-        echo "   include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
+        echo "  include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
+        echo "  limit_conn  limreq 32;" >> $_CGP_VHOST
+        echo "  listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
+        echo "  server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
+        echo "  root        /var/www/cgp;" >> $_CGP_VHOST
+        echo "  ### access placeholder" >> $_CGP_VHOST
+        echo "  index       index.php index.html;" >> $_CGP_VHOST
+        echo "  include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
         echo "}" >> $_CGP_VHOST
         echo >> $_CGP_VHOST
-        echo collectd5 > /var/www/cgp/collectd5.support.txt
+        echo collectd5 > /var/xdrago/log/collectd.protect.vhost.log
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 1"
@@ -7709,6 +7713,9 @@ fi
 _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
 if [ -e "$_CGP_VHOST" ] ; then
   sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CGP_VHOST &> /dev/null
+fi
+if [ -e "/var/www/cgp" ] ; then
+  chown -R $_PHP_CN:www-data /var/www/cgp
 fi
 
 
