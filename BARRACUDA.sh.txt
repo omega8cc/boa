@@ -3703,7 +3703,7 @@ install_php_legacy () {
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
   mrun "sleep 1"
-  st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --enable-fastcgi --with-mysql --with-mysqli --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
+  st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --enable-fastcgi --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --enable-force-cgi-redirect --enable-discard-path --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc $_PHP_EXTRA" 2> /dev/null
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
   mrun "sleep 1"
   st_runner "make --quiet" 2> /dev/null
@@ -3750,7 +3750,7 @@ install_php_multi () {
     if [ "$1" = "55" ] ; then
       _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
     fi
-    st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql --with-mysqli --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
+    st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr  --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
     mrun "sleep 1"
     st_runner "make --quiet" 2> /dev/null
@@ -4816,7 +4816,15 @@ check_php_rebuild () {
   else
     _PHP_INSTALLED=`/opt/php$1/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
   fi
-  if [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
+  if [ "$1" = "55" ] && [ -x "/opt/php$1/bin/php" ] ; then
+    _PHP_DRIVERS=`/opt/php$1/bin/php -i | grep "with-mysql=/usr"`
+    if [ -z "$_PHP_DRIVERS" ] ; then
+      _PHP_DRIVERS_BUILD=NO
+    else
+      _PHP_DRIVERS_BUILD=YES
+    fi
+  fi
+  if [ "$_PHP_DRIVERS_BUILD" = "NO" ] || [[ "$_PHP_INSTALLED" =~ "~" ]] || [[ "$_PHP_INSTALLED" =~ "dotdeb" ]] || [[ "$_PHP_INSTALLED" =~ "ubuntu" ]] ; then
     msg "INFO: Installed PHP version $_PHP_INSTALLED, upgrade required"
     install_php_multi "$1"
   else
