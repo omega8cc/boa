@@ -104,7 +104,9 @@ _STRICT_BIN_PERMISSIONS=NO #---- Aggressively protect all binaries when YES
 ### WARNING! Do not add here 'shell_exec'
 ### or you will break cron for all sites
 ### including all hosted on all Satellite
-### Instances.
+### Instances. The 'shell_exec' function is
+### also required by Collectd Graph Panel,
+### if installed.
 ###
 ### This option affects only Aegir Master
 ### Instance plus all scripts running outside

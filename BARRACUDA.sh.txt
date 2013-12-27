@@ -821,7 +821,9 @@ _CUSTOM_CONFIG_REDIS=NO
 ### WARNING! Do not add here 'shell_exec'
 ### or you will break cron for all sites
 ### including all hosted on all Satellite
-### Instances.
+### Instances. The 'shell_exec' function is
+### also required by Collectd Graph Panel,
+### if installed.
 ###
 ### This option affects only Aegir Master
 ### Instance plus all scripts running outside
@@ -4873,6 +4875,18 @@ check_php_broken () {
 # Optional Strict Permissions on All Binaries.
 strict_bin_permissions () {
   _BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/"
+  for p in $_BIN_PATHS; do
+    for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f` ; do
+      chgrp root $f &> /dev/null
+      chmod 750 $f &> /dev/null
+    done
+  done
+  for p in $_BIN_PATHS; do
+    for f in `find $p -group www-data ! -perm -4000 ! -perm -2000 -type f` ; do
+      chgrp root $f &> /dev/null
+      chmod 750 $f &> /dev/null
+    done
+  done
   for p in $_BIN_PATHS; do
     for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f` ; do
       chgrp users $f &> /dev/null
