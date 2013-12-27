@@ -4790,8 +4790,9 @@ fix_multi_ip_cron_access () {
   for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
   echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
   echo "  deny         all;" >> /root/.local.IP.list.allow
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /data/disk/*/config/includes/*.conf &> /dev/null
-  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" /var/aegir/config/includes/*.conf &> /dev/null
+  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /data/disk/*/config/includes/*.conf &> /dev/null
+  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/includes/*.conf &> /dev/null
+  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
 d;};' /data/disk/*/config/includes/*.conf &> /dev/null
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
@@ -7589,7 +7590,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
     touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
   fi
-  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.protect.vhost.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.sec1.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
@@ -7597,7 +7598,7 @@ if [ -e "/var/www/chive/index.php" ] ; then
     sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
     sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-    touch /var/xdrago/log/chive_$_CHIVE_VERSION.protect.vhost.log
+    touch /var/xdrago/log/chive_$_CHIVE_VERSION.sec1.vhost.log
   fi
   chown -R $_PHP_CN:www-data /var/www/chive
 fi
@@ -7612,7 +7613,7 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
-  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -e "/var/xdrago/log/sqlbuddy.protect.vhost.log" ] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -e "/var/xdrago/log/sqlbuddy.sec1.vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
@@ -7628,7 +7629,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
-      touch /var/xdrago/log/sqlbuddy.protect.vhost.log
+      touch /var/xdrago/log/sqlbuddy.sec1.vhost.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
       mrun "sleep 1"
     else
@@ -7652,7 +7653,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/xdrago/log/collectd.protect.vhost.log" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/xdrago/log/collectd.sec1.vhost.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -7678,7 +7679,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo "  include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
         echo "}" >> $_CGP_VHOST
         echo >> $_CGP_VHOST
-        echo collectd5 > /var/xdrago/log/collectd.protect.vhost.log
+        echo collectd5 > /var/xdrago/log/collectd.sec1.vhost.log
         st_runner "update-rc.d collectd defaults" &> /dev/null
         msg "INFO: Collectd Graph Panel installation completed"
         mrun "sleep 1"
