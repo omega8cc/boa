@@ -393,7 +393,7 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
       service nginx reload &> /dev/null
     fi
   fi
-  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list;done
+  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list;done
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list
   echo "  deny                         all;" >> /var/backups/.auth.IP.list
   echo "  ### access live"                   >> /var/backups/.auth.IP.list
@@ -402,7 +402,7 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
 # Manage IP-Auth Xtras Access.
 manage_ip_auth_xtras_access ()
 {
-  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list.tmp;done
+  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list.tmp;done
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
   _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list.tmp)
   if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
