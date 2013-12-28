@@ -4929,7 +4929,7 @@ strict_bin_permissions () {
 
   chgrp aegir $(which drush)
 
-  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state"
+  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named"
   for i in $_PROTECTED_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
