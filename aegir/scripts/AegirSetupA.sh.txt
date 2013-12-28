@@ -1599,6 +1599,11 @@ mrun "sleep 1"
       ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
     fi
   fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7
+    fi
+  fi
 fi
 
 

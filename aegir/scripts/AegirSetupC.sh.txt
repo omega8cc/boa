@@ -615,7 +615,8 @@ _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_SPARK="Spark 1.0-a10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
-_F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN $_SMALLCORE7 P.$_THIS_CORE"
+_F_UBER_CART_SEVEN="Ubercart $_UBER_CART_SEVEN (uberdrupal) $_SMALLCORE7 P.$_THIS_CORE"
+_F_UBER_CART_TESTING="Ubercart $_UBER_CART_SEVEN (acquia) $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBERCART="Ubercart $_UBERCART $_SMALLCORE6 P.$_THIS_CORE"
 #
 _F_DRUPAL6_D="Drupal $_SMALLCORE6 D.$_THIS_CORE"
@@ -2411,6 +2412,73 @@ fi
 fi
 }
 
+
+ubercart7_testing_install () {
+###---### Ubercart 3 with testing profile
+#
+_REAL_PRNAME="testing"
+_VIRT_PRNAME="ubercart-$_REAL_PRNAME"
+_SHRD_PLNAME="$_VIRT_PRNAME-$_UBER_CART_SEVEN-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ UC7 ]] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
+echo " "
+if prompt_yes_no "$_F_UBER_CART_TESTING - http://ubercart.org" ; then
+true
+msg "DISTRO: $_F_UBER_CART_TESTING installation in progress..."
+mrun "sleep 1"
+if [ ! -d "$_SHRD_PLPATH" ] ; then
+  cd $_CORE
+  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
+    mkdir -p $_SHRD_PLPATH
+    nocore_d7_dist_clean
+    rm -f -r $_SHRD_PLPATH/profiles/standard
+    rm -f -r $_SHRD_PLPATH/profiles/minimal
+    sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/testing/testing.info &> /dev/null
+    mkdir -p $_SHRD_PRPATH/libraries
+    cd $_SHRD_PRPATH/libraries
+    curl -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    unzip -qq colorbox-master.zip &> /dev/null
+    rm -f colorbox-master.zip
+    mv -f colorbox-master colorbox
+    mkdir -p $_SHRD_PRPATH/modules
+    cd $_SHRD_PRPATH/modules
+    get_dev_contrib "colorbox-7.x-2.4.tar.gz" &> /dev/null
+    get_dev_contrib "ctools-7.x-1.3.tar.gz" &> /dev/null
+    get_dev_contrib "entity-7.x-1.2.tar.gz" &> /dev/null
+    get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
+    get_dev_contrib "libraries-7.x-2.x-dev.tar.gz" &> /dev/null
+    get_dev_contrib "pathauto-7.x-1.2.tar.gz" &> /dev/null
+    get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
+    get_dev_contrib "token-7.x-1.5.tar.gz" &> /dev/null
+    get_dev_contrib "ubercart-7.x-3.6.tar.gz" &> /dev/null
+    get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
+    cd $_SHRD_PRPATH/modules/views
+    # http://drupal.org/node/1766338#comment-6445882
+    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
+    patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+  else
+    get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
+  fi
+fi
+init_this_distro_root
+msg "DISTRO: $_F_UBER_CART_TESTING installation completed"
+mrun "sleep 1"
+else
+  msg "DISTRO: $_F_UBER_CART_TESTING installation skipped"
+  mrun "sleep 1"
+fi
+fi
+fi
+fi
+}
+
 drupal6_install
 drupal7_install
 
@@ -2434,7 +2502,7 @@ spark_install
 totem_install
 ubercart6_install
 ubercart7_install
-
+ubercart7_testing_install
 
 if [ "$_ALLOW_UNSUPPORTED" = "YES" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   acquia_install
@@ -2713,7 +2781,13 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6" ] ; then
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_UBER_CART_SEVEN" acquia $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_UBER_CART_SEVEN" minimal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
+    mrun "sleep 1"
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_UBER_CART_TESTING" testing $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7 &> /dev/null
     mrun "sleep 1"
   fi
 fi
