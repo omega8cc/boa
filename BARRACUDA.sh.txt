@@ -4930,7 +4930,6 @@ strict_bin_permissions () {
     fi
   done
 
-  chmod 777 /var/run/screen &> /dev/null
   chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives
   chmod 711 /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives
 }
