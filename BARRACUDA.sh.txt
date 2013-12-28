@@ -4874,33 +4874,41 @@ check_php_broken () {
 #
 # Optional Strict Permissions on All Binaries.
 strict_bin_permissions () {
-  _BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/ /opt/php55/bin/ /opt/php54/bin/ /opt/php53/bin/ /opt/php52/bin/"
+  _BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin"
   for p in $_BIN_PATHS; do
-    for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f` ; do
-      chgrp root $f &> /dev/null
-      chmod 750 $f &> /dev/null
-    done
+    if [ -e "$p" ] ; then
+      for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f` ; do
+        chgrp root $f &> /dev/null
+        chmod 750 $f &> /dev/null
+      done
+    fi
   done
   for p in $_BIN_PATHS; do
-    for f in `find $p -group www-data ! -perm -4000 ! -perm -2000 -type f` ; do
-      chgrp root $f &> /dev/null
-      chmod 750 $f &> /dev/null
-    done
+    if [ -e "$p" ] ; then
+      for f in `find $p -group www-data ! -perm -4000 ! -perm -2000 -type f` ; do
+        chgrp root $f &> /dev/null
+        chmod 750 $f &> /dev/null
+      done
+    fi
   done
   for p in $_BIN_PATHS; do
-    for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f` ; do
-      chgrp users $f &> /dev/null
-      chmod 750 $f &> /dev/null
-    done
+    if [ -e "$p" ] ; then
+      for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f` ; do
+        chgrp users $f &> /dev/null
+        chmod 750 $f &> /dev/null
+      done
+    fi
   done
   for p in $_BIN_PATHS; do
-    for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f` ; do
-      chgrp users $f &> /dev/null
-      chmod 750 $f &> /dev/null
-    done
+    if [ -e "$p" ] ; then
+      for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f` ; do
+        chgrp users $f &> /dev/null
+        chmod 750 $f &> /dev/null
+      done
+    fi
   done
 
-  _WEBSERVER_BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/"
+  _WEBSERVER_BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives"
   for p in $_WEBSERVER_BIN_PATHS; do
     for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf` ; do
       if [ -e "$f" ] ; then
