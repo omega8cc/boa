@@ -4874,7 +4874,7 @@ check_php_broken () {
 #
 # Optional Strict Permissions on All Binaries.
 strict_bin_permissions () {
-  _BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/"
+  _BIN_PATHS="/usr/local/bin/ /usr/bin/ /bin/ /usr/local/sbin/ /usr/sbin/ /sbin/ /etc/alternatives/ /opt/php55/bin/ /opt/php54/bin/ /opt/php53/bin/ /opt/php52/bin/"
   for p in $_BIN_PATHS; do
     for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f` ; do
       chgrp root $f &> /dev/null
@@ -4930,8 +4930,8 @@ strict_bin_permissions () {
     fi
   done
 
-  chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives
-  chmod 711 /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives
+  chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
+  chmod 711 /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
 }
 #
 # Final cleanup.
