@@ -2333,6 +2333,13 @@ sub_force_advanced_nginx_config () {
         sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
     fi
+    if [ "$_PHP_LEGACY_FREE" = "YES" ] || [ "$_PHP_FPM_VERSION" != "5.2" ] ; then
+      if [ "$_PHP_CN" = "www53" ] ; then
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+      else
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+      fi
+    fi
   fi
 }
 #
@@ -2951,6 +2958,35 @@ barracuda_cnf () {
       sed -i "s/.*_PHP_INSTALL_NEW.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
+
+    _PHP_CLI_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/*/log/cli.txt 2>&1`
+    _PHP_CLI_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/*/static/control/cli.info 2>&1`
+    _PHP_CLI_LEGACY_IF_USED_C=`grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1`
+    if [ ! -z "$_PHP_CLI_LEGACY_IF_USED_A" ] || [ ! -z "$_PHP_CLI_LEGACY_IF_USED_B" ] || [ ! -z "$_PHP_CLI_LEGACY_IF_USED_C" ] ; then
+      _PHP_CLI_LEGACY_FREE=NO
+      msg "Legacy PHP-CLI 5.2 is used on this system"
+    else
+      _PHP_CLI_LEGACY_FREE=YES
+      msg "Legacy PHP-CLI 5.2 is not used on this system"
+    fi
+
+    _PHP_FPM_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/*/log/fpm.txt 2>&1`
+    _PHP_FPM_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/*/static/control/fpm.info 2>&1`
+    _PHP_FPM_LEGACY_IF_USED_C=`grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1`
+    if [ ! -z "$_PHP_FPM_LEGACY_IF_USED_A" ] || [ ! -z "$_PHP_FPM_LEGACY_IF_USED_B" ] || [ ! -z "$_PHP_FPM_LEGACY_IF_USED_C" ] ; then
+      _PHP_FPM_LEGACY_FREE=NO
+      msg "Legacy PHP-FPM 5.2 is used on this system"
+    else
+      _PHP_FPM_LEGACY_FREE=YES
+      msg "Legacy PHP-FPM 5.2 is not used on this system"
+    fi
+
+    if [ "$_PHP_CLI_LEGACY_FREE" = "YES" ] && [ "$_PHP_FPM_LEGACY_FREE" = "YES" ] ; then
+      _PHP_LEGACY_FREE=YES
+    else
+      _PHP_LEGACY_FREE=NO
+    fi
+
     _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL /root/.barracuda.cnf)
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
       _DO_NOTHING=YES
@@ -2964,24 +3000,43 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
         _PHP_MULTI_INSTALL="5.5 5.4 5.3"
       fi
-      if [ -x "/usr/local/bin/php52" ] && [ ! -L "/usr/local/bin/php52" ] ; then
+      if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] && [ ! -L "/usr/local/bin/php52" ] ; then
         if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
           _DO_NOTHING=YES
         else
           _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.2"
         fi
+        rm -f /var/backups/php52
         mv -f /usr/local/bin/php52 /var/backups/ &> /dev/null
         ln -s /opt/php52/bin/php /usr/local/bin/php52
       fi
+      if [ "$_PHP_LEGACY_FREE" = "YES" ] ; then
+        if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
+          _DO_NOTHING=YES
+        else
+          if [ -e "/etc/init.d/php-fpm" ] ; then
+            mrun "service php-fpm stop" &> /dev/null
+            update-rc.d -f php-fpm remove &> /dev/null
+            rm -f /etc/init.d/php-fpm
+          fi
+          if [ -e "/etc/init.d/php52-fpm" ] ; then
+            mrun "service php52-fpm stop" &> /dev/null
+            update-rc.d -f php52-fpm remove &> /dev/null
+            rm -f /etc/init.d/php52-fpm
+          fi
+        fi
+      fi
       echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     fi
-    if [ -x "/opt/php52/bin/php" ] && [ -L "/usr/local/bin/php52" ] ; then
+
+    if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/opt/php52/bin/php" ] && [ -L "/usr/local/bin/php52" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
         _DO_NOTHING=YES
       else
         _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.2"
       fi
     fi
+
     _PHP_MODERN_ONLY_TEST=$(grep _PHP_MODERN_ONLY /root/.barracuda.cnf)
     if [[ "$_PHP_MODERN_ONLY_TEST" =~ "_PHP_MODERN_ONLY" ]] ; then
       sed -i "s/.*_PHP_MODERN_ONLY.*//g" /root/.barracuda.cnf &> /dev/null
@@ -6602,6 +6657,7 @@ fi
 if [ ! -z "$_PHP_EXTRA" ] ; then
   msg "INFO: PHP EXTRA is $_PHP_EXTRA"
 fi
+
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"

@@ -1263,6 +1263,39 @@ sub_force_advanced_nginx_config () {
         sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
     fi
+
+    _PHP_CLI_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/$_USER/log/cli.txt 2>&1`
+    _PHP_CLI_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/$_USER/static/control/cli.info 2>&1`
+    _PHP_CLI_LEGACY_IF_USED_C=`grep "CLI.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
+    if [ ! -z "$_PHP_CLI_LEGACY_IF_USED_A" ] || [ ! -z "$_PHP_CLI_LEGACY_IF_USED_B" ] || [ ! -z "$_PHP_CLI_LEGACY_IF_USED_C" ] ; then
+      _PHP_CLI_LEGACY_FREE=NO
+    else
+      _PHP_CLI_LEGACY_FREE=YES
+    fi
+
+    _PHP_FPM_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/$_USER/log/fpm.txt 2>&1`
+    _PHP_FPM_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/$_USER/static/control/fpm.info 2>&1`
+    _PHP_FPM_LEGACY_IF_USED_C=`grep "FPM.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
+    if [ ! -z "$_PHP_FPM_LEGACY_IF_USED_A" ] || [ ! -z "$_PHP_FPM_LEGACY_IF_USED_B" ] || [ ! -z "$_PHP_FPM_LEGACY_IF_USED_C" ] ; then
+      _PHP_FPM_LEGACY_FREE=NO
+    else
+      _PHP_FPM_LEGACY_FREE=YES
+    fi
+
+    if [ "$_PHP_CLI_LEGACY_FREE" = "YES" ] && [ "$_PHP_FPM_LEGACY_FREE" = "YES" ] ; then
+      _PHP_LEGACY_FREE=YES
+    else
+      _PHP_LEGACY_FREE=NO
+    fi
+
+    if [ "$_PHP_LEGACY_FREE" = "YES" ] || [ "$_PHP_FPM_VERSION" != "5.2" ] ; then
+      if [ "$_PHP_CN" = "www53" ] ; then
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+      else
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+      fi
+    fi
+
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ] ; then
       rm -f /root/.tmp.IP.list*
