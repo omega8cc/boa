@@ -23,8 +23,8 @@
    NOTE! You shouldn't use anything like "mydomain.org" as your hostname.
          It should be some **subdomain**, like "server.mydomain.org".
 
-   NOTE! You **don't** need to configure your hostname (on the server) before
-         running BOA installer, since BOA will do that for you, automatically.
+   You **don't** need to configure your hostname (on the server) before
+   running BOA installer, since BOA will do that for you, automatically.
 
 2. Please read docs/NOTES.txt for other related details.
 
@@ -35,21 +35,25 @@
 
 4. Install Barracuda and Octopus.
 
-   NOTE: You must specify the kind of install with {in-stable|in-head},
-         location with {local|public}, your hostname and e-mail address,
-         as shown below. Specifying Octopus username is optional.
-         It will use default {o1} if empty. The one before last part
-         {ask|mini|max|stock} is optional, if you wish to control Octopus
-         platforms install mode, as explained below. Note that none === "ask"
-         which is default. The special "stock" option allows you to install
-         non-BOA, vanilla Aegir 2.x version, useful for testing/debugging,
-         but it will automatically force in-head install, because Aegir 2.x
-         vanilla is by definition unstable, untested and shouldn't be used
-         in any production environment, only for testing and debugging.
-         The last {newrelickey} part is optional, if you wish to install
-         and auto-magically enable both New Relic Apps and Server Monitor.
-         It must be a valid New Relic license key - even if it is their
-         free Lite option.
+   You must specify the kind of install with {in-stable|in-head},
+   location with {local|public}, your hostname and e-mail address,
+   as shown below.
+
+   Specifying Octopus username is optional. It will use "o1" if empty.
+
+   The one before last part {ask|mini|max|stock} is optional, if you wish
+   to control Octopus platforms install mode, as explained below.
+   Note that none === "ask" which is default.
+
+   The special "stock" option allows you to install non-BOA, vanilla
+   Aegir 2.x version, useful **only** for testing/debugging, but it will
+   automatically force in-head install. If not sure, don't even try this,
+   because most of the time it will be (probably) broken.
+
+   The last {newrelickey} part is optional, if you wish to install
+   and auto-magically enable both New Relic Apps and Server Monitor.
+   It must be a valid New Relic license key - even if it is their
+   free Lite option.
 
    # Stable on public server - prompt for every platform install
    $ boa in-stable public server.mydomain.org my@email o1
@@ -60,8 +64,8 @@
    # Stable on public server - no prompt with all platforms and New Relic
    $ boa in-stable public server.mydomain.org my@email o1 max newrelickey
 
-   # To install HEAD instead of Stable, use the same commands, but
-     replace "in-stable" with "in-head"
+   To install HEAD instead of Stable, use the same commands, but
+   replace "in-stable" with "in-head"
 
 
 ### Installing BOA system on localhost
@@ -75,13 +79,14 @@
 
 3. Install Barracuda and Octopus.
 
-   NOTE: You must specify the kind of install with {in-stable|in-head},
-         location with {local|public}, and your e-mail address,
-         as shown below. For local installs you don't need to specify
-         hostname and Octopus username, as it is fully automated.
-         The last {ask|mini|max} part is optional, if you wish to control
-         Octopus platforms install mode, as explained below - none is
-         the same as "ask".
+   You must specify the kind of install with {in-stable|in-head},
+   location with {local|public}, and your e-mail address,
+   as shown below. For local installs you don't need to specify
+   hostname and Octopus username, as it is fully automated.
+
+   The last {ask|mini|max} part is optional, if you wish to control
+   Octopus platforms install mode, as explained below - none is
+   the same as "ask".
 
    # Stable on localhost - prompt for every platform install
    $ boa in-stable local my@email
@@ -92,8 +97,8 @@
    # Stable on localhost - no prompt with all platforms installed
    $ boa in-stable local my@email max
 
-   # To install HEAD instead of Stable, use the same commands, but
-     replace "in-stable" with "in-head"
+   To install HEAD instead of Stable, use the same commands, but
+   replace "in-stable" with "in-head"
 
 
 ### Installing more Octopus instances
@@ -107,16 +112,3 @@ Example:
    $ boa in-stable public server.mydomain.org my@email o2 mini
    $ boa in-stable public server.mydomain.org my@email o3
    $ boa in-stable public server.mydomain.org my@email o4 max
-
-
-### NOTE: You can also configure and run BARRACUDA.sh.txt and OCTOPUS.sh.txt
-          directly if you prefer to configure all available options manually.
-          To learn more on how to customize your BOA system, please read
-          docs/NOTES.txt # Notes related to Barracuda and Octopus customized
-          install and upgrades.
-
-          Note also that detailed backend log on barracuda
-          install is always stored in /var/backups/*
-
-### Please read docs/UPGRADE.txt for simple upgrades how-to
-
