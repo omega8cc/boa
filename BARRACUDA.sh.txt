@@ -1542,7 +1542,7 @@ install_redis_src () {
   rm -f /usr/bin/redis*
   cd redis-$_REDIS_VERSION
   st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet PREFIX=/usr/bin install" 2> /dev/null
+  st_runner "make --quiet PREFIX=/usr install" 2> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
