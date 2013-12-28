@@ -501,11 +501,6 @@ init_this_distro_root () {
   fi
 }
 #
-# Add old short name acquia.
-add_old_short_name_acquia () {
-  sed -i "s/=> 'Pressflow',/=> 'Pressflow',\n    'old_short_name' => 'acquia',/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-}
-#
 # Upgrade contrib less.
 upgrade_contrib_less () {
   rm -f -r {context,entity,entityreference,og}
@@ -684,7 +679,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_CORE
     get_distro_ext "vanilla-$_SHRD_PLNAME.tar.gz" &> /dev/null
     nocore_d6_dist_clean
-    sed -i "s/=> 'Acquia Drupal',/=> 'Acquia Drupal',\n    'old_short_name' => 'default',/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
     rm -f -r $_SHRD_PLPATH/profiles/default
   else
     cd $_CORE
@@ -736,8 +730,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     mkdir -p $_SHRD_PRPATH/modules
     mv $_SHRD_PLPATH/sites/all/modules/civicrm $_SHRD_PRPATH/modules/ &> /dev/null
     nocore_d6_dist_clean
-    add_old_short_name_acquia
-  else
+    else
     cd $_CORE
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -1111,7 +1104,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
   mkdir -p $_SHRD_PLPATH
   nocore_d6_dist_clean
   enable_drupal6_admin
-  add_old_short_name_acquia
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_D installation completed"
@@ -1137,7 +1129,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
   mkdir -p $_SHRD_PLPATH
   nocore_d6_dist_clean
   enable_drupal6_admin
-  add_old_short_name_acquia
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6_S installation completed"
@@ -1163,7 +1154,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
   mkdir -p $_SHRD_PLPATH
   nocore_d6_dist_clean
   enable_drupal6_admin
-  add_old_short_name_acquia
 fi
 init_this_distro_root
 msg "DISTRO: $_F_DRUPAL6 installation completed"
