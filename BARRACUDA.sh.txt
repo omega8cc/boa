@@ -1533,22 +1533,16 @@ install_redis_src () {
   cd /var/opt
   rm -f -r redis*
   get_dev_src "redis-$_REDIS_VERSION.tar.gz" &> /dev/null
-  cd redis-$_REDIS_VERSION
-  st_runner "make --quiet" 2> /dev/null
-  st_runner "make --quiet install" 2> /dev/null
   if [ -e "/var/lib/redis" ] ; then
     mrun "service redis-server stop" &> /dev/null
     mrun "sleep 1"
     killall -9 redis-server &> /dev/null
   fi
-  cd /usr/local/bin
-  if [ ! -L "/usr/local/bin/redis-server" ] ; then
-    cp -p redis-server /usr/bin/
-  fi
-  cp -p redis-benchmark /usr/bin/
-  cp -p redis-cli /usr/bin/
-  cp -p redis-check-dump /usr/bin/
-  cp -p redis-check-aof /usr/bin/
+  rm -f /usr/local/bin/redis*
+  rm -f /usr/bin/redis*
+  cd redis-$_REDIS_VERSION
+  st_runner "make --quiet" 2> /dev/null
+  st_runner "make --quiet PREFIX=/usr/bin install" 2> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis-server /etc/init.d/redis-server
   chmod 755 /etc/init.d/redis-server &> /dev/null
   st_runner "update-rc.d redis-server defaults" &> /dev/null
@@ -1565,14 +1559,14 @@ install_redis_src () {
       if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
         _DO_NOTHING=YES
       else
-        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
+        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log" ] ; then
           cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
           cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
         fi
       fi
     fi
   else
-    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] ; then
+    if [ ! -e "/etc/redis/redis.conf" ] || [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log" ] ; then
       if [ -e "/etc/redis/redis.conf" ] ; then
         cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
       fi
@@ -1580,10 +1574,7 @@ install_redis_src () {
     fi
   fi
   update_redis_password
-  if [ ! -e "/usr/local/bin/redis-server" ] && [ -e "/usr/bin/redis-server" ] ; then
-    ln -sf /usr/bin/redis-server /usr/local/bin/redis-server
-  fi
-  touch /var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log
+  touch /var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log
 }
 #
 # Set xterm.
@@ -4874,6 +4865,10 @@ check_php_broken () {
 #
 # Optional Strict Permissions on All Binaries.
 strict_bin_permissions () {
+
+  chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
+  chmod 711 /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
+
   _BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin"
   for p in $_BIN_PATHS; do
     if [ -e "$p" ] ; then
@@ -4929,7 +4924,7 @@ strict_bin_permissions () {
 
   chgrp aegir $(which drush)
 
-  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named"
+  _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named redis-cli redis-benchmark redis-check-dump redis-check-aof"
   for i in $_PROTECTED_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
@@ -4937,9 +4932,6 @@ strict_bin_permissions () {
       chmod 700 $_BIN_ITEM &> /dev/null
     fi
   done
-
-  chown root:root /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
-  chmod 711 /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin &> /dev/null
 }
 #
 # Final cleanup.
@@ -6028,9 +6020,6 @@ else
   st_runner "aptitude remove redis-server -y" &> /dev/null
   st_runner "apt-get autoremove -y"           &> /dev/null
   st_runner "apt-get update -y"               &> /dev/null
-  if [ -L "/usr/local/bin/redis-server" ] ; then
-    rm -f /usr/local/bin/redis-server
-  fi
 fi
 _EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
@@ -6844,7 +6833,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   fi
   mrun "sleep 1"
 else
-  if [ -x "/usr/local/bin/redis-server" ] || [ -x "/usr/bin/redis-server" ] ; then
+  if [ -x "/usr/bin/redis-server" ] ; then
     _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | cut -d" " -f4 | awk '{ print $1}'`
     if [[ "$_REDIS_V_INSTALLED" =~ "sha" ]] ; then
       _REDIS_V_INSTALLED=`redis-server -v 2>&1 | tr -d "\n" | tr -d "v=" | cut -d" " -f3 | awk '{ print $1}'`
@@ -6859,7 +6848,7 @@ else
     mrun "sleep 1"
   fi
 fi
-if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-update.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log" ] || [ ! -d "/var/run/redis" ] || [ ! -x "/usr/bin/redis-server" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_redis_src
 fi
 
