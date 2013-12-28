@@ -2965,7 +2965,7 @@ barracuda_cnf () {
         _PHP_MULTI_INSTALL="5.5 5.4 5.3"
       fi
       if [ -x "/usr/local/bin/php52" ] && [ ! -L "/usr/local/bin/php52" ] ; then
-        if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]]
+        if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
           _DO_NOTHING=YES
         else
           _PHP_MULTI_INSTALL="$_PHP_MULTI_INSTALL 5.2"
