@@ -801,14 +801,6 @@ _CUSTOM_CONFIG_REDIS=NO
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.
 ###
-### Example:
-###
-### _PHP_FPM_DENY="passthru,popen,system"
-###
-### Note that while it will improve security
-### it will also break modules which rely
-### on any of disabled functions.
-###
 ### Note: If this option is left empty, BOA
 ### will deny access also to function:
 ###
@@ -828,6 +820,14 @@ _CUSTOM_CONFIG_REDIS=NO
 ### This option affects only Aegir Master
 ### Instance plus all scripts running outside
 ### of Octopus Satellite Instances.
+###
+### Example:
+###
+### _PHP_FPM_DENY="passthru,popen,system"
+###
+### Note that while it will improve security
+### it will also break modules which rely
+### on any of disabled functions.
 ###
 _PHP_FPM_DENY=""
 
@@ -4918,7 +4918,7 @@ strict_bin_permissions () {
     done
   done
 
-  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert chmod compass curl ls cp mkdir mv pwd rm sass sass-convert scss wget id mysql redis-server logger sendmail java java7 java6 perl rrdtool bash dash"
+  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash"
   for i in $_BACKEND_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then

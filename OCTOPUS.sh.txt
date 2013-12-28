@@ -585,19 +585,14 @@ _PHP_FPM_TIMEOUT=AUTO
 ### to disable besides those already denied
 ### in the system level 'disable_functions'.
 ###
-### Example:
-###
-### _PHP_FPM_DENY="system,exec,shell_exec"
-###
 ### Note: If this option is left empty, BOA
-### will deny access also to functions:
+### will deny access also to function:
 ###
 ###   passthru
-###   shell_exec
 ###
 ### If _PHP_FPM_DENY is *not* empty, its value
-### will *replace* passthru,shell_exec so any
-### denied function must be listed explicitly.
+### will *replace* 'passthru', so any denied
+### function must be listed explicitly.
 ###
 ### Note that while it will improve security
 ### it will also break modules which rely
@@ -606,6 +601,10 @@ _PHP_FPM_TIMEOUT=AUTO
 ### This option affects only this Satellite
 ### Instance. It is not affected by the same
 ### option set in the Barracuda Master.
+###
+### Example:
+###
+### _PHP_FPM_DENY="system,exec,shell_exec"
 ###
 _PHP_FPM_DENY=""
 
@@ -841,7 +840,7 @@ tune_fpm_config () {
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ] ; then
       sed -i "s/foo/$_USER/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       if [ ! -z "$_PHP_FPM_DENY" ] ; then
-        sed -i "s/passthru,shell_exec,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
+        sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf &> /dev/null
       fi
     fi
     _PHP_TO="${_PHP_FPM_TIMEOUT}s"

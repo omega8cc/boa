@@ -286,12 +286,12 @@ switch_php()
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
           sed -i "s/foo/${_OWN}/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           if [ ! -z "$_PHP_FPM_DENY" ] ; then
-            sed -i "s/passthru,shell_exec,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+            sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           else
             if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
               _DO_NOTHING=YES
             else
-              sed -i "s/passthru,shell_exec,//g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+              sed -i "s/passthru,//g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
             fi
           fi
           if [ "$_PHP_FPM_TIMEOUT" = "AUTO" ] || [ -z "$_PHP_FPM_TIMEOUT" ] ; then
