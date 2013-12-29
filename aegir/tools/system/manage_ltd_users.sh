@@ -384,19 +384,21 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     if [[ "$_NGX_TEST" =~ "successful" ]] ; then
       service nginx reload &> /dev/null
     else
-      echo "  ### access failr" > /var/backups/.auth.IP.list.ops
       service nginx reload &>     /var/backups/.auth.IP.list.ops
-      echo "  ### access blank" > /var/backups/.auth.IP.list.tmp
-      sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-      sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
-d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
       service nginx reload &> /dev/null
     fi
   fi
   for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" > /var/backups/.auth.IP.list;done
-  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list
-  echo "  deny                         all;" >> /var/backups/.auth.IP.list
-  echo "  ### access live"                   >> /var/backups/.auth.IP.list
+  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list &> /dev/null
+  _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list)
+  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
+    echo "  deny                         all;" >> /var/backups/.auth.IP.list
+    echo "  ### access live"                   >> /var/backups/.auth.IP.list
+  else
+    echo "  deny                         all;" >  /var/backups/.auth.IP.list
+    echo "  ### access none"                   >> /var/backups/.auth.IP.list
+  fi
 }
 #
 # Manage IP-Auth Xtras Access.
@@ -409,7 +411,8 @@ manage_ip_auth_xtras_access ()
     echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
     echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
   else
-    rm -f /var/backups/.auth.IP.list.tmp
+    echo "  deny                         all;" >  /var/backups/.auth.IP.list.tmp
+    echo "  ### access none"                   >> /var/backups/.auth.IP.list.tmp
   fi
   if [ ! -e "/var/backups/.auth.IP.list" ] ; then
     update_ip_auth_xtras_access
@@ -422,6 +425,7 @@ manage_ip_auth_xtras_access ()
     fi
   fi
   rm -f /var/backups/.auth.IP.list.tmp
+  echo `date` > /var/backups/.auth.IP.list.stamp
 }
 #
 
