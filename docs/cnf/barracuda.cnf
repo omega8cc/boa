@@ -80,64 +80,6 @@ _STRICT_BIN_PERMISSIONS=NO #---- Aggressively protect all binaries when YES
 ###
 
 ###
-### _PHP_FPM_DENY=""
-###
-### You can define custom list of functions
-### to disable besides those already denied
-### in the system level 'disable_functions'.
-###
-### Note: If this option is left empty, BOA
-### will deny access also to function:
-###
-###   passthru
-###
-### If _PHP_FPM_DENY is *not* empty, its value
-### will *replace* default 'passthru', so any
-### denied function must be listed explicitly.
-###
-### WARNING! Do not add here 'shell_exec'
-### or you will break cron for all sites
-### including all hosted on all Satellite
-### Instances. The 'shell_exec' function is
-### also required by Collectd Graph Panel,
-### if installed.
-###
-### This option affects only Aegir Master
-### Instance plus all scripts running outside
-### of Octopus Satellite Instances.
-###
-### Example:
-###
-### _PHP_FPM_DENY="passthru,popen,system"
-###
-### Note that while it will improve security
-### it will also break modules which rely
-### on any of disabled functions.
-###
-
-###
-### _STRICT_BIN_PERMISSIONS=NO
-###
-### We highly recommend to enable this option
-### to improve system security when certain
-### PHP functions, especially: exec, passthru,
-### shell_exec,system,proc_open,popen are not
-### disabled via option _PHP_FPM_DENY above.
-###
-### WARNING! This option is very aggressive
-### and can break any extra service or binary
-### you have installed which BOA doesn't
-### manage and the binary has system group
-### set to 'root'. BOA will not touch any
-### binary which has non-root group or has
-### setgid or setuid permissions.
-###
-### Recommended setting:
-###
-### _STRICT_BIN_PERMISSIONS=YES
-###
-
-###
 ### HINT: Check also control files docs in: docs/ctrl/system.ctrl
 ###
 

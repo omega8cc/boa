@@ -49,33 +49,6 @@ _CLIENT_CORES="8" #------------- Currently not used
 ###
 
 ###
-### You can define custom list of functions
-### to disable besides those already denied
-### in the system level 'disable_functions'.
-###
-### Note: If this option is left empty, BOA
-### will deny access also to function:
-###
-###   passthru
-###
-### If _PHP_FPM_DENY is *not* empty, its value
-### will *replace* 'passthru', so any denied
-### function must be listed explicitly.
-###
-### Note that while it will improve security
-### it will also break modules which rely
-### on any of disabled functions.
-###
-### This option affects only this Satellite
-### Instance. It is not affected by the same
-### option set in the Barracuda Master.
-###
-### Example:
-###
-### _PHP_FPM_DENY="system,exec,shell_exec"
-###
-
-###
 ### HINT: Check also control files docs in: docs/ctrl/system.ctrl
 ###
 
