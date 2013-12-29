@@ -102,7 +102,7 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 * Wget must be installed.
 * The Git standard port 9418 must be open.
 * SMTP standard port 25 (or SMTP relay) must be open for outgoing connections.
-* Minimum 512 MB of RAM.
+* Minimum 512 MB of RAM (1 GB for heavy distros, like Atrium 2, Commerce etc.)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
 
