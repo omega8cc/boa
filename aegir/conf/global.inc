@@ -66,11 +66,21 @@ $is_backend   = FALSE;
 $is_bot       = FALSE;
 $is_dev       = FALSE;
 $is_install   = FALSE;
+$raw_host     = FALSE;
 $redis_lock   = FALSE;
 $redis_up     = FALSE;
+$site_subdir  = FALSE;
 $use_redis    = FALSE;
 $usr_loc_ini  = FALSE;
 $usr_plr_ini  = FALSE;
+
+// Detecting subdirectory mode
+if (isset($_SERVER['SITE_SUBDIR'])) {
+  $site_subdir = $_SERVER['SITE_SUBDIR'];
+}
+if (isset($_SERVER['RAW_HOST'])) {
+  $raw_host = $_SERVER['RAW_HOST'];
+}
 
 /**
  * Backend and task detection
@@ -517,14 +527,32 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
       }
     }
     else {
-      $base_url = 'http://' . $_SERVER['HTTP_HOST'];
+      if ($site_subdir && raw_host) {
+        $base_url = 'http://' . $raw_host . '/' . $site_subdir;
+      }
+      else {
+        $base_url = 'http://' . $_SERVER['HTTP_HOST'];
+      }
     }
   }
   else {
-    $base_url = 'http://' . $_SERVER['HTTP_HOST'];
+    if ($site_subdir && raw_host) {
+      $base_url = 'http://' . $raw_host . '/' . $site_subdir;
+    }
+    else {
+      $base_url = 'http://' . $_SERVER['HTTP_HOST'];
+    }
   }
 
-  if ($all_ini['server_name_cookie_domain']) {
+  if ($base_url && $is_dev) {
+    header("X-Base-Url: " . $base_url);
+  }
+
+  if ($site_subdir && $is_dev) {
+    header("X-Site-Subdir: " . $site_subdir);
+  }
+
+  if ($all_ini['server_name_cookie_domain'] || $site_subdir) {
     $domain = '.'. preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']);
   }
   else {
