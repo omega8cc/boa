@@ -1,4 +1,5 @@
 types {
+  application/atom+xml                  atom;
   application/font-woff                 woff;
   application/java-archive              jar war ear;
   application/javascript                js;
@@ -14,6 +15,7 @@ types {
   application/ogg                       ogx;
   application/pdf                       pdf;
   application/postscript                ps eps ai;
+  application/rss+xml                   rss;
   application/rtf                       rtf;
   application/vnd.google-earth.kml+xml  kml;
   application/vnd.google-earth.kmz      kmz;
@@ -78,7 +80,7 @@ types {
   application/x-x509-ca-cert            der pem crt;
   application/x-xpinstall               xpi;
   application/xhtml+xml                 xhtml;
-  application/xml                       atom rdf rss xml;
+  application/xml                       rdf;
   application/zip                       zip;
   audio/midi                            mid midi kar;
   audio/mp4                             aac f4a f4b m4a;
@@ -107,6 +109,7 @@ types {
   text/vtt                              vtt;
   text/x-component                      htc;
   text/x-vcard                          vcf;
+  text/xml                              xml;
   video/3gpp                            3gpp 3gp;
   video/mp4                             mp4 m4v f4v f4p;
   video/mpeg                            mpeg mpg;
