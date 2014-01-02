@@ -1789,13 +1789,14 @@ mrun "sleep 1"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
 chmod 700 root &> /dev/null
-if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-fix.info" ] ; then
+if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-fix-all.info" ] ; then
   find /data/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
+  st_runner "chmod 755 /data/all/*/*/profiles" &> /dev/null
   st_runner "chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
   st_runner "chown -R root:root /data/all" &> /dev/null
   st_runner "chown -R root:users /data/all/*/*/sites" &> /dev/null
-  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fix.info
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fix-all.info
 fi
 chown root:root /data/all &> /dev/null
 chown root:root $_CORE &> /dev/null
