@@ -5119,6 +5119,7 @@ if [ `whoami` = "root" ] ; then
     service cron stop &> /dev/null
   fi
   touch /var/run/boa_run.pid
+  mkdir -p /var/xdrago/log
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   _AWS_TEST_A=$(grep cloudimg /etc/fstab)
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
@@ -6510,7 +6511,7 @@ fi
 
 ###--------------------###
 cd /var
-if [ -d "/var/xdrago" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
+if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   msg "INFO: Upgrading a few more tools..."
   mrun "sleep 1"
   mv -f /var/xdrago-pre* /var/backups/dragon/x/ &> /dev/null
