@@ -910,16 +910,28 @@ _DB_BINARY_LOG=NO
 _DB_ENGINE=InnoDB
 
 ###
-### Set max 1 min load before disabling Nginx
-### temporarily, until the load stabilizes.
+### Set max 1 min load per CPU core before blocking
+### spiders temporarily, until the load stabilizes.
 ###
-_LOAD_LIMIT_ONE=1500
+_CPU_SPIDER_RATIO=3
 
 ###
-### Set max 5 min load before disabling Nginx
-### temporarily, until the load stabilizes.
+### Set max 1 min load per CPU core before disabling
+### Nginx temporarily, until the load stabilizes.
 ###
-_LOAD_LIMIT_TWO=1000
+_CPU_MAX_RATIO=6
+
+###
+### Set max 1 min load per CPU core before killing
+### all running PHP, Drush, Wget and Curl processes
+### until the load stabilizes.
+###
+### This shouldn't affect any innocent Aegir tasks,
+### including cron for sites, because the system
+### never starts them anyway, if the average load
+### in the last minute is higher than 3.5
+###
+_CPU_CRIT_RATIO=9
 
 ###
 ### Set max allowed page views from one IP
@@ -2508,23 +2520,26 @@ tune_memory_limits () {
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
   _NPROC_TEST=$(which nproc)
   if [ -z "$_NPROC_TEST" ] ; then
-    _CPU_IS="$_CPU_INFO"
+    _CPU_NR="$_CPU_INFO"
   else
-    _CPU_IS=`nproc`
+    _CPU_NR=`nproc`
   fi
-  _CPU_IS=${_CPU_IS//[^0-9]/}
-  if [ ! -z "$_CPU_IS" ] && [ ! -z "$_CPU_INFO" ] && [ "$_CPU_IS" -gt "$_CPU_INFO" ] && [ "$_CPU_INFO" -gt "0" ] ; then
-    _CPU_IS="$_CPU_INFO"
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "$_CPU_NR" ] && [ ! -z "$_CPU_INFO" ] && [ "$_CPU_NR" -gt "$_CPU_INFO" ] && [ "$_CPU_INFO" -gt "0" ] ; then
+    _CPU_NR="$_CPU_INFO"
   fi
-  let "_CPU_MX = (($_CPU_IS * 2))"
+  if [ -z "$_CPU_NR" ] || [ "$_CPU_NR" -lt "1" ] ; then
+    _CPU_NR=1
+  fi
+  let "_CPU_MX = (($_CPU_NR * 2))"
   if [ "$_CPU_MX" -lt "4" ] ; then
     _CPU_MX=4
   fi
-  let "_CPU_TG = (($_CPU_IS / 2))"
+  let "_CPU_TG = (($_CPU_NR / 2))"
   if [ "$_CPU_TG" -lt "4" ] ; then
     _CPU_TG=4
   fi
-  let "_CPU_VS = (($_CPU_IS / 12))"
+  let "_CPU_VS = (($_CPU_NR / 12))"
   if [ "$_CPU_VS" -lt "2" ] ; then
     _CPU_VS=2
   fi
@@ -2863,8 +2878,9 @@ barracuda_cnf () {
     echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
     echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.barracuda.cnf
-    echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
-    echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
+    echo "_CPU_SPIDER_RATIO=$_CPU_SPIDER_RATIO" >> /root/.barracuda.cnf
+    echo "_CPU_MAX_RATIO=$_CPU_MAX_RATIO" >> /root/.barracuda.cnf
+    echo "_CPU_CRIT_RATIO=$_CPU_CRIT_RATIO" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
@@ -2927,6 +2943,9 @@ barracuda_cnf () {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                      /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=3/g"                            /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=5/g"                          /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -3056,15 +3075,13 @@ barracuda_cnf () {
     fi
     _LOAD_LIMIT_ONE_TEST=$(grep _LOAD_LIMIT_ONE /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_ONE_TEST" =~ "_LOAD_LIMIT_ONE" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_LOAD_LIMIT_ONE=$_LOAD_LIMIT_ONE" >> /root/.barracuda.cnf
+      sed -i "s/.*_LOAD_LIMIT_ONE.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _LOAD_LIMIT_TWO_TEST=$(grep _LOAD_LIMIT_TWO /root/.barracuda.cnf)
     if [[ "$_LOAD_LIMIT_TWO_TEST" =~ "_LOAD_LIMIT_TWO" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_LOAD_LIMIT_TWO=$_LOAD_LIMIT_TWO" >> /root/.barracuda.cnf
+      sed -i "s/.*_LOAD_LIMIT_TWO.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_CSF_TEST" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
@@ -3113,6 +3130,24 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
+    fi
+    _CPU_SPIDER_RATIO_TEST=$(grep _CPU_SPIDER_RATIO /root/.barracuda.cnf)
+    if [[ "$_CPU_SPIDER_RATIO_TEST" =~ "_CPU_SPIDER_RATIO" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_CPU_SPIDER_RATIO=$_CPU_SPIDER_RATIO" >> /root/.barracuda.cnf
+    fi
+    _CPU_MAX_RATIO_TEST=$(grep _CPU_MAX_RATIO /root/.barracuda.cnf)
+    if [[ "$_CPU_MAX_RATIO_TEST" =~ "_CPU_MAX_RATIO" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_CPU_MAX_RATIO=$_CPU_MAX_RATIO" >> /root/.barracuda.cnf
+    fi
+    _CPU_CRIT_RATIO_TEST=$(grep _CPU_CRIT_RATIO /root/.barracuda.cnf)
+    if [[ "$_CPU_CRIT_RATIO_TEST" =~ "_CPU_CRIT_RATIO" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_CPU_CRIT_RATIO=$_CPU_CRIT_RATIO" >> /root/.barracuda.cnf
     fi
     _SYSTEM_UPGRADE_ONLY_TEST=$(grep _SYSTEM_UPGRADE_ONLY /root/.barracuda.cnf)
     if [[ "$_SYSTEM_UPGRADE_ONLY_TEST" =~ "_SYSTEM_UPGRADE_ONLY" ]] ; then
@@ -3333,6 +3368,9 @@ barracuda_cnf () {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                      /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=3/g"                            /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=5/g"                          /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -6538,8 +6576,6 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
-  sed -i "s/=1500/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
-  sed -i "s/=1000/=$_LOAD_LIMIT_TWO/g"   /var/xdrago/second.sh &> /dev/null
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
@@ -6595,8 +6631,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
-  sed -i "s/=1500/=$_LOAD_LIMIT_ONE/g"   /var/xdrago/second.sh &> /dev/null
-  sed -i "s/=1000/=$_LOAD_LIMIT_TWO/g"   /var/xdrago/second.sh &> /dev/null
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
