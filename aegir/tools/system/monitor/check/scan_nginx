@@ -69,7 +69,7 @@ sub makeactions
           $im_li_cnt{$VISITOR}++;
           $skip_post = 1;
         }
-        elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
+        elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)\"/) {
           ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
@@ -106,7 +106,7 @@ sub makeactions
           $im_px_cnt{$PROXY}++;
           $skip_post = 1;
         }
-        elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe)\"/) {
+        elsif ($line =~ /GET \/.*\.(mp4|m4a|flv|avi|mpe?g|mov|wmv|mp3|ogg|ogv|wav|midi|zip|tar|t?gz|rar|dmg|exe|apk|pxl|ipa)\"/) {
           ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }

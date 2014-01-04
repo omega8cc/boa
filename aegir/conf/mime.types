@@ -1,6 +1,7 @@
 types {
   application/atom+xml                  atom;
   application/font-woff                 woff;
+  application/iphone                    pxl ipa;
   application/java-archive              jar war ear;
   application/javascript                js;
   application/json                      json;
@@ -17,6 +18,7 @@ types {
   application/postscript                ps eps ai;
   application/rss+xml                   rss;
   application/rtf                       rtf;
+  application/vnd.android.package-archive apk;
   application/vnd.google-earth.kml+xml  kml;
   application/vnd.google-earth.kmz      kmz;
   application/vnd.ms-excel              xls;
