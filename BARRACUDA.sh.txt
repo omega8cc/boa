@@ -4968,36 +4968,17 @@ check_php_broken () {
   fi
 }
 #
-# Bash to sh.
-bash_to_sh () {
-  if [ -x "/bin/dash" ] ; then
-    rm -f /bin/sh
-    ln -s /bin/dash /bin/sh
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
-    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /etc/init.d/* &> /dev/null
-    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /etc/init.d/* &> /dev/null
-    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /usr/sbin/service
-    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /usr/sbin/service
-  elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
+# Symlink to bash.
+symlink_to_bash () {
+  if [ -x "/bin/bash" ] ; then
     rm -f /bin/sh
     ln -s /bin/bash /bin/sh
-    sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
-    sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /etc/init.d/* &> /dev/null
-    sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /etc/init.d/* &> /dev/null
-    sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/sbin/service
-    sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /usr/sbin/service
   fi
 }
 #
-# Sh to bash.
-sh_to_bash () {
-  if [ -x "/bin/dash" ] ; then
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
-    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /etc/init.d/* &> /dev/null
-    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /etc/init.d/* &> /dev/null
-    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /usr/sbin/service
-    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /usr/sbin/service
-  elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
+# Switch to bash.
+switch_to_bash () {
+  if [ -x "/bin/bash" ] ; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
     sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /etc/init.d/* &> /dev/null
     sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /etc/init.d/* &> /dev/null
@@ -5340,7 +5321,8 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 rm -f /var/run/aegir_upgrade.pid
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
-  bash_to_sh
+  symlink_to_bash
+  switch_to_bash
 fi
 
 ###--------------------###
@@ -8723,7 +8705,7 @@ fi
 ###--------------------###
 finale
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
-  sh_to_bash
+  switch_to_bash
 fi
 exit 0
 

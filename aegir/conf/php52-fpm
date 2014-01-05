@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ### BEGIN INIT INFO
 # Provides:          php52-fpm
@@ -9,7 +9,7 @@
 # Short-Description: starts php52-fpm
 # Description:       starts the PHP FastCGI Process Manager daemon
 ### END INIT INFO
-#
+
 php_fpm_BIN=/opt/php52/bin/php-cgi
 php_fpm_CONF=/opt/php52/etc/php52-fpm.conf
 php_fpm_PID=/var/run/php52-fpm.pid
