@@ -25,6 +25,34 @@ add_ltd_group_if_not_exists () {
   fi
 }
 #
+# Enable chattr.
+enable_chattr () {
+  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    if [ "$1" != "${_OWN}.ftp" ] ; then
+      chattr +i /home/$1             &> /dev/null
+    else
+      chattr +i /home/$1/platforms   &> /dev/null
+      chattr +i /home/$1/platforms/* &> /dev/null
+    fi
+    chattr +i /home/$1/.bazaar       &> /dev/null
+    chattr +i /home/$1/.drush        &> /dev/null
+  fi
+}
+#
+# Disable chattr.
+disable_chattr () {
+  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    if [ "$1" != "${_OWN}.ftp" ] ; then
+      chattr -i /home/$1             &> /dev/null
+    else
+      chattr -i /home/$1/platforms   &> /dev/null
+      chattr -i /home/$1/platforms/* &> /dev/null
+    fi
+    chattr -i /home/$1/.bazaar       &> /dev/null
+    chattr -i /home/$1/.drush        &> /dev/null
+  fi
+}
+#
 # Kill zombies.
 kill_zombies () {
 for Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`
@@ -37,6 +65,7 @@ do
     _SEC_DIR=`readlink -n $_SEC_SYM`
     _SEC_DIR=`echo -n $_SEC_DIR | tr -d "\n"`
     if [ ! -L "$_SEC_SYM" ] || [ ! -e "$_SEC_DIR" ] || [ ! -e "/home/${_PAR_OWN}.ftp/users/$Existing" ] ; then
+      disable_chattr $Existing
       deluser --remove-home --backup-to /var/backups/zombie/deleted $Existing
       rm -f /home/${_PAR_OWN}.ftp/users/$Existing
       echo Zombie $Existing killed
@@ -173,9 +202,12 @@ add_user_if_not_exists () {
   if [ -z "$_ID_EXISTS" ] ; then
     echo "We will create user == $_USER_LTD =="
     ok_create_user
+    enable_chattr $_USER_LTD
   elif [[ "$_ID_EXISTS" =~ "$_USER_LTD" ]] && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
     echo "We will update user == $_USER_LTD =="
+    disable_chattr $_USER_LTD
     ok_update_user
+    enable_chattr $_USER_LTD
   fi
 }
 #
@@ -350,6 +382,7 @@ do
       rm -f -r $User/clients/*/backups &> /dev/null
       symlinks -dr $User/clients &> /dev/null
       if [ -e "/home/${_OWN}.ftp" ] ; then
+        disable_chattr ${_OWN}.ftp
         symlinks -dr /home/${_OWN}.ftp &> /dev/null
         echo >> $_THIS_LTD_CONF
         echo "[${_OWN}.ftp]" >> $_THIS_LTD_CONF
@@ -360,6 +393,7 @@ do
           chmod 700 /home/${_OWN}.ftp/users
           chmod 600 /home/${_OWN}.ftp/users/*
         fi
+        enable_chattr ${_OWN}.ftp
         echo Done for $User
       else
         echo Directory /home/${_OWN}.ftp not available

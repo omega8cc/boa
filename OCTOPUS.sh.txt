@@ -1984,6 +1984,28 @@ else
   _PURGE_MODE=OFF
 fi
 
+#
+# Enable chattr.
+enable_chattr () {
+  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    chattr +i /home/$1/platforms   &> /dev/null
+    chattr +i /home/$1/platforms/* &> /dev/null
+    chattr +i /home/$1/.bazaar     &> /dev/null
+    chattr +i /home/$1/.drush      &> /dev/null
+  fi
+}
+#
+# Disable chattr.
+disable_chattr () {
+  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    chattr -i /home/$1/platforms   &> /dev/null
+    chattr -i /home/$1/platforms/* &> /dev/null
+    chattr -i /home/$1/.bazaar     &> /dev/null
+    chattr -i /home/$1/.drush      &> /dev/null
+  fi
+}
+#
+
 msg "8s before we will continue..."
 sleep 8
 rm -f /tmp/cache.inc*
@@ -1991,7 +2013,13 @@ rm -f /opt/tmp/status-*
 rm -f -r /tmp/drush_make_tmp*
 rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
+if [ -e "/home/${_USER}.ftp" ] ; then
+  disable_chattr ${_USER}.ftp
+fi
 action
+if [ -e "/home/${_USER}.ftp" ] ; then
+  enable_chattr ${_USER}.ftp
+fi
 rm -f /tmp/cache.inc*
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*
