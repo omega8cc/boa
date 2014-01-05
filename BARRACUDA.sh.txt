@@ -5018,7 +5018,7 @@ strict_bin_permissions () {
     done
   done
 
-  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2"
+  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id"
   for i in $_BACKEND_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
@@ -5037,6 +5037,20 @@ strict_bin_permissions () {
       chmod 700 $_BIN_ITEM &> /dev/null
     fi
   done
+
+  chown root:users /etc/passwd
+  chmod 640 /etc/passwd
+  if [ -x "/bin/dash" ] ; then
+    sed -i "s/:\/bin\/sh/:\/bin\/dash/g" /etc/passwd &> /dev/null
+  elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
+    sed -i "s/:\/bin\/sh/:\/bin\/bash/g" /etc/passwd &> /dev/null
+  fi
+
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/websh.sh.txt /bin/websh
+  chmod 755 /bin/websh
+  chown root:root /bin/websh
+  rm -f /bin/sh
+  ln -s /bin/websh /bin/sh
 }
 #
 # Final cleanup.
