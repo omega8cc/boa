@@ -334,11 +334,6 @@ switch_php()
             _PHP_TO="${_PHP_FPM_TIMEOUT}s"
             sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           fi
-          if [ ! -d "/data/disk/${_OWN}/tmp" ] ; then
-            rm -f -r /data/disk/${_OWN}/tmp
-            mkdir -p /data/disk/${_OWN}/tmp
-            chown ${_OWN}:www-data /data/disk/${_OWN}/tmp &> /dev/null
-          fi
           if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
             service php${_PHP_OLD_SV}-fpm reload &> /dev/null
           fi
@@ -373,6 +368,12 @@ do
     _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_OWN is == $_OWN == at manage_own"
+    if [ ! -d "/data/disk/${_OWN}/tmp" ] ; then
+      rm -f -r /data/disk/${_OWN}/tmp
+      mkdir -p /data/disk/${_OWN}/tmp
+      chown ${_OWN}.ftp:www-data /data/disk/${_OWN}/tmp &> /dev/null
+      chmod 2770 /data/disk/${_OWN}/tmp &> /dev/null
+    fi
     switch_php
     if [ -e "$User/clients" ] && [ ! -z $_OWN ] ; then
       echo Managing Users for $User Instance

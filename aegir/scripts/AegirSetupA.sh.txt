@@ -1618,6 +1618,17 @@ chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
 
 
+###---### Create ~/tmp dir if not exists.
+#
+if [ ! -d "$_ROOT/tmp" ] ; then
+  rm -f -r $_ROOT/tmp
+  mkdir -p $_ROOT/tmp
+fi
+_USERFTP="${_USER}.ftp"
+chown $_USERFTP:www-data $_ROOT/tmp
+chmod 2770 $_ROOT/tmp
+
+
 ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
 #
 if [ ! -e "$_ROOT/.ssh/id_rsa.pub" ] ; then
