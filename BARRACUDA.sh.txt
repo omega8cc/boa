@@ -4968,6 +4968,36 @@ check_php_broken () {
   fi
 }
 #
+# Bash to sh.
+bash_to_sh () {
+  if [ -x "/bin/dash" ] ; then
+    rm -f /bin/sh
+    ln -s /bin/dash /bin/sh
+    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /etc/init.d/* &> /dev/null
+    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /etc/init.d/* &> /dev/null
+  elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
+    rm -f /bin/sh
+    ln -s /bin/bash /bin/sh
+    sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /etc/init.d/* &> /dev/null
+    sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /etc/init.d/* &> /dev/null
+  fi
+}
+#
+# Sh to bash.
+sh_to_bash () {
+  if [ -x "/bin/dash" ] ; then
+    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /etc/init.d/* &> /dev/null
+    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /etc/init.d/* &> /dev/null
+  elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
+    sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /etc/init.d/* &> /dev/null
+    sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /etc/init.d/* &> /dev/null
+  fi
+}
+#
 # Optional Strict Permissions on All Binaries.
 strict_bin_permissions () {
 
@@ -5038,19 +5068,14 @@ strict_bin_permissions () {
     fi
   done
 
-  chown root:users /etc/passwd
-  chmod 640 /etc/passwd
-  if [ -x "/bin/dash" ] ; then
-    sed -i "s/:\/bin\/sh/:\/bin\/dash/g" /etc/passwd &> /dev/null
-  elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
-    sed -i "s/:\/bin\/sh/:\/bin\/bash/g" /etc/passwd &> /dev/null
-  fi
-
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
   chown root:root /bin/websh
   rm -f /bin/sh
   ln -s /bin/websh /bin/sh
+
+  chown root:users /etc/passwd
+  chmod 640 /etc/passwd
 }
 #
 # Final cleanup.
@@ -5306,7 +5331,9 @@ rm -f -r /var/opt/*
 mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 rm -f /var/run/aegir_upgrade.pid
-
+if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
+  bash_to_sh
+fi
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
@@ -8687,6 +8714,9 @@ fi
 
 ###--------------------###
 finale
+if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
+  sh_to_bash
+fi
 exit 0
 
 
