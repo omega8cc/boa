@@ -3,7 +3,7 @@
 ###
 ### System Services Monitor running every 10 seconds
 ###
-local(@RSARR) = `grep "redis_client_socket" /data/conf/global.inc 2>&1`;
+local(@RSARR) = system("grep -e redis_client_socket /data/conf/global.inc");
 foreach $line (@RSARR) {
   if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
   print "\n Redis socket mode detected...\n";
@@ -59,8 +59,9 @@ print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar && !-f "/var/run/boa_run.pid") {
-  `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
-  `/etc/init.d/pdnsd stop; rm -f /var/cache/pdnsd/pdnsd.cache; /etc/init.d/pdnsd start`;
+  system("/etc/init.d/pdnsd stop");
+  system("rm -f /var/cache/pdnsd/pdnsd.cache");
+  system("/etc/init.d/pdnsd start");
 }
 if ((!$mysqlsumar || $mysqlsumar > 150) && !-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_run.pid") {
   `bash /var/xdrago/move_sql.sh`;
@@ -72,7 +73,10 @@ if (!$redissumar && (-f "/etc/init.d/redis-server" || -f "/etc/init.d/redis") &&
 `/etc/init.d/newrelic-daemon restart` if (!$newrelicdaemonsumar && -f "/etc/init.d/newrelic-daemon" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/newrelic-sysmond restart` if (!$newrelicsysmondsumar && -f "/etc/init.d/newrelic-sysmond" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/postfix restart` if (!$postfixsumar && -f "/etc/init.d/postfix" && !-f "/var/run/boa_run.pid");
-`killall -9 nginx; /etc/init.d/nginx start` if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid");
+if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid") {
+  system("killall -9 nginx");
+  system("/etc/init.d/nginx start");
+}
 `/etc/init.d/php55-fpm restart` if ((!$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/php54-fpm restart` if ((!$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/php53-fpm restart` if ((!$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
