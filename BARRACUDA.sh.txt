@@ -4976,12 +4976,16 @@ bash_to_sh () {
     sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
     sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /etc/init.d/* &> /dev/null
     sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /etc/init.d/* &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /usr/sbin/service
+    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /usr/sbin/service
   elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
     rm -f /bin/sh
     ln -s /bin/bash /bin/sh
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
     sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /etc/init.d/* &> /dev/null
     sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /etc/init.d/* &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/sbin/service
+    sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /usr/sbin/service
   fi
 }
 #
@@ -4991,10 +4995,14 @@ sh_to_bash () {
     sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
     sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /etc/init.d/* &> /dev/null
     sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /etc/init.d/* &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/dash/g"  /usr/sbin/service
+    sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" /usr/sbin/service
   elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
     sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /etc/init.d/* &> /dev/null
     sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /etc/init.d/* &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/sbin/service
+    sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" /usr/sbin/service
   fi
 }
 #
