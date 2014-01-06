@@ -5068,9 +5068,6 @@ strict_bin_permissions () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/websh.sh.txt /bin/websh
   chmod 755 /bin/websh
   chown root:root /bin/websh
-  rm -f /bin/sh
-  ln -s /bin/websh /bin/sh
-
   chown root:root /etc/passwd
   chmod 644 /etc/passwd
 }
@@ -8703,17 +8700,15 @@ if [ -e "/usr/sbin/pdnsd" ] ; then
 fi
 fix_lfd_whitelist
 fix_lfd_uidignore
-if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
-  usermod -aG users aegir &> /dev/null
-  strict_bin_permissions
-fi
 
 
 ###--------------------###
-finale
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
+  usermod -aG users aegir &> /dev/null
   switch_to_bash
+  strict_bin_permissions
 fi
+finale
 exit 0
 
 
