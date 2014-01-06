@@ -5,7 +5,7 @@
 ###
 ###  BOA Meta Installer
 ###
-###  Copyright (C) 2010-2013 Omega8.cc
+###  Copyright (C) 2010-2014 Omega8.cc
 ###  noc@omega8.cc www.omega8.cc
 ###
 ###  This program is free software. You can
