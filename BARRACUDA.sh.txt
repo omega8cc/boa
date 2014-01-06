@@ -4980,10 +4980,10 @@ symlink_to_bash () {
 switch_to_bash () {
   if [ -x "/bin/bash" ] ; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
-    _BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin /etc/init.d /usr/lib/postfix /etc/resolvconf/update.d"
-    for p in $_BIN_PATHS; do
+    _X_BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin /etc/init.d /usr/lib/postfix /etc/resolvconf/update.d /usr/lib/ConsoleKit/run-session.d"
+    for p in $_X_BIN_PATHS; do
       if [ -e "$p" ] ; then
-        for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f` ; do
+        for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
           _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
           if [ ! -z "$_SHELL_TEST" ] ; then
             sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
@@ -6545,8 +6545,8 @@ fi
 
 ###--------------------###
 _X_INIT_TEST=`cat /etc/init.d/nginx 2>&1`
-if [[ "$_X_INIT_TEST" =~ "Barracuda" ]] ; then
-  sed -i "s/sleep 5/sleep 1/g" /etc/init.d/nginx &> /dev/null
+if [[ "$_X_INIT_TEST" =~ "github" ]] ; then
+  _DO_NOTHING=YES
 else
   mv -f /etc/init.d/nginx /var/backups/nginx-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx /etc/init.d/nginx
