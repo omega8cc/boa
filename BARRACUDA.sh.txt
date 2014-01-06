@@ -7649,7 +7649,6 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
   mv -f uc.html index.html &> /dev/null
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default
-  sed -i "s/gzip_types.*/gzip_types        text\/plain text\/css application\/javascript application\/x-javascript text\/xml application\/xml application\/xml+rss text\/javascript application\/x-font-ttf font\/opentype application\/vnd.ms-fontobject image\/svg+xml;/g"  /var/aegir/config/server_master/nginx.conf &> /dev/null
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
     mrun "service nginx reload" &> /dev/null
   fi
