@@ -2,21 +2,17 @@
 
 PATH=/usr/local/bin:/usr/bin:/bin
 SHELL=/bin/bash
-_LTDGID=`id $USER | sed 's/uid=.*\(lshellg\).*/\1/g' 2> /dev/null`
 _ALL="$@"
+_LTD_GID=$(id -nG $USER)
 
-if [ "$_LTDGID" = "lshellg" ] ; then
+if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
   if [ "$1" = "-c" ] ; then
-    _TARGET_CMD=`echo "$_ALL" | sed 's/-c//g;'`
-    _IN_PATH_TEST_A=`echo "$2" | grep "^/usr/" 2> /dev/null`
-    _IN_PATH_TEST_A=`echo "$2" | grep "^/bin/" 2> /dev/null`
-    if [ ! -z "$_IN_PATH_TEST_A" ] || [ ! -z "$_IN_PATH_TEST_B" ] ; then
+    _TARGET_CMD="$2 $3 $4 $5"
+    if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] ; then
       _IN_PATH=YES
     else
-      _WHICH_TEST=$(which "$2")
-      _IN_PATH_TEST_C=`echo "$_WHICH_TEST" | grep "^/usr/" 2> /dev/null`
-      _IN_PATH_TEST_D=`echo "$_WHICH_TEST" | grep "^/bin/" 2> /dev/null`
-      if [ ! -z "$_IN_PATH_TEST_C" ] || [ ! -z "$_IN_PATH_TEST_D" ] ; then
+      _WHICH_TEST=$(which $2)
+      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] ; then
         _IN_PATH=YES
       else
         _IN_PATH=NO
@@ -24,15 +20,11 @@ if [ "$_LTDGID" = "lshellg" ] ; then
     fi
   else
     _TARGET_CMD="$@"
-    _IN_PATH_TEST_A=`echo "$1" | grep "^/usr/" 2> /dev/null`
-    _IN_PATH_TEST_A=`echo "$1" | grep "^/bin/" 2> /dev/null`
-    if [ ! -z "$_IN_PATH_TEST_A" ] || [ ! -z "$_IN_PATH_TEST_B" ] ; then
+    if [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] ; then
       _IN_PATH=YES
     else
-      _WHICH_TEST=$(which "$1")
-      _IN_PATH_TEST_C=`echo "$_WHICH_TEST" | grep "^/usr/" 2> /dev/null`
-      _IN_PATH_TEST_D=`echo "$_WHICH_TEST" | grep "^/bin/" 2> /dev/null`
-      if [ ! -z "$_IN_PATH_TEST_C" ] || [ ! -z "$_IN_PATH_TEST_D" ] ; then
+      _WHICH_TEST=$(which $1)
+      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] ; then
         _IN_PATH=YES
       else
         _IN_PATH=NO
@@ -43,20 +35,16 @@ if [ "$_LTDGID" = "lshellg" ] ; then
     exec $_TARGET_CMD
     exit 0
   else
-    echo "###"   >> /tmp/.$USER.denied-php-escape.log
-    echo `date`  >> /tmp/.$USER.denied-php-escape.log
-    echo "$USER" >> /tmp/.$USER.denied-php-escape.log
-    echo "$_ALL" >> /tmp/.$USER.denied-php-escape.log
-    echo "###"   >> /tmp/.$USER.denied-php-escape.log
     exit 1
   fi
 else
   if [ "$1" = "-c" ] ; then
-    _TARGET_CMD=`echo "$_ALL" | sed 's/-c//g;'`
+    _TARGET_CMD="$2 $3 $4 $5"
+    exec $_TARGET_CMD
+    exit 0
   else
     _TARGET_CMD="$@"
+    exec $_TARGET_CMD
+    exit 0
   fi
-  exec $_TARGET_CMD
-  exit 0
 fi
-
