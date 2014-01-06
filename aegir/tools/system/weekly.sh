@@ -614,11 +614,6 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
 else
   _VMFAMILY="XEN"
 fi
-if [[ "$_HOST_TEST" =~ "server.lnx-4." ]] || [[ "$_HOST_TEST" =~ "server.lnx-1." ]] ; then
-  gem uninstall scout &> /dev/null
-  sed -i "s/.*scout.*//g" /etc/crontab
-  sed -i "/^$/d" /etc/crontab
-fi
 mkdir -p /var/xdrago/log/usage
 action >/var/xdrago/log/usage/usage-$_NOW.log 2>&1
 echo "INFO: Weekly maintenance complete"

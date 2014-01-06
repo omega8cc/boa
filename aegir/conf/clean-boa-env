@@ -20,13 +20,6 @@ set -e
 case "$1" in
   start)
     echo -n "Starting $DESC: "
-    if [ -x "/bin/dash" ] ; then
-      rm -f /bin/sh
-      ln -s /bin/dash /bin/sh
-    elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
-      rm -f /bin/sh
-      ln -s /bin/bash /bin/sh
-    fi
     touch $PIDFILE
     if [ -e "/var/run/boa_wait.pid" ] ; then
       rm -f /var/run/boa_wait.pid
@@ -43,12 +36,13 @@ case "$1" in
   ;;
   stop)
     echo -n "Stopping $DESC: "
-    if [ -x "/bin/dash" ] ; then
-      rm -f /bin/sh
-      ln -s /bin/dash /bin/sh
-    elif [ ! -x "/bin/dash" ] && [ -x "/bin/bash" ] ; then
-      rm -f /bin/sh
-      ln -s /bin/bash /bin/sh
+    if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+      _WEB_SH=`readlink -n /bin/sh`
+      _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
+      if [ "$_WEB_SH" != "/bin/bash" ] ; then
+        rm -f /bin/sh
+        ln -sf /bin/bash /bin/sh
+      fi
     fi
     if [ -e "/var/run/boa_wait.pid" ] ; then
       rm -f /var/run/boa_wait.pid

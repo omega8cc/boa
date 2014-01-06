@@ -14,6 +14,36 @@ _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog de
 
 ###-------------SYSTEM-----------------###
 
+#
+# Enable chattr.
+enable_chattr () {
+  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    if [ "$1" != "${_OWN}.ftp" ] ; then
+      chattr +i /home/$1             &> /dev/null
+    else
+      chattr +i /home/$1/platforms   &> /dev/null
+      chattr +i /home/$1/platforms/* &> /dev/null
+    fi
+    chattr +i /home/$1/.bazaar       &> /dev/null
+    chattr +i /home/$1/.drush        &> /dev/null
+  fi
+}
+#
+# Disable chattr.
+disable_chattr () {
+  if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    if [ "$1" != "${_OWN}.ftp" ] ; then
+      chattr -i /home/$1             &> /dev/null
+    else
+      chattr -i /home/$1/platforms   &> /dev/null
+      chattr -i /home/$1/platforms/* &> /dev/null
+    fi
+    chattr -i /home/$1/.bazaar       &> /dev/null
+    chattr -i /home/$1/.drush        &> /dev/null
+  fi
+}
+#
+
 run_drush4_cmd () {
   su -s /bin/bash $_THIS_HM_USER -c "drush4 $1 &> /dev/null"
 }
@@ -1144,6 +1174,7 @@ action () {
           source /root/.${_THIS_HM_USER}.octopus.cnf
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
         fi
+        disable_chattr ${_THIS_HM_USER}.ftp
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
@@ -1170,6 +1201,7 @@ action () {
         check_old_empty_platforms
         purge_cruft_machine
         echo Done for $User
+        enable_chattr ${_THIS_HM_USER}.ftp
       else
         echo load is $NOW_LOAD while maxload is $CTL_LOAD
         echo ...we have to wait...
