@@ -5046,7 +5046,7 @@ strict_bin_permissions () {
     done
   done
 
-  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id"
+  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id which"
   for i in $_BACKEND_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
