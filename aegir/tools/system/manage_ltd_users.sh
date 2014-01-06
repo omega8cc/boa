@@ -480,6 +480,14 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   exit
 else
   sleep 3
+  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+    _WEB_SH=`readlink -n /bin/sh`
+    _WEB_SH=`echo -n $_SEC_DIR | tr -d "\n"`
+    if [ "$_WEB_SH" != "/bin/websh" ] ; then
+      rm -f /bin/sh
+      ln -s /bin/websh /bin/sh
+    fi
+  fi
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   _THISHTNM=`hostname --fqdn`
