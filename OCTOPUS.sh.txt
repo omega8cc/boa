@@ -1267,7 +1267,7 @@ sub_force_advanced_nginx_config () {
     _PHP_CLI_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/$_USER/log/cli.txt 2>&1`
     _PHP_CLI_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/$_USER/static/control/cli.info 2>&1`
     _PHP_CLI_LEGACY_IF_USED_C=`grep "CLI.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
-    if [ ! -z "$_PHP_CLI_LEGACY_IF_USED_A" ] || [ ! -z "$_PHP_CLI_LEGACY_IF_USED_B" ] || [ ! -z "$_PHP_CLI_LEGACY_IF_USED_C" ] ; then
+    if [[ "$_PHP_CLI_LEGACY_IF_USED_A" =~ "5.2" ]] || [[ "$_PHP_CLI_LEGACY_IF_USED_B" =~ "5.2" ]] || [[ "$_PHP_CLI_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
       _PHP_CLI_LEGACY_FREE=NO
     else
       _PHP_CLI_LEGACY_FREE=YES
@@ -1276,7 +1276,7 @@ sub_force_advanced_nginx_config () {
     _PHP_FPM_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/$_USER/log/fpm.txt 2>&1`
     _PHP_FPM_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/$_USER/static/control/fpm.info 2>&1`
     _PHP_FPM_LEGACY_IF_USED_C=`grep "FPM.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
-    if [ ! -z "$_PHP_FPM_LEGACY_IF_USED_A" ] || [ ! -z "$_PHP_FPM_LEGACY_IF_USED_B" ] || [ ! -z "$_PHP_FPM_LEGACY_IF_USED_C" ] ; then
+    if [[ "$_PHP_FPM_LEGACY_IF_USED_A" =~ "5.2" ]] || [[ "$_PHP_FPM_LEGACY_IF_USED_B" =~ "5.2" ]] || [[ "$_PHP_FPM_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
       _PHP_FPM_LEGACY_FREE=NO
     else
       _PHP_FPM_LEGACY_FREE=YES
