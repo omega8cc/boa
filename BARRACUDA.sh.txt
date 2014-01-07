@@ -7894,6 +7894,7 @@ if [ -e "$_CGP_VHOST" ] ; then
 fi
 if [ -e "/var/www/cgp" ] ; then
   chown -R $_PHP_CN:www-data /var/www/cgp
+  fix_collectd_rrd_syslog_flood
 fi
 
 
