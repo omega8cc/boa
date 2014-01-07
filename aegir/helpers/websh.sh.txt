@@ -7,7 +7,15 @@ _LTD_GID=$(id -nG $USER)
 
 if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
   if [ "$1" = "-c" ] ; then
-    _TARGET_CMD="$2 $3 $4 $5"
+    if [ "$2" = "/bin/sh" ] ; then
+      _X_CMD="*c /bin/sh"
+      _Y_CMD=${_ALL#${_X_CMD}}
+      _TARGET_CMD="$_Y_CMD"
+    else
+      _X_CMD="*c"
+      _Y_CMD=${_ALL#${_X_CMD}}
+      _TARGET_CMD="$_Y_CMD"
+    fi
     if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] ; then
       _IN_PATH=YES
     else
@@ -32,19 +40,54 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
-    exec $_TARGET_CMD
+    if [ "$0" = "/bin/sh" ] ; then
+      _L_TEST=`/bin/bash $_TARGET_CMD 2>&1`
+      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] ; then
+        exec $_TARGET_CMD
+      else
+        exec /bin/bash $_TARGET_CMD
+      fi
+    else
+      exec $_TARGET_CMD
+    fi
     exit 0
   else
     exit 1
   fi
 else
   if [ "$1" = "-c" ] ; then
-    _TARGET_CMD="$2 $3 $4 $5"
-    exec $_TARGET_CMD
+    if [ "$2" = "/bin/sh" ] ; then
+      _X_CMD="*c /bin/sh"
+      _Y_CMD=${_ALL#${_X_CMD}}
+      _TARGET_CMD="$_Y_CMD"
+    else
+      _X_CMD="*c"
+      _Y_CMD=${_ALL#${_X_CMD}}
+      _TARGET_CMD="$_Y_CMD"
+    fi
+    if [ "$0" = "/bin/sh" ] ; then
+      _L_TEST=`/bin/bash $_TARGET_CMD 2>&1`
+      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] ; then
+        exec $_TARGET_CMD
+      else
+        exec /bin/bash $_TARGET_CMD
+      fi
+    else
+      exec $_TARGET_CMD
+    fi
     exit 0
   else
     _TARGET_CMD="$@"
-    exec $_TARGET_CMD
+    if [ "$0" = "/bin/sh" ] ; then
+      _L_TEST=`/bin/bash $_TARGET_CMD 2>&1`
+      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] ; then
+        exec $_TARGET_CMD
+      else
+        exec /bin/bash $_TARGET_CMD
+      fi
+    else
+      exec $_TARGET_CMD
+    fi
     exit 0
   fi
 fi
