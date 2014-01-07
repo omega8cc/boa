@@ -3855,6 +3855,7 @@ install_php_multi () {
     st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --with-zlib --with-curl --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr  --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
     mrun "sleep 1"
+    sed -i "s/^EXTRA_LIBS = -lcrypt/EXTRA_LIBS = -llber -lcrypt/g" Makefile 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
     if [ -f "/usr/bin/php" ] && [ -f "/opt/php$1/bin/php" ] ; then
