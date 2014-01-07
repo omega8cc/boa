@@ -4986,7 +4986,7 @@ switch_to_bash () {
       if [ -e "$p" ] ; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
           _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
-          if [ ! -z "$_SHELL_TEST" ] ; then
+          if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] ; then
             sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
             sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
           fi
@@ -8357,7 +8357,7 @@ if [ -e "/usr/sbin/apticron" ] ; then
 fi
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_EASY_LOCALHOST" = "NO" ] && [ "$_EASY_PUBLIC" = "YES" ] ; then
-    st_runner "sh /usr/sbin/apticron"
+    st_runner "bash /usr/sbin/apticron"
   fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     _DO_NOTHING=YES

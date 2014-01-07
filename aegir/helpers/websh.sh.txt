@@ -42,7 +42,7 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
   if [ "$_IN_PATH" = "YES" ] ; then
     if [ "$0" = "/bin/sh" ] ; then
       _L_TEST=`/bin/bash $_TARGET_CMD 2>&1`
-      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] ; then
+      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] || [[ "$_L_TEST" =~ "syntax error" ]] ; then
         exec $_TARGET_CMD
       else
         exec /bin/bash $_TARGET_CMD
@@ -67,7 +67,7 @@ else
     fi
     if [ "$0" = "/bin/sh" ] ; then
       _L_TEST=`/bin/bash $_TARGET_CMD 2>&1`
-      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] ; then
+      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] || [[ "$_L_TEST" =~ "syntax error" ]] ; then
         exec $_TARGET_CMD
       else
         exec /bin/bash $_TARGET_CMD
@@ -80,7 +80,7 @@ else
     _TARGET_CMD="$@"
     if [ "$0" = "/bin/sh" ] ; then
       _L_TEST=`/bin/bash $_TARGET_CMD 2>&1`
-      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] ; then
+      if [[ "$_L_TEST" =~ "cannot execute binary file" ]] || [[ "$_L_TEST" =~ "syntax error" ]] ; then
         exec $_TARGET_CMD
       else
         exec /bin/bash $_TARGET_CMD
