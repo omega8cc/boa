@@ -2397,6 +2397,9 @@ force_advanced_nginx_config () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
     chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
   fi
+  if [ -e "/root/.high_traffic.cnf" ] ; then
+    sed -i "s/access_log .*/access_log             /var/log/nginx/access.log main buffer=32k;/g" /var/aegir/config/server_master/nginx.conft &> /dev/null
+  fi
 }
 #
 # Tune Web Sever configuration.
