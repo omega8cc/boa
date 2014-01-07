@@ -6720,6 +6720,8 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
 fi
 if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _PHP_EXTRA=""
+elif [ "$_REL_VERSION" = "wheezy" ] ; then
+  _PHP_EXTRA="--with-gmp"
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
 fi
