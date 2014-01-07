@@ -6718,7 +6718,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
   st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 fi
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
   _PHP_EXTRA=""
 else
   _PHP_EXTRA="--with-ldap --with-gmp"
