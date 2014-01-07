@@ -6445,21 +6445,21 @@ install_wkhtmltoimage
 
 ###--------------------###
 if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
-  if [ ! -L "/usr/lib/libpng.so" ] ; then
+  if [ ! -L "/usr/lib/libgmp.so" ] ; then
     msg "INFO: Fix #1 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
     if [ "$_X86_64_TEST" = "x86_64" ] ; then
-      ln -s /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
-      ln -s /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-      ln -s /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-      ln -s /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
-      ln -s /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libldap.so /usr/lib/libldap.so
+      ln -sf /usr/lib/x86_64-linux-gnu/libgmp.so  /usr/lib/libgmp.so
     else
-      ln -s /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
-      ln -s /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
-      ln -s /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
-      ln -s /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
-      ln -s /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
+      ln -sf /usr/lib/i386-linux-gnu/libpng.so  /usr/lib/libpng.so
+      ln -sf /usr/lib/i386-linux-gnu/libjpeg.so /usr/lib/libjpeg.so
+      ln -sf /usr/lib/i386-linux-gnu/libkrb5.so /usr/lib/libkrb5.so
+      ln -sf /usr/lib/i386-linux-gnu/libldap.so /usr/lib/libldap.so
+      ln -sf /usr/lib/i386-linux-gnu/libgmp.so  /usr/lib/libgmp.so
     fi
   fi
 fi
