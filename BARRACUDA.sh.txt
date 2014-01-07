@@ -4981,7 +4981,7 @@ symlink_to_bash () {
 switch_to_bash () {
   if [ -x "/bin/bash" ] ; then
     sed -i "s/:\/bin\/sh/:\/bin\/bash/g"  /etc/passwd &> /dev/null
-    _X_BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin /etc/init.d /usr/lib/postfix /etc/resolvconf/update.d /usr/lib/ConsoleKit/run-session.d /etc/network/if-up.d /etc/network/if-down.d /etc/webmin"
+    _X_BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin /etc/init.d /usr/lib/postfix /etc/resolvconf /usr/lib/ConsoleKit/run-session.d /etc/network/if-up.d /etc/network/if-down.d /etc/webmin"
     for p in $_X_BIN_PATHS; do
       if [ -e "$p" ] ; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
