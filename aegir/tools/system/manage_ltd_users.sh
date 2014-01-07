@@ -485,7 +485,7 @@ else
     _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
     if [ "$_WEB_SH" != "/bin/websh" ] ; then
       rm -f /bin/sh
-      ln -sf /bin/websh /bin/sh
+      ln -s /bin/websh /bin/sh
     fi
   fi
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null

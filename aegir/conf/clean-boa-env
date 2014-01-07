@@ -41,7 +41,7 @@ case "$1" in
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
       if [ "$_WEB_SH" != "/bin/bash" ] ; then
         rm -f /bin/sh
-        ln -sf /bin/bash /bin/sh
+        ln -s /bin/bash /bin/sh
       fi
     fi
     if [ -e "/var/run/boa_wait.pid" ] ; then
