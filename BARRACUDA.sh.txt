@@ -7853,6 +7853,25 @@ fi
 
 
 ###--------------------###
+fix_collectd_rrd_syslog_flood () {
+  _COLLECTD_CNF="/etc/collectd/collectd.conf"
+  if [ -e "$_COLLECTD_CNF" ] ; then
+    _COLLECTD_CNF_TEST=$(grep "rootfs" $_COLLECTD_CNF)
+    if [[ "$_COLLECTD_CNF_TEST" =~ "rootfs" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "<Plugin df>"                 >> $_COLLECTD_CNF
+      echo "        FSType \"rootfs\""   >> $_COLLECTD_CNF
+      echo "        IgnoreSelected true" >> $_COLLECTD_CNF
+      echo "</Plugin>"                   >> $_COLLECTD_CNF
+      mrun "service collectd restart" &> /dev/null
+    fi
+  fi
+}
+### Credit: http://emacstragic.net/collectd-causing-rrd-illegal-attempt-to-update-using-time-errors/
+
+
+###--------------------###
 if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   rm -f /var/aegir/config/server_master/nginx/vhost.d/cgp*
   st_runner "apt-get remove collectd -y --force-yes" 2> /dev/null
