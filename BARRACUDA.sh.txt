@@ -3828,6 +3828,9 @@ install_php_multi () {
   if [ "$1" = "52" ] ; then
     install_php_legacy "$1"
   else
+    if [ "$1" != "55" ] ; then
+      _PHP_EXTRA="$_PHP_EXTRA --with-curlwrappers"
+    fi
     ###--------------------###
     msg "INFO: Installing PHP-FPM $_PHP_VERSION"
     msg "NOTE! This step may take longer than 8 minutes, please wait..."
@@ -3849,7 +3852,7 @@ install_php_multi () {
     if [ "$1" = "55" ] ; then
       _PHP_EXTRA="$_PHP_EXTRA --enable-opcache"
     fi
-    st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --with-zlib --with-curl --with-curlwrappers --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr  --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
+    st_runner "sh ./configure --quiet --prefix=/opt/php$1 --enable-fpm --with-mysql=/usr --with-mysql-sock=/var/run/mysqld/mysqld.sock --with-mysqli=/usr/bin/mysql_config --with-zlib --with-curl --with-gd --enable-gd-native-ttf --with-jpeg-dir=/usr --with-png-dir=/usr --with-freetype-dir=/usr --with-t1lib=/usr --with-pear --with-imap --with-imap-ssl --with-openssl --with-pdo-mysql=/usr  --enable-exif --enable-soap --enable-ftp --enable-zip --enable-mbstring --enable-pcntl --enable-bcmath --enable-calendar --with-kerberos --with-xsl --with-mcrypt --with-xmlrpc --with-fpm-user=www-data --with-fpm-group=www-data $_PHP_EXTRA" 2> /dev/null
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 3/3"
     mrun "sleep 1"
     st_runner "make --quiet" 2> /dev/null
