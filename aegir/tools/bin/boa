@@ -176,12 +176,11 @@ init_setup ()
       curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     elif [ "$cmmand" = "in-stable" ] ; then
-      if [ "$_THIS_DO" = "NotPrecise" ] ; then
-        curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      else
-        curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      fi
+      curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+    elif [ "$cmmand" = "in-legacy" ] ; then
+      curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+      curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     fi
   fi
   barracuda_install
@@ -296,8 +295,20 @@ case "$1" in
              check_wrapper
              init_setup
   ;;
+  in-legacy) cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_dns_curl
+             check_wrapper
+             init_setup
+  ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head} {local|public} {fqdn} {email} {o1} {ask|mini|max|stock} {newrelickey}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy} {local|public} {fqdn} {email} {o1} {ask|mini|max|stock} {newrelickey}"
              echo
              exit 1
   ;;

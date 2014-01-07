@@ -34,6 +34,16 @@ $ octopus up-head o1
 $ octopus up-head all
 
 
+   To keep Legacy version instead of Stable, use the same commands, but
+   replace "up-stable" with "up-legacy".
+
+   The Legacy version is the last Edition in the 2.1.x series which still
+   supported Drupal 5 and used Drush 4 along with older Aegir version.
+
+   Note that once you have current stable or head installed, you can't
+   go back to legacy version.
+
+
 ### NOTE: Both commands will honor configuration settings
           stored in their config files, respectively:
             /root/.barracuda.cnf

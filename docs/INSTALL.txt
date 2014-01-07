@@ -35,7 +35,7 @@
 
 4. Install Barracuda and Octopus.
 
-   You must specify the kind of install with {in-stable|in-head},
+   You must specify the kind of install with {in-stable|in-head|in-legacy},
    location with {local|public}, your hostname and e-mail address,
    as shown below.
 
@@ -66,6 +66,14 @@
 
    To install HEAD instead of Stable, use the same commands, but
    replace "in-stable" with "in-head"
+
+   To install Legacy version instead of Stable, use the same commands, but
+   replace "in-stable" with "in-legacy"
+
+   The Legacy version is the last Edition in the 2.1.x series which still
+   supported Drupal 5 and used Drush 4 along with older Aegir version.
+   Note that once you have current stable or head installed, you can't
+   go back to legacy version.
 
 
 ### Installing BOA system on localhost
@@ -99,6 +107,14 @@
 
    To install HEAD instead of Stable, use the same commands, but
    replace "in-stable" with "in-head"
+
+   To install Legacy version instead of Stable, use the same commands, but
+   replace "in-stable" with "in-legacy"
+
+   The Legacy version is the last Edition in the 2.1.x series which still
+   supported Drupal 5 and used Drush 4 along with older Aegir version.
+   Note that once you have current stable or head installed, you can't
+   go back to legacy version.
 
 
 ### Installing more Octopus instances

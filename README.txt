@@ -74,7 +74,7 @@ to the standard production settings.
 ### SUPPORTED LTS OS 32/64bit - Minimal on server or Desktop on localhost
 
 * Debian 7 Wheezy (recommended)
-* Debian 6 Squeeze (fully supported)
+* Debian 6 Squeeze (fully supported) (automatic upgrade to Wheezy supported)
 * Ubuntu Precise 12.04 (very limited support)
 * Ubuntu Lucid 10.04 (very limited support)
 
@@ -146,7 +146,6 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 * MongoDB driver for PHP 5.3
 * GEOS extension for PHP 5.3 (experimental).
 * FFmpeg support.
-* PHP-FPM 5.2.17 with Zend OPcache and phpredis (deprecated).
 * Bind9 DNS server.
 * Webmin Control Panel.
 * SQL Buddy database manager.

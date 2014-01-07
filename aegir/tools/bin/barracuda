@@ -228,6 +228,18 @@ up_finish ()
   exit 0
 }
 
+up_stable ()
+{
+  up_start
+  if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
+    curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+  else
+    curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+  fi
+  up_action
+  up_finish
+}
+
 up_head ()
 {
   up_start
@@ -236,18 +248,10 @@ up_head ()
   up_finish
 }
 
-up_stable ()
+up_legacy ()
 {
   up_start
-  if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
-    curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  else
-    if [ "$_THIS_DO" = "NotPrecise" ] ; then
-      curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    else
-      curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    fi
-  fi
+  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   up_action
   up_finish
 }
@@ -379,9 +383,17 @@ case "$1" in
              check_wrapper
              set_pin_priority
              up_head
+  up-legacy) cmmand="$1"
+             silent="$2"
+             ifauto="$3"
+             check_root
+             check_dns_curl
+             check_wrapper
+             set_pin_priority
+             up_legacy
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head} {system|log|stock|aegir}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log|stock|aegir}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir upgrade"
