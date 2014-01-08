@@ -367,7 +367,7 @@ fix_php_ini_opcache () {
       echo "opcache.enable_file_override=1"      >> $_THIS_FILE
       echo "opcache.inherited_hack=1"            >> $_THIS_FILE
       echo "opcache.dups_fix=1"                  >> $_THIS_FILE
-      echo "opcache.log_verbosity_level=3"       >> $_THIS_FILE
+      echo "opcache.log_verbosity_level=1"       >> $_THIS_FILE
       echo "opcache.fast_shutdown=1"             >> $_THIS_FILE
       echo ";"                                   >> $_THIS_FILE
     fi
