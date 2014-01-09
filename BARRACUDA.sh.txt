@@ -5078,6 +5078,12 @@ strict_bin_permissions () {
   chown root:root /bin/websh
   chown root:root /etc/passwd
   chmod 644 /etc/passwd
+
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /data/disk/*/tools/drush/drush &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /var/aegir/drush/drush &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/bin/drush6 &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/bin/drush5 &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/bin/drush4 &> /dev/null
 }
 #
 # Final cleanup.
