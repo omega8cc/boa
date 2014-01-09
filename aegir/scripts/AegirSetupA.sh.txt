@@ -1264,7 +1264,6 @@ fi
 
 ###---### Add symlink to the system drush_make.
 #
-_USERFTP="${_USER}.ftp"
 _USER_DM="/home/$_USERFTP/.drush"
 if [ ! -L "$_USER_DM/drush_make" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_make"
@@ -1340,8 +1339,6 @@ fi
 
 ###---### Add symlink to the clients directory.
 #
-_USERFTP="${_USER}.ftp"
-_USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/clients" ] ; then
   msg "$_STATUS A: Adding symlink to the clients directory"
   mrun "sleep 1"
@@ -1352,6 +1349,15 @@ rm -f -r $_ROOT/clients/omega8ccgmailcom &> /dev/null
 rm -f -r $_ROOT/clients/nocomega8cc &> /dev/null
 rm -f -r $_ROOT/clients/*/backups &> /dev/null
 symlinks -dr $_ROOT/clients &> /dev/null
+
+
+###---### Add symlink to the tmp directory.
+#
+if [ ! -L "$_USER_HD/.tmp" ] ; then
+  msg "$_STATUS A: Adding symlink to the tmp directory"
+  rm -f -r $_USER_HD/.tmp
+  ln -sf $_ROOT/tmp $_USER_HD/.tmp
+fi
 
 
 ###---### Remove not used dot files.
@@ -1618,15 +1624,14 @@ chmod 02775 $_ROOT/static &> /dev/null
 echo empty > $_ROOT/static/EMPTY.txt
 
 
-###---### Create ~/tmp dir if not exists.
+###---### Create ~/.tmp dir if not exists.
 #
-if [ ! -d "$_ROOT/tmp" ] ; then
-  rm -f -r $_ROOT/tmp
-  mkdir -p $_ROOT/tmp
+if [ ! -d "$_ROOT/.tmp" ] ; then
+  rm -f -r $_ROOT/.tmp
+  mkdir -p $_ROOT/.tmp
 fi
-_USERFTP="${_USER}.ftp"
-chown $_USERFTP:www-data $_ROOT/tmp
-chmod 2770 $_ROOT/tmp
+chown $_USERFTP:www-data $_ROOT/.tmp
+chmod 2770 $_ROOT/.tmp
 
 
 ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.

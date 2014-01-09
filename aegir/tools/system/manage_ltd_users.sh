@@ -28,6 +28,18 @@ add_ltd_group_if_not_exists () {
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    if [ ! -e "/home/$1/.drush/.ctrl.txt" ] ; then
+      mkdir -p  /home/$1/.drush
+      rm -f -r  /home/$1/.drush/cache
+      echo >    /home/$1/.drush/drush.ini
+      echo >    /home/$1/.drush/php.ini
+      echo >    /home/$1/.drush/.ctrl.txt
+      mkdir -p  /home/$1/.tmp
+      chmod 700 /home/$1/.tmp
+      chmod 700 /home/$1/.drush
+      chown $1:users /home/$1/.tmp
+      chown $1:users /home/$1/.drush
+    fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
       chattr +i /home/$1             &> /dev/null
     else
@@ -36,6 +48,7 @@ enable_chattr () {
     fi
     chattr +i /home/$1/.bazaar       &> /dev/null
     chattr +i /home/$1/.drush        &> /dev/null
+    chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
 #
@@ -50,6 +63,7 @@ disable_chattr () {
     fi
     chattr -i /home/$1/.bazaar       &> /dev/null
     chattr -i /home/$1/.drush        &> /dev/null
+    chattr -i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
 #
@@ -104,6 +118,12 @@ fix_dot_dirs()
     rm -f -r $_USER_BZR
   fi
   echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
+  if [ ! -e "$_USER_DRUSH/.ctrl.txt" ] ; then
+    rm -f -r $_USER_DRUSH/cache
+    rm -f $_USER_DRUSH/*
+    mkdir -p $_USER_DRUSH/cache
+    chown -R $_USER_LTD:$_USRG $_USER_DRUSH/cache
+  fi
   if [ ! -L "$_USER_DRUSH/drush_make" ] ; then
     ln -sf /var/aegir/.drush/drush_make $_USER_DRUSH/drush_make
   fi
@@ -116,6 +136,7 @@ fix_dot_dirs()
   if [ ! -L "$_USER_DRUSH/drush_ecl" ] ; then
     ln -sf /var/aegir/.drush/drush_ecl $_USER_DRUSH/drush_ecl
   fi
+  touch $_USER_DRUSH/.ctrl.txt
 }
 #
 # OK, create user.
@@ -260,8 +281,8 @@ update_drush_php_var ()
 {
   _THIS_DRUSH_PHP="$1"
   _THIS_DRUSH_PHP=${_THIS_DRUSH_PHP//\//\\\/}
-  sed -i "s/^DRUSH_PHP=.*//g" /data/disk/${_OWN}/tools/drush/drush &> /dev/null
-  sed -i "s/^#\!\/.*/#\!\/bin\/bash\n\nDRUSH_PHP=$_THIS_DRUSH_PHP\n/g"  /data/disk/${_OWN}/tools/drush/drush &> /dev/null
+  sed -i "s/^DRUSH_PHP=.*//g; s/^DRUSH_INI=.*//g; s/^PHP_INI=.*//g; s/ *$//g; /^$/d" /data/disk/${_OWN}/tools/drush/drush &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash\n\nDRUSH_PHP=$_THIS_DRUSH_PHP\nDRUSH_INI=\"\"\nPHP_INI=\"\"/g"  /data/disk/${_OWN}/tools/drush/drush &> /dev/null
 }
 #
 # Update PHP-CLI for Drush.
@@ -378,11 +399,11 @@ do
     _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_OWN is == $_OWN == at manage_own"
-    if [ ! -d "/data/disk/${_OWN}/tmp" ] ; then
-      rm -f -r /data/disk/${_OWN}/tmp
-      mkdir -p /data/disk/${_OWN}/tmp
-      chown ${_OWN}.ftp:www-data /data/disk/${_OWN}/tmp &> /dev/null
-      chmod 2770 /data/disk/${_OWN}/tmp &> /dev/null
+    if [ ! -d "/data/disk/${_OWN}/.tmp" ] ; then
+      rm -f -r /data/disk/${_OWN}/.tmp
+      mkdir -p /data/disk/${_OWN}/.tmp
+      chown ${_OWN}.ftp:www-data /data/disk/${_OWN}/.tmp &> /dev/null
+      chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
     fi
     switch_php
     if [ -e "$User/clients" ] && [ ! -z $_OWN ] ; then
@@ -403,6 +424,12 @@ do
           chown -R ${_OWN}.ftp:users /home/${_OWN}.ftp/users
           chmod 700 /home/${_OWN}.ftp/users
           chmod 600 /home/${_OWN}.ftp/users/*
+        fi
+        if [ ! -d "/home/${_OWN}.ftp/.tmp" ] ; then
+          rm -f -r /home/${_OWN}.ftp/.tmp
+          mkdir -p /home/${_OWN}.ftp/.tmp
+          chown ${_OWN}.ftp:users /home/${_OWN}.ftp/.tmp &> /dev/null
+          chmod 700 /home/${_OWN}.ftp/.tmp &> /dev/null
         fi
         enable_chattr ${_OWN}.ftp
         echo Done for $User

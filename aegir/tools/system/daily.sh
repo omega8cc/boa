@@ -18,6 +18,18 @@ _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog de
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    if [ ! -e "/home/$1/.drush/.ctrl.txt" ] ; then
+      mkdir -p  /home/$1/.drush
+      rm -f -r  /home/$1/.drush/cache
+      echo >    /home/$1/.drush/drush.ini
+      echo >    /home/$1/.drush/php.ini
+      echo >    /home/$1/.drush/.ctrl.txt
+      mkdir -p  /home/$1/.tmp
+      chmod 700 /home/$1/.tmp
+      chmod 700 /home/$1/.drush
+      chown $1:users /home/$1/.tmp
+      chown $1:users /home/$1/.drush
+    fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
       chattr +i /home/$1             &> /dev/null
     else
@@ -26,6 +38,7 @@ enable_chattr () {
     fi
     chattr +i /home/$1/.bazaar       &> /dev/null
     chattr +i /home/$1/.drush        &> /dev/null
+    chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
 #
@@ -40,6 +53,7 @@ disable_chattr () {
     fi
     chattr -i /home/$1/.bazaar       &> /dev/null
     chattr -i /home/$1/.drush        &> /dev/null
+    chattr -i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
 #
@@ -1154,6 +1168,9 @@ purge_cruft_machine () {
   find $User/static/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
 
   find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find /home/${_THIS_HM_USER}.ftp/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
 }
 
 action () {
