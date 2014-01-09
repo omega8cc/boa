@@ -1223,7 +1223,6 @@ _SILENT=/opt/tmp/silent.log
 
 ###---### Tune Your Aegir Hosting System
 #
-mrun "sleep 1"
 echo " "
 msg "TUNER START -> checkpoint: "
 cat <<EOF
@@ -1246,7 +1245,6 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
     mrun "sleep 30"
   fi
   msg "INFO: Tuning in progress, please wait..."
-  mrun "sleep 1"
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi
@@ -1260,7 +1258,6 @@ if prompt_yes_no "Are you ready to tune your Aegir Hosting System with above val
   tune_memory_limits
   restart_services
   msg "INFO: Tuning completed"
-  mrun "sleep 1"
 else
   if [ ! -e "/root/.upstart.cnf" ] ; then
     msg "INFO: We will stop cron and then wait 30 seconds..."
@@ -1277,7 +1274,6 @@ else
   tune_memory_limits
   restart_services
   msg "INFO: Tuning stopped and default settings restored"
-  mrun "sleep 1"
 fi
 rm -f -r /var/opt/*
 rm -f -r /opt/tmp/*

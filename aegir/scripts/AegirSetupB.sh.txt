@@ -238,7 +238,6 @@ fi
 ###---### Add required users and create directories.
 #
 msg "$_STATUS B: Creating directories with correct permissions"
-mrun "sleep 1"
 if [ -e "$_ROOT/aegir.sh" ] ; then
   rm -f $_ROOT/aegir.sh
 fi
@@ -288,7 +287,6 @@ echo $_DOMAIN > $_ROOT/log/domain.txt
 ###---### Running standard installer.
 #
 msg "$_STATUS B: Running standard installer"
-mrun "sleep 1"
 if [ "$_STATUS" = "UPGRADE" ] ; then
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
@@ -402,13 +400,11 @@ fi
 
 ###---### Build Aegir base.
 #
-mrun "sleep 1"
 _LOCAL_STATUS="$_STATUS"
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _LOCAL_STATUS=INIT
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-  mrun "sleep 1"
   cd $_ROOT
   _AGRPXSWD=`cat $_ROOT/.$_USER.pass.txt`
   _AGRPASWD=`echo -n $_AGRPXSWD | tr -d "\n"`
@@ -430,7 +426,6 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
       $_DRUSHCMD hostmaster-install $_DOMAIN --aegir_host=$_AEGIR_HOST --aegir_db_user=$_USER --aegir_db_pass=$_AGRPASWD --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --http_service_type=nginx --db_service_type=mysql --db_port=3306 --aegir_db_host=$_THIS_DB_HOST --client_email=$_ADM_EMAIL --script_user=$_USER --web_group=$_WEBG --version=$_AEGIR_VERSION --profile=hostmaster -y >$_ROOT/log/install.log 2>&1
     fi
   fi
-  mrun "sleep 1"
   cd $_HOSTMASTER_ROOT
   mkdir -p sites/$_DOMAIN/files/{tmp,js,css}
   chmod 2770 -R sites/$_DOMAIN/files &> /dev/null
@@ -455,7 +450,6 @@ else
   if [ ! -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _DEBUG_MODE=YES
     msg "$_STATUS B: Testing previous install... OPS, zombie found, moving it to backups..."
-    mrun "sleep 1"
     mv -f $_PREV_HOSTMASTER_ROOT $_ROOT/backups/system/empty-host-master-$_LAST_HMR-$_NOW &> /dev/null
     cd $_ROOT/aegir/distro
     list=([0-9]*)
@@ -467,11 +461,9 @@ else
     _HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_L_HM_DISTRO"
     _PREV_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_L_LAST_HMR"
     msg "$_STATUS B: Testing previous install again after removing zombie..."
-    mrun "sleep 1"
     if [ ! -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       _DEBUG_MODE=YES
       msg "$_STATUS B: Testing previous install... OPS, another zombie found, moving it to backups..."
-      mrun "sleep 1"
       mv -f $_PREV_HOSTMASTER_ROOT $_ROOT/backups/system/empty-host-master-$_L_HM_DISTRO-$_NOW-sec &> /dev/null
       cd $_ROOT/aegir/distro
       list=([0-9]*)
@@ -483,7 +475,6 @@ else
       _HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_L_HM_DISTRO"
       _PREV_HOSTMASTER_ROOT="$_ROOT/aegir/distro/$_L_LAST_HMR"
       msg "$_STATUS B: Let's hope there are no more zombies left..."
-      mrun "sleep 1"
     fi
   fi
   if [ -d "$_HOSTMASTER_ROOT" ] ; then
@@ -493,7 +484,6 @@ else
     exit 1
   fi
   msg "$_STATUS B: Hostmaster STATUS: upgrade start"
-  mrun "sleep 1"
   msg "$_STATUS B: Running hostmaster-migrate, please wait..."
   mv -f $_ROOT/.drush/security_review/security_review.drush.inc $_ROOT/.drush/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
@@ -520,7 +510,6 @@ else
   _MSG_STATUS="upgrade"
 fi
 msg "$_STATUS B: Simple check if Aegir $_MSG_STATUS is successful"
-mrun "sleep 1"
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   msg "$_STATUS B: Aegir $_MSG_STATUS test result: OK"
 else
@@ -534,7 +523,6 @@ fi
 ###---### Enhancing Aegir UI.
 #
 msg "$_STATUS B: Enhancing Aegir UI, please wait..."
-mrun "sleep 1"
 mkdir -p $_HOSTMASTER_ROOT/sites/all/{modules,themes,libraries}
 cd $_HOSTMASTER_ROOT/profiles/hostmaster/modules
 get_dev_ext "aegir_custom_settings.tar.gz" &> /dev/null

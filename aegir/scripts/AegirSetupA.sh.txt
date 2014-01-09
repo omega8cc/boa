@@ -837,7 +837,6 @@ _THIS_CTRL="$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION"
 ###---### Add required users and create directories.
 #
 msg "$_STATUS A: Creating directories with correct permissions..."
-mrun "sleep 1"
 mkdir -p /data/u
 mkdir -p /data/disk
 mkdir -p /data/conf
@@ -845,7 +844,6 @@ chown root:root /data &> /dev/null
 chown root:root /data/disk &> /dev/null
 if [ ! -d "$_ROOT" ] ; then
   msg "$_STATUS A: Adding user..."
-  mrun "sleep 1"
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   adduser --system --home $_ROOT --ingroup $_USRG $_USER &> /dev/null
   adduser $_USER $_WEBG &> /dev/null
@@ -905,7 +903,6 @@ mysqladmin flush-privileges &> /dev/null
 # Sync provision backend db_passwd.
 provision_backend_dbpass_sync () {
   msg "$_STATUS A: Syncing provision backend db_passwd..."
-  mrun "sleep 1"
   _L_SYS="$_ROOT/.$_USER.pass.txt"
   mv -f $_L_SYS $_L_SYS-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   provision_backend_dbpass_generate
@@ -937,7 +934,6 @@ provision_backend_dbpass_sync () {
 # Sync hostmaster frontend db_passwd.
 hostmaster_frontend_dbpass_sync () {
   msg "$_STATUS A: Syncing hostmaster frontend db_passwd..."
-  mrun "sleep 1"
   _THIS_HM_SPTH=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   _THIS_HM_DBUR=`cat $_THIS_HM_SPTH/drushrc.php | grep "options\['db_user'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
   _THIS_HM_DBPD=`cat $_THIS_HM_SPTH/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -965,7 +961,6 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 fi
 if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Switching user and running AegirSetupB..."
-  mrun "sleep 1"
   rm -f /opt/tmp/testecho*
   chown root:$_USRG /data/u &> /dev/null
   chmod 0771 /data/u &> /dev/null
@@ -983,10 +978,8 @@ else
   echo " "
   if prompt_yes_no "Do you want to upgrade this Aegir Satellite Instance?" ; then
     true
-    mrun "sleep 1"
     if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
       msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
-      mrun "sleep 1"
     else
       if [ ! -d "$_ROOT/.drush/provision/http" ] ; then
         cd $_ROOT/.drush
@@ -997,7 +990,6 @@ else
       fi
       hostmaster_frontend_dbpass_sync
       msg "$_STATUS A: Switching user and running AegirSetupB..."
-      mrun "sleep 1"
       rm -f /opt/tmp/testecho*
       if [ ! -e "/root/.upstart.cnf" ] ; then
         service cron stop &> /dev/null
@@ -1034,7 +1026,6 @@ else
     fi
   else
     msg "$_STATUS A: Aegir Satellite Instance not upgraded this time"
-    mrun "sleep 1"
   fi
 fi
 
@@ -1109,7 +1100,6 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   create_shared_dirs
   manage_o_contrib
   msg "$_STATUS A: Switching user and running Platforms build"
-  mrun "sleep 1"
   cd $_ROOT
   su -s /bin/bash - $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
   if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
@@ -1134,7 +1124,6 @@ else
       create_shared_dirs
       manage_o_contrib
       msg "$_STATUS A: Switching user and running Platforms build"
-      mrun "sleep 1"
       cd $_ROOT
       su -s /bin/bash - $_USER -c "/bin/bash $_ROOT/AegirSetupC.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupC-FAIL" ] ; then
@@ -1146,7 +1135,6 @@ else
       msg "$_STATUS A: Platforms installation completed"
     else
       msg "$_STATUS A: No new platforms added this time"
-      mrun "sleep 1"
     fi
   fi
 fi
@@ -1214,7 +1202,6 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   fi
   if [ ! -d "$_USERFTP_ROOT" ] ; then
     msg "$_STATUS A: Adding ftps/lshell user"
-    mrun "sleep 1"
     # add user
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
     useradd -d /home/$_USERFTP -s $_PATH_LSHELL -m -N -r $_USERFTP &> /dev/null
@@ -1257,7 +1244,6 @@ _USERFTP="${_USER}.ftp"
 _USER_HD="/home/$_USERFTP"
 if [ ! -L "$_USER_HD/backups" ] ; then
   msg "$_STATUS A: Adding symlink to the sites backups"
-  mrun "sleep 1"
   ln -sf $_ROOT/backups $_USER_HD/backups
 fi
 
@@ -1267,7 +1253,6 @@ fi
 _USER_DM="/home/$_USERFTP/.drush"
 if [ ! -L "$_USER_DM/drush_make" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_make"
-  mrun "sleep 1"
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
@@ -1279,7 +1264,6 @@ fi
 #
 if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
   msg "$_STATUS A: Adding symlink to the system registry_rebuild"
-  mrun "sleep 1"
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
@@ -1291,7 +1275,6 @@ fi
 #
 if [ ! -L "$_USER_DM/clean_missing_modules" ] ; then
   msg "$_STATUS A: Adding symlink to the system clean_missing_modules"
-  mrun "sleep 1"
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
@@ -1303,7 +1286,6 @@ fi
 #
 if [ ! -L "$_USER_DM/drush_ecl" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_ecl"
-  mrun "sleep 1"
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
@@ -1341,7 +1323,6 @@ fi
 #
 if [ ! -L "$_USER_HD/clients" ] ; then
   msg "$_STATUS A: Adding symlink to the clients directory"
-  mrun "sleep 1"
   ln -sf $_ROOT/clients $_USER_HD/clients
 fi
 rm -f -r $_ROOT/clients/admin &> /dev/null
@@ -1407,7 +1388,6 @@ fi
 #
 if [ "$_DIST_INSTALL" = "YES" ] ; then
 msg "$_STATUS A: Creating ftp symlinks"
-mrun "sleep 1"
   if [ ! -d "/home/$_USERFTP/platforms/$_THIS_CORE" ] ; then
     mkdir -p /home/$_USERFTP/platforms/$_THIS_CORE
   fi
@@ -1711,7 +1691,6 @@ if [ "$_HM_ONLY" = "YES" ] ; then
   _DO_NOTHING=YES
 else
 msg "$_STATUS A: Preparing setupmail.txt"
-mrun "sleep 1"
 _AT_CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
 _A_DM_EMAIL=${_ADM_EMAIL//\\\@/\@}
 # rm -f /opt/tmp/.admemail.txt
@@ -1745,7 +1724,6 @@ fi
 _MAILX_TEST=`mail -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
   msg "$_STATUS A: Sending setup e-mail on init..."
-  mrun "sleep 1"
   TIME=`date`
   echo $TIME > $_ROOT/log/date-init.txt
   if [ -e "$_ROOT/log/setupmail.txt" ] ; then
@@ -1760,7 +1738,6 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   if [ "$_DIST_INSTALL" = "YES" ] && [ "$_PLATFORMS_ONLY" = "NO" ] ; then
     msg "$_STATUS A: Resending setup e-mail on upgrade..."
-    mrun "sleep 1"
     TIME=`date`
     echo $TIME > $_ROOT/log/date-upgrade-$_THIS_CORE.txt
     if [ -e "$_ROOT/log/upgrademail.txt" ] ; then
@@ -1801,7 +1778,6 @@ msg "$_STATUS A: New entry added to $_ROOT/log/octopus_log.txt"
 ###---### Final cleaning.
 #
 msg "$_STATUS A: Final cleaning, please wait a moment..."
-mrun "sleep 1"
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
 chmod 700 root &> /dev/null
