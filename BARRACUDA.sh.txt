@@ -1070,7 +1070,7 @@ _CURL_VERSION=7.33.0
 _DRUSH_VERSION=4.6-dev
 _DRUSH5_VERSION=5-head-nov-22-2013
 _DRUSH6_VERSION=6.2.0
-_GEOS_VERSION=3.3.7
+_GEOS_VERSION=3.4.2
 _GIT_VERSION=1.8.5.1
 _IMAGICK_VERSION=3.1.2
 _IONCUBE_VERSION=4.4.4
@@ -3581,14 +3581,16 @@ install_php_extensions () {
       fi
       cd /var/opt
       rm -f -r geos*
-      get_dev_src "geos-3.3.7.tar.bz2" &> /dev/null
-      cd geos-3.3.7
+      get_dev_src "geos-$_GEOS_VERSION.tar.bz2" &> /dev/null
+      cd geos-$_GEOS_VERSION
       st_runner "sh ./configure --enable-php" 2> /dev/null
-      find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
-      find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
+      _THIS_LOC_PHP_PATH="$_LOC_PHP_PATH"
+      _THIS_LOC_PHP_PATH=${_THIS_LOC_PHP_PATH//\//\\\/}
+      find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/$_THIS_LOC_PHP_PATH\/php-config/g' &> /dev/null
+      find . -type f -print0 | xargs -0 sed -i 's/`php-config/`$_THIS_LOC_PHP_PATH\/php-config/g' &> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_LOC_PHP_VERSION.log
+      echo "php-geos $_GEOS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
@@ -3717,7 +3719,7 @@ update_php_extensions () {
   fi
   ###--------------------###
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-geos-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       mrun "sleep 1"
       if [ ! -e "/var/xdrago/log/geos-$_INSTALLER_VERSION.log" ] ; then
@@ -3727,14 +3729,16 @@ update_php_extensions () {
       fi
       cd /var/opt
       rm -f -r geos*
-      get_dev_src "geos-3.3.7.tar.bz2" &> /dev/null
-      cd geos-3.3.7
+      get_dev_src "geos-$_GEOS_VERSION.tar.bz2" &> /dev/null
+      cd geos-$_GEOS_VERSION
       st_runner "sh ./configure --enable-php" 2> /dev/null
-      find . -type f -print0 | xargs -0 sed -i 's/usr\/local\/bin\/php-config/opt\/local\/bin\/php-config/g' &> /dev/null
-      find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/local\/bin\/php-config/g' &> /dev/null
+      _THIS_LOC_PHP_PATH="$_LOC_PHP_PATH"
+      _THIS_LOC_PHP_PATH=${_THIS_LOC_PHP_PATH//\//\\\/}
+      find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/$_THIS_LOC_PHP_PATH\/php-config/g' &> /dev/null
+      find . -type f -print0 | xargs -0 sed -i 's/`php-config/`$_THIS_LOC_PHP_PATH\/php-config/g' &> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-geos $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_LOC_PHP_VERSION.log
+      echo "php-geos $_GEOS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
