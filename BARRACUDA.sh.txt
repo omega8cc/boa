@@ -4455,7 +4455,6 @@ get_drush_versions () {
   rm -f -r /opt/tools/drush/4/*
   cd /opt/tools/drush/4/
   get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
-  cp -af /var/aegir/drush/includes /opt/tools/drush/4/drush/
   msg "INFO: Drush $_DRUSH_VERSION installation complete"
   rm -f -r /opt/tools/drush/5/*
   cd /opt/tools/drush/5/
@@ -4471,17 +4470,20 @@ get_drush_versions () {
   msg "INFO: Drush $_DRUSH6_VERSION installation complete"
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
-  if [ ! -L "/usr/bin/drush4" ] && [ -e "/opt/tools/drush/4/drush/drush" ] ; then
-    ln -sf /opt/tools/drush/4/drush/drush /usr/bin/drush4
-  fi
-  if [ ! -L "/usr/bin/drush5" ] && [ -e "/opt/tools/drush/5/drush/drush" ] ; then
-    ln -sf /opt/tools/drush/5/drush/drush /usr/bin/drush5
-  fi
-  if [ ! -L "/usr/bin/drush6" ] && [ -e "/opt/tools/drush/6/drush/drush" ] ; then
-    ln -sf /opt/tools/drush/6/drush/drush /usr/bin/drush6
-  fi
   chmod 755 /opt/tools/drush/*/drush/drush
   chmod 755 /opt/tools/drush/*/drush/drush.php
+  if [ -x "/opt/tools/drush/4/drush/drush" ] ; then
+    rm -f /usr/bin/drush4
+    ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
+  fi
+  if [ -x "/opt/tools/drush/5/drush/drush" ] ; then
+    rm -f /usr/bin/drush5
+    ln -s /opt/tools/drush/5/drush/drush /usr/bin/drush5
+  fi
+  if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
+    rm -f /usr/bin/drush6
+    ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
+  fi
   cd /opt/tmp
 }
 #
@@ -5036,9 +5038,9 @@ strict_bin_permissions () {
 
   sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /data/disk/*/tools/drush/drush &> /dev/null
   sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /var/aegir/drush/drush &> /dev/null
-  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/bin/drush6 &> /dev/null
-  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/bin/drush5 &> /dev/null
-  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /usr/bin/drush4 &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /opt/tools/drush/6/drush/drush &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /opt/tools/drush/5/drush/drush &> /dev/null
+  sed -i "s/^#\!\/.*/#\!\/bin\/bash/g"  /opt/tools/drush/4/drush/drush &> /dev/null
 }
 #
 # Final cleanup.
