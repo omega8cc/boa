@@ -1080,6 +1080,7 @@ _JETTY_9_VERSION=9.1.0.v20131115
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
 _MARIADB_VERSION=5.5.34
+_MONGO_VERSION=1.4.5
 _MSS_VERSION=1.32
 _NGINX_VERSION=1.5.8
 _OPENSSH_VERSION=6.4p1
@@ -3588,13 +3589,13 @@ install_php_extensions () {
       msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION..."
       cd /var/opt
       rm -f -r mongo*
-      get_dev_src "mongo-1.3.4.tgz" &> /dev/null
-      cd /var/opt/mongo-1.3.4
+      get_dev_src "mongo-$_MONGO_VERSION.tgz" &> /dev/null
+      cd /var/opt/mongo-$_MONGO_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_LOC_PHP_VERSION.log
+      echo "php-mongo $_MONGO_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
@@ -3724,17 +3725,17 @@ update_php_extensions () {
   fi
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-mongo-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       cd /var/opt
       rm -f -r mongo*
-      get_dev_src "mongo-1.3.4.tgz" &> /dev/null
-      cd /var/opt/mongo-1.3.4
+      get_dev_src "mongo-$_MONGO_VERSION.tgz" &> /dev/null
+      cd /var/opt/mongo-$_MONGO_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
       st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
-      echo "php-mongo $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_LOC_PHP_VERSION.log
+      echo "php-mongo $_MONGO_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
