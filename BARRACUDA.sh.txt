@@ -6715,9 +6715,19 @@ if [ ! -z "$_PHP_EXTRA" ] ; then
   msg "INFO: PHP EXTRA is $_PHP_EXTRA"
 fi
 
+#
+# Install OpenSSH from sources.
+switch_php_cli () {
+  if [ ! -z $1 ] ; then
+    rm -f /usr/bin/php-cli
+    ln -s /opt/php$1/bin/php /usr/bin/php-cli
+  fi
+}
+
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
+  switch_php_cli "52"
   install_php_multi "52"
   _PHP_VERSION=""
   _LOC_PHP_VERSION=""
@@ -6727,6 +6737,7 @@ fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.3" ]] && [ ! -x "/opt/php53/bin/php" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
+  switch_php_cli "53"
   install_php_multi "53"
   _PHP_VERSION=""
   _LOC_PHP_VERSION=""
@@ -6736,6 +6747,7 @@ fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
+  switch_php_cli "54"
   install_php_multi "54"
   _PHP_VERSION=""
   _LOC_PHP_VERSION=""
@@ -6745,6 +6757,7 @@ fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
   msg "INFO: PHP $_PHP_VERSION will be installed now"
+  switch_php_cli "55"
   install_php_multi "55"
   _PHP_VERSION=""
   _LOC_PHP_VERSION=""
@@ -6755,6 +6768,7 @@ fi
 if [ -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   _PHP_BIN_BROKEN=NO
+  switch_php_cli "52"
   check_php_broken "52"
   check_php_rebuild "52"
   update_php_multi "52"
@@ -6766,6 +6780,7 @@ fi
 if [ -x "/opt/php53/bin/php" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
   _PHP_BIN_BROKEN=NO
+  switch_php_cli "53"
   check_php_broken "53"
   check_php_rebuild "53"
   update_php_multi "53"
@@ -6777,6 +6792,7 @@ fi
 if [ -x "/opt/php54/bin/php" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
   _PHP_BIN_BROKEN=NO
+  switch_php_cli "54"
   check_php_broken "54"
   check_php_rebuild "54"
   update_php_multi "54"
@@ -6788,6 +6804,7 @@ fi
 if [ -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
   _PHP_BIN_BROKEN=NO
+  switch_php_cli "55"
   check_php_broken "55"
   check_php_rebuild "55"
   update_php_multi "55"
@@ -6797,15 +6814,6 @@ if [ -x "/opt/php55/bin/php" ] ; then
   _THIS_LOC_PHP_PATH=""
 fi
 
-rm -f /usr/bin/php-cli
-rm -f /usr/bin/off-php-cli
-if [ -x "/opt/php55/bin/php" ] ; then
-  ln -sf /opt/php55/bin/php /usr/bin/php-cli
-elif [ -x "/opt/php54/bin/php" ] ; then
-  ln -sf /opt/php54/bin/php /usr/bin/php-cli
-elif [ -x "/opt/php53/bin/php" ] ; then
-  ln -sf /opt/php53/bin/php /usr/bin/php-cli
-fi
 if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
 fi
