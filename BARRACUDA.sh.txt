@@ -3713,7 +3713,7 @@ update_php_extensions () {
       rm -f -r geos*
       get_dev_src "geos-$_GEOS_VERSION.tar.bz2" &> /dev/null
       cd geos-$_GEOS_VERSION
-      st_runner "sh ./configure --enable-php" 2> /dev/null
+      st_runner "sh ./configure --prefix=/opt/php$1 --enable-php" 2> /dev/null
       _THIS_LOC_PHP_PATH="$_LOC_PHP_PATH"
       _THIS_LOC_PHP_PATH=${_THIS_LOC_PHP_PATH//\//\\\/}
       find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/$_THIS_LOC_PHP_PATH\/php-config/g' &> /dev/null
@@ -5083,7 +5083,7 @@ finale () {
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   rm -f /tmp/cache.inc*
-  rm -f /var/opt/.*
+  rm -f /var/opt/._zendopcache*
   rm -f -r /var/opt/*
   rm -f -r /opt/tmp/*
   rm -f /var/xdrago/monitor/acrashsql.sh
