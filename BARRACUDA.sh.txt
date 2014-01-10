@@ -6721,6 +6721,8 @@ switch_php_cli () {
   if [ ! -z $1 ] ; then
     rm -f /usr/bin/php-cli
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
+    rm -f /usr/bin/php
+    ln -s /opt/php$1/bin/php /usr/bin/php
   fi
 }
 
