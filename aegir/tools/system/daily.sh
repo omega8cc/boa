@@ -869,7 +869,6 @@ fix_permissions () {
     ### expected symlinks
     fix_expected_symlinks
     ### known exceptions
-    chmod 775 $Plr/sites/all/modules/print/lib/wkhtmltopdf* &> /dev/null
     chmod -R 775 $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
     chown -R www-data:www-data $Plr/sites/all/libraries/tcpdf/cache &> /dev/null
     echo fixed > $Plr/sites/all/permissions-fix-$_NOW.info
