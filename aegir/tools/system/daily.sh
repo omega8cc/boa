@@ -857,12 +857,13 @@ fix_permissions () {
   esac
   ### modules,themes,libraries - platform level
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
-    mkdir -p $Plr/sites/all/{modules,themes,libraries}
-    find $Plr/sites/all/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
+    mkdir -p $Plr/sites/all/{modules,themes,libraries,drush}
+    find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries} &> /dev/null
+    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 $Plr/sites &> /dev/null
     chmod 0751 $Plr/sites/all &> /dev/null
+    chmod 0751 $Plr/sites/all/drush &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
     ### expected symlinks
