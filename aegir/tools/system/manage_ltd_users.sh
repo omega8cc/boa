@@ -279,7 +279,7 @@ done
 # Update DRUSH_PHP variable.
 update_drush_php_var ()
 {
-  _THIS_DRUSH_PHP="$1"
+  _THIS_DRUSH_PHP="$1/php"
   _THIS_DRUSH_PHP=${_THIS_DRUSH_PHP//\//\\\/}
   sed -i "s/^DRUSH_PHP=.*//g; s/^DRUSH_INI=.*//g; s/^PHP_INI=.*//g; s/ *$//g; /^$/d" /data/disk/${_OWN}/tools/drush/drush &> /dev/null
   sed -i "s/^#\!\/.*/#\!\/bin\/bash\n\nDRUSH_PHP=$_THIS_DRUSH_PHP\nDRUSH_INI=\"\"\nPHP_INI=\"\"/g"  /data/disk/${_OWN}/tools/drush/drush &> /dev/null

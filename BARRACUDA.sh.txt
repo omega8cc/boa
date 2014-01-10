@@ -5083,6 +5083,7 @@ finale () {
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   rm -f /tmp/cache.inc*
+  rm -f /var/opt/.*
   rm -f -r /var/opt/*
   rm -f -r /opt/tmp/*
   rm -f /var/xdrago/monitor/acrashsql.sh
