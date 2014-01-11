@@ -3573,20 +3573,16 @@ install_php_extensions () {
       rm -f -r geos*
       get_dev_src "geos-$_GEOS_VERSION.tar.bz2" &> /dev/null
       cd geos-$_GEOS_VERSION
-      st_runner "sh ./configure --prefix=/opt/php$1 --enable-php" 2> /dev/null
       if [ "$1" = "55" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php55\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php55\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php55/g' &> /dev/null
       elif [ "$1" = "54" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php54\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php54\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php54/g' &> /dev/null
       elif [ "$1" = "53" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php53\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php53\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php53/g' &> /dev/null
       elif [ "$1" = "52" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php52\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php52\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php52/g' &> /dev/null
       fi
+      st_runner "sh ./configure --enable-php" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "php-geos $_GEOS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log
@@ -3722,20 +3718,16 @@ update_php_extensions () {
       rm -f -r geos*
       get_dev_src "geos-$_GEOS_VERSION.tar.bz2" &> /dev/null
       cd geos-$_GEOS_VERSION
-      st_runner "sh ./configure --prefix=/opt/php$1 --enable-php" 2> /dev/null
       if [ "$1" = "55" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php55\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php55\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php55/g' &> /dev/null
       elif [ "$1" = "54" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php54\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php54\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php54/g' &> /dev/null
       elif [ "$1" = "53" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php53\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php53\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php53/g' &> /dev/null
       elif [ "$1" = "52" ] ; then
-        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local\/bin\/php-config/\/opt\/php52\/bin\/php-config/g' &> /dev/null
-        find . -type f -print0 | xargs -0 sed -i 's/`php-config/`\/opt\/php52\/bin\/php-config/g' &> /dev/null
+        find . -type f -print0 | xargs -0 sed -i 's/\/usr\/local/\/opt\/php52/g' &> /dev/null
       fi
+      st_runner "sh ./configure --enable-php" 2> /dev/null
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "php-geos $_GEOS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log
@@ -3884,8 +3876,6 @@ update_php_multi () {
   _LOC_PHP_VERSION="$_PHP_VERSION"
   _LOC_PHP_PATH="/opt/php$1/bin"
   update_php_extensions "$1"
-  _LOC_PHP_VERSION=""
-  _LOC_PHP_PATH=""
 }
 #
 # Install latest Git.
@@ -6723,6 +6713,8 @@ switch_php_cli () {
     ln -s /opt/php$1/bin/php /usr/bin/php-cli
     rm -f /usr/bin/php
     ln -s /opt/php$1/bin/php /usr/bin/php
+    rm -f /usr/bin/php-config
+    ln -s /opt/php$1/bin/php-config /usr/bin/php-config
   fi
 }
 
