@@ -18,15 +18,16 @@ _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog de
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ ! -e "/home/$1/.drush/.ctrl.txt" ] ; then
-      mkdir -p  /home/$1/.drush
-      rm -f -r  /home/$1/.drush/cache
-      echo >    /home/$1/.drush/drush.ini
-      echo >    /home/$1/.drush/php.ini
-      echo >    /home/$1/.drush/.ctrl.txt
-      mkdir -p  /home/$1/.tmp
-      chmod 700 /home/$1/.tmp
-      chmod 700 /home/$1/.drush
+    if [ ! -e "/home/$1/.drush/.dctrl.txt" ] ; then
+      rm -f /home/$1/.drush/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+      _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/aegir:/data/disk/${_OWN}/platforms:/data/disk/${_OWN}/backup-exports:/data/disk/${_OWN}/.tmp:/data/all:/data/conf:/var/second/${_OWN}:/mnt:/srv:/usr/bin:/opt/tools/drush:/tmp\""
+      mkdir -p       /home/$1/.drush
+      rm -f -r       /home/$1/.drush/{cache,drush.ini}
+      echo $_INI >   /home/$1/.drush/php.ini
+      echo >         /home/$1/.drush/.dctrl.txt
+      mkdir -p       /home/$1/.tmp
+      chmod 700      /home/$1/.tmp
+      chmod 700      /home/$1/.drush
       chown $1:users /home/$1/.tmp
       chown $1:users /home/$1/.drush
     fi

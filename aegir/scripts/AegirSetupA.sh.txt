@@ -1256,7 +1256,7 @@ if [ ! -L "$_USER_DM/drush_make" ] ; then
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
-  ln -sf /var/aegir/.drush/drush_make $_USER_DM/drush_make
+  ln -sf /data/disk/${_USER}/.drush/drush_make $_USER_DM/drush_make
 fi
 
 
@@ -1267,7 +1267,7 @@ if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
-  ln -sf /var/aegir/.drush/registry_rebuild $_USER_DM/registry_rebuild
+  ln -sf /data/disk/${_USER}/.drush/registry_rebuild $_USER_DM/registry_rebuild
 fi
 
 
@@ -1278,7 +1278,7 @@ if [ ! -L "$_USER_DM/clean_missing_modules" ] ; then
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
-  ln -sf /var/aegir/.drush/clean_missing_modules $_USER_DM/clean_missing_modules
+  ln -sf /data/disk/${_USER}/.drush/clean_missing_modules $_USER_DM/clean_missing_modules
 fi
 
 
@@ -1289,7 +1289,7 @@ if [ ! -L "$_USER_DM/drush_ecl" ] ; then
   mkdir -p $_USER_DM
   chown $_USERFTP:$_USRG $_USER_DM
   chmod 700 $_USER_DM
-  ln -sf /var/aegir/.drush/drush_ecl $_USER_DM/drush_ecl
+  ln -sf /data/disk/${_USER}/.drush/drush_ecl $_USER_DM/drush_ecl
 fi
 
 
