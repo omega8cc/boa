@@ -5,11 +5,11 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 drushextra_updates() {
   if [ "$kind" = "updates" ] ; then
     echo "STATUS: enabling update module..."
-    drush5 en update -y &> /dev/null
+    drush6 en update -y &> /dev/null
     echo "STATUS: checking for available updates..."
-    drush5 upc --no-core --no-backup -n | grep available
+    drush6 upc --no-core --no-backup -n | grep available
     echo "STATUS: disabling update module..."
-    drush5 dis update -y &> /dev/null
+    drush6 dis update -y &> /dev/null
     echo "STATUS: check complete"
     exit 0
   else
