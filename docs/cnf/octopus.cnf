@@ -1,5 +1,5 @@
 ###
-### Octopus version BOA-2.1.4-dev
+### Octopus version BOA-2.2.0-dev
 ###
 ### Configuration stored in the /root/.${_USER}.octopus.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -45,7 +45,7 @@ _CLIENT_OPTION="SSD" #---------- Currently not used
 _CLIENT_SUBSCR="Y" #------------ Currently not used
 _CLIENT_CORES="8" #------------- Currently not used
 ###
-### Octopus version BOA-2.1.4-dev
+### Octopus version BOA-2.2.0-dev
 ###
 
 ###

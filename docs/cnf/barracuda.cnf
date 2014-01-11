@@ -1,5 +1,5 @@
 ###
-### Barracuda version BOA-2.1.4-dev
+### Barracuda version BOA-2.2.0-dev
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -77,7 +77,7 @@ _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _STRICT_BIN_PERMISSIONS=NO #---- Aggressively protect all binaries when YES
 ###
-### Barracuda version BOA-2.1.4-dev
+### Barracuda version BOA-2.2.0-dev
 ###
 
 ###

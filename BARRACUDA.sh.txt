@@ -1058,7 +1058,7 @@ _USE_STOCK=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.1.4-dev
+_INSTALLER_VERSION=BOA-2.2.0-dev
 
 ###
 ### Software versions
