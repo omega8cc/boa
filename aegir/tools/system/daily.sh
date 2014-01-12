@@ -1303,10 +1303,6 @@ fi
 echo "INFO: Checking BARRACUDA version"
 rm -f /opt/tmp/barracuda-version.txt*
 curl -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
-if [ ! -e "/opt/tmp/barracuda-version.txt" ] ; then
-  sleep 30
-  curl -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
-fi
 if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   _INSTALLER_VERSION=`cat /opt/tmp/barracuda-version.txt`
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`
