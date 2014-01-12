@@ -4497,7 +4497,7 @@ get_drush_versions () {
   fi
   if [ -e "/opt/tools/drush/5" ] ; then
     rm -f -r /opt/tools/drush/5
-    /usr/bin/drush5
+    rm -f /usr/bin/drush5
   fi
   cd /opt/tmp
 }
