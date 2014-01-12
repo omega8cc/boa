@@ -4457,6 +4457,26 @@ install_newrelic () {
     fi
   fi
 }
+# Update DRUSH_PHP variable.
+update_drush_php_var ()
+{
+  if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
+    _THIS_DRUSH_PHP="/opt/php55/bin/php"
+  elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
+    _THIS_DRUSH_PHP="/opt/php54/bin/php"
+  elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
+    _THIS_DRUSH_PHP="/opt/php53/bin/php"
+  elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
+    _THIS_DRUSH_PHP="/opt/php52/bin/php"
+  else
+    _THIS_DRUSH_PHP=""
+  fi
+  if [ ! -z $_THIS_DRUSH_PHP ] ; then
+    _THIS_DRUSH_PHP=${_THIS_DRUSH_PHP//\//\\\/}
+    sed -i "s/^DRUSH_PHP=.*//g; s/^DRUSH_INI=.*//g; s/^PHP_INI=.*//g; s/ *$//g; /^$/d" $1 &> /dev/null
+    sed -i "s/^#\!\/.*/#\!\/bin\/bash\n\nDRUSH_PHP=$_THIS_DRUSH_PHP\nDRUSH_INI=\"\"\nPHP_INI=\"\"/g" $1 &> /dev/null
+  fi
+}
 #
 # Install or update Drush versions.
 get_drush_versions () {
@@ -4486,14 +4506,17 @@ get_drush_versions () {
   if [ -x "/opt/tools/drush/4/drush/drush" ] ; then
     rm -f /usr/bin/drush4
     ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
+    update_drush_php_var "/opt/tools/drush/4/drush/drush"
   fi
   if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
     rm -f /usr/bin/drush6
     ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
+    update_drush_php_var "/opt/tools/drush/6/drush/drush"
   fi
   if [ -x "/opt/tools/drush/7/drush/drush" ] ; then
     rm -f /usr/bin/drush7
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
+    update_drush_php_var "/opt/tools/drush/7/drush/drush"
   fi
   if [ -e "/opt/tools/drush/5" ] ; then
     rm -f -r /opt/tools/drush/5

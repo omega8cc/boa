@@ -1988,18 +1988,36 @@ fi
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ ! -e "/home/$1/.drush/.ctrl.u.txt" ] ; then
+    mkdir -p /home/$1/.drush
+    rm -f /home/$1/.drush/php.ini
+    if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      cp -af /opt/php55/lib/php.ini /home/$1/.drush/php.ini
+    elif [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      cp -af /opt/php54/lib/php.ini /home/$1/.drush/php.ini
+    elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      cp -af /opt/php53/lib/php.ini /home/$1/.drush/php.ini
+    elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+      cp -af /opt/php52/lib/php.ini /home/$1/.drush/php.ini
+    fi
+    if [ -e "/home/$1/.drush/php.ini" ] ; then
+      _INI="open_basedir = \".:/data/disk/${_USER}/distro:/data/disk/${_USER}/static:/data/disk/${_USER}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush\""
+      _INI=${_INI//\//\\\/}
+      sed -i "s/.*open_basedir =/$_INI/g" /home/$1/.drush/php.ini &> /dev/null
+    fi
+    if [ ! -e "/home/$1/.drush/.ctrl.b.txt" ] ; then
       rm -f /home/$1/.drush/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-      _INI="open_basedir = \".:/data/disk/${_USER}/distro:/data/disk/${_USER}/static:/data/disk/${_USER}/platforms:/data/all:/data/conf:/var/second/${_USER}:/mnt:/srv:/usr/bin:/opt/tools/drush:/tmp:/home/$1\""
       mkdir -p       /home/$1/.drush
       rm -f -r       /home/$1/.drush/{cache,drush.ini}
-      echo $_INI >   /home/$1/.drush/php.ini
-      echo >         /home/$1/.drush/.ctrl.u.txt
+      rm -f -r       /home/$1/.tmp
       mkdir -p       /home/$1/.tmp
       chmod 700      /home/$1/.tmp
       chmod 700      /home/$1/.drush
       chown $1:users /home/$1/.tmp
       chown $1:users /home/$1/.drush
+      echo >         /home/$1/.drush/.ctrl.b.txt
+      if [ ! -e "/etc/drush" ] ; then
+        mkdir -p /etc/drush
+      fi
     fi
     chattr +i /home/$1/platforms    &> /dev/null
     chattr +i /home/$1/platforms/*  &> /dev/null

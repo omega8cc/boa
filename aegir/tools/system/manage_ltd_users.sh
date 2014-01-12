@@ -28,19 +28,38 @@ add_ltd_group_if_not_exists () {
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ ! -e "/home/$1/.drush/.ctrl.u.txt" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] ; then
+      mkdir -p /home/$1/.drush
+      rm -f /home/$1/.drush/php.ini
+      if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+        cp -af /opt/php55/lib/php.ini /home/$1/.drush/php.ini
+      elif [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+        cp -af /opt/php54/lib/php.ini /home/$1/.drush/php.ini
+      elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+        cp -af /opt/php53/lib/php.ini /home/$1/.drush/php.ini
+      elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+        cp -af /opt/php52/lib/php.ini /home/$1/.drush/php.ini
+      fi
+      if [ -e "/home/$1/.drush/php.ini" ] ; then
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush\""
+        _INI=${_INI//\//\\\/}
+        sed -i "s/.*open_basedir =/$_INI/g" /home/$1/.drush/php.ini &> /dev/null
+      fi
+    fi
+    if [ ! -e "/home/$1/.drush/.ctrl.b.txt" ] ; then
       rm -f /home/$1/.drush/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-     _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home/$1\""
       mkdir -p       /home/$1/.drush
       rm -f -r       /home/$1/.drush/{cache,drush.ini}
-      echo $_INI >   /home/$1/.drush/php.ini
-      echo >         /home/$1/.drush/.ctrl.u.txt
       rm -f -r       /home/$1/.tmp
       mkdir -p       /home/$1/.tmp
       chmod 700      /home/$1/.tmp
       chmod 700      /home/$1/.drush
       chown $1:users /home/$1/.tmp
       chown $1:users /home/$1/.drush
+      echo >         /home/$1/.drush/.ctrl.b.txt
+      if [ ! -e "/etc/drush" ] ; then
+        mkdir -p /etc/drush
+      fi
     fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
       chattr +i /home/$1             &> /dev/null
@@ -120,7 +139,7 @@ fix_dot_dirs()
     rm -f -r $_USER_BZR
   fi
   echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
-  if [ ! -e "$_USER_DRUSH/.ctrl.u.txt" ] ; then
+  if [ ! -e "$_USER_DRUSH/.ctrl.b.txt" ] ; then
     rm -f -r $_USER_DRUSH/cache
     rm -f $_USER_DRUSH/*
     mkdir -p $_USER_DRUSH/cache
@@ -138,7 +157,7 @@ fix_dot_dirs()
   if [ ! -L "$_USER_DRUSH/drush_ecl" ] ; then
     ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_USER_DRUSH/drush_ecl
   fi
-  touch $_USER_DRUSH/.ctrl.u.txt
+  touch $_USER_DRUSH/.ctrl.b.txt
 }
 #
 # OK, create user.
@@ -315,11 +334,9 @@ update_php_cli_drush ()
 # Switch PHP Version.
 switch_php()
 {
+  _PHP_CLI_UPDATE=NO
   if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
     echo "Custom FPM or CLI settings for $_OWN exist, running switch_php checks"
-    if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
-      source /root/.${_OWN}.octopus.cnf
-    fi
     if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
       _THIS_NGX_PATH=/data/disk/${_OWN}/config/includes
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
@@ -384,6 +401,7 @@ switch_php()
           _LOC_PHP_CLI_VERSION=5.3
         fi
         if [ "$_LOC_PHP_CLI_VERSION" != "$_PHP_CLI_VERSION" ] ; then
+          _PHP_CLI_UPDATE=YES
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           update_php_cli_drush
         fi
@@ -406,6 +424,9 @@ do
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}.ftp:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
+    fi
+    if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
+      source /root/.${_OWN}.octopus.cnf
     fi
     switch_php
     if [ -e "$User/clients" ] && [ ! -z $_OWN ] ; then
