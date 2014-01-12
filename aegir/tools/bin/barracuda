@@ -383,6 +383,7 @@ case "$1" in
              check_wrapper
              set_pin_priority
              up_head
+  ;;
   up-legacy) cmmand="$1"
              silent="$2"
              ifauto="$3"
