@@ -28,13 +28,14 @@ add_ltd_group_if_not_exists () {
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ ! -e "/home/$1/.drush/.dctrl.txt" ] ; then
+    if [ ! -e "/home/$1/.drush/.ctrl.u.txt" ] ; then
       rm -f /home/$1/.drush/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-      _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/aegir:/data/disk/${_OWN}/platforms:/data/disk/${_OWN}/backup-exports:/data/disk/${_OWN}/.tmp:/data/all:/data/conf:/var/second/${_OWN}:/mnt:/srv:/usr/bin:/opt/tools/drush:/tmp\""
+     _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home/$1\""
       mkdir -p       /home/$1/.drush
       rm -f -r       /home/$1/.drush/{cache,drush.ini}
       echo $_INI >   /home/$1/.drush/php.ini
-      echo >         /home/$1/.drush/.dctrl.txt
+      echo >         /home/$1/.drush/.ctrl.u.txt
+      rm -f -r       /home/$1/.tmp
       mkdir -p       /home/$1/.tmp
       chmod 700      /home/$1/.tmp
       chmod 700      /home/$1/.drush
@@ -119,7 +120,7 @@ fix_dot_dirs()
     rm -f -r $_USER_BZR
   fi
   echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
-  if [ ! -e "$_USER_DRUSH/.dctrl.txt" ] ; then
+  if [ ! -e "$_USER_DRUSH/.ctrl.u.txt" ] ; then
     rm -f -r $_USER_DRUSH/cache
     rm -f $_USER_DRUSH/*
     mkdir -p $_USER_DRUSH/cache
@@ -137,7 +138,7 @@ fix_dot_dirs()
   if [ ! -L "$_USER_DRUSH/drush_ecl" ] ; then
     ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_USER_DRUSH/drush_ecl
   fi
-  touch $_USER_DRUSH/.dctrl.txt
+  touch $_USER_DRUSH/.ctrl.u.txt
 }
 #
 # OK, create user.

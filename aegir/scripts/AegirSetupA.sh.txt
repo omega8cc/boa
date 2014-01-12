@@ -1250,7 +1250,7 @@ fi
 
 ###---### Add symlink to the system drush_make.
 #
-_USER_DM="/home/$_USERFTP/.drush"
+_USER_DM="$_USER_HD/.drush"
 if [ ! -L "$_USER_DM/drush_make" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_make"
   mkdir -p $_USER_DM
@@ -1295,7 +1295,7 @@ fi
 
 ###---### Create .ssh dir if not exists.
 #
-_USER_SSH="/home/$_USERFTP/.ssh"
+_USER_SSH="$_USER_HD/.ssh"
 if [ ! -d "$_USER_SSH" ] ; then
   mkdir -p $_USER_SSH
   chown -R $_USERFTP:$_USRG $_USER_SSH
@@ -1306,7 +1306,7 @@ chmod 600 $_USER_SSH/id_{r,d}sa &> /dev/null
 
 ###---### Create .bazaar dir and conf file if not exist.
 #
-_USER_BZR="/home/$_USERFTP/.bazaar"
+_USER_BZR="$_USER_HD/.bazaar"
 if [ -x "/usr/local/bin/bzr" ] ; then
   if [ ! -d "$_USER_BZR" ] ; then
     mkdir -p $_USER_BZR
@@ -1332,12 +1332,14 @@ rm -f -r $_ROOT/clients/*/backups &> /dev/null
 symlinks -dr $_ROOT/clients &> /dev/null
 
 
-###---### Add symlink to the tmp directory.
+###---### Create .tmp dir if not exists.
 #
-if [ ! -L "$_USER_HD/.tmp" ] ; then
-  msg "$_STATUS A: Adding symlink to the tmp directory"
-  rm -f -r $_USER_HD/.tmp
-  ln -sf $_ROOT/tmp $_USER_HD/.tmp
+_USER_TMP="$_USER_HD/.tmp"
+if [ ! -d "$_USER_TMP" ] ; then
+  rm -f $_USER_TMP
+  mkdir -p $_USER_TMP
+  chown -R $_USERFTP:$_USRG $_USER_TMP
+  chmod 700 $_USER_TMP
 fi
 
 
