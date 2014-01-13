@@ -3043,6 +3043,7 @@ barracuda_cnf () {
           update-rc.d -f php52-fpm remove &> /dev/null
           rm -f /etc/init.d/php52-fpm
         fi
+        killall -9 php-cgi &> /dev/null
       fi
     fi
 
