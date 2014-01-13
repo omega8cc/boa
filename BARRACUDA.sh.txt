@@ -789,13 +789,13 @@ _EXTRA_PACKAGES=""
 ### for listed services on upgrade.
 ###
 _CUSTOM_CONFIG_CSF=NO
-_CUSTOM_CONFIG_PHP55=NO
-_CUSTOM_CONFIG_PHP54=NO
-_CUSTOM_CONFIG_PHP53=NO
 _CUSTOM_CONFIG_LSHELL=NO
 _CUSTOM_CONFIG_PHP52=NO
-_CUSTOM_CONFIG_SQL=NO
+_CUSTOM_CONFIG_PHP53=NO
+_CUSTOM_CONFIG_PHP54=NO
+_CUSTOM_CONFIG_PHP55=NO
 _CUSTOM_CONFIG_REDIS=NO
+_CUSTOM_CONFIG_SQL=NO
 
 ###
 ### You can define custom list of functions
@@ -2836,72 +2836,91 @@ barracuda_cnf () {
     echo "### They can be defined only on initial Barracuda install." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "_HTTP_WILDCARD=$_HTTP_WILDCARD" >> /root/.barracuda.cnf
-    echo "_MY_OWNIP=\"$_MY_OWNIP\"" >> /root/.barracuda.cnf
-    echo "_MY_HOSTN=\"$_MY_HOSTN\"" >> /root/.barracuda.cnf
-    echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
-    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.barracuda.cnf
-    echo "_SMTP_RELAY_TEST=$_SMTP_RELAY_TEST" >> /root/.barracuda.cnf
-    echo "_SMTP_RELAY_HOST=\"$_SMTP_RELAY_HOST\"" >> /root/.barracuda.cnf
-    echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
     echo "_LOCAL_NETWORK_HN=\"$_LOCAL_NETWORK_HN\"" >> /root/.barracuda.cnf
+    echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
+    echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
+    echo "_MY_HOSTN=\"$_MY_HOSTN\"" >> /root/.barracuda.cnf
+    echo "_MY_OWNIP=\"$_MY_OWNIP\"" >> /root/.barracuda.cnf
+    echo "_SMTP_RELAY_HOST=\"$_SMTP_RELAY_HOST\"" >> /root/.barracuda.cnf
+    echo "_SMTP_RELAY_TEST=$_SMTP_RELAY_TEST" >> /root/.barracuda.cnf
+    echo "_THIS_DB_HOST=$_THIS_DB_HOST" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### NOTE: the group of settings displayed bellow" >> /root/.barracuda.cnf
     echo "### will *override* all listed settings in the Barracuda script," >> /root/.barracuda.cnf
     echo "### both on initial install and upgrade." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
+    echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
+    echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
     echo "_MY_EMAIL=\"$_MY_EMAIL\"" >> /root/.barracuda.cnf
     echo "_XTRAS_LIST=\"$_XTRAS_LIST\"" >> /root/.barracuda.cnf
-    echo "_AUTOPILOT=$_AUTOPILOT" >> /root/.barracuda.cnf
-    echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
-    echo "_AEGIR_UPGRADE_ONLY=$_AEGIR_UPGRADE_ONLY" >> /root/.barracuda.cnf
-    echo "_DEBUG_MODE=$_DEBUG_MODE" >> /root/.barracuda.cnf
-    echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
+    echo "_MODULES_SKIP=\"$_MODULES_SKIP\"" >> /root/.barracuda.cnf
+    echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_CPU_CRIT_RATIO=$_CPU_CRIT_RATIO" >> /root/.barracuda.cnf
+    echo "_CPU_MAX_RATIO=$_CPU_MAX_RATIO" >> /root/.barracuda.cnf
+    echo "_CPU_SPIDER_RATIO=$_CPU_SPIDER_RATIO" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
     echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
     echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
-    echo "_REDIS_LISTEN_MODE=$_REDIS_LISTEN_MODE" >> /root/.barracuda.cnf
-    echo "_SSH_PORT=$_SSH_PORT" >> /root/.barracuda.cnf
+    echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
+    echo "_EXTRA_PACKAGES=$_EXTRA_PACKAGES" >> /root/.barracuda.cnf
+    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
-    echo "_FORCE_GIT_MIRROR=\"$_FORCE_GIT_MIRROR\"" >> /root/.barracuda.cnf
-    echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
-    echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
+    echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
-    echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
-    echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
-    echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
-    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     echo "_NGINX_EXTRA_CONF=\"$_NGINX_EXTRA_CONF\"" >> /root/.barracuda.cnf
+    echo "_NGINX_FORWARD_SECRECY=$_NGINX_FORWARD_SECRECY" >> /root/.barracuda.cnf
     echo "_NGINX_LDAP=$_NGINX_LDAP" >> /root/.barracuda.cnf
     echo "_NGINX_NAXSI=$_NGINX_NAXSI" >> /root/.barracuda.cnf
     echo "_NGINX_SPDY=$_NGINX_SPDY" >> /root/.barracuda.cnf
-    echo "_NGINX_FORWARD_SECRECY=$_NGINX_FORWARD_SECRECY" >> /root/.barracuda.cnf
-    echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
-    echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
+    echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.barracuda.cnf
-    echo "_CPU_SPIDER_RATIO=$_CPU_SPIDER_RATIO" >> /root/.barracuda.cnf
-    echo "_CPU_MAX_RATIO=$_CPU_MAX_RATIO" >> /root/.barracuda.cnf
-    echo "_CPU_CRIT_RATIO=$_CPU_CRIT_RATIO" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_PHP55=$_CUSTOM_CONFIG_PHP55" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_PHP54=$_CUSTOM_CONFIG_PHP54" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_PHP53=$_CUSTOM_CONFIG_PHP53" >> /root/.barracuda.cnf
-    echo "_CUSTOM_CONFIG_PHP52=$_CUSTOM_CONFIG_PHP52" >> /root/.barracuda.cnf
-    echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
-    echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
-    echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
-    echo "_EXTRA_PACKAGES=$_EXTRA_PACKAGES" >> /root/.barracuda.cnf
-    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
-    echo "_PERMISSIONS_FIX=$_PERMISSIONS_FIX" >> /root/.barracuda.cnf
-    echo "_MODULES_FIX=$_MODULES_FIX" >> /root/.barracuda.cnf
-    echo "_MODULES_SKIP=\"$_MODULES_SKIP\"" >> /root/.barracuda.cnf
-    echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
-    echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
+    echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
+    echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
+    echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
+    echo "_PHP_MONGODB=$_PHP_MONGODB" >> /root/.barracuda.cnf
+    echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_REDIS_LISTEN_MODE=$_REDIS_LISTEN_MODE" >> /root/.barracuda.cnf
     echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
+    echo "_SPEED_VALID_MAX=$_SPEED_VALID_MAX" >> /root/.barracuda.cnf
+    echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
+    echo "_SSH_PORT=$_SSH_PORT" >> /root/.barracuda.cnf
+    echo "_SSL_FROM_SOURCES=$_SSL_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_STRICT_BIN_PERMISSIONS=$_STRICT_BIN_PERMISSIONS" >> /root/.barracuda.cnf
+    echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_CSF=$_CUSTOM_CONFIG_CSF" >> /root/.barracuda.cnf
     echo "_CUSTOM_CONFIG_LSHELL=$_CUSTOM_CONFIG_LSHELL" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP52=$_CUSTOM_CONFIG_PHP52" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP53=$_CUSTOM_CONFIG_PHP53" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP54=$_CUSTOM_CONFIG_PHP54" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_PHP55=$_CUSTOM_CONFIG_PHP55" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_REDIS=$_CUSTOM_CONFIG_REDIS" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_SQL=$_CUSTOM_CONFIG_SQL" >> /root/.barracuda.cnf
+
+    echo "###" >> /root/.barracuda.cnf
+    echo "_AEGIR_UPGRADE_ONLY=$_AEGIR_UPGRADE_ONLY" >> /root/.barracuda.cnf
+    echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
+    echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
+
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf

@@ -8,75 +8,84 @@
 ### on upgrade by the Barracuda script nor by this configuration file.
 ### They can be defined only on initial Barracuda install.
 ###
-_HTTP_WILDCARD=YES #------------ Listen on single IP instead of all IPs when NO
-_MY_OWNIP="123.45.67.89" #------ Allows to specify web server IP if not default
-_MY_HOSTN="f-q-d-n" #----------- Allows to define server hostname
 _EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_PUBLIC
-_MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
-_THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
-_SMTP_RELAY_TEST=YES #---------- Allows to skip SMTP availability tests when NO
-_SMTP_RELAY_HOST="" #----------- Allows to configure simple SMTP relay (w/o pwd)
-_LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
+_HTTP_WILDCARD=YES #------------ Listen on single IP instead of all IPs when NO
 _LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
+_LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
+_MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
+_MY_HOSTN="f-q-d-n" #----------- Allows to define server hostname
+_MY_OWNIP="123.45.67.89" #------ Allows to specify web server IP if not default
+_SMTP_RELAY_HOST="" #----------- Allows to configure simple SMTP relay (w/o pwd)
+_SMTP_RELAY_TEST=YES #---------- Allows to skip SMTP availability tests when NO
+_THIS_DB_HOST=localhost #------- Allows to use hostname in DB grants when FQDN
 ###
 ### NOTE: the group of settings displayed bellow
 ### will *override* all listed settings in the Barracuda script,
 ### both on initial install and upgrade.
 ###
+_AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
+_DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
 _MY_EMAIL="my@email" #---------- System admin e-mail
 _XTRAS_LIST="" #---------------- See docs/NOTES.txt for details on add-ons
-_AUTOPILOT=NO #----------------- Allows to skip all Yes/No questions when YES
-_SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
-_AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
-_DEBUG_MODE=NO #---------------- Allows to enable Drush debugging when YES
-_DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona DB server
+###
+_MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
+_MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
+_PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
+###
+_CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
+_CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
+_CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
+###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_ENGINE=InnoDB #------------- Allows to specify default engine for Drupal 6
-_REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
-_SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
+_DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona DB server
+###
+_DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
+_EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
+_FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
-_FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
-_DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
-_NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid number
+_NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
+###
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
-_PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3, 5.4, 5.5
-_PHP_MODERN_ONLY=YES #---------- Allows to install PHP 5.2 when NO
-_PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
-_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{2,3,4,5}
-_PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
+_NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
 _NGINX_NAXSI=YES #-------------- Installs Nginx NAXSI WAF when YES (default)
 _NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
-_NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
-_PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
-_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
+_NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid number
+###
+_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{2,3,4,5}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
-_CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
-_CPU_MAX_RATIO=6 #-------------- Max load per CPU core before disabling Nginx
-_CPU_CRIT_RATIO=9 #------------- Max load per CPU core before killing PHP/Drush
-_CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
-_CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
-_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
-_CUSTOM_CONFIG_PHP55=NO #------- Protects custom PHP 5.5 ini files when YES
-_CUSTOM_CONFIG_PHP54=NO #------- Protects custom PHP 5.4 ini files when YES
-_CUSTOM_CONFIG_PHP53=NO #------- Protects custom PHP 5.3 ini files when YES
-_CUSTOM_CONFIG_PHP52=NO #------- Protects custom PHP 5.2 ini files when YES
-_SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
-_NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
-_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
-_EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get
-_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
-_PERMISSIONS_FIX=NO #----------- Allows to fix permissions daily when YES
-_MODULES_FIX=YES #-------------- Will skip modules enabling/disabling when NO
-_MODULES_SKIP="" #-------------- Modules (machine names) to never auto-disable
-_SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
-_SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
+_PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
+_PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
+_PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
+_PHP_MODERN_ONLY=YES #---------- Allows to install PHP 5.2 when NO
+_PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
+_PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3, 5.4, 5.5
+###
+_REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
+_SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
+_SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
+_SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
+_SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
 _STRICT_BIN_PERMISSIONS=NO #---- Aggressively protect all binaries when YES
+_STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
+###
+_CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
+_CUSTOM_CONFIG_PHP52=NO #------- Protects custom PHP 5.2 ini files when YES
+_CUSTOM_CONFIG_PHP53=NO #------- Protects custom PHP 5.3 ini files when YES
+_CUSTOM_CONFIG_PHP54=NO #------- Protects custom PHP 5.4 ini files when YES
+_CUSTOM_CONFIG_PHP55=NO #------- Protects custom PHP 5.5 ini files when YES
+_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
+_CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
+###
+_AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
+_SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
+_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 ###
 ### Barracuda version BOA-2.2.0-dev
 ###
