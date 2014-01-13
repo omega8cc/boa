@@ -4754,7 +4754,10 @@ update_sources_list () {
 install_ssh_src () {
   _SSH_INSTALL_REQUIRED=NO
   _SSH_INSTALLED=`ssh -V 2>&1 | tr -d "\n" | tr -d "," | cut -d"_" -f2 | awk '{ print $1}'`
-  if [ "$_SSH_INSTALLED" = "$_OPENSSH_VERSION" ] ; then
+  if [ "$_SSH_FORCE_REINSTALL" = "YES" ] ; then
+    _SSH_INSTALL_REQUIRED=YES
+    msg "INFO: OpenSSH $_SSH_INSTALLED, rebuild forced"
+  elif [ "$_SSH_INSTALLED" = "$_OPENSSH_VERSION" ] ; then
     _DO_NOTHING=YES
   else
     _SSH_INSTALL_REQUIRED=YES
@@ -4852,8 +4855,10 @@ install_ssl_src () {
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
     _DO_NOTHING=YES
+    _SSH_FORCE_REINSTALL=NO
   else
     _SSL_INSTALL_REQUIRED=YES
+    _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
     rm -f /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
