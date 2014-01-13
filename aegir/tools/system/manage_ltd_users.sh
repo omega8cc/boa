@@ -28,37 +28,51 @@ add_ltd_group_if_not_exists () {
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
+    _U_HD="/home/$1/.drush"
+    _U_TP="/home/$1/.tmp"
     if [ "$_PHP_CLI_UPDATE" = "YES" ] ; then
-      mkdir -p /home/$1/.drush
-      rm -f /home/$1/.drush/php.ini
+      mkdir -p $_U_HD
+      rm -f $_U_HD/php.ini
       if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
-        cp -af /opt/php55/lib/php.ini /home/$1/.drush/php.ini
+        cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
       elif [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
-        cp -af /opt/php54/lib/php.ini /home/$1/.drush/php.ini
+        cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
       elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
-        cp -af /opt/php53/lib/php.ini /home/$1/.drush/php.ini
+        cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
       elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-        cp -af /opt/php52/lib/php.ini /home/$1/.drush/php.ini
+        cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
       fi
-      if [ -e "/home/$1/.drush/php.ini" ] ; then
+      if [ -e "$_U_HD/php.ini" ] ; then
         _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush\""
         _INI=${_INI//\//\\\/}
-        sed -i "s/.*open_basedir =/$_INI/g" /home/$1/.drush/php.ini &> /dev/null
+        sed -i "s/.*open_basedir =/$_INI/g" $_U_HD/php.ini &> /dev/null
       fi
     fi
-    if [ ! -e "/home/$1/.drush/.ctrl.b.txt" ] ; then
-      rm -f /home/$1/.drush/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-      mkdir -p       /home/$1/.drush
-      rm -f -r       /home/$1/.drush/{cache,drush.ini}
-      rm -f -r       /home/$1/.tmp
-      mkdir -p       /home/$1/.tmp
-      chmod 700      /home/$1/.tmp
-      chmod 700      /home/$1/.drush
-      chown $1:users /home/$1/.tmp
-      chown $1:users /home/$1/.drush
-      echo >         /home/$1/.drush/.ctrl.b.txt
+    if [ ! -e "$_U_HD/.ctrl.cx.txt" ] ; then
+      rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+      mkdir -p       $_U_HD
+      rm -f -r       $_U_HD/{cache,drush.ini}
+      rm -f -r       $_U_TP
+      mkdir -p       $_U_TP
+      chmod 700      $_U_TP
+      chmod 700      $_U_HD
+      chown $1:users $_U_TP
+      chown $1:users $_U_HD
+      echo >         $_U_HD/.ctrl.cx.txt
       if [ ! -e "/etc/drush" ] ; then
         mkdir -p /etc/drush
+      fi
+      if [ ! -L "$_U_HD/drush_make" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/drush_make $_U_HD/drush_make
+      fi
+      if [ ! -L "$_U_HD/registry_rebuild" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/registry_rebuild $_U_HD/registry_rebuild
+      fi
+      if [ ! -L "$_U_HD/clean_missing_modules" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/clean_missing_modules $_U_HD/clean_missing_modules
+      fi
+      if [ ! -L "$_U_HD/drush_ecl" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
       fi
     fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
@@ -139,25 +153,6 @@ fix_dot_dirs()
     rm -f -r $_USER_BZR
   fi
   echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
-  if [ ! -e "$_USER_DRUSH/.ctrl.b.txt" ] ; then
-    rm -f -r $_USER_DRUSH/cache
-    rm -f $_USER_DRUSH/*
-    mkdir -p $_USER_DRUSH/cache
-    chown -R $_USER_LTD:$_USRG $_USER_DRUSH/cache
-  fi
-  if [ ! -L "$_USER_DRUSH/drush_make" ] ; then
-    ln -sf /data/disk/${_OWN}/.drush/drush_make $_USER_DRUSH/drush_make
-  fi
-  if [ ! -L "$_USER_DRUSH/registry_rebuild" ] ; then
-    ln -sf /data/disk/${_OWN}/.drush/registry_rebuild $_USER_DRUSH/registry_rebuild
-  fi
-  if [ ! -L "$_USER_DRUSH/clean_missing_modules" ] ; then
-    ln -sf /data/disk/${_OWN}/.drush/clean_missing_modules $_USER_DRUSH/clean_missing_modules
-  fi
-  if [ ! -L "$_USER_DRUSH/drush_ecl" ] ; then
-    ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_USER_DRUSH/drush_ecl
-  fi
-  touch $_USER_DRUSH/.ctrl.b.txt
 }
 #
 # OK, create user.
