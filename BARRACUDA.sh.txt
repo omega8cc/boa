@@ -5712,7 +5712,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
   if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] && [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] ; then
     msg "ERROR: Your system has been already upgraded to BOA-2.3.x series"
     msg "ERROR: You can not downgrade back to legacy BOA-2.2.x series"
-    msg "ERROR: Please use barracuda up-stable to upgrade your system"
+    msg "ERROR: Please use barracuda up-stable to upgrade this system"
     msg "Bye"
     exit 1
   fi
