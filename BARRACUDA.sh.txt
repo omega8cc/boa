@@ -6837,6 +6837,7 @@ fi
 if [ -x "/opt/php52/bin/php" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   _PHP_BIN_BROKEN=NO
+  _BROKEN_LIBCURL_TEST=""
   switch_php_cli "52"
   check_php_broken "52"
   check_php_rebuild "52"
@@ -6849,6 +6850,7 @@ fi
 if [ -x "/opt/php53/bin/php" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
   _PHP_BIN_BROKEN=NO
+  _BROKEN_LIBCURL_TEST=""
   switch_php_cli "53"
   check_php_broken "53"
   check_php_rebuild "53"
@@ -6861,6 +6863,7 @@ fi
 if [ -x "/opt/php54/bin/php" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
   _PHP_BIN_BROKEN=NO
+  _BROKEN_LIBCURL_TEST=""
   switch_php_cli "54"
   check_php_broken "54"
   check_php_rebuild "54"
@@ -6873,6 +6876,7 @@ fi
 if [ -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
   _PHP_BIN_BROKEN=NO
+  _BROKEN_LIBCURL_TEST=""
   switch_php_cli "55"
   check_php_broken "55"
   check_php_rebuild "55"
@@ -6885,6 +6889,11 @@ fi
 
 if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
   install_ioncube
+fi
+
+if [ -x "/opt/local/bin/php" ] || [ -x "/usr/local/bin/php" ] ; then
+  rm -f /opt/local/bin/php
+  rm -f /usr/local/bin/php
 fi
 
 
