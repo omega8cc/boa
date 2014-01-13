@@ -4792,6 +4792,7 @@ install_ssh_src () {
     echo "openssh-client hold" | dpkg --set-selections &> /dev/null
     echo "ssh hold" | dpkg --set-selections &> /dev/null
   fi
+  _SSH_FORCE_REINSTALL=NO
 }
 #
 # Install cURL from sources.
