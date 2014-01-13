@@ -43,14 +43,15 @@ enable_chattr () {
         cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
-        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/drush_make:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
         _INI=${_INI//\//\\\/}
         sed -i "s/.*open_basedir =.*/$_INI/g" $_U_HD/php.ini &> /dev/null
         sed -i "s/.*error_reporting =.*/error_reporting = 1/g" $_U_HD/php.ini &> /dev/null
       fi
     fi
-    if [ ! -e "$_U_HD/.ctrl.cx.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.qt.txt" ] ; then
       rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+      rm -f $_U_HD/.ctrl*
       mkdir -p       $_U_HD
       rm -f -r       $_U_HD/{cache,drush.ini}
       rm -f -r       $_U_TP
@@ -59,12 +60,9 @@ enable_chattr () {
       chmod 700      $_U_HD
       chown $1:users $_U_TP
       chown $1:users $_U_HD
-      echo >         $_U_HD/.ctrl.cx.txt
+      echo >         $_U_HD/.ctrl.qt.txt
       if [ ! -e "/etc/drush" ] ; then
         mkdir -p /etc/drush
-      fi
-      if [ ! -L "$_U_HD/drush_make" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/drush_make $_U_HD/drush_make
       fi
       if [ ! -L "$_U_HD/registry_rebuild" ] ; then
         ln -sf /data/disk/${_OWN}/.drush/registry_rebuild $_U_HD/registry_rebuild

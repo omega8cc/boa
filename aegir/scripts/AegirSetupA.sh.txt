@@ -1242,54 +1242,50 @@ fi
 #
 _USERFTP="${_USER}.ftp"
 _USER_HD="/home/$_USERFTP"
+_USER_DS="$_USER_HD/.drush"
 if [ ! -L "$_USER_HD/backups" ] ; then
   msg "$_STATUS A: Adding symlink to the sites backups"
   ln -sf $_ROOT/backups $_USER_HD/backups
 fi
 
 
-###---### Add symlink to the system drush_make.
+###---### Remove symlink to the system legacy drush_make.
 #
-_USER_DM="$_USER_HD/.drush"
-if [ ! -L "$_USER_DM/drush_make" ] ; then
-  msg "$_STATUS A: Adding symlink to the system drush_make"
-  mkdir -p $_USER_DM
-  chown $_USERFTP:$_USRG $_USER_DM
-  chmod 700 $_USER_DM
-  ln -sf /data/disk/${_USER}/.drush/drush_make $_USER_DM/drush_make
+if [ -e "$_USER_DS/drush_make" ] ; then
+  rm -f $_USER_DS/drush_make
 fi
 
 
 ###---### Add symlink to the system registry_rebuild.
 #
-if [ ! -L "$_USER_DM/registry_rebuild" ] ; then
+if [ ! -L "$_USER_DS/registry_rebuild" ] ; then
   msg "$_STATUS A: Adding symlink to the system registry_rebuild"
-  mkdir -p $_USER_DM
-  chown $_USERFTP:$_USRG $_USER_DM
-  chmod 700 $_USER_DM
-  ln -sf /data/disk/${_USER}/.drush/registry_rebuild $_USER_DM/registry_rebuild
+  mkdir -p $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS
+  chmod 700 $_USER_DS
+  ln -sf /data/disk/${_USER}/.drush/registry_rebuild $_USER_DS/registry_rebuild
 fi
 
 
 ###---### Add symlink to the system clean_missing_modules.
 #
-if [ ! -L "$_USER_DM/clean_missing_modules" ] ; then
+if [ ! -L "$_USER_DS/clean_missing_modules" ] ; then
   msg "$_STATUS A: Adding symlink to the system clean_missing_modules"
-  mkdir -p $_USER_DM
-  chown $_USERFTP:$_USRG $_USER_DM
-  chmod 700 $_USER_DM
-  ln -sf /data/disk/${_USER}/.drush/clean_missing_modules $_USER_DM/clean_missing_modules
+  mkdir -p $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS
+  chmod 700 $_USER_DS
+  ln -sf /data/disk/${_USER}/.drush/clean_missing_modules $_USER_DS/clean_missing_modules
 fi
 
 
 ###---### Add symlink to the system drush_ecl.
 #
-if [ ! -L "$_USER_DM/drush_ecl" ] ; then
+if [ ! -L "$_USER_DS/drush_ecl" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_ecl"
-  mkdir -p $_USER_DM
-  chown $_USERFTP:$_USRG $_USER_DM
-  chmod 700 $_USER_DM
-  ln -sf /data/disk/${_USER}/.drush/drush_ecl $_USER_DM/drush_ecl
+  mkdir -p $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS
+  chmod 700 $_USER_DS
+  ln -sf /data/disk/${_USER}/.drush/drush_ecl $_USER_DS/drush_ecl
 fi
 
 

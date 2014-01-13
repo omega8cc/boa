@@ -20,7 +20,7 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
           echo " This drush command can not be run in $_PWD"
           echo " Please cd ~/static first"
           echo
-          exit 1
+          exit 0
         fi
       else
         if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
@@ -28,7 +28,7 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
           echo " This drush command can not be run in $_PWD"
           echo " Please cd to the valid sites/foo.com directory first"
           echo
-          exit 1
+          exit 0
         elif [[ "$2" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
           _CORRECT=YES
         fi
