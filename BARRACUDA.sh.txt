@@ -2956,6 +2956,9 @@ barracuda_cnf () {
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+          sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=5/g"                          /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=3/g"                            /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                              /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
@@ -2964,9 +2967,7 @@ barracuda_cnf () {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=3/g"                            /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=5/g"                          /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"        /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -3390,6 +3391,9 @@ barracuda_cnf () {
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+          sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=5/g"                          /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=3/g"                            /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                              /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
@@ -3398,9 +3402,7 @@ barracuda_cnf () {
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=3/g"                            /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=5/g"                          /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"        /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
