@@ -45,7 +45,8 @@ enable_chattr () {
       if [ -e "$_U_HD/php.ini" ] ; then
         _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/drush_make:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
         _INI=${_INI//\//\\\/}
-        sed -i "s/.*open_basedir =/$_INI/g" $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*open_basedir =.*/$_INI/g" $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*error_reporting =.*/error_reporting = 1/g" $_U_HD/php.ini &> /dev/null
       fi
     fi
     if [ ! -e "$_U_HD/.ctrl.cx.txt" ] ; then
