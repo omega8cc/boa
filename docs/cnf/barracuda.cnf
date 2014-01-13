@@ -76,6 +76,7 @@ _SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
 _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _STRICT_BIN_PERMISSIONS=NO #---- Aggressively protect all binaries when YES
+_CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
 ###
 ### Barracuda version BOA-2.2.0-dev
 ###

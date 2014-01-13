@@ -792,6 +792,7 @@ _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_PHP55=NO
 _CUSTOM_CONFIG_PHP54=NO
 _CUSTOM_CONFIG_PHP53=NO
+_CUSTOM_CONFIG_LSHELL=NO
 _CUSTOM_CONFIG_PHP52=NO
 _CUSTOM_CONFIG_SQL=NO
 _CUSTOM_CONFIG_REDIS=NO
@@ -2900,6 +2901,7 @@ barracuda_cnf () {
     echo "_SSH_FROM_SOURCES=$_SSH_FROM_SOURCES" >> /root/.barracuda.cnf
     echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.barracuda.cnf
     echo "_STRICT_BIN_PERMISSIONS=$_STRICT_BIN_PERMISSIONS" >> /root/.barracuda.cnf
+    echo "_CUSTOM_CONFIG_LSHELL=$_CUSTOM_CONFIG_LSHELL" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
@@ -3082,6 +3084,12 @@ barracuda_cnf () {
     if [[ "$_LOAD_LIMIT_TWO_TEST" =~ "_LOAD_LIMIT_TWO" ]] ; then
       sed -i "s/.*_LOAD_LIMIT_TWO.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _CUSTOM_CONFIG_LSHELL_TEST=$(grep _CUSTOM_CONFIG_LSHELL /root/.barracuda.cnf)
+    if [[ "$_CUSTOM_CONFIG_LSHELL_TEST" =~ "_CUSTOM_CONFIG_LSHELL" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_CUSTOM_CONFIG_LSHELL=$_CUSTOM_CONFIG_LSHELL" >> /root/.barracuda.cnf
     fi
     _CUSTOM_CONFIG_CSF_TEST=$(grep _CUSTOM_CONFIG_CSF /root/.barracuda.cnf)
     if [[ "$_CUSTOM_CONFIG_CSF_TEST" =~ "_CUSTOM_CONFIG_CSF" ]] ; then
@@ -6610,7 +6618,13 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
   rm -f /var/xdrago/log/blackIP.log
   rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute,firewall.sh,stop-mysql-innodb.sh,firewall_restarter,FireStart,memcache,redis}
   cp -af /var/spool/cron/crontabs/root /var/backups/dragon/z/cron-root-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  if [ "$_CUSTOM_CONFIG_LSHELL" = "YES" ] && [ -e "/var/xdrago/conf/lshell.conf" ] ; then
+    cp -af /var/xdrago/conf/lshell.conf /var/backups/custom_lshell.conf
+  fi
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/* /var/xdrago/ &> /dev/null
+  if [ "$_CUSTOM_CONFIG_LSHELL" = "YES" ] && [ -e "/var/backups/custom_lshell.conf" ] ; then
+    cp -af /var/backups/custom_lshell.conf /var/xdrago/conf/lshell.conf
+  fi
   if [ -z "$_THISHTIP" ] ; then
     _LOC_DOM="$_THISHOST"
     find_correct_ip
@@ -6959,7 +6973,9 @@ if [ ! -e "/etc/logrotate.d/lshell" ] || [ ! -e "$_PATH_LSHELL" ] || [ ! -e "/va
   chmod 770 /var/log/lsh &> /dev/null
   echo "lshell-$_LSHELL_VERSION" > /var/xdrago/log/lshell-build-$_LSHELL_VERSION
   if [ -f "/var/xdrago/manage_ltd_users.sh" ] ; then
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /var/xdrago/conf/lshell.conf
+    if [ "$_STATUS" = "UPGRADE" ] && [ "$_CUSTOM_CONFIG_LSHELL" = "NO" ] ; then
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/tools/system/conf/lshell.conf /var/xdrago/conf/lshell.conf
+    fi
     st_runner "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
   fi
 fi
