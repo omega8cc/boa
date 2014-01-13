@@ -4945,13 +4945,15 @@ d;};' /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev
 check_php_rebuild () {
   if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
     _PHP_INSTALLED=5.x
-    rm -f /var/xdrago/log/zendopcache-*
-    rm -f /var/xdrago/log/phpredis-*
-    rm -f /var/xdrago/log/uploadprogress-*
-    rm -f /var/xdrago/log/php-jsmin-*
-    rm -f /var/xdrago/log/php-geos-*
-    rm -f /var/xdrago/log/php-mongo-*
-    rm -f /var/xdrago/log/imagick-*
+    if [ "$1" = "55" ] ; then
+      rm -f /var/xdrago/log/*5.5*
+    elif [ "$1" = "54" ] ; then
+      rm -f /var/xdrago/log/*5.4*
+    elif [ "$1" = "53" ] ; then
+      rm -f /var/xdrago/log/*5.3*
+    elif [ "$1" = "52" ] ; then
+      rm -f /var/xdrago/log/*5.2*
+    fi
     msg "INFO: PHP to $_PHP_VERSION rebuild forced"
   else
     _PHP_INSTALLED=`/opt/php$1/bin/php -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
@@ -6808,6 +6810,7 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.2" ]] && [ ! -x "/opt/php52/bin/php" ] ; then
   _LOC_PHP_VERSION=""
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
+  _FRESH_PHP52_BUILD=52
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.3" ]] && [ ! -x "/opt/php53/bin/php" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
@@ -6818,6 +6821,7 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.3" ]] && [ ! -x "/opt/php53/bin/php" ] ; then
   _LOC_PHP_VERSION=""
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
+  _FRESH_PHP53_BUILD=53
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
@@ -6828,6 +6832,7 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.4" ]] && [ ! -x "/opt/php54/bin/php" ] ; then
   _LOC_PHP_VERSION=""
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
+  _FRESH_PHP54_BUILD=54
 fi
 if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
@@ -6838,9 +6843,10 @@ if [[ "$_PHP_MULTI_INSTALL" =~ "5.5" ]] && [ ! -x "/opt/php55/bin/php" ] ; then
   _LOC_PHP_VERSION=""
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
+  _FRESH_PHP55_BUILD=55
 fi
 
-if [ -x "/opt/php52/bin/php" ] ; then
+if [ -x "/opt/php52/bin/php" ] && [ -z "$_FRESH_PHP52_BUILD" ] ; then
   _PHP_VERSION="$_PHP52_VERSION"
   _PHP_BIN_BROKEN=NO
   _BROKEN_LIBCURL_TEST=""
@@ -6853,7 +6859,7 @@ if [ -x "/opt/php52/bin/php" ] ; then
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
 fi
-if [ -x "/opt/php53/bin/php" ] ; then
+if [ -x "/opt/php53/bin/php" ] && [ -z "$_FRESH_PHP53_BUILD" ] ; then
   _PHP_VERSION="$_PHP53_VERSION"
   _PHP_BIN_BROKEN=NO
   _BROKEN_LIBCURL_TEST=""
@@ -6866,7 +6872,7 @@ if [ -x "/opt/php53/bin/php" ] ; then
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
 fi
-if [ -x "/opt/php54/bin/php" ] ; then
+if [ -x "/opt/php54/bin/php" ] && [ -z "$_FRESH_PHP54_BUILD" ] ; then
   _PHP_VERSION="$_PHP54_VERSION"
   _PHP_BIN_BROKEN=NO
   _BROKEN_LIBCURL_TEST=""
@@ -6879,7 +6885,7 @@ if [ -x "/opt/php54/bin/php" ] ; then
   _LOC_PHP_PATH=""
   _THIS_LOC_PHP_PATH=""
 fi
-if [ -x "/opt/php55/bin/php" ] ; then
+if [ -x "/opt/php55/bin/php" ] && [ -z "$_FRESH_PHP55_BUILD" ] ; then
   _PHP_VERSION="$_PHP55_VERSION"
   _PHP_BIN_BROKEN=NO
   _BROKEN_LIBCURL_TEST=""
