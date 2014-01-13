@@ -30,7 +30,7 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
       if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
@@ -43,7 +43,7 @@ enable_chattr () {
         cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
-        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush\""
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/drush_make:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
         _INI=${_INI//\//\\\/}
         sed -i "s/.*open_basedir =/$_INI/g" $_U_HD/php.ini &> /dev/null
       fi
