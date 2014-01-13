@@ -3073,7 +3073,7 @@ barracuda_cnf () {
       echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     fi
 
-    if [ "$_PHP_LEGACY_FREE" = "NO" ] [ -x "/usr/local/bin/php52" ] ; then
+    if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
         _DO_NOTHING=YES
       else
