@@ -3028,6 +3028,24 @@ barracuda_cnf () {
     fi
 
     _PHP_MULTI_INSTALL_TEST=$(grep _PHP_MULTI_INSTALL /root/.barracuda.cnf)
+
+    if [ "$_PHP_LEGACY_FREE" = "YES" ] ; then
+      if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
+        _DO_NOTHING=YES
+      else
+        if [ -e "/etc/init.d/php-fpm" ] ; then
+          mrun "service php-fpm stop" &> /dev/null
+          update-rc.d -f php-fpm remove &> /dev/null
+          rm -f /etc/init.d/php-fpm
+        fi
+        if [ -e "/etc/init.d/php52-fpm" ] ; then
+          mrun "service php52-fpm stop" &> /dev/null
+          update-rc.d -f php52-fpm remove &> /dev/null
+          rm -f /etc/init.d/php52-fpm
+        fi
+      fi
+    fi
+
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
       _DO_NOTHING=YES
     else
@@ -3040,7 +3058,7 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
         _PHP_MULTI_INSTALL="5.5 5.4 5.3"
       fi
-      if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] && [ ! -L "/usr/local/bin/php52" ] ; then
+      if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/usr/local/bin/php52" ] ; then
         if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
           _DO_NOTHING=YES
         else
@@ -3050,26 +3068,10 @@ barracuda_cnf () {
         mv -f /usr/local/bin/php52 /var/backups/ &> /dev/null
         ln -s /opt/php52/bin/php /usr/local/bin/php52
       fi
-      if [ "$_PHP_LEGACY_FREE" = "YES" ] ; then
-        if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
-          _DO_NOTHING=YES
-        else
-          if [ -e "/etc/init.d/php-fpm" ] ; then
-            mrun "service php-fpm stop" &> /dev/null
-            update-rc.d -f php-fpm remove &> /dev/null
-            rm -f /etc/init.d/php-fpm
-          fi
-          if [ -e "/etc/init.d/php52-fpm" ] ; then
-            mrun "service php52-fpm stop" &> /dev/null
-            update-rc.d -f php52-fpm remove &> /dev/null
-            rm -f /etc/init.d/php52-fpm
-          fi
-        fi
-      fi
       echo "_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"" >> /root/.barracuda.cnf
     fi
 
-    if [ "$_PHP_LEGACY_FREE" = "NO" ] && [ -x "/opt/php52/bin/php" ] && [ -L "/usr/local/bin/php52" ] ; then
+    if [ "$_PHP_LEGACY_FREE" = "NO" ] [ -x "/usr/local/bin/php52" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
         _DO_NOTHING=YES
       else
