@@ -5083,7 +5083,7 @@ strict_bin_permissions () {
     for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf` ; do
       if [ -e "$f" ] ; then
         chgrp root $f &> /dev/null
-        chmod 755 $_BIN_ITEM &> /dev/null
+        chmod 755 $f &> /dev/null
       fi
     done
   done
