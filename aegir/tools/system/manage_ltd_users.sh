@@ -30,7 +30,7 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.qw.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
       if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
@@ -45,22 +45,26 @@ enable_chattr () {
       if [ -e "$_U_HD/php.ini" ] ; then
         _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
         _INI=${_INI//\//\\\/}
-        sed -i "s/.*open_basedir =.*/$_INI/g" $_U_HD/php.ini &> /dev/null
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g" $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*open_basedir =.*/$_INI/g"                               $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"              $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*session.save_path =.*/session.save_path = $_U_TP/g"     $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_U_TP/g" $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_U_TP/g"               $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_U_TP/g"           $_U_HD/php.ini &> /dev/null
       fi
     fi
-    if [ ! -e "$_U_HD/.ctrl.qt.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.qw.txt" ] ; then
       rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
       rm -f $_U_HD/.ctrl*
       mkdir -p       $_U_HD
-      rm -f -r       $_U_HD/{cache,drush.ini}
+      rm -f -r       $_U_HD/{cache,drush.ini,drushrc*,*.inc}
       rm -f -r       $_U_TP
       mkdir -p       $_U_TP
       chmod 700      $_U_TP
       chmod 700      $_U_HD
       chown $1:users $_U_TP
       chown $1:users $_U_HD
-      echo >         $_U_HD/.ctrl.qt.txt
+      echo >         $_U_HD/.ctrl.qw.txt
       if [ ! -e "/etc/drush" ] ; then
         mkdir -p /etc/drush
       fi
