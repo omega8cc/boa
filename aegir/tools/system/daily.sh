@@ -246,7 +246,7 @@ fix_boost_cache () {
     rm -f -r $Plr/cache/*
     rm -f $Plr/cache/{.boost,.htaccess}
   else
-    if [ -e "$Plr/drushrc.php" ] ; then
+    if [ -e "$Plr/drushrc.php" ] || [ -e "$Plr/sites/all/drush/drushrc.php" ] ; then
       mkdir -p $Plr/cache
     fi
   fi
@@ -848,7 +848,7 @@ fix_permissions () {
     mkdir -p $Plr/sites/all/{modules,themes,libraries,drush}
     find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
+    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 $Plr/sites &> /dev/null
     chmod 0751 $Plr/sites/all &> /dev/null
     chmod 0751 $Plr/sites/all/drush &> /dev/null
