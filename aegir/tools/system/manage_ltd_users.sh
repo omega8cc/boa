@@ -524,7 +524,6 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   echo Missing /var/xdrago/conf/lshell.conf template
   exit
 else
-  sleep 3
   if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
     _WEB_SH=`readlink -n /bin/sh`
     _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
@@ -543,16 +542,17 @@ else
     sed -i "s/, 'mc':'mc -u'//g" $_THIS_LTD_CONF
   fi
   add_ltd_group_if_not_exists
-  sleep 1
   kill_zombies >/var/backups/ltd/log/zombies-$_NOW.log 2>&1
-  sleep 1
   manage_own >/var/backups/ltd/log/users-$_NOW.log 2>&1
-  sleep 1
-  cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-$_NOW
-  sleep 1
-  cp -af $_THIS_LTD_CONF /etc/lshell.conf
-  sleep 1
-  find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
+  if [ -e "$_THIS_LTD_CONF" ] ; then
+    _DIFF_TEST=$(diff $_THIS_LTD_CONF /etc/lshell.conf)
+    if [ ! -z "$_DIFF_TEST" ] ; then
+      cp -af /etc/lshell.conf /var/backups/ltd/old/lshell.conf-before-$_NOW
+      cp -af $_THIS_LTD_CONF /etc/lshell.conf
+    else
+      rm -f $_THIS_LTD_CONF
+    fi
+  fi
   rm -f $_TMP/*.txt
   if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ] ; then
     chmod 700 /home/* &> /dev/null

@@ -1353,6 +1353,7 @@ fi
 if [ ! -e "/root/.upstart.cnf" ] ; then
   service cron reload &> /dev/null
 fi
+find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
 echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2014###
