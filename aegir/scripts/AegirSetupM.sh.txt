@@ -68,14 +68,6 @@ PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 msg () {
   echo "Barracuda [`date`] ==> $*"
 }
-# Update DRUSH_PHP variable.
-update_drush_php_var ()
-{
-  _THIS_DRUSH_PHP="$1/php"
-  _THIS_DRUSH_PHP=${_THIS_DRUSH_PHP//\//\\\/}
-  sed -i "s/^DRUSH_PHP=.*//g; s/^DRUSH_INI=.*//g; s/^PHP_INI=.*//g; s/ *$//g; /^$/d" $_ROOT/drush/drush &> /dev/null
-  sed -i "s/^#\!\/.*/#\!\/bin\/bash\n\nDRUSH_PHP=$_THIS_DRUSH_PHP\nDRUSH_INI=\"\"\nPHP_INI=\"\"/g" $_ROOT/drush/drush &> /dev/null
-}
 #
 # Update php-cli for Drush.
 update_php_cli_drush () {
@@ -94,7 +86,6 @@ update_php_cli_drush () {
     touch /opt/tmp/status-AegirSetupM-FAIL
     exit 1
   fi
-  update_drush_php_var "$_L_PHP_CLI"
 }
 #
 # Extract archive.

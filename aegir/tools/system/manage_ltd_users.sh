@@ -291,15 +291,6 @@ do
 done
 }
 #
-# Update DRUSH_PHP variable.
-update_drush_php_var ()
-{
-  _THIS_DRUSH_PHP="$1/php"
-  _THIS_DRUSH_PHP=${_THIS_DRUSH_PHP//\//\\\/}
-  sed -i "s/^DRUSH_PHP=.*//g; s/^DRUSH_INI=.*//g; s/^PHP_INI=.*//g; s/ *$//g; /^$/d" /data/disk/${_OWN}/tools/drush/drush &> /dev/null
-  sed -i "s/^#\!\/.*/#\!\/bin\/bash\n\nDRUSH_PHP=$_THIS_DRUSH_PHP\nDRUSH_INI=\"\"\nPHP_INI=\"\"/g"  /data/disk/${_OWN}/tools/drush/drush &> /dev/null
-}
-#
 # Update PHP-CLI for Drush.
 update_php_cli_drush ()
 {
@@ -322,7 +313,6 @@ update_php_cli_drush ()
   echo -e "#!/bin/bash\n\nPATH=.:$_L_PHP_CLI:/usr/sbin:/usr/bin:/sbin:/bin\n$_DRUSHCMD '@hostmaster' hosting-dispatch\ntouch /data/disk/${_OWN}/${_OWN}-task.done" | tee -a /data/disk/${_OWN}/aegir.sh >/dev/null 2>&1
   chown ${_OWN}:users /data/disk/${_OWN}/aegir.sh &> /dev/null
   chmod 0700 /data/disk/${_OWN}/aegir.sh &> /dev/null
-  update_drush_php_var "$_L_PHP_CLI"
 }
 #
 # Switch PHP Version.
