@@ -16,11 +16,19 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
         if [[ "$_PWD" =~ "/static" ]] ; then
           _CORRECT=YES
         else
-          echo
-          echo " This drush command can not be run in $_PWD"
-          echo " Please cd ~/static first"
-          echo
-          exit 0
+          if [[ "$2" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then
+            _CORRECT=YES
+          else
+            echo
+            echo " This drush command can not be run in $_PWD"
+            if [[ "$2" =~ "make-generate" ]] ; then
+              echo " Please cd to the valid sites/foo.com directory first"
+            else
+              echo " Please cd ~/static first"
+            fi
+            echo
+            exit 0
+          fi
         fi
       else
         if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
