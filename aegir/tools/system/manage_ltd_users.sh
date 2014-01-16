@@ -45,12 +45,13 @@ enable_chattr () {
       if [ -e "$_U_HD/php.ini" ] ; then
         _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
         _INI=${_INI//\//\\\/}
-        sed -i "s/.*open_basedir =.*/$_INI/g"                               $_U_HD/php.ini &> /dev/null
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"              $_U_HD/php.ini &> /dev/null
-        sed -i "s/.*session.save_path =.*/session.save_path = $_U_TP/g"     $_U_HD/php.ini &> /dev/null
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_U_TP/g" $_U_HD/php.ini &> /dev/null
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_U_TP/g"               $_U_HD/php.ini &> /dev/null
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_U_TP/g"           $_U_HD/php.ini &> /dev/null
+        _QTP=${_U_TP//\//\\\/}
+        sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
+        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       fi
     fi
     if [ ! -e "$_U_HD/.ctrl.qw.txt" ] ; then
