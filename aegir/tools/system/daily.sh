@@ -18,7 +18,7 @@ _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog de
 # Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ "$1" != "${_OWN}.ftp" ] ; then
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
       chattr +i /home/$1             &> /dev/null
     else
       chattr +i /home/$1/platforms   &> /dev/null
@@ -33,7 +33,7 @@ enable_chattr () {
 # Disable chattr.
 disable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
-    if [ "$1" != "${_OWN}.ftp" ] ; then
+    if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
       chattr -i /home/$1             &> /dev/null
     else
       chattr -i /home/$1/platforms   &> /dev/null
