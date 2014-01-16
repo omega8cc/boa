@@ -1291,7 +1291,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     echo "core = 6.x" >> fserver.make
     echo "projects[pressflow][type] = \"core\"" >> fserver.make
     echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/core/pressflow-6.29.1.tar.gz\"" >> fserver.make
+    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/core/pressflow-6.30.1.tar.gz\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][type] = \"profile\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][download][type] = \"git\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][download][url] = \"git://github.com/omega8cc/$_REAL_PRNAME.git\"" >> fserver.make
