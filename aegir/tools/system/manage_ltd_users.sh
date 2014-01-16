@@ -33,13 +33,13 @@ enable_chattr () {
     if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.qw.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
-      if [ "$_PHP_CLI_VERSION" = "5.5" ] ; then
+      if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] ; then
         cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
-      elif [ "$_PHP_CLI_VERSION" = "5.4" ] ; then
+      elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] ; then
         cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
-      elif [ "$_PHP_CLI_VERSION" = "5.3" ] ; then
+      elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] ; then
         cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
-      elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+      elif [ "$_LOC_PHP_CLI_VERSION" = "5.2" ] ; then
         cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
