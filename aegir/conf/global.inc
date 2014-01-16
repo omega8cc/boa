@@ -39,6 +39,7 @@ $conf['expire_flush_node_terms'] = 1;        // Default settings for expire modu
 $conf['expire_flush_menu_items'] = 0;        // Default settings for expire module
 $conf['expire_flush_cck_references'] = 0;    // Default settings for expire module
 $conf['expire_include_base_url'] = 1;        // Default settings for expire module
+$conf['js_server_software'] = "other";       // Set JS Callback handler server software
 $conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
 $conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
 $conf['drupal_http_request_fails'] = false;  // Avoid false alarm
