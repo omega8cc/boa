@@ -5,13 +5,46 @@ SHELL=/bin/bash
 _ALL="$@"
 _LTD_GID=$(id -nG $USER)
 _INTERNAL=NO
+_X_USR=".*"
+_Y_USR=${USER%${_X_USR}}
 
-if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
+# Check PHP CLI version defined.
+check_php_cli_version () {
+  if [ -e "/data/disk/$_Y_USR/static/control/cli.info" ] ; then
+    _PHP_CLI_VERSION=`cat /data/disk/$_Y_USR/static/control/cli.info`
+    _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
+    if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
+      _PHP_CLI=$_PHP_CLI_VERSION
+    fi
+  else
+    if [ -e "/data/disk/$_Y_USR/log/cli.txt" ] ; then
+      _PHP_CLI_VERSION=`cat /data/disk/$_Y_USR/log/cli.txt`
+      _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
+      if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
+        _PHP_CLI=$_PHP_CLI_VERSION
+      fi
+    fi
+  fi
+  if [ "$_PHP_CLI" = "5.5" ] ; then
+    DRUSH_PHP="/opt/php55/bin/php"
+  elif [ "$_PHP_CLI" = "5.4" ] ; then
+    DRUSH_PHP="/opt/php54/bin/php"
+  elif [ "$_PHP_CLI" = "5.3" ] ; then
+    DRUSH_PHP="/opt/php53/bin/php"
+  elif [ "$_PHP_CLI" = "5.2" ] ; then
+    DRUSH_PHP="/opt/php52/bin/php"
+  else
+    DRUSH_PHP=""
+  fi
+}
+
+if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
   if [ "$1" = "-c" ] ; then
     if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
       _IN_PATH=YES
       _INTERNAL=YES
       _PWD=$(pwd)
+      check_php_cli_version
       if [[ "$2" =~ "drush make" ]] || [[ "$2" =~ "drush6 make" ]] || [[ "$2" =~ "drush7 make" ]] ; then
         if [[ "$_PWD" =~ "/static" ]] ; then
           _CORRECT=YES
@@ -67,9 +100,9 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] ; then
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-      exec /bin/bash "$@"
+      export DRUSH_PHP;exec /bin/bash "$@"
     else
-      exec $0 "$@"
+      export DRUSH_PHP;exec $0 "$@"
     fi
     exit 0
   else
