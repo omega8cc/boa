@@ -25,16 +25,21 @@ check_php_cli_version () {
       fi
     fi
   fi
-  if [ "$_PHP_CLI" = "5.5" ] ; then
+  if [ "$_PHP_CLI" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
     DRUSH_PHP="/opt/php55/bin/php"
-  elif [ "$_PHP_CLI" = "5.4" ] ; then
+    PHP_INI="/opt/php55/lib/php.ini"
+  elif [ "$_PHP_CLI" = "5.4" ] && [ -x "/opt/php54/bin/php" ] ; then
     DRUSH_PHP="/opt/php54/bin/php"
-  elif [ "$_PHP_CLI" = "5.3" ] ; then
+    PHP_INI="/opt/php54/lib/php.ini"
+  elif [ "$_PHP_CLI" = "5.3" ] && [ -x "/opt/php53/bin/php" ] ; then
     DRUSH_PHP="/opt/php53/bin/php"
-  elif [ "$_PHP_CLI" = "5.2" ] ; then
+    PHP_INI="/opt/php53/lib/php.ini"
+  elif [ "$_PHP_CLI" = "5.2" ] && [ -x "/opt/php52/bin/php" ] ; then
     DRUSH_PHP="/opt/php52/bin/php"
+    PHP_INI="/opt/php52/lib/php.ini"
   else
     DRUSH_PHP=""
+    PHP_INI=""
   fi
 }
 
@@ -43,35 +48,54 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; th
     if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
       _IN_PATH=YES
       _INTERNAL=YES
-      _PWD=$(pwd)
-      check_php_cli_version
-      if [[ "$2" =~ "drush make" ]] || [[ "$2" =~ "drush6 make" ]] || [[ "$2" =~ "drush7 make" ]] ; then
-        if [[ "$_PWD" =~ "/static" ]] ; then
-          _CORRECT=YES
+      if [[ "$2" =~ "drush" ]] ; then
+        _PWD=$(pwd)
+        check_php_cli_version
+        if [[ "$2" =~ "pm-update" ]] ; then
+          DRUSH_PHP=""
+          _PHP_DEFAULT=`/usr/bin/php-cli -v | grep 'PHP 5' | cut -d: -f1 | awk '{ print $2}'`
+          if [[ "$_PHP_DEFAULT" =~ "5.5." ]] ; then
+            PHP_INI="/opt/php55/lib/php.ini"
+          elif [[ "$_PHP_DEFAULT" =~ "5.4." ]] ; then
+            PHP_INI="/opt/php54/lib/php.ini"
+          elif [[ "$_PHP_DEFAULT" =~ "5.3." ]] ; then
+            PHP_INI="/opt/php53/lib/php.ini"
+          elif [[ "$_PHP_DEFAULT" =~ "5.2." ]] ; then
+            PHP_INI="/opt/php52/lib/php.ini"
+          fi
         else
-          if [[ "$2" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then
-            _CORRECT=YES
-          else
-            echo
-            echo " This drush command can not be run in $_PWD"
-            if [[ "$2" =~ "make-generate" ]] ; then
-              echo " Please cd to the valid sites/foo.com directory first"
-            else
-              echo " Please cd ~/static first"
-            fi
-            echo
-            exit 0
+          if [ -f "$HOME/.drush/php.ini" ] ; then
+            PHP_INI="$HOME/.drush/php.ini"
           fi
         fi
-      else
-        if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
-          echo
-          echo " This drush command can not be run in $_PWD"
-          echo " Please cd to the valid sites/foo.com directory first"
-          echo
-          exit 0
-        elif [[ "$2" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
-          _CORRECT=YES
+        if [[ "$2" =~ "drush make" ]] || [[ "$2" =~ "drush6 make" ]] || [[ "$2" =~ "drush7 make" ]] ; then
+          if [[ "$_PWD" =~ "/static" ]] ; then
+            _CORRECT=YES
+          else
+            if [[ "$2" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then
+              _CORRECT=YES
+            else
+              echo
+              echo " This drush command can not be run in $_PWD"
+              if [[ "$2" =~ "make-generate" ]] ; then
+                echo " Please cd to the valid sites/foo.com directory first"
+              else
+                echo " Please cd ~/static first"
+              fi
+              echo
+              exit 0
+            fi
+          fi
+        else
+          if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
+            echo
+            echo " This drush command can not be run in $_PWD"
+            echo " Please cd to the valid sites/foo.com directory first"
+            echo
+            exit 0
+          elif [[ "$2" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
+            _CORRECT=YES
+          fi
         fi
       fi
     else
@@ -100,9 +124,9 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; th
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-      export DRUSH_PHP;exec /bin/bash "$@"
+      export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
     else
-      export DRUSH_PHP;exec $0 "$@"
+      export DRUSH_PHP;export PHP_INI;exec $0 "$@"
     fi
     exit 0
   else
