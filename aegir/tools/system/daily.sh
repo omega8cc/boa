@@ -1297,6 +1297,10 @@ else
     done
     /etc/init.d/nginx reload
   fi
+  rm -f /var/backups/BOA.sh.txt-*
+  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+  bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
+  rm -f /var/backups/BOA.sh.txt-$_NOW
 fi
 
 ###--------------------###
