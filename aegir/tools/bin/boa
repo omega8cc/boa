@@ -230,7 +230,6 @@ check_wrapper ()
     _NEEDS_UPDATE=NO
   else
     _NEEDS_UPDATE=YES
-    bash /var/backups/$(basename "$0")-now-$_NOW $*
   fi
 }
 
