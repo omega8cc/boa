@@ -265,6 +265,13 @@ up_finish ()
   echo
   echo OCTOPUS upgrade completed
   echo Bye
+  echo
+  if [ "$_NEEDS_UPDATE" = "YES" ] ; then
+    rm -f /var/backups/BOA.sh.txt-*
+    curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+    exec bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
+    rm -f /var/backups/BOA.sh.txt-$_NOW
+  fi
   exit 0
 }
 
@@ -334,11 +341,12 @@ check_wrapper ()
       fi
     fi
   fi
-  echo "### $_TODAY ###" >> $_THIS_FILE
+  _BIN_FILE="/usr/local/bin/$(basename "$0")"
   _DATE_TEST=$(grep "### $_TODAY ###" $_THIS_FILE)
   if [[ "$_DATE_TEST" =~ "### $_TODAY ###" ]] ; then
-    _DO_NOTHING=YES
+    _NEEDS_UPDATE=NO
   else
+    _NEEDS_UPDATE=YES
     bash /var/backups/$(basename "$0")-now-$_NOW $*
   fi
 }
