@@ -2395,8 +2395,8 @@ if [ "$_ALLOW_UNSUPPORTED" = "YES" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   civicrm_m6_install
   civicrm_m7_install
   cod_install
-  drupal_edge_8_install
-  drupal8_install
+  ### drupal_edge_8_install
+  ### drupal8_install
   nodestream7_install
   openpublish_install
   prosepoint_install
