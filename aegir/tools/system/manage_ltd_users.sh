@@ -35,7 +35,7 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ ! -e "$_U_HD/.ctrl.im.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.pq.txt" ] ; then
       if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
@@ -51,7 +51,7 @@ enable_chattr () {
       chmod 700      $_U_HD
       chown $1:users $_U_TP
       chown $1:users $_U_HD
-      echo >         $_U_HD/.ctrl.im.txt
+      echo >         $_U_HD/.ctrl.pq.txt
       if [ ! -e "/etc/drush" ] ; then
         mkdir -p /etc/drush
       fi
@@ -65,7 +65,7 @@ enable_chattr () {
         ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
       fi
     fi
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.im.txt" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.pq.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
       if [ ! -z "$_LOC_PHP_CLI_VERSION" ] ; then
@@ -468,6 +468,10 @@ switch_php()
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           update_php_cli_drush
           update_php_cli_local_ini
+          chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
+          chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
+          find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+          find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
         fi
       fi
     fi
@@ -485,12 +489,12 @@ do
     echo "_OWN is == $_OWN == at manage_own"
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
-    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.im.txt " ] ; then
+    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.pq.txt " ] ; then
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
-      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.im.txt
+      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.pq.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf
@@ -562,6 +566,10 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     echo "  deny                         all;" >  /var/backups/.auth.IP.list
     echo "  ### access none"                   >> /var/backups/.auth.IP.list
   fi
+  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
+  chmod 0710 /var/aegir/.drush &> /dev/null
+  find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+  find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
 }
 #
 # Manage IP-Auth Xtras Access.
