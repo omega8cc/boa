@@ -85,6 +85,7 @@ update_php_cli_local_ini () {
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
+    mkdir -p $_U_HD
     rm -f $_U_HD/.ctrl.php*
     rm -f $_U_HD/php.ini
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
