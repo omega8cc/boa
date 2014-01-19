@@ -5,6 +5,11 @@ PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
+if [[ "$_VM_TEST" =~ beng ]] ; then
+  _VMFAMILY="VS"
+else
+  _VMFAMILY="XEN"
+fi
 
 ###----------------------------###
 ##    Manage ltd shell users    ##
@@ -30,16 +35,60 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.qw.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.im.txt" ] ; then
+      if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+        rm -f -r $_U_HD/*
+        rm -f -r $_U_HD/.*
+      else
+        rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+        rm -f $_U_HD/.ctrl*
+        rm -f -r $_U_HD/{cache,drush.ini,*drushrc*,*.inc}
+      fi
+      mkdir -p       $_U_HD
+      rm -f -r       $_U_TP
+      mkdir -p       $_U_TP
+      chmod 700      $_U_TP
+      chmod 700      $_U_HD
+      chown $1:users $_U_TP
+      chown $1:users $_U_HD
+      echo >         $_U_HD/.ctrl.im.txt
+      if [ ! -e "/etc/drush" ] ; then
+        mkdir -p /etc/drush
+      fi
+      if [ ! -L "$_U_HD/registry_rebuild" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/registry_rebuild $_U_HD/registry_rebuild
+      fi
+      if [ ! -L "$_U_HD/clean_missing_modules" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/clean_missing_modules $_U_HD/clean_missing_modules
+      fi
+      if [ ! -L "$_U_HD/drush_ecl" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
+      fi
+    fi
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.im.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
-      if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] ; then
+      if [ ! -z "$_LOC_PHP_CLI_VERSION" ] ; then
+        _USE_PHP_CLI="$_LOC_PHP_CLI_VERSION"
+      else
+        _CHECK_USE_PHP_CLI=`grep "/opt/php" /data/disk/${_OWN}/tools/drush/drush.php`
+        if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
+          _USE_PHP_CLI=5.5
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
+          _USE_PHP_CLI=5.4
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
+          _USE_PHP_CLI=5.3
+        elif [[ "$_CHECK_USE_PHP_CLI" =~ "php52" ]] ; then
+          _USE_PHP_CLI=5.2
+        fi
+      fi
+      if [ "$_USE_PHP_CLI" = "5.5" ] ; then
         cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
-      elif [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] ; then
+      elif [ "$_USE_PHP_CLI" = "5.4" ] ; then
         cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
-      elif [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] ; then
+      elif [ "$_USE_PHP_CLI" = "5.3" ] ; then
         cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
-      elif [ "$_LOC_PHP_CLI_VERSION" = "5.2" ] ; then
+      elif [ "$_USE_PHP_CLI" = "5.2" ] ; then
         cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
@@ -52,31 +101,6 @@ enable_chattr () {
         sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_U_HD/php.ini &> /dev/null
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
-      fi
-    fi
-    if [ ! -e "$_U_HD/.ctrl.qw.txt" ] ; then
-      rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
-      rm -f $_U_HD/.ctrl*
-      mkdir -p       $_U_HD
-      rm -f -r       $_U_HD/{cache,drush.ini,drushrc*,*.inc}
-      rm -f -r       $_U_TP
-      mkdir -p       $_U_TP
-      chmod 700      $_U_TP
-      chmod 700      $_U_HD
-      chown $1:users $_U_TP
-      chown $1:users $_U_HD
-      echo >         $_U_HD/.ctrl.qw.txt
-      if [ ! -e "/etc/drush" ] ; then
-        mkdir -p /etc/drush
-      fi
-      if [ ! -L "$_U_HD/registry_rebuild" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/registry_rebuild $_U_HD/registry_rebuild
-      fi
-      if [ ! -L "$_U_HD/clean_missing_modules" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/clean_missing_modules $_U_HD/clean_missing_modules
-      fi
-      if [ ! -L "$_U_HD/drush_ecl" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
       fi
     fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
@@ -359,7 +383,7 @@ switch_php()
           if [ ! -z "$_PHP_FPM_DENY" ] ; then
             sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           else
-            if [[ "$_HOST_TEST" =~ ".host8." ]] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
+            if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
               _DO_NOTHING=YES
             else
               sed -i "s/passthru,//g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
