@@ -89,11 +89,19 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [
         fi
       fi
     else
-      if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] ; then
+      if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] || [[ "$2" =~ (^)"/opt/" ]] ; then
+        _IN_PATH=YES
+      elif [[ "$2" =~ (^)"/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
+        _IN_PATH=YES
+      elif [[ "$2" =~ (^)"(/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
+        _IN_PATH=YES
+      elif [[ "$2" =~ (^)"/var/aegir/drush/drush.php" ]] ; then
+        _IN_PATH=YES
+      elif [[ "$2" =~ (^)"(/var/aegir/drush/drush.php" ]] ; then
         _IN_PATH=YES
       else
         _WHICH_TEST=$(which $2)
-        if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] ; then
+        if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
           _IN_PATH=YES
         else
           _IN_PATH=NO
@@ -101,7 +109,7 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [
       fi
     fi
   else
-    if [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] ; then
+    if [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] || [[ "$1" =~ (^)"/opt/" ]] ; then
       _IN_PATH=YES
       if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
         check_php_cli_version
@@ -109,9 +117,17 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [
           PHP_INI="$HOME/.drush/php.ini"
         fi
       fi
+    elif [[ "$1" =~ (^)"/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
+      _IN_PATH=YES
+    elif [[ "$1" =~ (^)"(/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
+      _IN_PATH=YES
+    elif [[ "$1" =~ (^)"/var/aegir/drush/drush.php" ]] ; then
+      _IN_PATH=YES
+    elif [[ "$1" =~ (^)"(/var/aegir/drush/drush.php" ]] ; then
+      _IN_PATH=YES
     else
       _WHICH_TEST=$(which $1)
-      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] ; then
+      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
         _IN_PATH=YES
         if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
           check_php_cli_version
@@ -135,10 +151,23 @@ if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [
     exit 1
   fi
 else
+  if [ "$USER" = "root" ] ; then
+    if [[ "$1" =~ "drush" ]] || [[ "$2" =~ "drush" ]] ; then
+      echo
+      echo " Drush should never be run as root!"
+      echo " Please su to some non-root account"
+      echo
+      exit 0
+    fi
+  fi
+  check_php_cli_version
+  if [ -f "$HOME/.drush/php.ini" ] ; then
+    PHP_INI="$HOME/.drush/php.ini"
+  fi
   if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-    exec /bin/bash "$@"
+    export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
   else
-    exec $0 "$@"
+    export DRUSH_PHP;export PHP_INI;exec $0 "$@"
   fi
   exit 0
 fi
