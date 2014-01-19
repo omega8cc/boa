@@ -4073,9 +4073,6 @@ upgrade_aegir_master () {
     chown -R aegir $_THIS_HM_ROOT
     chown -R aegir:www-data $_THIS_HM_SITE/files
     chmod -R 2770 $_THIS_HM_SITE/files
-    if [ ! -L "/usr/bin/drush" ] ; then
-      ln -sf /var/aegir/drush/drush /usr/bin/drush
-    fi
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -4517,7 +4514,9 @@ get_drush_versions () {
   chmod 755 /opt/tools/drush/*/drush/drush.php
   if [ -x "/opt/tools/drush/4/drush/drush" ] ; then
     rm -f /usr/bin/drush4
+    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
+    ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush
   fi
   if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
     rm -f /usr/bin/drush6
@@ -5004,10 +5003,14 @@ switch_to_bash () {
     for p in $_X_BIN_PATHS; do
       if [ -e "$p" ] ; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
-          _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
-          if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] ; then
-            sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
-            sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+          if [[ "$f" =~ "drush"($) ]] || [[ "$f" =~ "clean-boa-env"($) ]] ; then
+            _SKIP_THIS=YES
+          else
+            _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
+            if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] ; then
+              sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
+            fi
           fi
         done
       fi
@@ -5927,6 +5930,11 @@ rm -f -r /var/opt/*
 mkdir -p /var/log/php
 chmod 777 /var/log/php* &> /dev/null
 mkdir -p /var/backups/dragon/{x,z,t}
+
+
+###--------------------###
+msg "INFO: Installing extra Drush versions"
+get_drush_versions
 
 
 ###--------------------###
@@ -7561,7 +7569,6 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
-  ln -sf /var/aegir/drush/drush /usr/bin/drush &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then
       su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
@@ -7763,11 +7770,6 @@ EOF
     mrun "service nginx start" &> /dev/null
   fi
 fi
-
-
-###--------------------###
-msg "INFO: Installing extra Drush versions"
-get_drush_versions
 
 
 ###--------------------###
