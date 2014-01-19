@@ -105,7 +105,7 @@ update_php_cli_local_ini () {
       mkdir -p /etc/drush
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/var/aegir:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/etc/drush\""
+      _INI="open_basedir = \".:/var/aegir:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/etc/drush\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null

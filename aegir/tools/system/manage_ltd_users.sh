@@ -35,7 +35,7 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ ! -e "$_U_HD/.ctrl.pq.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
       if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
@@ -51,7 +51,7 @@ enable_chattr () {
       chmod 700      $_U_HD
       chown $1:users $_U_TP
       chown $1:users $_U_HD
-      echo >         $_U_HD/.ctrl.pq.txt
+      echo >         $_U_HD/.ctrl.ux.txt
       if [ ! -e "/etc/drush" ] ; then
         mkdir -p /etc/drush
       fi
@@ -65,7 +65,7 @@ enable_chattr () {
         ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
       fi
     fi
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.pq.txt" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
       if [ ! -z "$_LOC_PHP_CLI_VERSION" ] ; then
@@ -356,7 +356,7 @@ update_php_cli_local_ini () {
       mkdir -p /etc/drush
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/etc/drush\""
+      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/etc/drush\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -489,12 +489,12 @@ do
     echo "_OWN is == $_OWN == at manage_own"
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
-    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.pq.txt " ] ; then
+    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.ux.txt " ] ; then
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
-      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.pq.txt
+      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.ux.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf
