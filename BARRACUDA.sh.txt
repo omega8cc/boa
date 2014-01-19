@@ -4534,6 +4534,7 @@ get_drush_versions () {
     rm -f -r /opt/tools/drush/5
     rm -f /usr/bin/drush5
   fi
+  chown -R root:root /opt/tools/drush
   cd /opt/tmp
 }
 #
@@ -5081,13 +5082,11 @@ strict_bin_permissions () {
     fi
   done
 
-  chgrp aegir $(which drush)
-
   _PROTECTED_ITEMS="barracuda boa octopus syncpass sftp-admin sftp-kill sftp-state named redis-cli redis-benchmark redis-check-dump redis-check-aof"
   for i in $_PROTECTED_ITEMS; do
     _BIN_ITEM=$(which $i)
     if [ -e "$_BIN_ITEM" ] ; then
-      chgrp root $_BIN_ITEM &> /dev/null
+      chown root:root $_BIN_ITEM &> /dev/null
       chmod 700 $_BIN_ITEM &> /dev/null
     fi
   done
