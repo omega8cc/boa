@@ -320,6 +320,55 @@ do
 done
 }
 #
+# Update local INI for PHP CLI on the Aegir Satellite Instance.
+update_php_cli_local_ini () {
+  _U_HD="/data/disk/${_OWN}/.drush"
+  _U_TP="/data/disk/${_OWN}/.tmp"
+  _PHP_CLI_UPDATE=NO
+  _CHECK_USE_PHP_CLI=`grep "/opt/php" $_DRUSH_FILE`
+  _PHP_V="55 54 53 52"
+  for e in $_PHP_V; do
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
+      _PHP_CLI_UPDATE=YES
+    fi
+  done
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] ; then
+    rm -f -r $_U_TP
+    mkdir -p $_U_TP
+    chmod 700 $_U_TP
+    rm -f $_U_HD/.ctrl.php*
+    rm -f $_U_HD/php.ini
+    if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
+      cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
+      _U_INI=55
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
+      cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
+      _U_INI=54
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php53" ]] ; then
+      cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
+      _U_INI=53
+    elif [[ "$_CHECK_USE_PHP_CLI" =~ "php52" ]] ; then
+      cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
+      _U_INI=52
+    fi
+    if [ ! -e "/etc/drush" ] ; then
+      mkdir -p /etc/drush
+    fi
+    if [ -e "$_U_HD/php.ini" ] ; then
+      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/etc/drush\""
+      _INI=${_INI//\//\\\/}
+      _QTP=${_U_TP//\//\\\/}
+      sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
+      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"             $_U_HD/php.ini &> /dev/null
+      sed -i "s/.*session.save_path =.*/session.save_path = $_QTP/g"     $_U_HD/php.ini &> /dev/null
+      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_U_HD/php.ini &> /dev/null
+      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
+      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
+      echo > $_U_HD/.ctrl.php${_U_INI}.txt
+    fi
+  fi
+}
+#
 # Update PHP-CLI for Drush.
 update_php_cli_drush ()
 {
@@ -417,6 +466,7 @@ switch_php()
           _PHP_CLI_UPDATE=YES
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           update_php_cli_drush
+          update_php_cli_local_ini
         fi
       fi
     fi
