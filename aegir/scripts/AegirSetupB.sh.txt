@@ -345,6 +345,10 @@ fi
 cd $_ROOT/tools
 msg "$_STATUS B: Downloading drush..."
 get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+find $_ROOT/tools -type d -exec chmod 0755 {} \; &> /dev/null
+find $_ROOT/tools -type f -exec chmod 0644 {} \; &> /dev/null
+chmod 755 $_ROOT/tools/drush/drush
+chmod 755 $_ROOT/tools/drush/drush.php
 if [ "$_DRUSH_VERSION" = "4-19-01-2014" ] ; then
   _DRUSH_CC_REQ=NO
   sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" $_ROOT/tools/drush/commands/pm/package_handler/wget.inc &> /dev/null

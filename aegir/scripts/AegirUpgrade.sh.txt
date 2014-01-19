@@ -192,6 +192,10 @@ hostmaster_dr_up () {
   cd $_ROOT
   mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+  find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
+  find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
+  chmod 755 $_ROOT/drush/drush
+  chmod 755 $_ROOT/drush/drush.php
   if [ "$_DRUSH_VERSION" = "4-19-01-2014" ] ; then
     _DRUSH_CC_REQ=NO
   else

@@ -4060,6 +4060,10 @@ upgrade_aegir_master () {
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+      find /var/aegir/drush -type d -exec chmod 0755 {} \; &> /dev/null
+      find /var/aegir/drush -type f -exec chmod 0644 {} \; &> /dev/null
+      chmod 755 /var/aegir/drush/drush
+      chmod 755 /var/aegir/drush/drush.php
     fi
     _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
