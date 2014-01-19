@@ -483,11 +483,14 @@ do
     _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_OWN is == $_OWN == at manage_own"
-    if [ ! -d "/data/disk/${_OWN}/.tmp" ] ; then
+    chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
+    chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
+    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.im.txt " ] ; then
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
-      chown ${_OWN}.ftp:www-data /data/disk/${_OWN}/.tmp &> /dev/null
+      chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
+      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.im.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf

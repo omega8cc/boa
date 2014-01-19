@@ -1073,6 +1073,8 @@ fi
 ###---### Set permissions for all.
 #
 chmod 0755 $_HOSTMASTER_ROOT &> /dev/null
+find $_ROOT/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+find $_ROOT/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
 chmod 0711 $_ROOT/config &> /dev/null
 chmod 0711 $_ROOT/config/includes &> /dev/null
 chmod 0750 $_ROOT/backups &> /dev/null
@@ -1082,10 +1084,10 @@ find $_ROOT/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/nul
 find $_ROOT/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
 find $_ROOT/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
 chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
-find $_ROOT/.drush -type d -exec chmod 0755 {} \; &> /dev/null
-find $_ROOT/.drush -type f -exec chmod 0644 {} \; &> /dev/null
-chmod 0440 $_ROOT/.drush/*.php &> /dev/null
-chmod 0711 $_ROOT/.drush &> /dev/null
+find $_ROOT/.drush -type d -exec chmod 0710 {} \; &> /dev/null
+find $_ROOT/.drush -type f -exec chmod 0640 {} \; &> /dev/null
+chmod 0400 $_ROOT/.drush/*.php &> /dev/null
+chmod 0710 $_ROOT/.drush &> /dev/null
 
 
 ###---### Platforms [Y/n]
