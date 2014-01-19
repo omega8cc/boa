@@ -629,7 +629,7 @@ _INSTALLER_VERSION=BOA-2.2.0-dev
 ###
 ### Variables
 ###
-_DRUSH_VERSION=4.6-dev
+_DRUSH_VERSION=4-19-01-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
@@ -647,7 +647,7 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION=6-17-01-2014
+  _DRUSH_VERSION=6-19-01-2014
 fi
 
 ###
@@ -1188,7 +1188,7 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+    if [ "$_DRUSH_VERSION" = "4-19-01-2014" ] ; then
       _DRUSH_CC_REQ=NO
     else
       _DRUSH_CC_REQ=YES

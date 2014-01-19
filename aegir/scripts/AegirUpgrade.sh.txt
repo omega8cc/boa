@@ -192,7 +192,7 @@ hostmaster_dr_up () {
   cd $_ROOT
   mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
   get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
-  if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+  if [ "$_DRUSH_VERSION" = "4-19-01-2014" ] ; then
     _DRUSH_CC_REQ=NO
   else
     _DRUSH_CC_REQ=YES

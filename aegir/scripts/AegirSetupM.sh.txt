@@ -237,7 +237,7 @@ EOFMYSQL
 msg "INFO: Installing drush in $_ROOT"
 cd $_ROOT
 get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
-if [ "$_DRUSH_VERSION" = "4.6-dev" ] ; then
+if [ "$_DRUSH_VERSION" = "4-19-01-2014" ] ; then
   _DRUSH_CC_REQ=NO
 else
   _DRUSH_CC_REQ=YES
