@@ -5057,7 +5057,7 @@ strict_bin_permissions () {
   for p in $_BIN_PATHS; do
     if [ -e "$p" ] ; then
       for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f` ; do
-        chgrp lshellg $f &> /dev/null
+        chgrp users $f &> /dev/null
         chmod 750 $f &> /dev/null
       done
     fi
@@ -5065,7 +5065,7 @@ strict_bin_permissions () {
   for p in $_BIN_PATHS; do
     if [ -e "$p" ] ; then
       for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f` ; do
-        chgrp lshellg $f &> /dev/null
+        chgrp users $f &> /dev/null
         chmod 750 $f &> /dev/null
       done
     fi
