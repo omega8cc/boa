@@ -51,7 +51,6 @@ enable_chattr () {
       chmod 700      $_U_HD
       chown $1:users $_U_TP
       chown $1:users $_U_HD
-      echo >         $_U_HD/.ctrl.ux.txt
       if [ ! -e "/etc/drush" ] ; then
         mkdir -p /etc/drush
       fi
@@ -65,6 +64,15 @@ enable_chattr () {
         ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
       fi
     fi
+
+    _CHECK_USE_PHP_CLI=`grep "/opt/php" /data/disk/${_OWN}/tools/drush/drush.php`
+    _PHP_V="55 54 53 52"
+    for e in $_PHP_V; do
+      if [[ "$_CHECK_USE_PHP_CLI" =~ "php${e}" ]] && [ ! -e "$_U_HD/.ctrl.php${e}.txt" ] ; then
+        _PHP_CLI_UPDATE=YES
+      fi
+    done
+
     if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/php.ini
@@ -84,12 +92,16 @@ enable_chattr () {
       fi
       if [ "$_USE_PHP_CLI" = "5.5" ] ; then
         cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
+        _U_INI=55
       elif [ "$_USE_PHP_CLI" = "5.4" ] ; then
         cp -af /opt/php54/lib/php.ini $_U_HD/php.ini
+        _U_INI=54
       elif [ "$_USE_PHP_CLI" = "5.3" ] ; then
         cp -af /opt/php53/lib/php.ini $_U_HD/php.ini
+        _U_INI=53
       elif [ "$_USE_PHP_CLI" = "5.2" ] ; then
         cp -af /opt/php52/lib/php.ini $_U_HD/php.ini
+        _U_INI=52
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
         _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/etc/drush:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
@@ -101,6 +113,8 @@ enable_chattr () {
         sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = $_QTP/g" $_U_HD/php.ini &> /dev/null
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
+        echo > $_U_HD/.ctrl.php${_U_INI}.txt
+        echo > $_U_HD/.ctrl.ux.txt
       fi
     fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
@@ -399,6 +413,7 @@ update_php_cli_drush ()
 switch_php()
 {
   _PHP_CLI_UPDATE=NO
+  _LOC_PHP_CLI_VERSION=""
   if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
     echo "Custom FPM or CLI settings for $_OWN exist, running switch_php checks"
     if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
