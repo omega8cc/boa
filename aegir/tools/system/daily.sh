@@ -1097,7 +1097,7 @@ check_old_empty_platforms () {
       for Platform in `find $User/.drush/platform_* -maxdepth 1 -mtime +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`
       do
         _THIS_PLATFORM_NAME=`echo "$Platform" | sed "s/.*platform_//g; s/.alias.drushrc.php//g" | awk '{ print $1}'`
-        _THIS_PLATFORM_ROOT=`cat $Platform | grep 'root' | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+        _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         _THIS_PLATFORM_SITE=`grep "${_THIS_PLATFORM_ROOT}/sites/" $User/.drush/* | grep site_path`
         if [ ! -e "${_THIS_PLATFORM_ROOT}/sites/all" ] ; then
           echo "WARNING: ghost platform found: $_THIS_PLATFORM_ROOT"

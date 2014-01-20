@@ -489,7 +489,10 @@ switch_php()
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           update_php_cli_drush
           update_php_cli_local_ini
+          chmod 0440 /data/disk/${_OWN}/.drush/*.php &> /dev/null
           chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
+          chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
+          chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
           chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
           find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
           find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
@@ -587,10 +590,17 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     echo "  deny                         all;" >  /var/backups/.auth.IP.list
     echo "  ### access none"                   >> /var/backups/.auth.IP.list
   fi
-  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
-  chmod 0710 /var/aegir/.drush &> /dev/null
-  find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-  find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
+    _WAIT=YES
+  else
+    chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+    chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
+    chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
+    chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
+    chmod 0710 /var/aegir/.drush &> /dev/null
+    find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+    find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  fi
 }
 #
 # Manage IP-Auth Xtras Access.

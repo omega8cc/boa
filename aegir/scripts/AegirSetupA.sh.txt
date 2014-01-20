@@ -1086,7 +1086,10 @@ find $_ROOT/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/nu
 chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
 find $_ROOT/.drush -type d -exec chmod 0710 {} \; &> /dev/null
 find $_ROOT/.drush -type f -exec chmod 0640 {} \; &> /dev/null
-chmod 0400 $_ROOT/.drush/*.php &> /dev/null
+chmod 0440 $_ROOT/.drush/*.php &> /dev/null
+chmod 0400 $_ROOT/.drush/server_*.php &> /dev/null
+chmod 0400 $_ROOT/.drush/platform_*.php &> /dev/null
+chmod 0400 $_ROOT/.drush/hostmaster*.php &> /dev/null
 chmod 0710 $_ROOT/.drush &> /dev/null
 
 
