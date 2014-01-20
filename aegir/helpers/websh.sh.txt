@@ -87,6 +87,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
               echo " This drush command can not be run in $_PWD"
               if [[ "$2" =~ "make-generate" ]] ; then
                 echo " Please cd to the valid sites/foo.com directory first"
+                echo " or use a valid @alias, for example: drush @foo.com status"
               else
                 echo " Please cd ~/static first"
               fi
@@ -95,14 +96,19 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
             fi
           fi
         else
-          if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
-            echo
-            echo " This drush command can not be run in $_PWD"
-            echo " Please cd to the valid sites/foo.com directory first"
-            echo
-            exit 0
-          elif [[ "$2" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
+          if [[ "$2" =~ "drush6 @" ]] || [[ "$2" =~ "drush7 @" ]] ; then
             _CORRECT=YES
+          else
+            if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
+              echo
+              echo " This drush command can not be run in $_PWD"
+              echo " Please cd to the valid sites/foo.com directory first"
+              echo " or use a valid @alias, for example: drush @foo.com status"
+              echo
+              exit 0
+            elif [[ "$2" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
+              _CORRECT=YES
+            fi
           fi
         fi
       fi
