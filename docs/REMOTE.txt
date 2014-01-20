@@ -76,8 +76,8 @@ $ mv /data/disk/o1/distro/003/platform/sites/site-name-b /var/backups/
 
 ### On source server - as root
 $ mysql
-mysql> GRANT ALL PRIVILEGES ON *.* TO o1@target-ip IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
-mysql> GRANT ALL PRIVILEGES ON *.* TO o1@target-host IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
+mysql> GRANT ALL PRIVILEGES ON `%`.* TO o1@target-ip IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
+mysql> GRANT ALL PRIVILEGES ON `%`.* TO o1@target-host IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
 mysql> FLUSH PRIVILEGES;
 mysql> exit
 
