@@ -8110,9 +8110,23 @@ if [ "$_STATUS" = "INIT" ] ; then
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
   st_runner "update-rc.d clean-boa-env defaults" &> /dev/null
-  echo "UseDNS no" >> /etc/ssh/sshd_config
+  _SSH_USEDNS_TEST=$(grep "UseDNS" /etc/ssh/sshd_config)
+  if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]] ; then
+    _DO_NOTHING=YES
+  elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]] ; then
+    sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
+  else
+    echo "UseDNS no" >> /etc/ssh/sshd_config
+  fi
   if [ -e "/usr/etc/sshd_config" ] ; then
-    echo "UseDNS no" >> /usr/etc/sshd_config
+    _SSH_USEDNS_TEST=$(grep "UseDNS" /usr/etc/sshd_config)
+    if [[ "$_SSH_USEDNS_TEST" =~ (^)"UseDNS no" ]] ; then
+      _DO_NOTHING=YES
+    elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]] ; then
+      sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
+    else
+      echo "UseDNS no" >> /usr/etc/sshd_config
+    fi
   fi
   mrun "service ssh reload" &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ] ; then
@@ -8182,13 +8196,19 @@ else
     fi
     mrun "service ssh reload" &> /dev/null
   else
-    sed -i "s/.*UseDNS.*//g" /etc/ssh/sshd_config &> /dev/null
-    echo "UseDNS no" >> /etc/ssh/sshd_config
-    sed -i "/^$/d" /etc/ssh/sshd_config &> /dev/null
+    _SSH_USEDNS_TEST=$(grep "^UseDNS no" /etc/ssh/sshd_config)
+    if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]] ; then
+      _DO_NOTHING=YES
+    else
+      sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
+    fi
     if [ -e "/usr/etc/sshd_config" ] ; then
-      sed -i "s/.*UseDNS.*//g" /usr/etc/sshd_config &> /dev/null
-      echo "UseDNS no" >> /usr/etc/sshd_config
-      sed -i "/^$/d" /usr/etc/sshd_config &> /dev/null
+      _SSH_USEDNS_TEST=$(grep "^UseDNS no" /usr/etc/sshd_config)
+      if [[ "$_SSH_USEDNS_TEST" =~ "UseDNS no" ]] ; then
+        _DO_NOTHING=YES
+      else
+        sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
+      fi
     fi
     mrun "service ssh reload" &> /dev/null
   fi
