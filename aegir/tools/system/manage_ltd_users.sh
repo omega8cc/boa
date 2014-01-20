@@ -72,14 +72,18 @@ enable_chattr () {
         _PHP_CLI_UPDATE=YES
       fi
     done
+    echo _PHP_CLI_UPDATE is $_PHP_CLI_UPDATE for $1
 
     if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
       mkdir -p $_U_HD
+      rm -f $_U_HD/.ctrl.php*
       rm -f $_U_HD/php.ini
       if [ ! -z "$_LOC_PHP_CLI_VERSION" ] ; then
         _USE_PHP_CLI="$_LOC_PHP_CLI_VERSION"
+        echo _USE_PHP_CLI is $_USE_PHP_CLI for $1 at ${_OWN} WTF _LOC_PHP_CLI_VERSION is $_LOC_PHP_CLI_VERSION
       else
         _CHECK_USE_PHP_CLI=`grep "/opt/php" /data/disk/${_OWN}/tools/drush/drush.php`
+        echo _CHECK_USE_PHP_CLI is $_CHECK_USE_PHP_CLI for $1 at ${_OWN}
         if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
           _USE_PHP_CLI=5.5
         elif [[ "$_CHECK_USE_PHP_CLI" =~ "php54" ]] ; then
@@ -90,6 +94,7 @@ enable_chattr () {
           _USE_PHP_CLI=5.2
         fi
       fi
+      echo _USE_PHP_CLI is $_USE_PHP_CLI for $1
       if [ "$_USE_PHP_CLI" = "5.5" ] ; then
         cp -af /opt/php55/lib/php.ini $_U_HD/php.ini
         _U_INI=55
