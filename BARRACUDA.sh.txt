@@ -4070,6 +4070,8 @@ upgrade_aegir_master () {
     _THIS_HM_SITE=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
     mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries}
     chown -R aegir:aegir $_THIS_HM_ROOT/sites/all
+    _U_HD="/var/aegir/.drush"
+    chattr -i $_U_HD/php.ini &> /dev/null
     chown -R aegir:aegir /var/aegir/.drush
     chown -R aegir:aegir /var/aegir/backups
     chown -R aegir:aegir /var/aegir/clients
@@ -4096,8 +4098,6 @@ upgrade_aegir_master () {
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
-    _U_HD="/var/aegir/.drush"
-    chattr -i $_U_HD/php.ini &> /dev/null
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
