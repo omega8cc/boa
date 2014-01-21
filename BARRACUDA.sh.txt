@@ -4095,6 +4095,8 @@ upgrade_aegir_master () {
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
+    _U_HD="/var/aegir/.drush"
+    chattr -i $_U_HD/php.ini &> /dev/null
     su -s /bin/bash - aegir -c "bash AegirUpgrade.sh.txt"
     if [ -e "/opt/tmp/status-AegirUpgrade-FAIL" ] ; then
       msg "FATAL ERROR: AegirUpgrade installer failed"
@@ -4102,6 +4104,7 @@ upgrade_aegir_master () {
       touch /opt/tmp/status-Barracuda-FAIL
       exit 1
     else
+      chattr +i $_U_HD/php.ini &> /dev/null
       hostmaster_frontend_dbpass_sync
       sed -i "s/hosting-dispatch.*/hosting-dispatch \>\/dev\/null 2\>\&1/g" /var/spool/cron/crontabs/aegir &> /dev/null
     fi
@@ -7600,6 +7603,8 @@ if [ "$_STATUS" = "INIT" ] ; then
     touch /opt/tmp/status-Barracuda-FAIL
     exit 1
   fi
+  _U_HD="/var/aegir/.drush"
+  chattr +i $_U_HD/php.ini &> /dev/null
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null

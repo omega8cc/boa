@@ -971,6 +971,8 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     touch /opt/tmp/status-AegirSetupA-FAIL
     exit 1
   fi
+  _U_HD="$_ROOT/.drush"
+  chattr +i $_U_HD/php.ini &> /dev/null
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
   msg "$_STATUS A: Aegir Satellite Instance installation completed"
@@ -1006,6 +1008,8 @@ else
       chmod -R 2770 $_THIS_HM_SITE/files
       chown root:$_USRG /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
+      _U_HD="$_ROOT/.drush"
+      chattr -i $_U_HD/php.ini &> /dev/null
       su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
         msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
@@ -1013,6 +1017,7 @@ else
         touch /opt/tmp/status-AegirSetupA-FAIL
         exit 1
       else
+        chattr +i $_U_HD/php.ini &> /dev/null
         mkdir -p $_ROOT/backups/system/old_hostmaster
         chmod 700 $_ROOT/backups/system/old_hostmaster
         chmod 700 $_ROOT/backups/system
