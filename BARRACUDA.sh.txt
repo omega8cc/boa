@@ -2414,8 +2414,8 @@ tune_web_server_config () {
   if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
     _START_LEGACY_FPM=3
   fi
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php55-fpm.conf &> /dev/null
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php54-fpm.conf &> /dev/null
+  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php55/etc/php55-fpm.conf &> /dev/null
+  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php54/etc/php54-fpm.conf &> /dev/null
   sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php53-fpm.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
