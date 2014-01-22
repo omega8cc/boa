@@ -3683,7 +3683,7 @@ update_php_extensions () {
     fi
   fi
   ###--------------------###
-  if [ ! -e "/var/xdrago/log/phpredis-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/phpredis-$_PHPREDIS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     cd /var/opt
     rm -f -r phpredis*
