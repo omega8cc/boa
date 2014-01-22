@@ -1087,6 +1087,7 @@ _NGINX_VERSION=1.5.8
 _OPENSSH_VERSION=6.4p1
 _OPENSSL_VERSION=1.0.1f
 _PERCONA_VERSION=5.5.35
+_UPLOADPROGRESS_VERSION=1.0.3.1
 _PHP52_API=20060613
 _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
@@ -1095,6 +1096,7 @@ _PHP54_API=20100525
 _PHP54_VERSION=5.4.24
 _PHP55_API=20121212
 _PHP55_VERSION=5.5.8
+_PHPREDIS_VERSION=master-22-01-2014
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.4
 _SOLR_1_VERSION=1.4.1
@@ -3552,29 +3554,24 @@ install_php_extensions () {
   msg "INFO: Installing PhpRedis for PHP-FPM $_LOC_PHP_VERSION..."
   cd /var/opt
   rm -f -r phpredis*
-  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-    get_dev_src "phpredis_master.tar.gz" &> /dev/null
-  else
-    ### git clone --branch master git://github.com/omega8cc/phpredis.git &> /dev/null
-    get_dev_src "phpredis_new.tar.gz" &> /dev/null
-  fi
+  get_dev_src "phpredis-$_PHPREDIS_VERSION.tar.gz" &> /dev/null
   cd /var/opt/phpredis
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/phpredis-$_LOC_PHP_VERSION.log
+  echo "phpredis $_PHPREDIS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/phpredis-$_PHPREDIS_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing UploadProgress for PHP-FPM $_LOC_PHP_VERSION..."
   cd /var/opt
   rm -f -r uploadprogress*
-  get_dev_src "uploadprogress-1.0.3.1.tgz" &> /dev/null
-  cd /var/opt/uploadprogress-1.0.3.1
+  get_dev_src "uploadprogress-$_UPLOADPROGRESS_VERSION.tgz" &> /dev/null
+  cd /var/opt/uploadprogress-$_UPLOADPROGRESS_VERSION
   st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
   st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
   st_runner "make --quiet" 2> /dev/null
   st_runner "make --quiet install" 2> /dev/null
-  echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
+  echo "uploadprogress-$_UPLOADPROGRESS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/uploadprogress-$_UPLOADPROGRESS_VERSION-$_LOC_PHP_VERSION.log
   ###--------------------###
   msg "INFO: Installing JSMin for PHP-FPM $_LOC_PHP_VERSION..."
   cd /var/opt
@@ -3690,33 +3687,26 @@ update_php_extensions () {
     msg "INFO: Installing PhpRedis upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     cd /var/opt
     rm -f -r phpredis*
-    if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-      get_dev_src "phpredis_master.tar.gz" &> /dev/null
-    else
-      ### git clone --branch master git://github.com/omega8cc/phpredis.git &> /dev/null
-      get_dev_src "phpredis_new.tar.gz" &> /dev/null
-    fi
-    ### git clone --branch 2.2.4 git://github.com/omega8cc/phpredis.git &> /dev/null
-    get_dev_src "phpredis.tar.gz" &> /dev/null
+    get_dev_src "phpredis-$_PHPREDIS_VERSION.tar.gz" &> /dev/null
     cd /var/opt/phpredis
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "phpredis $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/phpredis-$_LOC_PHP_VERSION.log
+    echo "phpredis $_PHPREDIS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/phpredis-$_PHPREDIS_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
-  if [ ! -e "/var/xdrago/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/uploadprogress-$_UPLOADPROGRESS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
     msg "INFO: Installing UploadProgress upgrade for PHP-FPM $_LOC_PHP_VERSION..."
     cd /var/opt
     rm -f -r uploadprogress*
-    get_dev_src "uploadprogress-1.0.3.1.tgz" &> /dev/null
-    cd /var/opt/uploadprogress-1.0.3.1
+    get_dev_src "uploadprogress-$_UPLOADPROGRESS_VERSION.tgz" &> /dev/null
+    cd /var/opt/uploadprogress-$_UPLOADPROGRESS_VERSION
     st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
     st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
     st_runner "make --quiet" 2> /dev/null
     st_runner "make --quiet install" 2> /dev/null
-    echo "uploadprogress-1.0.3.1 $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/uploadprogress-1.0.3.1-$_LOC_PHP_VERSION.log
+    echo "uploadprogress-$_UPLOADPROGRESS_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/uploadprogress-$_UPLOADPROGRESS_VERSION-$_LOC_PHP_VERSION.log
   fi
   ###--------------------###
   if [ ! -e "/var/xdrago/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log" ] ; then
