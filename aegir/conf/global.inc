@@ -651,10 +651,10 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
       }
     }
     if ($is_bot) {
-      if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT'])) {
-        $expire_in_seconds = '86400';
+      if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT']) && !preg_match("/(?:rss|feed)/i", $_SERVER['REQUEST_URI'])) {
+        $expire_in_seconds = '3600';
         if ($is_dev) {
-          header('X-Bot-Booster: 86400');
+          header('X-Bot-Booster: 3600');
         }
       }
     }
