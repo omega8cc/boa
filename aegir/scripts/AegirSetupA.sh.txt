@@ -1010,6 +1010,8 @@ else
       fi
       _THIS_HM_ROOT=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       _THIS_HM_SITE=`cat $_ROOT/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      _U_HD="$_ROOT/.drush"
+      chattr -i $_U_HD/php.ini &> /dev/null
       chown -R $_USER:$_USRG $_ROOT/.drush
       chown -R $_USER:$_USRG $_ROOT/backups
       chown -R $_USER:$_USRG $_ROOT/clients
@@ -1020,8 +1022,6 @@ else
       chmod -R 2770 $_THIS_HM_SITE/files
       chown root:$_USRG /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
-      _U_HD="$_ROOT/.drush"
-      chattr -i $_U_HD/php.ini &> /dev/null
       su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
       if [ -e "/opt/tmp/status-AegirSetupB-FAIL" ] ; then
         msg "$_STATUS A: FATAL ERROR: AegirSetupB installer failed"
