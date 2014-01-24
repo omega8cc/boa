@@ -2965,8 +2965,10 @@ barracuda_cnf () {
           sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
+          if [ -x "/opt/php55/bin/php" ] ; then
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
+          fi
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"        /root/.barracuda.cnf &> /dev/null
@@ -3400,8 +3402,10 @@ barracuda_cnf () {
           sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                      /root/.barracuda.cnf &> /dev/null
+          if [ -x "/opt/php55/bin/php" ] ; then
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
+          fi
           sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"        /root/.barracuda.cnf &> /dev/null
