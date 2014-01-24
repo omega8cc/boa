@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 _REL_VERSION=`lsb_release -sc`
 
 randpass() {

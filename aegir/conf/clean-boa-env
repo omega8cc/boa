@@ -10,7 +10,7 @@
 # Description:       safeguard to remove auto-healing pid files after reboot etc.
 ### END INIT INFO
 
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 NAME=clean-boa-env
 DESC=clean-boa-env
 PIDFILE=/var/run/clean-boa-env.pid

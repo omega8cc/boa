@@ -641,7 +641,7 @@ _T_BUILD=HEAD
 _TODAY=`date +%y%m%d`
 _USRG=users
 _WEBG=www-data
-PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO

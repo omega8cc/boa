@@ -5,7 +5,7 @@
 ### echo "01 *    * * *   root    bash /opt/water.sh >/dev/null 2>&1" >> /etc/crontab
 ### sed -i "/^$/d" /etc/crontab
 ###
-PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 #
 #

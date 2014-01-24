@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`

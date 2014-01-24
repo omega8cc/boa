@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 
 find /var/xdrago/log/*.pid -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
 if [ -e "/etc/cron.daily/logrotate" ] ; then

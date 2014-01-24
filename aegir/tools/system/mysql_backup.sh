@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 BACKUPDIR=/data/disk/arch/sql
 HOST=`uname -n`
 DATE=`date +%y%m%d-%H%M`

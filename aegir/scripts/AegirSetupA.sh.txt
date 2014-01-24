@@ -136,7 +136,7 @@ fi
 _DRUSHCMD="$_L_PHP_CLI/php $_ROOT/tools/drush/drush.php"
 #
 SHELL=/bin/bash
-PATH=$_L_PHP_CLI:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=$_L_PHP_CLI:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 
 
 ###---### Functions.

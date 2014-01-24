@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/bin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 _ALL="$@"
 _LTD_GID=$(id -nG $USER)

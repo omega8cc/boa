@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
 
 if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-for-mysql-restart
