@@ -7,17 +7,25 @@ _LTD_GID=$(id -nG $USER)
 _INTERNAL=NO
 _X_USR=".*"
 _Y_USR=${USER%${_X_USR}}
+if [ "$1" = "-c" ] ; then
+  _ARGS="$2"
+else
+  _ARGS="$1"
+fi
 
-# echo _Y_USR is $_Y_USR
 # echo _ALL is $_ALL
+# echo _ARGS is $_ARGS
+# echo _Y_USR is $_Y_USR
 # echo 0 is $0
 # echo 1 is $1
 # echo 2 is $2
 # echo 3 is $3
 # echo 4 is $4
 # echo 5 is $5
-# echo 6 is $6
+# echo DRUSH_PHP is $DRUSH_PHP
 # echo HOME is $HOME
+# echo PHP_INI is $PHP_INI
+# echo PHP_OPTIONS is $PHP_OPTIONS
 
 # Check PHP CLI version defined.
 check_php_cli_version () {
