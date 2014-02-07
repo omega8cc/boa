@@ -1101,7 +1101,7 @@ _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.4
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
-_SOLR_4_VERSION=4.6.0
+_SOLR_4_VERSION=4.6.1
 _VNSTAT_VERSION=1.11
 _ZEND_OPCACHE_VERSION=master-22-01-2014
 _ZLIB_VERSION=1.2.8
@@ -7252,31 +7252,35 @@ else
   _REAL_JETTY=8
   _JETTY_CTRL="/opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt"
 fi
-if [ ! -e "$_JETTY_CTRL" ] && [ -e "/opt/jetty9/VERSION.txt" ] ; then
-  msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
-  cd /var/opt
-  rm -f -r jetty-distribution-*
-  kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
-  mv -f /opt/jetty9 /var/backups/jetty9-$_INSTALLER_VERSION-$_NOW
-  if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
-    get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
-    mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
-    echo $_JETTY_9_VERSION > /opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt
-  else
-    get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
-    mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty9
-    echo $_JETTY_8_VERSION > /opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt
+_SOLR_CTRL="/opt/jetty9/solr-$_SOLR_4_VERSION-version.txt"
+if [ -e "/opt/jetty9/VERSION.txt" ] ; then
+  if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
+    msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
+    cd /var/opt
+    rm -f -r jetty-distribution-*
+    kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
+    mv -f /opt/jetty9 /var/backups/jetty9-$_INSTALLER_VERSION-$_NOW
+    if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
+      mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
+      echo $_JETTY_9_VERSION > /opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt
+    else
+      get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
+      mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty9
+      echo $_JETTY_8_VERSION > /opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt
+    fi
+    get_dev_arch "solr-$_SOLR_4_VERSION.tgz" &> /dev/null
+    cp -af /var/opt/solr-$_SOLR_4_VERSION/dist/solr-$_SOLR_4_VERSION.war /opt/jetty9/webapps/solr.war
+    rm -f -r /opt/jetty9/solr
+    cd /opt/jetty9/lib/
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
+    cd /var/opt
+    chown -R jetty9:jetty9 /opt/jetty9
+    mrun "service jetty9 start" &> /dev/null
+    msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY upgrade completed"
+    echo "solr-$_SOLR_4_VERSION" > $_SOLR_CTRL
   fi
-  get_dev_arch "solr-$_SOLR_4_VERSION.tgz" &> /dev/null
-  cp -af /var/opt/solr-$_SOLR_4_VERSION/dist/solr-$_SOLR_4_VERSION.war /opt/jetty9/webapps/solr.war
-  rm -f -r /opt/jetty9/solr
-  cd /opt/jetty9/lib/
-  wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
-  wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
-  cd /var/opt
-  chown -R jetty9:jetty9 /opt/jetty9
-  mrun "service jetty9 start" &> /dev/null
-  msg "INFO: MultiCore Apache Solr 4 with Jetty $_REAL_JETTY upgrade completed"
 fi
 
 
@@ -7358,25 +7362,30 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty8" ] ; then
   mrun "service jetty8 start" &> /dev/null
   msg "INFO: Jetty 8 restart completed"
 fi
-if [ ! -e "/opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt" ] && [ -e "/opt/jetty8/VERSION.txt" ] ; then
-  msg "INFO: Upgrading MultiCore Apache Solr 3 with Jetty 8..."
-  cd /var/opt
-  rm -f -r jetty-distribution-*
-  get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
-  kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
-  mv -f /opt/jetty8 /var/backups/jetty8-$_INSTALLER_VERSION-$_NOW
-  mv -f /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty8
-  echo $_JETTY_8_VERSION > /opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt
-  get_dev_arch "apache-solr-$_SOLR_3_VERSION.tgz" &> /dev/null
-  cp -af /var/opt/apache-solr-$_SOLR_3_VERSION/dist/apache-solr-$_SOLR_3_VERSION.war /opt/jetty8/webapps/solr.war
-  rm -f -r /opt/jetty8/solr
-  cd /opt/jetty8/lib/
-  wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
-  wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
-  cd /var/opt
-  chown -R jetty8:jetty8 /opt/jetty8
-  mrun "service jetty8 start" &> /dev/null
-  msg "INFO: MultiCore Apache Solr 3 with Jetty 8 upgrade completed"
+_JETTY_CTRL="/opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt"
+_SOLR_CTRL="/opt/jetty8/solr-$_SOLR_3_VERSION-version.txt"
+if [ -e "/opt/jetty8/VERSION.txt" ] ; then
+  if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
+    msg "INFO: Upgrading MultiCore Apache Solr 3 with Jetty 8..."
+    cd /var/opt
+    rm -f -r jetty-distribution-*
+    get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
+    kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
+    mv -f /opt/jetty8 /var/backups/jetty8-$_INSTALLER_VERSION-$_NOW
+    mv -f /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty8
+    echo $_JETTY_8_VERSION > /opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt
+    get_dev_arch "apache-solr-$_SOLR_3_VERSION.tgz" &> /dev/null
+    cp -af /var/opt/apache-solr-$_SOLR_3_VERSION/dist/apache-solr-$_SOLR_3_VERSION.war /opt/jetty8/webapps/solr.war
+    rm -f -r /opt/jetty8/solr
+    cd /opt/jetty8/lib/
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
+    cd /var/opt
+    chown -R jetty8:jetty8 /opt/jetty8
+    mrun "service jetty8 start" &> /dev/null
+    msg "INFO: MultiCore Apache Solr 3 with Jetty 8 upgrade completed"
+    echo "solr-$_SOLR_3_VERSION" > $_SOLR_CTRL
+  fi
 fi
 
 
@@ -7479,25 +7488,29 @@ if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/
   sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
   msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 completed"
 fi
-if [ ! -e "/opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt" ] && [ -e "/opt/jetty7/VERSION.txt" ] ; then
-  msg "INFO: Upgrading MultiCore Apache Solr 1 with Jetty 7..."
-  cd /var/opt
-  rm -f -r jetty-distribution-*
-  get_dev_arch "jetty-distribution-$_JETTY_7_VERSION.tar.gz" &> /dev/null
-  kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
-  mv -f /opt/jetty7 /var/backups/jetty7-$_INSTALLER_VERSION-$_NOW
-  mv -f /var/opt/jetty-distribution-$_JETTY_7_VERSION /opt/jetty7
-  echo $_JETTY_7_VERSION > /opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt
-  get_dev_arch "apache-solr-$_SOLR_1_VERSION.tgz" &> /dev/null
-  cp -af /var/opt/apache-solr-$_SOLR_1_VERSION/dist/apache-solr-$_SOLR_1_VERSION.war /opt/jetty7/webapps/solr.war
-  rm -f -r /opt/jetty7/solr
-  cd /opt/jetty7/lib/
-  wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
-  wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
-  cd /var/opt
-  chown -R jetty7:jetty7 /opt/jetty7
-  mrun "service jetty7 start" &> /dev/null
-  msg "INFO: MultiCore Apache Solr 1 with Jetty 7 upgrade completed"
+_JETTY_CTRL="/opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt"
+_SOLR_CTRL="/opt/jetty7/solr-$_SOLR_1_VERSION-version.txt"
+if [ -e "/opt/jetty7/VERSION.txt" ] ; then
+  if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
+    msg "INFO: Upgrading MultiCore Apache Solr 1 with Jetty 7..."
+    cd /var/opt
+    rm -f -r jetty-distribution-*
+    get_dev_arch "jetty-distribution-$_JETTY_7_VERSION.tar.gz" &> /dev/null
+    kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
+    mv -f /opt/jetty7 /var/backups/jetty7-$_INSTALLER_VERSION-$_NOW
+    mv -f /var/opt/jetty-distribution-$_JETTY_7_VERSION /opt/jetty7
+    echo $_JETTY_7_VERSION > /opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt
+    get_dev_arch "apache-solr-$_SOLR_1_VERSION.tgz" &> /dev/null
+    cp -af /var/opt/apache-solr-$_SOLR_1_VERSION/dist/apache-solr-$_SOLR_1_VERSION.war /opt/jetty7/webapps/solr.war
+    rm -f -r /opt/jetty7/solr
+    cd /opt/jetty7/lib/
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.3.jar
+    wget -q -U iCab http://files.aegir.cc/dev/tika-app-1.1.jar
+    cd /var/opt
+    chown -R jetty7:jetty7 /opt/jetty7
+    mrun "service jetty7 start" &> /dev/null
+    msg "INFO: MultiCore Apache Solr 1 with Jetty 7 upgrade completed"
+  fi
 fi
 
 
