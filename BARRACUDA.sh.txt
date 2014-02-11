@@ -965,7 +965,7 @@ _NGINX_NAXSI=NO
 ### OpenSSL ans cURL re-install from sources
 ### on systems other than Debian Wheezy,
 ### which already comes with required
-### OpenSSL 1.0.1f by default.
+### OpenSSL 1.0.1+ by default.
 ###
 _NGINX_SPDY=NO
 
@@ -974,7 +974,7 @@ _NGINX_SPDY=NO
 ### OpenSSL ans cURL re-install from sources
 ### on systems other than Debian Wheezy,
 ### which already comes with required
-### OpenSSL 1.0.1f by default.
+### OpenSSL 1.0.1+ by default.
 ###
 _NGINX_FORWARD_SECRECY=NO
 
@@ -1010,7 +1010,7 @@ _PHP_GEOS=NO
 ### from sources.
 ###
 ### Debian Wheezy already comes with latest
-### OpenSSL 1.0.1f by default, so this option
+### OpenSSL 1.0.1+ by default, so this option
 ### will be ignored on this system.
 ###
 _SSL_FROM_SOURCES=NO
