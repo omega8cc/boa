@@ -31,7 +31,7 @@ fi
 check_php_cli_version () {
   if [ "$HOME" = "/var/aegir" ] ; then
     _PHP_CLI=`grep "/opt/php" /var/aegir/drush/drush.php`
-  else
+  elif [[ "$HOME" =~ "/data/disk/" ]] ; then
     _PHP_CLI=`grep "/opt/php" /data/disk/$_Y_USR/tools/drush/drush.php`
   fi
   if [[ "$_PHP_CLI" =~ "php55" ]] ; then
