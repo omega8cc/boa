@@ -1087,7 +1087,6 @@ _NGINX_VERSION=1.5.10
 _OPENSSH_VERSION=6.5p1
 _OPENSSL_VERSION=1.0.1f
 _PERCONA_VERSION=5.5.35
-_UPLOADPROGRESS_VERSION=1.0.3.1
 _PHP52_API=20060613
 _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
@@ -1099,9 +1098,11 @@ _PHP55_VERSION=5.5.9
 _PHPREDIS_VERSION=master-22-01-2014
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.5
+_RUBY_VERSION=2.1.0
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.6.1
+_UPLOADPROGRESS_VERSION=1.0.3.1
 _VNSTAT_VERSION=1.11
 _ZEND_OPCACHE_VERSION=master-22-01-2014
 _ZLIB_VERSION=1.2.8
@@ -8073,42 +8074,45 @@ else
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
-        if [ ! -e "/usr/lib/ruby/1.9.1/rubygems.rb" ] ; then
+        if [ ! -e "/usr/lib/ruby/2.1.0/rubygems.rb" ] ; then
           _RUBY_UPGRADE=YES
         fi
         if [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
           st_runner "apt-get update -y --force-yes" &> /dev/null
-          st_runner "$_INSTAPP rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1" 2> /dev/null
-          if [ "$_REL_VERSION" = "squeeze" ] ; then
-            update-alternatives --install /usr/bin/gem gem /usr/bin/gem1.9.1 181 \
-            --slave /etc/bash_completion.d/gem bash_completion_gem /etc/bash_completion.d/gem1.9.1 \
-            --slave /usr/share/man/man1/gem.1.gz gem.1.gz /usr/share/man/man1/gem1.9.1.1.gz &> /dev/null
-          fi
-          st_runner "gem install compass" 2> /dev/null
-          st_runner "gem install sass" 2> /dev/null
-          st_runner "gem install compass_radix" 2> /dev/null
-          st_runner "gem install zurb-foundation" 2> /dev/null
-          st_runner "gem install zen-grids" 2> /dev/null
-          st_runner "gem install breakpoint" 2> /dev/null
+          mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1" &> /dev/null
+          mrun "apt-get autoremove" &> /dev/null
+          cd /var/opt
+          rm -f -r ruby*
+          get_dev_src "ruby-$_RUBY_VERSION.tar.gz"  &> /dev/null
+          cd /var/opt/ruby-$_RUBY_VERSION
+          st_runner "sh ./configure --prefix=/usr"  2> /dev/null
+          st_runner "make --quiet"                  2> /dev/null
+          st_runner "make --quiet install"          2> /dev/null
+          st_runner "gem install compass"           2> /dev/null
+          st_runner "gem install sass"              2> /dev/null
+          st_runner "gem install breakpoint"        2> /dev/null
+          st_runner "gem install bundler"           2> /dev/null
+          st_runner "gem install compass_radix"     2> /dev/null
           st_runner "gem install compass-normalize" 2> /dev/null
-          st_runner "gem install toolkit" 2> /dev/null
-          st_runner "gem install susy" 2> /dev/null
-          st_runner "gem install compass-rgbapng" 2> /dev/null
-          st_runner "gem install sass-globbing" 2> /dev/null
-          st_runner "gem install bundler" 2> /dev/null
+          st_runner "gem install compass-rgbapng"   2> /dev/null
+          st_runner "gem install sass-globbing"     2> /dev/null
+          st_runner "gem install susy"              2> /dev/null
+          st_runner "gem install toolkit"           2> /dev/null
+          st_runner "gem install zen-grids"         2> /dev/null
+          st_runner "gem install zurb-foundation"   2> /dev/null
         else
-          st_runner "gem update compass" 2> /dev/null
-          st_runner "gem update sass" 2> /dev/null
-          st_runner "gem update compass_radix" 2> /dev/null
-          st_runner "gem update zurb-foundation" 2> /dev/null
-          st_runner "gem update zen-grids" 2> /dev/null
-          st_runner "gem update compass-normalize" 2> /dev/null
-          st_runner "gem update breakpoint" 2> /dev/null
-          st_runner "gem update toolkit" 2> /dev/null
-          st_runner "gem update susy" 2> /dev/null
-          st_runner "gem update compass-rgbapng" 2> /dev/nul
-          st_runner "gem update sass-globbing" 2> /dev/null
-          st_runner "gem update bundler" 2> /dev/null
+          st_runner "gem update compass"            2> /dev/null
+          st_runner "gem update sass"               2> /dev/null
+          st_runner "gem update breakpoint"         2> /dev/null
+          st_runner "gem update bundler"            2> /dev/null
+          st_runner "gem update compass_radix"      2> /dev/null
+          st_runner "gem update compass-normalize"  2> /dev/null
+          st_runner "gem update compass-rgbapng"    2> /dev/null
+          st_runner "gem update sass-globbing"      2> /dev/null
+          st_runner "gem update susy"               2> /dev/null
+          st_runner "gem update toolkit"            2> /dev/null
+          st_runner "gem update zen-grids"          2> /dev/null
+          st_runner "gem update zurb-foundation"    2> /dev/null
         fi
         echo "compass-$_INSTALLER_VERSION" > /var/xdrago/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log
         msg "INFO: Compass Tools $_L_ST completed"
@@ -8119,11 +8123,11 @@ else
   fi
 fi
 fix_compass_path () {
-  if [[ ! -e "/usr/local/bin/compass" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/var/lib/gems/1.9.1/bin/compass" ]] ; then
-    ln -sf /var/lib/gems/1.9.1/bin/compass /usr/local/bin/compass &> /dev/null
-    ln -sf /var/lib/gems/1.9.1/bin/sass /usr/local/bin/sass &> /dev/null
-    ln -sf /var/lib/gems/1.9.1/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
-    ln -sf /var/lib/gems/1.9.1/bin/scss /usr/local/bin/scss &> /dev/null
+  if [[ ! -e "/usr/local/bin/compass" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/var/lib/gems/2.1.0/bin/compass" ]] ; then
+    ln -sf /var/lib/gems/2.1.0/bin/compass /usr/local/bin/compass &> /dev/null
+    ln -sf /var/lib/gems/2.1.0/bin/sass /usr/local/bin/sass &> /dev/null
+    ln -sf /var/lib/gems/2.1.0/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
+    ln -sf /var/lib/gems/2.1.0/bin/scss /usr/local/bin/scss &> /dev/null
   fi
 }
 fix_compass_path
