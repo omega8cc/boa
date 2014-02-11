@@ -952,17 +952,12 @@ tune_memory_limits () {
         sed -i "s/64000/128000/g"  /opt/php53/etc/php53.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php52/etc/php52.ini &> /dev/null
       else
-        _USE_PHP=512
-        _USE_OPC=512
+        _USE_PHP=1024
+        _USE_OPC=1024
         _PRC_SQL=25
         _QCE_SQL=64M
         _RND_SQL=2M
         _JBF_SQL=2M
-        if [[ "$_THISHOST" =~ ".host8." ]] ; then
-          if [[ "$_THISHOST" =~ "v130a." ]] ; then
-            _USE_PHP=1024
-          fi
-        fi
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=3
         else
