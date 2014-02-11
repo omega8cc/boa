@@ -7164,11 +7164,11 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
         get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
         mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
-        echo $_JETTY_9_VERSION > /opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt
+        echo $_JETTY_9_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt
       else
         get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
         mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty9
-        echo $_JETTY_8_VERSION > /opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt
+        echo $_JETTY_8_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_8_VERSION-version.txt
       fi
       get_dev_arch "solr-$_SOLR_4_VERSION.tgz" &> /dev/null
       cp -af /var/opt/solr-$_SOLR_4_VERSION/dist/solr-$_SOLR_4_VERSION.war /opt/jetty9/webapps/solr.war
@@ -7246,10 +7246,10 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty9" ] ; then
 fi
 if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
   _REAL_JETTY=9
-  _JETTY_CTRL="/opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt"
+  _JETTY_CTRL="/opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt"
 else
   _REAL_JETTY=8
-  _JETTY_CTRL="/opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt"
+  _JETTY_CTRL="/opt/jetty9/jetty-ctrl-$_JETTY_8_VERSION-version.txt"
 fi
 _SOLR_CTRL="/opt/jetty9/solr-$_SOLR_4_VERSION-version.txt"
 if [ -e "/opt/jetty9/VERSION.txt" ] ; then
@@ -7262,11 +7262,13 @@ if [ -e "/opt/jetty9/VERSION.txt" ] ; then
     if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
       get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz" &> /dev/null
       mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
-      echo $_JETTY_9_VERSION > /opt/jetty9/jetty-$_JETTY_9_VERSION-version.txt
+      echo $_JETTY_9_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt
     else
       get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
       mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty9
-      echo $_JETTY_8_VERSION > /opt/jetty9/jetty-$_JETTY_8_VERSION-version.txt
+      echo $_JETTY_8_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_8_VERSION-version.txt
+      sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+      sed -i "s/9090/8080/g" /opt/jetty9/bin/jetty.sh &> /dev/null
     fi
     get_dev_arch "solr-$_SOLR_4_VERSION.tgz" &> /dev/null
     cp -af /var/opt/solr-$_SOLR_4_VERSION/dist/solr-$_SOLR_4_VERSION.war /opt/jetty9/webapps/solr.war
@@ -7297,7 +7299,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       rm -f /etc/jetty.conf
       get_dev_arch "jetty-distribution-$_JETTY_8_VERSION.tar.gz" &> /dev/null
       mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty8
-      echo $_JETTY_8_VERSION > /opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt
+      echo $_JETTY_8_VERSION > /opt/jetty8/jetty-ctrl-$_JETTY_8_VERSION-version.txt
       get_dev_arch "apache-solr-$_SOLR_3_VERSION.tgz" &> /dev/null
       cp -af /var/opt/apache-solr-$_SOLR_3_VERSION/dist/apache-solr-$_SOLR_3_VERSION.war /opt/jetty8/webapps/solr.war
       mv -f /var/opt/apache-solr-$_SOLR_3_VERSION/example/multicore /opt/solr3 &> /dev/null
@@ -7361,7 +7363,7 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty8" ] ; then
   mrun "service jetty8 start" &> /dev/null
   msg "INFO: Jetty 8 restart completed"
 fi
-_JETTY_CTRL="/opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt"
+_JETTY_CTRL="/opt/jetty8/jetty-ctrl-$_JETTY_8_VERSION-version.txt"
 _SOLR_CTRL="/opt/jetty8/solr-$_SOLR_3_VERSION-version.txt"
 if [ -e "/opt/jetty8/VERSION.txt" ] ; then
   if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
@@ -7372,7 +7374,7 @@ if [ -e "/opt/jetty8/VERSION.txt" ] ; then
     kill -9 $(ps aux | grep '[j]etty8' | awk '{print $2}') &> /dev/null
     mv -f /opt/jetty8 /var/backups/jetty8-$_INSTALLER_VERSION-$_NOW
     mv -f /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty8
-    echo $_JETTY_8_VERSION > /opt/jetty8/jetty-$_JETTY_8_VERSION-version.txt
+    echo $_JETTY_8_VERSION > /opt/jetty8/jetty-ctrl-$_JETTY_8_VERSION-version.txt
     get_dev_arch "apache-solr-$_SOLR_3_VERSION.tgz" &> /dev/null
     cp -af /var/opt/apache-solr-$_SOLR_3_VERSION/dist/apache-solr-$_SOLR_3_VERSION.war /opt/jetty8/webapps/solr.war
     rm -f -r /opt/jetty8/solr
@@ -7402,7 +7404,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
       rm -f /etc/jetty.conf
       get_dev_arch "jetty-distribution-$_JETTY_7_VERSION.tar.gz" &> /dev/null
       mv /var/opt/jetty-distribution-$_JETTY_7_VERSION /opt/jetty7
-      echo $_JETTY_7_VERSION > /opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt
+      echo $_JETTY_7_VERSION > /opt/jetty7/jetty-ctrl-$_JETTY_7_VERSION-version.txt
       get_dev_arch "apache-solr-$_SOLR_1_VERSION.tgz" &> /dev/null
       cp -af /var/opt/apache-solr-$_SOLR_1_VERSION/dist/apache-solr-$_SOLR_1_VERSION.war /opt/jetty7/webapps/solr.war
       mv -f /var/opt/apache-solr-$_SOLR_1_VERSION/example/multicore /opt/solr1 &> /dev/null
@@ -7487,7 +7489,7 @@ if [ "$_TOMCAT_TO_JETTY" = "YES" ] && [ -e "/etc/init.d/jetty7" ] && [ -e "/etc/
   sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
   msg "INFO: Tomcat 6 to Jetty 7 migration for Apache Solr 1 completed"
 fi
-_JETTY_CTRL="/opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt"
+_JETTY_CTRL="/opt/jetty7/jetty-ctrl-$_JETTY_7_VERSION-version.txt"
 _SOLR_CTRL="/opt/jetty7/solr-$_SOLR_1_VERSION-version.txt"
 if [ -e "/opt/jetty7/VERSION.txt" ] ; then
   if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
@@ -7498,7 +7500,7 @@ if [ -e "/opt/jetty7/VERSION.txt" ] ; then
     kill -9 $(ps aux | grep '[j]etty7' | awk '{print $2}') &> /dev/null
     mv -f /opt/jetty7 /var/backups/jetty7-$_INSTALLER_VERSION-$_NOW
     mv -f /var/opt/jetty-distribution-$_JETTY_7_VERSION /opt/jetty7
-    echo $_JETTY_7_VERSION > /opt/jetty7/jetty-$_JETTY_7_VERSION-version.txt
+    echo $_JETTY_7_VERSION > /opt/jetty7/jetty-ctrl-$_JETTY_7_VERSION-version.txt
     get_dev_arch "apache-solr-$_SOLR_1_VERSION.tgz" &> /dev/null
     cp -af /var/opt/apache-solr-$_SOLR_1_VERSION/dist/apache-solr-$_SOLR_1_VERSION.war /opt/jetty7/webapps/solr.war
     rm -f -r /opt/jetty7/solr
