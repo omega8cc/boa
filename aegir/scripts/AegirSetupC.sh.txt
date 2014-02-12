@@ -503,12 +503,12 @@ init_this_distro_root () {
 #
 # Upgrade contrib less.
 upgrade_contrib_less () {
-  rm -f -r {context,entity,entityreference,og}
+  rm -f -r {context,ctools,entity,entityreference,og}
   get_dev_contrib "context-7.x-3.2.tar.gz" &> /dev/null
   get_dev_contrib "ctools-7.x-1.4.tar.gz" &> /dev/null
   get_dev_contrib "entity-7.x-1.3.tar.gz" &> /dev/null
   get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
-  get_dev_contrib "og-7.x-2.4-patch.tar.gz" &> /dev/null
+  get_dev_contrib "og-7.x-2.5.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # http://drupal.org/node/1766338#comment-6445882
