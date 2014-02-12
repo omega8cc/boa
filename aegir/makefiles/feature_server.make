@@ -24,7 +24,7 @@ projects[context][download][url] = "http://files.aegir.cc/dev/contrib/context-6.
 projects[ctools][type] = "module"
 ;projects[ctools][version] = "1.10"
 projects[ctools][download][type] = "get"
-projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.10.tar.gz"
+projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.11.tar.gz"
 
 projects[features][type] = "module"
 ;projects[features][version] = "1.2"

@@ -592,7 +592,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mv -f $_HOSTMASTER_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     cd $_HOSTMASTER_ROOT/profiles/hostmaster/modules/
-    get_dev_contrib "ctools-6.x-1.10.tar.gz"
+    get_dev_contrib "ctools-6.x-1.11.tar.gz"
     get_dev_contrib "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_contrib "features-6.x-1.2.tar.gz"
     get_dev_contrib "hosting_backup_queue-6.x-1.x-dev.tar.gz"
