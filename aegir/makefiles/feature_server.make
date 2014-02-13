@@ -22,7 +22,7 @@ projects[context][download][type] = "get"
 projects[context][download][url] = "http://files.aegir.cc/dev/contrib/context-6.x-3.3.tar.gz"
 
 projects[ctools][type] = "module"
-;projects[ctools][version] = "1.10"
+;projects[ctools][version] = "1.11"
 projects[ctools][download][type] = "get"
 projects[ctools][download][url] = "http://files.aegir.cc/dev/contrib/ctools-6.x-1.11.tar.gz"
 
@@ -32,9 +32,9 @@ projects[features][download][type] = "get"
 projects[features][download][url] = "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz"
 
 projects[filefield][type] = "module"
-;projects[filefield][version] = "3.11"
+;projects[filefield][version] = "3.12"
 projects[filefield][download][type] = "get"
-projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.11.tar.gz"
+projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.12.tar.gz"
 
 projects[install_profile_api][type] = "module"
 ;projects[install_profile_api][version] = "2.2"

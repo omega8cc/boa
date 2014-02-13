@@ -2200,7 +2200,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "cck-6.x-2.9.tar.gz" &> /dev/null
     get_dev_contrib "colorbox-6.x-1.4.tar.gz" &> /dev/null
     get_dev_contrib "date-6.x-2.9.tar.gz" &> /dev/null
-    get_dev_contrib "filefield-6.x-3.11.tar.gz" &> /dev/null
+    get_dev_contrib "filefield-6.x-3.12.tar.gz" &> /dev/null
     get_dev_contrib "google_analytics-6.x-3.6.tar.gz" &> /dev/null
     get_dev_contrib "imageapi-6.x-1.10.tar.gz" &> /dev/null
     get_dev_contrib "imagecache-6.x-2.x-dev.tar.gz" &> /dev/null
@@ -2213,7 +2213,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "token-6.x-1.19.tar.gz" &> /dev/null
     get_dev_contrib "ubercart-6.x-2.13.tar.gz" &> /dev/null
     get_dev_contrib "views-6.x-3.0.tar.gz" &> /dev/null
-    get_dev_contrib "webform-6.x-3.19.tar.gz" &> /dev/null
+    get_dev_contrib "webform-6.x-3.20.tar.gz" &> /dev/null
     ### http://drupal.org/node/1167276#comment-5138248
     cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
