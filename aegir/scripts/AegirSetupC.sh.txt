@@ -1944,8 +1944,13 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
-    if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] && [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
-      mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
+    if [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
+      if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] ; then
+        mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
+      else
+        cd $_SHRD_PRPATH/modules/panopoly
+        get_dev_contrib "panopoly_demo-7.x-1.1.tar.gz"
+      fi
     fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
