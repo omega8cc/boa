@@ -197,11 +197,15 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
 else
   if [ "$USER" = "root" ] ; then
     if [[ "$1" =~ "drush" ]] || [[ "$2" =~ "drush" ]] ; then
-      echo
-      echo " Drush should never be run as root!"
-      echo " Please su to some non-root account"
-      echo
-      exit 0
+      if [[ "$1" =~ "uli" ]] || [[ "$2" =~ "uli" ]] ; then
+        _ALLOW=YES
+      else
+        echo
+        echo " Drush should never be run as root!"
+        echo " Please su to some non-root account"
+        echo
+        exit 0
+      fi
     fi
   fi
   check_php_cli_version
