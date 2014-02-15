@@ -1943,7 +1943,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_PANOPOLY = "7.x-1.1" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
-      rm -f $_SHRD_PRPATH/modules/contrib/image_resize_filter
+      rm -f -r $_SHRD_PRPATH/modules/contrib/image_resize_filter
       get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
     fi
     if [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
