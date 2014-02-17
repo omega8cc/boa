@@ -98,6 +98,13 @@ if (function_exists('drush_get_command')) {
 }
 
 /**
+ * Force backward compatible SERVER_SOFTWARE
+ */
+if (!$is_backend) {
+  $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx';
+}
+
+/**
  * Bots detection
  */
 if (isset($_SERVER['HTTP_USER_AGENT']) && preg_match("/(?:crawl|bot|spider|tracker|click|parser|google|yahoo|yandex|baidu|bing)/i", $_SERVER['HTTP_USER_AGENT'])) {
