@@ -197,7 +197,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
 else
   if [ "$USER" = "root" ] ; then
     if [[ "$1" =~ "drush" ]] || [[ "$2" =~ "drush" ]] ; then
-      if [[ "$1" =~ "uli" ]] || [[ "$2" =~ "uli" ]] ; then
+      if [[ "$2" =~ "uli" ]] ; then
         _ALLOW=YES
       else
         echo
