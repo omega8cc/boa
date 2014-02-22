@@ -603,6 +603,12 @@ fix_modules () {
             else
               echo ";redis_lock_enable = FALSE" >> $_PLR_CTRL_FILE
             fi
+            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_exclude_bins = FALSE" >> $_PLR_CTRL_FILE
+            fi
             _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then
               _DO_NOTHING=YES
@@ -658,6 +664,12 @@ fix_modules () {
               _DO_NOTHING=YES
             else
               echo ";redis_lock_enable = FALSE" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";redis_exclude_bins = FALSE" >> $_DIR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "speed_booster_anon_cache_ttl" ]] ; then

@@ -228,6 +228,7 @@ $boa_ini = array(
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
   'redis_cache_disable' => FALSE,
+  'redis_exclude_bins' => FALSE,
   'speed_booster_anon_cache_ttl' => FALSE,
   'allow_anon_node_add' => FALSE,
   'disable_admin_dos_protection' => FALSE,
@@ -285,6 +286,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Redis-Flush-Forced-Mode: " . $all_ini['redis_flush_forced_mode']);
   header("X-Ini-Redis-Lock-Enable: " . $all_ini['redis_lock_enable']);
   header("X-Ini-Redis-Cache-Disable: " . $all_ini['redis_cache_disable']);
+  header("X-Ini-Redis-Exclude-Bins: " . $all_ini['redis_exclude_bins']);
   header("X-Ini-Speed-Booster-Anon-Cache-Ttl: " . $all_ini['speed_booster_anon_cache_ttl']);
   header("X-Ini-Allow-Anon-Node-Add: " . $all_ini['allow_anon_node_add']);
   header("X-Ini-Disable-Admin-Dos-Protection: " . $all_ini['disable_admin_dos_protection']);
@@ -762,6 +764,19 @@ if ($redis_up && $use_redis && !$custom_cache) {
         $conf['cache_class_cache']            = 'DrupalDatabaseCache';
       }
       $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+    }
+    if ($all_ini['redis_exclude_bins']) {
+      $excludes = array();
+      $excludes = explode(",", $all_ini['redis_exclude_bins']);
+      foreach ($excludes as $exclude) {
+        $exclude = rtrim($exclude);
+        $exclude = ltrim($exclude);
+        $bin_exclude = 'cache_class_' . $exclude;
+        $conf[$bin_exclude] = 'DrupalDatabaseCache';
+        if ($is_dev && !$is_backend) {
+          header("X-Ini-Redis-Exclude-Bin-" . $exclude . ": " . $bin_exclude);
+        }
+      }
     }
   }
 }
