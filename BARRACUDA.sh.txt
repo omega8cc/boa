@@ -8074,7 +8074,13 @@ else
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
-        if [ ! -e "/usr/lib/ruby/$_RUBY_VERSION/rubygems.rb" ] ; then
+        if [ ! -e "/usr/local/rvm/rubies" ] ; then
+          curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
+        fi
+        if [ -e "/etc/profile.d/rvm.sh" ] ; then
+          source /etc/profile.d/rvm.sh
+        fi
+        if [ ! -x "/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem" ] ; then
           _RUBY_UPGRADE=YES
         fi
         if [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
@@ -8082,13 +8088,7 @@ else
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes" &> /dev/null
           mrun "apt-get remove ruby1.8-dev libruby1.8 ruby1.8 -y --force-yes" &> /dev/null
           mrun "apt-get autoremove -y --force-yes"  &> /dev/null
-          cd /var/opt
-          rm -f -r ruby*
-          get_dev_src "ruby-$_RUBY_VERSION.tar.gz"  &> /dev/null
-          cd /var/opt/ruby-$_RUBY_VERSION
-          st_runner "sh ./configure --prefix=/usr"  2> /dev/null
-          st_runner "make --quiet"                  2> /dev/null
-          st_runner "make --quiet install"          2> /dev/null
+          mrun "rvm install $_RUBY_VERSION"         &> /dev/null
           st_runner "gem install compass"           2> /dev/null
           st_runner "gem install sass"              2> /dev/null
           st_runner "gem install breakpoint"        2> /dev/null
@@ -8115,6 +8115,18 @@ else
           st_runner "gem update zen-grids"          2> /dev/null
           st_runner "gem update zurb-foundation"    2> /dev/null
         fi
+        _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
+        _RBY_PATH=${_RBY_FILE//\//\\\/}
+        _GEM_FILE="/usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/scout"
+        _GEM_PATH=${_GEM_FILE//\//\\\/}
+        _GEM_CRON="/etc/crontab"
+        _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON)
+        if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] ; then
+          sed -i "s/scout .*\/scout/scout $_GEM_PATH/g" $_GEM_CRON &> /dev/null
+        fi
+        if [ -e "$_GEM_FILE" ] ; then
+          sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
+        fi
         echo "compass-$_INSTALLER_VERSION-$_NOW" > /var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
       else
@@ -8124,11 +8136,11 @@ else
   fi
 fi
 fix_compass_path () {
-  if [[ ! -e "/usr/local/bin/compass" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/var/lib/gems/2.1.0/bin/compass" ]] ; then
-    ln -sf /var/lib/gems/2.1.0/bin/compass /usr/local/bin/compass &> /dev/null
-    ln -sf /var/lib/gems/2.1.0/bin/sass /usr/local/bin/sass &> /dev/null
-    ln -sf /var/lib/gems/2.1.0/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
-    ln -sf /var/lib/gems/2.1.0/bin/scss /usr/local/bin/scss &> /dev/null
+  if [[ ! -e "/usr/local/bin/compass" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/compass" ]] ; then
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/compass /usr/local/bin/compass &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/sass /usr/local/bin/sass &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/scss /usr/local/bin/scss &> /dev/null
   fi
 }
 fix_compass_path
