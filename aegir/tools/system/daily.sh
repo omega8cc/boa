@@ -589,19 +589,19 @@ fix_modules () {
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_use_modern = FALSE" >> $_PLR_CTRL_FILE
+              echo ";redis_use_modern = TRUE" >> $_PLR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_flush_forced_mode = FALSE" >> $_PLR_CTRL_FILE
+              echo ";redis_flush_forced_mode = TRUE" >> $_PLR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_lock_enable = FALSE" >> $_PLR_CTRL_FILE
+              echo ";redis_lock_enable = TRUE" >> $_PLR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
@@ -651,19 +651,19 @@ fix_modules () {
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_use_modern = FALSE" >> $_DIR_CTRL_FILE
+              echo ";redis_use_modern = TRUE" >> $_DIR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_flush_forced_mode" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_flush_forced_mode = FALSE" >> $_DIR_CTRL_FILE
+              echo ";redis_flush_forced_mode = TRUE" >> $_DIR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_lock_enable" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_lock_enable" ]] ; then
               _DO_NOTHING=YES
             else
-              echo ";redis_lock_enable = FALSE" >> $_DIR_CTRL_FILE
+              echo ";redis_lock_enable = TRUE" >> $_DIR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_exclude_bins" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_exclude_bins" ]] ; then
