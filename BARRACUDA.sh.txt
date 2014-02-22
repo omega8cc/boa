@@ -4415,7 +4415,7 @@ update_newrelic () {
       cat 548C16BF.gpg | apt-key add - &> /dev/null
       rm -f 548C16BF.gpg*
       st_runner "aptitude remove newrelic-php5 newrelic-php5-common newrelic-daemon newrelic-sysmond -y" &> /dev/null
-      st_runner "apt-get autoremove -y" &> /dev/null
+      st_runner "apt-get autoremove -y --force-yes" &> /dev/null
       mkdir -p /var/backups/nr
       mv -f /etc/newrelic /var/backups/nr/etc-newrelic-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       _UPDATE_NR=YES
@@ -6016,7 +6016,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   mrun "apt-get purge svscan -y" &> /dev/null
   mrun "apt-get purge pound -y" &> /dev/null
   mrun "apt-get update -y" &> /dev/null
-  mrun "apt-get autoremove -y" &> /dev/null
+  mrun "apt-get autoremove -y --force-yes" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   install_upgrade_nginx
@@ -6078,7 +6078,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   fi
   mrun "apt-get remove lsb-release -y --force-yes" &> /dev/null
   mrun "apt-get update -y" &> /dev/null
-  mrun "apt-get autoremove -y" &> /dev/null
+  mrun "apt-get autoremove -y --force-yes" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get install libgeoip1 libgeoip-dev geoip-database -y --force-yes" 2> /dev/null
@@ -6152,7 +6152,7 @@ else
     touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fi
   st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
-  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
   st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
   st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
   st_runner "aptitude remove php5-apc -y" &> /dev/null
@@ -6207,13 +6207,13 @@ else
     _APT_XTRA="openjdk-6-jdk"
   fi
   _APT_ELSE="netcat"
-  st_runner "aptitude remove nginx-extras -y" &> /dev/null
-  st_runner "aptitude remove nginx -y"        &> /dev/null
-  st_runner "aptitude remove nginx-common -y" &> /dev/null
-  st_runner "aptitude remove nginx-full -y"   &> /dev/null
-  st_runner "aptitude remove redis-server -y" &> /dev/null
-  st_runner "apt-get autoremove -y"           &> /dev/null
-  st_runner "apt-get update -y"               &> /dev/null
+  st_runner "aptitude remove nginx-extras -y"   &> /dev/null
+  st_runner "aptitude remove nginx -y"          &> /dev/null
+  st_runner "aptitude remove nginx-common -y"   &> /dev/null
+  st_runner "aptitude remove nginx-full -y"     &> /dev/null
+  st_runner "aptitude remove redis-server -y"   &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+  st_runner "apt-get update -y"                 &> /dev/null
 fi
 _EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
@@ -6286,11 +6286,11 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
-  st_runner "apt-get autoremove -y"          &> /dev/null
-  st_runner "aptitude remove mysql-common -y" &> /dev/null
-  st_runner "apt-get purge mysql-common -y"  &> /dev/null
-  st_runner "apt-get autoremove -y"          &> /dev/null
-  st_runner "apt-get update -y"              &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+  st_runner "aptitude remove mysql-common -y"   &> /dev/null
+  st_runner "apt-get purge mysql-common -y"     &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+  st_runner "apt-get update -y"                 &> /dev/null
   SQLDEB="percona-server-server-5.5"
   if [ "$_REL_VERSION" = "squeeze" ] ; then
     SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit"
@@ -6322,12 +6322,12 @@ install_mariadb_sql () {
   st_runner "aptitude remove mytop -y"                     &> /dev/null
   st_runner "apt-get purge mytop -y"                       &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "apt-get autoremove -y"                        &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes"            &> /dev/null
   st_runner "aptitude remove mysql-common -y"              &> /dev/null
   st_runner "apt-get purge mysql-common -y"                &> /dev/null
   st_runner "aptitude remove percona-server-common-5.5 -y" &> /dev/null
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
-  st_runner "apt-get autoremove -y"                        &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes"            &> /dev/null
   st_runner "apt-get update -y"                            &> /dev/null
   SQLDEB="mariadb-server-$_MARIADB_SERIES mariadb-client-$_MARIADB_SERIES mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
@@ -6358,7 +6358,7 @@ install_with_aptitude_sql () {
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude remove exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
   st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
-  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
   rm -f /etc/aliases
   rm -f -r /etc/mail
   killall -9 sendmail &> /dev/null
@@ -8080,7 +8080,7 @@ else
         if [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
           st_runner "apt-get update -y --force-yes" &> /dev/null
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes" &> /dev/null
-          mrun "apt-get autoremove" &> /dev/null
+          mrun "apt-get autoremove -y --force-yes"  &> /dev/null
           cd /var/opt
           rm -f -r ruby*
           get_dev_src "ruby-$_RUBY_VERSION.tar.gz"  &> /dev/null
@@ -8724,7 +8724,7 @@ install_pdnsd_cache () {
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
   st_runner "apt-get update -y" &> /dev/null
   st_runner "aptitude purge pdnsd resolvconf -y" &> /dev/null
-  st_runner "apt-get autoremove -y" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
