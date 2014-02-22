@@ -8069,17 +8069,18 @@ else
     else
       _L_ST="upgrade"
     fi
-    if [ ! -e "/var/xdrago/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+    if [ ! -e "/var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
-        if [ ! -e "/usr/lib/ruby/2.1.0/rubygems.rb" ] ; then
+        if [ ! -e "/usr/lib/ruby/$_RUBY_VERSION/rubygems.rb" ] ; then
           _RUBY_UPGRADE=YES
         fi
         if [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
           st_runner "apt-get update -y --force-yes" &> /dev/null
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes" &> /dev/null
+          mrun "apt-get remove ruby1.8-dev libruby1.8 ruby1.8 -y --force-yes" &> /dev/null
           mrun "apt-get autoremove -y --force-yes"  &> /dev/null
           cd /var/opt
           rm -f -r ruby*
@@ -8114,7 +8115,7 @@ else
           st_runner "gem update zen-grids"          2> /dev/null
           st_runner "gem update zurb-foundation"    2> /dev/null
         fi
-        echo "compass-$_INSTALLER_VERSION" > /var/xdrago/log/compass-tools-$_INSTALLER_VERSION-$_NOW.log
+        echo "compass-$_INSTALLER_VERSION-$_NOW" > /var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
       else
         msg "INFO: Compass Tools $_L_ST skipped"
