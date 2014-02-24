@@ -8089,31 +8089,32 @@ else
           mrun "apt-get remove ruby1.8-dev libruby1.8 ruby1.8 -y --force-yes" &> /dev/null
           mrun "apt-get autoremove -y --force-yes"  &> /dev/null
           mrun "rvm install $_RUBY_VERSION"         &> /dev/null
-          st_runner "gem install compass"           2> /dev/null
-          st_runner "gem install sass"              2> /dev/null
-          st_runner "gem install breakpoint"        2> /dev/null
-          st_runner "gem install bundler"           2> /dev/null
-          st_runner "gem install compass_radix"     2> /dev/null
-          st_runner "gem install compass-normalize" 2> /dev/null
-          st_runner "gem install compass-rgbapng"   2> /dev/null
-          st_runner "gem install sass-globbing"     2> /dev/null
-          st_runner "gem install susy"              2> /dev/null
-          st_runner "gem install toolkit"           2> /dev/null
-          st_runner "gem install zen-grids"         2> /dev/null
-          st_runner "gem install zurb-foundation"   2> /dev/null
+          st_runner "rvm @global do gem install compass"           2> /dev/null
+          st_runner "rvm @global do gem install sass"              2> /dev/null
+          st_runner "rvm @global do gem install breakpoint"        2> /dev/null
+          st_runner "rvm @global do gem install bundler"           2> /dev/null
+          st_runner "rvm @global do gem install compass_radix"     2> /dev/null
+          st_runner "rvm @global do gem install compass-normalize" 2> /dev/null
+          st_runner "rvm @global do gem install compass-rgbapng"   2> /dev/null
+          st_runner "rvm @global do gem install sass-globbing"     2> /dev/null
+          st_runner "rvm @global do gem install susy"              2> /dev/null
+          st_runner "rvm @global do gem install toolkit"           2> /dev/null
+          st_runner "rvm @global do gem install zen-grids"         2> /dev/null
+          st_runner "rvm @global do gem install zurb-foundation"   2> /dev/null
         else
-          st_runner "gem update compass"            2> /dev/null
-          st_runner "gem update sass"               2> /dev/null
-          st_runner "gem update breakpoint"         2> /dev/null
-          st_runner "gem update bundler"            2> /dev/null
-          st_runner "gem update compass_radix"      2> /dev/null
-          st_runner "gem update compass-normalize"  2> /dev/null
-          st_runner "gem update compass-rgbapng"    2> /dev/null
-          st_runner "gem update sass-globbing"      2> /dev/null
-          st_runner "gem update susy"               2> /dev/null
-          st_runner "gem update toolkit"            2> /dev/null
-          st_runner "gem update zen-grids"          2> /dev/null
-          st_runner "gem update zurb-foundation"    2> /dev/null
+          st_runner "rvm get stable"                               2> /dev/null
+          st_runner "rvm @global do gem update compass"            2> /dev/null
+          st_runner "rvm @global do gem update sass"               2> /dev/null
+          st_runner "rvm @global do gem update breakpoint"         2> /dev/null
+          st_runner "rvm @global do gem update bundler"            2> /dev/null
+          st_runner "rvm @global do gem update compass_radix"      2> /dev/null
+          st_runner "rvm @global do gem update compass-normalize"  2> /dev/null
+          st_runner "rvm @global do gem update compass-rgbapng"    2> /dev/null
+          st_runner "rvm @global do gem update sass-globbing"      2> /dev/null
+          st_runner "rvm @global do gem update susy"               2> /dev/null
+          st_runner "rvm @global do gem update toolkit"            2> /dev/null
+          st_runner "rvm @global do gem update zen-grids"          2> /dev/null
+          st_runner "rvm @global do gem update zurb-foundation"    2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
