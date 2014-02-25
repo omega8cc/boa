@@ -2903,6 +2903,7 @@ barracuda_cnf () {
     echo "_PHP_CLI_VERSION=$_PHP_CLI_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_EXTRA_CONF=\"$_PHP_EXTRA_CONF\"" >> /root/.barracuda.cnf
     echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.barracuda.cnf
+    echo "_PHP_FPM_SLOWLOG=\"$_PHP_FPM_SLOWLOG\"" >> /root/.barracuda.cnf
     echo "_PHP_FPM_VERSION=$_PHP_FPM_VERSION" >> /root/.barracuda.cnf
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.barracuda.cnf
     echo "_PHP_GEOS=$_PHP_GEOS" >> /root/.barracuda.cnf
