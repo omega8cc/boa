@@ -3006,6 +3006,12 @@ barracuda_cnf () {
     else
       echo "_NGINX_WORKERS=$_NGINX_WORKERS" >> /root/.barracuda.cnf
     fi
+    _PHP_FPM_SLOWLOG_TEST=$(grep _PHP_FPM_SLOWLOG /root/.barracuda.cnf)
+    if [[ "$_PHP_FPM_SLOWLOG_TEST" =~ "_PHP_FPM_SLOWLOG" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_PHP_FPM_SLOWLOG=$_PHP_FPM_SLOWLOG" >> /root/.barracuda.cnf
+    fi
     _PHP_FPM_WORKERS_TEST=$(grep _PHP_FPM_WORKERS /root/.barracuda.cnf)
     if [[ "$_PHP_FPM_WORKERS_TEST" =~ "_PHP_FPM_WORKERS" ]] ; then
       _DO_NOTHING=YES
