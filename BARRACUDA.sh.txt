@@ -1033,6 +1033,12 @@ _NGINX_WORKERS=AUTO
 _PHP_FPM_WORKERS=AUTO
 
 ###
+### AUTO will default to 60 (seconds).  Max 
+### value is 180 (seconds). 
+###
+_PHP_FPM_SLOWLOG=AUTO
+
+###
 ### Max default TTL for Speed Booster Cache.
 ### It will affect all Aegir Instances, but
 ### it is used only for spiders and with not
@@ -1952,6 +1958,15 @@ update_php_conf () {
   ###
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g"  /opt/php52/etc/php52-fpm.conf &> /dev/null
+  ###
+  if [ "$_PHP_FPM_SLOWLOG" = "AUTO" ] || [ "$_PHP_FPM_SLOWLOG" <= 0 ] || [ -z "$_PHP_FPM_SLOWLOG" ] ; then
+    _L_PHP_FPM_SLOWLOG=60
+  elif [ "$_PHP_FPM_SLOWLOG" > 180 ] ; then ### cannot be greater than request_terminate_timeout
+    _L_PHP_FPM_SLOWLOG=180
+  else
+    _L_PHP_FPM_SLOWLOG=$_PHP_FPM_SLOWLOG
+  fi
+  sed -i "s/= 60/= $_L_PHP_FPM_SLOWLOG/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   ###
 
   _THIS_FILE=/opt/php55/etc/php55.ini

@@ -58,6 +58,7 @@ _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid number
 _PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{2,3,4,5}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
+_PHP_FPM_SLOWLOG=AUTO #--------- Override request_slowlog_timeout
 _PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
