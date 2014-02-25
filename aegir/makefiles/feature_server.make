@@ -2,7 +2,7 @@
 ;
 ; Developed by Miguel Jacq - http://mig5.net
 ; Contributions from Dave Hall - http://davehall.com.au
-; Modified by Albert Szelagowski - http://omega8.cc
+; Modified by Albert Szelagowski - https://omega8.cc
 
 api = 2
 core = 6.x

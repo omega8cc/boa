@@ -4,8 +4,8 @@
  module with required third party library, as explained in its readme,
  or download and enable Search API Solr search module (D7 only).
 
- http://drupal.org/project/apachesolr (6.x-1.7 or newer)
- http://drupal.org/project/search_api_solr (7.x-1.0-rc3 or newer)
+ https://drupal.org/project/apachesolr (6.x-1.7 or newer)
+ https://drupal.org/project/search_api_solr (7.x-1.0-rc3 or newer)
 
  BOA system supports both Apache Solr Search Integration module
  and Search API Solr search module (used by default), and you have

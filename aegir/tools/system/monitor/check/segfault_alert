@@ -26,8 +26,8 @@ caused or exposed by something in the affected site's PHP code.
 See the reports linked below to learn more:
 
 https://bugs.php.net/bug.php?id=48034
-http://drupal.org/node/1462984#comment-5790468
-http://drupal.org/node/1366084#comment-5877974
+https://drupal.org/node/1462984#comment-5790468
+https://drupal.org/node/1366084#comment-5877974
 INTRO
 ;
     $intrx = <<INTROX

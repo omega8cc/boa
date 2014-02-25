@@ -159,31 +159,31 @@ Octopus can install the platforms listed below:
 
 ### Drupal 7.26.1
 
- Commerce 1.23 ---------------- http://drupal.org/project/commerce_kickstart
- Commerce 2.12 ---------------- http://drupal.org/project/commerce_kickstart
- Commons 3.9 ------------------ http://drupal.org/project/commons
- Drupal 7.26.1 ---------------- http://drupal.org/drupal-7.26
- Open Academy 1.0 ------------- http://drupal.org/project/openacademy
- Open Atrium 2.13 ------------- http://drupal.org/project/openatrium
- Open Deals 1.31 -------------- http://drupal.org/project/opendeals
- Open Outreach 1.5 ------------ http://drupal.org/project/openoutreach
- OpenBlog 1.0-a3 -------------- http://drupal.org/project/openblog
- OpenChurch 1.11-b16 ---------- http://drupal.org/project/openchurch
+ Commerce 1.23 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.12 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.9 ------------------ https://drupal.org/project/commons
+ Drupal 7.26.1 ---------------- https://drupal.org/drupal-7.26
+ Open Academy 1.0 ------------- https://drupal.org/project/openacademy
+ Open Atrium 2.13 ------------- https://drupal.org/project/openatrium
+ Open Deals 1.31 -------------- https://drupal.org/project/opendeals
+ Open Outreach 1.5 ------------ https://drupal.org/project/openoutreach
+ OpenBlog 1.0-a3 -------------- https://drupal.org/project/openblog
+ OpenChurch 1.11-b16 ---------- https://drupal.org/project/openchurch
  OpenScholar 3.9.3 ------------ http://theopenscholar.org
- Panopoly 1.1 ----------------- http://drupal.org/project/panopoly
- Recruiter 1.1.2 -------------- http://drupal.org/project/recruiter
- Spark 1.0-a10 ---------------- http://drupal.org/project/spark
- Totem 1.1.2 ------------------ http://drupal.org/project/totem
- Ubercart 3.6.0 --------------- http://drupal.org/project/ubercart
+ Panopoly 1.1 ----------------- https://drupal.org/project/panopoly
+ Recruiter 1.1.2 -------------- https://drupal.org/project/recruiter
+ Spark 1.0-a10 ---------------- https://drupal.org/project/spark
+ Totem 1.1.2 ------------------ https://drupal.org/project/totem
+ Ubercart 3.6.0 --------------- https://drupal.org/project/ubercart
 
 ### Pressflow 6.30.1
 
- Commons 2.16 ----------------- http://drupal.org/project/commons
+ Commons 2.16 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
- Managing News 1.2.4 ---------- http://drupal.org/project/managingnews
- Open Atrium 1.7.2 ------------ http://drupal.org/project/openatrium
+ Managing News 1.2.4 ---------- https://drupal.org/project/managingnews
+ Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
  Pressflow 6.30.1 ------------- http://pressflow.org
- Ubercart 2.13.0 -------------- http://drupal.org/project/ubercart
+ Ubercart 2.13.0 -------------- https://drupal.org/project/ubercart
 
 All D7 platforms have been enhanced using Drupal 7.26.1 +Extra core:
 https://github.com/omega8cc/7x/tree/7.x-om8
@@ -211,40 +211,44 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
     /data/disk/USER/log/octopus_log.txt
 
 * Issue queues:
-  http://drupal.org/project/issues/barracuda (active)
-  http://drupal.org/project/issues/octopus (active)
-  http://github.com/omega8cc/nginx-for-drupal/issues (deprecated)
+  https://drupal.org/project/issues/barracuda (active)
+  https://drupal.org/project/issues/octopus (active)
+  https://github.com/omega8cc/nginx-for-drupal/issues (active)
+
+* Patches:
+  https://github.com/omega8cc/nginx-for-drupal/ (main repository)
 
   Please don't post your server logs here. Instead use
   http://gist.github.com and post the link in your submission.
 
 
-### HELP
+### REPOSITORIES
 
-* Join us at: http://groups.drupal.org/boa
-              http://community.aegirproject.org
-              http://groups.drupal.org/nginx
+* https://github.com/omega8cc/nginx-for-drupal/ (main)
+* https://drupal.org/project/barracuda (mirror)
+* https://drupal.org/project/octopus (mirror)
+* https://code.aegir.cc/aegir (mirror)
 
 
 ### MAINTAINERS
 
-* Grace  - http://omega8.cc
-* Albert - http://omega8.cc
-* Robert - http://omega8.cc
+* Grace  - https://omega8.cc
+* Albert - https://omega8.cc
+* Robert - https://omega8.cc
+* Greg   - https://omega8.cc
 
 
-### REPOSITORIES
+### HELP
 
-* http://drupal.org/project/barracuda (main)
-* http://drupal.org/project/octopus (main)
-* http://code.aegir.cc/aegir (mirror)
-* http://github.com/omega8cc/nginx-for-drupal/ (mirror)
+* Join us at: https://groups.drupal.org/boa
+              http://community.aegirproject.org
+              http://groups.drupal.org/nginx
 
 
 ### CREDITS
 
-* Brian Mercer - http://drupal.org/user/103565
-  Initial work: http://drupal.org/node/244072#comment-1747170
+* Brian Mercer - https://drupal.org/user/103565
+  Initial work: https://drupal.org/node/244072#comment-1747170
 
 * Nice people who are submitting bugs and problems in the
   Barracuda/Octopus issue queues.

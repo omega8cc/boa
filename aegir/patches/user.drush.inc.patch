@@ -419,7 +419,7 @@
 +        else {
 +          user_cancel(array(), $uid, 'user_cancel_reassign');
 +        }
-+        // I got the following technique here: http://drupal.org/node/638712
++        // I got the following technique here: https://drupal.org/node/638712
 +        $batch =& batch_get();
 +        $batch['progressive'] = FALSE;
 +        batch_process();

@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: http://code.aegir.cc/aegir
+###  Code: https://code.aegir.cc/aegir
 ###
 ###----------------------------------------###
 
@@ -517,7 +517,7 @@ _USE_STOCK=NO
 ### well looking, strong passwords and not
 ### some binary garbage, which is typically
 ### a sign of unreliable /dev/urandom.
-### See: http://drupal.org/node/1952042
+### See: https://drupal.org/node/1952042
 ###
 ### By default new passwords are generated
 ### with "pwgen -v -s -1" command.

@@ -98,7 +98,7 @@ your Aegir instance comes with non-standard SSH port.
 
 Compatible FTP-SSL/TLS clients are listed here:
 
- http://omega8.cc/dev/ftp-tls.txt
+ https://omega8.cc/dev/ftp-tls.txt
 
 Make sure you are adding modules and themes to your expected
 platform. If you experience issues, you can contact our
@@ -169,7 +169,7 @@ standard Drupal 7 core.
 
 === AEGIR BASICS
 
-http://omega8.cc/library/aegir-basics
+https://omega8.cc/library/aegir-basics
 
 === VIDEO TUTORIALS
 
@@ -177,45 +177,45 @@ http://bit.ly/aegir8cc
 
 === SITE IMPORT AND DEVELOPMENT INFORMATION
 
-http://omega8.cc/library/development
-http://omega8.cc/library/good-to-know
+https://omega8.cc/library/development
+https://omega8.cc/library/good-to-know
 
 === IMPORTANT PERFORMANCE INFORMATION
 
-http://omega8.cc/library/performance
-http://omega8.cc/library/tips-and-tricks
+https://omega8.cc/library/performance
+https://omega8.cc/library/tips-and-tricks
 
 === ALWAYS USEFUL HINTS
 
-http://omega8.cc/library/problems-solutions
-http://omega8.cc/faq
+https://omega8.cc/library/problems-solutions
+https://omega8.cc/faq
 
 === ARTICLES WE HIGHLY RECOMMEND
 
-http://omega8.cc/the-biggest-misunderstanding-ever-122
-http://omega8.cc/the-best-recipes-for-disaster-139
-http://omega8.cc/are-there-any-specific-good-habits-to-learn-116
+https://omega8.cc/the-biggest-misunderstanding-ever-122
+https://omega8.cc/the-best-recipes-for-disaster-139
+https://omega8.cc/are-there-any-specific-good-habits-to-learn-116
 
-http://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
-http://omega8.cc/how-to-add-custom-platform-properly-140
-http://omega8.cc/managing-your-code-in-the-aegir-style-110 (video)
+https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
+https://omega8.cc/how-to-add-custom-platform-properly-140
+https://omega8.cc/managing-your-code-in-the-aegir-style-110 (video)
 
-http://omega8.cc/speed-booster-redis-boost-and-advagg-108
+https://omega8.cc/speed-booster-redis-boost-and-advagg-108
 
-http://omega8.cc/how-to-disable-all-caching-and-aggregation-115
-http://omega8.cc/extra-modules-available-in-all-platforms-123
-http://omega8.cc/modules-enabled-or-disabled-automatically-117
+https://omega8.cc/how-to-disable-all-caching-and-aggregation-115
+https://omega8.cc/extra-modules-available-in-all-platforms-123
+https://omega8.cc/modules-enabled-or-disabled-automatically-117
 
-http://omega8.cc/running-scheduled-sites-cron-in-aegir-118
-http://omega8.cc/where-is-the-rename-task-129
-http://omega8.cc/how-to-manage-aliases-and-redirects-127
+https://omega8.cc/running-scheduled-sites-cron-in-aegir-118
+https://omega8.cc/where-is-the-rename-task-129
+https://omega8.cc/how-to-manage-aliases-and-redirects-127
 
-http://omega8.cc/compare
+https://omega8.cc/compare
 
 
 Questions? Comments? Please contact us:
 
- http://omega8.cc/support
+ https://omega8.cc/support
 
 Thank you,
 Omega8.cc Team

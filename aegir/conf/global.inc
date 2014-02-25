@@ -43,7 +43,7 @@ $conf['js_server_software'] = "other";       // Set JS Callback handler server s
 $conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
 $conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
 $conf['drupal_http_request_fails'] = false;  // Avoid false alarm
-$conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issues: http://drupal.org/drupal-7.20-release-notes
+$conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
 $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
 $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do not allow to turn it on by default
 $update_free_access = FALSE;
@@ -496,7 +496,7 @@ if ($all_ini['purge_expire_auto_configuration']) {
     }
   }
   elseif (is_readable('modules/o_contrib_seven/purge/purge.inc')) {
-    $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see http://drupal.org/node/1151686#comment-5556544
+    $conf['expire_flush_node_terms'] = 0; // Disable this to avoid WSOD - see https://drupal.org/node/1151686#comment-5556544
     $conf['purge_proxy_urls'] = "http://127.0.0.1:8888/purge-normal?purge_method=get http://127.0.0.1:8888/purge-mobile-tablet?purge_method=get http://127.0.0.1:8888/purge-mobile-smart?purge_method=get http://127.0.0.1:8888/purge-mobile-other?purge_method=get";
     if ($is_dev && !$is_backend) {
       header('X-Purge-Level: 7');
@@ -787,7 +787,7 @@ if ($redis_up && $use_redis && !$custom_cache) {
  * Important:
  * Facebook client libraries will not work properly if arg_separator.output is not &
  * The default value is &amp;. Change this in settings.php. Make the value "&"
- * http://drupal.org/node/205476
+ * https://drupal.org/node/205476
  */
 if (!$custom_fb && $all_ini['auto_detect_facebook_integration']) {
   if (is_readable('sites/all/modules/fb/fb_settings.inc')) {

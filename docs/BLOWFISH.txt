@@ -115,7 +115,7 @@ http://codahale.com/how-to-safely-store-a-password/
 http://yorickpeterse.com/articles/use-bcrypt-fool/
 http://wildlyinaccurate.com/bcrypt-choosing-a-work-factor
 https://gist.github.com/jkmickelson/3660219
-http://drupal.org/node/1201444#comment-6448638
-http://drupal.org/project/phpass
+https://drupal.org/node/1201444#comment-6448638
+https://drupal.org/project/phpass
 http://www.php.net/manual/en/function.crypt.php
 http://www.php.net/security/crypt_blowfish.php

@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: http://code.aegir.cc/aegir
+###  Code: https://code.aegir.cc/aegir
 ###
 ###----------------------------------------###
 

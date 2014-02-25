@@ -9,7 +9,7 @@ NOTE: You can disable this feature with _MODULES_FIX=NO in the
       standard Barracuda configuration file: /root/.barracuda.cnf
       However, if you disable this option, you will automatically
       disable also the user register protection check/feature:
-      http://omega8.cc/node/273
+      https://omega8.cc/node/273
 
 There are also modules supported by Octopus, but not bundled
 by default and/or not enabled.

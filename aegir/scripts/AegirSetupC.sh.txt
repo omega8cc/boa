@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: http://code.aegir.cc/aegir
+###  Code: https://code.aegir.cc/aegir
 ###
 ###----------------------------------------###
 
@@ -511,7 +511,7 @@ upgrade_contrib_less () {
   get_dev_contrib "og-7.x-2.5.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
-    # http://drupal.org/node/1766338#comment-6445882
+    # https://drupal.org/node/1766338#comment-6445882
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     cd ../
@@ -802,7 +802,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ COD ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_COD - http://drupal.org/project/cod" ; then
+if prompt_yes_no "$_F_COD - https://drupal.org/project/cod" ; then
 true
 msg "DISTRO: $_F_COD installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -1145,7 +1145,7 @@ drupal7_install () {
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] || [[ $_PLATFORMS_LIST =~ D7S ]] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
-if prompt_yes_no "$_F_DRUPAL7 - http://drupal.org/drupal-7.26" ; then
+if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.26" ; then
 true
 
 ###---### Drupal 7 Development
@@ -1366,14 +1366,14 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views_rss-6.x-2.0-rc3.tar.gz"
     get_dev_contrib "views-6.x-2.13.tar.gz"
     cd views
-    # http://drupal.org/node/853864#comment-3898996
+    # https://drupal.org/node/853864#comment-3898996
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-853864_2.patch
     patch -p0 < views-853864_2.patch &> /dev/null
-    # http://drupal.org/node/402944#comment-5370400
+    # https://drupal.org/node/402944#comment-5370400
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-unpack_options-cache-6.2-51.patch
     patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
-    # http://drupal.org/node/1243258#comment-4850634
+    # https://drupal.org/node/1243258#comment-4850634
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
@@ -1457,7 +1457,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OAY ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENACADEMY - http://drupal.org/project/openacademy" ; then
+if prompt_yes_no "$_F_OPENACADEMY - https://drupal.org/project/openacademy" ; then
 true
 msg "DISTRO: $_F_OPENACADEMY installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -1518,7 +1518,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       mv $_REAL_PRNAME-$_OPENATRIUM6 $_SHRD_PLNAME
     fi
     cd $_SHRD_PRPATH/modules/contrib/imagecache
-    # http://drupal.org/node/1243258#comment-4850634
+    # https://drupal.org/node/1243258#comment-4850634
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     nocore_d6_dist_clean
@@ -1615,7 +1615,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OBG ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENBLOG - http://drupal.org/project/openblog" ; then
+if prompt_yes_no "$_F_OPENBLOG - https://drupal.org/project/openblog" ; then
 true
 msg "DISTRO: $_F_OPENBLOG installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -1925,7 +1925,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ PPY ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_PANOPOLY - http://drupal.org/project/panopoly" ; then
+if prompt_yes_no "$_F_PANOPOLY - https://drupal.org/project/panopoly" ; then
 true
 msg "DISTRO: $_F_PANOPOLY installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -2029,7 +2029,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ RER ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_RECRUITER - http://drupal.org/project/recruiter" ; then
+if prompt_yes_no "$_F_RECRUITER - https://drupal.org/project/recruiter" ; then
 true
 msg "DISTRO: $_F_RECRUITER installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -2077,7 +2077,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ SRK ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_SPARK - http://drupal.org/project/spark" ; then
+if prompt_yes_no "$_F_SPARK - https://drupal.org/project/spark" ; then
 true
 msg "DISTRO: $_F_SPARK installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -2129,7 +2129,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ TTM ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_TOTEM - http://drupal.org/project/totem" ; then
+if prompt_yes_no "$_F_TOTEM - https://drupal.org/project/totem" ; then
 true
 msg "DISTRO: $_F_TOTEM installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
@@ -2221,11 +2221,11 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "ubercart-6.x-2.13.tar.gz" &> /dev/null
     get_dev_contrib "views-6.x-3.0.tar.gz" &> /dev/null
     get_dev_contrib "webform-6.x-3.20.tar.gz" &> /dev/null
-    ### http://drupal.org/node/1167276#comment-5138248
+    ### https://drupal.org/node/1167276#comment-5138248
     cd $_SHRD_PRPATH/modules/$_VIRT_PRNAME
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
     cd $_SHRD_PRPATH/modules/imagecache
-    # http://drupal.org/node/1243258#comment-4850634
+    # https://drupal.org/node/1243258#comment-4850634
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     cd $_SHRD_PRPATH/themes
@@ -2292,7 +2292,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "ubercart-7.x-3.6.tar.gz" &> /dev/null
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
-    # http://drupal.org/node/1766338#comment-6445882
+    # https://drupal.org/node/1766338#comment-6445882
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else
@@ -2356,7 +2356,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "ubercart-7.x-3.6.tar.gz" &> /dev/null
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
-    # http://drupal.org/node/1766338#comment-6445882
+    # https://drupal.org/node/1766338#comment-6445882
     curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else

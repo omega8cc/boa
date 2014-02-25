@@ -25,7 +25,7 @@
 ###  GNU GPL along with this program.
 ###  If not, see http://www.gnu.org/licenses/
 ###
-###  Code: http://code.aegir.cc/aegir
+###  Code: https://code.aegir.cc/aegir
 ###
 ###----------------------------------------###
 
@@ -740,7 +740,7 @@ _PERMISSIONS_FIX=NO
 ### Note that if you disable this option, you
 ### will automatically disable also the user
 ### register protection check/feature:
-### http://omega8.cc/node/273
+### https://omega8.cc/node/273
 ###
 _MODULES_FIX=YES
 
@@ -768,7 +768,7 @@ _MODULES_SKIP=""
 ### well looking, strong passwords and not
 ### some binary garbage, which is typically
 ### a sign of unreliable /dev/urandom.
-### See: http://drupal.org/node/1952042
+### See: https://drupal.org/node/1952042
 ###
 ### By default new passwords are generated
 ### with "pwgen -v -s -1" command.
@@ -1000,7 +1000,7 @@ _PHP_MONGODB=NO
 ### Change to YES to always compile in
 ### GEOS extension. Works for PHP 5.3 only.
 ### Warning: experimental only! See issue:
-### http://drupal.org/node/1913488
+### https://drupal.org/node/1913488
 ###
 _PHP_GEOS=NO
 

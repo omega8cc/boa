@@ -225,7 +225,7 @@ or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/upgrade
+  https://omega8.cc/upgrade
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -274,7 +274,7 @@ or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/upgrade
+  https://omega8.cc/upgrade
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -323,7 +323,7 @@ or purchase enough Aegir Cores to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/upgrade
+  https://omega8.cc/upgrade
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -377,7 +377,7 @@ to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/upgrade
+  https://omega8.cc/upgrade
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -422,7 +422,7 @@ to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/upgrade
+  https://omega8.cc/upgrade
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -467,7 +467,7 @@ to cover your current usage.
 
 You can purchase more Aegir Cores easily online:
 
-  http://omega8.cc/upgrade
+  https://omega8.cc/upgrade
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
