@@ -201,8 +201,8 @@ count () {
 }
 
 send_notice_sql () {
-  _ADM_EMAIL="billing@omega8.cc"
-  _BCC_EMAIL="notify@omega8.cc"
+  _ADM_EMAIL="notify@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
@@ -247,6 +247,11 @@ pay for all past due overages plus \$152 USD reconnection fee.
 We provide very generous soft-limits and we allow free-of-charge overages
 between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
+
+If you have any questions, please don't respond to this message, since
+it was sent from our default system address. Instead please use the form at:
+
+  https://omega8.cc/billing
 
 Thank you in advance.
 
@@ -357,8 +362,8 @@ EOF
 }
 
 send_notice_disk () {
-  _ADM_EMAIL="billing@omega8.cc"
-  _BCC_EMAIL="notify@omega8.cc"
+  _ADM_EMAIL="notify@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
@@ -399,6 +404,11 @@ pay for all past due overages plus \$152 USD reconnection fee.
 We provide very generous soft-limits and we allow free-of-charge overages
 between weekly checks which happen every Monday, but in return we expect
 that you will use this allowance responsibly and sparingly.
+
+If you have any questions, please don't respond to this message, since
+it was sent from our default system address. Instead please use the form at:
+
+  https://omega8.cc/billing
 
 Thank you in advance.
 
