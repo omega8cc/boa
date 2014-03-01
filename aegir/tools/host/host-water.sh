@@ -66,12 +66,12 @@ for i in `dir -d /vservers/*` ; do
         fi
       fi
       echo $_IP $_NR_TEST
-      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
+      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "16" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 22"
         else
-          if [ $_NR_TEST -ge "24" ] ; then
+          if [ $_NR_TEST -ge "32" ] ; then
             echo "Deny $_IP permanently $_NR_TEST"
             csf -d $_IP do not delete Brute force SSH Server $_NR_TEST attacks
           else
@@ -96,12 +96,12 @@ for i in `dir -d /vservers/*` ; do
         fi
       fi
       echo $_IP $_NR_TEST
-      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
+      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "16" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 80"
         else
-          if [ $_NR_TEST -ge "24" ] ; then
+          if [ $_NR_TEST -ge "32" ] ; then
             echo "Deny $_IP permanently $_NR_TEST"
             csf -d $_IP do not delete Brute force Web Server $_NR_TEST attacks
           else
@@ -126,12 +126,12 @@ for i in `dir -d /vservers/*` ; do
         fi
       fi
       echo $_IP $_NR_TEST
-      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "8" ] ; then
+      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "16" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 21"
         else
-          if [ $_NR_TEST -ge "24" ] ; then
+          if [ $_NR_TEST -ge "32" ] ; then
             echo "Deny $_IP permanently $_NR_TEST"
             csf -d $_IP do not delete Brute force FTP Server $_NR_TEST attacks
           else
