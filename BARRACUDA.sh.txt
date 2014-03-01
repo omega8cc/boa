@@ -8444,7 +8444,7 @@ if [ ! -e "/var/xdrago/log/sysctl.conf-$_INSTALLER_VERSION-$_NOW.log" ] ; then
   if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] ; then
     sysctl -p /etc/sysctl.conf &> /dev/null
     _IF_CDP=$(ps aux | grep '[c]dp_io' | awk '{print $2}')
-    if [ -z $_IF_CDP ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
+    if [ -z "$_IF_CDP" ] && [ ! -e "/root/.no.swap.clear.cnf" ] ; then
       msg "INFO: Cleaning up system swap, it may take a moment, please wait..."
       st_runner "swapoff -a" &> /dev/null
       st_runner "swapon -a" &> /dev/null

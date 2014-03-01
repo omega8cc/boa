@@ -62,7 +62,7 @@ guard_stats()
         fi
       fi
       echo $_IP $_NR_TEST
-      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "16" ] ; then
+      if [ ! -z "$_NR_TEST" ] && [ $_NR_TEST -ge "16" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 22"
@@ -92,7 +92,7 @@ guard_stats()
         fi
       fi
       echo $_IP $_NR_TEST
-      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "16" ] ; then
+      if [ ! -z "$_NR_TEST" ] && [ $_NR_TEST -ge "16" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 80"
@@ -122,7 +122,7 @@ guard_stats()
         fi
       fi
       echo $_IP $_NR_TEST
-      if [ ! -z $_NR_TEST ] && [ $_NR_TEST -ge "16" ] ; then
+      if [ ! -z "$_NR_TEST" ] && [ $_NR_TEST -ge "16" ] ; then
         _FW_TEST=$(iptables --list -n | grep $_IP 2>&1)
         if [[ "$_FW_TEST" =~ "$_IP" ]] ; then
           echo "$_IP already denied or allowed on port 21"
