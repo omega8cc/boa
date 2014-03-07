@@ -656,7 +656,7 @@ fi
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _CIVICRM_PN=boa-2.0.9-dev
-_COD=7.x-1.0-alpha3
+_COD=7.x-1.0-alpha5
 _COM_MERCE=7.x-2.12
 _COMMERCE=7.x-1.23
 _D6COMMONS=6.x-2.16
