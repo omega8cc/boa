@@ -443,7 +443,7 @@ for i in $REVISIONS; do
       get_dev_contrib "expire-7.x-2.0-rc2.tar.gz"
     fi
     cd /data/all/$i/o_contrib_seven
-    get_dev_contrib "advagg-7.x-2.3.tar.gz"
+    get_dev_contrib "advagg-7.x-2.5.tar.gz"
     get_dev_contrib "boost-7.x-1.x.tar.gz"
     get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
     get_dev_contrib "display_cache-7.x-1.x-dev.tar.gz"
@@ -493,7 +493,7 @@ download_o_contrib_seven () {
   touch update-042.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
-  get_dev_contrib "advagg-7.x-2.3.tar.gz"
+  get_dev_contrib "advagg-7.x-2.5.tar.gz"
   get_dev_contrib "blockcache_alter-7.x-1.x-dev.tar.gz"
   get_dev_contrib "boost-7.x-1.x.tar.gz"
   get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
