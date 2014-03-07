@@ -27,10 +27,11 @@
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
 ### FSR ----------- Feature Server
+### GDR ----------- Guardr
 ### MNS ----------- Managing News
 ### NS7 ----------- NodeStream D7 (off)
-### OAM ----------- Open Atrium D6
 ### OA7 ----------- Open Atrium D7
+### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
 ### OBG ----------- OpenBlog
 ### OCH ----------- OpenChurch

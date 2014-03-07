@@ -53,6 +53,7 @@ _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
 _DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
 _DRUSH_CC_REQ=EDIT_DRUSH_CC_REQ
+_GUARDR=EDIT_GUARDR
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _NODESTREAM7=EDIT_NODESTREAM7
 _OPEN_DEALS=EDIT_OPEN_DEALS
@@ -1516,6 +1517,11 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/fserver-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites" ] ; then
