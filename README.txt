@@ -117,6 +117,7 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 * PHP-FPM 5.5, 5.4, 5.3 - multi-install mode, configured per Octopus instance.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
 * Fast Redis Cache with DB auto-failover for all 6.x and 7.x platforms.
+* Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
 * Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
@@ -137,7 +138,6 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.
-* Fast Redis Lock support with DB auto-failover for all 6.x and 7.x platforms.
 * Latest release of Percona 5.5 database server.
 * New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
 * LDAP Nginx support via third-party module.
