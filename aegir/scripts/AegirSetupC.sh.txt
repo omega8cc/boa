@@ -1786,8 +1786,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_OPENDEALS = "7.x-1.31" ] ; then
       cd $_SHRD_PRPATH/modules
-      rm -f -r {diff}
+      rm -f -r {diff,webform}
       get_dev_contrib "diff-7.x-3.2.tar.gz" &> /dev/null
+      get_dev_contrib "webform-7.x-3.20.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
