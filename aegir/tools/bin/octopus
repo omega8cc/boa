@@ -290,7 +290,7 @@ up_stable ()
 up_head ()
 {
   up_start
-  curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else

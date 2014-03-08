@@ -175,12 +175,12 @@ init_setup ()
   fi
   if [ "$mode" = "stock" ] ; then
     cmmand=in-head
-    curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-    curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+    curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   else
     if [ "$cmmand" = "in-head" ] ; then
-      curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/nginx-for-drupal/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+      curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+      curl -s --retry 10 --retry-delay 5 -A iCab "https://raw.github.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     elif [ "$cmmand" = "in-stable" ] ; then
       curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt

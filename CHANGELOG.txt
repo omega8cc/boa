@@ -3106,7 +3106,7 @@ Added/Removed:
 Added/Fixed:
 
 1. Missing --with-libevent=shared added in php-fpm-install.txt
-   http://github.com/omega8cc/nginx-for-drupal/issues/#issue/2
+   http://github.com/omega8cc/boa/issues/#issue/2
 
 2. Debian specific stuff added in php-fpm-install.txt to allow
    easy install on vanilla vps.
@@ -3119,7 +3119,7 @@ Added/Fixed:
 Added/Fixed:
 
 1. mkdir for required cache dirs added in nginx-install.txt
-   http://github.com/omega8cc/nginx-for-drupal/issues#issue/1
+   http://github.com/omega8cc/boa/issues#issue/1
 
 
 ### Fri, 2010-01-29 06:37

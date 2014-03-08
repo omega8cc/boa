@@ -214,10 +214,10 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 * Issue queues:
   https://drupal.org/project/issues/barracuda (active)
   https://drupal.org/project/issues/octopus (active)
-  https://github.com/omega8cc/nginx-for-drupal/issues (active)
+  https://github.com/omega8cc/boa/issues (active)
 
 * Patches:
-  https://github.com/omega8cc/nginx-for-drupal/ (main repository)
+  https://github.com/omega8cc/boa/ (main repository)
 
   Please don't post your server logs here. Instead use
   http://gist.github.com and post the link in your submission.
@@ -225,7 +225,7 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 ### REPOSITORIES
 
-* https://github.com/omega8cc/nginx-for-drupal/ (main)
+* https://github.com/omega8cc/boa/ (main)
 * https://drupal.org/project/barracuda (mirror)
 * https://drupal.org/project/octopus (mirror)
 * https://code.aegir.cc/aegir (mirror)

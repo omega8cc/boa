@@ -1366,7 +1366,7 @@ check_git_repos_status () {
     fi
   fi
   if [ "$_GITHUB_WORKS" = "YES" ] ; then
-    _BOA_REPO_NAME="nginx-for-drupal"
+    _BOA_REPO_NAME="boa"
     _BOA_REPO_GIT_URL="git://github.com/omega8cc"
     msg "INFO: GitHub mirror repository will be used"
   elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
@@ -5551,10 +5551,10 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
 fi
 if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
   rm -f -r /opt/tmp/test-*
-  _GITHUB_TEST=`git clone git://github.com/omega8cc/nginx-for-drupal.git /opt/tmp/test-nginx-for-drupal 2>&1`
+  _GITHUB_TEST=`git clone git://github.com/omega8cc/boa.git /opt/tmp/test-boa 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
     echo " "
-    msg "EXIT on error (nginx-for-drupal) due to GitHub downtime"
+    msg "EXIT on error (boa) due to GitHub downtime"
     msg "Please try to run this script again in a few minutes"
     msg "You may want to check https://status.github.com/messages"
     msg "Bye"
@@ -5595,7 +5595,7 @@ fi
 
 
 ###--------------------###
-_BOA_REPO_NAME="nginx-for-drupal"
+_BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="git://github.com/omega8cc"
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
 if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
@@ -5630,8 +5630,8 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     fi
   fi
 else
-  curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/nginx-for-drupal-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
-  _BOA_REPO_NAME="nginx-for-drupal"
+  curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
+  _BOA_REPO_NAME="boa"
 fi
 #
 if [ ! -e "/opt/tmp/$_BOA_REPO_NAME/aegir/helpers/apt.conf.noninteractive" ] ; then
