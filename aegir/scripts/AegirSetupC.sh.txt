@@ -1685,12 +1685,13 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {subtle_simplicity}
       get_dev_contrib "subtle_simplicity-7.x-2.x-dev.tar.gz" &> /dev/null
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {entitycache,filefield_sources,honeypot,markdown,google_analytics,r4032login}
+      rm -f -r {entitycache,filefield_sources,google_analytics,honeypot,markdown,metatag,r4032login}
       get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
-      get_dev_contrib "honeypot-7.x-1.15.tar.gz" &> /dev/null
-      get_dev_contrib "markdown-7.x-1.2.tar.gz" &> /dev/null
-      get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
-      get_dev_contrib "r4032login-7.x-1.7.tar.gz" &> /dev/null
+      get_dev_contrib "google_analytics-7.x-1.4.tar.gz"  &> /dev/null
+      get_dev_contrib "honeypot-7.x-1.15.tar.gz"         &> /dev/null
+      get_dev_contrib "markdown-7.x-1.2.tar.gz"          &> /dev/null
+      get_dev_contrib "metatag-7.x-1.0-beta9.tar.gz"     &> /dev/null
+      get_dev_contrib "r4032login-7.x-1.7.tar.gz"        &> /dev/null
       upgrade_contrib_less
     fi
   else
