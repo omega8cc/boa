@@ -4,7 +4,7 @@
   *   depending on the $load_entities parameter.
   */
  function taxonomy_get_tree($vid, $parent = 0, $max_depth = NULL, $load_entities = FALSE) {
-+  if (function_exists('taxonomy_edge_get_tree')) {
++  if (module_exists('taxonomy_edge') && function_exists('taxonomy_edge_get_tree')) {
 +    return taxonomy_edge_get_tree($vid, $parent, $max_depth, $load_entities);
 +  }
    $children = &drupal_static(__FUNCTION__, array());
