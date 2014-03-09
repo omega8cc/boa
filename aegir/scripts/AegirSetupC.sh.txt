@@ -2196,11 +2196,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
     if [ $_TOTEM = "7.x-1.1" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {filefield_sources,location,mimemail,plupload}
+      rm -f -r {filefield_sources,location,media,mimemail,plupload}
       get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
-      get_dev_contrib "location-7.x-3.1.tar.gz" &> /dev/null
-      get_dev_contrib "mimemail-7.x-1.0-beta1.tar.gz" &> /dev/null
-      get_dev_contrib "plupload-7.x-1.4.tar.gz" &> /dev/null
+      get_dev_contrib "location-7.x-3.1.tar.gz"          &> /dev/null
+      get_dev_contrib "media-7.x-1.4.tar.gz"             &> /dev/null
+      get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"    &> /dev/null
+      get_dev_contrib "plupload-7.x-1.4.tar.gz"          &> /dev/null
       upgrade_contrib_less
     fi
   else
