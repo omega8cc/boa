@@ -216,11 +216,11 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
   https://drupal.org/project/issues/octopus (active)
   https://github.com/omega8cc/boa/issues (active)
 
-* Patches:
-  https://github.com/omega8cc/boa/ (main repository)
-
   Please don't post your server logs here. Instead use
   http://gist.github.com and post the link in your submission.
+
+* Patches:
+  https://github.com/omega8cc/boa/ (main repository)
 
 
 ### REPOSITORIES
@@ -233,10 +233,7 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 ### MAINTAINERS
 
-* Grace  - https://omega8.cc
-* Albert - https://omega8.cc
-* Robert - https://omega8.cc
-* Greg   - https://omega8.cc
+* https://omega8.cc
 
 
 ### HELP
