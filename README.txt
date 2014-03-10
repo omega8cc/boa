@@ -166,7 +166,7 @@ Octopus can install the platforms listed below:
  Guardr 1.0 ------------------- https://drupal.org/project/guardr
  Open Academy 1.0 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.15 ------------- https://drupal.org/project/openatrium
- Open Deals 1.31 -------------- https://drupal.org/project/opendeals
+ Open Deals 1.32 -------------- https://drupal.org/project/opendeals
  Open Outreach 1.5 ------------ https://drupal.org/project/openoutreach
  OpenBlog 1.0-a3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.11 -------------- https://drupal.org/project/openchurch
