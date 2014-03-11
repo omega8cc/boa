@@ -1065,19 +1065,19 @@ _INSTALLER_VERSION=BOA-2.2.0-dev
 ### Software versions
 ###
 _BZR_VERSION=2.6.0
-_CGP_VERSION=0.4.1
+_CGP_VERSION=master-10-03-2014
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.35.0
-_DRUSH_VERSION=4-19-01-2014
-_DRUSH6_VERSION=6-19-01-2014
-_DRUSH7_VERSION=7-19-01-2014
+_DRUSH_VERSION=head-4-10-03-2014
+_DRUSH6_VERSION=head-6-10-03-2014
+_DRUSH7_VERSION=head-7-10-03-2014
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=1.9.0
 _IMAGICK_VERSION=3.1.2
 _IONCUBE_VERSION=4.5.3
 _JETTY_7_VERSION=7.6.14.v20131031
 _JETTY_8_VERSION=8.1.14.v20131031
-_JETTY_9_VERSION=9.1.2.v20140210
+_JETTY_9_VERSION=9.1.3.v20140225
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
 _MARIADB_VERSION=5.5.36
@@ -1092,19 +1092,19 @@ _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
 _PHP53_VERSION=5.3.28
 _PHP54_API=20100525
-_PHP54_VERSION=5.4.25
+_PHP54_VERSION=5.4.26
 _PHP55_API=20121212
 _PHP55_VERSION=5.5.10
-_PHPREDIS_VERSION=master-22-01-2014
+_PHPREDIS_VERSION=master-10-03-2014
 _PURE_FTPD_VERSION=1.0.36
-_REDIS_VERSION=2.8.6
-_RUBY_VERSION=2.1.0
+_REDIS_VERSION=2.8.7
+_RUBY_VERSION=2.1.1
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
 _SOLR_4_VERSION=4.2.0
 _UPLOADPROGRESS_VERSION=1.0.3.1
 _VNSTAT_VERSION=1.11
-_ZEND_OPCACHE_VERSION=master-22-01-2014
+_ZEND_OPCACHE_VERSION=master-09-03-2014
 _ZLIB_VERSION=1.2.8
 if [ "$_USE_STOCK" = "YES" ] ; then
   _DRUSH_VERSION="$_DRUSH6_VERSION"
@@ -3985,6 +3985,7 @@ provision_backend_dbpass_generate () {
     exit 1
   fi
 _ESC="\`%\`.*"
+mysqladmin flush-privileges &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
@@ -3996,6 +3997,8 @@ else
 DROP USER '$_ADBU'@'$_AEGIR_HOST';
 DROP USER '$_ADBU'@'$_RESOLVEIP';
 DROP USER '$_ADBU'@'localhost';
+EOFMYSQL
+  mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_ADBU'@'localhost' IDENTIFIED BY '$_ESC_APASS' WITH GRANT OPTION;
@@ -7910,8 +7913,12 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         true
         msg "INFO: Installing Collectd Graph Panel..."
         st_runner "$_INSTAPP collectd" 2> /dev/null
+        rm -f -r /var/www/cgp
         cd /var/www
         get_dev_arch "cgp-$_CGP_VERSION.tar.gz" &> /dev/null
+        if [ -e "/var/www/cgp-$_CGP_VERSION" ] ; then
+          mv -f cgp-$_CGP_VERSION cgp &> /dev/null
+        fi
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
         chown -R $_PHP_CN:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"

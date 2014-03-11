@@ -163,10 +163,10 @@ Octopus can install the platforms listed below:
  Commerce 2.12 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.9 ------------------ https://drupal.org/project/commons
  Drupal 7.26.1 ---------------- https://drupal.org/drupal-7.26
- Guardr 1.0 ------------------- https://drupal.org/project/guardr
+ Guardr 1.1 ------------------- https://drupal.org/project/guardr
  Open Academy 1.0 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.15 ------------- https://drupal.org/project/openatrium
- Open Deals 1.31 -------------- https://drupal.org/project/opendeals
+ Open Deals 1.32 -------------- https://drupal.org/project/opendeals
  Open Outreach 1.5 ------------ https://drupal.org/project/openoutreach
  OpenBlog 1.0-a3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.11 -------------- https://drupal.org/project/openchurch
@@ -216,11 +216,11 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
   https://drupal.org/project/issues/octopus (active)
   https://github.com/omega8cc/boa/issues (active)
 
-* Patches:
-  https://github.com/omega8cc/boa/ (main repository)
-
   Please don't post your server logs here. Instead use
   http://gist.github.com and post the link in your submission.
+
+* Patches:
+  https://github.com/omega8cc/boa/ (main repository)
 
 
 ### REPOSITORIES
@@ -233,10 +233,7 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 ### MAINTAINERS
 
-* Grace  - https://omega8.cc
-* Albert - https://omega8.cc
-* Robert - https://omega8.cc
-* Greg   - https://omega8.cc
+* https://omega8.cc
 
 
 ### HELP

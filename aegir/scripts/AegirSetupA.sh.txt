@@ -894,6 +894,7 @@ provision_backend_dbpass_generate () {
     exit 1
   fi
 _ESC="\`%\`.*"
+mysqladmin flush-privileges &> /dev/null
 if [ "$_STATUS" = "INIT" ] ; then
   mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
@@ -905,6 +906,8 @@ else
 DROP USER '$_USER'@'$_AEGIR_HOST';
 DROP USER '$_USER'@'$_RESOLVEIP';
 DROP USER '$_USER'@'localhost';
+EOFMYSQL
+  mysql -uroot mysql<<EOFMYSQL
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_AEGIR_HOST' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'$_RESOLVEIP' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON $_ESC TO '$_USER'@'localhost' IDENTIFIED BY '$_ESC_PASS' WITH GRANT OPTION;
