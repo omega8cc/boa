@@ -26,8 +26,8 @@ read_account_data () {
 }
 
 send_notice_core () {
-  _ADM_EMAIL="support@omega8.cc"
-  _BCC_EMAIL="notify@omega8.cc"
+  _ADM_EMAIL="notify@omega8.cc"
+  _BCC_EMAIL="omega8cc@gmail.com"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
   _MAILX_TEST=`mail -V 2>&1`
   if [[ "$_MAILX_TEST" =~ "GNU Mailutils" ]] ; then
@@ -52,6 +52,13 @@ We are working hard to deliver top performance hosting
 for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
+
+If you have any questions, please don't respond to this message, since
+it was sent from our default system address. Instead please use the form at:
+
+  https://omega8.cc/support
+
+Thank you in advance.
 
 --
 This e-mail has been sent by your Aegir platform core monitor.
@@ -80,6 +87,13 @@ for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
 
+If you have any questions, please don't respond to this message, since
+it was sent from our default system address. Instead please use the form at:
+
+  https://omega8.cc/support
+
+Thank you in advance.
+
 --
 This e-mail has been sent by your Aegir platform core monitor.
 
@@ -106,6 +120,13 @@ We are working hard to deliver top performance hosting
 for your Drupal sites and we appreciate your efforts
 to meet the requirements, which are an integral part
 of the quality you can expect from Omega8.cc.
+
+If you have any questions, please don't respond to this message, since
+it was sent from our default system address. Instead please use the form at:
+
+  https://omega8.cc/support
+
+Thank you in advance.
 
 --
 This e-mail has been sent by your Aegir platform core monitor.
