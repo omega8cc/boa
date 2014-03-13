@@ -4519,11 +4519,11 @@ get_drush_versions () {
   get_dev_ext "Console_Table-1.1.3.tgz" &> /dev/null
   msg "INFO: Drush $_DRUSH6_VERSION installation complete"
   rm -f -r /opt/tools/drush/7/*
-  cd /opt/tools/drush/7/
-  get_dev_ext "drush-$_DRUSH7_VERSION.tar.gz" &> /dev/null
-  cd /opt/tools/drush/7/drush/lib
-  get_dev_ext "Console_Table-1.1.6.tgz" &> /dev/null
-  msg "INFO: Drush $_DRUSH7_VERSION installation complete"
+#   cd /opt/tools/drush/7/
+#   get_dev_ext "drush-$_DRUSH7_VERSION.tar.gz" &> /dev/null
+#   cd /opt/tools/drush/7/drush/lib
+#   get_dev_ext "Console_Table-1.1.6.tgz" &> /dev/null
+#   msg "INFO: Drush $_DRUSH7_VERSION installation complete"
   find /opt/tools -type d -exec chmod 0755 {} \; &> /dev/null
   find /opt/tools -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 /opt/tools/drush/*/drush/drush
@@ -4541,6 +4541,11 @@ get_drush_versions () {
   if [ -x "/opt/tools/drush/7/drush/drush" ] ; then
     rm -f /usr/bin/drush7
     ln -s /opt/tools/drush/7/drush/drush /usr/bin/drush7
+  else
+    rm -f /usr/bin/drush7
+    if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
+      ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush7
+    fi
   fi
   if [ -e "/opt/tools/drush/5" ] ; then
     rm -f -r /opt/tools/drush/5

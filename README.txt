@@ -121,7 +121,7 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 * Fast proxy DNS server (pdnsd) with permanent caching.
 * Limited Shell, SFTP and FTPS separate accounts per Octopus instance.
 * Limited Shell, SFTP and FTPS accounts per Aegir Client with per site access.
-* Drush and Drush Make access - drush4, drush6 and drush7 on command line.
+* Drush and Drush Make access - via drush, drush4 and drush6 on command line.
 * HTTPS access with self-signed certificate for all hosted sites.
 * Magic Speed Booster cache, working like a Boost + AuthCache, but per user.
 * Entry level XSS built-in protection on the Nginx level.
