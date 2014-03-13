@@ -53,17 +53,12 @@ check_php_cli_version () {
   if [ ! -z "$PHP_OPTIONS" ] && [ -f "$HOME/.drush/rphp.ini" ] ; then
     PHP_INI="$HOME/.drush/rphp.ini"
   fi
+# echo effective DRUSH_PHP is $DRUSH_PHP
+# echo effective PHP_INI is $PHP_INI
 }
 
 if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] || [[ "$_LTD_GID" =~ (^)"users www-data"($) ]] || [[ "$_LTD_GID" =~ (^)"aegir www-data users"($) ]] ; then
   if [ "$1" = "-c" ] ; then
-    if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
-      if [ "$0" = "/bin/sh" ] ; then
-        _SILENT=YES
-      else
-        echo
-      fi
-    fi
     if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
       _IN_PATH=YES
       _INTERNAL=YES
@@ -182,6 +177,13 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
       else
         _IN_PATH=NO
       fi
+    fi
+  fi
+  if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
+    if [[ "$2" =~ "set -m;" ]] ; then
+      _SILENT=YES
+    else
+      echo
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
