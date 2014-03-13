@@ -7925,6 +7925,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
           mv -f cgp-$_CGP_VERSION cgp &> /dev/null
         fi
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
+        sed -i "s/'uncategorized'/'Barracuda Server'/g" /var/www/cgp/index.php &> /dev/null
         chown -R $_PHP_CN:www-data /var/www/cgp
         _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
         validate_public_ip &> /dev/null
