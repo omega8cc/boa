@@ -630,7 +630,7 @@ _INSTALLER_VERSION=BOA-2.2.0-dev
 ###
 ### Variables
 ###
-_DRUSH_VERSION=4-19-01-2014
+_DRUSH_VERSION=mini-4-14-03-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
@@ -648,7 +648,7 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION=6-19-01-2014
+  _DRUSH_VERSION=mini-6-14-03-2014
 fi
 
 ###
