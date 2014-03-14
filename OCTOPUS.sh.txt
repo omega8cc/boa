@@ -2003,7 +2003,9 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     chattr +i /home/$1/platforms    &> /dev/null
     chattr +i /home/$1/platforms/*  &> /dev/null
-    chattr +i /home/$1/.bazaar      &> /dev/null
+    if [ -d "/home/$1/.bazaar" ] ; then
+      chattr +i /home/$1/.bazaar    &> /dev/null
+    fi
     chattr +i /home/$1/.drush       &> /dev/null
     chattr +i /home/$1/.drush/*.ini &> /dev/null
   fi
@@ -2014,7 +2016,9 @@ disable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     chattr -i /home/$1/platforms    &> /dev/null
     chattr -i /home/$1/platforms/*  &> /dev/null
-    chattr -i /home/$1/.bazaar      &> /dev/null
+    if [ -d "/home/$1/.bazaar" ] ; then
+      chattr -i /home/$1/.bazaar    &> /dev/null
+    fi
     chattr -i /home/$1/.drush       &> /dev/null
     chattr -i /home/$1/.drush/*.ini &> /dev/null
   fi

@@ -125,7 +125,9 @@ enable_chattr () {
       chattr +i /home/$1/platforms   &> /dev/null
       chattr +i /home/$1/platforms/* &> /dev/null
     fi
-    chattr +i /home/$1/.bazaar       &> /dev/null
+    if [ -d "/home/$1/.bazaar" ] ; then
+      chattr +i /home/$1/.bazaar     &> /dev/null
+    fi
     chattr +i /home/$1/.drush        &> /dev/null
     chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
@@ -140,7 +142,9 @@ disable_chattr () {
       chattr -i /home/$1/platforms   &> /dev/null
       chattr -i /home/$1/platforms/* &> /dev/null
     fi
-    chattr -i /home/$1/.bazaar       &> /dev/null
+    if [ -d "/home/$1/.bazaar" ] ; then
+      chattr -i /home/$1/.bazaar     &> /dev/null
+    fi
     chattr -i /home/$1/.drush        &> /dev/null
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
   fi
@@ -188,15 +192,15 @@ fix_dot_dirs()
   chmod 600 $_USER_SSH/known_hosts &> /dev/null
   _USER_BZR="/home/$_USER_LTD/.bazaar"
   if [ -x "/usr/local/bin/bzr" ] ; then
-    if [ ! -d "$_USER_BZR" ] ; then
+    if [ ! -e "$_USER_BZR/bazaar.conf" ] ; then
       mkdir -p $_USER_BZR
-      chown $_USER_LTD:$_USRG $_USER_BZR
+      echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
+      chown -R $_USER_LTD:$_USRG $_USER_BZR
       chmod 700 $_USER_BZR
     fi
   else
     rm -f -r $_USER_BZR
   fi
-  echo ignore_missing_extensions=True > $_USER_BZR/bazaar.conf
 }
 #
 # OK, create user.
