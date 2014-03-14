@@ -35,7 +35,7 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.uq.txt" ] ; then
       if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
@@ -71,7 +71,7 @@ enable_chattr () {
     done
     echo _PHP_CLI_UPDATE is $_PHP_CLI_UPDATE for $1
 
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.uq.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/.ctrl.php*
       rm -f $_U_HD/php.ini
@@ -116,7 +116,7 @@ enable_chattr () {
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
         echo > $_U_HD/.ctrl.php${_U_INI}.txt
-        echo > $_U_HD/.ctrl.ux.txt
+        echo > $_U_HD/.ctrl.uq.txt
       fi
     fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
@@ -380,7 +380,7 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.ux.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.uq.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -412,7 +412,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.ux.txt
+      echo > $_U_HD/.ctrl.uq.txt
     fi
     chattr +i $_U_HD/php.ini &> /dev/null
   fi
@@ -578,12 +578,12 @@ do
     echo "_OWN is == $_OWN == at manage_own"
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
-    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.ux.txt " ] ; then
+    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.uq.txt " ] ; then
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
-      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.ux.txt
+      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.uq.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf
@@ -609,11 +609,13 @@ do
           chmod 700 /home/${_OWN}.ftp/users
           chmod 600 /home/${_OWN}.ftp/users/*
         fi
-        if [ ! -d "/home/${_OWN}.ftp/.tmp" ] ; then
+        if [ ! -e "/home/${_OWN}.ftp/.tmp/.ctrl.uq.txt" ] ; then
+          rm -f -r /home/${_OWN}.ftp/.drush/cache
           rm -f -r /home/${_OWN}.ftp/.tmp
           mkdir -p /home/${_OWN}.ftp/.tmp
           chown ${_OWN}.ftp:users /home/${_OWN}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_OWN}.ftp/.tmp &> /dev/null
+          echo OK > /home/${_OWN}.ftp/.tmp/.ctrl.uq.txt
         fi
         enable_chattr ${_OWN}.ftp
         echo Done for $User
