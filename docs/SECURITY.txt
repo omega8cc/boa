@@ -36,7 +36,7 @@
 ###
 
 ###
-### _STRICT_BIN_PERMISSIONS=NO
+### _STRICT_BIN_PERMISSIONS=YES
 ###
 ### We highly recommend to enable this option
 ### to improve system security when certain

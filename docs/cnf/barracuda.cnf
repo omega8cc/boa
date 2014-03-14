@@ -71,7 +71,7 @@ _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_FROM_SOURCES=NO #---------- Allows to force OpenSSH build from sources
 _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _SSL_FROM_SOURCES=NO #---------- Allows to force OpenSSL build from sources
-_STRICT_BIN_PERMISSIONS=NO #---- Aggressively protect all binaries when YES
+_STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES

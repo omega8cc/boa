@@ -847,7 +847,7 @@ _PHP_FPM_DENY=""
 ### binary which has non-root group or has
 ### setgid or setuid permissions.
 ###
-_STRICT_BIN_PERMISSIONS=NO
+_STRICT_BIN_PERMISSIONS=YES
 
 ###
 ### Define the amount of RAM you want to keep
