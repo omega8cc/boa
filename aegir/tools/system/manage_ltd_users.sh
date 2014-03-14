@@ -203,6 +203,35 @@ fix_dot_dirs()
   fi
 }
 #
+# Manage Drush Aliases.
+manage_sec_user_drush_aliases()
+{
+  rm -f $_USER_LTD_ROOT/sites
+  ln -sf $Client $_USER_LTD_ROOT/sites
+  mkdir -p $_USER_LTD_ROOT/.drush
+  for Alias in `find $_USER_LTD_ROOT/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
+  do
+    _THIS_SITE_NAME=`echo "$Alias" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
+    if [ ! -z "$_THIS_SITE_NAME" ] && [ ! -e "$_USER_LTD_ROOT/sites/${_THIS_SITE_NAME}" ] ; then
+      rm -f $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+    fi
+  done
+  for Symlink in `find $_USER_LTD_ROOT/sites/ -maxdepth 1 -mindepth 1 | sort`
+  do
+    _THIS_SITE_NAME=`echo $Symlink | cut -d'/' -f5 | awk '{ print $1}'`
+    if [ ! -z "$_THIS_SITE_NAME" ] && [ ! -e "$_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
+      cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+      chmod 440 $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+    elif [ ! -z "$_THIS_SITE_NAME" ] && [ -e "$_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
+      _DIFF_TEST=$(diff $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php  $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php)
+      if [ ! -z "$_DIFF_TEST" ] ; then
+        cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+        chmod 440 $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+      fi
+    fi
+  done
+}
+#
 # OK, create user.
 ok_create_user()
 {
@@ -252,7 +281,6 @@ ok_create_user()
     echo >> $_THIS_LTD_CONF
     echo "[$_USER_LTD]" >> $_THIS_LTD_CONF
     echo "path : [$_ALLD_DIR]" >> $_THIS_LTD_CONF
-    ln -sf $Client $_USER_LTD_ROOT/sites
     chmod 700 $_USER_LTD_ROOT
     mkdir -p /home/$_ADMIN/users
     echo "$_ESC_LUPASS" > /home/$_ADMIN/users/$_USER_LTD
@@ -270,8 +298,7 @@ ok_update_user()
     echo >> $_THIS_LTD_CONF
     echo "[$_USER_LTD]" >> $_THIS_LTD_CONF
     echo "path : [$_ALLD_DIR]" >> $_THIS_LTD_CONF
-    rm $_USER_LTD_ROOT/sites
-    ln -sf $Client $_USER_LTD_ROOT/sites
+    manage_sec_user_drush_aliases
     chmod 700 $_USER_LTD_ROOT
   fi
   fix_dot_dirs
@@ -287,6 +314,7 @@ add_user_if_not_exists () {
   if [ -z "$_ID_EXISTS" ] ; then
     echo "We will create user == $_USER_LTD =="
     ok_create_user
+    manage_sec_user_drush_aliases
     enable_chattr $_USER_LTD
   elif [[ "$_ID_EXISTS" =~ "$_USER_LTD" ]] && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
     echo "We will update user == $_USER_LTD =="
@@ -502,6 +530,43 @@ switch_php()
   fi
 }
 #
+# Manage mirroring of drush aliases.
+manage_site_drush_alias_mirror () {
+  for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
+  do
+    AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
+    AliasName=`echo "$AliasName" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
+    if [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
+      _IS_SITE=NO
+    else
+      _THIS_SITE_NAME="$AliasName"
+      echo _THIS_SITE_NAME is $_THIS_SITE_NAME
+      if [[ "$_THIS_SITE_NAME" =~ ".restore"($) ]] ; then
+        _IS_SITE=NO
+        rm -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+      else
+        _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+        if [ -d "$_THIS_SITE_FDIR" ] ; then
+          echo _THIS_SITE_FDIR is $_THIS_SITE_FDIR
+          if [ ! -e "/home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php" ] ; then
+            cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php /home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+            chmod 440 /home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+          else
+            _DIFF_TEST=$(diff /home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php  $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php)
+            if [ ! -z "$_DIFF_TEST" ] ; then
+              cp -af $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php /home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+              chmod 440 /home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+            fi
+          fi
+        else
+          rm -f /home/${_OWN}.ftp/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+          echo ZOMBIE $_THIS_SITE_FDIR IN $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+        fi
+      fi
+    fi
+  done
+}
+#
 # Manage Primary Users.
 manage_own()
 {
@@ -537,6 +602,7 @@ do
         echo >> $_THIS_LTD_CONF
         echo "[${_OWN}.ftp]" >> $_THIS_LTD_CONF
         echo "path : ['/data/disk/$_OWN/distro', '/data/disk/$_OWN/static', '/data/disk/$_OWN/backups', '/data/disk/$_OWN/clients']" >> $_THIS_LTD_CONF
+        manage_site_drush_alias_mirror
         manage_sec
         if [ -e "/home/${_OWN}.ftp/users" ] ; then
           chown -R ${_OWN}.ftp:users /home/${_OWN}.ftp/users
