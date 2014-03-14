@@ -197,7 +197,7 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.uq.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.yz.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -228,7 +228,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.uq.txt
+      echo > $_U_HD/.ctrl.yz.txt
     fi
   fi
 }
