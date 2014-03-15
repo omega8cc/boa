@@ -48,6 +48,63 @@ nginx_high_load_off()
   /etc/init.d/nginx reload
 }
 
+update_ip_auth_access()
+{
+  if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+    sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
+d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    _NGX_TEST=$(service nginx configtest 2>&1)
+    if [[ "$_NGX_TEST" =~ "successful" ]] ; then
+      service nginx reload &> /dev/null
+    else
+      service nginx reload &> /var/backups/.auth.IP.list.ops
+      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+      service nginx reload &> /dev/null
+    fi
+  fi
+  rm -f /var/backups/.auth.IP.list
+  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
+  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list &> /dev/null
+  if [ -e "/var/backups/.auth.IP.list" ] ; then
+    _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list)
+  fi
+  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
+    echo "  deny                         all;" >> /var/backups/.auth.IP.list
+    echo "  ### access live"                   >> /var/backups/.auth.IP.list
+  else
+    echo "  deny                         all;" >  /var/backups/.auth.IP.list
+    echo "  ### access none"                   >> /var/backups/.auth.IP.list
+  fi
+}
+
+manage_ip_auth_access()
+{
+  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
+  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
+  if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+    _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list.tmp)
+  fi
+  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
+    echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
+    echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
+  else
+    echo "  deny                         all;" >  /var/backups/.auth.IP.list.tmp
+    echo "  ### access none"                   >> /var/backups/.auth.IP.list.tmp
+  fi
+  if [ ! -e "/var/backups/.auth.IP.list" ] ; then
+    update_ip_auth_access
+  else
+    if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
+      _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp /var/backups/.auth.IP.list)
+      if [ ! -z "$_DIFF_TEST" ] ; then
+        update_ip_auth_access
+      fi
+    fi
+  fi
+  rm -f /var/backups/.auth.IP.list.tmp
+}
+
 proc_control()
 {
   if [ $_O_LOAD -ge $_O_LOAD_MAX ] ; then
@@ -59,6 +116,7 @@ proc_control()
     echo ...OK now running proc_num_ctrl...
     perl /var/xdrago/proc_num_ctrl.cgi
     touch /var/xdrago/log/proc_num_ctrl.done
+    manage_ip_auth_access
     echo CTL done
   fi
 }

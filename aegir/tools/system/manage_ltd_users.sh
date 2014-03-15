@@ -517,13 +517,6 @@ switch_php()
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           update_php_cli_drush
           update_php_cli_local_ini
-          chmod 0440 /data/disk/${_OWN}/.drush/*.php &> /dev/null
-          chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
-          chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
-          chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
-          chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
-          find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-          find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
         fi
       fi
     fi
@@ -576,8 +569,13 @@ do
     _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_OWN is == $_OWN == at manage_own"
+    chmod 0440 /data/disk/${_OWN}/.drush/*.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
+    find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+    find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
     if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.yz.txt" ] ; then
       rm -f -r /data/disk/${_OWN}/.drush/cache
       rm -f -r /data/disk/${_OWN}/.tmp
@@ -631,85 +629,16 @@ do
   fi
 done
 }
-#
-# Update IP-Auth Xtras Access.
-update_ip_auth_xtras_access ()
-{
-  if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-    sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
-d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    _NGX_TEST=$(service nginx configtest 2>&1)
-    if [[ "$_NGX_TEST" =~ "successful" ]] ; then
-      service nginx reload &> /dev/null
-    else
-      service nginx reload &>     /var/backups/.auth.IP.list.ops
-      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-      service nginx reload &> /dev/null
-    fi
-  fi
-  rm -f /var/backups/.auth.IP.list
-  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
-  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list &> /dev/null
-  _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list)
-  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
-    echo "  deny                         all;" >> /var/backups/.auth.IP.list
-    echo "  ### access live"                   >> /var/backups/.auth.IP.list
-  else
-    echo "  deny                         all;" >  /var/backups/.auth.IP.list
-    echo "  ### access none"                   >> /var/backups/.auth.IP.list
-  fi
-  if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
-    _WAIT=YES
-  else
-    chmod 0440 /var/aegir/.drush/*.php &> /dev/null
-    chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
-    chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
-    chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
-    chmod 0710 /var/aegir/.drush &> /dev/null
-    find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-    find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
-  fi
-}
-#
-# Manage IP-Auth Xtras Access.
-manage_ip_auth_xtras_access ()
-{
-  for _IP in `who --ips | awk '{print $5}' | sort | uniq | tr -d "\s"`;do _IP=$(echo $_IP | cut -d: -f1); _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
-  sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
-  _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list.tmp)
-  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
-    echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
-    echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
-  else
-    echo "  deny                         all;" >  /var/backups/.auth.IP.list.tmp
-    echo "  ### access none"                   >> /var/backups/.auth.IP.list.tmp
-  fi
-  if [ ! -e "/var/backups/.auth.IP.list" ] ; then
-    update_ip_auth_xtras_access
-  else
-    if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-      _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp /var/backups/.auth.IP.list)
-      if [ ! -z "$_DIFF_TEST" ] ; then
-        update_ip_auth_xtras_access
-      fi
-    fi
-  fi
-  rm -f /var/backups/.auth.IP.list.tmp
-  echo `date` > /var/backups/.auth.IP.list.stamp
-}
-#
 
 ###-------------SYSTEM-----------------###
 
 _NOW=`date +%y%m%d-%H%M`
-manage_ip_auth_xtras_access
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.$_NOW"
 if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-manage-ltd-users
-  echo Another BOA task is running, we need to wait
+  echo Another BOA task is running, we have to wait
   exit
 elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   echo Missing /var/xdrago/conf/lshell.conf template
@@ -748,6 +677,13 @@ else
   if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ] ; then
     chmod 700 /home/* &> /dev/null
   fi
-  chmod 600 /var/log/lsh/*
+  chmod 0600 /var/log/lsh/*
+  chmod 0440 /var/aegir/.drush/*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
+  chmod 0710 /var/aegir/.drush &> /dev/null
+  find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
+  find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
 fi
 ###EOF2014###
