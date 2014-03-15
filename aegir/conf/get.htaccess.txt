@@ -106,6 +106,13 @@ DirectoryIndex index.php
   # uncomment the following line:
   # RewriteBase /
 
+# AIS: Adaptive Image Style
+  RewriteBase /
+  RewriteCond %{REQUEST_URI} ^(.+)/files/styles/adaptive/(.+)$
+  RewriteCond %{REQUEST_URI} !/modules/image/sample.png
+  RewriteCond %{HTTP_COOKIE} ais=([a-z0-9_-]+)
+  RewriteRule ^(.+)/files/styles/adaptive/(.+)$ $1/files/styles/%1/$2 [R=302,L]
+
   ### BOOST START ###
   AddDefaultCharset utf-8
   <FilesMatch "\.((html|xml|json)|((html|xml|json)\.gz))$">
