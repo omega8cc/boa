@@ -1910,6 +1910,9 @@ fi
 if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
   if [ -z "$_MY_OWNIP" ] ; then
     _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+    if [[ "$_THISHTIP" =~ "127.0.0." ]] ; then
+      _THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+    fi
   else
     _THISHTIP="$_MY_OWNIP"
   fi

@@ -2139,6 +2139,9 @@ validate_public_ip () {
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
       if [ -z "$_MY_OWNIP" ] ; then
         _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        if [[ "$_THISHTIP" =~ "127.0.0." ]] ; then
+          _THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        fi
       else
         _THISHTIP="$_MY_OWNIP"
       fi
@@ -2175,6 +2178,9 @@ validate_xtras_ip () {
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
       if [ -z "$_MY_OWNIP" ] ; then
         _XTRAS_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        if [[ "$_XTRAS_THISHTIP" =~ "127.0.0." ]] ; then
+          _XTRAS_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        fi
       else
         _XTRAS_THISHTIP="$_MY_OWNIP"
       fi
@@ -2223,6 +2229,9 @@ validate_purge_ip () {
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
       if [ -z "$_MY_OWNIP" ] ; then
         _PURGE_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        if [[ "$_PURGE_THISHTIP" =~ "127.0.0." ]] ; then
+          _PURGE_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        fi
       else
         _PURGE_THISHTIP="$_MY_OWNIP"
       fi
@@ -2271,6 +2280,9 @@ validate_local_ip () {
     if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
       if [ -z "$_MY_OWNIP" ] ; then
         _LOCAL_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        if [[ "$_LOCAL_THISHTIP" =~ "127.0.0." ]] ; then
+          _LOCAL_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+        fi
       else
         _LOCAL_THISHTIP="$_MY_OWNIP"
       fi
@@ -5800,6 +5812,9 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   else
     _THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+    if [[ "$_THISHTIP" =~ "127.0.0." ]] ; then
+      _THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+    fi
     _FQDNPROB=`uname -n 2> /dev/null`
     _FQDNTEST="FALSE"
     _THISHOST=`uname -n`
