@@ -66,7 +66,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     if [[ "$2" =~ "set -m;" ]] && [ "$0" = "/bin/sh" ] ; then
       _IN_PATH=YES
       _INTERNAL=YES
-      if [[ "$2" =~ "drush" ]] ; then
+      if [[ "$_ALL" =~ "drush" ]] ; then
         _PWD=$(pwd)
         check_php_cli_version
         if [[ "$2" =~ "pm-update" ]] ; then
@@ -89,11 +89,11 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
             PHP_INI="$HOME/.drush/rphp.ini"
           fi
         fi
-        if [[ "$2" =~ "drush make" ]] || [[ "$2" =~ "drush6 make" ]] || [[ "$2" =~ "drush7 make" ]] ; then
+        if [[ "$_ALL" =~ "drush make" ]] || [[ "$_ALL" =~ "drush6 make" ]] || [[ "$_ALL" =~ "drush7 make" ]] ; then
           if [[ "$_PWD" =~ "/static" ]] ; then
             _CORRECT=YES
           else
-            if [[ "$2" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then
+            if [[ "$_ALL" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then
               _CORRECT=YES
             else
               echo
@@ -110,10 +110,19 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
             fi
           fi
         else
-          if [[ "$2" =~ "drush6 @" ]] || [[ "$2" =~ "drush7 @" ]] || [[ "$2" =~ "drush6 sa" ]] ; then
+          if [[ "$_ALL" =~ "drush @" ]] || [[ "$_ALL" =~ "drush6 @" ]] || [[ "$_ALL" =~ "drush7 @" ]] ; then
+            if [[ "$3" =~ "restore"($) ]] || [[ "$3" =~ "arr"($) ]] || [[ "$3" =~ "cli"($) ]] || [[ "$3" =~ "conf"($) ]] || [[ "$3" =~ "config"($) ]] || [[ "$3" =~ "execute"($) ]] || [[ "$3" =~ "core-quick-drupal"($) ]] || [[ "$3" =~ "exec"($) ]] || [[ "$3" =~ (^)"ev"($) ]] || [[ "$3" =~ "eval"($) ]] || [[ "$3" =~ "status"($) ]] || [[ "$3" =~ (^)"qd"($) ]] || [[ "$3" =~ (^)"rs"($) ]] || [[ "$3" =~ "runserver"($) ]] || [[ "$3" =~ (^)"scr"($) ]] || [[ "$3" =~ (^)"sha"($) ]] || [[ "$3" =~ "shell-alias"($) ]] || [[ "$3" =~ (^)"si"($) ]] || [[ "$3" =~ "sql-create"($) ]] || [[ "$3" =~ (^)"ssh"($) ]] || [[ "$3" =~ (^)"sup"($) ]] ; then
+              echo
+              echo " This drush command is not available (A)"
+              echo
+              exit 0
+            else
+              _CORRECT=YES
+            fi
+          elif [[ "$_ALL" =~ "drush6 sa" ]] || [[ "$_ALL" =~ "drush4 site-alias" ]] ; then
             _CORRECT=YES
           else
-            if [[ "$2" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
+            if [[ "$_ALL" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
               echo
               echo " This drush command can not be run in $_PWD"
               echo " Please cd to the valid sites/foo.com directory first"
@@ -121,13 +130,21 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
               echo " Hint: Use 'drush sa' command to see all available aliases"
               echo
               exit 0
-            elif [[ "$2" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
+            elif [[ "$_ALL" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
               _CORRECT=YES
             fi
           fi
         fi
       fi
     else
+      if [[ "$_ALL" =~ "drush @" ]] || [[ "$_ALL" =~ "drush6 @" ]] || [[ "$_ALL" =~ "drush7 @" ]] ; then
+        if [[ "$3" =~ "restore"($) ]] || [[ "$3" =~ "arr"($) ]] || [[ "$3" =~ "cli"($) ]] || [[ "$3" =~ "conf"($) ]] || [[ "$3" =~ "config"($) ]] || [[ "$3" =~ "execute"($) ]] || [[ "$3" =~ "core-quick-drupal"($) ]] || [[ "$3" =~ "exec"($) ]] || [[ "$3" =~ (^)"ev"($) ]] || [[ "$3" =~ "eval"($) ]] || [[ "$3" =~ "status"($) ]] || [[ "$3" =~ (^)"qd"($) ]] || [[ "$3" =~ (^)"rs"($) ]] || [[ "$3" =~ "runserver"($) ]] || [[ "$3" =~ (^)"scr"($) ]] || [[ "$3" =~ (^)"sha"($) ]] || [[ "$3" =~ "shell-alias"($) ]] || [[ "$3" =~ (^)"si"($) ]] || [[ "$3" =~ "sql-create"($) ]] || [[ "$3" =~ (^)"ssh"($) ]] || [[ "$3" =~ (^)"sup"($) ]] ; then
+          echo
+          echo " This drush command is not available (B)"
+          echo
+          exit 0
+        fi
+      fi
       if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] || [[ "$2" =~ (^)"/opt/" ]] ; then
         _IN_PATH=YES
       elif [[ "$2" =~ (^)"/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
@@ -148,6 +165,14 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
       fi
     fi
   else
+    if [[ "$_ALL" =~ "drush @" ]] || [[ "$_ALL" =~ "drush6 @" ]] || [[ "$_ALL" =~ "drush7 @" ]] ; then
+      if [[ "$3" =~ "restore"($) ]] || [[ "$3" =~ "arr"($) ]] || [[ "$3" =~ "cli"($) ]] || [[ "$3" =~ "conf"($) ]] || [[ "$3" =~ "config"($) ]] || [[ "$3" =~ "execute"($) ]] || [[ "$3" =~ "core-quick-drupal"($) ]] || [[ "$3" =~ "exec"($) ]] || [[ "$3" =~ (^)"ev"($) ]] || [[ "$3" =~ "eval"($) ]] || [[ "$3" =~ "status"($) ]] || [[ "$3" =~ (^)"qd"($) ]] || [[ "$3" =~ (^)"rs"($) ]] || [[ "$3" =~ "runserver"($) ]] || [[ "$3" =~ (^)"scr"($) ]] || [[ "$3" =~ (^)"sha"($) ]] || [[ "$3" =~ "shell-alias"($) ]] || [[ "$3" =~ (^)"si"($) ]] || [[ "$3" =~ "sql-create"($) ]] || [[ "$3" =~ (^)"ssh"($) ]] || [[ "$3" =~ (^)"sup"($) ]] ; then
+        echo
+        echo " This drush command is not available (C)"
+        echo
+        exit 0
+      fi
+    fi
     if [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] || [[ "$1" =~ (^)"/opt/" ]] ; then
       _IN_PATH=YES
       if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
