@@ -1171,10 +1171,14 @@ purge_cruft_machine () {
   find $User/static/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find $User/static/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
 
-  find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
   find /home/${_THIS_HM_USER}.ftp/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+
+  mkdir -p $User/static/trash
+  chown ${_THIS_HM_USER}.ftp:users $User/static/trash
+  find $User/static/trash/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
 }
 
 action () {
