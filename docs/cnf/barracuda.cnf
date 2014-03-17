@@ -38,7 +38,7 @@ _CPU_SPIDER_RATIO=3 #----------- Max load per CPU core before blocking spiders
 ###
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_ENGINE=InnoDB #------------- Allows to specify default engine for Drupal 6
-_DB_SERVER=MariaDB #------------ Allows to install MariaDB or Percona DB server
+_DB_SERVER=MariaDB #------------ Allows to install only MariaDB 5.5 DB server
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt-get

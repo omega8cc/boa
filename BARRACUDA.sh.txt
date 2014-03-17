@@ -425,13 +425,14 @@ _AEGIR_VERSION=BOA-2.2.0
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### You can choose Percona 5.5 or MariaDB 5.5
+### You can choose MariaDB 5.5 or in the near
+### future also MariaDB 10, once released
+### as stable and tested enough.
 ###
-### You can choose/change the DB server both
-### on Barracuda install and upgrade - it will
-### also force PHP-FPM rebuild automatically.
-###
-### _DB_SERVER=Percona
+### Barracuda no longer supports Percona since
+### 2.2.0 release. If you have used Percona
+### before, Barracuda will force upgrade to
+### MariaDB 5.5 and PHP rebuild automatically.
 ###
 _DB_SERVER=MariaDB
 
@@ -2511,7 +2512,7 @@ tune_sql_memory_limits () {
   fi
 }
 #
-# Tune memory limits for PHP-FPM, Nginx and MariaDB/Percona.
+# Tune memory limits for PHP-FPM, Nginx and MariaDB.
 tune_memory_limits () {
   _ETH_TEST=`ifconfig 2>&1`
   _VM_TEST=`uname -a 2>&1`
@@ -2946,9 +2947,10 @@ barracuda_cnf () {
       else
         _R_M=BND
         _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
-        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g"                    /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
       fi
     fi
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
         _DO_NOTHING=YES
@@ -3388,6 +3390,7 @@ barracuda_cnf () {
         sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
       fi
     fi
+    sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
         _DO_NOTHING=YES

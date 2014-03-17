@@ -32,6 +32,13 @@
   overwrite them with the old files, but rather carefully review and apply
   only the differences you need.
 
+#-### Barracuda no longer supports Percona since 2.2.0 release
+
+  If you have used Percona before, Barracuda will force upgrade to MariaDB 5.5
+  and PHP rebuild automatically. We plan to add possibility to install
+  MariaDB 10.0 once released as stable and tested. MariaDB is the default
+  DB server in Barracuda for a long time already.
+
 #-### Support for PHP FPM/CLI version safe switch per Octopus instance
 
   This allows to easily switch PHP version by the instance owner w/o system
@@ -223,6 +230,7 @@
   * Nginx: Use text/xml mime type for .xml URLs and restore other mime defaults.
   * Open local access for web based sites cron.
   * Open outgoing port 2525 for custom SMTP connections.
+  * Percona DB server is no longer supported.
   * PHP: Always build from sources.
   * PHP: Disable 5.2 FPM if installed, but not used.
   * PHP: Only critical errors are enabled by default in the CLI mode.
@@ -264,7 +272,6 @@
   * Nginx 1.5.11
   * OpenSSH 6.5p1 (if installed from sources)
   * OpenSSL 1.0.1f (if installed from sources)
-  * Percona 5.5.36
   * PHP 5.4.26
   * PHP 5.5.10
   * PHP: Imagick 3.1.2
