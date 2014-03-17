@@ -78,7 +78,7 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.3
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=BOA-2.2.0
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
 ### _LOCAL_NETWORK_IP="127.0.1.1"
@@ -287,9 +287,9 @@ _MY_OWNIP=""
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.1.3
+### _AEGIR_VERSION=BOA-2.2.0
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.2.0
 
 
 ###----------------------------------------###
@@ -625,7 +625,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.2.0-dev
+_INSTALLER_VERSION=BOA-2.2.0
 
 ###
 ### Variables
@@ -1653,7 +1653,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=HEAD
+  _AEGIR_VERSION=BOA-2.2.0
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost
