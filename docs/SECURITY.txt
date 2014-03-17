@@ -57,9 +57,6 @@
 ### _STRICT_BIN_PERMISSIONS=YES
 ###
 
-
-
-
 ###
 ### You can define custom list of functions
 ### to disable besides those already denied
@@ -86,4 +83,3 @@
 ###
 ### _PHP_FPM_DENY="system,exec,shell_exec"
 ###
-
