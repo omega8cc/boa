@@ -159,7 +159,7 @@ Octopus can install the platforms listed below:
 
 ### Drupal 7.26.2
 
- Commerce 1.23 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.24 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.13 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.9 ------------------ https://drupal.org/project/commons
  Drupal 7.26.2 ---------------- https://drupal.org/drupal-7.26
