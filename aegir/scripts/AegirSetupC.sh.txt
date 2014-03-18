@@ -386,8 +386,8 @@ prepare_drupal7_core () {
     ln -s $_CORE/o_contrib_seven/js/js.php js.php
     rm -f -r $_D7_CORE_DIR/scripts
     cd $_D7_CORE_DIR/themes
-    get_dev_contrib "rubik-7.x-4.0-beta9.tar.gz"
-    get_dev_contrib "tao-7.x-3.0-beta4.tar.gz"
+    get_dev_contrib "rubik-7.x-4.0.tar.gz"
+    get_dev_contrib "tao-7.x-3.1.tar.gz"
     cd $_CORE
   fi
 }
