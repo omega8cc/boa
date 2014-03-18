@@ -42,16 +42,16 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
 _COD=EDIT_COD
-_COM_MERCE=EDIT_COM_MERCE
-_COMMERCE=EDIT_COMMERCE
-_D6COMMONS=EDIT_D6COMMONS
-_D7COMMONS=EDIT_D7COMMONS
+_COMMERCE1=EDIT_COMMERCE1
+_COMMERCE2=EDIT_COMMERCE2
+_COMMONS2=EDIT_COMMONS2
+_COMMONS3=EDIT_COMMONS3
+_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
 _DRUPAL7=EDIT_DRUPAL7
 _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
-_DRUPAL_EDGE_8=EDIT_DRUPAL_EDGE_8
 _DRUSH_CC_REQ=EDIT_DRUSH_CC_REQ
 _GUARDR=EDIT_GUARDR
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
@@ -74,8 +74,8 @@ _SMALLCORE7=EDIT_SMALLCORE7
 _SMALLCORE8=EDIT_SMALLCORE8
 _SPARK=EDIT_SPARK
 _TOTEM=EDIT_TOTEM
-_UBER_CART_SEVEN=EDIT_UBER_CART_SEVEN
-_UBERCART=EDIT_UBERCART
+_UBERCART6=EDIT_UBERCART6
+_UBERCART7=EDIT_UBERCART7
 
 
 ###---### Main config.
@@ -1441,24 +1441,24 @@ msg "$_STATUS A: Creating ftp symlinks"
       ln -sf $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/cod-$_COD-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COM_MERCE-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_D6COMMONS-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-$_D6COMMONS-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commons-$_D6COMMONS-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-$_D6COMMONS-$_SMALLCORE6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-$_D7COMMONS-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites" ] ; then
@@ -1607,19 +1607,19 @@ msg "$_STATUS A: Creating ftp symlinks"
       ln -sf $_ROOT/distro/$_THIS_CORE/totem-$_TOTEM-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/totem-$_TOTEM-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART-$_SMALLCORE6
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBER_CART_SEVEN-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7
     fi
   fi
-  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7/sites" ] ; then
-    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7" ] ; then
-      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBER_CART_SEVEN-$_SMALLCORE7
+  if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7
     fi
   fi
 fi
