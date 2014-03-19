@@ -759,11 +759,8 @@ if ($redis_up && $use_redis && !$custom_cache) {
     $conf['page_cache_lifetime']              = 0;     // D6 == BOA uses Speed Booster / Nginx micro-caching instead
     $conf['cache_default_class']              = 'Redis_Cache';
     $conf['cache_class_cache_form']           = 'DrupalDatabaseCache';
-    if (!$all_ini['redis_use_modern']) {
-      if ($conf['install_profile'] == 'hostmaster') {
-        $conf['cache_class_cache']            = 'DrupalDatabaseCache';
-      }
-      $conf['cache_class_cache_form']         = 'DrupalDatabaseCache';
+    if ($conf['install_profile'] == 'hostmaster') {
+      $conf['cache_class_cache']              = 'DrupalDatabaseCache';
     }
     if ($all_ini['redis_exclude_bins']) {
       $excludes = array();
