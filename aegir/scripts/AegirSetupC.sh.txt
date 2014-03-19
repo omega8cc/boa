@@ -1583,8 +1583,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "data-6.x-1.1.tar.gz"
     get_dev_contrib "fivestar-6.x-1.20.tar.gz"
     get_dev_contrib "votingapi-6.x-2.3.tar.gz"
-    rm -f -r {context,l10n_client,markdown,spaces}
+    rm -f -r {context,ctools,l10n_client,markdown,spaces}
     get_dev_contrib "context-6.x-3.3.tar.gz"
+    get_dev_contrib "ctools-6.x-1.11.tar.gz"
     get_dev_contrib "l10n_client-6.x-2.2.tar.gz"
     get_dev_contrib "markdown-6.x-1.4.tar.gz"
     get_dev_contrib "spaces-6.x-3.7.tar.gz"
