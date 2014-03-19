@@ -1524,6 +1524,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_OPENACADEMY = "7.x-1.0" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {image_resize_filter}
+      get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1632,8 +1634,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENATRIUM7 = "7.x-2.09" ] ; then
+    if [ $_OPENATRIUM7 = "7.x-2.15" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {mimemail}
+      get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1686,7 +1690,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {entitycache,filefield_sources,google_analytics,honeypot,markdown,metatag,r4032login}
       get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
       get_dev_contrib "google_analytics-7.x-1.4.tar.gz"  &> /dev/null
-      get_dev_contrib "honeypot-7.x-1.15.tar.gz"         &> /dev/null
+      get_dev_contrib "honeypot-7.x-1.16.tar.gz"         &> /dev/null
       get_dev_contrib "markdown-7.x-1.2.tar.gz"          &> /dev/null
       get_dev_contrib "metatag-7.x-1.0-beta9.tar.gz"     &> /dev/null
       get_dev_contrib "r4032login-7.x-1.7.tar.gz"        &> /dev/null
@@ -1735,10 +1739,14 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
     rm -f -r $_SHRD_PRPATH/libraries/plupload/examples
-    if [ $_OPENCHURCH = "7.x-1.11-beta14" ] ; then
+    if [ $_OPENCHURCH = "7.x-1.11" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {filefield_sources}
-      get_dev_contrib "filefield_sources-7.x-1.9.tar.gz" &> /dev/null
+      rm -f -r {metatag,panels,recaptcha,views_php,webform}
+      get_dev_contrib "metatag-7.x-1.0-beta9.tar.gz"    &> /dev/null
+      get_dev_contrib "panels-7.x-3.4.tar.gz"           &> /dev/null
+      get_dev_contrib "recaptcha-7.x-1.11.tar.gz"       &> /dev/null
+      get_dev_contrib "views_php-7.x-1.0-alpha1.tar.gz" &> /dev/null
+      get_dev_contrib "webform-7.x-3.20.tar.gz"         &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1783,11 +1791,11 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENDEALS = "7.x-1.31" ] ; then
+    if [ $_OPENDEALS = "7.x-1.32" ] ; then
       cd $_SHRD_PRPATH/modules
-      rm -f -r {diff,webform}
+      rm -f -r {diff,xmlsitemap}
       get_dev_contrib "diff-7.x-3.2.tar.gz" &> /dev/null
-      get_dev_contrib "webform-7.x-3.20.tar.gz" &> /dev/null
+      get_dev_contrib "xmlsitemap-7.x-2.0.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1943,9 +1951,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    cd $_SHRD_PRPATH/modules/contrib
-    rm -f -r {entitycache}
+    rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache}
     if [ $_OPENSCHOLAR = "7.x-3.9.3" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
       upgrade_contrib_less
     fi
   else
@@ -1992,9 +2000,9 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_PANOPOLY = "7.x-1.1" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      upgrade_contrib_less
-      rm -f -r $_SHRD_PRPATH/modules/contrib/image_resize_filter
+      rm -f -r {image_resize_filter}
       get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
+      upgrade_contrib_less
     fi
     if [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
       if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] ; then
