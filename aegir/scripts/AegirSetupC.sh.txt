@@ -1902,7 +1902,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
       get_dev_contrib "imce-7.x-1.7.tar.gz" &> /dev/null
       get_dev_contrib "link-7.x-1.1.tar.gz" &> /dev/null
-      get_dev_contrib "plupload-7.x-1.1.tar.gz" &> /dev/null
+      get_dev_contrib "plupload-7.x-1.6.tar.gz" &> /dev/null
       get_dev_contrib "recaptcha-7.x-1.9.tar.gz" &> /dev/null
       get_dev_contrib "references-7.x-2.1.tar.gz" &> /dev/null
       get_dev_contrib "token-7.x-1.5.tar.gz" &> /dev/null
@@ -2213,7 +2213,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       get_dev_contrib "location-7.x-3.1.tar.gz"          &> /dev/null
       get_dev_contrib "media-7.x-1.4.tar.gz"             &> /dev/null
       get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"    &> /dev/null
-      get_dev_contrib "plupload-7.x-1.4.tar.gz"          &> /dev/null
+      get_dev_contrib "plupload-7.x-1.6.tar.gz"          &> /dev/null
       upgrade_contrib_less
     fi
   else
