@@ -1951,9 +1951,15 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache}
-    if [ $_OPENSCHOLAR = "7.x-3.9.3" ] ; then
+    rm -f -r $_SHRD_PRPATH/modules/contrib/{entitycache,expire}
+    if [ $_OPENSCHOLAR = "7.x-3.11.2" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {biblio,boxes,entityreference_prepopulate,media,restws}
+      get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz" &> /dev/null
+      get_dev_contrib "boxes-7.x-1.1.tar.gz" &> /dev/null
+      get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz" &> /dev/null
+      get_dev_contrib "media-7.x-2.x-dev.tar.gz" &> /dev/null
+      get_dev_contrib "restws-7.x-2.1.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -2009,7 +2015,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
         mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
       else
         cd $_SHRD_PRPATH/modules/panopoly
-        get_dev_contrib "panopoly_demo-7.x-1.1.tar.gz"
+        get_dev_contrib "panopoly_demo-7.x-1.2.tar.gz"
       fi
     fi
   else
