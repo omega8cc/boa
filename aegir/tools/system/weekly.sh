@@ -576,20 +576,53 @@ check_limits () {
   fi
 }
 
+count_cpu()
+{
+  _CPU_INFO=$(grep -c processor /proc/cpuinfo)
+  _CPU_INFO=${_CPU_INFO//[^0-9]/}
+  _NPROC_TEST=$(which nproc)
+  if [ -z "$_NPROC_TEST" ] ; then
+    _CPU_NR="$_CPU_INFO"
+  else
+    _CPU_NR=`nproc`
+  fi
+  _CPU_NR=${_CPU_NR//[^0-9]/}
+  if [ ! -z "$_CPU_NR" ] && [ ! -z "$_CPU_INFO" ] && [ "$_CPU_NR" -gt "$_CPU_INFO" ] && [ "$_CPU_INFO" -gt "0" ] ; then
+    _CPU_NR="$_CPU_INFO"
+  fi
+  if [ -z "$_CPU_NR" ] || [ "$_CPU_NR" -lt "1" ] ; then
+    _CPU_NR=1
+  fi
+}
+
+load_control()
+{
+  if [ -e "/root/.barracuda.cnf" ] ; then
+    source /root/.barracuda.cnf
+    _CPU_MAX_RATIO=${_CPU_MAX_RATIO//[^0-9]/}
+  fi
+  if [ -z "$_CPU_MAX_RATIO" ] ; then
+    _CPU_MAX_RATIO=6
+  fi
+  _O_LOAD=`awk '{print $1*100}' /proc/loadavg`
+  let "_O_LOAD = (($_O_LOAD / $_CPU_NR))"
+  let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
+}
+
 action () {
   for User in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`
   do
-    NOW_LOAD=`awk '{print $1*100}' /proc/loadavg`
-    CTL_LOAD=1500
+    count_cpu
+    load_control
     if [ -e "$User/config/server_master/nginx/vhost.d" ] ; then
-      if [ $NOW_LOAD -lt $CTL_LOAD ] ; then
+      if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then
         SumDir=0
         SumDat=0
         HomSiz=0
         HxmSiz=0
         _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-        echo load is $NOW_LOAD while maxload is $CTL_LOAD
+        echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo Counting User $User
         count
         if [ -e "/home/${_THIS_HM_USER}.ftp" ] ; then
@@ -625,7 +658,7 @@ action () {
         fi
         echo Done for $User
       else
-        echo load is $NOW_LOAD while maxload is $CTL_LOAD
+        echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo ...we have to wait...
       fi
       echo

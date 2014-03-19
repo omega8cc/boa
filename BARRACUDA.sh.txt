@@ -5163,7 +5163,6 @@ finale () {
     mrun "sleep 8"
   fi
   msg "Final post-$_L_ST cleaning, please wait a moment..."
-  sed -i "s/CTL_LOAD=.*/CTL_LOAD=350/g" /var/xdrago/run-* &> /dev/null
   mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
   echo > /etc/motd
