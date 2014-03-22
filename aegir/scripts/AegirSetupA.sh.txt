@@ -749,6 +749,11 @@ manage_o_contrib () {
     download_o_contrib_six
     cd $_CORE/o_contrib
   fi
+  mkdir -p /data/all/000/modules
+  rm -f /data/all/000/modules/o_contrib_seven
+  ln -s $_CORE/o_contrib_seven /data/all/000/modules/o_contrib_seven
+  rm -f /data/all/000/modules/o_contrib
+  ln -s $_CORE/o_contrib /data/all/000/modules/o_contrib
   if [ $_STATUS != "INIT" ] ; then
     msg "$_STATUS A: Running o_contrib modules check and upgrade..."
     upgrade_o_contrib
