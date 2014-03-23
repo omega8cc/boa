@@ -509,7 +509,7 @@ upgrade_contrib_less () {
   get_dev_contrib "ctools-7.x-1.4.tar.gz" &> /dev/null
   get_dev_contrib "entity-7.x-1.4.tar.gz" &> /dev/null
   get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
-  get_dev_contrib "og-7.x-2.5.tar.gz" &> /dev/null
+  get_dev_contrib "og-7.x-2.6.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # https://drupal.org/node/1766338#comment-6445882
