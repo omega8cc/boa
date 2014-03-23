@@ -66,8 +66,8 @@
   to another platform, or associated client/owner has been updated, etc.
 
   You no longer need to `cd` to the respective site directory to perform
-  some available Drush tasks. Just check the available aliases list with usual
-  `drush sa` and then enjoy the beauty of `drush @foo.com command` syntax.
+  some available Drush tasks. Just check the available aliases list with
+  `drush aliases` and then enjoy the beauty of `drush @foo.com command` syntax.
 
 #-### Support for safely configurable cache bins exceptions in Redis
 

@@ -101,7 +101,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
               if [[ "$2" =~ "make-generate" ]] ; then
                 echo " Please cd to the valid sites/foo.com directory first"
                 echo " or use a valid @alias, for example: drush @foo.com status"
-                echo " Hint: Use 'drush sa' command to see all available aliases"
+                echo " Hint: Use 'drush aliases' command to see all available aliases"
               else
                 echo " Please cd ~/static first"
               fi
@@ -127,7 +127,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
               echo " This drush command can not be run in $_PWD"
               echo " Please cd to the valid sites/foo.com directory first"
               echo " or use a valid @alias, for example: drush @foo.com status"
-              echo " Hint: Use 'drush sa' command to see all available aliases"
+              echo " Hint: Use 'drush aliases' command to see all available aliases"
               echo
               exit 0
             elif [[ "$_ALL" =~ "drush" ]] && [ -f "$_PWD/settings.php" ] ; then
