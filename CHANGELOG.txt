@@ -270,7 +270,7 @@
   * MariaDB 5.5.36
   * MySecureShell 1.32
   * Nginx 1.5.12
-  * OpenSSH 6.5p1 (if installed from sources)
+  * OpenSSH 6.6p1 (if installed from sources)
   * OpenSSL 1.0.1f (if installed from sources)
   * PHP 5.4.26
   * PHP 5.5.10
