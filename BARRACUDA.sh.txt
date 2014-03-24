@@ -5984,6 +5984,11 @@ get_drush_versions
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
+  if [[ "$_INSTALLER_VERSION" =~ "2.2.0" ]] ; then
+    sed -i "s/.*variables_hash_max_size .*//g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+    sed -i "s/fastcgi_temp_file_write_size .*/fastcgi_temp_file_write_size  256k;\n  variables_hash_max_size       1024;/g" /var/aegir/config/server_master/nginx.conf  &> /dev/null
+    mrun "service nginx restart" &> /dev/null
+  fi
   if [ "$_AEGIR_UPGRADE_ONLY" = "YES" ] && [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] ; then
     echo " "
     upgrade_aegir_master
