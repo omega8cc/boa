@@ -260,6 +260,12 @@ However, if we discover that someone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
+Please also note that you can not keep such tmp/test/dev sites forever.
+We allow to exclude them from the usage limits only because it is expected
+that these sites will be deleted as soon as possible - in a matter of days
+or a few weeks, but not any longer. If you will ignore this rule, we reserve
+the right to remove ability to exclude tmp/test/dev sites on your system.
+
 If you are using more (counted) resources than allocated in your subscription
 for more than 30 calendar days without purchasing an upgrade, your instance
 will be suspended without further notice, and to restore it you will have to
@@ -314,6 +320,12 @@ However, if we discover that someone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
 
+Please also note that you can not keep such tmp/test/dev sites forever.
+We allow to exclude them from the usage limits only because it is expected
+that these sites will be deleted as soon as possible - in a matter of days
+or a few weeks, but not any longer. If you will ignore this rule, we reserve
+the right to remove ability to exclude tmp/test/dev sites on your system.
+
 If you are using more (counted) resources than allocated in your subscription
 for more than 30 calendar days without purchasing an upgrade, your instance
 will be suspended without further notice, and to restore it you will have to
@@ -362,6 +374,12 @@ from your allocated resources limits (not counted for billing purposes).
 However, if we discover that someone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
+
+Please also note that you can not keep such tmp/test/dev sites forever.
+We allow to exclude them from the usage limits only because it is expected
+that these sites will be deleted as soon as possible - in a matter of days
+or a few weeks, but not any longer. If you will ignore this rule, we reserve
+the right to remove ability to exclude tmp/test/dev sites on your system.
 
 If you are using more (counted) resources than allocated in your subscription
 for more than 30 calendar days without purchasing an upgrade, your instance
@@ -416,6 +434,12 @@ from your allocated resources limits (not counted for billing purposes).
 However, if we discover that someone is using this method to hide real
 usage via listed keywords in the main site name and adding live domain(s)
 as aliases, such account will be suspended without any warning.
+
+Please also note that you can not keep such tmp/test/dev sites forever.
+We allow to exclude them from the usage limits only because it is expected
+that these sites will be deleted as soon as possible - in a matter of days
+or a few weeks, but not any longer. If you will ignore this rule, we reserve
+the right to remove ability to exclude tmp/test/dev sites on your system.
 
 If you are using more (counted) resources than allocated in your subscription
 for more than 30 calendar days without purchasing an upgrade, your instance
