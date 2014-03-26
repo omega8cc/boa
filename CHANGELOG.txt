@@ -55,6 +55,14 @@
   Note that the same version will be used in all platforms and all sites hosted
   on the same Octopus instance. Why not to try latest and greatest PHP 5.5 now?
 
+#-### All PHP FPM workers in 5.5, 5.4 and 5.3 now use ondemand mode.
+
+  This change will help to better manage memory use, especially on systems with
+  multiple PHP versions running in parallel. This will also free resources
+  and allocate them dynamically only when requests are coming and only to
+  the active FPM pools. Note that the 'ondemand' mode doesn't affect Zend
+  OPcache, because it is managed by the parent process which stays active.
+
 #-### Drush aliases are now automatically copied to all relevant accounts
 
   While Aegir manages Drush aliases for its backend needs, they are normally
@@ -238,6 +246,7 @@
   * PHP: Add support for FPM/CLI version safe switch per Octopus instance.
   * PHP: Allow to install and run all supported versions: 5.5, 5.4, 5.3, 5.2
   * PHP: Extra php.ini files automatically managed per system and shell user.
+  * PHP: FPM workers in 5.5, 5.4 and 5.3 will use 'ondemand' mode by default.
   * PHP: Use separate FPM pools per Octopus instance.
   * PHP: Use TCP Socket mode for all FPM pools and Port mode for legacy vhosts.
   * Protect ~/.drush and other important directories and symlinks from changes.
