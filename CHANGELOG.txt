@@ -14,6 +14,61 @@
   And if you are more curious, read also the big changelog further below,
   which covers only a small number of over 530 commits since BOA-2.1.3
 
+  But what if you are not ready for this major upgrade and you would like
+  to have more time for testing, but still be able to run system upgrades,
+  thus effectively still using previous version 2.1.3 with standard command
+  'barracuda up-stable system', as explained in the docs/UPGRADE.txt?
+
+#-### New 'legacy' mode available for installs and upgrades.
+
+  We are introducing special 'legacy' mode both for BOA installs and upgrades.
+
+  This means that starting with BOA-2.2.0 you can use commands like:
+
+  $ boa in-legacy public server.mydomain.org my@email o1
+  $ barracuda up-legacy system
+  $ octopus up-legacy o1
+  etc.
+
+  These special 'legacy' commands allow you to install and/or upgrade the 'old
+  stable', once the 'new stable' is released. But only until another 'stable'
+  is released, of course. Thus you can use it only as an interim solution
+  if you are not yet ready for latest 'stable' BOA Edition, for any reason,
+  but you want to update at least the low level system packages, kernel etc.
+
+  Note also that if you will upgrade to current 'stable', it is not possible
+  to downgrade back to the 'old stable' with 'legacy' mode, so please proceed
+  with care!
+
+  This option will be particularly important once we release next major BOA
+  Edition. It will come with terminated support for Drush 4, Drupal 5 and, yes,
+  PHP 5.2 (finally). This step is required to use latest Drush 6+ with supported
+  Drupal cores versions and supported PHP versions, which in turn is required
+  to introduce the real Aegir 2.0 in BOA -- we are still using older, customized
+  for backward compatibility, Aegir 2 HEAD version, so it is time to move on and
+  stay up to date with everything, get new features like ability to manage
+  Drupal sites in subdirectories etc.
+
+  Once that next major BOA Edition is released, we will freeze the 'legacy'
+  mode at 2.2.x series level, which will receive only security upgrades and
+  no further feature nor bugfix releases. At that point you will have to stick
+  to the 'legacy' BOA version if you will need to run PHP 5.2 and Drupal 5
+  with Aegir based on Drush 4. It will be still possible, but not recommended
+  and not really supported, besides security related issues outside of Drupal.
+  This also means that at that point the 'legacy' version will no longer
+  receive Drupal core upgrades, even if there will be security core releases.
+
+#-### Important Note For Those Using Our Hosted Aegir Service!
+
+  NOW is the time (and last chance) to upgrade all your legacy Drupal 5 sites
+  and outdated Drupal 6 sites still not compatible with at least PHP 5.3,
+  because once we upgrade to the next major BOA Edition, it will be no longer
+  possible to still run Drupal sites not compatible with PHP 5.3 -- there
+  were literally years of this legacy support provided, and this finally
+  comes to the end, because we will not use the BOA 'legacy' mode on our own
+  servers. It will be still available for remotely managed 'Aegir on Your Own
+  Server' option, though, but only on request: https://omega8.cc/support
+
 #-### Custom php.ini protection has changed and will not honor old settings.
 
   If you have custom settings in any of your php.ini files protected with
