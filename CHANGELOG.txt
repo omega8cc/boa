@@ -99,7 +99,7 @@
   applies to site level contrib space, if used.
 
   Additionally, any Drush extension/command bundled with custom platforms
-  located on the ~/static directory tree will be completely ignored by Drush,
+  located in the ~/static directory tree will be completely ignored by Drush,
   no matter where uploaded: core, profiles, sites/all or sites/foo.com space.
 
   This is not a problem in hosted environments, where users normally never
