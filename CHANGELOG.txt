@@ -69,6 +69,53 @@
   some available Drush tasks. Just check the available aliases list with
   `drush aliases` and then enjoy the beauty of `drush @foo.com command` syntax.
 
+#-### Drush is now restricted to use only trusted modules installed by default
+
+  Note: this change affects only Aegir backend/system user, typically o1,
+  while all other limited shell accounts are not affected, because they are
+  already individually jailed with protected custom php.ini and special
+  Drush wrappers and settings.
+
+  This means that you can skip this section if you are on a hosted Aegir.
+
+  Customized Drush now included in BOA by default, will be able to use only
+  extensions/commands bundled with contrib modules which are either a part
+  of modules added in every platform via shared o_contrib/o_contrib_seven
+  symlink located in the platform core modules directory, or are included
+  in the built-in platforms installation profiles space, or in the system
+  account, protected .drush sub-directory.
+
+  This means that any Drush extension/command bundled with contrib module
+  uploaded to the sites/all/modules space in all built-in platforms will be
+  ignored and not available on command line for the backend user. The same
+  applies to site level contrib space, if used.
+
+  Additionally, any Drush extension/command bundled with custom platforms
+  located on the ~/static directory tree will be completely ignored by Drush,
+  no matter where uploaded: core, profiles, sites/all or sites/foo.com space.
+
+  This is not a problem in hosted environments, where users normally never
+  should have an access to the Aegir backend user, anyway.
+
+  If you have any reason to use Drush on command line as an Aegir backend/system
+  user, for example to escape limited shell restrictions, we recommend to
+  install vanilla Drush 6, for example in /opt/tools/drush/vanilla/drush/ and
+  then symlink it into /usr/local/bin/ with custom name, so it will be available
+  automatically in your backend o1 user's PATH.
+
+  Further improvements to secure sites and instances in a completely locked
+  virtual jails are planned in next BOA releases, which will address all other
+  known and even potential security issues in Aegir.
+
+#-### The ~/.drush and other important directories and symlinks are protected
+
+  There are directories, files and symlinks which should be protected from
+  any changes and managed exclusively by the BOA system. The reasons may vary
+  from security to avoidable support requests when the less experienced user
+  will delete his sites or platforms symlinks, while they can't be easily nor
+  automatically recreated. It also prevents the sub-accounts users from using
+  their account home directory as a private upload/archive disk space.
+
 #-### Support for safely configurable cache bins exceptions in Redis
 
   Sometimes you may want to exclude some problematic cache bins from Redis
@@ -84,15 +131,6 @@
   in the site or platform level active INI file.
 
   Example: redis_exclude_bins = "cache_views,cache_foo,cache_bar"
-
-#-### The ~/.drush and other important directories and symlinks are protected
-
-  There are directories, files and symlinks which should be protected from
-  any changes and managed exclusively by the BOA system. The reasons may vary
-  from security to avoidable support requests when the less experienced user
-  will delete his sites or platforms symlinks, while they can't be easily nor
-  automatically recreated. It also prevents the sub-accounts users from using
-  their account home directory as a private upload/archive disk space.
 
 #-### Two-Factor-like Authentication to protect access to Chive DB Manager.
 
@@ -258,6 +296,10 @@
     for patches merge requests, while d.o has a code mirror status from now on.
   * Make it crystal clear that Ubuntu is barely supported, rarely tested and
     thus not recommended.
+  * The "Run cron" extra task has been removed for security reasons. Site cron
+    can be run either via standard, scheduled in Aegir procedure, which uses
+    local, but web based request to the protected /cron.php URL, or on command
+    line, or from the site admin area, as usual.
 
 # System upgrades in this release:
 
