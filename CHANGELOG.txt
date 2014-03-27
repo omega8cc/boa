@@ -385,7 +385,7 @@
   * PHP: MongoDB 1.4.5 (optional add-on)
   * PHP: Zend OPcache master-09-03-2014
   * PHPRedis: master-22-03-2014
-  * Redis 2.8.7
+  * Redis 2.8.8
   * Ruby 2.1.1 (from now on compiled from sources)
 
 # Fixes in this release:
