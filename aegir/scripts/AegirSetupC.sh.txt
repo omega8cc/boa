@@ -2436,6 +2436,9 @@ fi
 fi
 }
 
+drupal6_install
+drupal7_install
+
 commerce_7_1_install
 commerce_7_2_install
 commons_6_install
@@ -2458,9 +2461,6 @@ totem_install
 ubercart6_install
 ubercart7_install
 ubercart7_testing_install
-
-drupal6_install
-drupal7_install
 
 if [ "$_ALLOW_UNSUPPORTED" = "YES" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   acquia_install
