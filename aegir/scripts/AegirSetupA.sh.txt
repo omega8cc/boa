@@ -1083,6 +1083,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   fi
   chgrp -R $_WEBG $_HOSTMASTER_ROOT/sites/$_DOMAIN/files
   chgrp $_WEBG $_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php
+  rm -f -r $_HOSTMASTER_ROOT/profiles/default
   rm -f -r $_HOSTMASTER_ROOT/themes/bluemarine
   rm -f -r $_HOSTMASTER_ROOT/themes/chameleon
   rm -f -r $_HOSTMASTER_ROOT/themes/pushbutton
