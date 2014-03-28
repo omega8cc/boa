@@ -2767,6 +2767,11 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
     fi
   done
 fi
+if [ -e "$_ROOT/.drush/platform_Drupal6301P001.alias.drushrc.php" ] ; then
+  mrun "sleep 5"
+  $_DRUSHCMD @hostmaster hosting-task @platform_Drupal6301P001 verify --force &> /dev/null
+  $_DRUSHCMD @hostmaster hosting-task @platform_Drupal7263P001 verify --force &> /dev/null
+fi
 rm -f make_platform.php
 
 touch /opt/tmp/status-AegirSetupC-OK
