@@ -12,7 +12,7 @@
   it is very important to read at least this extensive release notes.
 
   And if you are more curious, read also the big changelog further below,
-  which covers only a small number of over 550 commits since BOA-2.1.3
+  which covers only a small number of over 560 commits since BOA-2.1.3
 
   But what if you are not ready for this major upgrade and you would like
   to have more time for testing, but still be able to run system upgrades,
@@ -288,6 +288,7 @@
   * Default system /bin/sh symlink target replaced with /bin/websh wrapper.
   * Disable tcp_slow_start_after_idle for better SPDY performance.
   * Improve the logic in the global.inc for faster processing.
+  * Issue #1217486 - Add o_contrib symlinks on platform Verify task.
   * Issue #1310054 - Add support for drush aliases in all lshell accounts.
   * Issue #2148335 - Add Default Localhost Vhost.
   * Issue #2166641 - Make hard-coded load thresholds configurable.
@@ -403,8 +404,10 @@
   * Excessive and useless Drush internal cache clear in daily.sh removed.
   * Fix default PATH in all sub-scripts.
   * Fix for broken cURL from sources install logic.
+  * Fix for drush make broken by websh fix for cd wildcard crash fix.
   * Fix for multi-IP cron access.
   * Fix missing /dev/fd early enough to avoid broken tasks in Aegir.
+  * Fix the logic in manage_ip_auth_access()
   * Fix to avoid daily services maintenance/cron freeze if Jetty didn't stop.
   * Force backward compatible SERVER_SOFTWARE to silence core warnings.
   * Force OpenSSH rebuild on OpenSSL upgrade (if installed from sources).
@@ -413,6 +416,7 @@
   * Issue #2057213 - Use better SQL GRANT style.
   * Issue #2110589 - Unable to install BOA correctly on Debian 6.0 and OpenVZ
   * Issue #2141283 - Drush aliases like `drush dbup` no longer work properly.
+  * Issue #2144801 - Display bug on add site.
   * Issue #2144947 - Install new Ruby for better compatibility with new gems.
   * Issue #2150557 - Make the check and update procedure for UseDNS safe.
   * Issue #2152383 - Fix for [js module] - add js_server_software variable.
@@ -431,6 +435,7 @@
   * Lshell: Remove symlinks for legacy drush_make.
   * Modules can be incorrectly whitelisted from dis by installation profile.
   * Nginx: Add exceptions for known video players.
+  * Nginx: Avoid downtime on upgrade because of too low variables_hash_max_size
   * Nginx: Better gzip defaults.
   * Nginx: Default value of variables_hash_max_size is too low.
   * Nginx: Do not overwrite gzip_types.
@@ -459,6 +464,8 @@
   * Silence AIS (Adaptive Image Styles) module .htaccess requirements.
   * Sort and group cnf variables to bring some order into this chaos.
   * Symlink main drush wrapper to shared location outside of Master Instance.
+  * Update for Redis bins exceptions logic.
+  * Update system load check method in all scripts.
   * Use forced Jetty restart mode.
   * Use https in the welcome screen image src URL.
   * Use IPv4-strict hostname and IP checks only.
