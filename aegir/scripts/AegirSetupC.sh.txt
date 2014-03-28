@@ -2515,60 +2515,6 @@ else
 fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/drushrc.php" ] ; then
-    mrun "sleep 1"
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/drushrc.php" ] ; then
-    mrun "sleep 1"
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
-  fi
-fi
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/drushrc.php" ] ; then
-      mrun "sleep 1"
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
-    fi
-  fi
-elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
-      mrun "sleep 1"
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
-    fi
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/drushrc.php" ] ; then
-    mrun "sleep 1"
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
-  fi
-fi
-if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/drushrc.php" ] ; then
-    mrun "sleep 1"
-    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
-  fi
-fi
-if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
-      mrun "sleep 1"
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
-    fi
-  fi
-elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/drushrc.php" ] ; then
-      mrun "sleep 1"
-      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
-    fi
-  fi
-fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/drushrc.php" ] ; then
     mrun "sleep 1"
@@ -2755,6 +2701,60 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] 
     $_DRUSHCMD php-script make_platform "$_F_UBER_CART_TESTING" testing $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7 &> /dev/null
   fi
 fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/drushrc.php" ] ; then
+    mrun "sleep 1"
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/drushrc.php" ] ; then
+    mrun "sleep 1"
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
+  fi
+fi
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/drushrc.php" ] ; then
+      mrun "sleep 1"
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
+    fi
+  fi
+elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/drushrc.php" ] ; then
+      mrun "sleep 1"
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
+    fi
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/drushrc.php" ] ; then
+    mrun "sleep 1"
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/drushrc.php" ] ; then
+    mrun "sleep 1"
+    $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
+  fi
+fi
+if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/drushrc.php" ] ; then
+      mrun "sleep 1"
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
+    fi
+  fi
+elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
+  if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/drushrc.php" ] ; then
+      mrun "sleep 1"
+      $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
+    fi
+  fi
+fi
 if [ -e "/var/run/aegir_upgrade.pid" ] ; then
   _PLATF_IMP=$(ls -la /data/u | grep $_USER | cut -d'>' -f2 | sort | uniq | awk '{ print $1}')
   for _PLATF in $_PLATF_IMP ; do
@@ -2770,6 +2770,7 @@ fi
 if [ -e "$_ROOT/.drush/platform_Drupal6301P001.alias.drushrc.php" ] ; then
   mrun "sleep 5"
   $_DRUSHCMD @hostmaster hosting-task @platform_Drupal6301P001 verify --force &> /dev/null
+  mrun "sleep 5"
   $_DRUSHCMD @hostmaster hosting-task @platform_Drupal7263P001 verify --force &> /dev/null
 fi
 rm -f make_platform.php
