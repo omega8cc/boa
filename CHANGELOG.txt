@@ -356,6 +356,8 @@
     the module is detected as enabled).
   * New naming convention for Ubercart 3.x platforms: [ud2] to support upgrades
     from uberdrupal profile, and [aq3] to support upgrades from acquia profile.
+    Note that you have to choose Vanilla Testing profile to see [ud2] or
+    Vanilla Minimal to see [aq3] platform in the Add Site form.
   * GitHub is now our main repository, we re-open the issue queue there
     for patches merge requests, while d.o has a code mirror status from now on.
   * Make it crystal clear that Ubuntu is barely supported, rarely tested and
