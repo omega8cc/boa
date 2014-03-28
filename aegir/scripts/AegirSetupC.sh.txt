@@ -2770,8 +2770,12 @@ fi
 if [ -e "$_ROOT/.drush/platform_Drupal6301P001.alias.drushrc.php" ] ; then
   mrun "sleep 5"
   $_DRUSHCMD @hostmaster hosting-task @platform_Drupal6301P001 verify --force &> /dev/null
+  $_DRUSHCMD @hostmaster hosting-task @platform_Drupal6301S001 verify --force &> /dev/null
+  $_DRUSHCMD @hostmaster hosting-task @platform_Drupal6301D001 verify --force &> /dev/null
   mrun "sleep 5"
   $_DRUSHCMD @hostmaster hosting-task @platform_Drupal7263P001 verify --force &> /dev/null
+  $_DRUSHCMD @hostmaster hosting-task @platform_Drupal7263S001 verify --force &> /dev/null
+  $_DRUSHCMD @hostmaster hosting-task @platform_Drupal7263D001 verify --force &> /dev/null
 fi
 rm -f make_platform.php
 
