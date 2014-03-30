@@ -11,15 +11,30 @@
   Even if you are on a hosted BOA system with upgrades managed for you,
   it is very important to read at least this extensive release notes.
 
+  Here is a list of topics covered in detail further below:
+
+  * New 'legacy' mode available for installs and upgrades
+  * Important Note For Those Using Our Hosted Aegir Service!
+  * Custom php.ini protection has changed and will not honor old settings
+  * Barracuda no longer supports Percona since 2.2.0 release
+  * Support for PHP FPM/CLI version safe switch per Octopus instance
+  * All PHP FPM workers in 5.5, 5.4 and 5.3 now use the 'ondemand' mode
+  * Drush aliases are now automatically copied to all relevant accounts
+  * Drush is now restricted to use only trusted modules installed by default
+  * The ~/.drush and other important directories and symlinks are protected
+  * Support for safely configurable cache bins exceptions in Redis
+  * Two-Factor-like Authentication to protect access to Chive DB Manager
+  * Support for session.cookie_lifetime configurable via INI files
+
   And if you are more curious, read also the big changelog further below,
-  which covers only a small number of over 560 commits since BOA-2.1.3
+  which covers only a small number of over 560 commits since BOA-2.1.3 release.
 
   But what if you are not ready for this major upgrade and you would like
   to have more time for testing, but still be able to run system upgrades,
   thus effectively still using previous version 2.1.3 with standard command
   'barracuda up-stable system', as explained in the docs/UPGRADE.txt?
 
-#-### New 'legacy' mode available for installs and upgrades.
+#-### New 'legacy' mode available for installs and upgrades
 
   We are introducing special 'legacy' mode both for BOA installs and upgrades.
 
@@ -40,16 +55,16 @@
   to downgrade back to the 'old stable' with 'legacy' mode, so please proceed
   with care!
 
-  This option will be particularly important once we release next major BOA
+  This option will be particularly important once we release *next* major BOA
   Edition. It will come with terminated support for Drush 4, Drupal 5 and, yes,
   PHP 5.2 (finally). This step is required to use latest Drush 6+ with supported
-  Drupal cores versions and supported PHP versions, which in turn is required
+  Drupal cores versions and supported PHP versions, which in fact is required
   to introduce the real Aegir 2.0 in BOA -- we are still using older, customized
   for backward compatibility, Aegir 2 HEAD version, so it is time to move on and
   stay up to date with everything, get new features like ability to manage
   Drupal sites in subdirectories etc.
 
-  Once that next major BOA Edition is released, we will freeze the 'legacy'
+  Once that *next* major BOA Edition is released, we will freeze the 'legacy'
   mode at 2.2.x series level, which will receive only security upgrades and
   no further feature nor bugfix releases. At that point you will have to stick
   to the 'legacy' BOA version if you will need to run PHP 5.2 and Drupal 5
@@ -58,18 +73,24 @@
   This also means that at that point the 'legacy' version will no longer
   receive Drupal core upgrades, even if there will be security core releases.
 
+  Note that we don't use the term "major release" in the known convention
+  for versions naming. It is because the first digit, for historical reasons,
+  refers to the Aegir version supported, the second digit refers to BOA stack
+  major release, and the last digit refers to both feature and bugfix BOA
+  stack upgrades.
+
 #-### Important Note For Those Using Our Hosted Aegir Service!
 
   NOW is the time (and last chance) to upgrade all your legacy Drupal 5 sites
   and outdated Drupal 6 sites still not compatible with at least PHP 5.3,
-  because once we upgrade to the next major BOA Edition, it will be no longer
+  because once we upgrade to the *next* major BOA Edition, it will be no longer
   possible to still run Drupal sites not compatible with PHP 5.3 -- there
   were literally years of this legacy support provided, and this finally
   comes to the end, because we will not use the BOA 'legacy' mode on our own
   servers. It will be still available for remotely managed 'Aegir on Your Own
   Server' option, though, but only on request: https://omega8.cc/support
 
-#-### Custom php.ini protection has changed and will not honor old settings.
+#-### Custom php.ini protection has changed and will not honor old settings
 
   If you have custom settings in any of your php.ini files protected with
   old variable in the /root/.barracuda.cnf, make a backup of your ini files
@@ -110,13 +131,28 @@
   Note that the same version will be used in all platforms and all sites hosted
   on the same Octopus instance. Why not to try latest and greatest PHP 5.5 now?
 
-#-### All PHP FPM workers in 5.5, 5.4 and 5.3 now use ondemand mode.
+#-### All PHP FPM workers in 5.5, 5.4 and 5.3 now use the 'ondemand' mode
 
   This change will help to better manage memory use, especially on systems with
   multiple PHP versions running in parallel. This will also free resources
   and allocate them dynamically only when requests are coming and only to
   the active FPM pools. Note that the 'ondemand' mode doesn't affect Zend
-  OPcache, because it is managed by the parent process which stays active.
+  OPcache, because it is managed by the parent process(es) which stay(s) active.
+
+  The net result is that on a vanilla BOA install, without non-hostmaster sites
+  running, the complete stack consumes just ~200 MB of RAM (in total, so with
+  MariaDB, Redis and Nginx etc. included) with all three PHP-FPM versions
+  running in parallel: 5.5, 5.4 and 5.3:
+
+  CPU[#*                                                       2.0%]
+  Mem[|||||||||||||###***********************************209/1002MB]
+  Swp[                                                        0/0MB]
+
+  magic:~# ps axf | grep fpm
+   8380 ? Ss 0:00 php-fpm: master process (/opt/php55/etc/php55-fpm.conf)
+   8391 ? Ss 0:00 php-fpm: master process (/opt/php54/etc/php54-fpm.conf)
+   8402 ? Ss 0:00 php-fpm: master process (/opt/php53/etc/php53-fpm.conf)
+  magic:~#
 
 #-### Drush aliases are now automatically copied to all relevant accounts
 
@@ -195,7 +231,7 @@
 
   Example: redis_exclude_bins = "cache_views,cache_foo,cache_bar"
 
-#-### Two-Factor-like Authentication to protect access to Chive DB Manager.
+#-### Two-Factor-like Authentication to protect access to Chive DB Manager
 
   We are introducing Two-Factor-like Authentication logic - now extended also
   to protect Chive DB Manager, Collectd Graph Panel and SQL Buddy DB Manager.
