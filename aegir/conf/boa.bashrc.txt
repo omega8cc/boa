@@ -61,6 +61,7 @@ else
 fi
 
 alias df='df -kTh'
+alias wget='wget --no-check-certificate'
 
 function xtitle()
 {
