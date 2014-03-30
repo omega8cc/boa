@@ -5,7 +5,7 @@ to the system root, and are located, if needed, in the root home directory.
 
 These system-level control files use .cnf file extension, so for extra
 clarity we will list here also some other .cnf files which either have
-special purpose or should never be edited, because they are manage
+special purpose or should never be edited, because they are managed
 by the BOA install and upgrade tools exclusively.
 
 
@@ -102,24 +102,34 @@ by the BOA install and upgrade tools exclusively.
 
  There is a similar option: _SQL_CONVERT (defaults to NO), available in every
  Octopus instance /root/.USER.octopus.cnf file, which has very similar purpose,
- because it will trigger automatic 'to-innodb' smart conversion performed
- via 'sqlmagic' tool (it knows how to do that well), and since it uses
+ because it will trigger automatic 'to-innodb' or 'to-myisam' smart conversion
+ performed via 'sqlmagic' tool (it knows how to do that well), and since it uses
  the 'ALTER TABLE' command, in turn it performs auto-optimization on the fly.
 
  This optional conversion starts daily at 4:18 AM and runs until the agent
  completes all tasks included in the /var/xdrago/daily.sh script.
 
- By the way, you can modify this auto-conversion default 'to-innodb' behaviour
- by creating an empty control file like sites/foo.com/modules/to-myisam.info
+ If _SQL_CONVERT=NO is set, the conversion mode can be individually enabled and
+ more precisely configured with variable:
 
- It will reverse the logic for that site and will convert most of tables
- to MyISAM format, while keeping some tables at InnoDB -- exceptions are
- defined with regex: (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog)
+   sql_conversion_mode
 
- Note also that sites/foo.com/modules/to-innodb.info file, if present, will
- only confirm/force the default logic, while having both to-innodb.info and
- to-myisam.info in the sites/foo.com/modules/ dir will exclude the site from
- any conversion, otherwise applied to all sites on the same Octopus instance.
+ if set in the site and/or platform level, active INI files:
+
+   boa_platform_control.ini
+   boa_site_control.ini
+
+ More info: https://omega8.cc/node/293
+
+ Please note that if you will change it to _SQL_CONVERT=YES, the system will
+ ignore sql_conversion_mode variables set in the active INI files, and instead
+ will force conversion to InnoDB format in all sites hosted on this instance.
+
+ By the way, conversion to MyISAM format will still keep some tables at InnoDB,
+ and exceptions are defined with regex:
+
+ (cache_[a-z_]+|cache|sessions|users|watchdog|accesslog)
+
 
    /root/.upstart.cnf
 

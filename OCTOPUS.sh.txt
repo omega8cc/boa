@@ -534,19 +534,28 @@ _STRONG_PASSWORDS=NO
 ### InnoDB or MyISAM for all sites hosted on
 ### the instance via the 'sqlmagic' tool.
 ###
-### The conversion mode is configurable with
-### per-site control file(s):
+### If _SQL_CONVERT=NO is set, the conversion
+### mode can be individually enabled and more
+### precisely configured with variable:
 ###
-###   sites/foo.com/modules/to-innodb.info
-###   sites/foo.com/modules/to-myisam.info
+###   sql_conversion_mode
 ###
-### Defaults to "sqlmagic convert to-innodb"
-### if no control file exists, but if both
-### control files do exist, then NO action
-### is taken.
+### if set in the site and/or platform level,
+### active INI files:
+###
+###   boa_platform_control.ini
+###   boa_site_control.ini
+###
+### More info: https://omega8.cc/node/293
+###
+### Please note that if you will change it
+### to _SQL_CONVERT=YES, the system will
+### ignore sql_conversion_mode variables set
+### in the active INI files, and instead will
+### force conversion to InnoDB format in all
+### sites hosted on this instance.
 ###
 ### Note that it will run daily on all sites
-### not excluded by both control files presence
 ### even if all tables have been already
 ### converted to the desired format/engine.
 ###
@@ -555,11 +564,16 @@ _STRONG_PASSWORDS=NO
 ### even already converted tables via the
 ### ALTER TABLE foo ENGINE=bar; command.
 ### It will also make sure that any newly
-### created table will receive correct
+### created table will receive expected
 ### format/engine, despite system or Drupal
 ### core defaults.
 ###
-### Change to _SQL_CONVERT=YES to enable.
+### Accepted values:
+###
+###  innodb (forced globally)
+###  myisam (forced globally)
+###  YES    (same as innodb, forced globally)
+###  NO     (nothing forced globally)
 ###
 _SQL_CONVERT=NO
 
