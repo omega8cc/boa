@@ -1,6 +1,6 @@
 
 ### Stable BOA-2.2.0 Release - Full Edition
-### Date: TBD
+### Date: Mon Mar 31 06:44:08 SGT 2014
 ### Includes Aegir 2.x-boa-custom version.
 
 # Release Notes:

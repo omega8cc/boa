@@ -1,5 +1,5 @@
 ###
-### Barracuda version BOA-2.2.0-dev
+### Barracuda version BOA-2.2.0
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -87,7 +87,7 @@ _AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
 _SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
 _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 ###
-### Barracuda version BOA-2.2.0-dev
+### Barracuda version BOA-2.2.0
 ###
 
 ###
