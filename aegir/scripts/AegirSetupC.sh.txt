@@ -607,7 +607,7 @@ _F_OPENCHURCH="OpenChurch 1.12 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENSCHOLAR="OpenScholar 3.11.2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1937,7 +1937,7 @@ if [ "$_ALLOW_ALL" = "YES" ] ; then
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OSR ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
-if prompt_yes_no "$_F_OPENSCHOLAR - http://openscholar.harvard.edu" ; then
+if prompt_yes_no "$_F_OPENSCHOLAR - http://theopenscholar.org" ; then
 true
 msg "DISTRO: $_F_OPENSCHOLAR installation in progress..."
 if [ ! -d "$_SHRD_PLPATH" ] ; then
