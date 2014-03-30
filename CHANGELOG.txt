@@ -407,7 +407,7 @@
 # System upgrades in this release:
 
   * Bazaar Version Control System (bzr) 2.6.0
-  * Collectd Graph Panel (CGP) master-10-03-2014
+  * Collectd Graph Panel (CGP) master-30-03-2014
   * cURL 7.36.0 (if installed from sources)
   * Git 1.9.0 (if installed from sources)
   * Jetty 7.6.14, 8.1.14, 9.1.3
