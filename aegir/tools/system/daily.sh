@@ -777,6 +777,23 @@ fix_modules () {
           fi
 
           ###
+          ### Detect permissions fix overrides, if set per platform.
+          ###
+          _DONT_TOUCH_PERMISSIONS=NO
+          if [ -e "$_PLR_CTRL_FILE" ] ; then
+            _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" $_PLR_CTRL_FILE)
+            if [[ "$_FIX_PERMISSIONS_PRESENT" =~ "fix_files_permissions_daily" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";fix_files_permissions_daily = TRUE" >> $_PLR_CTRL_FILE
+            fi
+            _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" $_PLR_CTRL_FILE)
+            if [[ "$_FIX_PERMISSIONS_TEST" =~ "fix_files_permissions_daily = FALSE" ]] ; then
+              _DONT_TOUCH_PERMISSIONS=YES
+            fi
+          fi
+
+          ###
           ### Detect db conversion mode, if set per platform or per site.
           ###
           if [ -e "$_PLR_CTRL_FILE" ] ; then
@@ -1087,7 +1104,7 @@ process () {
       esac
       fix_boost_cache
       fix_clear_cache
-      if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
+      if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
         fix_permissions
       fi
     fi
