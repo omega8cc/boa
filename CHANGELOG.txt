@@ -555,6 +555,7 @@
   * The 'rsync' command is broken in limited shell.
   * The drush @foo.com generate-makefile command may not work on some systems.
   * FTPS (FTP over SSL) connections may experience TLS problems.
+  * Cron for sites doesn't work on old instances without Nginx wildcard vhost.
 
 
 ### Stable BOA-2.1.3 Release - Full Edition
