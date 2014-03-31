@@ -64,7 +64,11 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     fi
   fi
   rm -f /var/backups/.auth.IP.list
-  for _IP in `who --ips | awk '{print $6}' | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
+  if [ "$_MODE" = "SHORT" ] ; then
+    for _IP in `who --ips | awk '{print $6}' | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
+  else
+    for _IP in `who --ips | awk '{print $5}' | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
+  fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list &> /dev/null
   if [ -e "/var/backups/.auth.IP.list" ] ; then
     _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list)
@@ -80,7 +84,11 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
 
 manage_ip_auth_access()
 {
-  for _IP in `who --ips | awk '{print $6}' | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
+  if [ "$_MODE" = "SHORT" ] ; then
+    for _IP in `who --ips | awk '{print $6}' | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
+  else
+    for _IP in `who --ips | awk '{print $5}' | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
+  fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
     _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list.tmp)
@@ -208,6 +216,12 @@ if [ -z "$_CPU_CRIT_RATIO" ] ; then
 fi
 
 who --ips > /var/backups/.who.ip.raw
+_MODE_TEST=$(grep "-" /var/backups/.who.ip.raw)
+if [[ "$_MODE_TEST" =~ "-" ]] ; then
+  _MODE=FULL
+else
+  _MODE=SHORT
+fi
 count_cpu
 load_control
 sleep 10
