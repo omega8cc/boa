@@ -8156,12 +8156,13 @@ else
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
-        _GEM_FILE="/usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/scout"
-        _GEM_PATH=${_GEM_FILE//\//\\\/}
+        _GEM_FILE="/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scout"
         _GEM_CRON="/etc/crontab"
         _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON)
-        if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] ; then
-          sed -i "s/scout .*\/scout/scout $_GEM_PATH/g" $_GEM_CRON &> /dev/null
+        if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] && [ ! -e "$_GEM_FILE" ] ; then
+          st_runner "rvm @global do gem install scout" 2> /dev/null
+          usermod -aG users scout &> /dev/null
+          sed -i "s/scout .*\/scout/scout \/var\/scout\/.scout\/scout_cron.sh/g" $_GEM_CRON &> /dev/null
         fi
         if [ -e "$_GEM_FILE" ] ; then
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
