@@ -547,6 +547,7 @@
   * Compass Tools don't use correct paths to Ruby 2.1.1
   * Chive Authentication via SSH session doesn't work on some older instances.
   * PHP: Disabled 'create_function' may break some contrib modules or code.
+  * PHP: Disabled 'assert' may cause warnings on features revert.
 
   @=> Issues waiting for a fix:
 
