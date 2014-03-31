@@ -8175,11 +8175,15 @@ else
   fi
 fi
 fix_compass_path () {
-  if [[ ! -e "/usr/local/bin/compass" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/compass" ]] ; then
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/compass /usr/local/bin/compass &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/sass /usr/local/bin/sass &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION/bin/scss /usr/local/bin/scss &> /dev/null
+  if [[ ! -e "/var/xdrago/log/fix-rvm-ruby-$_RUBY_VERSION-$_INSTALLER_VERSION.log" || ! -e "/usr/local/bin/ruby_executable_hooks" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass" ]] ; then
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass      /usr/local/bin/compass      &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass         /usr/local/bin/sass         &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass-convert /usr/local/bin/sass-convert &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scss         /usr/local/bin/scss         &> /dev/null
+    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem               /usr/local/bin/gem          &> /dev/null
+    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby              /usr/local/bin/ruby         &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/ruby_executable_hooks /usr/local/bin/ruby_executable_hooks &> /dev/null
+    touch /var/xdrago/log/fix-rvm-ruby-$_RUBY_VERSION-$_INSTALLER_VERSION.log
   fi
 }
 fix_compass_path
