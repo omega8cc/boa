@@ -540,11 +540,17 @@
 
 # Known Issues on systems upgraded to BOA-2.2.0 release (work in progress)
 
-  ==> Updated on Mon Mar 31 19:37:24 SGT 2014.
+  ==> Updated on Mon Mar 31 12:39:35 EDT 2014
+
+  @=> Issues hot-fixed in stable (run 'barracuda up-stable system' to apply):
 
   * Compass Tools don't use correct paths to Ruby 2.1.1
   * Chive Authentication via SSH session doesn't work on some older instances.
   * PHP: Disabled 'create_function' may break some contrib modules or code.
+
+  @=> Issues waiting for a fix:
+
+  * The 'git pull' command is broken in limited shell.
   * The drush @foo.com generate-makefile command may not work on some systems.
 
 
