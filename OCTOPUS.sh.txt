@@ -1227,6 +1227,16 @@ octopus_cnf () {
   fi
 }
 #
+# Fix advanced cron IP for cURL requests.
+fix_advanced_cron_curl () {
+  if [ -e "/data/disk/$_USER/.drush/hostmaster.alias.drushrc.php" ] ; then
+    _THIS_HM_ROOT=`cat /data/disk/$_USER/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+    if [ -e "$_THIS_HM_ROOT/profiles/hostmaster/modules/hosting_advanced_cron" ] ; then
+      sed -i "s/127.0.0.1/$_CRON_IP/g" $_THIS_HM_ROOT/profiles/hostmaster/modules/hosting_advanced_cron/hosting_advanced_cron.module &> /dev/null
+    fi
+  fi
+}
+#
 # Fix multi-IP cron access.
 fix_multi_ip_cron_access () {
   rm -f /root/.local.IP.list.allow
@@ -1328,6 +1338,7 @@ sub_force_advanced_nginx_config () {
     fi
     if [ ! -z "$_CRON_IP" ] && [ "$_IP_PRESENT" = "YES" ] && [ -e "/root/.local.IP.list" ] ; then
       fix_multi_ip_cron_access
+      fix_advanced_cron_curl
     fi
   fi
 }
