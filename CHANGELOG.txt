@@ -552,6 +552,7 @@
   * The 'git pull' command is broken in limited shell.
   * FTPS (FTP over SSL) connections may experience TLS problems.
   * The 'rsync' command is broken in limited shell.
+  * The drush dl foo can't be run outside of site directory.
 
 
 ### Stable BOA-2.1.3 Release - Full Edition

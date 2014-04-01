@@ -119,7 +119,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
             else
               _CORRECT=YES
             fi
-          elif [[ "$_ALL" =~ "drush6 sa" ]] || [[ "$_ALL" =~ "drush4 site-alias" ]] ; then
+          elif [[ "$_ALL" =~ "drush6 dl" ]] || [[ "$_ALL" =~ "drush6 pm-download" ]] || [[ "$_ALL" =~ "drush6 sa" ]] || [[ "$_ALL" =~ "drush4 site-alias" ]] ; then
             _CORRECT=YES
           else
             if [[ "$_ALL" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
