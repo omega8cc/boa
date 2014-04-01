@@ -8343,6 +8343,7 @@ else
     fi
     killall -9 php-fpm &> /dev/null
     killall -9 php-cgi &> /dev/null
+    killall -9 pure-ftpd &> /dev/null
     msg "INFO: Restarting $_DB_SERVER server"
     mrun "service mysql restart" &> /dev/null
     if [ -e "/etc/init.d/php55-fpm" ] ; then
