@@ -73,7 +73,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.2.0
+### _AEGIR_VERSION=BOA-2.2.1
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=YES
@@ -129,7 +129,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.2.0
+### _AEGIR_VERSION=BOA-2.2.1
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=NO
@@ -416,9 +416,9 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.0
+### _AEGIR_VERSION=BOA-2.2.1
 ###
-_AEGIR_VERSION=BOA-2.2.0
+_AEGIR_VERSION=BOA-2.2.1
 
 
 ###----------------------------------------###
@@ -430,7 +430,7 @@ _AEGIR_VERSION=BOA-2.2.0
 ### as stable and tested enough.
 ###
 ### Barracuda no longer supports Percona since
-### 2.2.0 release. If you have used Percona
+### 2.2.1 release. If you have used Percona
 ### before, Barracuda will force upgrade to
 ### MariaDB 5.5 and PHP rebuild automatically.
 ###
@@ -1060,7 +1060,7 @@ _USE_STOCK=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.2.0
+_INSTALLER_VERSION=BOA-2.2.1
 
 ###
 ### Software versions
@@ -5352,7 +5352,7 @@ else
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.2.0
+    _AEGIR_VERSION=BOA-2.2.1
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -5366,7 +5366,7 @@ else
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=BOA-2.2.0
+    _AEGIR_VERSION=BOA-2.2.1
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -5990,7 +5990,7 @@ get_drush_versions
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
-  if [[ "$_INSTALLER_VERSION" =~ "2.2.0" ]] ; then
+  if [[ "$_INSTALLER_VERSION" =~ "2.2.1" ]] ; then
     sed -i "s/.*variables_hash_max_size .*//g" /var/aegir/config/server_master/nginx.conf &> /dev/null
     sed -i "s/fastcgi_temp_file_write_size .*/fastcgi_temp_file_write_size  256k;\n  variables_hash_max_size       1024;/g" /var/aegir/config/server_master/nginx.conf  &> /dev/null
     mrun "service nginx restart" &> /dev/null
