@@ -775,41 +775,41 @@ tune_fpm_workers () {
   let "_USE = (($_RAM / 4))"
   if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=6
+      _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
   elif [ "$_USE" -ge "1024" ] ; then
     if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _L_PHP_FPM_WORKERS=12
+        _L_PHP_FPM_WORKERS=24
       else
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=12
+          _L_PHP_FPM_WORKERS=24
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
       else
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=3
+          _L_PHP_FPM_WORKERS=6
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
       fi
     else
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _L_PHP_FPM_WORKERS=6
+        _L_PHP_FPM_WORKERS=12
       else
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
     fi
   else
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=3
+      _L_PHP_FPM_WORKERS=6
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
@@ -820,9 +820,9 @@ tune_fpm_workers () {
 tune_fpm_config () {
   tune_fpm_workers
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "6" ] ; then
+  if [ "$_LIM_FPM" -lt "24" ] ; then
     if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      _LIM_FPM=6
+      _LIM_FPM=24
     fi
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
