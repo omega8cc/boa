@@ -18,7 +18,7 @@
   * PHP: Disabled 'create_function' may break some contrib modules or code.
   * The 'git pull' command is broken in limited shell.
   * The 'rsync' command is broken in limited shell.
-  * The drush dl foo can't be run outside of site directory.
+  * The 'drush dl foo' command can't be run outside of site directory.
 
 
 ### Stable BOA-2.2.0 Release - Full Edition
@@ -560,9 +560,9 @@
   * Use IPv4-strict hostname and IP checks only.
 
 
-# Known Issues on systems upgraded to BOA-2.2.0 release (work in progress)
+# Known Issues on systems upgraded to BOA-2.2.0 release (all fixed)
 
-  ==> Updated on Mon Mar 31 17:42:43 EDT 2014
+  ==> Updated on Tue Apr  1 12:20:27 SGT 2014
 
   @=> Issues hot-fixed in stable (run 'barracuda up-stable system' to apply):
 
