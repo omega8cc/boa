@@ -825,8 +825,8 @@ tune_fpm_config () {
       _LIM_FPM=24
     fi
   fi
-  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
-  let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
+  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 5))"
+  let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
     _PHP_SV=53

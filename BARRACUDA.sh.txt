@@ -2424,8 +2424,8 @@ tune_web_server_config () {
       _LIM_FPM=24
     fi
   fi
-  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
-  let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
+  let "_PROCESS_MAX_FPM = (($_LIM_FPM * 5))"
+  let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
   let "_START_LEGACY_FPM = (($_LIM_FPM - 21))"
   if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
     _START_LEGACY_FPM=3
