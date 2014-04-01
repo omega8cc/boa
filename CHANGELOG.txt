@@ -1,4 +1,26 @@
 
+### Stable BOA-2.2.1 Release - Full Edition
+### Date: Tue Apr  1 10:28:45 SGT 2014
+### Includes Aegir 2.x-boa-custom version.
+
+# Release Notes:
+
+  This is a bug-fix only release to address issues discovered after recent
+  major BOA-2.2.0 Release.
+
+# Fixes in this release:
+
+  * Chive Authentication via SSH session doesn't work on some older instances.
+  * Compass Tools don't use correct paths to Ruby 2.1.1
+  * Cron for sites doesn't work on old instances without Nginx wildcard vhost.
+  * FTPS (FTP over SSL) connections may experience TLS problems.
+  * PHP: Disabled 'assert' may cause warnings on features revert.
+  * PHP: Disabled 'create_function' may break some contrib modules or code.
+  * The 'git pull' command is broken in limited shell.
+  * The 'rsync' command is broken in limited shell.
+  * The drush dl foo can't be run outside of site directory.
+
+
 ### Stable BOA-2.2.0 Release - Full Edition
 ### Date: Mon Mar 31 06:44:08 SGT 2014
 ### Includes Aegir 2.x-boa-custom version.
