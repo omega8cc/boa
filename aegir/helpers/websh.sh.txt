@@ -211,7 +211,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     fi
   fi
   if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
-    if [[ "$2" =~ "set -m;" ]] || [[ "$_ALL" =~ "drush" ]] || [[ "$_ALL" =~ "php" ]] || [[ "$_ALL" =~ "tmp" ]] || [[ "$_ALL" =~ "drupal" ]] ; then
+    if [[ "$2" =~ "set -m;" ]] || [[ "$_ALL" =~ "ssh" ]] || [[ "$_ALL" =~ "rsync" ]] || [[ "$_ALL" =~ "drush" ]] || [[ "$_ALL" =~ "php" ]] || [[ "$_ALL" =~ "tmp" ]] || [[ "$_ALL" =~ "drupal" ]] ; then
       _SILENT=YES
     else
       _SILENT=NO

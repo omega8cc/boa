@@ -551,10 +551,10 @@
   * Cron for sites doesn't work on old instances without Nginx wildcard vhost.
   * The 'git pull' command is broken in limited shell.
   * FTPS (FTP over SSL) connections may experience TLS problems.
+  * The 'rsync' command is broken in limited shell.
 
   @=> Issues waiting for a fix:
 
-  * The 'rsync' command is broken in limited shell.
   * The drush @foo.com generate-makefile command may not work on some systems.
 
 
