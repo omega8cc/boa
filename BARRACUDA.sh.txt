@@ -2419,14 +2419,14 @@ force_advanced_nginx_config () {
 # Tune Web Sever configuration.
 tune_web_server_config () {
   _LIM_FPM="$_L_PHP_FPM_WORKERS"
-  if [ "$_LIM_FPM" -lt "6" ] ; then
+  if [ "$_LIM_FPM" -lt "24" ] ; then
     if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      _LIM_FPM=6
+      _LIM_FPM=24
     fi
   fi
   let "_PROCESS_MAX_FPM = (($_LIM_FPM * 2))"
   let "_CHILD_MAX_FPM = (($_PROCESS_MAX_FPM - 2))"
-  let "_START_LEGACY_FPM = (($_LIM_FPM - 8))"
+  let "_START_LEGACY_FPM = (($_LIM_FPM - 21))"
   if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
     _START_LEGACY_FPM=3
   fi
@@ -2595,7 +2595,7 @@ tune_memory_limits () {
     _RND_SQL=8M
     _JBF_SQL=4M
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=6
+      _L_PHP_FPM_WORKERS=12
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
@@ -2613,7 +2613,7 @@ tune_memory_limits () {
       _RND_SQL=8M
       _JBF_SQL=4M
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _L_PHP_FPM_WORKERS=12
+        _L_PHP_FPM_WORKERS=24
       else
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
@@ -2631,7 +2631,7 @@ tune_memory_limits () {
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=12
+          _L_PHP_FPM_WORKERS=24
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
@@ -2652,7 +2652,7 @@ tune_memory_limits () {
         _RND_SQL=2M
         _JBF_SQL=2M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-          _L_PHP_FPM_WORKERS=3
+          _L_PHP_FPM_WORKERS=6
         else
           _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
         fi
@@ -2670,7 +2670,7 @@ tune_memory_limits () {
       _RND_SQL=2M
       _JBF_SQL=2M
       if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-        _L_PHP_FPM_WORKERS=6
+        _L_PHP_FPM_WORKERS=12
       else
         _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
       fi
@@ -2688,7 +2688,7 @@ tune_memory_limits () {
     _RND_SQL=1M
     _JBF_SQL=1M
     if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
-      _L_PHP_FPM_WORKERS=3
+      _L_PHP_FPM_WORKERS=6
     else
       _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
     fi
