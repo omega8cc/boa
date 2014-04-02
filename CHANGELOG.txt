@@ -24,7 +24,7 @@
 
   ==> Updated on Wed Apr  2 14:49:42 PDT 2014
 
-  @=> Issues fixed in BOA head (not yet available):
+  @=> Issues fixed in BOA head:
 
   * Chive Authentication via SSH session may break Nginx due to race conditions.
   * The 'scp' command is broken in limited shell.
