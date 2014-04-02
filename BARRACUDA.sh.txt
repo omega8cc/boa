@@ -430,7 +430,7 @@ _AEGIR_VERSION=BOA-2.2.1
 ### as stable and tested enough.
 ###
 ### Barracuda no longer supports Percona since
-### 2.2.1 release. If you have used Percona
+### 2.2.0 release. If you have used Percona
 ### before, Barracuda will force upgrade to
 ### MariaDB 5.5 and PHP rebuild automatically.
 ###
