@@ -8205,6 +8205,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]] ; then
     sed -i "s/.*UseDNS.*/UseDNS no/g" /etc/ssh/sshd_config &> /dev/null
   else
+    echo >> /etc/ssh/sshd_config
     echo "UseDNS no" >> /etc/ssh/sshd_config
   fi
   if [ -e "/usr/etc/sshd_config" ] ; then
@@ -8214,6 +8215,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     elif [[ "$_SSH_USEDNS_TEST" =~ "UseDNS" ]] ; then
       sed -i "s/.*UseDNS.*/UseDNS no/g" /usr/etc/sshd_config &> /dev/null
     else
+      echo >> /usr/etc/sshd_config
       echo "UseDNS no" >> /usr/etc/sshd_config
     fi
   fi
@@ -8266,6 +8268,7 @@ else
     sed -i "s/^IgnoreUserKnownHosts.*//g" /etc/ssh/sshd_config &> /dev/null
     sed -i "s/^PasswordAuthentication.*//g" /etc/ssh/sshd_config &> /dev/null
     sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /etc/ssh/sshd_config &> /dev/null
+    echo >> /etc/ssh/sshd_config
     echo "IgnoreUserKnownHosts no" >> /etc/ssh/sshd_config
     echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
     echo "UseDNS no" >> /etc/ssh/sshd_config
@@ -8279,6 +8282,7 @@ else
       sed -i "s/^IgnoreUserKnownHosts.*//g" /usr/etc/sshd_config &> /dev/null
       sed -i "s/^PasswordAuthentication.*//g" /usr/etc/sshd_config &> /dev/null
       sed -i "s/^PermitRootLogin.*/PermitRootLogin without-password/g" /usr/etc/sshd_config &> /dev/null
+      echo >> /usr/etc/sshd_config
       echo "IgnoreUserKnownHosts no" >> /usr/etc/sshd_config
       echo "PasswordAuthentication yes" >> /usr/etc/sshd_config
       echo "UseDNS no" >> /usr/etc/sshd_config
