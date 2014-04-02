@@ -4493,7 +4493,7 @@ update_newrelic () {
 install_newrelic () {
   ###--------------------###
   if [ ! -z "$_NEWRELIC_KEY" ] ; then
-    if [ ! -e "/etc/newrelic/newrelic.cfg" ] || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
+    if [ ! -e "/var/xdrago/log/newrelic-$_INSTALLER_VERSION.log" ] || [ ! -e "/etc/newrelic/newrelic.cfg" ] || [ ! -e "/etc/newrelic/nrsysmond.cfg" ] || [ ! -e "/etc/apt/sources.list.d/newrelic.list" ] ; then
       msg "INFO: Installing New Relic Apps and Server Monitor..."
       cd /var/opt
       _KEYS_SERVER_TEST=FALSE
@@ -4509,18 +4509,47 @@ install_newrelic () {
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
       st_runner "apt-get update -y" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
-      NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
-      if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
-        echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
-        echo "license_key=$_NEWRELIC_KEY" >> /etc/newrelic/newrelic.cfg
-        echo "pidfile=/var/run/newrelic-daemon.pid" >> /etc/newrelic/newrelic.cfg
-        echo "logfile=/var/log/newrelic/newrelic-daemon.log" >> /etc/newrelic/newrelic.cfg
-        echo "loglevel=error" >> /etc/newrelic/newrelic.cfg
-      else
-        sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+      _MULTI_NR=YES
+      _PHP_EXT_DIR_55="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API"
+      _PHP_EXT_DIR_54="/opt/php54/lib/php/extensions/no-debug-non-zts-$_PHP54_API"
+      _PHP_EXT_DIR_53="/opt/php53/lib/php/extensions/no-debug-non-zts-$_PHP53_API"
+      _PHP_EXT_DIR_52="/opt/php52/lib/php/extensions/no-debug-non-zts-$_PHP52_API"
+      if [ -e "$_PHP_EXT_DIR_55" ] && [ ! -e "$_PHP_EXT_DIR_55/newrelic.so" ] ; then
+        _MULTI_NR=YES
+      elif [ -e "$_PHP_EXT_DIR_54" ] && [ ! -e "$_PHP_EXT_DIR_54/newrelic.so" ] ; then
+        _MULTI_NR=YES
+      elif [ -e "$_PHP_EXT_DIR_53" ] && [ ! -e "$_PHP_EXT_DIR_53/newrelic.so" ] ; then
+        _MULTI_NR=YES
+      elif [ -e "$_PHP_EXT_DIR_52" ] && [ ! -e "$_PHP_EXT_DIR_52/newrelic.so" ] ; then
+        _MULTI_NR=YES
       fi
-      sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/nrsysmond.cfg &> /dev/null
+      if [ "$_MULTI_NR" = "YES" ] ; then
+        msg "INFO: Installing latest version of New Relic Apps and Server Monitor..."
+        if [ -e "$_PHP_EXT_DIR_52" ] ; then
+          PHPAPI=$_PHP52_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ -e "$_PHP_EXT_DIR_53" ] ; then
+          PHPAPI=$_PHP53_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ -e "$_PHP_EXT_DIR_54" ] ; then
+          PHPAPI=$_PHP54_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ -e "$_PHP_EXT_DIR_55" ] ; then
+          PHPAPI=$_PHP55_API;export PHPAPI;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
+        fi
+        if [ ! -e "/etc/newrelic/newrelic.cfg" ] ; then
+          echo "## New Relic Configuration" > /etc/newrelic/newrelic.cfg
+          echo "license_key=$_NEWRELIC_KEY" >> /etc/newrelic/newrelic.cfg
+          echo "pidfile=/var/run/newrelic-daemon.pid" >> /etc/newrelic/newrelic.cfg
+          echo "logfile=/var/log/newrelic/newrelic-daemon.log" >> /etc/newrelic/newrelic.cfg
+          echo "loglevel=error" >> /etc/newrelic/newrelic.cfg
+        else
+          sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/newrelic.cfg &> /dev/null
+        fi
+        sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" /etc/newrelic/nrsysmond.cfg &> /dev/null
+      fi
     fi
+    touch /var/xdrago/log/newrelic-$_INSTALLER_VERSION.log
   fi
 }
 #
