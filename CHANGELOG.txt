@@ -22,12 +22,20 @@
 
 # Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
 
-  ==> Updated on Wed Apr  2 09:05:12 PDT 2014
+  ==> Updated on Wed Apr  2 14:49:42 PDT 2014
 
   @=> Issues fixed in BOA head (not yet available):
 
   * Chive Authentication via SSH session may break Nginx due to race conditions.
   * The 'scp' command is broken in limited shell.
+  * Drush specific dt() wrapper is required in Provision for custom platforms.
+
+  To fix all those problems you can run as root on self-hosted system:
+
+  $ wget -q -U iCab http://files.aegir.cc/update/boa221fix.txt
+  $ bash boa221fix.txt
+
+  We have fixed this on all hosted and remotely managed Aegir instances already.
 
 
 ### Stable BOA-2.2.0 Release - Full Edition
