@@ -229,6 +229,12 @@ if [[ "$_MODE_TEST" =~ "-" ]] ; then
 else
   _MODE=SHORT
 fi
+_CHIVE_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/chive.*)
+if [[ "$_CHIVE_TEST" =~ "### access" ]] ; then
+  _CHIVE_VHOST=OK
+else
+  sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+fi
 count_cpu
 load_control
 sleep 10
