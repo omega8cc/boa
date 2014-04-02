@@ -50,6 +50,7 @@ nginx_high_load_off()
 
 update_ip_auth_access()
 {
+  touch /var/run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
     sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
@@ -80,6 +81,7 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     echo "  deny                         all;" >  /var/backups/.auth.IP.list
     echo "  ### access none"                   >> /var/backups/.auth.IP.list
   fi
+  rm -f /var/run/.auth.IP.list.pid
 }
 
 manage_ip_auth_access()
@@ -100,12 +102,12 @@ manage_ip_auth_access()
     echo "  deny                         all;" >  /var/backups/.auth.IP.list.tmp
     echo "  ### access none"                   >> /var/backups/.auth.IP.list.tmp
   fi
-  if [ ! -e "/var/backups/.auth.IP.list" ] ; then
+  if [ ! -e "/var/backups/.auth.IP.list" ] && [ ! -e "/var/run/.auth.IP.list.pid" ] ; then
     update_ip_auth_access
   else
     if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
       _DIFF_TEST=$(diff /var/backups/.auth.IP.list.tmp /var/backups/.auth.IP.list)
-      if [ ! -z "$_DIFF_TEST" ] ; then
+      if [ ! -z "$_DIFF_TEST" ] && [ ! -e "/var/run/.auth.IP.list.pid" ] ; then
         update_ip_auth_access
       fi
     fi
