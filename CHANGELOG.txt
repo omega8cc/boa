@@ -20,6 +20,15 @@
   * The 'rsync' command is broken in limited shell.
   * The 'drush dl foo' command can't be run outside of site directory.
 
+# Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
+
+  ==> Updated on Wed Apr  2 09:05:12 PDT 2014
+
+  @=> Issues fixed in BOA head (not yet available):
+
+  * Chive Authentication via SSH session may break Nginx due to race conditions.
+  * The 'scp' command is broken in limited shell.
+
 
 ### Stable BOA-2.2.0 Release - Full Edition
 ### Date: Mon Mar 31 06:44:08 SGT 2014
