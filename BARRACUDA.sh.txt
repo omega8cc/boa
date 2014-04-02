@@ -8712,13 +8712,22 @@ csf_install () {
   _CSF_COMPATIBILITY_TEST=$(perl /etc/csf/csftest.pl)
   if [[ "$_CSF_COMPATIBILITY_TEST" =~ "RESULT: csf should function on this server" ]] ; then
     _CSF_COMPATIBILITY=YES
+  elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "RESULT: csf will function on this server but some features will not work" ]] ; then
+    _CSF_COMPATIBILITY=PARTIAL
+    sed -i "s/^PORTFLOOD .*/PORTFLOOD = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    sed -i "s/^CONNLIMIT .*/CONNLIMIT = \"\"/g" /etc/csf/csf.conf &> /dev/null
+    sed -i "s/^USE_CONNTRACK .*/USE_CONNTRACK = \"0\"/g" /etc/csf/csf.conf &> /dev/null
   elif [[ "$_CSF_COMPATIBILITY_TEST" =~ "FATAL" ]] ; then
     _CSF_COMPATIBILITY=NO
   else
     _CSF_COMPATIBILITY=NO
   fi
-  if [ "$_CSF_COMPATIBILITY" = "YES" ] ; then
-    msg "TEST: csf/lfd firewall should work fine on this system"
+  if [ "$_CSF_COMPATIBILITY" = "YES" ] || [ "$_CSF_COMPATIBILITY" = "PARTIAL" ] ; then
+    if [ "$_CSF_COMPATIBILITY" = "PARTIAL" ] ; then
+      msg "TEST: csf/lfd firewall should mostly work on this system"
+    else
+      msg "TEST: csf/lfd firewall should work fine on this system"
+    fi
     mv -f /etc/csf/csf.conf /etc/csf/csf.conf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/csf.conf /etc/csf/csf.conf
     sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g" /etc/csf/csf.conf &> /dev/null
