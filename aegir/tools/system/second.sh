@@ -229,12 +229,50 @@ if [[ "$_MODE_TEST" =~ "-" ]] ; then
 else
   _MODE=SHORT
 fi
-_CHIVE_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/chive.*)
-if [[ "$_CHIVE_TEST" =~ "### access" ]] ; then
-  _CHIVE_VHOST=OK
-else
-  sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+
+if [ ! -e "/var/xdrago/log/protected-vhosts-clean.log" ] ; then
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+  touch /var/xdrago/log/protected-vhosts-clean.log
 fi
+
+if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
+  echo chive vhost exists
+  _CHIVE_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/chive.*)
+  if [[ "$_CHIVE_TEST" =~ "### access" ]] ; then
+    _CHIVE_VHOST=OK
+  else
+    sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+  fi
+else
+  echo no chive vhost exists
+fi
+
+if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
+  echo cgp vhost exists
+  _CGP_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/cgp.*)
+  if [[ "$_CGP_TEST" =~ "### access" ]] ; then
+    _CGP_VHOST=OK
+  else
+    sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+  fi
+else
+  echo no cgp vhost exists
+fi
+
+if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
+  echo sqlbuddy vhost exists
+  _SQLBUDDY_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.*)
+  if [[ "$_SQLBUDDY_TEST" =~ "### access" ]] ; then
+    _SQLBUDDY_VHOST=OK
+  else
+    sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+  fi
+else
+  echo no sqlbuddy vhost exists
+fi
+
 count_cpu
 load_control
 sleep 10
