@@ -2448,6 +2448,8 @@ tune_web_server_config () {
   sed -i "s/assert,//g"            /opt/php*/etc/php*.ini
   sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf
   sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
