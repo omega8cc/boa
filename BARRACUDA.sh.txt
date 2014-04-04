@@ -1764,6 +1764,7 @@ fix_php_ini_opcache () {
       else
         echo "zend_extension=\"$_OPCACHE_SO\""   >> $_THIS_FILE
       fi
+      echo "opcache.enable=1"                    >> $_THIS_FILE
       echo "opcache.memory_consumption=181"      >> $_THIS_FILE
       echo "opcache.interned_strings_buffer=8"   >> $_THIS_FILE
       echo "opcache.max_accelerated_files=64000" >> $_THIS_FILE
@@ -2450,6 +2451,12 @@ tune_web_server_config () {
   sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf
   sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf
   sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf
+  _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
+  if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
+    _DO_NOTHING=YES
+  else
+    sed -i "s/opcache.fast_shutdown=1/opcache.fast_shutdown=1\nopcache.enable=1/g" /opt/php*/etc/php*.ini &> /dev/null
+  fi
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
