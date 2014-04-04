@@ -22,7 +22,7 @@
 
 # Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
 
-  ==> Updated on Fri Apr  4 01:29:22 PDT 2014
+  ==> Updated on Fri Apr  4 15:19:19 PDT 2014
 
   @=> Issues fixed in BOA head:
 
@@ -30,6 +30,7 @@
   * Drush specific dt() wrapper is required in Provision for custom platforms.
   * The 'scp' command is broken in limited shell.
   * Too restrictive open_basedir defaults break access to valid Tika paths.
+  * Zend OPcache directive opcache.enable=1 must be set in all php.ini files.
 
   To fix all those problems you can run as root on self-hosted system:
 
