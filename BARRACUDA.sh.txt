@@ -5295,6 +5295,8 @@ finale () {
   rm -f /var/run/boa_wait.pid
   rm -f /var/aegir/.drush/.alias.drushrc.php
   rm -f /data/disk/*/.drush/.alias.drushrc.php
+  rm -f /var/xdrago/log/protected-vhosts-clean.log
+  rm -f /var/backups/.auth.IP.list*
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
