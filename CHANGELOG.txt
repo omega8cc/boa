@@ -22,7 +22,7 @@
 
 # Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
 
-  ==> Updated on Sat Apr  5 08:11:16 PDT 2014
+  ==> Updated on Sat Apr  5 10:18:02 PDT 2014
 
   @=> Issues fixed in BOA head (running the hotfix in stable is enough):
 
@@ -43,8 +43,11 @@
 
   @=> Other issues fixed in BOA head (run 'barracuda up-head system' to apply):
 
-  * PHP: FFmpeg extension not installed even if FMG is listed in _XTRAS_LIST.
   * PHP: New Relic extension not installed even if _NEWRELIC_KEY is not empty.
+
+  @=> Other issues not yet fixed:
+
+  * PHP: FFmpeg extension not installed even if FMG is listed in _XTRAS_LIST.
 
 
 ### Stable BOA-2.2.0 Release - Full Edition

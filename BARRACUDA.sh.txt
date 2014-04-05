@@ -3709,7 +3709,7 @@ install_php_extensions () {
         echo "ffmpeg $_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/ffmpeg-$_FFMPEG_VERSION.log
       fi
       cd /var/opt
-      rm -f -r ffmpeg*
+      rm -f -r ffmpeg-php*
       get_dev_src "ffmpeg-php-$_PHP_FFMPEG_VERSION.tar.gz" &> /dev/null
       cd /var/opt/ffmpeg-php-$_PHP_FFMPEG_VERSION
       st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
