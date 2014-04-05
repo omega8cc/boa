@@ -1072,6 +1072,7 @@ _CURL_VERSION=7.36.0
 _DRUSH_VERSION=mini-4-14-03-2014
 _DRUSH6_VERSION=mini-6-01-04-2014
 _DRUSH7_VERSION=head-7-10-03-2014
+_FFMPEG_VERSION=0.6.0
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=1.9.1
 _IMAGICK_VERSION=3.1.2
@@ -1800,6 +1801,28 @@ fix_php_ini_opcache_all () {
 
 }
 #
+# Fix php.ini file to add ffmpeg.so
+fix_php_ini_ffmpeg () {
+  if [ -e "$_THIS_FILE" ] ; then
+    _FFMPEG_INI_TEST=$(grep "extension=ffmpeg.so" $_THIS_FILE)
+    if [[ "$_FFMPEG_INI_TEST" =~ "extension=ffmpeg.so" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "extension=ffmpeg.so" >> $_THIS_FILE
+    fi
+  fi
+}
+#
+# Fix 5.3 php.ini files to add ffmpeg.so
+fix_php_ini_ffmpeg_all () {
+  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
+    _THIS_FILE=/opt/php53/etc/php53.ini
+    fix_php_ini_ffmpeg
+    _THIS_FILE=/opt/php53/lib/php.ini
+    fix_php_ini_ffmpeg
+  fi
+}
+#
 # Fix php.ini file to add geos.so
 fix_php_ini_geos () {
   if [ -e "$_THIS_FILE" ] ; then
@@ -2002,6 +2025,7 @@ update_php_conf () {
 
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
+  fix_php_ini_ffmpeg_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
@@ -3626,7 +3650,7 @@ install_php_extensions () {
   echo "php-jsmin $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-pecl-jsmin-$_LOC_PHP_VERSION.log
   ###--------------------###
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] ; then
+    if [ "$1" = "53" ] ; then
       msg "INFO: Installing GEOS PHP extension for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       if [ ! -e "/var/xdrago/log/geos-$_INSTALLER_VERSION.log" ] ; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
@@ -3654,7 +3678,7 @@ install_php_extensions () {
   fi
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] ; then
+    if [ "$1" = "53" ] ; then
       msg "INFO: Installing MongoDB PHP driver for PHP-FPM $_LOC_PHP_VERSION..."
       cd /var/opt
       rm -f -r mongo*
@@ -3665,6 +3689,21 @@ install_php_extensions () {
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "php-mongo $_MONGO_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log
+    fi
+  fi
+  ###--------------------###
+  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
+    if [ "$1" = "53" ] ; then
+      msg "INFO: Installing FFmpeg PHP driver for PHP-FPM $_LOC_PHP_VERSION..."
+      cd /var/opt
+      rm -f -r ffmpeg*
+      get_dev_src "ffmpeg-php-$_FFMPEG_VERSION.tar.gz" &> /dev/null
+      cd /var/opt/ffmpeg-php-$_FFMPEG_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "ffmpeg-php $_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-ffmpeg-$_FFMPEG_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
@@ -3764,7 +3803,7 @@ update_php_extensions () {
   fi
   ###--------------------###
   if [ "$_PHP_GEOS" = "YES" ] || [[ "$_XTRAS_LIST" =~ "GEO" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$1" = "53" ] && [ ! -e "/var/xdrago/log/php-geos-$_GEOS_VERSION-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing GEOS PHP extension upgrade for PHP-FPM $_LOC_PHP_VERSION, please wait..."
       if [ ! -e "/var/xdrago/log/geos-$_INSTALLER_VERSION.log" ] ; then
         st_runner "apt-get update -y --force-yes" &> /dev/null
@@ -3792,7 +3831,7 @@ update_php_extensions () {
   fi
   ###--------------------###
   if [ "$_PHP_MONGODB" = "YES" ] || [[ "$_XTRAS_LIST" =~ "MNG" ]] ; then
-    if [ "$_LOC_PHP_VERSION" = "$_PHP_VERSION" ] && [ ! -e "/var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+    if [ "$1" = "53" ] && [ ! -e "/var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log" ] ; then
       msg "INFO: Installing MongoDB PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION..."
       cd /var/opt
       rm -f -r mongo*
@@ -3803,6 +3842,21 @@ update_php_extensions () {
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "php-mongo $_MONGO_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log
+    fi
+  fi
+  ###--------------------###
+  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
+    if [ "$1" = "53" ] && [ ! -e "/var/xdrago/log/php-ffmpeg-$_FFMPEG_VERSION-$_LOC_PHP_VERSION.log" ] ; then
+      msg "INFO: Installing FFmpeg PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION..."
+      cd /var/opt
+      rm -f -r ffmpeg*
+      get_dev_src "ffmpeg-php-$_FFMPEG_VERSION.tar.gz" &> /dev/null
+      cd /var/opt/ffmpeg-php-$_FFMPEG_VERSION
+      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
+      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
+      st_runner "make --quiet" 2> /dev/null
+      st_runner "make --quiet install" 2> /dev/null
+      echo "ffmpeg-php $_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-ffmpeg-$_FFMPEG_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
