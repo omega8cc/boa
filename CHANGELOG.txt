@@ -22,7 +22,7 @@
 
 # Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
 
-  ==> Updated on Sat Apr  5 07:04:40 PDT 2014
+  ==> Updated on Sat Apr  5 08:11:16 PDT 2014
 
   @=> Issues fixed in BOA head (running the hotfix in stable is enough):
 
@@ -30,6 +30,7 @@
   * Drush specific dt() wrapper is required in Provision for custom platforms.
   * PHP: max_input_time should be set to 180 and not 60, by default.
   * The 'scp' command is broken in limited shell.
+  * Too restrictive open_basedir defaults break access to valid PEAR paths.
   * Too restrictive open_basedir defaults break access to valid Tika paths.
   * Zend OPcache directive opcache.enable=1 must be set in all php.ini files.
 
