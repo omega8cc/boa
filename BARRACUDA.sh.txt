@@ -1072,7 +1072,6 @@ _CURL_VERSION=7.36.0
 _DRUSH_VERSION=mini-4-14-03-2014
 _DRUSH6_VERSION=mini-6-01-04-2014
 _DRUSH7_VERSION=head-7-10-03-2014
-_FFMPEG_VERSION=2.2
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=1.9.1
 _IMAGICK_VERSION=3.1.2
@@ -1089,7 +1088,6 @@ _NGINX_VERSION=1.5.12
 _OPENSSH_VERSION=6.6p1
 _OPENSSL_VERSION=1.0.1f
 _PERCONA_VERSION=5.5.36
-_PHP_FFMPEG_VERSION=0.6.0
 _PHP52_API=20060613
 _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
@@ -1802,28 +1800,6 @@ fix_php_ini_opcache_all () {
 
 }
 #
-# Fix php.ini file to add ffmpeg.so
-fix_php_ini_ffmpeg () {
-  if [ -e "$_THIS_FILE" ] ; then
-    _FFMPEG_INI_TEST=$(grep "extension=ffmpeg.so" $_THIS_FILE)
-    if [[ "$_FFMPEG_INI_TEST" =~ "extension=ffmpeg.so" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "extension=ffmpeg.so" >> $_THIS_FILE
-    fi
-  fi
-}
-#
-# Fix 5.3 php.ini files to add ffmpeg.so
-fix_php_ini_ffmpeg_all () {
-  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
-    _THIS_FILE=/opt/php53/etc/php53.ini
-    fix_php_ini_ffmpeg
-    _THIS_FILE=/opt/php53/lib/php.ini
-    fix_php_ini_ffmpeg
-  fi
-}
-#
 # Fix php.ini file to add geos.so
 fix_php_ini_geos () {
   if [ -e "$_THIS_FILE" ] ; then
@@ -2026,7 +2002,6 @@ update_php_conf () {
 
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fix_php_ini_newrelic_all
-  fix_php_ini_ffmpeg_all
   fix_php_ini_geos_all
   fix_php_ini_mongo_all
   fix_php_ini_opcache_all
@@ -3695,31 +3670,6 @@ install_php_extensions () {
     fi
   fi
   ###--------------------###
-  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
-    if [ "$1" = "53" ] ; then
-      msg "INFO: Installing FFmpeg PHP driver for PHP-FPM $_LOC_PHP_VERSION..."
-      if [ ! -e "/var/xdrago/log/ffmpeg-$_FFMPEG_VERSION.log" ] ; then
-        cd /var/opt
-        rm -f -r ffmpeg*
-        get_dev_src "ffmpeg-$_FFMPEG_VERSION.tar.gz" &> /dev/null
-        cd ffmpeg-$_FFMPEG_VERSION
-        st_runner "sh ./configure --enable-shared --disable-yasm" 2> /dev/null
-        st_runner "make --quiet" 2> /dev/null
-        st_runner "make --quiet install" 2> /dev/null
-        echo "ffmpeg $_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/ffmpeg-$_FFMPEG_VERSION.log
-      fi
-      cd /var/opt
-      rm -f -r ffmpeg-php*
-      get_dev_src "ffmpeg-php-$_PHP_FFMPEG_VERSION.tar.gz" &> /dev/null
-      cd /var/opt/ffmpeg-php-$_PHP_FFMPEG_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "ffmpeg-php $_PHP_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-ffmpeg-$_PHP_FFMPEG_VERSION-$_LOC_PHP_VERSION.log
-    fi
-  fi
-  ###--------------------###
   msg "INFO: Installing Imagick for PHP-FPM $_LOC_PHP_VERSION..."
   cd /var/opt
   rm -f -r imagick*
@@ -3855,31 +3805,6 @@ update_php_extensions () {
       st_runner "make --quiet" 2> /dev/null
       st_runner "make --quiet install" 2> /dev/null
       echo "php-mongo $_MONGO_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-mongo-$_MONGO_VERSION-$_LOC_PHP_VERSION.log
-    fi
-  fi
-  ###--------------------###
-  if [[ "$_XTRAS_LIST" =~ "FMG" ]] ; then
-    if [ "$1" = "53" ] && [ ! -e "/var/xdrago/log/php-ffmpeg-$_PHP_FFMPEG_VERSION-$_LOC_PHP_VERSION.log" ] ; then
-      msg "INFO: Installing FFmpeg PHP driver upgrade for PHP-FPM $_LOC_PHP_VERSION..."
-      if [ ! -e "/var/xdrago/log/ffmpeg-$_FFMPEG_VERSION.log" ] ; then
-        cd /var/opt
-        rm -f -r ffmpeg*
-        get_dev_src "ffmpeg-$_FFMPEG_VERSION.tar.gz" &> /dev/null
-        cd ffmpeg-$_FFMPEG_VERSION
-        st_runner "sh ./configure --enable-shared --disable-yasm" 2> /dev/null
-        st_runner "make --quiet" 2> /dev/null
-        st_runner "make --quiet install" 2> /dev/null
-        echo "ffmpeg $_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/ffmpeg-$_FFMPEG_VERSION.log
-      fi
-      cd /var/opt
-      rm -f -r ffmpeg-php*
-      get_dev_src "ffmpeg-php-$_PHP_FFMPEG_VERSION.tar.gz" &> /dev/null
-      cd /var/opt/ffmpeg-php-$_PHP_FFMPEG_VERSION
-      st_runner "$_LOC_PHP_PATH/phpize" 2> /dev/null
-      st_runner "sh ./configure --with-php-config=$_LOC_PHP_PATH/php-config" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      echo "ffmpeg-php $_PHP_FFMPEG_VERSION $_LOC_PHP_VERSION $_NOW" > /var/xdrago/log/php-ffmpeg-$_PHP_FFMPEG_VERSION-$_LOC_PHP_VERSION.log
     fi
   fi
   ###--------------------###
