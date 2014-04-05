@@ -2457,6 +2457,7 @@ tune_web_server_config () {
   else
     sed -i "s/opcache.fast_shutdown=1/opcache.fast_shutdown=1\nopcache.enable=1/g" /opt/php*/etc/php*.ini &> /dev/null
   fi
+  sed -i "s/^max_input_time = 60.*/max_input_time = 180/g" /opt/php*/etc/php*.ini &> /dev/null
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
