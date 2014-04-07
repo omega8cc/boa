@@ -22,12 +22,13 @@
 
 # Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
 
-  ==> Updated on Sun Apr  6 01:01:45 PDT 2014
+  ==> Updated on Tue Apr  8 05:44:58 SGT 2014
 
   @=> Issues fixed in BOA head (running the hotfix in stable is enough):
 
   * Chive Authentication via SSH session may break Nginx due to race conditions.
   * Drush specific dt() wrapper is required in Provision for custom platforms.
+  * Issue #2229715 - Tasks queue doesn't work on the Master Instance.
   * PHP: max_input_time should be set to 180 and not 60, by default.
   * The 'scp' command is broken in limited shell.
   * Too broad whitelisting breaks commands in limited shell with 'tmp' keyword.
