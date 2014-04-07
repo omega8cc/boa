@@ -17,9 +17,12 @@ else
   _ARGS="$1"
 fi
 
+# echo USER is $USER
+# echo HOME is $HOME
+# echo _Y_USR is $_Y_USR
+# echo _LTD_GID is $_LTD_GID
 # echo _ALL is $_ALL
 # echo _ARGS is $_ARGS
-# echo _Y_USR is $_Y_USR
 # echo 0 is $0
 # echo 1 is $1
 # echo 2 is $2
@@ -27,7 +30,6 @@ fi
 # echo 4 is $4
 # echo 5 is $5
 # echo DRUSH_PHP is $DRUSH_PHP
-# echo HOME is $HOME
 # echo PHP_INI is $PHP_INI
 # echo PHP_OPTIONS is $PHP_OPTIONS
 
