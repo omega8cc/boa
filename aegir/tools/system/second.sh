@@ -48,32 +48,61 @@ nginx_high_load_off()
   /etc/init.d/nginx reload
 }
 
+check_vhost_health()
+{
+  if [ -e "$1"* ] ; then
+    echo vhost $1 exists
+    _VHOST_TEST_PLACEHOLDER=$(grep "### access" $1*)
+    _VHOST_TEST_ALLOW=$(grep "allow .*;" $1*)
+    _VHOST_TEST_DENY=$(grep "deny .*;" $1*)
+    if [[ "$_VHOST_TEST_PLACEHOLDER" =~ "access" ]] && [[ "$_VHOST_TEST_DENY" =~ "deny" ]] ; then
+      if [[ "$_VHOST_TEST_ALLOW" =~ "allow" ]] ; then
+        _VHOST_HEALTH=YES
+      else
+        _VHOST_HEALTH=YES
+      fi
+    else
+      _VHOST_HEALTH=NO
+      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" $1* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access none\n  deny                         all;/g" $1* &> /dev/null
+    fi
+  else
+    echo vhost $1 does not exist
+  fi
+}
+
 update_ip_auth_access()
 {
   touch /var/run/.auth.IP.list.pid
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
     fi
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
     fi
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     mv -f /var/aegir/config/server_master/nginx/vhost.d/sed* /var/backups/
+    check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/chive."
+    check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/cgp."
+    check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."
     _NGX_TEST=$(service nginx configtest 2>&1)
     if [[ "$_NGX_TEST" =~ "successful" ]] ; then
       service nginx reload &> /dev/null
     else
       service nginx reload &> /var/backups/.auth.IP.list.ops
       sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+      check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/chive."
+      check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/cgp."
+      check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."
       service nginx reload &> /dev/null
     fi
   fi
@@ -85,9 +114,9 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list &> /dev/null
   if [ -e "/var/backups/.auth.IP.list" ] ; then
-    _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list)
+    _ALLOW_TEST_LIST=$(grep allow /var/backups/.auth.IP.list)
   fi
-  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
+  if [[ "$_ALLOW_TEST_LIST" =~ "allow" ]] ; then
     echo "  deny                         all;" >> /var/backups/.auth.IP.list
     echo "  ### access live"                   >> /var/backups/.auth.IP.list
   else
@@ -107,9 +136,9 @@ manage_ip_auth_access()
   fi
   sed -i "s/\.;/;/g; s/allow                        ;//g; s/ *$//g; /^$/d" /var/backups/.auth.IP.list.tmp &> /dev/null
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-    _ALLOW_TEST=$(grep allow /var/backups/.auth.IP.list.tmp)
+    _ALLOW_TEST_TMP=$(grep allow /var/backups/.auth.IP.list.tmp)
   fi
-  if [[ "$_ALLOW_TEST" =~ "allow" ]] ; then
+  if [[ "$_ALLOW_TEST_TMP" =~ "allow" ]] ; then
     echo "  deny                         all;" >> /var/backups/.auth.IP.list.tmp
     echo "  ### access live"                   >> /var/backups/.auth.IP.list.tmp
   else
