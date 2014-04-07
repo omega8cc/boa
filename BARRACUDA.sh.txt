@@ -5245,6 +5245,9 @@ finale () {
   rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f /var/xdrago/log/protected-vhosts-clean.log
   rm -f /var/backups/.auth.IP.list*
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
   if [ ! -e "/etc/init.d/buagent" ] && [ -e "/var/backups/buagent-pre-$_INSTALLER_VERSION-$_NOW" ] ; then
