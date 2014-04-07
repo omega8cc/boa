@@ -6,7 +6,11 @@ _ALL="$@"
 _LTD_GID=$(id -nG $USER)
 _INTERNAL=NO
 _X_USR=".*"
-_Y_USR=${USER%${_X_USR}}
+if [ "$USER" = "aegir" ] || [ "$HOME" = "/var/aegir" ] ; then
+  _Y_USR=aegir
+else
+  _Y_USR=${USER%${_X_USR}}
+fi
 if [ "$1" = "-c" ] ; then
   _ARGS="$2"
 else
