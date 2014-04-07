@@ -51,9 +51,20 @@ nginx_high_load_off()
 update_ip_auth_access()
 {
   touch /var/run/.auth.IP.list.pid
-  sleep 1
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
-    sed -i "s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
+      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+    fi
+    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
+      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+    fi
+    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
+      sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+    fi
+    sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
 d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     mv -f /var/aegir/config/server_master/nginx/vhost.d/sed* /var/backups/
@@ -228,49 +239,6 @@ if [[ "$_MODE_TEST" =~ "-" ]] ; then
   _MODE=FULL
 else
   _MODE=SHORT
-fi
-
-if [ ! -e "/var/xdrago/log/protected-vhosts-clean.log" ] ; then
-  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
-  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
-  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-  touch /var/xdrago/log/protected-vhosts-clean.log
-fi
-
-if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
-  echo chive vhost exists
-  _CHIVE_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/chive.*)
-  if [[ "$_CHIVE_TEST" =~ "### access" ]] ; then
-    _CHIVE_VHOST=OK
-  else
-    sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
-  fi
-else
-  echo no chive vhost exists
-fi
-
-if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
-  echo cgp vhost exists
-  _CGP_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/cgp.*)
-  if [[ "$_CGP_TEST" =~ "### access" ]] ; then
-    _CGP_VHOST=OK
-  else
-    sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
-  fi
-else
-  echo no cgp vhost exists
-fi
-
-if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
-  echo sqlbuddy vhost exists
-  _SQLBUDDY_TEST=$(grep "### access" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.*)
-  if [[ "$_SQLBUDDY_TEST" =~ "### access" ]] ; then
-    _SQLBUDDY_VHOST=OK
-  else
-    sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access placeholder/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-  fi
-else
-  echo no sqlbuddy vhost exists
 fi
 
 count_cpu
