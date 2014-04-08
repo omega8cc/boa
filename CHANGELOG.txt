@@ -338,7 +338,7 @@
   Note that the system level option _PERMISSIONS_FIX (introduced in BOA-2.1.0
   and set to NO by default) should be also enabled with YES in the system level
   /root/.barracuda.cnf file, if you prefer to have permissions fixed in all
-  sites on all platforms, expect those with fix_files_permissions_daily = FALSE
+  sites on all platforms, except those with fix_files_permissions_daily = FALSE
   set in the platform level, active INI file.
 
 #-### High-performance JavaScript callback handler (js) in all platforms
