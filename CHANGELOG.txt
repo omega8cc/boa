@@ -6,7 +6,7 @@
 # Release Notes:
 
   This is a bug-fix only release to address issues discovered after recent
-  major BOA-2.2.0 Release and subsequent BOA-2.2.1 release.
+  major BOA-2.2.0 and subsequent BOA-2.2.1 Releases.
 
   The most important problem fixed in this Release is related to known OpenSSL
   security issue, which has been fixed in OpenSSL 1.0.1g
