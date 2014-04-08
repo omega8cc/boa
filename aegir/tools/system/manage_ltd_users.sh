@@ -106,7 +106,7 @@ enable_chattr () {
         _U_INI=52
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
-        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl\""
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
         _INI=${_INI//\//\\\/}
         _QTP=${_U_TP//\//\\\/}
         sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -402,7 +402,7 @@ update_php_cli_local_ini () {
       _U_INI=52
     fi
     if [ -e "$_U_HD/php.ini" ] ; then
-      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp\""
+      _INI="open_basedir = \".:/data/disk/${_OWN}:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
       _INI=${_INI//\//\\\/}
       _QTP=${_U_TP//\//\\\/}
       sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null

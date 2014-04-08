@@ -22,7 +22,7 @@
 
 # Known Issues on systems upgraded to BOA-2.2.1 (and 2.2.0) releases
 
-  ==> Updated on Tue Apr  8 05:44:58 SGT 2014
+  ==> Updated on Tue Apr  8 01:26:47 PDT 2014
 
   @=> Issues fixed in BOA head (running the hotfix in stable is enough):
 
@@ -32,7 +32,6 @@
   * PHP: max_input_time should be set to 180 and not 60, by default.
   * The 'scp' command is broken in limited shell.
   * Too broad whitelisting breaks commands in limited shell with 'tmp' keyword.
-  * Too restrictive open_basedir defaults break access to valid PEAR paths.
   * Too restrictive open_basedir defaults break access to valid Tika paths.
   * Zend OPcache directive opcache.enable=1 must be set in all php.ini files.
 
@@ -46,6 +45,7 @@
   @=> Other issues fixed in BOA head (run 'barracuda up-head system' to apply):
 
   * PHP: New Relic extension not installed even if _NEWRELIC_KEY is not empty.
+  * Too restrictive open_basedir defaults break access to valid PEAR paths.
 
 
 ### Stable BOA-2.2.0 Release - Full Edition
