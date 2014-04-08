@@ -1354,7 +1354,7 @@ else
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
         _DO_NOTHING=YES
       else
-        openssl dhparam -rand - 2048 >> $File
+        openssl dhparam -rand - 4096 >> $File
       fi
     done
     for File in `find /etc/ssl/private/*.crt -type f` ; do
@@ -1362,7 +1362,7 @@ else
       if [[ "$_PFS_TEST" =~ "DH PARAMETERS" ]] ; then
         _DO_NOTHING=YES
       else
-        openssl dhparam -rand - 2048 >> $File
+        openssl dhparam -rand - 4096 >> $File
       fi
     done
     /etc/init.d/nginx reload
