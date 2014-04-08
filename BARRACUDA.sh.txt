@@ -73,7 +73,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=BOA-2.2.2
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=YES
@@ -129,7 +129,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=HEAD
+### _AEGIR_VERSION=BOA-2.2.2
 ### _DB_SERVER=MariaDB
 ### _SSH_PORT=22
 ### _DNS_SETUP_TEST=NO
@@ -416,9 +416,9 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.1
+### _AEGIR_VERSION=BOA-2.2.2
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.2.2
 
 
 ###----------------------------------------###
@@ -1060,7 +1060,7 @@ _USE_STOCK=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.2.2-dev
+_INSTALLER_VERSION=BOA-2.2.2
 
 ###
 ### Software versions
@@ -5405,7 +5405,7 @@ else
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.2.2
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -5419,7 +5419,7 @@ else
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.2.2
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -6043,7 +6043,7 @@ get_drush_versions
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then
-  if [[ "$_INSTALLER_VERSION" =~ "2.2.1" ]] ; then
+  if [[ "$_INSTALLER_VERSION" =~ "2.2.2" ]] ; then
     cp -af /etc/ssl/private/nginx-wild-ssl.crt /etc/ssl/private/pre-2.2.2-nginx-wild-ssl.crt
     cp -af /etc/ssl/private/nginx-wild-ssl.key /etc/ssl/private/pre-2.2.2-nginx-wild-ssl.key
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:4096 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
