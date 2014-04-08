@@ -6465,9 +6465,13 @@ if [ ! -e "/etc/aliases" ] ; then
   newaliases &> /dev/null
 fi
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-  install_ssl_src
-  install_ssh_src
-  install_curl_src
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    _DO_NOTHING=YES
+  else
+    install_ssl_src
+    install_ssh_src
+    install_curl_src
+  fi
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
   install_ssh_src
