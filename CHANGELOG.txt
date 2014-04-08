@@ -53,6 +53,7 @@
   * Issue #2231093 - Add new line before 'UseDNS no' in the sshd_config file.
   * Issue #2235991 - Drush make needs better exceptions in websh wrapper.
   * Issue #294 - New Relic ext not installed even if _NEWRELIC_KEY is not empty.
+  * Issue #298 - Allow to force _SSL_FROM_SOURCES=YES in Wheezy and Precise.
   * Nginx: Backup and re-create default wildcard SSL cert/key with rsa:4096
   * Nginx: Generate 4096 bit long DH parameters when _NGINX_FORWARD_SECRECY=YES
   * PHP: Better default workers limits for the ondemand mode.
