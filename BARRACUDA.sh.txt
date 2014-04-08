@@ -2431,28 +2431,28 @@ tune_web_server_config () {
   if [ "$_START_LEGACY_FPM" -lt "3" ] ; then
     _START_LEGACY_FPM=3
   fi
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php55/etc/php55-fpm.conf &> /dev/null
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php54/etc/php54-fpm.conf &> /dev/null
-  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php53-fpm.conf &> /dev/null
+  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php55/etc/php55-fpm.conf    &> /dev/null
+  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php54/etc/php54-fpm.conf    &> /dev/null
+  sed -i "s/process.max =.*/process.max = $_PROCESS_MAX_FPM/g"       /opt/php53/etc/php53-fpm.conf    &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
   sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
-  sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g" /opt/php52/etc/php52-fpm.conf &> /dev/null
+  sed -i "s/max_children\">.*</max_children\">$_START_LEGACY_FPM</g" /opt/php52/etc/php52-fpm.conf    &> /dev/null
   if [ ! -z "$_PHP_FPM_DENY" ] ; then
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
-  sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini
-  sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf
-  sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf
-  sed -i "s/assert,//g"            /opt/php*/etc/php*.ini
-  sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf
-  sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf
+  sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
+  sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/assert,//g"            /opt/php*/etc/php*.ini             &> /dev/null
+  sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
   sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/provision/platform/verify.provision.inc    &> /dev/null
   sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/provision/platform/verify.provision.inc      &> /dev/null
   _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
