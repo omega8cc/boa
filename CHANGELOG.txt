@@ -52,6 +52,7 @@
   * Issue #2229715 - Tasks queue doesn't work on the Master Instance.
   * Issue #2231093 - Add new line before 'UseDNS no' in the sshd_config file.
   * Issue #294 - New Relic ext not installed even if _NEWRELIC_KEY is not empty.
+  * Nginx: Backup and re-create default wildcard SSL cert/key with rsa:4096
   * PHP: Better default workers limits for the ondemand mode.
   * PHP: max_input_time should be set to 180 and not 60, by default.
   * PHP: Zend OPcache directive opcache.enable=1 must be set in all ini files.
@@ -59,6 +60,7 @@
   * Too broad whitelisting breaks commands in limited shell with 'tmp' keyword.
   * Too restrictive open_basedir defaults break access to valid PEAR paths.
   * Too restrictive open_basedir defaults break access to valid Tika paths.
+  * Use rsa:4096 by default in self-signed certs for Nginx and FTPS.
 
 
 ### Stable BOA-2.2.1 Release - Full Edition
