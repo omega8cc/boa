@@ -8157,6 +8157,32 @@ fi
 
 
 ###--------------------###
+fix_compass_path () {
+  if [[ ! -e "/var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log" || ! -e "/usr/local/bin/coderay" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass" ]] ; then
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/coderay /usr/local/bin/coderay &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass /usr/local/bin/compass &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/guard   /usr/local/bin/guard   &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/listen  /usr/local/bin/listen  &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass    /usr/local/bin/sass    &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scss    /usr/local/bin/scss    &> /dev/null
+    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem          /usr/local/bin/gem     &> /dev/null
+    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby         /usr/local/bin/ruby    &> /dev/null
+    ln -sf /usr/local/rvm/bin/rvm                                     /usr/local/bin/rvm     &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass-validate      /usr/local/bin/compass-validate      &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/ruby_executable_hooks /usr/local/bin/ruby_executable_hooks &> /dev/null
+    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass-convert          /usr/local/bin/sass-convert          &> /dev/null
+    touch /var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log
+  fi
+}
+
+fix_compass_bundle () {
+  cd /var/opt
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/Gemfile.txt /var/opt/Gemfile &> /dev/null
+  mrun "bundle install" 2> /dev/null
+}
+
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
@@ -8241,6 +8267,9 @@ else
         if [ -e "$_GEM_FILE" ] ; then
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
         fi
+        fix_compass_path
+        fix_compass_bundle
+        PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
         echo "compass-$_INSTALLER_VERSION-$_NOW" > /var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
       else
@@ -8250,34 +8279,7 @@ else
   fi
 fi
 
-fix_compass_path () {
-  if [[ ! -e "/var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log" || ! -e "/usr/local/bin/coderay" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass" ]] ; then
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/coderay /usr/local/bin/coderay &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass /usr/local/bin/compass &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/guard   /usr/local/bin/guard   &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/listen  /usr/local/bin/listen  &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass    /usr/local/bin/sass    &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scss    /usr/local/bin/scss    &> /dev/null
-    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem          /usr/local/bin/gem     &> /dev/null
-    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby         /usr/local/bin/ruby    &> /dev/null
-    ln -sf /usr/local/rvm/bin/rvm                                     /usr/local/bin/rvm     &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass-validate      /usr/local/bin/compass-validate      &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/ruby_executable_hooks /usr/local/bin/ruby_executable_hooks &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass-convert          /usr/local/bin/sass-convert          &> /dev/null
-    touch /var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log
-  fi
-}
 
-fix_compass_bundle () {
-  cd /var/opt
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/Gemfile.txt /var/opt/Gemfile &> /dev/null
-  mrun "bundle install" 2> /dev/null
-}
-
-fix_compass_path
-fix_compass_bundle
 
 
 ###--------------------###
