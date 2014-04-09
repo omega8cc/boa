@@ -48,6 +48,7 @@
   * Fix default shell for system level cron tasks.
   * Fix for csf firewall compatibility test.
   * Force better health check on protected vhosts on live SSH-auth update.
+  * Improved health check for protected vhosts during live SSH-auth update.
   * Issue #2229555 - On fresh boa install link missing durring install.
   * Issue #2229715 - Tasks queue doesn't work on the Master Instance.
   * Issue #2231093 - Add new line before 'UseDNS no' in the sshd_config file.
@@ -55,9 +56,11 @@
   * Issue #294 - New Relic ext not installed even if _NEWRELIC_KEY is not empty.
   * Nginx: Backup and re-create default wildcard SSL cert/key with rsa:4096
   * Nginx: Generate 4096 bit long DH parameters when _NGINX_FORWARD_SECRECY=YES
+  * Normalize localhost entry in /etc/hosts to avoid FQDN mapped to 127.0.0.1
   * PHP: Better default workers limits for the ondemand mode.
   * PHP: max_input_time should be set to 180 and not 60, by default.
   * PHP: Zend OPcache directive opcache.enable=1 must be set in all ini files.
+  * Reset PATH to avoid RVM overrides after Compass Tools install/upgrade.
   * The 'scp' command is broken in limited shell.
   * Too broad whitelisting breaks commands in limited shell with 'tmp' keyword.
   * Too restrictive open_basedir defaults break access to valid PEAR paths.
