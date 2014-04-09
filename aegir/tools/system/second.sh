@@ -157,6 +157,35 @@ manage_ip_auth_access()
       fi
     fi
   fi
+  if [[ "$_ALLOW_TEST_TMP" =~ "allow" ]] ; then
+    _VHOST_STATUS_CHIVE=TRUE
+    _VHOST_STATUS_CGP=TRUE
+    _VHOST_STATUS_SQLBUDDY=TRUE
+    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
+      _VHOST_STATUS_CHIVE=FALSE
+      _ALLOW_TEST_VHOST_CHIVE=$(grep allow /var/aegir/config/server_master/nginx/vhost.d/chive.*)
+      if [[ "$_ALLOW_TEST_VHOST_CHIVE" =~ "allow" ]] ; then
+        _VHOST_STATUS_CHIVE=TRUE
+      fi
+    fi
+    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
+      _VHOST_STATUS_CGP=FALSE
+      _ALLOW_TEST_VHOST_CGP=$(grep allow /var/aegir/config/server_master/nginx/vhost.d/cgp.*)
+      if [[ "$_ALLOW_TEST_VHOST_CGP" =~ "allow" ]] ; then
+        _VHOST_STATUS_CGP=TRUE
+      fi
+    fi
+    if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
+      _VHOST_STATUS_SQLBUDDY=FALSE
+      _ALLOW_TEST_VHOST_SQLBUDDY=$(grep allow /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.*)
+      if [[ "$_ALLOW_TEST_VHOST_SQLBUDDY" =~ "allow" ]] ; then
+        _VHOST_STATUS_SQLBUDDY=TRUE
+      fi
+    fi
+    if [ "$_VHOST_STATUS_CHIVE" = "FALSE" ] || [ "$_VHOST_STATUS_CGP" = "FALSE" ] || [ "$_VHOST_STATUS_SQLBUDDY" = "FALSE" ] ; then
+      update_ip_auth_access
+    fi
+  fi
   rm -f /var/backups/.auth.IP.list.tmp
 }
 
