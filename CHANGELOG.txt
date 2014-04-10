@@ -20,6 +20,10 @@
   Note that it will also trigger OpenSSH and cURL install from sources, plus
   subsequent PHP rebuild to include latest SSL libraries.
 
+  Note that _SSL_FROM_SOURCES=YES will not force the build from sources on
+  Debian Wheezy and Ubuntu Precise, to avoid confirmed conflicts and because
+  both OS versions already provide custom, patched OpenSSL packages.
+
   This Release doesn't include any updates to the Octopus installer, so there is
   no point in running full upgrade. It is enough to run the barracuda only,
   system upgrade in the "silent mode" with:
