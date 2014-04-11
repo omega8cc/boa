@@ -42,6 +42,7 @@ $conf['expire_include_base_url'] = 1;        // Default settings for expire modu
 $conf['js_server_software'] = "other";       // Set JS Callback handler server software
 $conf['video_ffmpeg_instances'] = 1;         // Force safe default for ffmpeg
 $conf['securepages_enable'] = 1;             // Force to avoid issues with ssl proxy
+$conf['less_devel'] = false;                 // Prevent CSS regeneration on every page load
 $conf['drupal_http_request_fails'] = false;  // Avoid false alarm
 $conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
 $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
@@ -201,6 +202,7 @@ if (!$is_backend) {
     unset($conf['cache']);          // Stop hardcoding caching
     unset($conf['preprocess_css']); // Stop hardcoding css aggregation
     unset($conf['preprocess_js']);  // Stop hardcoding js aggregation
+    unset($conf['less_devel']);     // Stop hardcoding CSS regeneration on every page load
     unset($conf['theme_cloudy_settings']['omega_rebuild_aggregates']);     // Do not force on dev URLs
     unset($conf['theme_cloudy_settings']['omega_rebuild_theme_registry']); // Do not force on dev URLs
     unset($conf['error_level']);    // Stop hardcoding no errors on screen
