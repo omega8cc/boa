@@ -38,12 +38,22 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
 }
+foreach $X (sort keys %li_cnt) {
+  if ($X =~ /php55/) {$php55lives = "YES";}
+  if ($X =~ /php54/) {$php54lives = "YES";}
+  if ($X =~ /php53/) {$php53lives = "YES";}
+  if ($X =~ /php52/) {$php52lives = "YES";}
+}
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
 print "\n $collectdsumar Collectd\t\tGLOBAL" if ($collectdlives);
 print "\n $dhcpcdsumar dhcpcd procs\t\tGLOBAL" if ($dhcpcdlives);
 print "\n $fpmsumar FPM procs\t\tGLOBAL" if ($fpmlives);
+print "\n 1 FPM55 procs\t\tGLOBAL" if ($php55lives);
+print "\n 1 FPM54 procs\t\tGLOBAL" if ($php54lives);
+print "\n 1 FPM53 procs\t\tGLOBAL" if ($php53lives);
+print "\n 1 FPM52 procs\t\tGLOBAL" if ($php52lives);
 print "\n $ftpsumar FTP procs\t\tGLOBAL" if ($ftplives);
 print "\n $mysqlsumar MySQL procs\t\tGLOBAL" if ($mysqlives);
 print "\n $nginxsumar Nginx procs\t\tGLOBAL" if ($nginxlives);
@@ -77,10 +87,10 @@ if (!$nginxsumar && -f "/etc/init.d/nginx" && !-f "/var/run/boa_run.pid") {
   system("killall -9 nginx");
   system("/etc/init.d/nginx start");
 }
-`/etc/init.d/php55-fpm restart` if ((!$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php54-fpm restart` if ((!$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php53-fpm restart` if ((!$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
-`/etc/init.d/php52-fpm restart` if ((!$phpsumar || !-f "/var/run/php52-fpm.pid") && -f "/etc/init.d/php52-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php55-fpm restart` if ((!$php55lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php55-fpm.pid") && -f "/etc/init.d/php55-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php54-fpm restart` if ((!$php54lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php54-fpm.pid") && -f "/etc/init.d/php54-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php53-fpm restart` if ((!$php53lives || !$fpmsumar || $fpmsumar > 4 || !-f "/var/run/php53-fpm.pid") && -f "/etc/init.d/php53-fpm" && !-f "/var/run/boa_run.pid");
+`/etc/init.d/php52-fpm restart` if ((!$php52lives || !$phpsumar || !-f "/var/run/php52-fpm.pid") && -f "/etc/init.d/php52-fpm" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/jetty7 start` if (!$jetty7sumar && -f "/etc/init.d/jetty7" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/jetty8 start` if (!$jetty8sumar && -f "/etc/init.d/jetty8" && !-f "/var/run/boa_run.pid");
 `/etc/init.d/jetty9 start` if (!$jetty9sumar && -f "/etc/init.d/jetty9" && !-f "/var/run/boa_run.pid");
@@ -108,6 +118,7 @@ sub global_action
   foreach $line (@MYARR) {
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
+    $li_cnt{$X}++ if ($PID ne "PID" && $COMMAND =~ /php-fpm/ && $X =~ /php/);
 
     if (!-f "/var/run/fmp_wait.pid") {
       if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /php-fpm/ && $B =~ /pool/ && $K =~ /www/)
