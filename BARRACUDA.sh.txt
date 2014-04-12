@@ -7319,8 +7319,13 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-        sed -i "s/9090/8080/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+        sed -i "s/9090/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
       fi
+      if [ -e "/opt/jetty9/start.d/http.ini" ] ; then
+        sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
+        touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
+      fi
+      sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
       ln -sf /opt/jetty9/bin/jetty.sh /etc/init.d/jetty9 &> /dev/null
       chmod 755 /etc/init.d/jetty9
       st_runner "update-rc.d jetty9 defaults" &> /dev/null
@@ -7345,8 +7350,13 @@ else
   _JETTY_CTRL="/opt/jetty9/jetty-ctrl-$_JETTY_8_VERSION-version.txt"
 fi
 _SOLR_CTRL="/opt/jetty9/solr-$_SOLR_4_VERSION-version.txt"
+if [ -e "/opt/jetty9/start.d/http.ini" ] ; then
+  _PORT_CTRL="/opt/jetty9/start.d/.fixed.http.ini.txt"
+else
+  _PORT_CTRL="$_JETTY_CTRL"
+fi
 if [ -e "/opt/jetty9/VERSION.txt" ] ; then
-  if [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
+  if [ ! -e "$_PORT_CTRL" ] || [ ! -e "$_JETTY_CTRL" ] || [ ! -e "$_SOLR_CTRL" ] ; then
     msg "INFO: Upgrading MultiCore Apache Solr 4 with Jetty $_REAL_JETTY..."
     cd /var/opt
     rm -f -r jetty-distribution-*
@@ -7361,8 +7371,13 @@ if [ -e "/opt/jetty9/VERSION.txt" ] ; then
       mv /var/opt/jetty-distribution-$_JETTY_8_VERSION /opt/jetty9
       echo $_JETTY_8_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_8_VERSION-version.txt
       sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
-      sed -i "s/9090/8080/g" /opt/jetty9/bin/jetty.sh &> /dev/null
+      sed -i "s/9090/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
     fi
+    if [ -e "/opt/jetty9/start.d/http.ini" ] ; then
+      sed -i "s/8080/8099/g" /opt/jetty9/start.d/http.ini &> /dev/null
+      touch /opt/jetty9/start.d/.fixed.http.ini.txt &> /dev/null
+    fi
+    sed -i "s/8080/8099/g" /opt/jetty9/bin/jetty.sh &> /dev/null
     get_dev_arch "solr-$_SOLR_4_VERSION.tgz" &> /dev/null
     cp -af /var/opt/solr-$_SOLR_4_VERSION/dist/solr-$_SOLR_4_VERSION.war /opt/jetty9/webapps/solr.war
     rm -f -r /opt/jetty9/solr
@@ -7440,6 +7455,7 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty8
       echo "JETTY_PID=\$JETTY_RUN/jetty8.pid # Pid file" >> /etc/default/jetty8
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr3 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty8
+      sed -i "s/8080/8088/g" /opt/jetty8/bin/jetty.sh &> /dev/null
       ln -sf /opt/jetty8/bin/jetty.sh /etc/init.d/jetty8 &> /dev/null
       chmod 755 /etc/init.d/jetty8
       st_runner "update-rc.d jetty8 defaults" &> /dev/null
@@ -7546,6 +7562,7 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty7
       echo "JETTY_PID=\$JETTY_RUN/jetty7.pid # Pid file" >> /etc/default/jetty7
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr1 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty7
+      sed -i "s/8080/8077/g" /opt/jetty7/bin/jetty.sh &> /dev/null
       ln -sf /opt/jetty7/bin/jetty.sh /etc/init.d/jetty7 &> /dev/null
       chmod 755 /etc/init.d/jetty7
       st_runner "update-rc.d jetty7 defaults" &> /dev/null
