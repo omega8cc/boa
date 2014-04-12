@@ -639,10 +639,10 @@ _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.$_NOW"
 if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-manage-ltd-users
   echo Another BOA task is running, we have to wait
-  exit
+  exit 0
 elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   echo Missing /var/xdrago/conf/lshell.conf template
-  exit
+  exit 0
 else
   if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
     _WEB_SH=`readlink -n /bin/sh`
@@ -685,5 +685,6 @@ else
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  exit 0
 fi
 ###EOF2014###

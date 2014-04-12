@@ -74,4 +74,5 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
   sleep 15
   guest_guard
 fi
+exit 0
 ###EOF2014###

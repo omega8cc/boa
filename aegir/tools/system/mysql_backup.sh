@@ -107,4 +107,5 @@ echo "Redis server restarted"
 service clean-boa-env start &> /dev/null
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
+exit 0
 ###EOF2014###

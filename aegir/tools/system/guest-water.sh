@@ -153,4 +153,5 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   csf -e
   csf -q
 fi
+exit 0
 ###EOF2014###

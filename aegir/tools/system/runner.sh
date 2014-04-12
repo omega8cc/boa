@@ -63,8 +63,9 @@ done
 
 if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-runner
-  exit
+  exit 0
 else
   action
+  exit 0
 fi
 ###EOF2014###

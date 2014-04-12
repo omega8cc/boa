@@ -312,4 +312,5 @@ load_control
 sleep 10
 load_control
 echo Done !
+exit 0
 ###EOF2014###

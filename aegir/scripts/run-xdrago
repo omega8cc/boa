@@ -52,9 +52,10 @@ action()
 
 if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-EDIT_USER
-  exit
+  exit 0
 else
   count_cpu
   load_control
   action
+  exit 0
 fi

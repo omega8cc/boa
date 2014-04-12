@@ -16,11 +16,12 @@ action()
 
 if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/optimizemysqlrunning-enabler
-  exit
+  exit 0
 else
   touch /var/run/boa_wait.pid
   sleep 8
   action
   rm -f /var/run/boa_wait.pid
+  exit 0
 fi
 ###EOF2014###

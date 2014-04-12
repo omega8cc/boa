@@ -56,9 +56,10 @@ EOFMYSQL
 
 if [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-purge
-  exit
+  exit 0
 else
   action
   touch /var/xdrago/log/last-run-purge
+  exit 0
 fi
 ###EOF2014###

@@ -84,11 +84,12 @@ else
 fi
 
 if [ -e "/var/run/boa_run.pid" ] ; then
-  exit
+  exit 0
 else
   touch /var/run/boa_wait.pid
   sleep 60
   action
   rm -f /var/run/boa_wait.pid
+  exit 0
 fi
 ###EOF2014###

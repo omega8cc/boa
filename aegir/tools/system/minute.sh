@@ -72,4 +72,5 @@ perl /var/xdrago/monitor/check/scan_nginx
 perl /var/xdrago/monitor/check/locked
 perl /var/xdrago/monitor/check/sqlcheck
 echo DONE!
+exit 0
 ###EOF2014###

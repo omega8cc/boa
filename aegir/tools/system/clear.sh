@@ -32,4 +32,5 @@ if [ -d "/dev/disk" ] ; then
   fi
 fi
 touch /var/xdrago/log/clear.done
+exit 0
 ###EOF2014###
