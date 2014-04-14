@@ -8176,8 +8176,13 @@ fi
 ###--------------------###
 fix_compass_path () {
   if [[ ! -e "/var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log" || ! -e "/usr/local/bin/coderay" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass" ]] ; then
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
+    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      rm -f /usr/local/bin/bundle
+      rm -f /usr/local/bin/bundler
+    else
+      ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
+      ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
+    fi
     ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/coderay /usr/local/bin/coderay &> /dev/null
     ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass /usr/local/bin/compass &> /dev/null
     ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/guard   /usr/local/bin/guard   &> /dev/null
@@ -8194,12 +8199,6 @@ fix_compass_path () {
   fi
 }
 
-fix_compass_bundle () {
-  cd /var/opt
-  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/Gemfile.txt /var/opt/Gemfile &> /dev/null
-  mrun "bundle install" 2> /dev/null
-}
-
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
@@ -8214,62 +8213,98 @@ else
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
         msg "INFO: Running Compass Tools $_L_ST, please wait..."
-        if [ ! -e "/usr/local/rvm/rubies" ] ; then
-          curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
-        fi
+        curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
           source /etc/profile.d/rvm.sh
         fi
         if [ ! -x "/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem" ] ; then
           _RUBY_UPGRADE=YES
         fi
-        if [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
-          st_runner "apt-get update -y --force-yes" &> /dev/null
+        if [ ! -e "/var/xdrago/log/gem-conservative.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
+          mrun "apt-get update -y --force-yes" &> /dev/null
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes" &> /dev/null
           mrun "apt-get remove ruby1.8-dev libruby1.8 ruby1.8 -y --force-yes" &> /dev/null
           mrun "apt-get autoremove -y --force-yes" &> /dev/null
           mrun "rvm install $_RUBY_VERSION" &> /dev/null
-          ### update
+          ### update rvm
           mrun "rvm get stable" 2> /dev/null
-          ### install
-          mrun "rvm @global do gem install bootstrap-sass-extensions" 2> /dev/null
-          mrun "rvm @global do gem install bootstrap-sass"      2> /dev/null
-          mrun "rvm @global do gem install breakpoint"          2> /dev/null
-          mrun "rvm @global do gem install bundler"             2> /dev/null
-          mrun "rvm @global do gem install chunky_png"          2> /dev/null
-          mrun "rvm @global do gem install compass_radix"       2> /dev/null
-          mrun "rvm @global do gem install compass-960-plugin"  2> /dev/null
-          mrun "rvm @global do gem install compass-h5bp"        2> /dev/null
-          mrun "rvm @global do gem install compass-normalize"   2> /dev/null
-          mrun "rvm @global do gem install compass-rgbapng"     2> /dev/null
-          mrun "rvm @global do gem install compass-susy-plugin" 2> /dev/null
-          mrun "rvm @global do gem install compass-validator"   2> /dev/null
-          mrun "rvm @global do gem install compass"             2> /dev/null
-          mrun "rvm @global do gem install css_parser"          2> /dev/null
-          mrun "rvm @global do gem install guard-compass"       2> /dev/null
-          mrun "rvm @global do gem install guard-livereload"    2> /dev/null
-          mrun "rvm @global do gem install guard-shell"         2> /dev/null
-          mrun "rvm @global do gem install guard"               2> /dev/null
-          mrun "rvm @global do gem install oily_png"            2> /dev/null
-          mrun "rvm @global do gem install rb-inotify"          2> /dev/null
-          mrun "rvm @global do gem install sass-globbing"       2> /dev/null
-          mrun "rvm @global do gem install sass"                2> /dev/null
-          mrun "rvm @global do gem install singularitygs"       2> /dev/null
-          mrun "rvm @global do gem install susy"                2> /dev/null
-          mrun "rvm @global do gem install toolkit"             2> /dev/null
-          mrun "rvm @global do gem install yajl-ruby"           2> /dev/null
-          mrun "rvm @global do gem install zen-grids"           2> /dev/null
-          mrun "rvm @global do gem install zurb-foundation"     2> /dev/null
-          ### cleanup & update
+          ### install new versions
+          mrun "rvm @global do gem install --conservative bootstrap-sass-extensions" 2> /dev/null
+          mrun "rvm @global do gem install --conservative bootstrap-sass"      2> /dev/null
+          mrun "rvm @global do gem install --conservative breakpoint"          2> /dev/null
+          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+            mrun "rvm @global do gem uninstall bundler -x"                     2> /dev/null
+          else
+            mrun "rvm @global do gem install --conservative bundler"           2> /dev/null
+          fi
+          mrun "rvm @global do gem install --conservative chunky_png"          2> /dev/null
+          mrun "rvm @global do gem install --conservative compass_radix"       2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-960-plugin"  2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-h5bp"        2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-normalize"   2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-rgbapng"     2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-susy-plugin" 2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-validator"   2> /dev/null
+          mrun "rvm @global do gem install --conservative compass"             2> /dev/null
+          mrun "rvm @global do gem install --conservative css_parser"          2> /dev/null
+          mrun "rvm @global do gem install --conservative guard-compass"       2> /dev/null
+          mrun "rvm @global do gem install --conservative guard-livereload"    2> /dev/null
+          mrun "rvm @global do gem install --conservative guard-shell"         2> /dev/null
+          mrun "rvm @global do gem install --conservative guard"               2> /dev/null
+          mrun "rvm @global do gem install --conservative oily_png"            2> /dev/null
+          mrun "rvm @global do gem install --conservative rb-inotify"          2> /dev/null
+          mrun "rvm @global do gem install --conservative sass-globbing"       2> /dev/null
+          mrun "rvm @global do gem install --conservative sass"                2> /dev/null
+          mrun "rvm @global do gem install --conservative singularitygs"       2> /dev/null
+          mrun "rvm @global do gem install --conservative susy"                2> /dev/null
+          mrun "rvm @global do gem install --conservative toolkit"             2> /dev/null
+          mrun "rvm @global do gem install --conservative yajl-ruby"           2> /dev/null
+          mrun "rvm @global do gem install --conservative zen-grids"           2> /dev/null
+          mrun "rvm @global do gem install --conservative zurb-foundation"     2> /dev/null
+          ### versions required explicitly by some popular themes
+          mrun "rvm @global do gem install --conservative --version 0.0.2 compass-blend-modes" 2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.0.6 rb-fchange"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.12.2 compass"            2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.12.4 compass"            2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.12.5 compass"            2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.15.0 celluloid-io"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.15.2 celluloid"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.18.1 thor"               2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.2.10 fssm"               2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.2.8 color-schemer"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.9.12.4 pry"              2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.9.12.6 pry"              2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.0.0 guard-compass"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.0.0 sassy-strings"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.0.4 lumberjack"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.0.9 susy"                2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.1.0 oily_png"            2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.1.0 timers"              2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.1.2 singularitygs"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.2.9 chunky_png"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.3.0 chunky_png"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"             2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 1.8.4 multi_json"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.0.7 breakpoint"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.1.0 guard-livereload"    2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.2.5 guard"               2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.3.5 addressable"         2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.3.6 addressable"         2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.4.0 listen"              2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.2.13 sass"               2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.2.19 sass"               2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.4.7 slop"                2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 4.3.2 zurb-foundation"     2> /dev/null
+          ### cleanup & update gems
           mrun "rvm @global do gem uninstall sassy-math -x"     2> /dev/null
           mrun "rvm @global do gem update -q"                   2> /dev/null
-          mrun "rvm @global do gem cleanup -q"                  2> /dev/null
+          touch /var/xdrago/log/gem-conservative.log
         else
-          ### cleanup & update
+          ### cleanup & update gems
           mrun "rvm get stable"                                 2> /dev/null
-          mrun "rvm @global do gem uninstall sassy-math -x"     2> /dev/null
           mrun "rvm @global do gem update -q"                   2> /dev/null
-          mrun "rvm @global do gem cleanup -q"                  2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
@@ -8277,7 +8312,7 @@ else
         _GEM_CRON="/etc/crontab"
         _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON)
         if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] && [ ! -e "$_GEM_FILE" ] ; then
-          st_runner "rvm @global do gem install scout" 2> /dev/null
+          st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
           usermod -aG users scout &> /dev/null
           sed -i "s/scout .*\/scout/scout \/var\/scout\/.scout\/scout_cron.sh/g" $_GEM_CRON &> /dev/null
         fi
@@ -8285,7 +8320,6 @@ else
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
         fi
         fix_compass_path
-        fix_compass_bundle
         PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
         echo "compass-$_INSTALLER_VERSION-$_NOW" > /var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
