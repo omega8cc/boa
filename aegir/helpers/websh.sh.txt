@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/local/rvm/gems/ruby-2.1.1@global/bin:/usr/local/rvm/rubies/ruby-2.1.1/bin
+export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 _ALL="$@"
 _LTD_GID=$(id -nG $USER)
