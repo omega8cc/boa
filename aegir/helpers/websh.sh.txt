@@ -217,7 +217,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     fi
   fi
   if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
-    if [[ "$2" =~ "set -m;" ]] || [[ "$_ALL" =~ "ssh" ]] || [[ "$_ALL" =~ "rsync" ]] || [[ "$_ALL" =~ "scp" ]] || [[ "$_ALL" =~ "drush" ]] || [[ "$_ALL" =~ "php " ]] || [[ "$_ALL" =~ ".tmp" ]] || [[ "$_ALL" =~ "_tmp_" ]] || [[ "$_ALL" =~ "__build__" ]] || [[ "$_ALL" =~ "is_" ]] || [[ "$_ALL" =~ "rename" ]] || [[ "$_ALL" =~ "chdir" ]] || [[ "$_ALL" =~ "svn " ]] || [[ "$_ALL" =~ "bzr " ]] || [[ "$_ALL" =~ "tar " ]] || [[ "$_ALL" =~ "wget " ]] || [[ "$_ALL" =~ "curl " ]] ; then
+    if [[ "$2" =~ "set -m;" ]] || [[ "$_ALL" =~ "ssh" ]] || [[ "$_ALL" =~ "rsync" ]] || [[ "$_ALL" =~ "scp" ]] || [[ "$_ALL" =~ "drush" ]] || [[ "$_ALL" =~ "php " ]] || [[ "$_ALL" =~ ".tmp" ]] || [[ "$_ALL" =~ "_tmp_" ]] || [[ "$_ALL" =~ "__build__" ]] || [[ "$_ALL" =~ "is_" ]] || [[ "$_ALL" =~ "rename" ]] || [[ "$_ALL" =~ "chdir" ]] || [[ "$_ALL" =~ "svn " ]] || [[ "$_ALL" =~ "bzr " ]] || [[ "$_ALL" =~ "tar " ]] || [[ "$_ALL" =~ "wget " ]] || [[ "$_ALL" =~ "curl " ]] || [[ "$_ALL" =~ "git " ]] || [[ "$_ALL" =~ "git-" ]] ; then
       _SILENT=YES
     else
       _SILENT=NO
