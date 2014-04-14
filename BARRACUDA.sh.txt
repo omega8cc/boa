@@ -8233,7 +8233,7 @@ else
           mrun "rvm @global do gem install --conservative bootstrap-sass"      2> /dev/null
           mrun "rvm @global do gem install --conservative breakpoint"          2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            mrun "rvm @global do gem uninstall bundler -x"                     2> /dev/null
+            mrun "rvm @global do gem uninstall bundler -x -q -a"               2> /dev/null
           else
             mrun "rvm @global do gem install --conservative bundler"           2> /dev/null
           fi
@@ -8298,13 +8298,13 @@ else
           mrun "rvm @global do gem install --conservative --version 3.4.7 slop"                2> /dev/null
           mrun "rvm @global do gem install --conservative --version 4.3.2 zurb-foundation"     2> /dev/null
           ### cleanup & update gems
-          mrun "rvm @global do gem uninstall sassy-math -x"     2> /dev/null
-          mrun "rvm @global do gem update -q"                   2> /dev/null
+          mrun "rvm @global do gem uninstall sassy-math -x -q -a" 2> /dev/null
+          mrun "rvm @global do gem update -q" 2> /dev/null
           touch /var/xdrago/log/gem-conservative.log
         else
           ### cleanup & update gems
-          mrun "rvm get stable"                                 2> /dev/null
-          mrun "rvm @global do gem update -q"                   2> /dev/null
+          mrun "rvm get stable" 2> /dev/null
+          mrun "rvm @global do gem update -q" 2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
