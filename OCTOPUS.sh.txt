@@ -892,11 +892,11 @@ check_id () {
     msg "Please try different _USER"
     exit 1
   fi
-  if [ "$_USER" = "admin" ] ; then
+  if [ "$_USER" = "admin" ] || [ "$_USER" = "hostmaster" ] || [ "$_USER" = "barracuda" ] || [ "$_USER" = "octopus" ] || [ "$_USER" = "boa" ] ; then
     msg "ERROR: $_USER is a restricted username, please choose different _USER"
     exit 1
-  elif [ "$_USER" = "hostmaster" ] ; then
-    msg "ERROR: $_USER is a restricted username, please choose different _USER"
+  elif [[ "$_USER" =~ "drupal" ]] || [[ "$_USER" =~ "drush" ]] || [[ "$_USER" =~ "sites" ]] || [[ "$_USER" =~ "default" ]] ; then
+    msg "ERROR: $_USER includes restricted keyword, please choose different _USER"
     exit 1
   fi
   _REGEX="^[[:digit:]]"
