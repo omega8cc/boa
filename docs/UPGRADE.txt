@@ -87,7 +87,7 @@
     $ barracuda up-stable system
 
     Note that while both "log" and "system" modes are "silent", because they
-    don't display anything i your console, they will send the log via e-mail
+    don't display anything in your console, they will send the log via e-mail
     to your address specified in the config file: /root/.barracuda.cnf
 
     It is recommended that you start `screen` before running commands using
