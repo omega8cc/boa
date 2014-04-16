@@ -71,17 +71,9 @@ setup ()
   fi
   mkdir -p /usr/local/bin
   mkdir -p /opt/local/bin
-  if [ ! -f "/opt/local/bin/.fixed.txt" ] || [ ! -f "/opt/local/bin/boa" ] || [ ! -L "/usr/local/bin/boa" ] ; then
+  if [ ! -f "/opt/local/bin/.boa.fixed.txt" ] || [ ! -f "/opt/local/bin/boa" ] || [ -L "/usr/local/bin/boa" ] ; then
     rm -f /usr/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-    ln -sf /opt/local/bin/barracuda /usr/local/bin/barracuda &> /dev/null
-    ln -sf /opt/local/bin/boa /usr/local/bin/boa &> /dev/null
-    ln -sf /opt/local/bin/drushextra /usr/local/bin/drushextra &> /dev/null
-    ln -sf /opt/local/bin/octopus /usr/local/bin/octopus &> /dev/null
-    ln -sf /opt/local/bin/randpass /usr/local/bin/randpass &> /dev/null
-    ln -sf /opt/local/bin/sqlmagic /usr/local/bin/sqlmagic &> /dev/null
-    ln -sf /opt/local/bin/syncpass /usr/local/bin/syncpass &> /dev/null
-    ln -sf /opt/local/bin/thinkdifferent /usr/local/bin/thinkdifferent &> /dev/null
-    touch /opt/local/bin/.fixed.txt
+    touch /opt/local/bin/.boa.fixed.txt
   fi
   rm -f /opt/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
