@@ -8,9 +8,17 @@ foreach $line (@RSARR) {
   if ($line =~ /redis_client_socket/) {$redissocket = "YES";}
   print "\n Redis socket mode detected...\n";
 }
-`/etc/init.d/redis-server restart` if (!-e "/var/run/redis/redis.sock" && $redissocket);
+if (!-d "/var/run/redis") {
+  system("mkdir -p /var/run/redis");
+  system("chown -R redis:redis /var/run/redis");
+}
+if (!-d "/var/run/mysqld") {
+  system("mkdir -p /var/run/mysqld");
+  system("chown -R mysql:root /var/run/mysqld");
+}
+system("service redis-server restart") if (!-e "/var/run/redis/redis.sock" && $redissocket);
 sleep(2);
-`/etc/init.d/redis-server restart` if (!-f "/var/run/redis/redis.pid");
+system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
 &mysqld_action;
 &global_action;
 foreach $USER (sort keys %li_cnt) {
