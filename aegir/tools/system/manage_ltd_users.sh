@@ -652,6 +652,7 @@ else
       ln -s /bin/websh /bin/sh
     fi
   fi
+  rm -f /usr/local/bin/{barracuda*,boa*,octopus*}
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   _THISHTNM=`hostname --fqdn`
