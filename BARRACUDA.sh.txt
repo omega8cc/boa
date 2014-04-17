@@ -7928,7 +7928,15 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       cd /var/www
       rm -f -r /var/www/chive &> /dev/null
       get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
-      chown -R $_PHP_CN:www-data /var/www/chive
+      if [ ! -z "$_PHP_CN" ] ; then
+        msg "INFO: _PHP_CN set to $_PHP_CN for Chive $_DB_SERVER Manager"
+        chown -R $_PHP_CN:www-data /var/www/chive
+      else
+        msg "NOTE: _PHP_CN not set for Chive $_DB_SERVER Manager"
+        chown -R www-data:www-data /var/www/chive
+      fi
+      find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
+      find /var/www/chive -type f -exec chmod 0664 {} \; &> /dev/null
       _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
@@ -7936,7 +7944,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
       sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-      touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
+      touch /var/xdrago/log/chive-$_CHIVE_VERSION-installed.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
@@ -7946,14 +7954,14 @@ fi
 
 ###--------------------###
 if [ -e "/var/www/chive/index.php" ] ; then
-  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive-$_CHIVE_VERSION-installed.log" ] ; then
     msg "INFO: Upgrading Chive $_DB_SERVER Manager..."
     rm -f -r /var/www/chive
     cd /var/www
     get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
-    touch /var/xdrago/log/chive_$_CHIVE_VERSION.log
+    touch /var/xdrago/log/chive-$_CHIVE_VERSION-installed.log
   fi
-  if [ ! -e "/var/xdrago/log/chive_$_CHIVE_VERSION.sec1.vhost.log" ] ; then
+  if [ ! -e "/var/xdrago/log/chive-$_CHIVE_VERSION.sec3.vhost.log" ] ; then
     _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
     validate_public_ip &> /dev/null
     validate_xtras_ip &> /dev/null
@@ -7961,9 +7969,17 @@ if [ -e "/var/www/chive/index.php" ] ; then
     sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
     sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-    touch /var/xdrago/log/chive_$_CHIVE_VERSION.sec1.vhost.log
+    touch /var/xdrago/log/chive-$_CHIVE_VERSION.sec3.vhost.log
   fi
-  chown -R $_PHP_CN:www-data /var/www/chive
+  if [ ! -z "$_PHP_CN" ] ; then
+    msg "INFO: _PHP_CN set to $_PHP_CN for Chive $_DB_SERVER Manager"
+    chown -R $_PHP_CN:www-data /var/www/chive
+  else
+    msg "NOTE: _PHP_CN not set for Chive $_DB_SERVER Manager"
+    chown -R www-data:www-data /var/www/chive
+  fi
+  find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
+  find /var/www/chive -type f -exec chmod 0664 {} \; &> /dev/null
 fi
 
 
