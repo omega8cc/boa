@@ -51,7 +51,7 @@ _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
-_NGINX_NAXSI=YES #-------------- Installs Nginx NAXSI WAF when YES (default)
+_NGINX_NAXSI=NO #--------------- Installs Nginx NAXSI WAF when YES
 _NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid number
 ###
