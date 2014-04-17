@@ -469,11 +469,21 @@ switch_php()
             sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
             sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
             if [ "$_PHP_CN" = "www53" ] ; then
-              sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-              sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+              if [ ! -z "$_PHP_FPM_DENY" ] ; then
+                sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+                sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+              else
+                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+              fi
             else
-              sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-              sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+              if [ ! -z "$_PHP_FPM_DENY" ] && [ ! -z "$_PHP_CN" ] ; then
+                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+              else
+                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+              fi
             fi
           fi
           rm -f /opt/php*/etc/pool.d/${_OWN}.conf
