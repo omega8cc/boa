@@ -2336,18 +2336,18 @@ sub_force_advanced_nginx_config () {
           sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
           sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
         else
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
         fi
       else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
-        if [ "$_PHP_CN" = "www53" ] ; then
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        if [ "${_PHP_CN}" = "www53" ] ; then
           sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
         else
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
         fi
       fi
     else
@@ -2364,7 +2364,7 @@ sub_force_advanced_nginx_config () {
       if [ "$_PHP_CN" = "www53" ] ; then
         sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_PHP_CN.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
       fi
     fi
   fi
