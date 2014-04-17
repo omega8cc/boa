@@ -61,7 +61,6 @@ _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
 _PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
-_PHP_MODERN_ONLY=YES #---------- Allows to install PHP 5.2 when NO
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
 _PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3, 5.4, 5.5
 ###
