@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SHELL=/bin/bash
-PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 if [ -e "/root/.high_traffic.cnf" ] ; then
   _DO_NOTHING=YES

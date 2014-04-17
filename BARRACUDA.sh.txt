@@ -1121,7 +1121,7 @@ _NOW=`date +%y%m%d-%H%M`
 _PURGE_ALL_THISHTIP=NO
 _PURGE_MODE=ON
 _SPINNER=YES
-PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
@@ -8320,7 +8320,7 @@ else
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
         fi
         fix_compass_path
-        PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
+        PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
         echo "compass-$_INSTALLER_VERSION-$_NOW" > /var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log
         msg "INFO: Compass Tools $_L_ST completed"
       else

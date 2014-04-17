@@ -12,7 +12,7 @@
 # Description:          redis-server - Persistent key-value db
 ### END INIT INFO
 
-PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 DAEMON=/usr/bin/redis-server
 DAEMON_ARGS=/etc/redis/redis.conf
 NAME=redis-server
