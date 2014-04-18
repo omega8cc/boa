@@ -113,7 +113,7 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 === Included by default - see docs/NOTES.txt for details
 
 * All libraries & tools required to install and run Nginx based Aegir system.
-* Latest release of MariaDB 5.5 database server with Chive manager.
+* Latest release of MariaDB 5.5 or 10.0 database server with Chive manager.
 * Latest version of Nginx web server.
 * PHP-FPM 5.5, 5.4, 5.3 - multi-install mode, configurable per Octopus instance.
 * PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse and ionCube.
