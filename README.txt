@@ -75,6 +75,7 @@ to the standard production settings.
 
 * Debian 7 Wheezy (recommended)
 * Debian 6 Squeeze (fully supported) (automatic upgrade to Wheezy supported)
+* Ubuntu Trusty 14.04 (very limited support)
 * Ubuntu Precise 12.04 (very limited support)
 * Ubuntu Lucid 10.04 (very limited support)
 
