@@ -3852,7 +3852,7 @@ install_php_legacy () {
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
   cd /var/opt/php-$_PHP_VERSION
   st_runner "sh ./buildconf --force" 2> /dev/null
-  if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
   fi
   msg "INFO: Installing PHP-FPM $_PHP_VERSION part 2/3"
@@ -3893,7 +3893,7 @@ install_php_multi () {
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
     cd /var/opt/php-$_PHP_VERSION
     st_runner "sh ./buildconf --force" 2> /dev/null
-    if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
       patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/disable_SSLv2_for_openssl_1_0_0.patch &> /dev/null
     fi
     ### cd sapi/fpm/fpm
@@ -3981,7 +3981,7 @@ check_apt_updates () {
   done
   if [ "$_YP_PHP" = "YES" ] ; then
     if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
         _UP_PHP=YES
       else
         _UP_PHP=NO
@@ -4851,7 +4851,7 @@ install_ssh_src () {
     echo "openssh-server hold" | dpkg --set-selections &> /dev/null
     echo "openssh-client hold" | dpkg --set-selections &> /dev/null
     echo "ssh hold" | dpkg --set-selections &> /dev/null
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold openssh-server openssh-client ssh &> /dev/null
     fi
   else
@@ -4894,7 +4894,7 @@ install_curl_src () {
     aptitude install libcurl3-gnutls -y &> /dev/null
     aptitude install libcurl4-openssl-dev -y &> /dev/null
     aptitude hold curl &> /dev/null
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold curl &> /dev/null
     fi
     msg "INFO: Installing cURL $_CURL_VERSION, please wait..."
@@ -4916,7 +4916,7 @@ install_curl_src () {
     aptitude install libcurl3-gnutls -y &> /dev/null
     aptitude install libcurl4-openssl-dev -y &> /dev/null
     aptitude hold curl &> /dev/null
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold curl &> /dev/null
     fi
   fi
@@ -4974,7 +4974,7 @@ install_ssl_src () {
     echo "zlibc hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g hold" | dpkg --set-selections &> /dev/null
     echo "zlib1g-dev hold" | dpkg --set-selections &> /dev/null
-    if [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       apt-mark hold openssl zlibc zlib1g zlib1g-dev &> /dev/null
     fi
   else
@@ -5493,7 +5493,11 @@ msg "INFO: Checking your system version..."
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
-  if [ "$_THIS_RV" = "precise" ] ; then
+  if [ "$_THIS_RV" = "trusty" ] ; then
+    _REL_VERSION="trusty"
+    _HTTP_WILDCARD=YES
+    _THIS_DB_HOST=localhost
+  elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
     _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
@@ -6286,14 +6290,14 @@ else
 fi
 msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx"
   else
     _APT_XTRA="openjdk-6-jdk nginx"
   fi
   _APT_ELSE="netcat nginx"
 else
-  if [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _APT_XTRA="openjdk-7-jdk openjdk-6-jdk"
   else
     _APT_XTRA="openjdk-6-jdk"
@@ -6327,7 +6331,7 @@ else
   _SYSLOGD=rsyslog
 fi
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _SSB_SRC=NO
   else
     _SSB_SRC=YES
@@ -6341,7 +6345,7 @@ else
   _EXTRA_PACKAGES="curl libcurl4-openssl-dev $_EXTRA_PACKAGES"
 fi
 
-if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_XTRA postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database libmagickwand-dev gettext ncurses-term udev libpam-unix2 libxcrypt1 s3cmd python-software-properties ldap-utils $_EXTRA_PACKAGES"
 elif [ "$_REL_VERSION" = "lenny" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libgd2-xpm libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
@@ -6356,7 +6360,7 @@ install_with_aptitude_deps () {
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec52"
     elif [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-52"
-    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    elif [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec-extra-53"
     else
       _EXTRA_APT="tree ffmpeg flvtool2 libavcodec51"
@@ -6425,7 +6429,7 @@ install_mariadb_sql () {
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
-  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _PERCONA_READY=YES
     msg "INFO: Installing $_DB_SERVER, please wait..."
   else
@@ -6465,7 +6469,7 @@ if [ ! -e "/etc/aliases" ] ; then
   newaliases &> /dev/null
 fi
 if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
     _DO_NOTHING=YES
   else
     install_ssl_src
@@ -6583,7 +6587,7 @@ install_wkhtmltoimage
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "natty" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "natty" ] ; then
   if [ ! -L "/usr/lib/libgmp.so" ] ; then
     msg "INFO: Fix #1 for libs in $_THIS_OS $_REL_VERSION"
     _X86_64_TEST=`uname -m`
@@ -6605,10 +6609,10 @@ fi
 
 
 ###--------------------###
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "wheezy" ] ; then
+if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   _SSL_FIX_REQUIRED=YES
   if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "precise" ] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
       _SSL_FIX_REQUIRED=YES
     else
       _SSL_FIX_REQUIRED=NO
@@ -6861,7 +6865,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
   st_runner "aptitude remove php5-sasl php5-suhosin -y" &> /dev/null
   st_runner "apt-get purge php5-sasl php5-suhosin -y" &> /dev/null
 fi
-if [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "precise" ] ; then
+if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
   _PHP_EXTRA="--with-ldap --with-gmp"
 elif [ "$_REL_VERSION" = "wheezy" ] ; then
   _PHP_EXTRA="--with-ldap --with-gmp"
