@@ -96,9 +96,6 @@ server {
   if ($is_crawler) {
     return 403;
   }
-  if ($deny_on_high_load) {
-    return 503;
-  }
   location / {
     proxy_pass                 http://extra_ip_ssl;
     proxy_redirect             off;
@@ -144,9 +141,6 @@ server {
   ###
   if ($is_crawler) {
     return 403;
-  }
-  if ($deny_on_high_load) {
-    return 503;
   }
   location / {
     proxy_pass                 http://extra_ip_ssl;
