@@ -5563,6 +5563,7 @@ elif [ "$_THIS_OS" = "Debian" ] ; then
   elif [ "$_THIS_RV" = "lenny" ] ; then
     _REL_VERSION="lenny"
     _DB_SERVER=MariaDB
+    _DB_SERIES=5.3
     _MARIADB_VERSION=5.3.12
   else
     not_supported_os
@@ -6447,10 +6448,25 @@ install_mariadb_sql () {
   fi
   if [ "$_REL_VERSION" = "trusty" ] ; then
     _DB_SERIES=10.0
+    _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    msg "INFO: Forced MariaDB $_MARIADB_VERSION in $_THIS_OS/$_REL_VERSION"
   elif [ "$_REL_VERSION" = "lenny" ] ; then
     _DB_SERIES=5.3
+    _MARIADB_VERSION=5.3.12
+    msg "INFO: Forced MariaDB $_MARIADB_VERSION in $_THIS_OS/$_REL_VERSION"
   else
-    _DB_SERIES=5.5
+    if [ "$_DB_SERIES" = "10.0" ] || [ "$_DB_SERIES" = "5.5" ] ; then
+      _DO_NOTHING=YES
+    else
+      _DB_SERIES=5.5
+      _MARIADB_VERSION="$_MARIADB_5_VERSION"
+      msg "INFO: Forced MariaDB $_MARIADB_VERSION in $_THIS_OS/$_REL_VERSION"
+    fi
+    if [ -z "$_DB_SERIES" ] ; then
+      _DB_SERIES=5.5
+      _MARIADB_VERSION="$_MARIADB_5_VERSION"
+      msg "INFO: Forced MariaDB $_MARIADB_VERSION in $_THIS_OS/$_REL_VERSION"
+    fi
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
