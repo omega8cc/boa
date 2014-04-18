@@ -1089,12 +1089,8 @@ _JETTY_8_VERSION=8.1.14.v20131031
 _JETTY_9_VERSION=9.1.3.v20140225
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
-if [ "$_DB_SERIES" = "10.0" ] ; then
-  _MARIADB_VERSION=10.0.10
-else
-  _DB_SERIES=5.5
-  _MARIADB_VERSION=5.5.37
-fi
+_MARIADB_10_VERSION=10.0.10
+_MARIADB_5_VERSION=5.5.37
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.32
 _NGINX_VERSION=1.5.13
@@ -2869,6 +2865,12 @@ barracuda_cnf () {
         exit 1
       fi
     fi
+    if [ "$_DB_SERIES" = "10.0" ] ; then
+      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    else
+      _DB_SERIES=5.5
+      _MARIADB_VERSION="$_MARIADB_5_VERSION"
+    fi
     msg "INFO: Creating your /root/.barracuda.cnf config file"
     sleep 1
     echo "###" > /root/.barracuda.cnf
@@ -3475,6 +3477,12 @@ barracuda_cnf () {
     echo " "
     if [ -e "/root/.barracuda.cnf" ] ; then
       source /root/.barracuda.cnf
+    fi
+    if [ "$_DB_SERIES" = "10.0" ] ; then
+      _MARIADB_VERSION="$_MARIADB_10_VERSION"
+    else
+      _DB_SERIES=5.5
+      _MARIADB_VERSION="$_MARIADB_5_VERSION"
     fi
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
@@ -5519,6 +5527,7 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
     _THIS_DB_HOST=localhost
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
+    _MARIADB_VERSION="$_MARIADB_10_VERSION"
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
     _HTTP_WILDCARD=YES
@@ -6534,22 +6543,40 @@ else
   else
     _SQL_TEST_UPGRADE=YES
   fi
-  if [ "$_SQL_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
+  if [ "$_SQL_TEST_UPGRADE" = "YES" ] && [ "$_DB_SERVER" = "MariaDB" ] ; then
     _SQL_UPGRADE=YES
-  elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [ "$_DB_SERVER" = "Percona" ] ; then
+  fi
+  if [ "$_REL_VERSION" = "squeeze" ] && [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [[ "$_DB_SERVER_TEST" =~ " 5.3." ]] ; then
     _SQL_UPGRADE=YES
-  elif [ "$_SQL_TEST_UPGRADE" = "YES" ] && [ "$_DB_SERVER" = "MariaDB" ] ; then
-    _SQL_UPGRADE=YES
-  elif [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
+  fi
+  if [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     if [[ "$_DB_SERVER_TEST" =~ " 5.1." ]] || [[ "$_DB_SERVER_TEST" =~ " 5.2." ]] ; then
       _SQL_UPGRADE=YES
     fi
-  elif [ "$_REL_VERSION" = "squeeze" ] && [[ "$_DB_SERVER_TEST" =~ "MariaDB" ]] && [[ "$_DB_SERVER_TEST" =~ " 5.3." ]] ; then
+    if [ "$_DB_SERIES" = "10.0" ] ; then
+      if [[ "$_DB_SERVER_TEST" =~ "10.0." ]] ; then
+        _DO_NOTHING=YES
+      else
+        _SQL_UPGRADE=YES
+      fi
+    elif [ "$_DB_SERIES" = "5.5" ] ; then
+      if [[ "$_DB_SERVER_TEST" =~ "5.5." ]] ; then
+        _DO_NOTHING=YES
+      else
+        _SQL_UPGRADE=YES
+      fi
+      if [[ "$_DB_SERVER_TEST" =~ "10.0." ]] ; then
+        _SQL_UPGRADE=NO
+      fi
+    fi
+  fi
+  if [ "$_SQL_FORCE_REINSTALL" = "YES" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     _SQL_UPGRADE=YES
   fi
   if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; then
     _SQL_UPGRADE=NO
-  elif [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
+  fi
+  if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     _SQL_UPGRADE=NO
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
