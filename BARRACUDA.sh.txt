@@ -425,16 +425,24 @@ _AEGIR_VERSION=HEAD
 ### DB SERVER                              ###
 ###----------------------------------------###
 ###
-### You can choose MariaDB 5.5 or in the near
-### future also MariaDB 10, once released
-### as stable and tested enough.
-###
 ### Barracuda no longer supports Percona since
 ### 2.2.0 release. If you have used Percona
 ### before, Barracuda will force upgrade to
-### MariaDB 5.5 and PHP rebuild automatically.
+### MariaDB and PHP rebuild, automatically.
 ###
 _DB_SERVER=MariaDB
+
+
+###----------------------------------------###
+### DB SERIES                              ###
+###----------------------------------------###
+###
+### You can choose MariaDB 5.5 or new 10.0
+###
+### Note that on Ubuntu 14.04 LTS Trusty we
+### force the only available 10.0 version.
+###
+_DB_SERIES=5.5
 
 
 ###----------------------------------------###
@@ -1081,7 +1089,12 @@ _JETTY_8_VERSION=8.1.14.v20131031
 _JETTY_9_VERSION=9.1.3.v20140225
 _LSHELL_VERSION=0.9.16.5-om8
 _MAILPARSE_VERSION=2.1.6
-_MARIADB_VERSION=5.5.37
+if [ "$_DB_SERIES" = "10.0" ] ; then
+  _MARIADB_VERSION=10.0.10
+else
+  _DB_SERIES=5.5
+  _MARIADB_VERSION=5.5.37
+fi
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.32
 _NGINX_VERSION=1.5.13
@@ -2040,7 +2053,7 @@ update_sql_conf () {
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] || [[ "$_THIS_DB_SERVER_TEST" =~ "10.0" ]] ; then
     _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
@@ -2898,6 +2911,7 @@ barracuda_cnf () {
     echo "###" >> /root/.barracuda.cnf
     echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
     echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
+    echo "_DB_SERIES=$_DB_SERIES" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
 
     echo "###" >> /root/.barracuda.cnf
@@ -3394,6 +3408,12 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       echo "_STRICT_BIN_PERMISSIONS=$_STRICT_BIN_PERMISSIONS" >> /root/.barracuda.cnf
+    fi
+    _DB_SERIES_TEST=$(grep _DB_SERIES /root/.barracuda.cnf)
+    if [[ "$_DB_SERIES_TEST" =~ "_DB_SERIES" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_DB_SERIES=$_DB_SERIES" >> /root/.barracuda.cnf
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
@@ -5497,6 +5517,8 @@ if [ "$_THIS_OS" = "Ubuntu" ] ; then
     _REL_VERSION="trusty"
     _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
+    _DB_SERVER=MariaDB
+    _DB_SERIES=10.0
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
     _HTTP_WILDCARD=YES
@@ -6410,16 +6432,16 @@ install_mariadb_sql () {
     _THIS_OS_NAME=ubuntu
   fi
   if [ "$_REL_VERSION" = "trusty" ] ; then
-    _MARIADB_SERIES=10.0
+    _DB_SERIES=10.0
   elif [ "$_REL_VERSION" = "lenny" ] ; then
-    _MARIADB_SERIES=5.3
+    _DB_SERIES=5.3
   else
-    _MARIADB_SERIES=5.5
+    _DB_SERIES=5.5
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_MARIADB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   st_runner "aptitude remove mytop -y"                     &> /dev/null
   st_runner "apt-get purge mytop -y"                       &> /dev/null
   rm -f /usr/bin/mytop
@@ -6430,7 +6452,7 @@ install_mariadb_sql () {
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
   st_runner "apt-get autoremove -y --force-yes"            &> /dev/null
   st_runner "apt-get update -y"                            &> /dev/null
-  SQLDEB="mariadb-server-$_MARIADB_SERIES mariadb-client-$_MARIADB_SERIES mariadb-common"
+  SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
 install_with_aptitude_sql () {
@@ -6554,7 +6576,7 @@ else
     rm -f /var/lib/mysql/mysql_upgrade_info &> /dev/null
     install_with_aptitude_sql
     _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-    if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
+    if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] || [[ "$_THIS_DB_SERVER_TEST" =~ "10.0" ]] ; then
       _DO_NOTHING=YES
     else
       sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null

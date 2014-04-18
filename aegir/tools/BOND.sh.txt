@@ -655,7 +655,7 @@ restore_default_sql () {
   sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
   sed -i "s/.*language/#language/g" /etc/mysql/my.cnf &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
-  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] ; then
+  if [[ "$_THIS_DB_SERVER_TEST" =~ "5.5." ]] || [[ "$_THIS_DB_SERVER_TEST" =~ "10.0" ]] ; then
     _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
