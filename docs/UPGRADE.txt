@@ -5,10 +5,10 @@
 
  => If you haven't run full barracuda+octopus upgrade to latest BOA Stable
     Edition yet, don't use any partial upgrade modes explained further below.
-    Once new BOA stable is released, you must run *full* upgrades with commands:
+    Once new BOA Stable is released, you must run *full* upgrades with commands:
 
     $ barracuda up-stable
-    $ octopus up-stable all
+    $ octopus up-stable all both
 
     For silent, logged mode with e-mail message sent once the upgrade is
     complete, but no progress is displayed in the terminal window, you can run
@@ -18,7 +18,7 @@
 
     $ screen
     $ barracuda up-stable log
-    $ octopus up-stable all log
+    $ octopus up-stable all both log
 
     Note that the silent, non-interactive mode will automatically say Y/Yes
     to all prompts and is thus useful to run auto-upgrades scheduled in cron.
