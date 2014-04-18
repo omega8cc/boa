@@ -6401,12 +6401,17 @@ install_mariadb_sql () {
     _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
     sleep 2
   done
+  if [ "$_REL_VERSION" = "trusty" ] ; then
+    st_runner "$_INSTAPP software-properties-common" 2> /dev/null
+  fi
   if [ "$_THIS_OS" = "Debian" ] ; then
     _THIS_OS_NAME=debian
   elif [ "$_THIS_OS" = "Ubuntu" ] ; then
     _THIS_OS_NAME=ubuntu
   fi
-  if [ "$_REL_VERSION" = "lenny" ] ; then
+  if [ "$_REL_VERSION" = "trusty" ] ; then
+    _MARIADB_SERIES=10.0
+  elif [ "$_REL_VERSION" = "lenny" ] ; then
     _MARIADB_SERIES=5.3
   else
     _MARIADB_SERIES=5.5
