@@ -115,7 +115,7 @@ if ($mysqlsumar > 0) {
 if ($dhcpcdlives) {
   $thishostname = `cat /etc/hostname`;
   chomp($thishostname);
-  `hostname -v $thishostname`;
+  `hostname -b $thishostname`;
 }
 exit;
 

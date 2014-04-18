@@ -5844,7 +5844,7 @@ if [ "$_STATUS" = "INIT" ] ; then
           echo "$_MY_OWNIP $_MY_HOSTN chive.$_MY_HOSTN sqlbuddy.$_MY_HOSTN cgp.$_MY_HOSTN $_S_E" >> /etc/hosts
         fi
       fi
-      hostname -v $_MY_HOSTN ### force our custom FQDN/local hostname
+      hostname -b $_MY_HOSTN ### force our custom FQDN/local hostname
       echo "$_MY_HOSTN" > /etc/hostname
       echo "$_MY_HOSTN" > /etc/mailname
     fi
@@ -5865,7 +5865,7 @@ if [ "$_STATUS" = "INIT" ] ; then
         _TESTRDIP="$_LOC_IP"
         if [ "$_TESTRDIP" = "$_THISHTIP" ] ; then
           _FQDNTEST="TRUE"
-          hostname -v $_TESTHOST
+          hostname -b $_TESTHOST
         else
          _FQDNTEST="FALSE"
         fi
@@ -5892,7 +5892,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       _THISRDIP="$_LOC_IP"
       if [ "$_THISRDIP" = "$_THISHTIP" ] ; then
         _FQDNTEST="TRUE"
-        hostname -v $_THISHOST
+        hostname -b $_THISHOST
       else
         _FQDNTEST="FALSE"
         _REVHOSTN=`host $_THISHTIP | cut -d: -f2 | awk '{ print $5}'`
@@ -5903,7 +5903,7 @@ if [ "$_STATUS" = "INIT" ] ; then
         find_correct_ip
         _REVHSTIP="$_LOC_IP"
         if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
-          hostname -v $_REVHOSTN
+          hostname -b $_REVHOSTN
           _THISHOST="$_REVHOSTN"
           _FQDNTEST="TRUE"
         else
@@ -5919,7 +5919,7 @@ if [ "$_STATUS" = "INIT" ] ; then
       find_correct_ip
       _REVHSTIP="$_LOC_IP"
       if [ "$_REVHSTIP" = "$_THISHTIP" ] ; then
-        hostname -v $_REVHOSTN
+        hostname -b $_REVHOSTN
         _THISHOST="$_REVHOSTN"
         _FQDNTEST="TRUE"
       else
@@ -5975,7 +5975,7 @@ EOF
   else
     echo "$_THISHOST" > /etc/hostname
     echo "$_THISHOST" > /etc/mailname
-    hostname -v $_THISHOST
+    hostname -b $_THISHOST
     msg "INFO: DNS test: OK"
   fi
   echo " "
