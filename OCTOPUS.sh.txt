@@ -826,6 +826,14 @@ tune_fpm_config () {
     fi
   fi
   let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
+  if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+    _DO_NOTHING=YES
+  else
+    _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+    if [ ! -z "$_PHP_FPM_WORKERS" ] && [ "$_PHP_FPM_WORKERS" -gt "0" ] ; then
+      _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
+    fi
+  fi
   _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
   if [ -z "$_PHP_SV" ] ; then
     _PHP_SV=53
