@@ -81,6 +81,7 @@ sub makeactions
           $li_cnt{$VISITOR}++;
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1 if ($line =~ /(POST)/ && $skip_post < 1);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 50 if ($line =~ /(POST)/ && $line =~ /user\/register/);
       }
       else {
         if ($line =~ /0.000/) {
@@ -118,6 +119,7 @@ sub makeactions
           $px_cnt{$PROXY}++;
         }
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1 if ($line =~ /(POST)/ && $skip_post < 1);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 50 if ($line =~ /(POST)/ && $line =~ /user\/register/);
       }
       else {
         if ($line =~ /0.000/) {
