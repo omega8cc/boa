@@ -47,6 +47,7 @@
   * Improve auto-healing for multi-version PHP-FPM setup.
   * Improve docs/UPGRADE.txt
   * Improve health check for protected vhosts during live SSH-auth update.
+  * Nginx: More aggressive limits against spambots trying to register accounts.
 
 # Changes in this release:
 
@@ -79,6 +80,8 @@
   * Issue #GH-301 - Update the list of restricted keywords for Octopus username.
   * Make sure that permissions on Chive Manager dir/files are correct.
   * Note: _SSL_FROM_SOURCES=YES is ignored and not needed on Wheezy and Precise.
+  * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
+  * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
   * Remove the line with header TABLE_NAME (sqlmagic).
   * Reset PATH to avoid RVM overrides after Compass Tools install/upgrade.
   * Shell: Allow to run 'drush cache-clear drush' in any directory.
