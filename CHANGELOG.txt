@@ -80,6 +80,7 @@
   * Issue #GH-301 - Update the list of restricted keywords for Octopus username.
   * Make sure that permissions on Chive Manager dir/files are correct.
   * Note: _SSL_FROM_SOURCES=YES is ignored and not needed on Wheezy and Precise.
+  * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
   * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
   * Remove the line with header TABLE_NAME (sqlmagic).

@@ -7086,11 +7086,6 @@ if [ ! -e "/var/xdrago/log/ioncube-$_IONCUBE_VERSION.log" ] || [ "$_PHP_FORCE_RE
   install_ioncube
 fi
 
-if [ -x "/opt/local/bin/php" ] || [ -x "/usr/local/bin/php" ] ; then
-  rm -f /opt/local/bin/php
-  rm -f /usr/local/bin/php
-fi
-
 
 ###--------------------###
 install_newrelic
