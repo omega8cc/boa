@@ -8334,6 +8334,7 @@ else
           mrun "apt-get remove ruby1.8-dev libruby1.8 ruby1.8 -y --force-yes" &> /dev/null
           mrun "apt-get autoremove -y --force-yes" &> /dev/null
           mrun "rvm install $_RUBY_VERSION" &> /dev/null
+          mrun "rvm use $_RUBY_VERSION --default" &> /dev/null
           ### update rvm
           mrun "rvm get stable" 2> /dev/null
           ### install new versions
