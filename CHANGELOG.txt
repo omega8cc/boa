@@ -64,6 +64,7 @@
 
   * Add 'exit 0' line if missing.
   * Add /opt/local/bin to PATH by default.
+  * Add warning that Compass Tools install and upgrade may take a LONG time.
   * Add symlinks for wrappers only temporarily.
   * Better gem uninstall options.
   * Compass: Multiple fixes for various expected gems versions install/upgrades.

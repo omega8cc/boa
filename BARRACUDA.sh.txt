@@ -8319,7 +8319,8 @@ else
       echo " "
       if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
         true
-        msg "INFO: Running Compass Tools $_L_ST, please wait..."
+        msg "INFO: Running Compass Tools ${_L_ST}..."
+        msg "NOTE! This step may take a LONG time, please wait..."
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
           source /etc/profile.d/rvm.sh
