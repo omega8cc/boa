@@ -627,6 +627,9 @@ restore_default_php () {
 #
 tune_php () {
   msg "INFO: Tuning PHP configuration"
+  if [ "$_TUNE_PHP_FPM_TIMEOUT" -lt "60" ] ; then
+    _TUNE_PHP_FPM_TIMEOUT=60
+  fi
   sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/pool.d/*.conf &> /dev/null
   sed -i "s/180s/${_TUNE_PHP_FPM_TIMEOUT}s/g" /opt/php*/etc/php*-fpm.conf &> /dev/null
   sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g"     /opt/php*/etc/php*.ini      &> /dev/null

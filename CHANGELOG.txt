@@ -82,6 +82,7 @@
   * Make sure that permissions on Chive Manager dir/files are correct.
   * Note: _SSL_FROM_SOURCES=YES is ignored and not needed on Wheezy and Precise.
   * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
+  * PHP: Allow to set custom _PHP_FPM_TIMEOUT but not lower than 60 (in seconds)
   * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
   * PHP: pm.max_children was not properly updated on FPM version self-switch.
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
