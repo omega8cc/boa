@@ -64,8 +64,8 @@
 
   * Add 'exit 0' line if missing.
   * Add /opt/local/bin to PATH by default.
-  * Add warning that Compass Tools install and upgrade may take a LONG time.
   * Add symlinks for wrappers only temporarily.
+  * Add warning that Compass Tools install and upgrade may take a LONG time.
   * Better gem uninstall options.
   * Compass: Multiple fixes for various expected gems versions install/upgrades.
   * Do not override lshell env_path in websh wrapper.
@@ -83,6 +83,7 @@
   * Note: _SSL_FROM_SOURCES=YES is ignored and not needed on Wheezy and Precise.
   * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
   * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
+  * PHP: pm.max_children was not properly updated on FPM version self-switch.
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
   * Remove the line with header TABLE_NAME (sqlmagic).
   * Reset PATH to avoid RVM overrides after Compass Tools install/upgrade.

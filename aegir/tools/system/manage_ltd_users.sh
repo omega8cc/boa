@@ -442,6 +442,76 @@ update_php_cli_drush ()
   chmod 0700 /data/disk/${_OWN}/aegir.sh &> /dev/null
 }
 #
+# Tune FPM workers.
+tune_fpm_workers () {
+  _ETH_TEST=`ifconfig 2>&1`
+  _AWS_TEST_A=$(grep cloudimg /etc/fstab)
+  _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
+  if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
+    _VMFAMILY="VZ"
+  elif [ -e "/proc/bean_counters" ] ; then
+    _VMFAMILY="VZ"
+  elif [[ "$_HOST_TEST" =~ ".host8." ]] && [ -e "/boot/grub/menu.lst" ] ; then
+    _VMFAMILY="TG"
+  elif [[ "$_HOST_TEST" =~ ".host8." ]] && [ -e "/boot/grub/grub.cfg" ] ; then
+    _VMFAMILY="TG"
+  else
+    _VMFAMILY="XEN"
+  fi
+  if [[ "$_VM_TEST" =~ beng ]] ; then
+    _VMFAMILY="VS"
+  fi
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+    _VMFAMILY="AWS"
+  fi
+  _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
+  if [ "$_RESERVED_RAM" -gt "0" ] ; then
+    let "_RAM = (($_RAM - $_RESERVED_RAM))"
+  fi
+  let "_USE = (($_RAM / 4))"
+  if [ "$_USE" -ge "512" ] && [ "$_USE" -lt "1024" ] ; then
+    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      _L_PHP_FPM_WORKERS=12
+    else
+      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+    fi
+  elif [ "$_USE" -ge "1024" ] ; then
+    if [ "$_VMFAMILY" = "XEN" ] || [ "$_VMFAMILY" = "AWS" ] ; then
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _L_PHP_FPM_WORKERS=24
+      else
+        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+    elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
+      if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _L_PHP_FPM_WORKERS=24
+        else
+          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+      else
+        if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+          _L_PHP_FPM_WORKERS=6
+        else
+          _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+        fi
+      fi
+    else
+      if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+        _L_PHP_FPM_WORKERS=12
+      else
+        _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+      fi
+    fi
+  else
+    if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+      _L_PHP_FPM_WORKERS=6
+    else
+      _L_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS
+    fi
+  fi
+}
+#
 # Switch PHP Version.
 switch_php()
 {
@@ -458,6 +528,22 @@ switch_php()
           _LOC_PHP_FPM_VERSION=5.3
         fi
         if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
+          tune_fpm_workers
+          _LIM_FPM="$_L_PHP_FPM_WORKERS"
+          if [ "$_LIM_FPM" -lt "24" ] ; then
+            if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+              _LIM_FPM=24
+            fi
+          fi
+          let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
+          if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
+            _DO_NOTHING=YES
+          else
+            _PHP_FPM_WORKERS=${_PHP_FPM_WORKERS//[^0-9]/}
+            if [ ! -z "$_PHP_FPM_WORKERS" ] && [ "$_PHP_FPM_WORKERS" -gt "0" ] ; then
+              _CHILD_MAX_FPM="$_PHP_FPM_WORKERS"
+            fi
+          fi
           sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_LOC_PHP_FPM_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
           _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
           _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
@@ -505,6 +591,9 @@ switch_php()
           if [ ! -z "$_PHP_FPM_TIMEOUT" ] ; then
             _PHP_TO="${_PHP_FPM_TIMEOUT}s"
             sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
+          fi
+          if [ ! -z "$_CHILD_MAX_FPM" ] ; then
+            sed -i "s/pm.max_children =.*/pm.max_children = $_CHILD_MAX_FPM/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null
           fi
           if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
             service php${_PHP_OLD_SV}-fpm reload &> /dev/null
