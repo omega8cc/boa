@@ -64,7 +64,7 @@ check_vhost_health()
     else
       _VHOST_HEALTH=NO
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" $1* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access none\n  deny                         all;/g" $1* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  ### access none\n  deny                         all;/g" $1* &> /dev/null
     fi
   else
     echo vhost $1 does not exist
@@ -77,15 +77,15 @@ update_ip_auth_access()
   if [ -e "/var/backups/.auth.IP.list.tmp" ] ; then
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/chive."* ] ; then
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
     fi
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/cgp."* ] ; then
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
     fi
     if [ -e "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."* ] ; then
       sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
-      sed -i "s/limit_conn .*/limit_conn                   limreq 32;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
+      sed -i "s/limit_conn .*/limit_conn                   limreq 555;\n  ### access update/g" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp

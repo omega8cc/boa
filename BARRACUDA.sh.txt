@@ -8141,7 +8141,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         echo > $_CGP_VHOST
         echo "server {" >> $_CGP_VHOST
         echo "  include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-        echo "  limit_conn  limreq 32;" >> $_CGP_VHOST
+        echo "  limit_conn  limreq 555;" >> $_CGP_VHOST
         echo "  listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
         echo "  server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
         echo "  root        /var/www/cgp;" >> $_CGP_VHOST

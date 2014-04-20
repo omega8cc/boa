@@ -53,6 +53,7 @@
 
   * Issue #GH-299 - Force disable LESS developer mode on production sites.
   * Move custom scripts to /opt/local/bin/
+  * Nginx: Use higher defaults for limit_conn to avoid error 503 (CloudFlare)
   * Normalize localhost entry in /etc/hosts to avoid FQDN mapped to 127.0.0.1
   * PHP: Do not use separate FPM pool for cron if _PHP_FPM_DENY is empty.
 
