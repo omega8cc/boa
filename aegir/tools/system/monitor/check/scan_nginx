@@ -27,7 +27,7 @@ sub makeactions
     @banetable = <NOT>;
     close (NOT);
   }
-  local(@MYARR) = `tail --lines=300 /var/log/nginx/access.log 2>&1`;
+  local(@MYARR) = `tail --lines=500 /var/log/nginx/access.log 2>&1`;
   local($critnumber) = 300;
   local($mininumber) = $critnumber / 2;
   print "\n===[$mininumber] mininumber===\n";
@@ -81,7 +81,7 @@ sub makeactions
           $li_cnt{$VISITOR}++;
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3 if ($line =~ /POST/ && $skip_post < 1);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 30 if ($line =~ /POST/ && $line =~ /user\/(register|password)/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 30 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)/);
       }
       else {
         if ($line =~ /0.000/) {
@@ -119,7 +119,7 @@ sub makeactions
           $px_cnt{$PROXY}++;
         }
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3 if ($line =~ /POST/ && $skip_post < 1);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 30 if ($line =~ /POST/ && $line =~ /user\/(register|password)/);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 30 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)/);
       }
       else {
         if ($line =~ /0.000/) {
@@ -139,10 +139,10 @@ sub makeactions
       local($isloggedin) = 0;
       &check_who($VISITOR);
       $critnumber = $critnumber - 50 if ($critnumber > 250);
-      $critnumber = 999 if ($isloggedin); ### don't block logged in users
-      $critnumber = 999 if ($VISITOR eq $myip); ### don't block own IP
-      print "===[$isloggedin] $VISITOR is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] critnumber for $VISITOR===\n" if ($VISITOR);
+      $critnumber = 8888 if ($isloggedin); ### don't block logged in users
+      $critnumber = 8888 if ($VISITOR eq $myip); ### don't block own IP
+      print "===[$isloggedin] VISITOR li_cnt $VISITOR is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] VISITOR li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
       &check_remote_ip($VISITOR);
       local($allowed) = 0;
@@ -165,10 +165,10 @@ sub makeactions
       local($isloggedin) = 0;
       &check_who($PROXY);
       $critnumber = $critnumber - 50 if ($critnumber > 250);
-      $critnumber = 999 if ($isloggedin); ### don't block logged in users
-      $critnumber = 999 if ($PROXY eq $myip); ### don't block own IP
-      print "===[$isloggedin] $PROXY is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] critnumber for $PROXY===\n" if ($PROXY);
+      $critnumber = 7777 if ($isloggedin); ### don't block logged in users
+      $critnumber = 7777 if ($PROXY eq $myip); ### don't block own IP
+      print "===[$isloggedin] PROXY px_cnt $PROXY is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] PROXY px_cnt critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
       &check_remote_ip($PROXY);
       local($allowed) = 0;
@@ -193,8 +193,8 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 999 if ($isloggedin); ### don't block logged in users
       $critnumber = 999 if ($VISITOR eq $myip); ### don't block own IP
-      print "===[$isloggedin] $VISITOR is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] critnumber for $VISITOR===\n" if ($VISITOR);
+      print "===[$isloggedin] VISITOR im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] VISITOR im_li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
       &check_remote_ip($VISITOR);
       local($allowed) = 0;
@@ -219,8 +219,8 @@ sub makeactions
       $critnumber = $critnumber - 50 if ($critnumber > 250);
       $critnumber = 999 if ($isloggedin); ### don't block logged in users
       $critnumber = 999 if ($PROXY eq $myip); ### don't block own IP
-      print "===[$isloggedin] $PROXY is logged in===\n" if ($isloggedin);
-      print "===[$critnumber] critnumber for $PROXY===\n" if ($PROXY);
+      print "===[$isloggedin] PROXY im_px_cnt $PROXY is logged in===\n" if ($isloggedin);
+      print "===[$critnumber] PROXY im_px_cnt critnumber for $PROXY===\n" if ($PROXY);
       local($blocked) = 0;
       &check_remote_ip($PROXY);
       local($allowed) = 0;
