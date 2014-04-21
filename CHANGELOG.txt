@@ -31,6 +31,15 @@
   Note that the silent, non-interactive mode will automatically say Y/Yes
   to all prompts and is thus useful to run auto-upgrades scheduled in cron.
 
+  If you have skipped some recent BOA releases, and you have new default config
+  option: _PERMISSIONS_FIX=NO in your /root/.barracuda.cnf configuration file,
+  plus, you are not sure if you follow best practices for managing permissions
+  as recommended in our docs: https://omega8.cc/node/116 then we recommend
+  that you change it to _PERMISSIONS_FIX=YES temporarily, or even permanently
+  if your VPS is fast enough, and then run this powerful script as root:
+
+  $ bash /var/xdrago/daily.sh
+
 # Updated Octopus platforms:
 
   ### Drupal 7.27.1
