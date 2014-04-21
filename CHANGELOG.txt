@@ -89,6 +89,7 @@
   * Issue #2241013 - Git commands should be whitelisted in websh wrapper.
   * Issue #2241495 - wkhtmltopdf stopped working after upgrade.
   * Issue #GH-301 - Update the list of restricted keywords for Octopus username.
+  * Issue #GH-304 - [rvm] use $_RUBY_VERSION as default.
   * Make sure that permissions on Chive Manager dir/files are correct.
   * Note: _SSL_FROM_SOURCES=YES is ignored and not needed on Wheezy and Precise.
   * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
