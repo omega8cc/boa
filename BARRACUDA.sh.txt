@@ -6558,6 +6558,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   install_with_aptitude_sql
 else
+  THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [ "$_UP_NRC" = "YES" ] ; then
     update_newrelic
   fi
@@ -6585,7 +6586,11 @@ else
       fi
     elif [ "$_DB_SERIES" = "5.5" ] ; then
       if [[ "$_DB_SERVER_TEST" =~ "5.5." ]] ; then
-        _DO_NOTHING=YES
+        if [[ "$_DB_SERVER_TEST" =~ "$_MARIADB_5_VERSION" ]] ; then
+          _DO_NOTHING=YES
+        else
+          _SQL_UPGRADE=YES
+        fi
       else
         _SQL_UPGRADE=YES
       fi
