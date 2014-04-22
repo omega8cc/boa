@@ -943,10 +943,10 @@ tune_memory_limits () {
       fi
     elif [ "$_VMFAMILY" = "VS" ] || [ "$_VMFAMILY" = "TG" ] ; then
       if [ -e "/boot/grub/grub.cfg" ] || [ -e "/boot/grub/menu.lst" ] || [ -e "/root/.tg.cnf" ] ; then
-        _USE_PHP=1024
-        _USE_OPC=1024
+        _USE_PHP=2048
+        _USE_OPC=2048
         _PRC_SQL=50
-        _QCE_SQL=128M
+        _QCE_SQL=256M
         _RND_SQL=8M
         _JBF_SQL=4M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
@@ -967,8 +967,8 @@ tune_memory_limits () {
         _USE_PHP=1024
         _USE_OPC=1024
         _PRC_SQL=25
-        _QCE_SQL=64M
-        _RND_SQL=2M
+        _QCE_SQL=128M
+        _RND_SQL=4M
         _JBF_SQL=2M
         if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
           _L_PHP_FPM_WORKERS=6
