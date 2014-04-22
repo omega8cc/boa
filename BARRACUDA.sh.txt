@@ -6863,6 +6863,13 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
+    _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
+    if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
+      msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
+      sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    fi
+  fi
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
@@ -6917,6 +6924,13 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 300/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
+    _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
+    if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
+      msg "INFO: Configured _NGINX_DOS_KEYWORDS: $_NGINX_DOS_KEYWORDS"
+      sed -i "s/foobar/$_NGINX_DOS_KEYWORDS/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+    fi
+  fi
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then

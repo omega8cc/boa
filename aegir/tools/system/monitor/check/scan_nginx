@@ -82,6 +82,7 @@ sub makeactions
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3 if ($line =~ /POST/ && $skip_post < 1);
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 30 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)|(user\/login)/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /foobar/);
       }
       else {
         if ($line =~ /0.000/) {
@@ -120,6 +121,7 @@ sub makeactions
         }
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3 if ($line =~ /POST/ && $skip_post < 1);
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 30 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)|(user\/login)/);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10 if ($line =~ /foobar/);
       }
       else {
         if ($line =~ /0.000/) {
