@@ -710,6 +710,12 @@ do
           chmod 700 /home/${_OWN}.ftp/users
           chmod 600 /home/${_OWN}.ftp/users/*
         fi
+        if [ ! -L "/home/${_OWN}.ftp/static" ] ; then
+          rm -f /home/${_OWN}.ftp/{backups,clients,static}
+          ln -sf /data/disk/${_OWN}/backups /home/${_OWN}.ftp/backups
+          ln -sf /data/disk/${_OWN}/clients /home/${_OWN}.ftp/clients
+          ln -sf /data/disk/${_OWN}/static  /home/${_OWN}.ftp/static
+        fi
         if [ ! -e "/home/${_OWN}.ftp/.tmp/.ctrl.yz.txt" ] ; then
           rm -f -r /home/${_OWN}.ftp/.drush/cache
           rm -f -r /home/${_OWN}.ftp/.tmp
