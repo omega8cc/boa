@@ -125,10 +125,10 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
             else
               _CORRECT=YES
             fi
-          elif [[ "$_ALL" =~ "cache-clear drush" ]] || [[ "$_ALL" =~ "drush6 dl" ]] || [[ "$_ALL" =~ "drush6 pm-download" ]] || [[ "$_ALL" =~ "drush6 sa" ]] || [[ "$_ALL" =~ "drush4 site-alias" ]] ; then
+          elif [[ "$_ALL" =~ "-c set -m; drush6 --version" ]] || [[ "$_ALL" =~ "-c set -m; drush6 help" ]] || [[ "$_ALL" =~ "cache-clear drush" ]] || [[ "$_ALL" =~ "drush6 dl" ]] || [[ "$_ALL" =~ "drush6 pm-download" ]] || [[ "$_ALL" =~ "drush6 sa" ]] || [[ "$_ALL" =~ "drush4 site-alias" ]] ; then
             _CORRECT=YES
           else
-            if [[ "$_ALL" =~ "drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
+            if [[ "$_ALL" =~ "-c set -m; drush" ]] && [ ! -f "$_PWD/settings.php" ] ; then
               echo
               echo " This drush command can not be run in $_PWD"
               echo " Please cd to the valid sites/foo.com directory first"
