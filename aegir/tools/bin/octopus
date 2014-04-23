@@ -444,6 +444,12 @@ check_root ()
     echo "ERROR: This script should be ran as a root user - please `sudo -i` first"
     exit 1
   fi
+  _DF_TEST=$(df -kTh / -l | grep '/'| sed 's/\%//g'| awk '{print $6}' 2> /dev/null)
+  _DF_TEST=${_DF_TEST//[^0-9]/}
+  if [ ! -z "$_DF_TEST" ] && [ "$_DF_TEST" -gt "90" ] ; then
+    echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
+    exit 1
+  fi
 }
 
 case "$1" in
