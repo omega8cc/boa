@@ -66,6 +66,7 @@
 
   * Add symlinks in the home directory if missing (every 5 minutes).
   * Add warning that Compass Tools install and upgrade may take a LONG time.
+  * Fix for 'Force backward compatible SERVER_SOFTWARE'.
   * Force MariaDB 5.5 re-install if installed version doesn't match latest.
   * Issue #2238805 - Command filtering - no word containing *drush* is allowed.
   * Issue #2247997 - Update docs/REMOTE.txt with workaround for websh issue.
