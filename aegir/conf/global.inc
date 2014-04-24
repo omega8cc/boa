@@ -102,7 +102,9 @@ if (function_exists('drush_get_command')) {
  * Force backward compatible SERVER_SOFTWARE
  */
 if (!$is_backend) {
-  $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx';
+  if (isset($_SERVER['SERVER_SOFTWARE']) && !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.0.1';
+  }
 }
 
 /**
