@@ -14,6 +14,13 @@
 # The 'source-host' is your source instance FQDN hostname,
 # and 'target-host' is your target instance FQDN hostname.
 
+### On target and source server
+#
+# See: https://drupal.org/node/2247997
+#
+$ mv -f /var/xdrago/manage_ltd_users.sh /var/backups/
+$ service clean-boa-env start
+
 ### On source server
 #
 # You must remove remote_import extension so it will exist
@@ -115,3 +122,8 @@ $ bash /var/xdrago/run-o1
 7. Repeat from step 2 to migrate next/more site(s).
 8. Done!
 
+### On target and source server
+#
+# See: https://drupal.org/node/2247997
+#
+$ mv -f  /var/backups/manage_ltd_users.sh /var/xdrago/
