@@ -5,7 +5,7 @@
 
 # Release Notes:
 
-  This release includes several bug fixes along with four updated platforms,
+  This release includes several bug fixes along with five updated platforms,
   plus some hot-fixes applied to previous stable after its release.
 
 # Important - Read This First! (for self-hosted BOA only)
