@@ -180,7 +180,7 @@ Octopus can install the platforms listed below:
 
 ### Pressflow 6.31.1
 
- Commons 2.16 ----------------- https://drupal.org/project/commons
+ Commons 2.17 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.4 ---------- https://drupal.org/project/managingnews
  Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
