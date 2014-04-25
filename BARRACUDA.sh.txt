@@ -8353,7 +8353,6 @@ else
         if [ ! -e "/var/xdrago/log/gem-conservative.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
           mrun "apt-get update -y --force-yes" &> /dev/null
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes" &> /dev/null
-          mrun "apt-get remove ruby1.8-dev libruby1.8 ruby1.8 -y --force-yes" &> /dev/null
           mrun "apt-get autoremove -y --force-yes" &> /dev/null
           mrun "rvm install $_RUBY_VERSION" &> /dev/null
           mrun "rvm use $_RUBY_VERSION --default" &> /dev/null
