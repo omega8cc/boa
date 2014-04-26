@@ -4,8 +4,8 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _REL_VERSION=`lsb_release -sc`
 
 randpass() {
-  if [ $number -ge 8 ] ; then
-    rkey="$number"
+  if [ $integer -ge 8 ] ; then
+    rkey="$integer"
   else
     rkey=32
   fi
@@ -30,19 +30,19 @@ randpass() {
 }
 
 case "$2" in
-  alnum) number="$1"
+  alnum) integer="$1"
          kind="$2"
          randpass
   ;;
-  graph) number="$1"
+  graph) integer="$1"
          kind="$2"
          randpass
   ;;
-  hash)  number="$1"
+  hash)  integer="$1"
          kind="$2"
          randpass
   ;;
-  esc)   number="$1"
+  esc)   integer="$1"
          kind="$2"
          randpass
   ;;

@@ -54,13 +54,13 @@ _NGINX_FORWARD_SECRECY=NO #----- Installs PFS Nginx support when YES
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
 _NGINX_NAXSI=NO #--------------- Installs Nginx NAXSI WAF when YES
 _NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
-_NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid number
+_NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
 _PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{2,3,4,5}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
 _PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
-_PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid number
+_PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
 _PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3, 5.4, 5.5

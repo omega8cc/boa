@@ -2477,7 +2477,16 @@ tune_web_server_config () {
   else
     sed -i "s/opcache.fast_shutdown=1/opcache.fast_shutdown=1\nopcache.enable=1/g" /opt/php*/etc/php*.ini &> /dev/null
   fi
-  sed -i "s/^max_input_time = 60.*/max_input_time = 180/g" /opt/php*/etc/php*.ini &> /dev/null
+  # PHP-FPM INI
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  # Redis config should sync with PHP-FPM
+  sed -i "s/^timeout .*/timeout 180/g" /etc/redis/redis.conf                                   &> /dev/null
+  # PHP-CLI INI
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
@@ -2781,7 +2790,6 @@ tune_memory_limits () {
   fi
   _MAX_MEM_REDIS="${_USE_OPC}MB"
   sed -i "s/^maxmemory .*/maxmemory $_MAX_MEM_REDIS/g"  /etc/redis/redis.conf &> /dev/null
-  sed -i "s/^timeout .*/timeout 180/g" /etc/redis/redis.conf &> /dev/null
   if [ -e "/etc/default/jetty9" ] && [ -e "/opt/solr4" ] ; then
     sed -i "s/^JAVA_OPTIONS.*/JAVA_OPTIONS=\"-Xms8m $_USE_JETTY -Djava.awt.headless=true -Dsolr.solr.home=\/opt\/solr4 \$JAVA_OPTIONS\" # Options/g" /etc/default/jetty9 &> /dev/null
   fi

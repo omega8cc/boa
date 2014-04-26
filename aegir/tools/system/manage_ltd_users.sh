@@ -591,6 +591,9 @@ switch_php()
           if [ "$_PHP_FPM_TIMEOUT" -lt "60" ] ; then
             _PHP_FPM_TIMEOUT=60
           fi
+          if [ "$_PHP_FPM_TIMEOUT" -gt "180" ] ; then
+            _PHP_FPM_TIMEOUT=180
+          fi
           if [ ! -z "$_PHP_FPM_TIMEOUT" ] ; then
             _PHP_TO="${_PHP_FPM_TIMEOUT}s"
             sed -i "s/180s/$_PHP_TO/g" /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf &> /dev/null

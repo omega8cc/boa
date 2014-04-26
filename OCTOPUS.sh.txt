@@ -419,7 +419,7 @@ _USE_CURRENT=YES
 ### DELETE OLD EMPTY PLATFORMS             ###
 ###----------------------------------------###
 ###
-### Change to any number greater than "0" to
+### Change to any integer greater than "0" to
 ### automatically delete empty platforms with
 ### no sites hosted, during daily cleanup,
 ### if verified more than X days ago, where X
@@ -433,7 +433,7 @@ _DEL_OLD_EMPTY_PLATFORMS="0"
 ### DELETE OLD BACKUPS                     ###
 ###----------------------------------------###
 ###
-### Change to any number greater than "0" to
+### Change to any integer greater than "0" to
 ### automatically delete backups stored in the
 ### /data/disk/U/backups/ directory and in all
 ### hosted sites backup_migrate directories,
@@ -449,7 +449,7 @@ _DEL_OLD_BACKUPS="0"
 ### DELETE OLD TMP FILES                   ###
 ###----------------------------------------###
 ###
-### Change to any number greater than "0" to
+### Change to any integer greater than "0" to
 ### automatically delete temporary files
 ### in all hosted sites files/tmp/ and also
 ### private/temp/ directories, during daily
