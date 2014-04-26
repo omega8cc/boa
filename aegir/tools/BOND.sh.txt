@@ -635,6 +635,7 @@ tune_php () {
   sed -i "s/180/$_TUNE_PHP_FPM_TIMEOUT/g"     /opt/php*/etc/php*.ini      &> /dev/null
   sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini &> /dev/null
   sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g"         /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^timeout .*/timeout $_TUNE_PHP_FPM_TIMEOUT/g" /etc/redis/redis.conf &> /dev/null
 }
 #
 restore_default_sql () {
