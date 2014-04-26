@@ -83,6 +83,7 @@
   * Issue #GH-305  - Check disk usage before running install/upgrade.
   * Issue #GH-306  - Allow ruby 1.8 to remain installed.
   * Nginx: Allow to configure keywords for aggressive requests rate monitoring.
+  * Nginx: Sync FastCGI timeouts with other Nginx and PHP-FPM defaults.
   * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
   * PHP: Allow to set custom _PHP_FPM_TIMEOUT but not lower than 60 (in seconds)
   * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
