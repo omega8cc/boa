@@ -212,7 +212,7 @@ extract_archive () {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib () {
   if [ ! -z $1 ] ; then
-    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -220,7 +220,7 @@ get_dev_contrib () {
 # Download and extract from distro.
 get_distro_ext () {
   if [ ! -z $1 ] ; then
-    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/distro/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/distro/$1"
     extract_archive "$1"
   fi
 }
@@ -350,7 +350,7 @@ prepare_drupal6_core () {
   if [ ! -e "$_D6_CORE_DIR" ] ; then
     rm -f -r $_D6_CORE_DIR
     cd /data/all/000/core
-    curl -s -A iCab "http://files.aegir.cc/core/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s -A iCab "http://files.aegir.cc/core/pressflow-$_SMALLCORE6.tar.gz" | tar -xzf -
     cd $_D6_CORE_DIR/
     fix_dirs_files
     patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/taxonomy-6.26.patch &> /dev/null
@@ -375,7 +375,7 @@ prepare_drupal7_core () {
   if [ ! -e "$_D7_CORE_DIR" ] ; then
     rm -f -r $_D7_CORE_DIR
     cd /data/all/000/core
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE7.tar.gz" | tar -xzf -
     cd $_D7_CORE_DIR/
     fix_dirs_files
     rename_drupal7_profiles
@@ -397,7 +397,7 @@ prepare_drupal8_core () {
   if [ ! -e "$_D8_CORE_DIR" ] ; then
     rm -f -r $_D8_CORE_DIR
     cd /data/all/000/core
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/core/drupal-$_SMALLCORE8.tar.gz" | tar -xzf -
     cd $_D8_CORE_DIR/
     fix_dirs_files
     rename_drupal8_profiles
@@ -513,7 +513,7 @@ upgrade_contrib_less () {
   if [ -e "views" ] ; then
     cd views
     # https://drupal.org/node/1766338#comment-6445882
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     cd ../
   fi
@@ -813,7 +813,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COD-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COD-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_COD" ] ; then
       mv $_REAL_PRNAME-$_COD $_SHRD_PLNAME
     fi
@@ -860,7 +860,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMERCE1-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMERCE1-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/commerce-$_COMMERCE1" ] ; then
       mv commerce-$_COMMERCE1 $_SHRD_PLNAME
     elif [ -d "$_CORE/$_REAL_PRNAME-$_COMMERCE1" ] ; then
@@ -912,7 +912,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMERCE2-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMERCE2-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/commerce-$_COMMERCE2" ] ; then
       mv commerce-$_COMMERCE2 $_SHRD_PLNAME
     elif [ -d "$_CORE/$_REAL_PRNAME-$_COMMERCE2" ] ; then
@@ -1027,7 +1027,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMONS3-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMONS3-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_COMMONS3" ] ; then
       mv $_REAL_PRNAME-$_COMMONS3 $_SHRD_PLNAME
     fi
@@ -1341,7 +1341,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_GUARDR-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_GUARDR-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_GUARDR" ] ; then
       mv $_REAL_PRNAME-$_GUARDR $_SHRD_PLNAME
     fi
@@ -1417,14 +1417,14 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-6.x-2.13.tar.gz"
     cd views
     # https://drupal.org/node/853864#comment-3898996
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-853864_2.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-853864_2.patch
     patch -p0 < views-853864_2.patch &> /dev/null
     # https://drupal.org/node/402944#comment-5370400
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-unpack_options-cache-6.2-51.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-unpack_options-cache-6.2-51.patch
     patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
     cd $_SHRD_PRPATH/themes
@@ -1469,7 +1469,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_NODESTREAM7-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_NODESTREAM7-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_NODESTREAM7" ] ; then
       mv $_REAL_PRNAME-$_NODESTREAM7 $_SHRD_PLNAME
     fi
@@ -1516,7 +1516,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENACADEMY-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENACADEMY-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENACADEMY" ] ; then
       mv $_REAL_PRNAME-$_OPENACADEMY $_SHRD_PLNAME
     fi
@@ -1563,13 +1563,13 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal6_core
     fi
     cd $_CORE
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM6-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM6" ] ; then
       mv $_REAL_PRNAME-$_OPENATRIUM6 $_SHRD_PLNAME
     fi
     cd $_SHRD_PRPATH/modules/contrib/imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     nocore_d6_dist_clean
     rm -f -r $_SHRD_PLPATH/profiles/default
@@ -1629,7 +1629,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENATRIUM7-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENATRIUM7" ] ; then
       mv $_REAL_PRNAME-$_OPENATRIUM7 $_SHRD_PLNAME
     fi
@@ -1677,7 +1677,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENBLOG-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENBLOG-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENBLOG" ] ; then
       mv $_REAL_PRNAME-$_OPENBLOG $_SHRD_PLNAME
     fi
@@ -1733,7 +1733,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENCHURCH-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENCHURCH-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENCHURCH" ] ; then
       mv $_REAL_PRNAME-$_OPENCHURCH $_SHRD_PLNAME
     fi
@@ -1786,7 +1786,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENDEALS-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENDEALS-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENDEALS" ] ; then
       mv $_REAL_PRNAME-$_OPENDEALS $_SHRD_PLNAME
     fi
@@ -1835,7 +1835,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENOUTREACH-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENOUTREACH" ] ; then
       mv $_REAL_PRNAME-$_OPENOUTREACH $_SHRD_PLNAME
     fi
@@ -1884,7 +1884,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENPUBLISH-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_OPENPUBLISH" ] ; then
       mv $_REAL_PRNAME-$_OPENPUBLISH $_SHRD_PLNAME
     fi
@@ -1999,7 +1999,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_PANOPOLY-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_PANOPOLY-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_PANOPOLY" ] ; then
       mv $_REAL_PRNAME-$_PANOPOLY $_SHRD_PLNAME
     fi
@@ -2103,7 +2103,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_RECRUITER-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_RECRUITER-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_RECRUITER" ] ; then
       mv $_REAL_PRNAME-$_RECRUITER $_SHRD_PLNAME
     fi
@@ -2151,7 +2151,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_SPARK-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_SPARK-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_SPARK" ] ; then
       mv $_REAL_PRNAME-$_SPARK $_SHRD_PLNAME
     fi
@@ -2200,7 +2200,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ ! -e "$_D7_CORE_DIR" ] ; then
       prepare_drupal7_core
     fi
-    curl -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_TOTEM-core.tar.gz" | tar -xzf -
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_TOTEM-core.tar.gz" | tar -xzf -
     if [ -d "$_CORE/$_REAL_PRNAME-$_TOTEM" ] ; then
       mv $_REAL_PRNAME-$_TOTEM $_SHRD_PLNAME
     fi
@@ -2261,7 +2261,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_CORE
     mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
     cd $_SHRD_PRPATH/libraries
-    curl -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
     unzip -qq colorbox-master.zip &> /dev/null
     rm -f colorbox-master.zip
     mv -f colorbox-master colorbox
@@ -2289,7 +2289,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
     cd $_SHRD_PRPATH/modules/imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
     patch -p1 < imagecache-1243258-5.patch &> /dev/null
     cd $_SHRD_PRPATH/themes
     get_dev_contrib "fusion-6.x-1.x-dev.tar.gz" &> /dev/null
@@ -2338,7 +2338,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
-    curl -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
     unzip -qq colorbox-master.zip &> /dev/null
     rm -f colorbox-master.zip
     mv -f colorbox-master colorbox
@@ -2356,7 +2356,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -2402,7 +2402,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/testing/testing.info &> /dev/null
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
-    curl -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
     unzip -qq colorbox-master.zip &> /dev/null
     rm -f colorbox-master.zip
     mv -f colorbox-master colorbox
@@ -2420,7 +2420,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
-    curl -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
     patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null

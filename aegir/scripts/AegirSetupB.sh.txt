@@ -172,7 +172,7 @@ extract_archive () {
 # Download and extract from dev.
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -180,7 +180,7 @@ get_dev_ext () {
 # Download and extract from dev/contrib mirror.
 get_dev_contrib () {
   if [ ! -z $1 ] ; then
-    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/contrib/$1"
     extract_archive "$1"
   fi
 }
@@ -418,7 +418,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r $_ROOT/.drush/*/.git
   get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
 else
-  curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
   if [ "$_STATUS" = "UPGRADE" ] ; then
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi

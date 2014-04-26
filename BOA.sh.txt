@@ -60,7 +60,7 @@ setup ()
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     fi
   fi
-  _CURL_TEST=$(curl -s -I "http://files.aegir.cc" 2> /dev/null)
+  _CURL_TEST=$(curl -L --max-redirs 10 -k -s -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     _DO_NOTHING=YES
   else
@@ -80,14 +80,14 @@ setup ()
     ln -sf /opt/local/bin/octopus /usr/local/bin/octopus
   fi
   rm -f /opt/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/boa"            -o /opt/local/bin/boa
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/drushextra"     -o /opt/local/bin/drushextra
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/octopus"        -o /opt/local/bin/octopus
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/randpass"       -o /opt/local/bin/randpass
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/syncpass"       -o /opt/local/bin/syncpass
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/boa"            -o /opt/local/bin/boa
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/drushextra"     -o /opt/local/bin/drushextra
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/octopus"        -o /opt/local/bin/octopus
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/randpass"       -o /opt/local/bin/randpass
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/syncpass"       -o /opt/local/bin/syncpass
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/thinkdifferent" -o /opt/local/bin/thinkdifferent
   echo "### $_TODAY ###" >> /opt/local/bin/boa
   echo "### $_TODAY ###" >> /opt/local/bin/barracuda
   echo "### $_TODAY ###" >> /opt/local/bin/octopus

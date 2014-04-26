@@ -232,7 +232,7 @@ fix_user_register_protection () {
 
 fix_robots_txt () {
   if [ ! -e "$Dir/files/robots.txt" ] && [ ! -e "$Plr/profiles/hostmaster" ] && [ "$_STATUS" = "OK" ] ; then
-    curl -s --retry 3 --retry-delay 15 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
+    curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab "http://$Dom/robots.txt?nocache=1&noredis=1" -o $Dir/files/robots.txt
     if [ -e "$Dir/files/robots.txt" ] ; then
       echo >> $Dir/files/robots.txt
     fi
@@ -1368,7 +1368,7 @@ else
     /etc/init.d/nginx reload
   fi
   rm -f /var/backups/BOA.sh.txt-*
-  curl -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/BOA.sh.txt" -o /var/backups/BOA.sh.txt-$_NOW
   bash /var/backups/BOA.sh.txt-$_NOW &> /dev/null
   rm -f /var/backups/BOA.sh.txt-$_NOW
 fi
@@ -1376,7 +1376,7 @@ fi
 ###--------------------###
 echo "INFO: Checking BARRACUDA version"
 rm -f /opt/tmp/barracuda-version.txt*
-curl -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
+curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/master/aegir/conf/barracuda-version.txt" -o /opt/tmp/barracuda-version.txt
 if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
   _INSTALLER_VERSION=`cat /opt/tmp/barracuda-version.txt`
   _VERSIONS_TEST=`cat /var/log/barracuda_log.txt`

@@ -165,7 +165,7 @@ extract_archive () {
 #
 get_dev_ext () {
   if [ ! -z $1 ] ; then
-    curl -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
+    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/$_AEGIR_VERSION/$1"
     extract_archive "$1"
   fi
 }
@@ -244,7 +244,7 @@ hostmaster_go_up () {
       git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost   &> /dev/null
     else
       cd $_ROOT/.drush
-      curl -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       msg "INFO: Downloading Drush and Provision extensions..."
       _G_EXT="drush_ecl provision_boost provision_cdn registry_rebuild security_review"
       for e in $_G_EXT; do

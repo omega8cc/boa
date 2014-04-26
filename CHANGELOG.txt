@@ -77,6 +77,7 @@
   * Force MariaDB 5.5 re-install if installed version doesn't match latest.
   * Issue #2238805 - Command filtering - no word containing *drush* is allowed.
   * Issue #2247997 - Update docs/REMOTE.txt with workaround for websh issue.
+  * Issue #2250397 - Always follow (limited) redirects in cURL requests.
   * Issue #GH-304  - [rvm] use $_RUBY_VERSION as default.
   * Issue #GH-305  - Check disk usage before running install/upgrade.
   * Nginx: Allow to configure keywords for aggressive requests rate monitoring.
