@@ -65,6 +65,7 @@
 
 # System upgrades in this release:
 
+  * Drush mini-6-26-04-2014
   * Nginx 1.7.0
   * Redis 2.8.9
 
