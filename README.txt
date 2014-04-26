@@ -158,12 +158,12 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 
 Octopus can install the platforms listed below:
 
-### Drupal 7.27.1
+### Drupal 7.27.2
 
  Commerce 1.25 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.14 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.11 ----------------- https://drupal.org/project/commons
- Drupal 7.27.1 ---------------- https://drupal.org/drupal-7.27
+ Drupal 7.27.2 ---------------- https://drupal.org/drupal-7.27
  Guardr 1.3 ------------------- https://drupal.org/project/guardr
  Open Academy 1.0 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.17 ------------- https://drupal.org/project/openatrium
@@ -187,7 +187,7 @@ Octopus can install the platforms listed below:
  Pressflow 6.31.1 ------------- http://pressflow.org
  Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
 
-All D7 platforms have been enhanced using Drupal 7.27.1 +Extra core:
+All D7 platforms have been enhanced using Drupal 7.27.2 +Extra core:
 https://github.com/omega8cc/7x/tree/7.x-om8
 
 All D6 platforms have been enhanced using Pressflow 6.31.1 +Extra core:

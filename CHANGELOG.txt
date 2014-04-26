@@ -6,7 +6,9 @@
 # Release Notes:
 
   This release includes several bug fixes along with five updated platforms,
-  plus some hot-fixes applied to previous stable after its release.
+  plus some hot-fixes applied to previous stable after its release. We have
+  also added a fix for known problem is recent Drupal 7.27 [#2245331] hence
+  the change from Drupal 7.27.1 to 7.27.2 in all D7 platforms.
 
 # Important - Read This First! (for self-hosted BOA only)
 
@@ -43,7 +45,7 @@
 
 # Updated Octopus platforms:
 
-  ### Drupal 7.27.1
+  ### Drupal 7.27.2
 
   Commerce 1.25 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.14 ---------------- https://drupal.org/project/commerce_kickstart
