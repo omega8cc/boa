@@ -1919,9 +1919,9 @@ update_php_conf () {
       _DO_NOTHING=YES
     else
       cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini &> /dev/null
-      cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini                     &> /dev/null
+      cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini                   &> /dev/null
     fi
   fi
   if [ "$_CUSTOM_CONFIG_PHP54" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1929,9 +1929,9 @@ update_php_conf () {
       _DO_NOTHING=YES
     else
       cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini &> /dev/null
-      cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini                     &> /dev/null
+      cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini                   &> /dev/null
     fi
   fi
   if [ "$_CUSTOM_CONFIG_PHP53" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1939,9 +1939,9 @@ update_php_conf () {
       _DO_NOTHING=YES
     else
       cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini &> /dev/null
-      cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini                     &> /dev/null
+      cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini                   &> /dev/null
     fi
   fi
   if [ "$_CUSTOM_CONFIG_PHP52" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1949,9 +1949,9 @@ update_php_conf () {
       _DO_NOTHING=YES
     else
       cp -af /opt/php52/etc/php52.ini /var/backups/dragon/t/etc-php52.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini &> /dev/null
-      cp -af /opt/php52/lib/php.ini /var/backups/dragon/t/lib-php52.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini                     &> /dev/null
+      cp -af /opt/php52/lib/php.ini /var/backups/dragon/t/lib-php52.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini                   &> /dev/null
     fi
   fi
   ###
@@ -2016,14 +2016,14 @@ update_php_conf () {
 
   ###
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/etc/php52.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php52/lib/php.ini   &> /dev/null
   sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/etc/php53.ini &> /dev/null
-  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/lib/php.ini &> /dev/null
+  sed -i "s/^zlib.output_compression.*/zlib.output_compression = Off/g" /opt/php53/lib/php.ini   &> /dev/null
   ###
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/etc/php52.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php52/lib/php.ini   &> /dev/null
   sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/etc/php53.ini &> /dev/null
-  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/lib/php.ini &> /dev/null
+  sed -i "s/.*zlib.output_compression_level/;zlib.output_compression_level/g" /opt/php53/lib/php.ini   &> /dev/null
   ###
 }
 #
@@ -2342,37 +2342,37 @@ sub_force_advanced_nginx_config () {
       if [ "$_USE_STOCK" = "NO" ] ; then
         if [ "$_PHP_CN" = "www53" ] ; then
           sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
         else
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf              &> /dev/null
+          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf             &> /dev/null
           sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
           sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
         fi
       else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
         if [ "${_PHP_CN}" = "www53" ] ; then
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
         else
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
         fi
       fi
     else
       if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf             &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
         sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
       else
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf                &> /dev/null
+        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf    &> /dev/null
       fi
     fi
     if [ "$_PHP_LEGACY_FREE" = "YES" ] || [ "$_PHP_FPM_VERSION" != "5.2" ] ; then
       if [ "$_PHP_CN" = "www53" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf &> /dev/null
       else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
+        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf &> /dev/null
       fi
     fi
   fi
@@ -2401,9 +2401,9 @@ force_advanced_nginx_config () {
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf       &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*          &> /dev/null
   fi
   if [ -e "/var/aegir/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
     if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
@@ -2481,7 +2481,7 @@ tune_web_server_config () {
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
-    sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf &> /dev/null
+    sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
   fi
 }
 #
