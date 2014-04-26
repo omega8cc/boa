@@ -8874,31 +8874,31 @@ else
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf       &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*          &> /dev/null
   fi
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/* &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf          &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
+  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf   &> /dev/null
+  sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf      &> /dev/null
+  sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf      &> /dev/null
+  sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/60/180/g" /var/aegir/config/server_master/nginx.conf  &> /dev/null
   sed -i "s/300/180/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   validate_public_ip &> /dev/null
