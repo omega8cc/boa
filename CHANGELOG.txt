@@ -47,7 +47,7 @@
 
   Commerce 1.25 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.14 ---------------- https://drupal.org/project/commerce_kickstart
-  Commons 3.10 ----------------- https://drupal.org/project/commons
+  Commons 3.11 ----------------- https://drupal.org/project/commons
   Panopoly 1.4 ----------------- https://drupal.org/project/panopoly
 
   ### Pressflow 6.31.1
