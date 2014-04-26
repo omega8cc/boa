@@ -59,13 +59,13 @@
 
 # Changes in this release:
 
+  * Drush: Upgrade command line version 6 to mini-6-26-04-2014
   * Nginx: Use higher defaults for limit_conn to avoid error 503 (CloudFlare)
   * Nginx: Use more aggressive limits against spambots trying to rgstr accounts.
   * Redis: Integration module (the modern variant) upgrade to 7.x-2.x-o8-2.6-B
 
 # System upgrades in this release:
 
-  * Drush mini-6-26-04-2014
   * Nginx 1.7.0
   * Redis 2.8.9
 
@@ -75,18 +75,26 @@
   * Add warning that Compass Tools install and upgrade may take a LONG time.
   * Fix for 'Force backward compatible SERVER_SOFTWARE'.
   * Force MariaDB 5.5 re-install if installed version doesn't match latest.
+  * Improve whitelisting in the websh wrapper.
   * Issue #2238805 - Command filtering - no word containing *drush* is allowed.
   * Issue #2247997 - Update docs/REMOTE.txt with workaround for websh issue.
   * Issue #2250397 - Always follow (limited) redirects in cURL requests.
   * Issue #GH-304  - [rvm] use $_RUBY_VERSION as default.
   * Issue #GH-305  - Check disk usage before running install/upgrade.
+  * Issue #GH-306  - Allow ruby 1.8 to remain installed.
   * Nginx: Allow to configure keywords for aggressive requests rate monitoring.
   * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
   * PHP: Allow to set custom _PHP_FPM_TIMEOUT but not lower than 60 (in seconds)
   * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
+  * PHP: Better defaults for realpath_cache_ttl and realpath_cache_size.
   * PHP: pm.max_children was not properly updated on FPM version self-switch.
+  * PHP: Sync incorrect default_socket_timeout with max_execution_time (180s).
   * PHP: Use 30s for pm.process_idle_timeout - it prevents too high RAM usage.
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
+  * Sync Redis timeout with default FPM timeout (180s).
+  * Sync SQL connect_timeout with default mysql.connect_timeout in PHP (60s).
+  * Update the logic for multi-version PHP support in BOND.
+  * Update the logic for multi-version PHP support in docs/REMOTE.txt
 
 
 ### Stable BOA-2.2.3 Release - Full Edition
