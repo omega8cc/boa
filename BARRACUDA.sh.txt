@@ -8899,6 +8899,8 @@ else
   sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
+  sed -i "s/60/180/g" /var/aegir/config/server_master/nginx.conf  &> /dev/null
+  sed -i "s/300/180/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   validate_public_ip &> /dev/null
   _CRON_IP=${_THISHTIP//[^0-9.]/}
   if [ ! -e "/root/.local.IP.list" ] ; then
