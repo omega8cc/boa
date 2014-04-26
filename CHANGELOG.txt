@@ -61,6 +61,7 @@
 
   * Nginx: Use higher defaults for limit_conn to avoid error 503 (CloudFlare)
   * Nginx: Use more aggressive limits against spambots trying to rgstr accounts.
+  * Redis: Integration module (the modern variant) upgrade to 7.x-2.x-o8-2.6-B
 
 # System upgrades in this release:
 

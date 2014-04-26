@@ -558,7 +558,7 @@ download_o_contrib_seven () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
-    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-A.tar.gz"
+    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-B.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/update-042.info
   fi
@@ -644,7 +644,7 @@ download_o_contrib_six () {
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
-    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-A.tar.gz"
+    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-B.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/update-042.info
   fi
