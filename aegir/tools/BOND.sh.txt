@@ -724,12 +724,23 @@ tune_nginx () {
 #
 restart_services () {
   msg "INFO: Reloading services"
-  mrun "service php-fpm reload"     &> /dev/null
-  mrun "service php53-fpm reload"   &> /dev/null
-  mrun "service mysql restart"      &> /dev/null
-  mrun "service nginx reload"       &> /dev/null
+  if [ -e "/etc/init.d/php55-fpm" ] ; then
+    mrun "service php55-fpm reload" &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php54-fpm" ] ; then
+    mrun "service php54-fpm reload" &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php53-fpm" ] ; then
+    mrun "service php53-fpm reload" &> /dev/null
+  fi
+  if [ -e "/etc/init.d/php52-fpm" ] ; then
+    mrun "service php52-fpm reload" &> /dev/null
+  fi
+  mrun "service mysql restart" &> /dev/null
+  mrun "service nginx reload" &> /dev/null
+  mrun "service redis-server restart" &> /dev/null
   if [ -e "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] ; then
-    mrun "csf -q"                   &> /dev/null
+    mrun "csf -q" &> /dev/null
   fi
 }
 #
