@@ -218,7 +218,9 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
   fi
   if [[ "$_LTD_GID" =~ "lshellg"($) ]] || [[ "$_LTD_GID" =~ "ltd-shell"($) ]] ; then
     if [[ "$_ALL" =~ "*" ]] ; then
-      if [[ "$_ALL" =~ "-c set -m; cd " ]] ; then
+      if [[ "$_ALL" =~ "-c set -m; " ]] ; then
+        _SILENT=YES
+      else
         echo
       fi
     fi
