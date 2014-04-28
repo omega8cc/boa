@@ -59,6 +59,11 @@
   Note: Always read and follow upgrade procedure if explained in the distro
   release notes, like for Panopoly 1.4 at https://drupal.org/node/2248645
 
+# New o_contrib modules:
+
+  * print-7.x-2.0 (includes patch to auto-detect /usr/bin/wkhtmltopdf)
+  * print-6.x-1.19 (includes patch to auto-detect /usr/bin/wkhtmltopdf)
+
 # Changes in this release:
 
   * Drush: Upgrade command line version 6 to mini-6-26-04-2014

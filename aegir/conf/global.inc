@@ -47,7 +47,8 @@ $conf['drupal_http_request_fails'] = false;  // Avoid false alarm
 $conf['image_allow_insecure_derivatives'] = true; // Enable to avoid known issues: https://drupal.org/drupal-7.20-release-notes
 $conf['theme_cloudy_settings']['omega_rebuild_aggregates'] = false;     // Do not allow to turn it on by default
 $conf['theme_cloudy_settings']['omega_rebuild_theme_registry'] = false; // Do not allow to turn it on by default
-$conf['print_pdf_pdf_tool'] = '/usr/bin/wkhtmltopdf'; // Force system path to wkhtmltopdf
+$conf['print_pdf_pdf_tool'] = '/usr/bin/wkhtmltopdf'; // Force print_pdf_pdf_tool to use wkhtmltopdf
+$conf['print_pdf_autoconfig'] = 1; // Force print_pdf_pdf_tool to use wkhtmltopdf
 $update_free_access = FALSE;
 
 /**
