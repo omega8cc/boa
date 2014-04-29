@@ -61,8 +61,8 @@
 
 # New o_contrib modules:
 
-  * print-7.x-2.0 (includes patch to auto-detect /usr/bin/wkhtmltopdf)
   * print-6.x-1.19 (includes patch to auto-detect /usr/bin/wkhtmltopdf)
+  * print-7.x-2.0  (includes patch to auto-detect /usr/bin/wkhtmltopdf)
 
 # Changes in this release:
 
@@ -80,10 +80,15 @@
 
   * Add symlinks in the home directory if missing (every 5 minutes).
   * Add warning that Compass Tools install and upgrade may take a LONG time.
+  * Do not delete symlinks to wrappers to avoid false LFD alarms.
   * Fix for 'Force backward compatible SERVER_SOFTWARE'.
+  * Fix in websh for _IN_PATH logic to not break backend Drush tasks.
+  * Fix the logic for wrappers update and symlinks.
   * Force MariaDB 5.5 re-install if installed version doesn't match latest.
+  * Improve status messages to display when silent mode is used on upgrade.
   * Improve whitelisting in the websh wrapper.
   * Issue #2238805 - Command filtering - no word containing *drush* is allowed.
+  * Issue #2241495 - wkhtmltopdf stopped working after upgrade.
   * Issue #2247997 - Update docs/REMOTE.txt with workaround for websh issue.
   * Issue #2250397 - Always follow (limited) redirects in cURL requests.
   * Issue #GH-304  - [rvm] use $_RUBY_VERSION as default.
@@ -99,6 +104,7 @@
   * PHP: Sync incorrect default_socket_timeout with max_execution_time (180s).
   * PHP: Use 30s for pm.process_idle_timeout - it prevents too high RAM usage.
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
+  * Shell: Proper fix for wildcard in the path (cd command only)
   * Sync Redis timeout with default FPM timeout (180s).
   * Sync SQL connect_timeout with default mysql.connect_timeout in PHP (60s).
   * Update the logic for multi-version PHP support in BOND.

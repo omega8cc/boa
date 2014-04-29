@@ -27,7 +27,7 @@ sub makeactions
     @banetable = <NOT>;
     close (NOT);
   }
-  local(@MYARR) = `tail --lines=500 /var/log/nginx/access.log 2>&1`;
+  local(@MYARR) = `tail --lines=400 /var/log/nginx/access.log 2>&1`;
   local($critnumber) = 300;
   local($mininumber) = $critnumber / 2;
   print "\n===[$mininumber] mininumber===\n";
@@ -80,8 +80,8 @@ sub makeactions
         else {
           $li_cnt{$VISITOR}++;
         }
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3 if ($line =~ /POST/ && $skip_post < 1);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 30 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)|(user\/login)/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 2 if ($line =~ /POST/ && $skip_post < 1);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 25 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)|(user\/login)/);
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /foobar/);
       }
       else {
@@ -119,8 +119,8 @@ sub makeactions
         else {
           $px_cnt{$PROXY}++;
         }
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3 if ($line =~ /POST/ && $skip_post < 1);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 30 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)|(user\/login)/);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 2 if ($line =~ /POST/ && $skip_post < 1);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 25 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/register)|(user\/pass)|(user\/login)/);
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10 if ($line =~ /foobar/);
       }
       else {

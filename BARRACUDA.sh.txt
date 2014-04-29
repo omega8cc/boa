@@ -1697,7 +1697,7 @@ enable_weekly_usage_monitor () {
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     sed -i "s/.*weekly.sh.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
-    echo "28 6    * * 4   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
+    echo "28 6    * * 7   root    bash /var/xdrago/weekly.sh >/dev/null 2>&1" >> /etc/crontab
   fi
 }
 #
