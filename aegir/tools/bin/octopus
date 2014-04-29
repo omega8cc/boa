@@ -204,18 +204,29 @@ up_action_all ()
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo Octopus upgrade for User $User
         n=$((RANDOM%9+2))
-        echo waiting $n sec
+        echo Waiting $n seconds...
         sleep $n
         if [ "$silent" = "log" ] ; then
-          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
           _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_THIS_HM_USER-$_NOW.log"
+          echo Preparing the upgrade in silent mode...
+          echo
+          echo NOTE: There will be no progress displayed in the console
+          echo but you will receive an e-mail once the upgrade is complete
+          echo
+          echo You can watch the progress in another window with command:
+          echo   tail -f $_UP_LOG
+          echo or wait until you will see the line: OCTOPUS upgrade completed
+          echo
+          echo Starting the upgrade in silent mode...
+          echo
+          sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
           up_one >>$_UP_LOG 2>&1
           check_report
         else
           up_one
         fi
         n=$((RANDOM%9+2))
-        echo waiting $n sec
+        echo Waiting $n seconds...
         sleep $n
         rm -f /var/backups/OCTOPUS.sh.$_THIS_HM_USER
         echo Done for $User
@@ -244,8 +255,19 @@ up_action_one ()
       echo Octopus upgrade for User $User
       sleep 3
       if [ "$silent" = "log" ] ; then
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
         _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_THIS_HM_USER-$_NOW.log"
+        echo Preparing the upgrade in silent mode...
+        echo
+        echo NOTE: There will be no progress displayed in the console
+        echo but you will receive an e-mail once the upgrade is complete
+        echo
+        echo You can watch the progress in another window with command:
+        echo   tail -f $_UP_LOG
+        echo or wait until you will see the line: OCTOPUS upgrade completed
+        echo
+        echo Starting the upgrade in silent mode...
+        echo
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
         up_one >>$_UP_LOG 2>&1
         check_report
       else
