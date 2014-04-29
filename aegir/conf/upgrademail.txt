@@ -4,16 +4,74 @@ Your Aegir Hosting System has been upgraded to version BOA-2.2.4-dev
 
   https://aegir.dragon.ny.host8.biz
 
-There are many changes, improvements and fixes in this release.
+There are many new features, changes, improvements and fixes in all
+five (5) recent BOA-2.2.x Editions, released in just one month:
 
-It is very important that you read release notes and changelog
-posted on our website at:
+  https://omega8.cc/boa-224-full-edition-311  ------- released on April 29
+  https://omega8.cc/boa-223-full-edition-310  ------- released on April 18
+  https://omega8.cc/boa-222-barracuda-edition-306 --- released on April 08
+  https://omega8.cc/boa-221-full-edition-305  ------- released on April 01
+  https://omega8.cc/boa-220-full-edition-304  ------- released on March 31
+
+It is always very important that you read extensive release notes
+and changelog posted on our website for all previous BOA Editions at:
 
   https://omega8.cc/updates
+
+----------------------------------------
+#1 OPTIONS UPGRADES
+----------------------------------------
+
+On May 1st, 2014, we are doubling disk space for files in all hosted
+Aegir instances with active subscriptions for Regular and Power Cores:
+
+  https://omega8.cc/hosted
+  https://omega8.cc/power
+
+----------------------------------------
+#2 BACKUPS ROTATION
+----------------------------------------
+
+We encourage you to review our backups rotation policy. It is the same
+for years but in case you are not aware it even exists, it is a good idea
+to learn how the available disk space for files should be used properly:
+
+  https://omega8.cc/backups#policy
+
+----------------------------------------
+#3 NEW DATACENTERS
+----------------------------------------
+
+Also in May, we are adding Chicago, Illinois, to our ever growing list
+of available datacenters locations, with Tokyo, Japan and Ashburn, Virginia,
+following later this summer. There will be also next generation, newer
+locations added in San Jose, California and Amsterdam, The Netherlands.
+
+----------------------------------------
+#4 AEGIR EXPEDITION
+----------------------------------------
+
+New Aegir Expedition option will be introduced once the first new locations
+are available. It will allow you to request per-site migrations between
+all our locations, so you will be able to easily and gracefully relocate
+some or all of sites hosted to provide even better experience and faster
+access to your sites target audience, with per-site precision, and without
+the need to multiply your subscriptions. This should open entirely new
+world of unique opportunities, cost-savings and efficiency, and any existing
+option will be able to receive upgrade to Aegir Expedition, very easily.
+
+
+We are very excited to be able to introduce new options and services,
+thanks to innovations possible in all five new datacenters worldwide.
+
+Stay tuned for more news!
+
 
 Questions? Comments? Please contact us:
 
   https://omega8.cc/support
+  https://omega8.cc/sales
+  https://omega8.cc/billing
 
-Thank you,
+Thank you!
 Omega8.cc Team
