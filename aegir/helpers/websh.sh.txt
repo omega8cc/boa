@@ -169,13 +169,11 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
           _IN_PATH=NO
         fi
       else
-        if [ -e "$2" ] ; then
-          _WHICH_TEST=$(which $2)
-          if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
-            _IN_PATH=YES
-          else
-            _IN_PATH=NO
-          fi
+        _WHICH_TEST=$(which $2)
+        if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
+          _IN_PATH=YES
+        else
+          _IN_PATH=NO
         fi
       fi
     fi
@@ -212,22 +210,20 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         _IN_PATH=NO
       fi
     else
-      if [ -e "$1" ] ; then
-        _WHICH_TEST=$(which $1)
-        if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
-          _IN_PATH=YES
-          if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
-            check_php_cli_version
-            if [ -f "$HOME/.drush/php.ini" ] ; then
-              PHP_INI="$HOME/.drush/php.ini"
-            fi
-            if [ ! -z "$PHP_OPTIONS" ] && [ -f "$HOME/.drush/rphp.ini" ] ; then
-              PHP_INI="$HOME/.drush/rphp.ini"
-            fi
+      _WHICH_TEST=$(which $1)
+      if [[ "$_WHICH_TEST" =~ (^)"/usr/" ]] || [[ "$_WHICH_TEST" =~ (^)"/bin/" ]] || [[ "$_WHICH_TEST" =~ (^)"/opt/" ]] ; then
+        _IN_PATH=YES
+        if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
+          check_php_cli_version
+          if [ -f "$HOME/.drush/php.ini" ] ; then
+            PHP_INI="$HOME/.drush/php.ini"
           fi
-        else
-          _IN_PATH=NO
+          if [ ! -z "$PHP_OPTIONS" ] && [ -f "$HOME/.drush/rphp.ini" ] ; then
+            PHP_INI="$HOME/.drush/rphp.ini"
+          fi
         fi
+      else
+        _IN_PATH=NO
       fi
     fi
   fi
