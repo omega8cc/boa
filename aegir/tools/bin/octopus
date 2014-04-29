@@ -208,16 +208,18 @@ up_action_all ()
         sleep $n
         if [ "$silent" = "log" ] ; then
           _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_THIS_HM_USER-$_NOW.log"
-          echo Preparing the upgrade in silent mode...
           echo
-          echo NOTE: There will be no progress displayed in the console
-          echo but you will receive an e-mail once the upgrade is complete
+          echo "Preparing the upgrade in silent mode..."
           echo
-          echo You can watch the progress in another window with command:
-          echo   tail -f $_UP_LOG
-          echo or wait until you will see the line: OCTOPUS upgrade completed
+          echo "NOTE: There will be no progress displayed in the console"
+          echo "but you will receive an e-mail once the upgrade is complete"
           echo
-          echo Starting the upgrade in silent mode...
+          sleep 5
+          echo "You could watch the progress in another window with command:"
+          echo "  tail -f $_UP_LOG"
+          echo "or wait until you will see the line: OCTOPUS upgrade completed"
+          echo
+          echo "Starting the upgrade in silent mode now..."
           echo
           sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
           up_one >>$_UP_LOG 2>&1
@@ -256,16 +258,18 @@ up_action_one ()
       sleep 3
       if [ "$silent" = "log" ] ; then
         _UP_LOG="$_LOG_DIR/$(basename "$0")-up-$_THIS_HM_USER-$_NOW.log"
-        echo Preparing the upgrade in silent mode...
         echo
-        echo NOTE: There will be no progress displayed in the console
-        echo but you will receive an e-mail once the upgrade is complete
+        echo "Preparing the upgrade in silent mode..."
         echo
-        echo You can watch the progress in another window with command:
-        echo   tail -f $_UP_LOG
-        echo or wait until you will see the line: OCTOPUS upgrade completed
+        echo "NOTE: There will be no progress displayed in the console"
+        echo "but you will receive an e-mail once the upgrade is complete"
         echo
-        echo Starting the upgrade in silent mode...
+        sleep 5
+        echo "You could watch the progress in another window with command:"
+        echo "  tail -f $_UP_LOG"
+        echo "or wait until you will see the line: OCTOPUS upgrade completed"
+        echo
+        echo "Starting the upgrade in silent mode now..."
         echo
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
         up_one >>$_UP_LOG 2>&1

@@ -138,18 +138,20 @@ up_action ()
             n=8
           fi
         fi
-        echo Waiting $n seconds...
+        echo
+        echo "Preparing the upgrade in silent mode..."
+        echo
+        echo "NOTE: There will be no progress displayed in the console"
+        echo "but you will receive an e-mail once the upgrade is complete"
+        echo
+        sleep 5
+        echo "You could watch the progress in another window with command:"
+        echo "  tail -f $_UP_LOG"
+        echo "or wait until you will see the line: BARRACUDA upgrade completed"
+        echo
+        echo "Waiting $n seconds..."
         sleep $n
-        echo Preparing the upgrade in silent mode...
-        echo
-        echo NOTE: There will be no progress displayed in the console
-        echo but you will receive an e-mail once the upgrade is complete
-        echo
-        echo You could watch the progress in another window with command:
-        echo   tail -f $_UP_LOG
-        echo or wait until you will see the line: BARRACUDA upgrade completed
-        echo
-        echo Starting the upgrade in silent mode...
+        echo "Starting the upgrade in silent mode now..."
         echo
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
