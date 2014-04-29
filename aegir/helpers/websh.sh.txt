@@ -152,11 +152,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         fi
       fi
       _RAW_IN_PATH=${2//[^a-z/]/}
-      if [[ "$2" =~ (^)"/home/" ]] || [[ "$2" =~ (^)"/data/" ]] || [[ "$2" =~ (^)"/tmp/" ]]; then
-        if [ -e "$2" ] ; then
-          _IN_PATH=NO
-        fi
-      elif [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] || [[ "$2" =~ (^)"/opt/" ]] ; then
+      if [[ "$2" =~ (^)"/usr/" ]] || [[ "$2" =~ (^)"/bin/" ]] || [[ "$2" =~ (^)"/opt/" ]] ; then
         _IN_PATH=YES
       elif [[ "$2" =~ (^)"/data/disk/$_Y_USR/tools/drush/drush.php" ]] ; then
         _IN_PATH=YES
@@ -168,6 +164,10 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         _IN_PATH=YES
       elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/wkhtmltopdf" ]] ; then
         _IN_PATH=YES
+      elif [[ "$2" =~ (^)"/home/" ]] || [[ "$2" =~ (^)"/data/" ]] || [[ "$2" =~ (^)"/tmp/" ]]; then
+        if [ -e "$2" ] ; then
+          _IN_PATH=NO
+        fi
       else
         if [ -e "$2" ] ; then
           _WHICH_TEST=$(which $2)
@@ -188,11 +188,7 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         exit 0
       fi
     fi
-    if [[ "$1" =~ (^)"/home/" ]] || [[ "$1" =~ (^)"/data/" ]] || [[ "$1" =~ (^)"/tmp/" ]] ; then
-      if [ -e "$1" ] ; then
-        _IN_PATH=NO
-      fi
-    elif [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] || [[ "$1" =~ (^)"/opt/" ]] ; then
+    if [[ "$1" =~ (^)"/usr/" ]] || [[ "$1" =~ (^)"/bin/" ]] || [[ "$1" =~ (^)"/opt/" ]] ; then
       _IN_PATH=YES
       if [ -z "$PHP_INI" ] && [[ "$1" =~ "drush" ]] ; then
         check_php_cli_version
@@ -211,6 +207,10 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
       _IN_PATH=YES
     elif [[ "$1" =~ (^)"(/var/$_Y_USR/drush/drush.php" ]] ; then
       _IN_PATH=YES
+    elif [[ "$1" =~ (^)"/home/" ]] || [[ "$1" =~ (^)"/data/" ]] || [[ "$1" =~ (^)"/tmp/" ]] ; then
+      if [ -e "$1" ] ; then
+        _IN_PATH=NO
+      fi
     else
       if [ -e "$1" ] ; then
         _WHICH_TEST=$(which $1)
