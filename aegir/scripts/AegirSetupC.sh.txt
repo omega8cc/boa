@@ -2005,18 +2005,17 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_PANOPOLY = "7.x-1.1" ] ; then
+    if [ $_PANOPOLY = "7.x-1.4" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {image_resize_filter}
-      get_dev_contrib "image_resize_filter-7.x-1.14.tar.gz"
-      upgrade_contrib_less
+      rm -f -r {fape}
+      get_dev_contrib "fape-7.x-1.2.tar.gz"
     fi
     if [ ! -d "$_SHRD_PRPATH/modules/panopoly/panopoly_demo" ] ; then
       if [ -d "$_SHRD_PLPATH/sites/all/modules/panopoly_demo" ] ; then
         mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
       else
         cd $_SHRD_PRPATH/modules/panopoly
-        get_dev_contrib "panopoly_demo-7.x-1.2.tar.gz"
+        get_dev_contrib "panopoly_demo-7.x-1.5.tar.gz"
       fi
     fi
   else
