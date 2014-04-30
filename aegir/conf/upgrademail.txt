@@ -7,7 +7,7 @@ Your Aegir Hosting System has been upgraded to version BOA-2.2.4-dev
 There are many new features, changes, improvements and fixes in all
 five (5) recent BOA-2.2.x Editions, released in just one month:
 
-  https://omega8.cc/boa-224-full-edition-311  ------- released on April 29
+  https://omega8.cc/boa-224-full-edition-311  ------- released on May 01
   https://omega8.cc/boa-223-full-edition-310  ------- released on April 18
   https://omega8.cc/boa-222-barracuda-edition-306 --- released on April 08
   https://omega8.cc/boa-221-full-edition-305  ------- released on April 01
@@ -19,14 +19,24 @@ and changelog posted on our website for all previous BOA Editions at:
   https://omega8.cc/updates
 
 ----------------------------------------
-#1 OPTIONS UPGRADES
+#1 RESOURCES UPGRADE
 ----------------------------------------
 
-On May 1st, 2014, we are doubling disk space for files in all hosted
-Aegir instances with active subscriptions for Regular and Power Cores:
+Did you know that even single Aegir hosted Core has built-in CPU power
+scalability which would cost you $640/month on Linode or DigitalOcean?
+
+Regular SSD+SAS Cores now have 50% more disk space for files in all hosted
+Aegir instances with active SSD subscriptions (older Classic/Mini and Power
+Cores are not eligible for this particular upgrade). The upgrade happens
+in all currently available datacenters locations.
 
   https://omega8.cc/hosted
-  https://omega8.cc/power
+
+Plus, now all hosted Aegir instances, in all options can auto-scale on demand,
+up to 48 PHP-FPM workers per Aegir Octopus Satellite Instance, free of charge.
+
+Did you know that even single Aegir hosted Core has built-in RAM scalability
+which would cost you $320/month on Linode or DigitalOcean?
 
 ----------------------------------------
 #2 BACKUPS ROTATION
@@ -60,6 +70,9 @@ the need to multiply your subscriptions. This should open entirely new
 world of unique opportunities, cost-savings and efficiency, and any existing
 option will be able to receive upgrade to Aegir Expedition, very easily.
 
+Did you know that even single Aegir Expedition hosted Core will have built-in
+RAM scalability 2x bigger than even the biggest options available at Linode
+and DigitalOcean, where it would cost you astonishing $1280/month or more?
 
 We are very excited to be able to introduce new options and services,
 thanks to innovations possible in all five new datacenters worldwide.
