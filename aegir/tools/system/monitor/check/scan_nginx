@@ -80,9 +80,9 @@ sub makeactions
         else {
           $li_cnt{$VISITOR}++;
         }
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 2  if ($line =~ /POST/ && $skip_post < 1);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 25 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5  if ($line =~ /GET/  && $line =~ /node\/add/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/ && $skip_post < 1);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
+        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3  if ($line =~ /GET/  && $line =~ /node\/add/);
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /foobar/);
       }
       else {
@@ -120,9 +120,9 @@ sub makeactions
         else {
           $px_cnt{$PROXY}++;
         }
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 2  if ($line =~ /POST/ && $skip_post < 1);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 25 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5  if ($line =~ /GET/  && $line =~ /node\/add/);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/ && $skip_post < 1);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
+        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3  if ($line =~ /GET/  && $line =~ /node\/add/);
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10 if ($line =~ /foobar/);
       }
       else {
