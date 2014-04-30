@@ -8042,7 +8042,8 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
-  if [ ! -e "/var/www/chive/index.php" ] ; then
+  _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
+  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fx3vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
       true
@@ -8050,23 +8051,13 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       cd /var/www
       rm -f -r /var/www/chive &> /dev/null
       get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
-      if [ ! -z "$_PHP_CN" ] ; then
-        msg "INFO: _PHP_CN set to $_PHP_CN for Chive $_DB_SERVER Manager"
-        chown -R $_PHP_CN:www-data /var/www/chive
-      else
-        msg "NOTE: _PHP_CN not set for Chive $_DB_SERVER Manager"
-        chown -R www-data:www-data /var/www/chive
-      fi
-      find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
-      find /var/www/chive -type f -exec chmod 0664 {} \; &> /dev/null
-      _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_sql_chive.conf $_CHIVE_VHOST
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
       sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-      touch /var/xdrago/log/chive-$_CHIVE_VERSION-installed.log
+      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fx3vhost.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
@@ -8074,25 +8065,9 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   fi
 fi
 
+
 ###--------------------###
-if [ -e "/var/www/chive/index.php" ] ; then
-  if [ ! -e "/var/xdrago/log/chive-$_CHIVE_VERSION-installed.log" ] ; then
-    msg "INFO: Upgrading Chive $_DB_SERVER Manager..."
-    rm -f -r /var/www/chive
-    cd /var/www
-    get_dev_arch "chive_$_CHIVE_VERSION.tar.gz" &> /dev/null
-    touch /var/xdrago/log/chive-$_CHIVE_VERSION-installed.log
-  fi
-  if [ ! -e "/var/xdrago/log/chive-$_CHIVE_VERSION.sec3.vhost.log" ] ; then
-    _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-    validate_public_ip &> /dev/null
-    validate_xtras_ip &> /dev/null
-    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_sql_chive.conf $_CHIVE_VHOST
-    sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
-    sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
-    sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-    touch /var/xdrago/log/chive-$_CHIVE_VERSION.sec3.vhost.log
-  fi
+if [ -d "/var/www/chive" ] ; then
   if [ ! -z "$_PHP_CN" ] ; then
     msg "INFO: _PHP_CN set to $_PHP_CN for Chive $_DB_SERVER Manager"
     chown -R $_PHP_CN:www-data /var/www/chive
@@ -8106,15 +8081,9 @@ fi
 
 
 ###--------------------###
-_CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-if [ -e "$_CHIVE_VHOST" ] ; then
-  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CHIVE_VHOST &> /dev/null
-fi
-
-
-###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
-  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -e "/var/xdrago/log/sqlbuddy.sec1.vhost.log" ] ; then
+  _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fx3vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
@@ -8122,36 +8091,40 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       rm -f -r /var/www/sqlbuddy
       cd /var/www
       get_dev_arch "sqlbuddy_1_3_3.tar.gz" &> /dev/null
-      _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
       validate_public_ip &> /dev/null
       validate_xtras_ip &> /dev/null
       cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_sql_buddy.conf $_SQLBUDDY_VHOST
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
-      touch /var/xdrago/log/sqlbuddy.sec1.vhost.log
+      touch /var/xdrago/log/sqlbuddy.fx3vhost.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
     else
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
     fi
   fi
 fi
-if [ -e "/var/www/sqlbuddy" ] ; then
-  chown -R $_PHP_CN:www-data /var/www/sqlbuddy
-fi
 
 
 ###--------------------###
-_SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-if [ -e "$_SQLBUDDY_VHOST" ] ; then
-  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_SQLBUDDY_VHOST &> /dev/null
+if [ -d "/var/www/sqlbuddy" ] ; then
+  if [ ! -z "$_PHP_CN" ] ; then
+    msg "INFO: _PHP_CN set to $_PHP_CN for SQL Buddy $_DB_SERVER Manager"
+    chown -R $_PHP_CN:www-data /var/www/sqlbuddy
+  else
+    msg "NOTE: _PHP_CN not set for SQL Buddy $_DB_SERVER Manager"
+    chown -R www-data:www-data /var/www/sqlbuddy
+  fi
+  find /var/www/sqlbuddy -type d -exec chmod 0775 {} \; &> /dev/null
+  find /var/www/sqlbuddy -type f -exec chmod 0664 {} \; &> /dev/null
 fi
 
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
+  _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -e "/var/xdrago/log/collectd-$_CGP_VERSION.sec2.vhost.log" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fx3vhost.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -8165,24 +8138,14 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         fi
         sed -i "s/>uncategorized</>Barracuda Server</g" /var/www/cgp/index.php &> /dev/null
         sed -i "s/'uncategorized'/'Barracuda Server'/g" /var/www/cgp/index.php &> /dev/null
-        chown -R $_PHP_CN:www-data /var/www/cgp
-        _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
         validate_public_ip &> /dev/null
         validate_xtras_ip &> /dev/null
-        echo > $_CGP_VHOST
-        echo "server {" >> $_CGP_VHOST
-        echo "  include     /var/aegir/config/includes/fastcgi_params.conf;" >> $_CGP_VHOST
-        echo "  limit_conn  limreq 555;" >> $_CGP_VHOST
-        echo "  listen      $_XTRAS_THISHTIP:80;" >> $_CGP_VHOST
-        echo "  server_name cgp.$_THIS_FRONT;" >> $_CGP_VHOST
-        echo "  root        /var/www/cgp;" >> $_CGP_VHOST
-        echo "  ### access placeholder" >> $_CGP_VHOST
-        echo "  index       index.php index.html;" >> $_CGP_VHOST
-        echo "  include     /var/aegir/config/includes/nginx_compact_include.conf;" >> $_CGP_VHOST
-        echo "}" >> $_CGP_VHOST
-        echo >> $_CGP_VHOST
-        echo collectd5 > /var/xdrago/log/collectd-$_CGP_VERSION.sec2.vhost.log
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_sql_cgp.conf $_CGP_VHOST
+        sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"    $_CGP_VHOST &> /dev/null
+        sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"  $_CGP_VHOST &> /dev/null
+        sed -i "s/cgp_name/cgp.$_THIS_FRONT/g"           $_CGP_VHOST &> /dev/null
         st_runner "update-rc.d collectd defaults" &> /dev/null
+        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fx3vhost.log
         msg "INFO: Collectd Graph Panel installation completed"
       else
         msg "INFO: Collectd Graph Panel installation skipped"
@@ -8238,12 +8201,19 @@ if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.c
   mrun "apt-get purge collectd -y --force-yes" &> /dev/null
   rm -f -r /var/www/cgp
 fi
-_CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
-if [ -e "$_CGP_VHOST" ] ; then
-  sed -i "s/nginx_simple_include.conf/nginx_compact_include.conf/g" $_CGP_VHOST &> /dev/null
-fi
-if [ -e "/var/www/cgp" ] ; then
-  chown -R $_PHP_CN:www-data /var/www/cgp
+
+
+###--------------------###
+if [ -d "/var/www/cgp" ] ; then
+  if [ ! -z "$_PHP_CN" ] ; then
+    msg "INFO: _PHP_CN set to $_PHP_CN for Collectd Graph Panel"
+    chown -R $_PHP_CN:www-data /var/www/cgp
+  else
+    msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
+    chown -R www-data:www-data /var/www/cgp
+  fi
+  find /var/www/cgp -type d -exec chmod 0775 {} \; &> /dev/null
+  find /var/www/cgp -type f -exec chmod 0664 {} \; &> /dev/null
   fix_collectd_rrd_syslog_flood
   fix_collectd_nginx
 fi
@@ -8468,8 +8438,6 @@ else
     fi
   fi
 fi
-
-
 
 
 ###--------------------###
