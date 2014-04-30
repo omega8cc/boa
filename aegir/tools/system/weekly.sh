@@ -559,19 +559,19 @@ check_limits () {
   read_account_data
   if [ "$_CLIENT_OPTION" = "POWER" ] ; then
     _SQL_MIN_LIMIT=5120
-    _DSK_MIN_LIMIT=102400
+    _DSK_MIN_LIMIT=51200
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 256))
-    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 5120))
+    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 2560))
   elif [ "$_CLIENT_OPTION" = "SSD" ] ; then
     _SQL_MIN_LIMIT=512
-    _DSK_MIN_LIMIT=21504
+    _DSK_MIN_LIMIT=15360
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 128))
-    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 2560))
+    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 1280))
   else
     _SQL_MIN_LIMIT=256
     _DSK_MIN_LIMIT=5120
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 64))
-    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 1280))
+    _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 640))
   fi
   let "_SQL_MIN_LIMIT *= $_CLIENT_CORES"
   let "_DSK_MIN_LIMIT *= $_CLIENT_CORES"
