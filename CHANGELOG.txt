@@ -57,7 +57,7 @@
   Commons 2.17 ----------------- https://drupal.org/project/commons
 
   Note: Always read and follow upgrade procedure if explained in the distro
-  release notes, like for Panopoly 1.4 at https://drupal.org/node/2248645
+  release notes, like for Panopoly 1.5 at https://drupal.org/node/2255133
 
 # New o_contrib modules:
 
