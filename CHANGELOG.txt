@@ -64,6 +64,18 @@
   * print-6.x-1.19 (includes patch to auto-detect /usr/bin/wkhtmltopdf)
   * print-7.x-2.0  (includes patch to auto-detect /usr/bin/wkhtmltopdf)
 
+# New features and enhancements in this release:
+
+  * Support for session.gc_maxlifetime configurable via INI files.
+
+  You can control session garbage collector (EOL) per site and per platform.
+  The value (in seconds) of the session_gc_eol variable is used as
+  session.gc_maxlifetime value and specifies the number of seconds after which
+  data will be seen as 'garbage' and potentially cleaned up, resulting with
+  $_SESSION variable discarded and affected authenticated users logged out.
+
+  BOA default defined in the system level global.inc file is 86400 == 24h.
+
 # Changes in this release:
 
   * Drush: Upgrade command line version 6 to mini-6-26-04-2014

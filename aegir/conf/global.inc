@@ -228,6 +228,7 @@ if (!$is_backend) {
  */
 $boa_ini = array(
   'session_cookie_ttl' => '86400',
+  'session_gc_eol' => '86400',
   'redis_use_modern' => TRUE,
   'redis_flush_forced_mode' => TRUE,
   'redis_lock_enable' => TRUE,
@@ -307,10 +308,15 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Views-Content-Cache-Dont-Enable: " . $all_ini['views_content_cache_dont_enable']);
   header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
+  header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
 }
 
 /**
  * Session Cookie TTL settings
+ *
+ * Set session cookie lifetime (in seconds), i.e. the time from the session is
+ * created to the cookie expires, i.e. when the browser is expected to discard
+ * the cookie. The value 0 means "until the browser is closed".
  */
 if ($conf['install_profile'] == 'totem') {
   ini_set('session.cookie_lifetime', 0); // Force log-out on browser quit
@@ -318,6 +324,16 @@ if ($conf['install_profile'] == 'totem') {
 else {
   ini_set('session.cookie_lifetime', $all_ini['session_cookie_ttl']);
 }
+
+/**
+ * Session Garbage Collector EOL settings
+ *
+ * Set session lifetime (in seconds), i.e. the time from the user's last visit
+ * to the active session may be deleted by the session garbage collector. When
+ * a session is deleted, authenticated users are logged out, and the contents
+ * of the user's $_SESSION variable is discarded.
+ */
+ini_set('session.gc_maxlifetime', $all_ini['session_gc_eol']);
 
 /**
  * Hostmaster specific settings
@@ -574,7 +590,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
   }
   $domain = str_replace('..', '.', $domain);
   if (count(explode('.', $domain)) > 2 && !is_numeric(str_replace('.', '', $domain))) {
-    @ini_set('session.cookie_domain', $domain);
+    ini_set('session.cookie_domain', $domain);
     $cookie_domain = $domain;
     header("X-Cookie-Domain: " . $cookie_domain);
   }

@@ -589,6 +589,12 @@ fix_modules () {
             else
               echo ";session_cookie_ttl = 86400" >> $_PLR_CTRL_FILE
             fi
+            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";session_gc_eol = 86400" >> $_PLR_CTRL_FILE
+            fi
             _VAR_IF_PRESENT=$(grep "redis_use_modern" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
               _DO_NOTHING=YES
@@ -650,6 +656,12 @@ fix_modules () {
               _DO_NOTHING=YES
             else
               echo ";session_cookie_ttl = 86400" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "session_gc_eol" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "session_gc_eol" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";session_gc_eol = 86400" >> $_DIR_CTRL_FILE
             fi
             _VAR_IF_PRESENT=$(grep "redis_use_modern" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "redis_use_modern" ]] ; then
