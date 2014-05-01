@@ -113,6 +113,7 @@
   * PHP: Allow to set custom _PHP_FPM_TIMEOUT but not lower than 60 (in seconds)
   * PHP: Always respect _PHP_FPM_WORKERS variable if set to numeric value > 0
   * PHP: Better defaults for realpath_cache_ttl and realpath_cache_size.
+  * PHP: Fix for CVE-2014-0185 privilege escalation in FPM (doesn't affect BOA)
   * PHP: pm.max_children was not properly updated on FPM version self-switch.
   * PHP: Sync incorrect default_socket_timeout with max_execution_time (180s).
   * PHP: Use 30s for pm.process_idle_timeout - it prevents too high RAM usage.

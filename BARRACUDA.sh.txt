@@ -1962,6 +1962,7 @@ update_php_conf () {
   ###
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g"  /opt/php52/etc/php52-fpm.conf &> /dev/null
+  sed -i "s/listen.mode =.*/listen.mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   ###
 
   _THIS_FILE=/opt/php55/etc/php55.ini
