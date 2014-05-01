@@ -2329,11 +2329,6 @@ validate_local_ip () {
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
   if [ -d "$_THIS_NGX_PATH" ] ; then
-    _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-    if [ -z "$_PHP_SV" ] ; then
-      _PHP_SV=53
-    fi
-    _PHP_CN="www${_PHP_SV}"
     if [ "$_USE_STOCK" = "NO" ] ; then
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
       sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
@@ -5497,6 +5492,12 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   symlink_to_bash
   switch_to_bash
 fi
+_PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+if [ -z "$_PHP_SV" ] ; then
+  _PHP_SV=53
+fi
+_PHP_CN="www${_PHP_SV}"
+
 
 ###--------------------###
 if [ "$_STATUS" = "UPGRADE" ] ; then

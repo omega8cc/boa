@@ -93,6 +93,7 @@
 
   * Add symlinks in the home directory if missing (every 5 minutes).
   * Add warning that Compass Tools install and upgrade may take a LONG time.
+  * Always define _PHP_CN variable properly.
   * Do not delete symlinks to wrappers to avoid false LFD alarms.
   * Fix for 'Force backward compatible SERVER_SOFTWARE'.
   * Fix in websh for _IN_PATH logic to not break backend Drush tasks.
