@@ -6532,6 +6532,15 @@ if [ "$_STATUS" = "INIT" ] ; then
   rm -f /etc/aliases
   rm -f -r /etc/mail
   killall -9 sendmail &> /dev/null
+else
+  _POSTFIX_TEST=`grep "fatal: open lock file" /var/log/mail.log 2>&1`
+  if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]] ; then
+    mrun "dpkg --configure -a"      &> /dev/null
+    mrun "apt-get clean -qq"        &> /dev/null
+    mrun "apt-get update -qq"       &> /dev/null
+    mrun "apt-get purge postfix -y" &> /dev/null
+    echo > /var/log/mail.log
+  fi
 fi
 install_with_aptitude_deps
 fix_locales

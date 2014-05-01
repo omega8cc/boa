@@ -118,6 +118,7 @@
   * PHP: Sync incorrect default_socket_timeout with max_execution_time (180s).
   * PHP: Use 30s for pm.process_idle_timeout - it prevents too high RAM usage.
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
+  * Postfix: Force re-install if broken permisions detected on upgrade.
   * Prevent duplicate cron invocations with more strict delays.
   * Shell: Proper fix for wildcard in the path (cd command only)
   * Standardize install and upgrade for Chive, SQL Buddy and CGP.
