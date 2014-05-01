@@ -86,6 +86,7 @@
 # System upgrades in this release:
 
   * Nginx 1.7.0
+  * PHP 5.5.12
   * Redis 2.8.9
 
 # Fixes in this release:
