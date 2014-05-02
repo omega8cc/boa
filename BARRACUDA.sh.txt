@@ -7986,15 +7986,14 @@ update_php_cli_cron
 
 ###--------------------###
 if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types" ] ; then
-  cd /etc/nginx
-  mv -f mime.types mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  cp /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types ./
-  mkdir -p /var/www/nginx-default
-  cd /var/www/nginx-default
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html ./
-  cp -f /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg ./
-  mv -f index.html index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-  mv -f uc.html index.html &> /dev/null
+  mv -f /etc/nginx/mime.types /etc/nginx/mime.types-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/mime.types /etc/nginx/mime.types
+  if [ ! -L "/var/www/nginx-default/index.html" ] && [ ! -L "/var/www/nginx-default/under_construction.jpg" ] ; then
+    mkdir -p /var/www/nginx-default
+    mv -f /var/www/nginx-default/index.html /var/www/nginx-default/index.html-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/uc.html /var/www/nginx-default/index.html
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/under_construction.jpg /var/www/nginx-default/under_construction.jpg
+  fi
   rm -f /etc/nginx/sites-available/default
   rm -f /etc/nginx/sites-enabled/default
   if [ ! -e "/var/run/aegir_upgrade.pid" ] ; then
