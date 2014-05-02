@@ -691,7 +691,7 @@ do
     if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.yz.txt" ] ; then
       mkdir -p /data/disk/${_OWN}/static/control
       chmod 755 /data/disk/${_OWN}/static/control
-      if [ -e "/var/xdrago/conf/control-readme.txt" ]
+      if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
         cp -af /var/xdrago/conf/control-readme.txt /data/disk/${_OWN}/static/control/README.txt &> /dev/null
         chmod 0644 /data/disk/${_OWN}/static/control/README.txt
       fi
