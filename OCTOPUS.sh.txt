@@ -1419,9 +1419,9 @@ do
   sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
   sed -i "s/EDIT_COD/$_COD/g"                             $Files &> /dev/null
   sed -i "s/EDIT_COMMERCE2/$_COMMERCE2/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_COMMERCE1/$_COMMERCE1/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_COMMONS2/$_COMMONS2/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_COMMONS3/$_COMMONS3/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_COMMERCE1/$_COMMERCE1/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_COMMONS2/$_COMMONS2/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_COMMONS3/$_COMMONS3/g"                   $Files &> /dev/null
   sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
   sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
   sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
@@ -1473,8 +1473,8 @@ do
   sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
   sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
   sed -i "s/EDIT_TOTEM/$_TOTEM/g"                         $Files &> /dev/null
-  sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"     $Files &> /dev/null
-  sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                   $Files &> /dev/null
+  sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
   sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 $Files &> /dev/null
   sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
