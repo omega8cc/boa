@@ -5,6 +5,8 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
+_USRG=users
+_WEBG=www-data
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
@@ -175,7 +177,6 @@ done
 # Fix dot dirs.
 fix_dot_dirs()
 {
-  _USRG=users
   _USER_DRUSH="/home/$_USER_LTD/.drush"
   if [ ! -d "$_USER_DRUSH" ] ; then
     mkdir -p $_USER_DRUSH
@@ -240,8 +241,6 @@ ok_create_user()
   _USER_LTD_ROOT="/home/$_USER_LTD"
   _SEC_SYM="$_USER_LTD_ROOT/sites"
   _TMP="/var/tmp"
-  _WEBG=www-data
-  _USRG=users
   if [ ! -L "$_SEC_SYM" ] ; then
     mkdir -p /var/backups/zombie/deleted/$_NOW
     mv -f $_USER_LTD_ROOT /var/backups/zombie/deleted/$_NOW/ &> /dev/null
@@ -688,6 +687,16 @@ do
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
       echo OK > /data/disk/${_OWN}/.tmp/.ctrl.yz.txt
+    fi
+    if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.yz.txt" ] ; then
+      mkdir -p /data/disk/${_OWN}/static/control
+      chmod 755 /data/disk/${_OWN}/static/control
+      if [ -e "/var/xdrago/conf/control-readme.txt" ]
+        cp -af /var/xdrago/conf/control-readme.txt /data/disk/${_OWN}/static/control/README.txt &> /dev/null
+        chmod 0644 /data/disk/${_OWN}/static/control/README.txt
+      fi
+      chown -R ${_OWN}.ftp:$_USRG /data/disk/${_OWN}/static/control &> /dev/null
+      echo OK > /data/disk/${_OWN}/static/control/.ctrl.yz.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf
