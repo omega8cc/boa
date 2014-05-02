@@ -1139,6 +1139,9 @@ fi
 ###---### Avoid too many questions
 #
 export DEBIAN_FRONTEND=noninteractive
+if [ -z "${TERM+x}" ]; then
+  export TERM=vt100
+fi
 #
 ###---### Functions
 #

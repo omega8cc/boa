@@ -528,6 +528,9 @@ else
   msg "$_STATUS B: Running hostmaster-migrate, please wait..."
   mv -f $_ROOT/.drush/security_review/security_review.drush.inc $_ROOT/.drush/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
+  if [ -z "${TERM+x}" ]; then
+    export TERM=vt100
+  fi
   cd $_PREV_HOSTMASTER_ROOT
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
