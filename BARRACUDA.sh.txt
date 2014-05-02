@@ -8409,7 +8409,11 @@ else
           mrun "rvm @global do gem install --conservative --version 1.3.0 chunky_png"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"             2> /dev/null
+          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+            _DO_NOTHING=YES
+          else
+            mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"           2> /dev/null
+          fi
           mrun "rvm @global do gem install --conservative --version 1.8.4 multi_json"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.0.7 breakpoint"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.1.0 guard-livereload"    2> /dev/null
