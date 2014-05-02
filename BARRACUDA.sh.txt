@@ -5318,6 +5318,9 @@ finale () {
     sed -i "s/.*water.*//g" /etc/crontab &> /dev/null
     sed -i "/^$/d" /etc/crontab &> /dev/null
   fi
+  if [ "$_SYSLOGD" = "rsyslog" ] ; then
+    service rsyslog restart &> /dev/null
+  fi
   killall -9 memcached     &> /dev/null
   chmod 0750 /sbin/audispd &> /dev/null
   service auditd restart   &> /dev/null
