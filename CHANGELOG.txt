@@ -2,6 +2,7 @@
 ### Stable BOA-2.2.4 Release - Full Edition
 ### Date: Wed Apr 30 17:03:36 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
+### Latest hotfix added on: Fri May  2 04:54:25 PDT 2014
 
 # Release Notes:
 
@@ -98,7 +99,6 @@
   * Fix for 'Force backward compatible SERVER_SOFTWARE'.
   * Fix in websh for _IN_PATH logic to not break backend Drush tasks.
   * Fix the logic for wrappers update and symlinks.
-  * Force MariaDB 5.5 re-install if installed version doesn't match latest.
   * Improve status messages to display when silent mode is used on upgrade.
   * Improve whitelisting in the websh wrapper.
   * Issue #2238805 - Command filtering - no word containing *drush* is allowed.
@@ -109,6 +109,7 @@
   * Issue #GH-305  - Check disk usage before running install/upgrade.
   * Issue #GH-306  - Allow ruby 1.8 to remain installed.
   * Nginx: Allow to configure keywords for aggressive requests rate monitoring.
+  * Nginx: Do not overwrite custom symlinks to the Under Construction template.
   * Nginx: Sync FastCGI timeouts with other Nginx and PHP-FPM defaults.
   * PHP: Add /opt/local/bin/php tmp symlink on barracuda/octopus upgrade.
   * PHP: Allow to set custom _PHP_FPM_TIMEOUT but not lower than 60 (in seconds)
@@ -121,10 +122,13 @@
   * PHP: Variable _PROCESS_MAX_FPM is not used on the Satellite Instance level.
   * Postfix: Force re-install if broken permisions detected on upgrade.
   * Prevent duplicate cron invocations with more strict delays.
+  * Restart rsyslog once the install or upgrade is complete.
+  * Set the TERM env variable if missing to avoid errors.
   * Shell: Proper fix for wildcard in the path (cd command only)
   * Standardize install and upgrade for Chive, SQL Buddy and CGP.
   * Sync Redis timeout with default FPM timeout (180s).
   * Sync SQL connect_timeout with default mysql.connect_timeout in PHP (60s).
+  * The ~/static/control must be writeable by lshell user to manage ctrl files.
   * Update the logic for multi-version PHP support in BOND.
   * Update the logic for multi-version PHP support in docs/REMOTE.txt
 
