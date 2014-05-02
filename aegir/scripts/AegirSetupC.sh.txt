@@ -2349,7 +2349,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
     get_dev_contrib "libraries-7.x-2.x-dev.tar.gz" &> /dev/null
     get_dev_contrib "pathauto-7.x-1.2.tar.gz" &> /dev/null
-    get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
+    get_dev_contrib "rules-7.x-2.7.tar.gz" &> /dev/null
     get_dev_contrib "token-7.x-1.5.tar.gz" &> /dev/null
     get_dev_contrib "ubercart-7.x-3.6.tar.gz" &> /dev/null
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
