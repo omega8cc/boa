@@ -58,6 +58,29 @@ don't hesitate to ask questions - we would love to help you!
 
 Creating a new site is as easy as clicking the Add Site tab.
 
+When you have added a site, you need to click on the Home icon on
+the site's node in Aegir to access this site admin area with main
+user privileges.
+
+If this Home icon no longer links to the one-time login page, just run
+the "Reset password" task on the site's node, and when the task is
+complete, click on the Home icon again.
+
+Please note that once you create any site, Aegir also sends
+a standard one-time login link to your e-mail address.
+
+You can also use "drush @foo.com uli" command on command line
+when logged in via SSH to create this one-time login link, anytime.
+
+Use "drush aliases" command to display all existing sites aliases
+and replace @foo.com with the site alias you want to work with.
+
+Please follow our docs to import your site into Aegir properly:
+
+  https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
+  https://omega8.cc/how-to-add-custom-platform-properly-140
+  https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
+
 To make a site "live" using any domain name you manage, you
 need to point its A or CNAME DNS record to your VPS address,
 like below:
@@ -66,8 +89,15 @@ like below:
   or
  subdomain.yourdomain.com. IN  CNAME  aegir.dragon.ny.host8.biz.
 
-You can also use any subdomain in *.aegir.dragon.ny.host8.biz to create
-test sites, for example: http://atrium.aegir.dragon.ny.host8.biz etc.
+You can also use any subdomain in *.aegir.dragon.ny.host8.biz
+to create test sites, for example:
+
+  http://atrium.aegir.dragon.ny.host8.biz
+
+If you need our assistance in importing your site, please purchase
+this add-on service:
+
+  https://omega8.cc/site-import
 
 
 ----------------------------------------
@@ -198,7 +228,7 @@ https://omega8.cc/are-there-any-specific-good-habits-to-learn-116
 
 https://omega8.cc/import-your-sites-to-aegir-in-8-easy-steps-109
 https://omega8.cc/how-to-add-custom-platform-properly-140
-https://omega8.cc/managing-your-code-in-the-aegir-style-110 (video)
+https://omega8.cc/your-drupal-site-upgrade-safe-workflow-298
 
 https://omega8.cc/speed-booster-redis-boost-and-advagg-108
 
