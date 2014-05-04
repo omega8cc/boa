@@ -377,7 +377,7 @@ for i in $REVISIONS; do
     get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
     get_dev_contrib "phpass-6.x-2.0.tar.gz"
     get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
-    get_dev_contrib "views_cache_bully-6.x-3.x-dev.tar.gz"
+    get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
     get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
     if [ ! -d "/data/all/$i/o_contrib/print" ] ; then
       get_dev_contrib "print-6.x-1.19.tar.gz"
@@ -461,7 +461,7 @@ for i in $REVISIONS; do
     get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
     get_dev_contrib "speedy-7.x-1.8.tar.gz"
     get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
-    get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
+    get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
     get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
     if [ ! -d "/data/all/$i/o_contrib_seven/print" ] ; then
       get_dev_contrib "print-7.x-2.0.tar.gz"
@@ -530,7 +530,7 @@ download_o_contrib_seven () {
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "vars-7.x-2.0-alpha10.tar.gz"
-  get_dev_contrib "views_cache_bully-7.x-3.x-dev.tar.gz"
+  get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.x-dev.tar.gz"
   if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
@@ -606,7 +606,7 @@ download_o_contrib_six () {
   get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
   get_dev_contrib "textile-6.x-2.4.tar.gz"
   get_dev_contrib "variable_clean-6.x-1.x-dev.tar.gz"
-  get_dev_contrib "views_cache_bully-6.x-3.x-dev.tar.gz"
+  get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
   get_dev_contrib "views404-6.x-1.x-dev.tar.gz"
   if [ "$_PURGE_MODE" = "ON" ] ; then
