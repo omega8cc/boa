@@ -45,6 +45,8 @@ foreach $COMMAND (sort keys %li_cnt) {
   if ($COMMAND =~ /redis-server/) {$redislives = "YES"; $redissumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /newrelic-daemon/) {$newrelicdaemonlives = "YES"; $newrelicdaemonsumar = $li_cnt{$COMMAND};}
   if ($COMMAND =~ /nrsysmond/) {$newrelicsysmondlives = "YES"; $newrelicsysmondsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /rsyslogd/) {$rsyslogdlives = "YES"; $rsyslogdsumar = $li_cnt{$COMMAND};}
+  if ($COMMAND =~ /sbin\/syslogd/) {$sysklogdlives = "YES"; $sysklogdsumar = $li_cnt{$COMMAND};}
 }
 foreach $X (sort keys %li_cnt) {
   if ($X =~ /php55/) {$php55lives = "YES";}
@@ -75,6 +77,8 @@ print "\n $jetty7sumar Jetty7 procs\t\tGLOBAL" if ($jetty7lives);
 print "\n $jetty8sumar Jetty8 procs\t\tGLOBAL" if ($jetty8lives);
 print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
+print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
+print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar && !-f "/var/run/boa_run.pid") {
   system("/etc/init.d/pdnsd stop");
@@ -116,6 +120,16 @@ if ($dhcpcdlives) {
   $thishostname = `cat /etc/hostname`;
   chomp($thishostname);
   `hostname -b $thishostname`;
+}
+if (-f "/etc/init.d/rsyslog") {
+  if (!$rsyslogdsumar || !-f "/var/run/rsyslogd.pid") {
+    system("service rsyslog restart");
+  }
+}
+elsif (-f "/etc/init.d/sysklogd") {
+  if (!$sysklogdsumar || !-f "/var/run/syslogd.pid") {
+    system("service sysklogd restart");
+  }
 }
 exit;
 
