@@ -14,6 +14,16 @@ $llip = `echo \$(getent ahostsv4 $myhn) | cut -d: -f2 | awk '{ print $1}'`;
 local($myip, $rest) = split(/\s+/,$llip);
 print "myip is $myip";
 chomp($myip);
+if (-e "/root/.tg.cnf") {
+  $default_critnumber = 188;
+  $default_lines = 500;
+  $default_mode = 1;
+}
+else {
+  $default_critnumber = 222;
+  $default_lines = 300;
+  $default_mode = 2;
+}
 &makeactions;
 print "CONTROL complete for $myip ($myhn)\n";
 exit;
@@ -27,8 +37,8 @@ sub makeactions
     @banetable = <NOT>;
     close (NOT);
   }
-  local(@MYARR) = `tail --lines=500 /var/log/nginx/access.log 2>&1`;
-  local($critnumber) = 300;
+  local(@MYARR) = `tail --lines=$default_lines /var/log/nginx/access.log 2>&1`;
+  local($critnumber) = $default_critnumber;
   local($mininumber) = $critnumber / 2;
   print "\n===[$mininumber] mininumber===\n";
   local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
@@ -81,9 +91,11 @@ sub makeactions
           $li_cnt{$VISITOR}++;
         }
         $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/ && $skip_post < 1);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3  if ($line =~ /GET/  && $line =~ /node\/add/);
-        $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /foobar/);
+        if ($default_mode eq "1") {
+          $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 10 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
+          $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 3  if ($line =~ /GET/  && $line =~ /node\/add/);
+          $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /foobar/);
+        }
       }
       else {
         if ($line =~ /0.000/) {
@@ -121,9 +133,11 @@ sub makeactions
           $px_cnt{$PROXY}++;
         }
         $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/ && $skip_post < 1);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3  if ($line =~ /GET/  && $line =~ /node\/add/);
-        $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5 if ($line =~ /foobar/);
+        if ($default_mode eq "1") {
+          $px_cnt{$PROXY} = $px_cnt{$PROXY} + 10 if ($line =~ /POST/ && $line =~ /(\/user)|(user\/(register|pass|login))|(node\/add)/);
+          $px_cnt{$PROXY} = $px_cnt{$PROXY} + 3  if ($line =~ /GET/  && $line =~ /node\/add/);
+          $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5 if ($line =~ /foobar/);
+        }
       }
       else {
         if ($line =~ /0.000/) {
