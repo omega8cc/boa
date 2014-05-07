@@ -7259,7 +7259,7 @@ fi
 
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "FTP" ]] ; then
-  if [ ! -e "/var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
+  if [ ! -e "/etc/ssl/private/pure-ftpd.pem" ] || [ ! -e "/usr/local/sbin/pure-config.pl" ] || [ ! -e "/usr/local/sbin/pure-ftpd" ] || [ ! -e "/var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_INSTALL_REQUIRED" = "YES" ] ; then
     msg "INFO: Installing latest Pure-FTPd server, please wait..."
     if [ ! -e "/usr/local/sbin/pure-config.pl" ] ; then
       echo "/bin/false" >> /etc/shells
