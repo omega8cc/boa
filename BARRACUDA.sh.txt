@@ -1582,13 +1582,9 @@ install_redis_src () {
   mkdir -p /etc/redis
   if [ -e "/etc/redis/redis.conf" ] && [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_CUSTOM_CONFIG_REDIS" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_REDIS" = "YES" ] ; then
-        _DO_NOTHING=YES
-      else
-        if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log" ] ; then
-          cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
-          cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
-        fi
+      if [ "$_REDIS_INSTALL_MISMATCH" = "YES" ] || [ ! -e "/var/xdrago/log/redis-$_REDIS_VERSION-$_INSTALLER_VERSION-one.log" ] ; then
+        cp -af /etc/redis/redis.conf /etc/redis/redis.conf-pre-$_INSTALLER_VERSION-$_NOW
+        cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/redis.conf /etc/redis/redis.conf
       fi
     fi
   else
@@ -1918,44 +1914,28 @@ update_php_conf () {
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini
   fi
   if [ "$_CUSTOM_CONFIG_PHP55" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP55" = "YES" ] ; then
-      _DO_NOTHING=YES
-    else
-      cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini                     &> /dev/null
-      cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini                   &> /dev/null
-    fi
+    cp -af /opt/php55/etc/php55.ini /var/backups/dragon/t/etc-php55.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55.ini /opt/php55/etc/php55.ini                     &> /dev/null
+    cp -af /opt/php55/lib/php.ini /var/backups/dragon/t/lib-php55.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-cli.ini /opt/php55/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP54" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP54" = "YES" ] ; then
-      _DO_NOTHING=YES
-    else
-      cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini                     &> /dev/null
-      cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini                   &> /dev/null
-    fi
+    cp -af /opt/php54/etc/php54.ini /var/backups/dragon/t/etc-php54.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54.ini /opt/php54/etc/php54.ini                     &> /dev/null
+    cp -af /opt/php54/lib/php.ini /var/backups/dragon/t/lib-php54.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php54-cli.ini /opt/php54/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP53" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP53" = "YES" ] ; then
-      _DO_NOTHING=YES
-    else
-      cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini                     &> /dev/null
-      cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini                   &> /dev/null
-    fi
+    cp -af /opt/php53/etc/php53.ini /var/backups/dragon/t/etc-php53.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53.ini /opt/php53/etc/php53.ini                     &> /dev/null
+    cp -af /opt/php53/lib/php.ini /var/backups/dragon/t/lib-php53.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php53-cli.ini /opt/php53/lib/php.ini                   &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_PHP52" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] && [ "$_CUSTOM_CONFIG_PHP52" = "YES" ] ; then
-      _DO_NOTHING=YES
-    else
-      cp -af /opt/php52/etc/php52.ini /var/backups/dragon/t/etc-php52.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini                     &> /dev/null
-      cp -af /opt/php52/lib/php.ini /var/backups/dragon/t/lib-php52.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
-      cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini                   &> /dev/null
-    fi
+    cp -af /opt/php52/etc/php52.ini /var/backups/dragon/t/etc-php52.ini-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52.ini /opt/php52/etc/php52.ini                     &> /dev/null
+    cp -af /opt/php52/lib/php.ini /var/backups/dragon/t/lib-php52.ini-pre-$_INSTALLER_VERSION-$_NOW   &> /dev/null
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-cli.ini /opt/php52/lib/php.ini                   &> /dev/null
   fi
   ###
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php55-fpm.conf /opt/php55/etc/php55-fpm.conf &> /dev/null
@@ -2869,7 +2849,7 @@ barracuda_cnf () {
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       _CHECK_HOST=`uname -n`
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
+        if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
           _DO_NOTHING=YES
         else
           _DB_SERVER=MariaDB
@@ -2988,12 +2968,12 @@ barracuda_cnf () {
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
-    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue.net)
-    if [[ "$_CHECK_OS" =~ "Ubuntu 12.04 LTS" ]] ; then
-      _CHECK_OS=U12
+    _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net)
+    if [[ "$_CHECK_OS" =~ "Ubuntu" ]] ; then
+      _CHECK_OS=ULTS
     fi
-    if [ "$_CHECK_OS" = "U12" ] ; then
-      if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] ; then
+    if [ "$_CHECK_OS" = "ULTS" ] ; then
+      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         _R_M=BND
@@ -3003,7 +2983,7 @@ barracuda_cnf () {
     fi
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
@@ -3434,12 +3414,12 @@ barracuda_cnf () {
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
-    _CHECK_OS=$(grep "Ubuntu 12.04 LTS" /etc/issue.net)
-    if [[ "$_CHECK_OS" =~ "Ubuntu 12.04 LTS" ]] ; then
-      _CHECK_OS=U12
+    _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net)
+    if [[ "$_CHECK_OS" =~ "Ubuntu" ]] ; then
+      _CHECK_OS=ULTS
     fi
-    if [ "$_CHECK_OS" = "U12" ] ; then
-      if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] ; then
+    if [ "$_CHECK_OS" = "ULTS" ] ; then
+      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         _R_M=BND
@@ -3449,7 +3429,7 @@ barracuda_cnf () {
     fi
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
@@ -3502,7 +3482,7 @@ barracuda_cnf () {
     _CHECK_HOST=`uname -n`
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-        if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
+        if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
           _DO_NOTHING=YES
         else
           _DB_SERVER=MariaDB
@@ -6872,11 +6852,11 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] || [[ "$_THISHOST" =~ "v55.lon." ]]; then
+    if [[ "$_THISHOST" =~ "v55.lon." ]]; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
-        _NGINX_DOS_LIMIT=180
+        _NGINX_DOS_LIMIT=188
       fi
     fi
   fi
@@ -6898,7 +6878,7 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
   chown root:crontab /var/spool/cron/crontabs/root
   chmod 600 /var/spool/cron/crontabs/root
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
+    if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
       _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
@@ -6935,11 +6915,11 @@ if [ "$_STATUS" = "INIT" ] ; then
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] || [[ "$_THISHOST" =~ "v55.lon." ]]; then
+    if [[ "$_THISHOST" =~ "v55.lon." ]]; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
-        _NGINX_DOS_LIMIT=180
+        _NGINX_DOS_LIMIT=188
       fi
     fi
   fi
@@ -6955,7 +6935,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g" /var/xdrago/manage_ltd_users.sh &> /dev/null
   mv -f /etc/cron.daily/mlocate /var/backups/ &> /dev/null
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ "v182q.nyc." ]] || [[ "$_CHECK_HOST" =~ "ocean.nyc." ]] ; then
+    if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
       _DO_NOTHING=YES
     else
       if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
@@ -9086,13 +9066,11 @@ if [ "$_CSF_COMPATIBILITY" = "NO" ] ; then
   rm -f -r /etc/csf
 fi
 if [ -e "/usr/sbin/csf" ] ; then
-  if [ "$_CUSTOM_CONFIG_CSF" = "NO" ] || [[ "$_THISHOST" =~ ".host8." ]] ; then
-    if [[ "$_THISHOST" =~ "v182q.nyc." ]] || [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
-      _DO_NOTHING=YES
-    else
-      _CSF_MODE=upgrade
-      csf_install
-    fi
+  if [ "$_CUSTOM_CONFIG_CSF" = "YES" ] ; then
+    _DO_NOTHING=YES
+  else
+    _CSF_MODE=upgrade
+    csf_install
   fi
   if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] ; then
     sed -i "s/^AUTO_UPDATES .*/AUTO_UPDATES = \"1\"/g" /etc/csf/csf.conf &> /dev/null
