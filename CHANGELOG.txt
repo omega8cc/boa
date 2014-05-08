@@ -53,6 +53,7 @@
   * Add rsyslog/sysklogd to auto-healing procedures.
   * Make the aggressive scan_nginx mode optional and use old mode by default.
   * Nginx: Add HiScan to blocked crawlers list.
+  * Nginx: Add Riddler to blocked crawlers list.
   * PHP: Use pm.process_idle_timeout = 10s for speed and RAM optimization.
 
 # System upgrades in this release:
