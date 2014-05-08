@@ -1,15 +1,14 @@
 
-### Stable BOA-2.2.4 Release - Full Edition
-### Date: Wed Apr 30 17:03:36 PDT 2014
+### Stable BOA-2.2.5 Release - Full Edition
+### Date: TBD
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri May  2 04:54:25 PDT 2014
 
 # Release Notes:
 
-  This release includes several bug fixes along with five updated platforms,
-  plus some hot-fixes applied to previous stable after its release. We have
-  also added a fix for known problem is recent Drupal 7.27 [#2245331] hence
-  the change from Drupal 7.27.1 to 7.27.2 in all D7 platforms.
+  This release includes no new features, but does include bug fixes plus latest
+  Drupal 7.28.1 and Pressflow 6.31.2 core in all built-in Octopus platforms.
+  There are also two updated distributions included, as listed below.
+  We also list here all hot-fixes applied to previous stable after its release.
 
 # Important - Read This First! (for self-hosted BOA only)
 
@@ -43,6 +42,56 @@
   $ bash /var/xdrago/daily.sh
 
   Note that BOA 'legacy' mode is still at version 2.1.3
+
+# Updated Octopus platforms:
+
+  Open Atrium 2.18 ------------- https://drupal.org/project/openatrium
+  Open Outreach 1.6 ------------ https://drupal.org/project/openoutreach
+
+# Changes in this release:
+
+  * Add rsyslog/sysklogd to auto-healing procedures.
+  * Make the aggressive scan_nginx mode optional and use old mode by default.
+  * PHP: Use pm.process_idle_timeout = 10s for speed and RAM optimization.
+
+# System upgrades in this release:
+
+  * PHP 5.4.28
+  * PHP 5.5.12
+
+# Fixes in this release:
+
+  * Always define _PHP_CN variable properly.
+  * Firewall: Sync CONNLIMIT for web ports with updated limit_conn in Nginx.
+  * Force Pure-FTPd server re-install if key files are missing for any reason.
+  * Issue #2237167 - Improve authorized IPs detection in all protected vhosts.
+  * Nginx: Do not overwrite custom symlinks to the Under Construction template.
+  * Nginx: Update limit_conn in all instances and vhosts on Barracuda upgrade.
+  * PHP: Delete pear in legacy paths, if still exists.
+  * PHP: Fix for CVE-2014-0185 privilege escalation in FPM (doesn't affect BOA)
+  * Postfix: Force re-install if broken permisions detected on upgrade.
+  * Pressflow 6: Fix #GH 84 by using drupal_page_is_cacheable().
+  * Pressflow 6: Merge pull request #GH 85 from pressflow/SA-CORE-2014-002-fix.
+  * Pressflow 6: Remove duplicate openid_update_6001().
+  * Revert "Force MariaDB 5.5 re-install".
+  * Set the TERM env variable if missing to avoid errors.
+  * Skip packages set on hold when running apticron.
+  * The ~/static/control must be writeable by lshell user to manage ctrl files.
+  * Add extra cron semaphore to prevent concurrent cron invocations via
+    multiple running runner.sh instances.
+
+
+### Stable BOA-2.2.4 Release - Full Edition
+### Date: Wed Apr 30 17:03:36 PDT 2014
+### Includes Aegir 2.x-boa-custom version.
+### Latest hotfix added on: Fri May  2 04:54:25 PDT 2014
+
+# Release Notes:
+
+  This release includes several bug fixes along with five updated platforms,
+  plus some hot-fixes applied to previous stable after its release. We have
+  also added a fix for known problem is recent Drupal 7.27 [#2245331] hence
+  the change from Drupal 7.27.1 to 7.27.2 in all D7 platforms.
 
 # Updated Octopus platforms:
 
