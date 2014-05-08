@@ -206,8 +206,10 @@ up_start ()
     cd /var/backups
     rm -f /var/backups/BARRACUDA.sh*
   fi
-  if [ -e "/opt/local/bin/php" ] || [ -e "/usr/local/bin/php" ] ; then
+  if [ -e "/opt/local/bin/php" ] || [ -e "/opt/local/bin/pear" ] || [ -e "/usr/local/bin/php" ] || [ -e "/usr/local/bin/pear" ] ; then
+    rm -f /opt/local/bin/pear
     rm -f /opt/local/bin/php
+    rm -f /usr/local/bin/pear
     rm -f /usr/local/bin/php
   fi
   if [ -d "/opt/local/bin" ] ; then
