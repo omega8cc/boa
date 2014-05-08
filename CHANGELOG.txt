@@ -7,7 +7,7 @@
 
   This release includes no new features, but does include bug fixes plus latest
   Drupal 7.28.1 and Pressflow 6.31.2 core in all built-in Octopus platforms.
-  There are also two updated distributions included, as listed below.
+  There are also three updated distributions included, as listed below.
   We also list here all hot-fixes applied to previous stable after its release.
 
 # Important - Read This First! (for self-hosted BOA only)
@@ -45,6 +45,7 @@
 
 # Updated Octopus platforms:
 
+  Commons 3.12 ----------------- https://drupal.org/project/commons
   Open Atrium 2.18 ------------- https://drupal.org/project/openatrium
   Open Outreach 1.6 ------------ https://drupal.org/project/openoutreach
 
