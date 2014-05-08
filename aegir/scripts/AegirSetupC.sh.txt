@@ -509,7 +509,7 @@ upgrade_contrib_less () {
   get_dev_contrib "ctools-7.x-1.4.tar.gz" &> /dev/null
   get_dev_contrib "entity-7.x-1.5.tar.gz" &> /dev/null
   get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
-  get_dev_contrib "og-7.x-2.6.tar.gz" &> /dev/null
+  get_dev_contrib "og-7.x-2.7.tar.gz" &> /dev/null
   if [ -e "views" ] ; then
     cd views
     # https://drupal.org/node/1766338#comment-6445882
@@ -874,7 +874,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_COMMERCE1 = "7.x-1.21" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {rules}
-      get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
+      get_dev_contrib "rules-7.x-2.7.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -1636,11 +1636,11 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENATRIUM7 = "7.x-2.15" ] ; then
+    if [ $_OPENATRIUM7 = "7.x-2.18" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {mimemail}
-      get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz" &> /dev/null
-      upgrade_contrib_less
+      rm -f -r {og}
+      get_dev_contrib "og-7.x-2.7.tar.gz" &> /dev/null
+      #upgrade_contrib_less
     fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
@@ -1960,7 +1960,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       get_dev_contrib "biblio-7.x-1.0-rc7.tar.gz" &> /dev/null
       get_dev_contrib "boxes-7.x-1.1.tar.gz" &> /dev/null
       get_dev_contrib "entityreference_prepopulate-7.x-1.5.tar.gz" &> /dev/null
-     #get_dev_contrib "media-7.x-2.x-dev.tar.gz" &> /dev/null
       get_dev_contrib "restws-7.x-2.1.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
@@ -2109,10 +2108,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_RECRUITER = "7.x-1.1" ] ; then
+    if [ $_RECRUITER = "7.x-1.2" ] ; then
       cd $_SHRD_PRPATH/modules
       rm -f -r {rules}
-      get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
+      get_dev_contrib "rules-7.x-2.7.tar.gz" &> /dev/null
       upgrade_contrib_less
     fi
   else
@@ -2414,7 +2413,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
     get_dev_contrib "libraries-7.x-2.x-dev.tar.gz" &> /dev/null
     get_dev_contrib "pathauto-7.x-1.2.tar.gz" &> /dev/null
-    get_dev_contrib "rules-7.x-2.6.tar.gz" &> /dev/null
+    get_dev_contrib "rules-7.x-2.7.tar.gz" &> /dev/null
     get_dev_contrib "token-7.x-1.5.tar.gz" &> /dev/null
     get_dev_contrib "ubercart-7.x-3.6.tar.gz" &> /dev/null
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
