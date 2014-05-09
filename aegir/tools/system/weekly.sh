@@ -666,18 +666,16 @@ action () {
         echo HomSiz is $HomSiz or $HomSizH MB
         echo SumDir is $SumDir or $SumDirH MB
         echo SumDat is $SumDat or $SumDatH MB
-        if [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
-          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            check_limits
-            if [ -e "$_THIS_HM_SITE" ] ; then
-              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION | SSD+SAS System' &> /dev/null"
-              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
-            fi
-          else
-            if [ -e "$_THIS_HM_SITE" ] ; then
-              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer '' &> /dev/null"
-              su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
-            fi
+        if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+          check_limits
+          if [ -e "$_THIS_HM_SITE" ] ; then
+            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> $_CLIENT_OPTION | SSD+SAS System' &> /dev/null"
+            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
+          fi
+        else
+          if [ -e "$_THIS_HM_SITE" ] ; then
+            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer '' &> /dev/null"
+            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
           fi
         fi
         echo Done for $User
