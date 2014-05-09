@@ -36,6 +36,15 @@ EOFMYSQL
   done
 }
 
+truncate_queue_tables () {
+  TABLES=`mysql $DB -e "show tables" -s | grep ^queue$`
+  for A in $TABLES; do
+mysql --default-character-set=utf8 $DB<<EOFMYSQL
+TRUNCATE $A;
+EOFMYSQL
+  done
+}
+
 optimize_this_database () {
   TABLES=`mysql $DB -e "show tables" -s | uniq | sort`
   for T in $TABLES; do
@@ -62,6 +71,8 @@ do
       if [[ "$HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         truncate_accesslog_tables &> /dev/null
         echo "Truncated not used accesslog for $DB"
+        truncate_queue_tables &> /dev/null
+        echo "Truncated queue for $DB"
       fi
       echo "All cache tables truncated in $DB"
       if [ "$OPTIM" = "YES" ] ; then
