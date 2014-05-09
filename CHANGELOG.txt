@@ -59,6 +59,7 @@
 
 # System upgrades in this release:
 
+  * MySecureShell 1.33
   * PHP 5.4.28
   * PHP 5.5.12
 
