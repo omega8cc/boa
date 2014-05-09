@@ -8278,8 +8278,13 @@ fi
 fix_compass_path () {
   if [[ ! -e "/var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log" || ! -e "/usr/local/bin/coderay" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass" ]] ; then
     if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      rm -f /usr/local/bin/bundle
-      rm -f /usr/local/bin/bundler
+      if [ "$_KEEP_BUNDLER" = "NO" ] ; then
+        rm -f /usr/local/bin/bundle
+        rm -f /usr/local/bin/bundler
+      else
+        ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
+        ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
+      fi
     else
       ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
       ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
@@ -8304,6 +8309,11 @@ if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
   if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
+    if [ -e "/root/.keep.bundler.cnf" ] ; then
+      _KEEP_BUNDLER=YES
+    else
+      _KEEP_BUNDLER=NO
+    fi
     if [ "$_STATUS" = "INIT" ] ; then
       _L_ST="install"
     else
@@ -8335,7 +8345,11 @@ else
           mrun "rvm @global do gem install --conservative bootstrap-sass"      2> /dev/null
           mrun "rvm @global do gem install --conservative breakpoint"          2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            mrun "rvm @global do gem uninstall bundler -x -q -a"               2> /dev/null
+            if [ "$_KEEP_BUNDLER" = "NO" ] ; then
+              mrun "rvm @global do gem uninstall bundler -x -q -a"             2> /dev/null
+            else
+              mrun "rvm @global do gem install --conservative bundler"         2> /dev/null
+            fi
           else
             mrun "rvm @global do gem install --conservative bundler"           2> /dev/null
           fi
@@ -8388,7 +8402,11 @@ else
           mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            _DO_NOTHING=YES
+            if [ "$_KEEP_BUNDLER" = "NO" ] ; then
+              _DO_NOTHING=YES
+            else
+              mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"         2> /dev/null
+            fi
           else
             mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"           2> /dev/null
           fi
