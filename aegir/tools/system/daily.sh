@@ -868,6 +868,12 @@ fix_static_permissions () {
     chown $_THIS_HM_USER:users $Plr/profiles/permissions-fix.info
     chmod 0664 $Plr/profiles/permissions-fix.info
   fi
+  if [ ! -f "$Plr/profiles/core-permissions-fix.info" ] ; then
+    chmod 775 $Plr/modules &> /dev/null
+    echo fixed > $Plr/profiles/core-permissions-fix.info
+    chown $_THIS_HM_USER:users $Plr/profiles/core-permissions-fix.info
+    chmod 0664 $Plr/profiles/core-permissions-fix.info
+  fi
 }
 
 fix_expected_symlinks () {
