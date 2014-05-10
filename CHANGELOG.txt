@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.5 Release - Full Edition
 ### Date: Thu May  8 11:59:23 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri May  9 08:00:15 PDT 2014
+### Latest hotfix added on: Sat May 10 09:05:19 PDT 2014
 
 # Release Notes:
 
@@ -68,6 +68,7 @@
 
   * Always define _PHP_CN variable properly.
   * Firewall: Sync CONNLIMIT for web ports with updated limit_conn in Nginx.
+  * Fix for _NGINX_DOS_LIMIT logical error in the scan_nginx template.
   * Force Pure-FTPd server re-install if key files are missing for any reason.
   * Issue #2237167 - Improve authorized IPs detection in all protected vhosts.
   * Issue #2262935 - Modules dir must be group writable in custom platforms.
