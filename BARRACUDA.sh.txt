@@ -920,6 +920,20 @@ _DB_BINARY_LOG=NO
 _DB_ENGINE=InnoDB
 
 ###
+### Allows to change InnoDB log file size,
+### which requires special procedure.
+###
+### Accepted value must be an integer between
+### 10 and 500 (in megabytes).
+###
+### Note: if _CUSTOM_CONFIG_SQL is set to YES,
+### this option will be ignored.
+###
+### Example: _INNODB_LOG_FILE_SIZE=50
+###
+_INNODB_LOG_FILE_SIZE=AUTO
+
+###
 ### Set max 1 min load per CPU core before blocking
 ### spiders temporarily, until the load stabilizes.
 ###
@@ -2011,6 +2025,22 @@ update_php_conf () {
   ###
 }
 #
+# Update innodb_log_file_size.
+update_innodb_log_file_size () {
+  msg "INFO: InnoDB log file will be set to $_INNODB_LOG_FILE_SIZE_MB, please wait..."
+  mrun "service mysql stop" &> /dev/null
+  mrun "sleep 5"
+  if [ ! -e "/var/run/mysqld/mysqld.sock" ] && [ ! -e "/var/run/mysqld/mysqld.pid" ] ; then
+    mkdir -p /var/backups/old-sql-ib-log-$_NOW
+    mrun "sleep 5"
+    mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-sql-ib-log-$_NOW/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-sql-ib-log-$_NOW/ &> /dev/null
+    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = $_INNODB_LOG_FILE_SIZE_MB/g" /etc/mysql/my.cnf &> /dev/null
+    mrun "sleep 5"
+  fi
+  mrun "service mysql start" &> /dev/null
+}
+#
 # Update SQL Config.
 update_sql_conf () {
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
@@ -2056,6 +2086,18 @@ update_sql_conf () {
     fi
     if [ "$_DB_ENGINE" = "MyISAM" ] || [ "$_DB_ENGINE" = "InnoDB" ] ; then
       sed -i "s/^default_storage_engine.*/default_storage_engine  = $_DB_ENGINE/g" /etc/mysql/my.cnf &> /dev/null
+    fi
+    _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
+    if [ ! -z "$_INNODB_LOG_FILE_SIZE" ] ; then
+      if [ "$_INNODB_LOG_FILE_SIZE" -ge "10" ] && [ "$_INNODB_LOG_FILE_SIZE" -lt "501" ] ; then
+        _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf)
+        if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "= $_INNODB_LOG_FILE_SIZE_MB" ]] ; then
+          _DO_NOTHING=YES
+        else
+          update_innodb_log_file_size
+        fi
+      fi
     fi
   fi
 }
@@ -2910,6 +2952,7 @@ barracuda_cnf () {
     echo "_DB_ENGINE=$_DB_ENGINE" >> /root/.barracuda.cnf
     echo "_DB_SERIES=$_DB_SERIES" >> /root/.barracuda.cnf
     echo "_DB_SERVER=$_DB_SERVER" >> /root/.barracuda.cnf
+    echo "_INNODB_LOG_FILE_SIZE=$_INNODB_LOG_FILE_SIZE" >> /root/.barracuda.cnf
 
     echo "###" >> /root/.barracuda.cnf
     echo "_DNS_SETUP_TEST=$_DNS_SETUP_TEST" >> /root/.barracuda.cnf
@@ -3310,6 +3353,12 @@ barracuda_cnf () {
       _DO_NOTHING=YES
     else
       echo "_DB_BINARY_LOG=$_DB_BINARY_LOG" >> /root/.barracuda.cnf
+    fi
+    _INNODB_LOG_FILE_SIZE_TEST=$(grep _INNODB_LOG_FILE_SIZE /root/.barracuda.cnf)
+    if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "_INNODB_LOG_FILE_SIZE" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_INNODB_LOG_FILE_SIZE=$_INNODB_LOG_FILE_SIZE" >> /root/.barracuda.cnf
     fi
     _DB_ENGINE_TEST=$(grep _DB_ENGINE /root/.barracuda.cnf)
     if [[ "$_DB_ENGINE_TEST" =~ "_DB_ENGINE" ]] ; then
