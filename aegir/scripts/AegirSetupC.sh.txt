@@ -514,8 +514,7 @@ upgrade_contrib_less () {
   if [ -e "views" ] ; then
     cd views
     # https://drupal.org/node/1766338#comment-6445882
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
-    patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
     cd ../
   fi
   if [ -e "apps" ] ; then
@@ -1419,15 +1418,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-6.x-2.13.tar.gz"
     cd views
     # https://drupal.org/node/853864#comment-3898996
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-853864_2.patch
-    patch -p0 < views-853864_2.patch &> /dev/null
+    patch -p0 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-853864_2.patch &> /dev/null
     # https://drupal.org/node/402944#comment-5370400
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-unpack_options-cache-6.2-51.patch
-    patch -p1 < views-unpack_options-cache-6.2-51.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-unpack_options-cache-6.2-51.patch &> /dev/null
     cd ../imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
-    patch -p1 < imagecache-1243258-5.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagecache-1243258-5.patch &> /dev/null
     rm -f -r $_SHRD_PRPATH/themes/{rubik,tao}
     cd $_SHRD_PRPATH/themes
     get_dev_contrib "rubik-6.x-3.0-beta5.tar.gz"
@@ -1571,8 +1567,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     cd $_SHRD_PRPATH/modules/contrib/imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
-    patch -p1 < imagecache-1243258-5.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagecache-1243258-5.patch &> /dev/null
     nocore_d6_dist_clean
     rm -f -r $_SHRD_PLPATH/profiles/default
     cd $_SHRD_PRPATH/modules/atrium_features/
@@ -2287,8 +2282,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_VIRT_PRNAME-1167276-reroll.patch &> /dev/null
     cd $_SHRD_PRPATH/modules/imagecache
     # https://drupal.org/node/1243258#comment-4850634
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/imagecache-1243258-5.patch
-    patch -p1 < imagecache-1243258-5.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/imagecache-1243258-5.patch &> /dev/null
     cd $_SHRD_PRPATH/themes
     get_dev_contrib "fusion-6.x-1.x-dev.tar.gz" &> /dev/null
     get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz" &> /dev/null
@@ -2354,8 +2348,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
-    patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
@@ -2418,8 +2411,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "views-7.x-3.7.tar.gz" &> /dev/null
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
-    curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab http://files.aegir.cc/dev/patches/views-revert-broken-filter-or-groups-1766338-7.patch
-    patch -p1 < views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz" &> /dev/null
   fi
