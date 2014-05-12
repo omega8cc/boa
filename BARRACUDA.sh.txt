@@ -5279,6 +5279,27 @@ strict_bin_permissions () {
   chmod 644 /etc/passwd
 }
 #
+# Fix for Open Atrium 2.18
+fix_open_atrium () {
+  if [ ! -e "/var/xdrago/log/open-atrium-og-fixed-001.log" ] ; then
+    REVISIONS="001 003 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+    for i in $REVISIONS; do
+      if [ -d "/data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib" ] ; then
+        cd /data/all/$i/openatrium-7.x-2.18-7.28.1/profiles/openatrium/modules/contrib/
+        rm -f -r {context,ctools,entity,entityreference,mimemail,og}
+        get_dev_contrib "context-7.x-3.2.tar.gz"         &> /dev/null
+        get_dev_contrib "ctools-7.x-1.4.tar.gz"          &> /dev/null
+        get_dev_contrib "entity-7.x-1.5.tar.gz"          &> /dev/null
+        get_dev_contrib "entityreference-7.x-1.1.tar.gz" &> /dev/null
+        get_dev_contrib "mimemail-7.x-1.0-beta3.tar.gz"  &> /dev/null
+        get_dev_contrib "og-7.x-2.7.tar.gz"              &> /dev/null
+      fi
+    done
+    touch /var/xdrago/log/open-atrium-og-fixed-001.log
+    cd
+  fi
+}
+#
 # Final cleanup.
 finale () {
   ###--------------------###
@@ -5304,6 +5325,7 @@ finale () {
     mrun "sleep 8"
   fi
   msg "Final post-$_L_ST cleaning, please wait a moment..."
+  fix_open_atrium
   mv -f /etc/motd /var/backups/dragon/t/motd-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
   mv -f /etc/motd-pre-* /var/backups/dragon/t/ &> /dev/null
   echo > /etc/motd
