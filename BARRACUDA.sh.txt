@@ -8416,51 +8416,53 @@ else
         if [ ! -x "/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem" ] ; then
           _RUBY_UPGRADE=YES
         fi
-        if [ ! -e "/var/xdrago/log/gem-conservative.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
-          mrun "apt-get update -y --force-yes" &> /dev/null
-          mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes" &> /dev/null
-          mrun "apt-get autoremove -y --force-yes" &> /dev/null
-          mrun "rvm install $_RUBY_VERSION" &> /dev/null
-          mrun "rvm use $_RUBY_VERSION --default" &> /dev/null
+        if [ ! -e "/var/xdrago/log/gem-conservative-002.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
+          mrun "apt-get update -y --force-yes"                                                 &> /dev/null
+          mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes"   &> /dev/null
+          mrun "apt-get autoremove -y --force-yes"                                             &> /dev/null
+          mrun "rvm install $_RUBY_VERSION"                                                    &> /dev/null
+          mrun "rvm use $_RUBY_VERSION --default"                                              &> /dev/null
           ### update rvm
-          mrun "rvm get stable" 2> /dev/null
+          mrun "rvm get stable"                                                                2> /dev/null
           ### install new versions
-          mrun "rvm @global do gem install --conservative bootstrap-sass-extensions" 2> /dev/null
-          mrun "rvm @global do gem install --conservative bootstrap-sass"      2> /dev/null
-          mrun "rvm @global do gem install --conservative breakpoint"          2> /dev/null
+          mrun "rvm @global do gem install --conservative bootstrap-sass-extensions"           2> /dev/null
+          mrun "rvm @global do gem install --conservative bootstrap-sass"                      2> /dev/null
+          mrun "rvm @global do gem install --conservative breakpoint"                          2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
             if [ "$_KEEP_BUNDLER" = "NO" ] ; then
-              mrun "rvm @global do gem uninstall bundler -x -q -a"             2> /dev/null
+              mrun "rvm @global do gem uninstall bundler -x -q -a"                             2> /dev/null
             else
-              mrun "rvm @global do gem install --conservative bundler"         2> /dev/null
+              mrun "rvm @global do gem install --conservative bundler"                         2> /dev/null
             fi
           else
-            mrun "rvm @global do gem install --conservative bundler"           2> /dev/null
+            mrun "rvm @global do gem install --conservative bundler"                           2> /dev/null
           fi
-          mrun "rvm @global do gem install --conservative chunky_png"          2> /dev/null
-          mrun "rvm @global do gem install --conservative compass_radix"       2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-960-plugin"  2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-h5bp"        2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-normalize"   2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-rgbapng"     2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-susy-plugin" 2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-validator"   2> /dev/null
-          mrun "rvm @global do gem install --conservative compass"             2> /dev/null
-          mrun "rvm @global do gem install --conservative css_parser"          2> /dev/null
-          mrun "rvm @global do gem install --conservative guard-compass"       2> /dev/null
-          mrun "rvm @global do gem install --conservative guard-livereload"    2> /dev/null
-          mrun "rvm @global do gem install --conservative guard-shell"         2> /dev/null
-          mrun "rvm @global do gem install --conservative guard"               2> /dev/null
-          mrun "rvm @global do gem install --conservative oily_png"            2> /dev/null
-          mrun "rvm @global do gem install --conservative rb-inotify"          2> /dev/null
-          mrun "rvm @global do gem install --conservative sass-globbing"       2> /dev/null
-          mrun "rvm @global do gem install --conservative sass"                2> /dev/null
-          mrun "rvm @global do gem install --conservative singularitygs"       2> /dev/null
-          mrun "rvm @global do gem install --conservative susy"                2> /dev/null
-          mrun "rvm @global do gem install --conservative toolkit"             2> /dev/null
-          mrun "rvm @global do gem install --conservative yajl-ruby"           2> /dev/null
-          mrun "rvm @global do gem install --conservative zen-grids"           2> /dev/null
-          mrun "rvm @global do gem install --conservative zurb-foundation"     2> /dev/null
+          mrun "rvm @global do gem install --conservative chunky_png"                          2> /dev/null
+          mrun "rvm @global do gem install --conservative compass_radix"                       2> /dev/null
+          mrun "rvm @global do gem install --conservative compass_twitter_bootstrap"           2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-960-plugin"                  2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-h5bp"                        2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-normalize"                   2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-rgbapng"                     2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-susy-plugin"                 2> /dev/null
+          mrun "rvm @global do gem install --conservative compass-validator"                   2> /dev/null
+          mrun "rvm @global do gem install --conservative compass"                             2> /dev/null
+          mrun "rvm @global do gem install --conservative css_parser"                          2> /dev/null
+          mrun "rvm @global do gem install --conservative grunt"                               2> /dev/null
+          mrun "rvm @global do gem install --conservative guard-compass"                       2> /dev/null
+          mrun "rvm @global do gem install --conservative guard-livereload"                    2> /dev/null
+          mrun "rvm @global do gem install --conservative guard-shell"                         2> /dev/null
+          mrun "rvm @global do gem install --conservative guard"                               2> /dev/null
+          mrun "rvm @global do gem install --conservative oily_png"                            2> /dev/null
+          mrun "rvm @global do gem install --conservative rb-inotify"                          2> /dev/null
+          mrun "rvm @global do gem install --conservative sass-globbing"                       2> /dev/null
+          mrun "rvm @global do gem install --conservative sass"                                2> /dev/null
+          mrun "rvm @global do gem install --conservative singularitygs"                       2> /dev/null
+          mrun "rvm @global do gem install --conservative susy"                                2> /dev/null
+          mrun "rvm @global do gem install --conservative toolkit"                             2> /dev/null
+          mrun "rvm @global do gem install --conservative yajl-ruby"                           2> /dev/null
+          mrun "rvm @global do gem install --conservative zen-grids"                           2> /dev/null
+          mrun "rvm @global do gem install --conservative zurb-foundation"                     2> /dev/null
           ### versions required explicitly by some popular themes
           mrun "rvm @global do gem install --conservative --version 0.0.2 compass-blend-modes" 2> /dev/null
           mrun "rvm @global do gem install --conservative --version 0.0.6 rb-fchange"          2> /dev/null
@@ -8485,6 +8487,7 @@ else
           mrun "rvm @global do gem install --conservative --version 1.3.0 chunky_png"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.0.1 compass_radix"       2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
             if [ "$_KEEP_BUNDLER" = "NO" ] ; then
               _DO_NOTHING=YES
@@ -8506,13 +8509,13 @@ else
           mrun "rvm @global do gem install --conservative --version 3.4.7 slop"                2> /dev/null
           mrun "rvm @global do gem install --conservative --version 4.3.2 zurb-foundation"     2> /dev/null
           ### cleanup & update gems
-          mrun "rvm @global do gem uninstall sassy-math -x -q -a" 2> /dev/null
-          mrun "rvm @global do gem update -q" 2> /dev/null
-          touch /var/xdrago/log/gem-conservative.log
+          mrun "rvm @global do gem uninstall sassy-math -x -q -a"                              2> /dev/null
+          mrun "rvm @global do gem update -q"                                                  2> /dev/null
+          touch /var/xdrago/log/gem-conservative-002.log
         else
           ### cleanup & update gems
-          mrun "rvm get stable" 2> /dev/null
-          mrun "rvm @global do gem update -q" 2> /dev/null
+          mrun "rvm get stable"                                                                2> /dev/null
+          mrun "rvm @global do gem update -q"                                                  2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
