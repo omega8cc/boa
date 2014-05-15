@@ -289,6 +289,7 @@ hostmaster_mi_up () {
   chmod 700 $_ROOT/backups/system/old_hostmaster
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/*host8* $_ROOT/backups/system/old_hostmaster/ &> /dev/null
+  mv -f $_ROOT/backups/*o8.io* $_ROOT/backups/system/old_hostmaster/ &> /dev/null
   chmod 600 $_ROOT/backups/system/old_hostmaster/* &> /dev/null
 }
 
