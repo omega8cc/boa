@@ -164,6 +164,10 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         _IN_PATH=YES
       elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/wkhtmltopdf" ]] ; then
         _IN_PATH=YES
+      elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/wkhtmltoimage" ]] ; then
+        _IN_PATH=YES
+      elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/convert" ]] ; then
+        _IN_PATH=YES
       elif [[ "$2" =~ (^)"/home/" ]] || [[ "$2" =~ (^)"/data/" ]] || [[ "$2" =~ (^)"/tmp/" ]]; then
         if [ -e "$2" ] ; then
           _IN_PATH=NO
@@ -232,7 +236,11 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
       if [[ "$_ALL" =~ "-c set -m; " ]] ; then
         _SILENT=YES
       else
-        echo
+        if [[ "$_ALL" =~ "ssh" ]] || [[ "$_ALL" =~ "rsync" ]] || [[ "$_ALL" =~ "scp" ]] || [[ "$_ALL" =~ "drush" ]] || [[ "$_ALL" =~ "php " ]] || [[ "$_ALL" =~ ".tmp" ]] || [[ "$_ALL" =~ "_tmp_" ]] || [[ "$_ALL" =~ "__build__" ]] || [[ "$_ALL" =~ "is_" ]] || [[ "$_ALL" =~ "rename" ]] || [[ "$_ALL" =~ "chdir" ]] || [[ "$_ALL" =~ "svn " ]] || [[ "$_ALL" =~ "bzr " ]] || [[ "$_ALL" =~ "tar " ]] || [[ "$_ALL" =~ "wget " ]] || [[ "$_ALL" =~ "curl " ]] || [[ "$_ALL" =~ "git" ]] || [[ "$_ALL" =~ "wkhtmltopdf" ]] || [[ "$_ALL" =~ "wkhtmltoimage" ]] || [[ "$_ALL" =~ "convert" ]] || [[ "$_ALL" =~ "compass" ]] || [[ "$_ALL" =~ "sass" ]] || [[ "$_ALL" =~ "scss" ]] || [[ "$_ALL" =~ "logger" ]] || [[ "$_ALL" =~ "sendmail" ]] || [[ "$_ALL" =~ "java" ]] || [[ "$_ALL" =~ "rrdtool" ]] || [[ "$_ALL" =~ "ffmpeg" ]] || [[ "$_ALL" =~ "flvtool" ]] || [[ "$_ALL" =~ "avconv" ]] ; then
+          _SILENT=YES
+        else
+          echo
+        fi
       fi
     fi
   fi
