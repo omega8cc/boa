@@ -1213,7 +1213,7 @@ purge_cruft_machine () {
 
   mkdir -p $User/static/trash
   chown ${_THIS_HM_USER}.ftp:users $User/static/trash
-  find $User/static/trash/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \;
 }
 
 count_cpu()
