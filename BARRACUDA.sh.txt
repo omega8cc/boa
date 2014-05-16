@@ -6950,6 +6950,7 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 222/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 188/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
     _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
@@ -7011,6 +7012,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
   sed -i "s/= 222/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 188/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
     _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
