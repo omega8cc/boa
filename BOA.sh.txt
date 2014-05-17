@@ -68,6 +68,12 @@ setup ()
     apt-get update -qq &> /dev/null
     apt-get install curl -y --force-yes --reinstall &> /dev/null
   fi
+  _PATH_TEST=$(grep '/opt/local/bin' /root/.bashrc)
+  if [[ "$_PATH_TEST" =~ "/opt/local/bin" ]] ; then
+    _DO_NOTHING=YES
+  else
+    sed -i "s/^export PATH=.*/export PATH=\$PATH:\/usr\/local\/bin:\/opt\/local\/bin/g" /root/.bashrc &> /dev/null
+  fi
   mkdir -p /usr/local/bin
   mkdir -p /opt/local/bin
   rm -f /opt/local/bin/.boa*
@@ -75,11 +81,8 @@ setup ()
     rm -f /usr/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
     touch /opt/local/bin/.fix.bins.txt
   fi
-  if [ ! -L "/usr/local/bin/barracuda" ] || [ ! -L "/usr/local/bin/boa" ] || [ ! -L "/usr/local/bin/octopus" ] ; then
+  if [ -L "/usr/local/bin/barracuda" ] || [ -L "/usr/local/bin/boa" ] || [ -L "/usr/local/bin/octopus" ] ; then
     rm -f /usr/local/bin/{barracuda*,boa*,octopus*}
-    ln -s /opt/local/bin/barracuda /usr/local/bin/barracuda
-    ln -s /opt/local/bin/boa /usr/local/bin/boa
-    ln -s /opt/local/bin/octopus /usr/local/bin/octopus
   fi
   rm -f /opt/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
