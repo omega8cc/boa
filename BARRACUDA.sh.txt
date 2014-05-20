@@ -2495,6 +2495,9 @@ tune_web_server_config () {
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
+  sed -i "s/,getenv,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
+  sed -i "s/,getenv,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/,getenv,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
   sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
   sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
   sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
