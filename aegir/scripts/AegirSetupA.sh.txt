@@ -1036,7 +1036,7 @@ else
       chown -R $_USER:$_USRG $_ROOT/tools
       chown -R $_USER $_THIS_HM_ROOT
       chown -R $_USER:$_WEBG $_THIS_HM_SITE/files
-      chmod -R 2770 $_THIS_HM_SITE/files
+      chmod -R 02775 $_THIS_HM_SITE/files
       chown root:$_USRG /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - $_USER -c "/bin/bash AegirSetupB.sh.txt"
@@ -1203,7 +1203,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 	  _FOUND_HM=YES
     else
       chown -R $_USER:www-data $_PLATF/sites/*/files &> /dev/null
-      chmod -R 2770 $_PLATF/sites/*/files &> /dev/null
+      chmod -R 02775 $_PLATF/sites/*/files &> /dev/null
     fi
   done
 fi
@@ -1658,7 +1658,7 @@ if [ ! -d "$_ROOT/.tmp" ] ; then
   mkdir -p $_ROOT/.tmp
 fi
 chown $_USERFTP:www-data $_ROOT/.tmp
-chmod 2770 $_ROOT/.tmp
+chmod 02775 $_ROOT/.tmp
 
 
 ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
@@ -1703,7 +1703,7 @@ else
   if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
     mkdir -p $_ROOT/distro/$_THIS_CORE/keys
     chown $_WEBG:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
-    chmod 770 $_ROOT/distro/$_THIS_CORE/keys
+    chmod 02775 $_ROOT/distro/$_THIS_CORE/keys
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/keys" ] ; then

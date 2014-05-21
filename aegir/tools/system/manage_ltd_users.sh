@@ -688,7 +688,7 @@ do
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
-      chmod 2770 /data/disk/${_OWN}/.tmp &> /dev/null
+      chmod 02775 /data/disk/${_OWN}/.tmp &> /dev/null
       echo OK > /data/disk/${_OWN}/.tmp/.ctrl.yz.txt
     fi
     if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.yz.txt" ] ; then

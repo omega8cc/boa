@@ -4212,7 +4212,7 @@ upgrade_aegir_master () {
     chown -R aegir:aegir /var/aegir/drush
     chown -R aegir $_THIS_HM_ROOT
     chown -R aegir:www-data $_THIS_HM_SITE/files
-    chmod -R 2770 $_THIS_HM_SITE/files
+    chmod -R 02775 $_THIS_HM_SITE/files
     cd /var/aegir
     cp /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirUpgrade.sh.txt ./
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null

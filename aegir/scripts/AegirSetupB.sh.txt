@@ -469,7 +469,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   fi
   cd $_HOSTMASTER_ROOT
   mkdir -p sites/$_DOMAIN/files/{tmp,js,css}
-  chmod 2770 -R sites/$_DOMAIN/files &> /dev/null
+  chmod 02775 -R sites/$_DOMAIN/files &> /dev/null
   chgrp -R $_WEBG sites/$_DOMAIN/files &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
   ln -sf $_HOSTMASTER_ROOT $_ROOT/u/$_DOMAIN

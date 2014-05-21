@@ -255,8 +255,8 @@ fix_boost_cache () {
     fi
   fi
   if [ -e "$Plr/cache" ] ; then
-    chown $_THIS_HM_USER:www-data $Plr/cache
-    chmod 02770 $Plr/cache
+    chown ${_THIS_HM_USER}.ftp:www-data $Plr/cache
+    chmod 02775 $Plr/cache
   fi
   if [ -f "$Plr/robots.txt" ] || [ -L "$Plr/robots.txt" ] ; then
     rm -f $Plr/robots.txt
