@@ -39,6 +39,11 @@ by the BOA install and upgrade tools exclusively.
  the USER is a keyword for the instance main system account. Please read
  its template in docs/cnf/octopus.cnf for more information.
 
+   /root/.ip.protected.vhost.whitelist.cnf
+
+ This file, if exists, allows to whitelist IP addresses (one valid IP per line)
+ for access to vhosts protected via valid shell login (chive, cgp, sqlbuddy).
+
 
  ### All other (empty) .cnf control files
 
