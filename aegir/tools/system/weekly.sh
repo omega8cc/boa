@@ -19,6 +19,11 @@ read_account_data () {
     _CLIENT_CORES=`cat /data/disk/$_THIS_HM_USER/log/cores.txt`
     _CLIENT_CORES=`echo -n $_CLIENT_CORES | tr -d "\n"`
   fi
+  if [ "$_CLIENT_CORES" -gt "1" ] ; then
+    _ENGINE_NR="Engines"
+  else
+    _ENGINE_NR="Engine"
+  fi
   if [ -e "/data/disk/$_THIS_HM_USER/log/option.txt" ] ; then
     _CLIENT_OPTION=`cat /data/disk/$_THIS_HM_USER/log/option.txt`
     _CLIENT_OPTION=`echo -n $_CLIENT_OPTION | tr -d "\n"`
@@ -231,7 +236,7 @@ send_notice_sql () {
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+You have currently $_CLIENT_CORES Aegir $_CLIENT_OPTION $_ENGINE_NR.
 
 Your allowed databases space is $_SQL_MIN_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
@@ -291,7 +296,7 @@ EOF
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+You have currently $_CLIENT_CORES Aegir $_CLIENT_OPTION $_ENGINE_NR.
 
 Your allowed databases space is $_SQL_MIN_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
@@ -346,7 +351,7 @@ EOF
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+You have currently $_CLIENT_CORES Aegir $_CLIENT_OPTION $_ENGINE_NR.
 
 Your allowed databases space is $_SQL_MIN_LIMIT MB.
 You are currently using $SumDatH MB of databases space.
@@ -410,7 +415,7 @@ send_notice_disk () {
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+You have currently $_CLIENT_CORES Aegir $_CLIENT_OPTION $_ENGINE_NR.
 
 Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
@@ -466,7 +471,7 @@ EOF
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+You have currently $_CLIENT_CORES Aegir $_CLIENT_OPTION $_ENGINE_NR.
 
 Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
@@ -511,7 +516,7 @@ EOF
 Hello,
 
 You are using more resources than allocated in your subscription.
-You have currently $_CLIENT_CORES $_CLIENT_OPTION Core(s) on a SSD+SAS System.
+You have currently $_CLIENT_CORES Aegir $_CLIENT_OPTION $_ENGINE_NR.
 
 Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
@@ -563,6 +568,7 @@ check_limits () {
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 256))
     _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 2560))
   elif [ "$_CLIENT_OPTION" = "SSD" ] ; then
+    _CLIENT_OPTION=EDGE
     _SQL_MIN_LIMIT=512
     _DSK_MIN_LIMIT=15360
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 128))
