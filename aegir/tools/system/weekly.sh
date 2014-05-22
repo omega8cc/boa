@@ -247,9 +247,9 @@ when in the site directory with:
 
   $ sqlmagic convert to-myisam
 
-or purchase enough Aegir Cores to cover your current usage.
+or purchase enough Aegir Engines to cover your current usage.
 
-You can purchase more Aegir Cores easily online:
+You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/upgrade
 
@@ -307,9 +307,9 @@ when in the site directory with:
 
   $ sqlmagic convert to-myisam
 
-or purchase enough Aegir Cores to cover your current usage.
+or purchase enough Aegir Engines to cover your current usage.
 
-You can purchase more Aegir Cores easily online:
+You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/upgrade
 
@@ -362,9 +362,9 @@ when in the site directory with:
 
   $ sqlmagic convert to-myisam
 
-or purchase enough Aegir Cores to cover your current usage.
+or purchase enough Aegir Engines to cover your current usage.
 
-You can purchase more Aegir Cores easily online:
+You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/upgrade
 
@@ -421,10 +421,10 @@ Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Aegir Cores
+and no longer used sites, or purchase enough Aegir Engines
 to cover your current usage.
 
-You can purchase more Aegir Cores easily online:
+You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/upgrade
 
@@ -477,10 +477,10 @@ Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Aegir Cores
+and no longer used sites, or purchase enough Aegir Engines
 to cover your current usage.
 
-You can purchase more Aegir Cores easily online:
+You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/upgrade
 
@@ -522,10 +522,10 @@ Your allowed disk space is $_DSK_MIN_LIMIT MB.
 You are currently using $HomSizH MB of disk space.
 
 Please reduce your usage by deleting old backups, files,
-and no longer used sites, or purchase enough Aegir Cores
+and no longer used sites, or purchase enough Aegir Engines
 to cover your current usage.
 
-You can purchase more Aegir Cores easily online:
+You can purchase more Aegir Engines easily online:
 
   https://omega8.cc/upgrade
 
