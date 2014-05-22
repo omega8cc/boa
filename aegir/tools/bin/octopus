@@ -120,8 +120,8 @@ up_one ()
       sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
-      _IS_OLD=`find $User/.drush/provision/ -maxdepth 1 -mindepth 1 -mtime +1 -type d | grep platform`
-      if [ -z "$_IS_OLD" ] && [ -z "$mcmode" ] && [ -e "$User/.drush/provision" ] ; then
+      _IS_OLD=`find $User/.drush/sys/provision/ -maxdepth 1 -mindepth 1 -mtime +1 -type d | grep platform`
+      if [ -z "$_IS_OLD" ] && [ -z "$mcmode" ] && [ -e "$User/.drush/sys/provision" ] ; then
         echo
         echo "This Aegir Instance is already up to date!"
         echo "If you wish to run/force the upgrade again,"
@@ -131,24 +131,35 @@ up_one ()
         echo "Usage: $(basename "$0") $cmmand $second {aegir|platforms|both}"
         echo
       else
-        if [ -e "$User/.drush/provision" ] ; then
+        if [ -e "$User/.drush/sys/provision" ] ; then
+          up_mode
+        elif [ -e "$User/.drush/provision" ] ; then
           up_mode
         else
-          echo "$User/.drush/provision does not exist!"
+          echo "$User/.drush/sys/provision does not exist!"
         fi
       fi
       if [ -e "$User/log/cores.txt" ] && [ ! -e "$User/log/CANCELLED" ] ; then
-        if [ -e "$User/.drush/uberdrupal.patch" ] ; then
-          cd $User/.drush
-          patch -p1 < uberdrupal.patch &> /dev/null
+        if [ -e "$User/.drush/bm.patch" ] && [ ! -e "$User/.drush/sys/bm.patch" ] && [ -e "$User/.drush/sys" ] ; then
+          mv -f $User/.drush/bm.patch $User/.drush/sys/bm.patch
         fi
-        if [ -e "$User/.drush/bm.patch" ] ; then
-          cd $User/.drush
+        if [ -e "$User/.drush/sys/bm.patch" ] ; then
+          cd $User/.drush/sys
           patch -p1 < bm.patch &> /dev/null
         fi
-        if [ -e "$User/.drush/custom.patch" ] ; then
-          cd $User/.drush
+        if [ -e "$User/.drush/custom.patch" ] && [ ! -e "$User/.drush/sys/custom.patch" ] && [ -e "$User/.drush/sys" ] ; then
+          mv -f $User/.drush/custom.patch $User/.drush/sys/custom.patch
+        fi
+        if [ -e "$User/.drush/sys/custom.patch" ] ; then
+          cd $User/.drush/sys
           patch -p1 < custom.patch &> /dev/null
+        fi
+        if [ -e "$User/.drush/uberdrupal.patch" ] && [ ! -e "$User/.drush/sys/uberdrupal.patch" ] && [ -e "$User/.drush/sys" ] ; then
+          mv -f $User/.drush/uberdrupal.patch $User/.drush/sys/uberdrupal.patch
+        fi
+        if [ -e "$User/.drush/sys/uberdrupal.patch" ] ; then
+          cd $User/.drush/sys
+          patch -p1 < uberdrupal.patch &> /dev/null
         fi
         cd /var/backups
       fi

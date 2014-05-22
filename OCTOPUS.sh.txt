@@ -1368,7 +1368,7 @@ sub_force_advanced_nginx_config () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
-  _THIS_NGX_PATH=/data/disk/$_USER/.drush/provision/http/Provision/Service/http
+  _THIS_NGX_PATH=/data/disk/$_USER/.drush/sys/provision/http/Provision/Service/http
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config
@@ -1539,7 +1539,7 @@ fi
 if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
   echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
 fi
-if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.yz.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
+if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.eq.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
   mkdir -p /data/disk/${_USER}/static/control
   chmod 755 /data/disk/${_USER}/static/control
   if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
@@ -1547,7 +1547,7 @@ if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.yz.txt" ] || [ ! -e "/data/d
     chmod 0644 /data/disk/${_USER}/static/control/README.txt
   fi
   chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
-  echo OK > /data/disk/${_USER}/static/control/.ctrl.yz.txt
+  echo OK > /data/disk/${_USER}/static/control/.ctrl.eq.txt
 fi
 if [ -d "/data/all/000" ] ; then
   if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then

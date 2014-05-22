@@ -37,30 +37,31 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ ! -e "$_U_HD/.ctrl.yz.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.eq.txt" ] ; then
       if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
       else
         rm -f $_U_HD/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
+        rm -f $_U_HD/usr/{drush_make,registry_rebuild,clean_missing_modules,drush_ecl}
         rm -f $_U_HD/.ctrl*
         rm -f -r $_U_HD/{cache,drush.ini,*drushrc*,*.inc}
       fi
-      mkdir -p       $_U_HD
+      mkdir -p       $_U_HD/usr
       rm -f -r       $_U_TP
       mkdir -p       $_U_TP
       chmod 700      $_U_TP
       chmod 700      $_U_HD
       chown $1:users $_U_TP
       chown $1:users $_U_HD
-      if [ ! -L "$_U_HD/registry_rebuild" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/registry_rebuild $_U_HD/registry_rebuild
+      if [ ! -L "$_U_HD/usr/registry_rebuild" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/registry_rebuild $_U_HD/usr/registry_rebuild
       fi
-      if [ ! -L "$_U_HD/clean_missing_modules" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/clean_missing_modules $_U_HD/clean_missing_modules
+      if [ ! -L "$_U_HD/usr/clean_missing_modules" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/clean_missing_modules $_U_HD/usr/clean_missing_modules
       fi
-      if [ ! -L "$_U_HD/drush_ecl" ] ; then
-        ln -sf /data/disk/${_OWN}/.drush/drush_ecl $_U_HD/drush_ecl
+      if [ ! -L "$_U_HD/usr/drush_ecl" ] ; then
+        ln -sf /data/disk/${_OWN}/.drush/usr/drush_ecl $_U_HD/usr/drush_ecl
       fi
     fi
 
@@ -73,7 +74,7 @@ enable_chattr () {
     done
     echo _PHP_CLI_UPDATE is $_PHP_CLI_UPDATE for $1
 
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.yz.txt" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.eq.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/.ctrl.php*
       rm -f $_U_HD/php.ini
@@ -108,7 +109,7 @@ enable_chattr () {
         _U_INI=52
       fi
       if [ -e "$_U_HD/php.ini" ] ; then
-        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/data/disk/${_OWN}/.drush/registry_rebuild:/data/disk/${_OWN}/.drush/clean_missing_modules:/data/disk/${_OWN}/.drush/drush_ecl:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
+        _INI="open_basedir = \".:/data/disk/${_OWN}/distro:/data/disk/${_OWN}/static:/data/disk/${_OWN}/platforms:/data/all:/data/disk/all:/data/conf:/usr/bin:/opt/tools/drush:/tmp:/home:/data/disk/${_OWN}/.drush/usr:/opt/tika:/opt/tika7:/opt/tika8:/opt/tika9:/opt/php52:/opt/php53:/opt/php54:/opt/php55\""
         _INI=${_INI//\//\\\/}
         _QTP=${_U_TP//\//\\\/}
         sed -i "s/.*open_basedir =.*/$_INI/g"                              $_U_HD/php.ini &> /dev/null
@@ -118,7 +119,7 @@ enable_chattr () {
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
         echo > $_U_HD/.ctrl.php${_U_INI}.txt
-        echo > $_U_HD/.ctrl.yz.txt
+        echo > $_U_HD/.ctrl.eq.txt
       fi
     fi
     if [ "$1" != "${_OWN}.ftp" ] ; then
@@ -379,7 +380,7 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.yz.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.eq.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -411,7 +412,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.yz.txt
+      echo > $_U_HD/.ctrl.eq.txt
     fi
     chattr +i $_U_HD/php.ini &> /dev/null
   fi
@@ -683,15 +684,15 @@ do
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.yz.txt" ] ; then
+    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.eq.txt" ] ; then
       rm -f -r /data/disk/${_OWN}/.drush/cache
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 02775 /data/disk/${_OWN}/.tmp &> /dev/null
-      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.yz.txt
+      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.eq.txt
     fi
-    if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.yz.txt" ] ; then
+    if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.eq.txt" ] ; then
       mkdir -p /data/disk/${_OWN}/static/control
       chmod 755 /data/disk/${_OWN}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
@@ -699,7 +700,7 @@ do
         chmod 0644 /data/disk/${_OWN}/static/control/README.txt
       fi
       chown -R ${_OWN}.ftp:$_USRG /data/disk/${_OWN}/static/control &> /dev/null
-      echo OK > /data/disk/${_OWN}/static/control/.ctrl.yz.txt
+      echo OK > /data/disk/${_OWN}/static/control/.ctrl.eq.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf
@@ -731,13 +732,13 @@ do
           ln -sf /data/disk/${_OWN}/clients /home/${_OWN}.ftp/clients
           ln -sf /data/disk/${_OWN}/static  /home/${_OWN}.ftp/static
         fi
-        if [ ! -e "/home/${_OWN}.ftp/.tmp/.ctrl.yz.txt" ] ; then
+        if [ ! -e "/home/${_OWN}.ftp/.tmp/.ctrl.eq.txt" ] ; then
           rm -f -r /home/${_OWN}.ftp/.drush/cache
           rm -f -r /home/${_OWN}.ftp/.tmp
           mkdir -p /home/${_OWN}.ftp/.tmp
           chown ${_OWN}.ftp:users /home/${_OWN}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_OWN}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_OWN}.ftp/.tmp/.ctrl.yz.txt
+          echo OK > /home/${_OWN}.ftp/.tmp/.ctrl.eq.txt
         fi
         enable_chattr ${_OWN}.ftp
         echo Done for $User

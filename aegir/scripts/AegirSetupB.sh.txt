@@ -197,11 +197,11 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.yz.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.eq.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
-    mkdir -p $_U_HD
+    mkdir -p $_U_HD/{sys,xts,usr}
     rm -f $_U_HD/.ctrl.php*
     rm -f $_U_HD/php.ini
     if [[ "$_CHECK_USE_PHP_CLI" =~ "php55" ]] ; then
@@ -228,7 +228,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.yz.txt
+      echo > $_U_HD/.ctrl.eq.txt
     fi
   fi
 }
@@ -369,6 +369,18 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
       mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
     fi
+    if [ -e "$_ROOT/.drush/xts/$e" ] ; then
+      mv -f $_ROOT/.drush/xts/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
+    fi
+    if [ -e "$_ROOT/.drush/usr/$e" ] ; then
+      mv -f $_ROOT/.drush/usr/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
+    fi
+    if [ -e "$_ROOT/.drush/sys/$e" ] ; then
+      mv -f $_ROOT/.drush/sys/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
+      mv -f $_ROOT/backups/$e-pre* $_ROOT/backups/system/ &> /dev/null
+    fi
   done
 fi
 
@@ -381,63 +393,73 @@ else
   exit 1
 fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
-mkdir -p $_ROOT/.drush
+mkdir -p $_ROOT/.drush/{sys,xts,usr}
 cd $_ROOT/.drush
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   if [ "$_USE_STOCK" = "YES" ] ; then
-    git clone --branch 6.x-2.x-stock-revert git://github.com/omega8cc/provision.git $_ROOT/.drush/provision &> /dev/null
+    git clone --branch 6.x-2.x-stock-revert git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
   else
     if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
       _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
-      git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/provision &> /dev/null
+      git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/sys/provision &> /dev/null
       _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
-      sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
-      rm -f -r $_ROOT/.drush/provision/.git
+      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
+      sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
+      rm -f -r $_ROOT/.drush/sys/provision/.git
     else
-      git clone $_BOA_REPO_GIT_URL/provision.git &> /dev/null
+      git clone $_BOA_REPO_GIT_URL/provision.git $_ROOT/.drush/sys/provision &> /dev/null
       _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/provision/aegir.make &> /dev/null
-      rm -f -r $_ROOT/.drush/provision/.git
+      sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
+      rm -f -r $_ROOT/.drush/sys/provision/.git
     fi
   fi
   if [ "$_STATUS" = "UPGRADE" ] ; then
+    cd $_ROOT/.drush/sys
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
   msg "$_STATUS B: Downloading Drush and Provision extensions..."
-  git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/provision_civicrm      &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/provision_cdn                   &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/provision_platform_git &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/provision_site_backup   &> /dev/null
-  git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/provision/remote_import         &> /dev/null
-  git clone --branch 6.x-3.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/provision_tasks_extra   &> /dev/null
-  git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/drush_ecl                           &> /dev/null
-  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/registry_rebuild             &> /dev/null
-  git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/security_review               &> /dev/null
-  git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/provision_boost               &> /dev/null
+  git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/sys/provision_civicrm      &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn                   &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/sys/provision_platform_git &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/provision_site_backup.git $_ROOT/.drush/sys/provision_site_backup   &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/remote_import.git $_ROOT/.drush/sys/provision/remote_import         &> /dev/null
+  git clone --branch 6.x-3.x git://github.com/omega8cc/provision_tasks_extra.git $_ROOT/.drush/sys/provision_tasks_extra   &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl                           &> /dev/null
+  git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild             &> /dev/null
+  git clone --branch 7.x-1.x git://github.com/omega8cc/security_review.git $_ROOT/.drush/xts/security_review               &> /dev/null
+  git clone --branch 7.x-2.x git://github.com/omega8cc/provision_boost.git $_ROOT/.drush/xts/provision_boost               &> /dev/null
   rm -f -r $_ROOT/.drush/*/.git
+  rm -f -r $_ROOT/.drush/*/*/.git
+  cd $_ROOT/.drush/usr
   get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
   if [ "$_STATUS" = "UPGRADE" ] ; then
+    cd $_ROOT/.drush/sys
     get_dev_ext "drush_make.tar.gz" &> /dev/null
   fi
   msg "$_STATUS B: Downloading Drush and Provision extensions..."
-  _G_EXT="clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra registry_rebuild security_review"
+  cd $_ROOT/.drush/xts
+  _G_EXT="provision_boost provision_cdn provision_civicrm provision_platform_git provision_site_backup provision_tasks_extra security_review"
   for e in $_G_EXT; do
     get_dev_ext "$e.tar.gz" &> /dev/null
   done
-  cd $_ROOT/.drush/provision
+  cd $_ROOT/.drush/usr
+  _G_EXT="clean_missing_modules drush_ecl registry_rebuild "
+  for e in $_G_EXT; do
+    get_dev_ext "$e.tar.gz" &> /dev/null
+  done
+  cd $_ROOT/.drush/sys/provision
   get_dev_ext "remote_import.tar.gz" &> /dev/null
   cd $_ROOT/.drush
 fi
 if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
 fi
-sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" $_ROOT/.drush/provision/platform/verify.provision.inc &> /dev/null
+sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" $_ROOT/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
 
 ###---### Build Aegir base.
 #
@@ -526,7 +548,7 @@ else
   fi
   msg "$_STATUS B: Hostmaster STATUS: upgrade start"
   msg "$_STATUS B: Running hostmaster-migrate, please wait..."
-  mv -f $_ROOT/.drush/security_review/security_review.drush.inc $_ROOT/.drush/security_review/foo.txt  &> /dev/null
+  mv -f $_ROOT/.drush/xts/security_review/security_review.drush.inc $_ROOT/.drush/xts/security_review/foo.txt  &> /dev/null
   export DEBIAN_FRONTEND=noninteractive
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
@@ -538,7 +560,7 @@ else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y &> /dev/null
   fi
   export DEBIAN_FRONTEND=text
-  mv -f $_ROOT/.drush/security_review/foo.txt $_ROOT/.drush/security_review/security_review.drush.inc  &> /dev/null
+  mv -f $_ROOT/.drush/xts/security_review/foo.txt $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
   ln -sf $_HOSTMASTER_ROOT $_ROOT/u/$_DOMAIN
   rm -f /data/u/$_DOMAIN

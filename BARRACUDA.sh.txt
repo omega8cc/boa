@@ -2418,7 +2418,7 @@ sub_force_advanced_nginx_config () {
 force_advanced_nginx_config () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   validate_local_ip &> /dev/null
-  _THIS_NGX_PATH=/var/aegir/.drush/provision/http/Provision/Service/http
+  _THIS_NGX_PATH=/var/aegir/.drush/sys/provision/http/Provision/Service/http
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
@@ -2450,7 +2450,7 @@ force_advanced_nginx_config () {
     fi
   fi
   chown aegir:aegir /var/aegir/config/includes/*
-  chown aegir:aegir /var/aegir/.drush/provision/http/Provision/Config/Nginx/*
+  chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ] ; then
     mkdir -p /data/conf
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
@@ -2508,8 +2508,8 @@ tune_web_server_config () {
   sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf        &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/provision/platform/verify.provision.inc    &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/provision/platform/verify.provision.inc      &> /dev/null
+  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/sys/provision/platform/verify.provision.inc    &> /dev/null
+  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/sys/provision/platform/verify.provision.inc      &> /dev/null
   _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
   if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
     _DO_NOTHING=YES
@@ -4186,9 +4186,11 @@ upgrade_aegir_master () {
       service cron stop &> /dev/null
     fi
     usermod -aG users aegir &> /dev/null
-    if [ ! -d "/var/aegir/.drush/provision/http" ] ; then
-      cd /var/aegir/.drush
+    if [ ! -d "/var/aegir/.drush/sys/provision/http" ] ; then
+      mkdir -p /var/aegir/.drush/{sys,xts,usr}
+      cd /var/aegir/.drush/sys
       rm -f -r /var/aegir/.drush/{provision,drush_make}
+      rm -f -r /var/aegir/.drush/sys/{provision,drush_make}
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
       get_dev_ext "drush_make.tar.gz" &> /dev/null
       rm -f -r /var/aegir/drush
@@ -7942,10 +7944,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   _U_HD="/var/aegir/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
   fi
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
@@ -8966,92 +8968,92 @@ else
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf       &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*          &> /dev/null
   fi
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
   sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf          &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
   sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
 
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf          &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
   sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
 
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf          &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
 
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf          &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
   sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
 
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf          &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
 
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf &> /dev/null
-  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf   &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf      &> /dev/null
-  sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/provision/http/Provision/Service/http/*.conf      &> /dev/null
-  sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
+  sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
+  sed -i "s/OctopusNCookie/AegirCookie/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+  sed -i "s/OctopusNCookie/AegirCookie/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
+  sed -i "s/OctopusNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf      &> /dev/null
+  sed -i "s/OctopusNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
   sed -i "s/60/180/g" /var/aegir/config/server_master/nginx.conf  &> /dev/null
   sed -i "s/300/180/g" /var/aegir/config/server_master/nginx.conf &> /dev/null
   validate_public_ip &> /dev/null

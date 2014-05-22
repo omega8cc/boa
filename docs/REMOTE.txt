@@ -26,7 +26,7 @@ $ service clean-boa-env start
 # You must remove remote_import extension so it will exist
 # only on the target server, or weird things will happen.
 #
-$ mv /data/disk/o1/.drush/provision/remote_import /tmp/
+$ mv /data/disk/o1/.drush/sys/provision/remote_import /tmp/
 
 ### On target and source server
 $ chsh -s /bin/bash o1

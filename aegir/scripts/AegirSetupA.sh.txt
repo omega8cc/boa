@@ -1012,9 +1012,11 @@ else
     if [ "$_PLATFORMS_ONLY" = "YES" ] ; then
       msg "$_STATUS A: Aegir Satellite Instance upgrade skipped - platforms only"
     else
-      if [ ! -d "$_ROOT/.drush/provision/http" ] ; then
-        cd $_ROOT/.drush
+      if [ ! -d "$_ROOT/.drush/sys/provision/http" ] ; then
+        mkdir -p $_ROOT/.drush/{sys,xts,usr}
+        cd $_ROOT/.drush/sys
         rm -f -r $_ROOT/.drush/{provision,drush_make}
+        rm -f -r $_ROOT/.drush/sys/{provision,drush_make}
         curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
         get_dev_ext "drush_make.tar.gz" &> /dev/null
         cp -af /var/aegir/drush/includes/table.inc /data/disk/o1/tools/drush/includes/table.inc
@@ -1121,9 +1123,9 @@ find $_ROOT/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/nu
 find $_ROOT/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
 chown -R $_USER:$_USRG $_ROOT/.drush &> /dev/null
 find $_ROOT/.drush -type d -exec chmod 0710 {} \; &> /dev/null
-find $_ROOT/.drush/registry_rebuild -type d -exec chmod 0750 {} \; &> /dev/null
-find $_ROOT/.drush/drush_ecl -type d -exec chmod 0750 {} \; &> /dev/null
-find $_ROOT/.drush/clean_missing_modules -type d -exec chmod 0750 {} \; &> /dev/null
+find $_ROOT/.drush/usr/registry_rebuild -type d -exec chmod 0750 {} \; &> /dev/null
+find $_ROOT/.drush/usr/drush_ecl -type d -exec chmod 0750 {} \; &> /dev/null
+find $_ROOT/.drush/usr/clean_missing_modules -type d -exec chmod 0750 {} \; &> /dev/null
 find $_ROOT/.drush -type f -exec chmod 0640 {} \; &> /dev/null
 chmod 0440 $_ROOT/.drush/*.php &> /dev/null
 chmod 0400 $_ROOT/.drush/server_*.php &> /dev/null
@@ -1293,43 +1295,55 @@ if [ ! -L "$_USER_HD/backups" ] ; then
 fi
 
 
-###---### Remove symlink to the system legacy drush_make.
+###---### Remove legacy symlinks.
 #
 if [ -e "$_USER_DS/drush_make" ] ; then
   rm -f $_USER_DS/drush_make
+fi
+if [ -e "$_USER_DS/registry_rebuild" ] ; then
+  rm -f $_USER_DS/registry_rebuild
+fi
+if [ -e "$_USER_DS/clean_missing_modules" ] ; then
+  rm -f $_USER_DS/clean_missing_modules
+fi
+if [ -e "$_USER_DS/drush_ecl" ] ; then
+  rm -f $_USER_DS/drush_ecl
 fi
 
 
 ###---### Add symlink to the system registry_rebuild.
 #
-if [ ! -L "$_USER_DS/registry_rebuild" ] ; then
+if [ ! -L "$_USER_DS/usr/registry_rebuild" ] ; then
   msg "$_STATUS A: Adding symlink to the system registry_rebuild"
-  mkdir -p $_USER_DS
+  mkdir -p $_USER_DS/usr
   chown $_USERFTP:$_USRG $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS/usr
   chmod 700 $_USER_DS
-  ln -sf /data/disk/${_USER}/.drush/registry_rebuild $_USER_DS/registry_rebuild
+  ln -sf /data/disk/${_USER}/.drush/usr/registry_rebuild $_USER_DS/usr/registry_rebuild
 fi
 
 
 ###---### Add symlink to the system clean_missing_modules.
 #
-if [ ! -L "$_USER_DS/clean_missing_modules" ] ; then
+if [ ! -L "$_USER_DS/usr/clean_missing_modules" ] ; then
   msg "$_STATUS A: Adding symlink to the system clean_missing_modules"
-  mkdir -p $_USER_DS
+  mkdir -p $_USER_DS/usr
   chown $_USERFTP:$_USRG $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS/usr
   chmod 700 $_USER_DS
-  ln -sf /data/disk/${_USER}/.drush/clean_missing_modules $_USER_DS/clean_missing_modules
+  ln -sf /data/disk/${_USER}/.drush/usr/clean_missing_modules $_USER_DS/usr/clean_missing_modules
 fi
 
 
 ###---### Add symlink to the system drush_ecl.
 #
-if [ ! -L "$_USER_DS/drush_ecl" ] ; then
+if [ ! -L "$_USER_DS/usr/drush_ecl" ] ; then
   msg "$_STATUS A: Adding symlink to the system drush_ecl"
-  mkdir -p $_USER_DS
+  mkdir -p $_USER_DS/usr
   chown $_USERFTP:$_USRG $_USER_DS
+  chown $_USERFTP:$_USRG $_USER_DS/usr
   chmod 700 $_USER_DS
-  ln -sf /data/disk/${_USER}/.drush/drush_ecl $_USER_DS/drush_ecl
+  ln -sf /data/disk/${_USER}/.drush/usr/drush_ecl $_USER_DS/usr/drush_ecl
 fi
 
 
