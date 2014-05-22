@@ -308,6 +308,16 @@ _NEWRELIC_KEY=""
 
 
 ###----------------------------------------###
+### SCOUT APP INSTALL                      ###
+###----------------------------------------###
+###
+### Enter your Scout App license key to get
+### it installed and enabled automatically.
+###
+_SCOUT_KEY=""
+
+
+###----------------------------------------###
 ### HTTP LISTENING MODE                    ###
 ###----------------------------------------###
 ###
@@ -2979,6 +2989,7 @@ barracuda_cnf () {
     echo "_LOCAL_DEBIAN_MIRROR=\"$_LOCAL_DEBIAN_MIRROR\"" >> /root/.barracuda.cnf
     echo "_LOCAL_UBUNTU_MIRROR=\"$_LOCAL_UBUNTU_MIRROR\"" >> /root/.barracuda.cnf
     echo "_NEWRELIC_KEY=$_NEWRELIC_KEY" >> /root/.barracuda.cnf
+    echo "_SCOUT_KEY=$_SCOUT_KEY" >> /root/.barracuda.cnf
 
     echo "###" >> /root/.barracuda.cnf
     echo "_NGINX_DOS_LIMIT=$_NGINX_DOS_LIMIT" >> /root/.barracuda.cnf
@@ -3335,6 +3346,12 @@ barracuda_cnf () {
           sed -i "s/license_key=//g" /root/.barracuda.cnf &> /dev/null
         fi
       fi
+    fi
+    _SCOUT_KEY_TEST=$(grep _SCOUT_KEY /root/.barracuda.cnf)
+    if [[ "$_SCOUT_KEY_TEST" =~ "_SCOUT_KEY" ]] ; then
+      _DO_NOTHING=YES
+    else
+      echo "_SCOUT_KEY=$_SCOUT_KEY" >> /root/.barracuda.cnf
     fi
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.barracuda.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
@@ -8528,12 +8545,13 @@ else
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
         _GEM_FILE="/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scout"
+        _GEM_PATH=${_GEM_FILE//\//\\\/}
         _GEM_CRON="/etc/crontab"
         _VAR_IF_PRESENT=$(grep "scout" $_GEM_CRON)
-        if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] && [ ! -e "$_GEM_FILE" ] ; then
+        if [[ "$_VAR_IF_PRESENT" =~ "scout" ]] && [ ! -e "$_GEM_FILE" ] && [ ! -z "$_SCOUT_KEY" ] ; then
           st_runner "rvm @global do gem install --conservative scout" 2> /dev/null
           usermod -aG users scout &> /dev/null
-          sed -i "s/scout .*\/scout/scout \/var\/scout\/.scout\/scout_cron.sh/g" $_GEM_CRON &> /dev/null
+          sed -i "s/\* \* \* \* \* scout .*/* * * * * scout $_GEM_PATH $_SCOUT_KEY/g" $_GEM_CRON &> /dev/null
         fi
         if [ -e "$_GEM_FILE" ] ; then
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null

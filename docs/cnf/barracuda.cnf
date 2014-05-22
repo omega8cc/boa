@@ -48,6 +48,7 @@ _FORCE_GIT_MIRROR="" #---------- Allows to use different mirror (deprecated)
 _LOCAL_DEBIAN_MIRROR= #--------- Allows to force non-default Debian mirror
 _LOCAL_UBUNTU_MIRROR= #--------- Allows to force non-default Ubuntu mirror
 _NEWRELIC_KEY= #---------------- Installs New Relic when license key is set
+_SCOUT_KEY= #------------------- Installs Scout App when license key is set
 ###
 _NGINX_DOS_LIMIT=300 #---------- Allows to override default 250/300 limit
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
