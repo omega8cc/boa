@@ -251,7 +251,7 @@ or purchase enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/upgrade
+  https://omega8.cc/buy
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -311,7 +311,7 @@ or purchase enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/upgrade
+  https://omega8.cc/buy
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -366,7 +366,7 @@ or purchase enough Aegir Engines to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/upgrade
+  https://omega8.cc/buy
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -426,7 +426,7 @@ to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/upgrade
+  https://omega8.cc/buy
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -482,7 +482,7 @@ to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/upgrade
+  https://omega8.cc/buy
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
@@ -527,7 +527,7 @@ to cover your current usage.
 
 You can purchase more Aegir Engines easily online:
 
-  https://omega8.cc/upgrade
+  https://omega8.cc/buy
 
 Note that we do not count any site identified as temporary dev/test,
 by having in its main name a special keyword with two dots on both sides:
