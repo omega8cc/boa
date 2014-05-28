@@ -2336,7 +2336,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     mv -f colorbox-master colorbox
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
-    get_dev_contrib "colorbox-7.x-2.4.tar.gz" &> /dev/null
+    get_dev_contrib "colorbox-7.x-2.6.tar.gz" &> /dev/null
     get_dev_contrib "ctools-7.x-1.4.tar.gz" &> /dev/null
     get_dev_contrib "entity-7.x-1.5.tar.gz" &> /dev/null
     get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
@@ -2399,7 +2399,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     mv -f colorbox-master colorbox
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
-    get_dev_contrib "colorbox-7.x-2.4.tar.gz" &> /dev/null
+    get_dev_contrib "colorbox-7.x-2.6.tar.gz" &> /dev/null
     get_dev_contrib "ctools-7.x-1.4.tar.gz" &> /dev/null
     get_dev_contrib "entity-7.x-1.5.tar.gz" &> /dev/null
     get_dev_contrib "google_analytics-7.x-1.4.tar.gz" &> /dev/null
