@@ -11,7 +11,6 @@
     ### CSF --- Firewall
     ### CSS --- Compass Tools
     ### FTP --- Pure-FTPd server with forced FTPS
-    ### PDS --- Fast DNS Cache Server (pdnsd)
     ### WMN --- Webmin Control Panel
     ###
     ### Xtras which need to be listed explicitly:
@@ -30,7 +29,7 @@
     ### _XTRAS_LIST=""
     ### _XTRAS_LIST="ALL"
     ### _XTRAS_LIST="ALL GIT SR3"
-    ### _XTRAS_LIST="PDS CSF CGP CHV FTP"
+    ### _XTRAS_LIST="CSF CGP CHV FTP"
     ###
 
   * Configuration file template: docs/cnf/barracuda.cnf

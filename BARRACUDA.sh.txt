@@ -69,7 +69,7 @@ _MY_EMAIL="notify@omega8.cc"
 ### Barracuda with only some options/services
 ### enabled, as listed below:
 ###
-### _XTRAS_LIST="PDS CSF CHV FTP"
+### _XTRAS_LIST="CSF CHV FTP"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
@@ -125,7 +125,7 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### Barracuda with only safe options/services
 ### enabled, as listed below:
 ###
-### _XTRAS_LIST="PDS CHV"
+### _XTRAS_LIST="CHV"
 ### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
@@ -269,7 +269,6 @@ _PHP_CLI_VERSION=5.3
 ### CSF --- Firewall
 ### CSS --- Compass Tools
 ### FTP --- Pure-FTPd server with forced FTPS
-### PDS --- Fast DNS Cache Server (pdnsd)
 ### WMN --- Webmin Control Panel
 ###
 ### Xtras which need to be listed explicitly:
@@ -288,13 +287,13 @@ _PHP_CLI_VERSION=5.3
 ### _XTRAS_LIST=""
 ### _XTRAS_LIST="ALL"
 ### _XTRAS_LIST="ALL GIT SR3"
-### _XTRAS_LIST="PDS CSF CGP CHV FTP"
+### _XTRAS_LIST="CSF CGP CHV FTP"
 ###
 ### Note that removing any item from this
 ### list once it is already installed, will
 ### NOT uninstall anything.
 ###
-_XTRAS_LIST="PDS CSF CHV FTP"
+_XTRAS_LIST="CSF CHV FTP"
 
 
 ###----------------------------------------###
@@ -5535,7 +5534,7 @@ else
   fi
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     msg "INFO: Easy Localhost Setup Mode Active"
-    _XTRAS_LIST="PDS CHV"
+    _XTRAS_LIST="CHV"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
@@ -5549,7 +5548,7 @@ else
     _LOCAL_NETWORK_HN="aegir.local"
   elif [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "INFO: Easy Public Setup Mode Active"
-    _XTRAS_LIST="PDS CSF CHV FTP"
+    _XTRAS_LIST="CSF CHV FTP"
     _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
@@ -9337,42 +9336,14 @@ install_pdnsd_cache () {
   rm -f /var/cache/pdnsd/pdnsd.cache
   mrun "service pdnsd start" &> /dev/null
 }
-_INSTALL_PDNSD=NO
-_HOSTN_TEST=`hostname -f 2>&1`
-if [[ "$_HOSTN_TEST" =~ "Name or service not known" ]] ; then
-  _INSTALL_PDNSD=YES
-fi
-if [[ "$_HOSTN_TEST" =~ "Temporary failure in name resolution" ]] ; then
-  _INSTALL_PDNSD=YES
-fi
-if [ ! -z "$_LOCAL_NETWORK_HN" ] ; then
-  _INSTALL_PDNSD=YES
-fi
 if [ -f "/etc/default/dhcpcd" ] ; then
-  _INSTALL_PDNSD=YES
   sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
   sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
 fi
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
-  if [ "$_INSTALL_PDNSD" = "NO" ] ; then
-    _CHECK_HOST=`uname -n`
-    if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "PDS" ]] || [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      echo " "
-      if prompt_yes_no "Do you want to install fast DNS cache pdnsd server?" ; then
-        true
-        install_pdnsd_cache
-        msg "INFO: DNS cache pdnsd server installation completed"
-      else
-        msg "INFO: DNS cache pdnsd server installation skipped"
-      fi
-    fi
-  elif [ "$_INSTALL_PDNSD" = "YES" ] ; then
-    install_pdnsd_cache
-  fi
-fi
-if [ -e "/usr/sbin/pdnsd" ] ; then
+  install_pdnsd_cache
+else
   if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
-    _INSTALL_PDNSD=YES
     msg "INFO: DNS cache pdnsd server re-installation forced"
     install_pdnsd_cache
   fi
