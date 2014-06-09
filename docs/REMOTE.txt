@@ -13,117 +13,59 @@
 #
 # The 'source-host' is your source instance FQDN hostname,
 # and 'target-host' is your target instance FQDN hostname.
-
-### On target and source server
 #
-# See: https://drupal.org/node/2247997
+# The 'plform-name' is an unique name of the imported codebase root directory.
+
+### On both source and target server
+#
+$ chsh -s /bin/bash o1
+$ sed -i "s/^max_execution_time =.*/max_execution_time = 7200/g" /opt/php*/lib/php.ini
+$ sed -i "s/^max_input_time =.*/max_input_time = 7200/g"         /opt/php*/lib/php.ini
+
+### On the source server only
+#
+$ su - o1
+$ nano ~/.ssh/authorized_keys ### Paste ~/.ssh/id_rsa.pub from the same account on target
+$ chmod 600 ~/.ssh/*
+
+### On the target server only
+#
+$ su - o1
+$ ssh-keyscan -t rsa -H source-host >> ~/.ssh/known_hosts
+$ drush @hostmaster en hosting_remote_import -y
+$ rsync -avzuL --exclude=plform-name/sites --ignore-errors -e ssh o1@source-host:/path/to/plform-name ~/static/
+$ mkdir -p ~/static/plform-name/sites
+$ rsync -avzuL --ignore-errors -e ssh o1@source-host:/path/to/plform-name/sites/all ~/static/plform-name/sites/
+$ rsync -avzuL --ignore-errors -e ssh o1@source-host:/path/to/plform-name/sites/default ~/static/plform-name/sites/
+#
+# Add the transfered platform codebase in the Aegir frontend
+# with path: /data/disk/o1/static/plform-name
+
+### On the source server only
 #
 $ mv -f /var/xdrago/manage_ltd_users.sh /var/backups/
 $ service clean-boa-env start
 
-### On source server
+### On the target server only
 #
-# You must remove remote_import extension so it will exist
-# only on the target server, or weird things will happen.
+# Note: you will have to wait for cron to run after every step or run
+# the tasks cron manually with `bash /var/xdrago/run-o1`
 #
-$ mv /data/disk/o1/.drush/sys/provision/remote_import /tmp/
-
-### On target and source server
-$ chsh -s /bin/bash o1
-$ su o1
-$ mkdir -p ~/.ssh
-$ chmod 700 ~/.ssh
-
-### On target server
-$ su o1
-$ ssh-keygen -b 4096 -t rsa -N "" -f ~/.ssh/id_rsa
-$ chmod 600 ~/.ssh/*
-
-### On source server
-$ su o1
-$ nano ~/.ssh/authorized_keys
-# Paste id_rsa.pub generated on target
-
-### On source server
-$ su o1
-$ ssh-keyscan -t rsa -H target-host >> ~/.ssh/known_hosts
-
-### On target server
-$ su o1
-$ ssh-keyscan -t rsa -H source-host >> ~/.ssh/known_hosts
-
-### On target server - as root
+1. Go to /node/add/server in the Aegir control panel on the target instance
+2. Enter FQDN of the source server as a 'Server hostname'
+3. Choose only 'hostmaster' option under 'Remote Import' and hit 'Save'
+4. Go to 'Import remote sites' tab on the just added server node once verified
+5. Click on the "Retrieve a list..." button and run cron
+6. Choose the site to import from the list and hit 'Next'
+7. Choose the platform the site should be hosted on, hit 'Import' and run cron
+8. Wait... wait.. wait.. until it is done and the site is imported and verified
 #
-# This example is for sites hosted on platforms installed
-# by default, so based on shared code in /data/all/ and
-# symlinked directories in /data/disk/o1/distro/.
-#
-# If your site is hosted in the /data/disk/o1/static directory
-# you can skip the steps related to transferring also /data/all.
-#
-# Create shared directory matching the path on the source-host:
-$ mkdir -p /data/all/003
-#
-# Transfer platform files to the shared directory:
-$ rsync -avzu --ignore-errors -e ssh o1@source-host:/data/all/003/platform /data/all/003/
-#
-# Create platform directory in the Octopus instance matching the path on the source-host:
-$ mkdir -p /data/disk/o1/distro/003
-#
-# Transfer platform files to the Octopus instance:
-$ rsync -avzu --ignore-errors -e ssh o1@source-host:/data/disk/o1/distro/003/platform /data/disk/o1/distro/003/
-#
-# Move away all transfered sites directories
-$ mv /data/disk/o1/distro/003/platform/sites/site-name-a /var/backups/
-$ mv /data/disk/o1/distro/003/platform/sites/site-name-b /var/backups/
-# etc.
-#
-# Add the transfered platform in the Aegir frontend
-# with platform path: /data/disk/o1/distro/003/platform
+# Repeat steps 4-8 to migrate next/more site(s)
 
-### On source server - as root
-$ mysql
-mysql> GRANT ALL PRIVILEGES ON *.* TO o1@target-ip IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
-mysql> GRANT ALL PRIVILEGES ON *.* TO o1@target-host IDENTIFIED BY 'SeCrEt' WITH GRANT OPTION;
-mysql> FLUSH PRIVILEGES;
-mysql> exit
-
-### On target and source server - as root
-# If you are migrating big sites, you may need to increase max_execution_time:
-$ sed -i "s/^max_execution_time =.*/max_execution_time = 7200/g" /opt/php*/lib/php.ini
-$ sed -i "s/^max_input_time =.*/max_input_time = 7200/g"         /opt/php*/lib/php.ini
-
-### On target and source server - as root
-# Open port 3306 in /etc/csf/csf.conf - see TCP_IN and TCP_OUT, or add IPs
-# of boths servers to /etc/csf/csf.allow and then restart firewall with:
-$ csf -q
-
-### On target server
-# Test mysql connection:
-$ su o1
-o1@target:~$ mysql -h source-host -u o1 -pSeCrEt
-
-### On target server
-# Enable module via web or on command line:
-$ cd /path/to/hostmaster/site
-$ drush en hosting_remote_import -y
-
-### On target server
-# Note: you will have to wait for cron to run
-# after every step or run it manually with:
-$ bash /var/xdrago/run-o1
-#
-1. Add new remote server - see screenshots: http://bit.ly/ZNBvpF
-2. Go to "Import remote sites" tab on the just added server node.
-3. Click on the "Retrieve a list of remote sites" button and run cron.
-4. Choose the site to import from the list.
-5. Choose the platform you have imported and added above and run cron.
-6. Wait... wait.. wait.. until it is done and the site is imported.
-7. Repeat from step 2 to migrate next/more site(s).
-8. Done!
-
-### On target and source server
-#
-# See: https://drupal.org/node/2247997
+### On the source server only
 #
 $ mv -f  /var/backups/manage_ltd_users.sh /var/xdrago/
+
+### On both source and target server
+#
+$ chsh -s /bin/false o1
