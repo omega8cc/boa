@@ -23,20 +23,19 @@ and changelog posted on our website for all previous BOA Editions at:
 #1 RESOURCES UPGRADE
 ----------------------------------------
 
-Did you know that even single Aegir hosted Core has built-in CPU power
+Did you know that even single Aegir hosted Engine has built-in CPU power
 scalability which would cost you $640/month on Linode or DigitalOcean?
 
-Regular SSD+SAS Cores now have 50% more disk space for files in all hosted
-Aegir instances with active SSD subscriptions (older Classic/Mini and Power
-Cores are not eligible for this particular upgrade). The upgrade happens
-in all currently available datacenters locations.
+Popular Edge Engines now have 50% more disk space for files in all hosted
+Aegir instances with active subscriptions. Older Classic/Mini and Power
+Engines are not eligible for this particular upgrade.
 
-  https://omega8.cc/hosted
+  https://omega8.cc/edge
 
-Plus, now all hosted Aegir instances, in all options can auto-scale on demand,
+Plus, now all hosted Aegir Edge and Power instances can auto-scale on demand,
 up to 48 PHP-FPM workers per Aegir Octopus Satellite Instance, free of charge.
 
-Did you know that even single Aegir hosted Core has built-in RAM scalability
+Did you know that even single Aegir hosted Engine has built-in RAM scalability
 which would cost you $320/month on Linode or DigitalOcean?
 
 ----------------------------------------
@@ -71,7 +70,7 @@ the need to multiply your subscriptions. This should open entirely new
 world of unique opportunities, cost-savings and efficiency, and any existing
 option will be able to receive upgrade to Aegir Expedition, very easily.
 
-Did you know that even single Aegir Expedition hosted Core will have built-in
+Did you know that even single Aegir Expedition Engine will have built-in
 RAM scalability 2x bigger than even the biggest options available at Linode
 and DigitalOcean, where it would cost you astonishing $1280/month or more?
 
