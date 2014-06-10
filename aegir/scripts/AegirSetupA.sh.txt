@@ -39,6 +39,7 @@ _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
 
 ###---### Distro config.
 #
+_AGOV=EDIT_AGOV
 _CIVICRM_M6=EDIT_CIVICRM_M6
 _CIVICRM_M7=EDIT_CIVICRM_M7
 _COD=EDIT_COD
@@ -1453,6 +1454,11 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites /home/$_USERFTP/platforms/$_THIS_CORE/acquia-$_SMALLCORE6
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites" ] ; then
