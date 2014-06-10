@@ -205,7 +205,7 @@ hostmaster_dr_up () {
   chmod 700 $_ROOT/backups/system
   cd $_ROOT
   mv -f drush $_ROOT/backups/system/drush-pre-$_DISTRO-$_NOW &> /dev/null
-  get_dev_ext "drush-$_DRUSH_VERSION.tar.gz" &> /dev/null
+  get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
   find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
   find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 $_ROOT/drush/drush
@@ -264,20 +264,20 @@ hostmaster_go_up () {
       cd $_ROOT/.drush/xts
       _G_EXT="provision_boost provision_cdn security_review"
       for e in $_G_EXT; do
-        get_dev_ext "$e.tar.gz" &> /dev/null
+        get_dev_ext "$e.tar.gz"
       done
       cd $_ROOT/.drush/usr
       _G_EXT="drush_ecl registry_rebuild"
       for e in $_G_EXT; do
-        get_dev_ext "$e.tar.gz" &> /dev/null
+        get_dev_ext "$e.tar.gz"
       done
     fi
     rm -f -r $_ROOT/.drush/*/.git
     rm -f -r $_ROOT/.drush/*/*/.git
     cd $_ROOT/.drush/usr
-    get_dev_ext "clean_missing_modules.tar.gz" &> /dev/null
+    get_dev_ext "clean_missing_modules.tar.gz"
     cd $_ROOT/.drush/sys
-    get_dev_ext "drush_make.tar.gz"            &> /dev/null
+    get_dev_ext "drush_make.tar.gz"
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null

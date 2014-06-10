@@ -1019,7 +1019,7 @@ else
         rm -f -r $_ROOT/.drush/{provision,drush_make}
         rm -f -r $_ROOT/.drush/sys/{provision,drush_make}
         curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
-        get_dev_ext "drush_make.tar.gz" &> /dev/null
+        get_dev_ext "drush_make.tar.gz"
         cp -af /var/aegir/drush/includes/table.inc /data/disk/o1/tools/drush/includes/table.inc
       fi
       hostmaster_frontend_dbpass_sync
