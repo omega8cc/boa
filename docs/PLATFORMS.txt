@@ -43,6 +43,7 @@
 ### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
+### RST ----------- Restaurant
 ### SRK ----------- Spark
 ### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7

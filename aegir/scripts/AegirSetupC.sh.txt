@@ -2188,7 +2188,7 @@ _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
 _OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
 if [ "$_ALLOW_ALL" = "YES" ] ; then
-if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AGV ]] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ RST ]] ; then
 if [ ! -d "$_OCTO_PLPATH" ] ; then
 echo " "
 if prompt_yes_no "$_F_RESTAURANT - https://drupal.org/project/restaurant" ; then

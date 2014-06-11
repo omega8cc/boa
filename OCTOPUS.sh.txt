@@ -183,6 +183,7 @@ _PHP_CLI_VERSION=5.3
 ### PPT ----------- ProsePoint (off)
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter
+### RST ----------- Restaurant
 ### SRK ----------- Spark
 ### TTM ----------- Totem
 ### UC7 ----------- Ubercart D7
