@@ -9,8 +9,8 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _MODULES_ON_SEVEN="robotstxt"
 _MODULES_ON_SIX="path_alias_cache robotstxt"
-_MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update performance syslog ultimate_cron update"
-_MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel javascript_aggregator hacked l10n_update performance poormanscron supercron syslog ultimate_cron update"
+_MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update performance syslog ultimate_cron update memcache memcache_admin varnish"
+_MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel javascript_aggregator hacked l10n_update performance poormanscron supercron syslog ultimate_cron update memcache memcache_admin varnish"
 
 ###-------------SYSTEM-----------------###
 
