@@ -519,12 +519,35 @@ switch_php()
   _LOC_PHP_CLI_VERSION=""
   if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
     echo "Custom FPM or CLI settings for $_OWN exist, running switch_php checks"
+    if [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
+      _LOC_PHP_CLI_VERSION=`cat /data/disk/${_OWN}/static/control/cli.info`
+      _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
+      if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
+        if [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
+          _LOC_PHP_CLI_VERSION=5.3
+        fi
+        if [ "$_LOC_PHP_CLI_VERSION" != "$_PHP_CLI_VERSION" ] ; then
+          _PHP_CLI_UPDATE=YES
+          update_php_cli_drush
+          update_php_cli_local_ini
+          if [ -e "$_L_PHP_CLI" ] ; then
+            sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
+          fi
+        fi
+      fi
+    fi
     if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
       _THIS_NGX_PATH=/data/disk/${_OWN}/config/includes
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
-        if [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
+        if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+          _LOC_PHP_FPM_VERSION=5.3
+        elif [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          _LOC_PHP_FPM_VERSION=5.3
+        elif [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
+          _LOC_PHP_FPM_VERSION=5.3
+        elif [ "$_LOC_PHP_FPM_VERSION" = "5.2" ] ; then
           _LOC_PHP_FPM_VERSION=5.3
         fi
         if [ "$_LOC_PHP_FPM_VERSION" != "$_PHP_FPM_VERSION" ] ; then
@@ -611,21 +634,6 @@ switch_php()
           if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
             service php${_PHP_SV}-fpm reload &> /dev/null
           fi
-        fi
-      fi
-    fi
-    if [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
-      _LOC_PHP_CLI_VERSION=`cat /data/disk/${_OWN}/static/control/cli.info`
-      _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
-      if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
-        if [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
-          _LOC_PHP_CLI_VERSION=5.3
-        fi
-        if [ "$_LOC_PHP_CLI_VERSION" != "$_PHP_CLI_VERSION" ] ; then
-          _PHP_CLI_UPDATE=YES
-          sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_LOC_PHP_CLI_VERSION/g" /root/.${_OWN}.octopus.cnf &> /dev/null
-          update_php_cli_drush
-          update_php_cli_local_ini
         fi
       fi
     fi

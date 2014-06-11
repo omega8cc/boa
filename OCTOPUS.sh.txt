@@ -1114,6 +1114,15 @@ octopus_cnf () {
       _PHP_FPM_VERSION=`cat /data/disk/$_USER/static/control/fpm.info`
       _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
+        if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.3
+        elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.3
+        elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
+          _PHP_FPM_VERSION=5.3
+        elif [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
+          _PHP_FPM_VERSION=5.3
+        fi
         sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
       fi
     else
@@ -1121,6 +1130,15 @@ octopus_cnf () {
         _PHP_FPM_VERSION=`cat /data/disk/$_USER/log/fpm.txt`
         _PHP_FPM_VERSION=`echo -n $_PHP_FPM_VERSION | tr -d "\n"`
         if [ "$_PHP_FPM_VERSION" = "5.5" ] || [ "$_PHP_FPM_VERSION" = "5.4" ] || [ "$_PHP_FPM_VERSION" = "5.3" ] || [ "$_PHP_FPM_VERSION" = "5.2" ]; then
+          if [ "$_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          elif [ "$_PHP_FPM_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          elif [ "$_PHP_FPM_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          elif [ "$_PHP_FPM_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
+            _PHP_FPM_VERSION=5.3
+          fi
           sed -i "s/.*_PHP_FPM_VERSION.*/_PHP_FPM_VERSION=$_PHP_FPM_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
@@ -1129,6 +1147,15 @@ octopus_cnf () {
       _PHP_CLI_VERSION=`cat /data/disk/$_USER/static/control/cli.info`
       _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
+        if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+          _PHP_CLI_VERSION=5.3
+        elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+          _PHP_CLI_VERSION=5.3
+        elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
+          _PHP_CLI_VERSION=5.3
+        elif [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
+          _PHP_CLI_VERSION=5.3
+        fi
         sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
       fi
     else
@@ -1136,6 +1163,15 @@ octopus_cnf () {
         _PHP_CLI_VERSION=`cat /data/disk/$_USER/log/cli.txt`
         _PHP_CLI_VERSION=`echo -n $_PHP_CLI_VERSION | tr -d "\n"`
         if [ "$_PHP_CLI_VERSION" = "5.5" ] || [ "$_PHP_CLI_VERSION" = "5.4" ] || [ "$_PHP_CLI_VERSION" = "5.3" ] || [ "$_PHP_CLI_VERSION" = "5.2" ]; then
+          if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          elif [ "$_PHP_CLI_VERSION" = "5.4" ] && [ ! -x "/opt/php54/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          elif [ "$_PHP_CLI_VERSION" = "5.3" ] && [ ! -x "/opt/php53/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          elif [ "$_PHP_CLI_VERSION" = "5.2" ] && [ ! -x "/opt/php52/bin/php" ] ; then
+            _PHP_CLI_VERSION=5.3
+          fi
           sed -i "s/.*_PHP_CLI_VERSION.*/_PHP_CLI_VERSION=$_PHP_CLI_VERSION/g" /root/.${_USER}.octopus.cnf &> /dev/null
         fi
       fi
