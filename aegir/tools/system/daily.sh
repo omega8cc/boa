@@ -9,8 +9,8 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
 _MODULES_ON_SEVEN="robotstxt"
 _MODULES_ON_SIX="path_alias_cache robotstxt"
-_MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update performance syslog ultimate_cron update memcache memcache_admin varnish"
-_MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel javascript_aggregator hacked l10n_update performance poormanscron supercron syslog ultimate_cron update memcache memcache_admin varnish"
+_MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update performance syslog ultimate_cron update memcache memcache_admin varnish watchdog_live"
+_MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel javascript_aggregator hacked l10n_update performance poormanscron supercron syslog ultimate_cron update memcache memcache_admin varnish watchdog_live"
 
 ###-------------SYSTEM-----------------###
 
@@ -105,6 +105,11 @@ check_if_required () {
       if [[ "$_RED_TEST" =~ "Required by" ]] ; then
         _REQ=NO
         echo _REQ for $1 is $_REQ in $Dom == 6 == via $_RED_TEST
+      fi
+      _REW_TEST=$(echo "$_REI_TEST" | grep "Required by.*watchdog_live")
+      if [[ "$_REW_TEST" =~ "Required by" ]] ; then
+        _REQ=NO
+        echo _REQ for $1 is $_REQ in $Dom == 7 == via $_REW_TEST
       fi
     fi
     Profile=$(drush4 vget ^install_profile$ | cut -d: -f2 | awk '{ print $1}' | sed "s/['\"]//g" | tr -d "\n" 2>&1)

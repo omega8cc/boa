@@ -116,6 +116,7 @@ Contrib [F]orce[D]isabled
  supercron ------------------ [D6] -------------- [FD]
  ultimate_cron -------------- [D6,D7] ----------- [FD]
  varnish -------------------- [D6,D7] ----------- [FD]
+ watchdog_live -------------- [D6,D7] ----------- [FD]
 
 Contrib [NA]:
 
