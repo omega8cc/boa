@@ -15,6 +15,11 @@
 # The 'target-host' is a placeholder for your target instance FQDN hostname.
 # The 'plform-name' is a placeholder for the name of the imported codebase root directory.
 #
+# Caveats:
+#
+# 1. The ajax_comments contrib module must be disabled and removed before site migration.
+# 2. The Verify task on the migrated site must run w/o errors before migration.
+#
 # You need to run required commands and perform tasks in the order listed below:
 
 ### Commands to run on both source and target server
