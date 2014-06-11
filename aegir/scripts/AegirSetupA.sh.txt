@@ -54,6 +54,7 @@ _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
 _DRUSH_CC_REQ=EDIT_DRUSH_CC_REQ
+_ERPAL=EDIT_ERPAL
 _GUARDR=EDIT_GUARDR
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
 _NODESTREAM7=EDIT_NODESTREAM7
@@ -1551,6 +1552,11 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites /home/$_USERFTP/platforms/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites" ] ; then

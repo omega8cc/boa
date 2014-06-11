@@ -167,6 +167,7 @@ _PHP_CLI_VERSION=5.3
 ### CS7 ----------- Commons 7
 ### DCE ----------- Commerce v.1
 ### DCS ----------- Commons 6
+### ERP ----------- ERPAL
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### MNS ----------- Managing News
@@ -682,6 +683,7 @@ _COMMONS3=7.x-3.13
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
+_ERPAL=7.x-2.0-beta2
 _GUARDR=7.x-1.4
 _MANAGINGNEWS=1.2.4
 _NODESTREAM7=7.x-2.0-rc5
@@ -1439,6 +1441,7 @@ do
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_CC_REQ/$_DRUSH_CC_REQ/g"           $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
+  sed -i "s/EDIT_ERPAL/$_ERPAL/g"                         $Files &> /dev/null
   sed -i "s/EDIT_GUARDR/$_GUARDR/g"                       $Files &> /dev/null
   sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
   sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null
