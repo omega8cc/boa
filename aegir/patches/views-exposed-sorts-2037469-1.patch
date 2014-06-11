@@ -1,0 +1,30 @@
+diff --git a/plugins/views_plugin_exposed_form.inc b/plugins/views_plugin_exposed_form.inc
+index 5d54600..1d19ed1 100644
+--- a/plugins/views_plugin_exposed_form.inc
++++ b/plugins/views_plugin_exposed_form.inc
+@@ -220,17 +220,24 @@ class views_plugin_exposed_form extends views_plugin {
+     }
+ 
+     if (count($exposed_sorts)) {
++      if (isset($form_state['input']['sort_by']) && isset($this->view->sort[$form_state['input']['sort_by']])) {
++        $default_sort_order = $form_state['input']['sort_by'];
++      } else {
++        $first_sort = reset($this->view->sort);
++        $default_sort_order = $first_sort->options['order'];
++      }
+       $form['sort_by'] = array(
+         '#type' => 'select',
+         '#options' => $exposed_sorts,
+         '#title' => $this->options['exposed_sorts_label'],
++        '#default_value' => $default_sort_order,
+       );
+       $sort_order = array(
+         'ASC' => $this->options['sort_asc_label'],
+         'DESC' => $this->options['sort_desc_label'],
+       );
+       if (isset($form_state['input']['sort_by']) && isset($this->view->sort[$form_state['input']['sort_by']])) {
+-        $default_sort_order = $this->view->sort[$form_state['input']['sort_by']]->options['order'];
++        $default_sort_order = $form_state['input']['sort_order'];
+       } else {
+         $first_sort = reset($this->view->sort);
+         $default_sort_order = $first_sort->options['order'];

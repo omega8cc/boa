@@ -70,6 +70,7 @@ _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PANOPOLY=EDIT_PANOPOLY
 _PROSEPOINT=EDIT_PROSEPOINT
 _RECRUITER=EDIT_RECRUITER
+_RESTAURANT=EDIT_RESTAURANT
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
 _SMALLCORE8=EDIT_SMALLCORE8
@@ -1630,6 +1631,11 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/spark-$_SPARK-$_SMALLCORE7/sites" ] ; then

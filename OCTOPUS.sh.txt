@@ -697,6 +697,7 @@ _OPENSCHOLAR=7.x-3.12.1
 _PANOPOLY=7.x-1.6
 _PROSEPOINT=0.46
 _RECRUITER=7.x-1.2
+_RESTAURANT=7.x-1.0-alpha5
 _SPARK=7.x-1.0-beta1
 _TOTEM=7.x-1.1
 _UBERCART6=2.13
@@ -1470,6 +1471,7 @@ do
   sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
   sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
   sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_RESTAURANT/$_RESTAURANT/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null

@@ -69,6 +69,7 @@ _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PANOPOLY=EDIT_PANOPOLY
 _PROSEPOINT=EDIT_PROSEPOINT
 _RECRUITER=EDIT_RECRUITER
+_RESTAURANT=EDIT_RESTAURANT
 _SMALLCORE6=EDIT_SMALLCORE6
 _SMALLCORE7=EDIT_SMALLCORE7
 _SMALLCORE8=EDIT_SMALLCORE8
@@ -516,6 +517,8 @@ upgrade_contrib_less () {
     cd views
     # https://drupal.org/node/1766338#comment-6445882
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    # https://drupal.org/node/2037469
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
     cd ../
   fi
   if [ -e "apps" ] ; then
@@ -613,6 +616,7 @@ _F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.6 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_RESTAURANT="Restaurant 1.0-a5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_SPARK="Spark 1.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBER_CART_TESTING="Ubercart $_UBERCART7 [ud2] $_SMALLCORE7 P.$_THIS_CORE"
@@ -2175,6 +2179,57 @@ fi
 }
 
 
+restaurant_install () {
+###---### Restaurant
+#
+_REAL_PRNAME="restaurant"
+_SHRD_PLNAME="$_REAL_PRNAME-$_RESTAURANT-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ AGV ]] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
+echo " "
+if prompt_yes_no "$_F_RESTAURANT - https://drupal.org/project/restaurant" ; then
+true
+msg "DISTRO: $_F_RESTAURANT installation in progress..."
+if [ ! -d "$_SHRD_PLPATH" ] ; then
+  cd $_CORE
+  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_RESTAURANT-core.tar.gz" | tar -xzf -
+    if [ -d "$_CORE/$_REAL_PRNAME-$_RESTAURANT" ] ; then
+      mv $_REAL_PRNAME-$_RESTAURANT $_SHRD_PLNAME
+    fi
+    nocore_d7_dist_clean
+    remove_default_core_seven_profiles
+    if [ $_RESTAURANT = "7.x-1.0-alpha5" ] ; then
+      cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {views}
+      get_dev_contrib "views-7.x-3.8.tar.gz"
+      cd $_SHRD_PRPATH/modules/contrib/views
+      # https://drupal.org/node/2037469
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+      # upgrade_contrib_less
+    fi
+  else
+    get_distro_ext "$_SHRD_PLNAME.tar.gz"
+  fi
+fi
+init_this_distro_root
+msg "DISTRO: $_F_RESTAURANT installation completed"
+else
+  msg "DISTRO: $_F_RESTAURANT installation skipped"
+fi
+fi
+fi
+fi
+}
+
+
 spark_install () {
 ###---### Spark
 #
@@ -2499,6 +2554,7 @@ openoutreach_install
 openscholar_install
 panopoly_install
 recruiter_install
+restaurant_install
 spark_install
 totem_install
 ubercart6_install
@@ -2714,6 +2770,11 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_RECRUITER" recruiter $_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7 &> /dev/null
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_RESTAURANT" restaurant $_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/spark-$_SPARK-$_SMALLCORE7" ] ; then
