@@ -739,7 +739,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {password_policy,views}
       get_dev_contrib "password_policy-7.x-1.6.tar.gz"
       get_dev_contrib "views-7.x-3.8.tar.gz"
-      #upgrade_contrib_less
+      cd $_SHRD_PRPATH/modules/contrib/views
+      # https://drupal.org/node/1766338#comment-6445882
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+      # https://drupal.org/node/2037469
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
+      # upgrade_contrib_less
     fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
@@ -2267,6 +2272,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {views}
       get_dev_contrib "views-7.x-3.8.tar.gz"
       cd $_SHRD_PRPATH/modules/contrib/views
+      # https://drupal.org/node/1766338#comment-6445882
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
       # https://drupal.org/node/2037469
       patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
       # upgrade_contrib_less
@@ -2512,6 +2519,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    # https://drupal.org/node/2037469
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
@@ -2575,6 +2584,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_SHRD_PRPATH/modules/views
     # https://drupal.org/node/1766338#comment-6445882
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+    # https://drupal.org/node/2037469
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
