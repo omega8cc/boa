@@ -537,6 +537,7 @@ switch_php()
           fi
           if [ "$_CLIENT_OPTION" = "MICRO" ] ; then
             _LIM_FPM=2
+            _PHP_FPM_WORKERS=4
           fi
           let "_CHILD_MAX_FPM = (($_LIM_FPM * 2))"
           if [ "$_PHP_FPM_WORKERS" = "AUTO" ] ; then
