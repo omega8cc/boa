@@ -1238,6 +1238,8 @@ count_cpu()
   if [ -z "$_CPU_NR" ] || [ "$_CPU_NR" -lt "1" ] ; then
     _CPU_NR=1
   fi
+  echo $_CPU_NR > /data/all/cpuinfo
+  chmod 644 /data/all/cpuinfo
 }
 
 load_control()
