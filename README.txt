@@ -216,8 +216,6 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
     /data/disk/USER/log/octopus_log.txt
 
 * Issue queues:
-  https://drupal.org/project/issues/barracuda (active)
-  https://drupal.org/project/issues/octopus (active)
   https://github.com/omega8cc/boa/issues (active)
 
   Please don't post your server logs here. Instead use
@@ -230,8 +228,6 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 ### REPOSITORIES
 
 * https://github.com/omega8cc/boa/ (main)
-* https://drupal.org/project/barracuda (mirror)
-* https://drupal.org/project/octopus (mirror)
 * https://code.aegir.cc/aegir (mirror)
 
 
@@ -242,9 +238,10 @@ https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 ### HELP
 
-* Join us at: https://groups.drupal.org/boa
-              http://community.aegirproject.org
-              http://groups.drupal.org/nginx
+* Use our Github project for contributing code, or reporting bugs, or requesting features
+* Please ask support questions on http://drupal.stackexchange.com/questions/tagged/aegir
+* Documentation will be available at http://boa.readthedocs.org and https://github.com/omega8cc/boa-docs
+* There is also an IRC channel: irc://irc.freenode.net/omega8cc
 
 
 ### CREDITS
