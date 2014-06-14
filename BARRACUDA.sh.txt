@@ -533,7 +533,6 @@ _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 ### repository. Valid options:
 ###
 ### _FORCE_GIT_MIRROR=github
-### _FORCE_GIT_MIRROR=drupal
 ### _FORCE_GIT_MIRROR=gitorious
 ###
 ### Note: with forced mirror the script will
@@ -541,8 +540,7 @@ _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 ### alternate mirror. It will simply fail
 ### if the forced mirror doesn't respond.
 ###
-### We recommend github as it is much faster,
-### often 10x than drupal and gitorious.
+### We recommend github - it is much faster.
 ###
 _FORCE_GIT_MIRROR=""
 
@@ -1363,38 +1361,28 @@ get_dev_src () {
 # Check repo status.
 check_git_repos_status () {
   _GITHUB_WORKS=NO
-  _DRUPAL_WORKS=NO
   _GITORIOUS_WORKS=NO
+  if [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
+    _FORCE_GIT_MIRROR=github
+  fi
   if [ "$_FORCE_GIT_MIRROR" = "github" ] ; then
     msg "INFO: We will use forced GitHub repository without testing connection"
     _GITHUB_WORKS=YES
-    _DRUPAL_WORKS=NO
-    _GITORIOUS_WORKS=NO
-    sleep 1
-  elif [ "$_FORCE_GIT_MIRROR" = "drupal" ] ; then
-    msg "INFO: We will use forced Drupal mirror without testing connection"
-    _GITHUB_WORKS=NO
-    _DRUPAL_WORKS=YES
     _GITORIOUS_WORKS=NO
     sleep 1
   elif [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
     msg "INFO: We will use forced Gitorious mirror without testing connection"
     _GITHUB_WORKS=NO
-    _DRUPAL_WORKS=NO
     _GITORIOUS_WORKS=YES
     sleep 1
   else
     msg "INFO: Testing repository mirror servers availability..."
     sleep 1
     _GITHUB_WORKS=YES
-    _DRUPAL_WORKS=YES
     _GITORIOUS_WORKS=YES
     if ! netcat -w 8 -z github.com 9418 ; then
       _GITHUB_WORKS=NO
       msg "WARN: The GitHub master repository server doesn't respond..."
-    elif ! netcat -w 8 -z git.drupal.org 80 ; then
-      _DRUPAL_WORKS=NO
-      msg "WARN: The Drupal mirror repository server doesn't respond..."
     elif ! netcat -w 8 -z code.aegir.cc 9418 ; then
       _GITORIOUS_WORKS=NO
       msg "WARN: The Gitorious mirror repository server doesn't respond..."
@@ -1404,10 +1392,6 @@ check_git_repos_status () {
     _BOA_REPO_NAME="boa"
     _BOA_REPO_GIT_URL="git://github.com/omega8cc"
     msg "INFO: GitHub master repository will be used"
-  elif [ "$_DRUPAL_WORKS" = "YES" ] ; then
-    _BOA_REPO_NAME="barracuda"
-    _BOA_REPO_GIT_URL="http://git.drupal.org/project"
-    msg "INFO: Drupal mirror repository will be used"
   elif [ "$_GITORIOUS_WORKS" = "YES" ] ; then
     _BOA_REPO_NAME="barracuda-octopus"
     _BOA_REPO_GIT_URL="git://code.aegir.cc/aegir"
