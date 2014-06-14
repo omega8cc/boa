@@ -941,8 +941,7 @@ provision_backend_dbpass_sync () {
   if [ ! -z "$_ESC_PASS" ] && [ ! -z "$_ENC_PASS" ] ; then
     su -s /bin/bash - $_USER -c "$_DRUSHCMD @hostmaster sqlq \"UPDATE hosting_db_server SET db_passwd='$_ESC_PASS' WHERE db_user='$_USER'\" &> /dev/null"
     mysql -u root -e "UPDATE mysql.user SET Password=PASSWORD('$_ESC_PASS') WHERE User='$_USER';" &> /dev/null
-    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_localhost.alias.drushrc.php &> /dev/null
-    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_master.alias.drushrc.php &> /dev/null
+    sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_*.alias.drushrc.php &> /dev/null
   fi
   mysqladmin flush-privileges &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
