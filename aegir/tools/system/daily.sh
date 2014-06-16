@@ -198,6 +198,23 @@ fix_user_register_protection () {
     else
       _ENABLE_USER_REGISTER_PROTECTION=NO
     fi
+    if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+      if [ "$_CLIENT_OPTION" = "POWER" ] ; then
+        _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_PLR_CTRL_FILE)
+        if [[ "$_DISABLE_USER_REGISTER_PROTECTION_TEST" =~ "disable_user_register_protection = TRUE" ]] ; then
+          _DISABLE_USER_REGISTER_PROTECTION=YES
+        else
+          _DISABLE_USER_REGISTER_PROTECTION=NO
+        fi
+      fi
+    else
+      _DISABLE_USER_REGISTER_PROTECTION_TEST=$(grep "^disable_user_register_protection = TRUE" $_PLR_CTRL_FILE)
+      if [[ "$_DISABLE_USER_REGISTER_PROTECTION_TEST" =~ "disable_user_register_protection = TRUE" ]] ; then
+        _DISABLE_USER_REGISTER_PROTECTION=YES
+      else
+        _DISABLE_USER_REGISTER_PROTECTION=NO
+      fi
+    fi
   else
     _ENABLE_USER_REGISTER_PROTECTION=NO
   fi
