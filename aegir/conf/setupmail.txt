@@ -146,6 +146,12 @@ as your site settings.php and local.settings.php files.
 
 Chive Manager URL: https://166.84.6.231
 
+Note that you must be logged in via SSH and run any auto-continuos
+command, for example: 'ping -i 30 google.com' to keep the access
+open for your IP address, on the fly. The system will check and
+update access rules every 10 seconds, so please allow 10-15
+seconds to open the access after you have logged in via SSH.
+
 You can also use any desktop SQL manager you prefer, if it
 supports tunneling over standard SSH port 22, since there is
 no remote access over mysql port 3306 available, for security and
