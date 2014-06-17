@@ -99,6 +99,23 @@ _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 ###
 ### Extra, special purpose settings are listed below.
 ###
+
+###
+### You can whitelist extra binaries to make them available for web server
+### requests, in additon to already whitelisted, known as safe binaries.
+###
+### Please be aware that you could easily open security holes by whitelisting
+### commands which may provide access to otherwise not available parts of
+### the system, because the exec() in PHP doesn't respect other limitations
+### like open_basedir directive.
+###
+### You should list only filenames, not full paths, for example:
+###
+###   _BACKEND_ITEMS_LIST="git foo bar"
+###
+_BACKEND_ITEMS_LIST=
+
+###
 ### NOTE: the group of settings displayed bellow is never stored
 ### permanently in this config file, since they are intended to be used
 ### only when required/useful for some reason, and while can be added
