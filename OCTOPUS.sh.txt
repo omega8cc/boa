@@ -1219,7 +1219,7 @@ octopus_cnf () {
     if [ -e "/data/disk/${_USER}/static/control/platforms.info" ] ; then
       _PLATFORMS_LIST=`cat /data/disk/${_USER}/static/control/platforms.info`
       _PLATFORMS_LIST=`echo -n $_PLATFORMS_LIST | tr -d "\n"`
-      _PLATFORMS_LIST=${_PLATFORMS_LIST//[^A-Z ]/}
+      _PLATFORMS_LIST=${_PLATFORMS_LIST//[^0-9A-Z ]/}
       msg "NOTE! Custom Platforms List: $_PLATFORMS_LIST"
       if [ -z "$_PLATFORMS_LIST" ] ; then
         _PLATFORMS_LIST="$_PRE_PLATFORMS_LIST"
