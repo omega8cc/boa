@@ -110,3 +110,54 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### should not exist if you have 5.2 defined in the /root/.${_USER}.octopus.cnf
 ### file for some reason.
 ###
+
+###
+### /data/disk/${_USER}/static/control/platforms.info
+###
+### This file, if exists and contains a single line with supported platforms
+### symbols, allows to control/override the values of _PLATFORMS_LIST variable
+### normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
+### modified by the Aegir instance owner with no system root access.
+###
+### IMPORTANT: If used, it will replace/override the value defined on initial
+### instance install and all previous upgrades. It takes effect on every future
+### Octopus instance upgrade, which means that you will miss newly added
+### distributions, if they will not be listed also in this control file.
+###
+### Supported values which can be written in this file - remember: all in a
+### single line, not separate per line, as listed below only for readibility.
+### You can also use special keyword 'ALL' to have all available platforms
+### installed, including newly added in the future BOA system releases.
+###
+### D7P D7S D7D --- Drupal 7 prod/stage/dev
+### D6P D6S D6D --- Pressflow 6 p/s/d
+### AGV ----------- aGov
+### CME ----------- Commerce v.2
+### CS7 ----------- Commons 7
+### DCE ----------- Commerce v.1
+### DCS ----------- Commons 6
+### ERP ----------- ERPAL
+### FSR ----------- Feature Server
+### GDR ----------- Guardr
+### MNS ----------- Managing News
+### OA7 ----------- Open Atrium D7
+### OAM ----------- Open Atrium D6
+### OAY ----------- Open Academy
+### OBG ----------- OpenBlog
+### OCH ----------- OpenChurch
+### ODS ----------- Open Deals
+### OOH ----------- Open Outreach
+### OSR ----------- OpenScholar
+### PPY ----------- Panopoly
+### RER ----------- Recruiter
+### RST ----------- Restaurant
+### SRK ----------- Spark
+### TTM ----------- Totem
+### UC7 ----------- Ubercart D7
+### UCT ----------- Ubercart D6
+###
+### Examples:
+###
+### ALL
+### D7P D6P OAM MNS OOH
+###

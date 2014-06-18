@@ -1215,6 +1215,17 @@ octopus_cnf () {
     if [ -e "/root/.${_USER}.octopus.cnf" ] ; then
       source /root/.${_USER}.octopus.cnf
     fi
+    _PRE_PLATFORMS_LIST="$_PLATFORMS_LIST"
+    if [ -e "/data/disk/${_USER}/static/control/platforms.info" ] ; then
+      _PLATFORMS_LIST=`cat /data/disk/${_USER}/static/control/platforms.info`
+      _PLATFORMS_LIST=`echo -n $_PLATFORMS_LIST | tr -d "\n"`
+      _PLATFORMS_LIST=${_PLATFORMS_LIST//[^\sA-Z]/}
+      msg "NOTE! Custom Platforms List: $_PLATFORMS_LIST"
+      if [ -z "$_PLATFORMS_LIST" ] ; then
+        _PLATFORMS_LIST="$_PRE_PLATFORMS_LIST"
+        msg "NOTE! Default Platforms List: $_PLATFORMS_LIST"
+      fi
+    fi
     if [[ "$_MY_EMAIL" =~ "omega8.cc" ]] ; then
       if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         _DO_NOTHING=YES

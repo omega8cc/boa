@@ -5,4 +5,4 @@ used to configure backend system tasks.
 
 Please check detailed how-to with all options listed in the template file:
 
-  aegir/tools/system/conf/default.boa_site_control.ini
+  aegir/conf/default.boa_site_control.ini
