@@ -185,8 +185,8 @@ fix_user_register_protection () {
 
   _PLR_CTRL_FILE="$Plr/sites/all/modules/boa_platform_control.ini"
 
-  if [ -e "$User/static/control/enable_user_register_protection.info" ] && [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
-    cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+  if [ -e "$User/static/control/enable_user_register_protection.info" ] && [ -e "/data/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+    cp -af /data/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
     chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
     chmod 0664 $_PLR_CTRL_FILE
   fi
@@ -361,8 +361,8 @@ fix_modules () {
             fi
           fi
           if [ "$_AUTO_CONFIG_ADVAGG" = "YES" ] ; then
-            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
               chmod 0664 $_DIR_CTRL_FILE
             fi
@@ -383,8 +383,8 @@ fix_modules () {
               fi
             fi
           else
-            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
               chmod 0664 $_DIR_CTRL_FILE
             fi
@@ -411,8 +411,8 @@ fix_modules () {
             fi
           fi
           if [ "$_AUTO_CONFIG_PURGE_EXPIRE" = "YES" ] ; then
-            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
               chmod 0664 $_DIR_CTRL_FILE
             fi
@@ -433,8 +433,8 @@ fix_modules () {
               fi
             fi
           else
-            if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
               chmod 0664 $_DIR_CTRL_FILE
             fi
@@ -472,8 +472,8 @@ fix_modules () {
               fi
             fi
             if [ "$_AUTO_CONFIG_PRIVATE_FILE_DOWNLOADS" = "YES" ] ; then
-              if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-                cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+              if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+                cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
                 chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
                 chmod 0664 $_DIR_CTRL_FILE
               fi
@@ -489,8 +489,8 @@ fix_modules () {
                 fi
               fi
             else
-              if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
-                cp -af /var/xdrago/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
+              if [ -e "/data/conf/default.boa_site_control.ini" ] && [ ! -e "$_DIR_CTRL_FILE" ] ; then
+                cp -af /data/conf/default.boa_site_control.ini $_DIR_CTRL_FILE &> /dev/null
                 chown $_THIS_HM_USER:users $_DIR_CTRL_FILE
                 chmod 0664 $_DIR_CTRL_FILE
               fi
@@ -520,8 +520,8 @@ fix_modules () {
             fi
           fi
           if [ "$_AUTO_DETECT_FACEBOOK_INTEGRATION" = "YES" ] ; then
-            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
               chmod 0664 $_PLR_CTRL_FILE
             fi
@@ -538,8 +538,8 @@ fix_modules () {
               fi
             fi
           else
-            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
               chmod 0664 $_PLR_CTRL_FILE
             fi
@@ -568,8 +568,8 @@ fix_modules () {
             fi
           fi
           if [ "$_AUTO_DETECT_DOMAIN_ACCESS_INTEGRATION" = "YES" ] ; then
-            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
               chmod 0664 $_PLR_CTRL_FILE
             fi
@@ -586,8 +586,8 @@ fix_modules () {
               fi
             fi
           else
-            if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
-              cp -af /var/xdrago/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
+            if [ -e "/data/conf/default.boa_platform_control.ini" ] && [ ! -e "$_PLR_CTRL_FILE" ] ; then
+              cp -af /data/conf/default.boa_platform_control.ini $_PLR_CTRL_FILE &> /dev/null
               chown $_THIS_HM_USER:users $_PLR_CTRL_FILE
               chmod 0664 $_PLR_CTRL_FILE
             fi
@@ -1087,9 +1087,9 @@ add_note_site_ini () {
 }
 
 fix_platform_control_files () {
-  if [ -e "/var/xdrago/conf/default.boa_platform_control.ini" ] ; then
+  if [ -e "/data/conf/default.boa_platform_control.ini" ] ; then
     if [ ! -e "$Plr/sites/all/modules/default.boa_platform_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
-      cp -af /var/xdrago/conf/default.boa_platform_control.ini $Plr/sites/all/modules/ &> /dev/null
+      cp -af /data/conf/default.boa_platform_control.ini $Plr/sites/all/modules/ &> /dev/null
       chown $_THIS_HM_USER:users $Plr/sites/all/modules/default.boa_platform_control.ini
       chmod 0664 $Plr/sites/all/modules/default.boa_platform_control.ini
     fi
@@ -1104,9 +1104,9 @@ fix_platform_control_files () {
 }
 
 fix_site_control_files () {
-  if [ -e "/var/xdrago/conf/default.boa_site_control.ini" ] ; then
+  if [ -e "/data/conf/default.boa_site_control.ini" ] ; then
     if [ ! -e "$Dir/modules/default.boa_site_control.ini" ] || [ "$_CTRL_TPL_FORCE_UPDATE" = "YES" ] ; then
-      cp -af /var/xdrago/conf/default.boa_site_control.ini $Dir/modules/ &> /dev/null
+      cp -af /data/conf/default.boa_site_control.ini $Dir/modules/ &> /dev/null
       chown $_THIS_HM_USER:users $Dir/modules/default.boa_site_control.ini
       chmod 0664 $Dir/modules/default.boa_site_control.ini
     fi

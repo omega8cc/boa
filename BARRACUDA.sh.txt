@@ -2126,6 +2126,19 @@ update_nginx_conf () {
   fi
 }
 #
+# Update INI templates.
+update_ini_tpl () {
+  mkdir -p /data/conf
+  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/default.boa_platform_control.ini" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
+    rm -f /var/xdrago/conf/default.boa_platform_control.ini
+  fi
+  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/default.boa_site_control.ini" ] ; then
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
+    rm -f /var/xdrago/conf/default.boa_site_control.ini
+  fi
+}
+#
 # Update global.inc Config.
 update_global_inc_conf () {
   if [ -e "/data/conf/global.inc" ] ; then
@@ -2148,6 +2161,7 @@ fix_on_upgrade () {
   disable_old_purge_cruft_machine
   enable_weekly_usage_monitor
   update_php_conf
+  update_ini_tpl
   update_sql_conf
   update_nginx_conf
   update_global_inc_conf
@@ -7862,6 +7876,7 @@ if [ -e "/root/.my.pass.txt" ] ; then
     msg "INFO: Updating $_DB_SERVER and PHP configuration"
     update_sql_conf
     update_php_conf
+    update_ini_tpl
     tune_memory_limits
     msg "INFO: Restarting $_DB_SERVER server"
     mrun "service mysql restart" &> /dev/null
@@ -7870,6 +7885,7 @@ if [ -e "/root/.my.pass.txt" ] ; then
     msg "INFO: Updating $_DB_SERVER and PHP configuration"
     update_sql_conf
     update_php_conf
+    update_ini_tpl
     tune_memory_limits
     msg "INFO: OS and services upgrade completed"
   fi
