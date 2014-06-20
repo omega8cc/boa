@@ -3164,15 +3164,21 @@ barracuda_cnf () {
       fi
     fi
 
+    _CHECK_HOST=`uname -n`
+    _L_VMFAMILY=XEN
+    _L_VM_TEST=`uname -a 2>&1`
+    if [[ "$_L_VM_TEST" =~ beng ]] ; then
+      _L_VMFAMILY="VS"
+    fi
+    if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+      if [ "$_PHP_MULTI_INSTALL" = "5.3" ] ; then
+        _PHP_MULTI_INSTALL=""
+      fi
+    fi
+
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
       _DO_NOTHING=YES
     else
-      _CHECK_HOST=`uname -n`
-      _L_VMFAMILY=XEN
-      _L_VM_TEST=`uname -a 2>&1`
-      if [[ "$_L_VM_TEST" =~ beng ]] ; then
-        _L_VMFAMILY="VS"
-      fi
       if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
         _PHP_MULTI_INSTALL="5.5 5.4 5.3"
       fi
