@@ -102,7 +102,7 @@ _USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 
 ###
 ### You can whitelist extra binaries to make them available for web server
-### requests, in additon to already whitelisted, known as safe binaries.
+### requests, in addition to already whitelisted, known as safe binaries.
 ###
 ### Please be aware that you could easily open security holes by whitelisting
 ### commands which may provide access to otherwise not available parts of

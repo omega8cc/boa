@@ -39,7 +39,7 @@
 ###
 ### Supported values which can be written in this file - remember: all in a
 ### single line, space separated, so not one per line, as listed below
-### only for readibility:
+### only for readability:
 ###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d

@@ -125,7 +125,7 @@ _CLIENT_CORES="8" #------------- Currently not used
 ### distributions, if they will not be listed also in this control file.
 ###
 ### Supported values which can be written in this file - remember: all in a
-### single line, not separate per line, as listed below only for readibility.
+### single line, not separate per line, as listed below only for readability.
 ### You can also use special keyword 'ALL' to have all available platforms
 ### installed, including newly added in the future BOA system releases.
 ###
