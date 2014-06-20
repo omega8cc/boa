@@ -6433,17 +6433,35 @@ else
 fi
 msg "NOTE! This step may take a few minutes, please wait..."
 if [ "$_STATUS" = "INIT" ] ; then
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    _APT_XTRA="openjdk-7-jdk openjdk-6-jdk nginx"
+  if [[ "$_XTRAS_LIST" =~ "SR" ]] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless nginx"
+    else
+      _APT_XTRA="openjdk-6-jre-headless nginx"
+    fi
   else
-    _APT_XTRA="openjdk-6-jdk nginx"
+    _APT_XTRA="nginx"
   fi
   _APT_ELSE="netcat nginx"
 else
-  if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
-    _APT_XTRA="openjdk-7-jdk openjdk-6-jdk"
+  _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install)
+  if [[ "$_APT_ITEM" =~ "install" ]] ; then
+    mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
+    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  fi
+  _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install)
+  if [[ "$_APT_ITEM" =~ "install" ]] ; then
+    mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
+    mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  fi
+  if [[ "$_XTRAS_LIST" =~ "SR" ]] ; then
+    if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] ; then
+      _APT_XTRA="openjdk-7-jre-headless openjdk-6-jre-headless"
+    else
+      _APT_XTRA="openjdk-6-jre-headless"
+    fi
   else
-    _APT_XTRA="openjdk-6-jdk"
+    _APT_XTRA=""
   fi
   _APT_ELSE="netcat"
   st_runner "aptitude remove nginx-extras -y"   &> /dev/null
@@ -6497,9 +6515,9 @@ fi
 if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
   _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables libapr1 lemon libaprutil1 libc-client-dev libc-client2007e libc-client2007e-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-0 libpng12-dev libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano netcat ncurses-dev $_APT_XTRA postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra unzip vim whois xml-core xml2 zip zlib1g-dev zlibc xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev geoip-database libmagickwand-dev gettext ncurses-term udev libpam-unix2 libxcrypt1 s3cmd python-software-properties ldap-utils $_EXTRA_PACKAGES"
 elif [ "$_REL_VERSION" = "lenny" ] ; then
-  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
+  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvconfig t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
 else
-  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jdk postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
+  _DEBDEPS="apticron aptitude auditd autoconf2.13 automake automake1.4 autotools-dev bc bison build-essential cron cvs defoma devscripts dnsutils dstat flex fontconfig-config ghostscript gnupg imagemagick htop ifstat iptables lemon libapr1 libaprutil1 libc-client-dev libc-client2007b libc-client2007b-dev libfilesys-diskspace-perl libfontconfig1 libfreetype6 libfreetype6-dev libfribidi0 libhtml-template-perl libjpeg-dev libjpeg62 $_EXTRA_LIB_APT libnet-daemon-perl libpcre3 libpcre3-dev libplrpc-perl libpng12-dev libpng12-0 libpq5 libsasl2-modules libssl-dev libt1-5 libt1-dev libtool libwww-perl libxml2-dev libxpm4 libxslt-dev libxslt1-dbg libxslt1-dev libxslt1.1 lftp m4 makepasswd mc mcrypt nano $_APT_ELSE ncurses-dev openjdk-6-jre-headless postfix postfix-pcre pwgen python-dev cython re2c rsync shtool ssh ssl-cert subversion sudo sysstat sysvinit-utils t1lib-bin telnet time ttf-dejavu ttf-dejavu-core ttf-dejavu-extra vim whois xml-core xml2 zlib1g-dev zlibc unzip zip xpdf catdoc unrtf pdftk libterm-readkey-perl rrdtool libpam-umask ntpdate p7zip-full sipcalc $_SYSLOGD libgmp3-dev symlinks libgeoip1 libgeoip-dev libmagick9-dev gettext ncurses-term udev ldap-utils $_EXTRA_PACKAGES"
 fi
 
 install_with_aptitude_deps () {
@@ -7464,7 +7482,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
   if [ ! -d "/opt/solr4" ] ; then
-    if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+    if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
       _REAL_JETTY=9
     else
       _REAL_JETTY=8
@@ -7478,7 +7496,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       rm -f -r /opt/solr4
       rm -f -r /opt/jetty9
       rm -f /etc/jetty.conf
-      if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
         get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz"
         mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
         echo $_JETTY_9_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt
@@ -7523,7 +7541,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       chown -R jetty9:jetty9 /opt/solr4
       chown -R jetty9:jetty9 /opt/jetty9
       chown -R jetty9:jetty9 /var/log/jetty9
-      if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
         echo "JAVA=/usr/bin/java7 # Path to Java 1.7" > /etc/default/jetty9
         echo "JAVA_HOME=/usr/lib/jvm/java-7-openjdk/jre # Path to Java 1.7" >> /etc/default/jetty9
       else
@@ -7539,7 +7557,7 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
       echo "JETTY_RUN=/var/run # Run directory" >> /etc/default/jetty9
       echo "JETTY_PID=\$JETTY_RUN/jetty9.pid # Pid file" >> /etc/default/jetty9
       echo "JAVA_OPTIONS=\"-Xms8m -Xmx128m -Djava.awt.headless=true -Dsolr.solr.home=/opt/solr4 \$JAVA_OPTIONS\" # Options" >> /etc/default/jetty9
-      if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+      if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/8/9/g" /opt/jetty9/bin/jetty.sh &> /dev/null
@@ -7566,7 +7584,7 @@ if [ "$_UP_JDK" = "YES" ] && [ -e "/etc/init.d/jetty9" ] ; then
   mrun "service jetty9 start" &> /dev/null
   msg "INFO: Jetty 9 restart completed"
 fi
-if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
   _REAL_JETTY=9
   _JETTY_CTRL="/opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt"
 else
@@ -7586,7 +7604,7 @@ if [ -e "/opt/jetty9/VERSION.txt" ] ; then
     rm -f -r jetty-distribution-*
     kill -9 $(ps aux | grep '[j]etty9' | awk '{print $2}') &> /dev/null
     mv -f /opt/jetty9 /var/backups/jetty9-$_INSTALLER_VERSION-$_NOW
-    if [[ "$_APT_XTRA" =~ "openjdk-7-jdk" ]] ; then
+    if [[ "$_APT_XTRA" =~ "openjdk-7-jre-headless" ]] ; then
       get_dev_arch "jetty-distribution-$_JETTY_9_VERSION.tar.gz"
       mv /var/opt/jetty-distribution-$_JETTY_9_VERSION /opt/jetty9
       echo $_JETTY_9_VERSION > /opt/jetty9/jetty-ctrl-$_JETTY_9_VERSION-version.txt
