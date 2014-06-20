@@ -281,6 +281,19 @@ check_root ()
     echo "ERROR: Your disk space is almost full - we can not proceed until it is below 90/100"
     exit 1
   fi
+  _L_VM_TEST=`uname -a 2>&1`
+  if [[ "$_L_VM_TEST" =~ beng ]] ; then
+    if [ -e "/sbin/hdparm" ] ; then
+      apt-get remove hdparm -y --force-yes -qq &> /dev/null
+      apt-get purge hdparm -y --force-yes -qq &> /dev/null
+      apt-get autoremove -y --force-yes -qq &> /dev/null
+    fi
+    _REMOVE_LINKS="vnstat buagent svscan kerneloops halt hwclock.sh hwclockfirst.sh ifupdown ifupdown-clean klogd mountall-bootclean.sh mountall.sh mountdevsubfs.sh mountkernfs.sh mountnfs-bootclean.sh mountnfs.sh mountoverflowtmp mountvirtfs mtab.sh networking reboot setserial sysstat umountfs umountnfs.sh umountroot urandom"
+    for link in $_REMOVE_LINKS
+    do
+      update-rc.d -f $link remove &> /dev/null
+    done
+  fi
 }
 
 case "$1" in
