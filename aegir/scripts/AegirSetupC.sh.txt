@@ -2339,6 +2339,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       rm -f -r {ember}
       get_dev_contrib "ember-7.x-2.0-alpha2.tar.gz"
       cd $_SHRD_PRPATH/modules/contrib
+      rm -f -r {views}
+      get_dev_contrib "views-7.x-3.8.tar.gz"
       upgrade_contrib_less
     fi
   else
