@@ -203,6 +203,7 @@
   * PHP: Do not block getenv function.
   * Remove redundant downloads silencer.
   * SQL: Do not run update_innodb_log_file_size() if the size is the same.
+  * Sync BOND with BARRACUDA.
   * Update for switch_to_bash procedure.
   * Use already downloaded patches.
   * Use full path to sqlmagic in daily.sh to avoid 'command not found' error.
