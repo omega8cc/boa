@@ -1951,7 +1951,7 @@ update_php_conf () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/php52-fpm.conf /opt/php52/etc/php52-fpm.conf &> /dev/null
   ###
   sed -i "s/listen.allowed_clients =.*/listen.allowed_clients = 127.0.0.1,$_THISHTIP/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
-  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g"  /opt/php52/etc/php52-fpm.conf &> /dev/null
+  sed -i "s/>127.0.0.1</\>127.0.0.1,$_THISHTIP\</g"  /opt/php52/etc/php52-fpm.conf  &> /dev/null
   sed -i "s/listen.mode =.*/listen.mode = 0660/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   ###
 
@@ -2071,7 +2071,7 @@ update_sql_conf () {
     _DO_NOTHING=YES
   else
     sed -i "s/.*lc_messages_dir /#lc_messages_dir /g" /etc/mysql/my.cnf &> /dev/null
-    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf &> /dev/null
+    sed -i "s/.*lc_messages /#lc_messages /g" /etc/mysql/my.cnf         &> /dev/null
   fi
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] ; then
     sed -i "s/.*innodb_lazy_drop_table /#innodb_lazy_drop_table /g" /etc/mysql/my.cnf &> /dev/null
@@ -2079,8 +2079,8 @@ update_sql_conf () {
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     if [ "$_DB_BINARY_LOG" = "NO" ] ; then
       bash /var/xdrago/purge_binlogs.sh &> /dev/null
-      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root &> /dev/null
-      sed -i "/^$/d" /var/spool/cron/crontabs/root &> /dev/null
+      sed -i "s/.*purge_binlogs.*//g" /var/spool/cron/crontabs/root      &> /dev/null
+      sed -i "/^$/d" /var/spool/cron/crontabs/root                       &> /dev/null
       sed -i "s/^log_bin/#log_bin/g"                   /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^expire_logs_days/#expire_logs_days/g" /etc/mysql/my.cnf &> /dev/null
       sed -i "s/^max_binlog_size/#max_binlog_size/g"   /etc/mysql/my.cnf &> /dev/null
@@ -2432,7 +2432,7 @@ force_advanced_nginx_config () {
   sed -i "s/ 90;/ 180;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
   if [ "$_NGINX_SPDY" = "YES" ] ; then
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
   fi
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
@@ -2502,21 +2502,21 @@ tune_web_server_config () {
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
-  sed -i "s/,getenv,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
-  sed -i "s/,getenv,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/,getenv,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/,getenv,/,/g" /opt/php*/etc/php*.ini                      &> /dev/null
+  sed -i "s/,getenv,/,/g" /opt/php*/etc/pool.d/*.conf                 &> /dev/null
+  sed -i "s/,getenv,/,/g" /var/xdrago/conf/fpm-pool-foo.conf          &> /dev/null
   sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
   sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
   sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
   sed -i "s/assert,//g"            /opt/php*/etc/php*.ini             &> /dev/null
   sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf        &> /dev/null
   sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf        &> /dev/null
-  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/sys/provision/platform/verify.provision.inc    &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/sys/provision/platform/verify.provision.inc      &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf         &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf         &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
+  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
+  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/sys/provision/platform/verify.provision.inc   &> /dev/null
   _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
   if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
     _DO_NOTHING=YES
@@ -2802,27 +2802,27 @@ tune_memory_limits () {
     sed -i "s/256/$_USE_FPM/g" /opt/etc/fpm/fpm-pool-common.conf &> /dev/null
   fi
   if [ -e "/opt/php55/etc/php55.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php55/etc/php55.ini &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php55/lib/php.ini &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php55/etc/php55.ini         &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php55/etc/php55.ini         &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php55/lib/php.ini           &> /dev/null
     sed -i "s/256/$_USE_PHP/g" /opt/php55/etc/pool.d/www55.conf &> /dev/null
   fi
   if [ -e "/opt/php54/etc/php54.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php54/etc/php54.ini &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php54/etc/php54.ini &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php54/lib/php.ini &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php54/etc/php54.ini         &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php54/etc/php54.ini         &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php54/lib/php.ini           &> /dev/null
     sed -i "s/256/$_USE_PHP/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
   fi
   if [ -e "/opt/php53/etc/php53.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php53/etc/php53.ini         &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php53/etc/php53.ini         &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php53/lib/php.ini           &> /dev/null
     sed -i "s/256/$_USE_PHP/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
   if [ -e "/opt/php52/etc/php52.ini" ] ; then
-    sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini &> /dev/null
-    sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini &> /dev/null
-    sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini &> /dev/null
+    sed -i "s/256/$_USE_FPM/g" /opt/php52/etc/php52.ini         &> /dev/null
+    sed -i "s/181/$_USE_OPC/g" /opt/php52/etc/php52.ini         &> /dev/null
+    sed -i "s/256/$_USE_PHP/g" /opt/php52/lib/php.ini           &> /dev/null
   fi
   if [ "$_CUSTOM_CONFIG_SQL" = "NO" ] ; then
     tune_sql_memory_limits
@@ -5385,8 +5385,8 @@ finale () {
   aptitude autoclean -y &> /dev/null
   apt-get clean -qq &> /dev/null
   mkdir -p /data/conf/arch
-  mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
-  mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
+  mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
+  mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   rm -f /tmp/cache.inc*
   rm -f /var/opt/._zendopcache*
@@ -5406,8 +5406,8 @@ finale () {
   rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f /var/xdrago/log/protected-vhosts-clean.log
   rm -f /var/backups/.auth.IP.list*
-  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
-  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.*    &> /dev/null
+  sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.*      &> /dev/null
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   chmod 700 /root
@@ -5421,11 +5421,11 @@ finale () {
       if [ "$_VMFAMILY" = "VS" ] ; then
         _DO_NOTHING=YES
       else
-        echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+        echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1"  >> /etc/crontab
         echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
       fi
     else
-      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
+      echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1"  >> /etc/crontab
       echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
     fi
     sed -i "/^$/d" /etc/crontab &> /dev/null
@@ -8006,10 +8006,10 @@ if [ "$_STATUS" = "INIT" ] ; then
   _U_HD="/var/aegir/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
     sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php &> /dev/null
+    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
   fi
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
@@ -9005,27 +9005,27 @@ else
   if [ -e "/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf" ] ; then
     sed -i "s/SSLv3 TLSv1;/SSLv3 TLSv1 TLSv1.1 TLSv1.2;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
     sed -i "s/HIGH:\!ADH:\!MD5;/RC4:HIGH:\!aNULL:\!MD5;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                           &> /dev/null
+    sed -i "s/.*gzip_vary .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                              &> /dev/null
+    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                   &> /dev/null
+    sed -i "s/.*proxy_buffer_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                      &> /dev/null
+    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                       &> /dev/null
+    sed -i "s/.*proxy_buffers .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                          &> /dev/null
+    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf             &> /dev/null
+    sed -i "s/.*proxy_busy_buffers_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                &> /dev/null
+    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf          &> /dev/null
+    sed -i "s/.*proxy_temp_file_write_size .*//g" /var/aegir/config/server_master/nginx/vhost.d/*             &> /dev/null
+    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_master/nginx/pre.d/*.conf                     &> /dev/null
+    sed -i "s/.*proxy_buffering .*//g" /var/aegir/config/server_master/nginx/vhost.d/*                        &> /dev/null
     sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
-    sed -i "s/add_header Vary .*//g" /var/aegir/config/server_master/nginx.conf &> /dev/null
+    sed -i "s/proxy_redirect .*/proxy_redirect             off;\n    gzip_vary                  off;\n    proxy_buffering            off;/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
+    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/*.conf                               &> /dev/null
+    sed -i "s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/*                                  &> /dev/null
+    sed -i "s/add_header Vary .*//g" /var/aegir/config/server_master/nginx.conf                               &> /dev/null
   fi
   if [ "$_NGINX_SPDY" = "YES" ] ; then
     sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+    sed -i "s/:443;/:443 ssl spdy;/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
   fi
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] &&[ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
@@ -9036,90 +9036,90 @@ else
     _ALLOW_NGINX_FORWARD_SECRECY=NO
   fi
   if [ "$_ALLOW_NGINX_FORWARD_SECRECY" = "YES" ] ; then
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
-    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/*    &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf       &> /dev/null
-    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*          &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf  &> /dev/null
+    sed -i "s/ssl_protocols .*/ssl_protocols $_SSL_PROTOCOLS/g" /var/aegir/config/server_master/nginx/vhost.d/*     &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf        &> /dev/null
+    sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*           &> /dev/null
   fi
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
-  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
-  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                        &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php                 &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php             &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf                    &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/includes/*.conf                                                     &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx.conf                                            &> /dev/null
+  sed -i "s/gulag/limreq/g" /data/disk/*/config/server_master/nginx/vhost.d/*                                       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php                          &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php                   &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php               &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf                      &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/includes/*.conf                                                       &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx.conf                                              &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                                      &> /dev/null
+  sed -i "s/gulag/limreq/g" /var/aegir/config/server_master/nginx/vhost.d/*                                         &> /dev/null
 
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
-  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php             &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php      &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php  &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf         &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/includes/*.conf                                          &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/server_master/nginx.conf                                 &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                            &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php               &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php        &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php    &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf           &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/includes/*.conf                                            &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx.conf                                   &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                           &> /dev/null
+  sed -i "s/limreq 32;/limreq 5555;/g" /var/aegir/config/server_master/nginx/vhost.d/*                              &> /dev/null
 
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/includes/*.conf                                         &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/server_master/nginx.conf                                &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                           &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
   sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
-  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/includes/*.conf                                           &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx.conf                                  &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                          &> /dev/null
+  sed -i "s/limreq 555;/limreq 5555;/g" /var/aegir/config/server_master/nginx/vhost.d/*                             &> /dev/null
 
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
-  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php             &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php      &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php  &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf         &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/includes/*.conf                                          &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/server_master/nginx.conf                                 &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                            &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php               &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php        &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php    &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf           &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/includes/*.conf                                            &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx.conf                                   &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                           &> /dev/null
+  sed -i "s/limreq 88;/limreq 8888;/g" /var/aegir/config/server_master/nginx/vhost.d/*                              &> /dev/null
 
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/xts/provision_cdn/Provision/Config/*.tpl.php            &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php     &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf        &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/includes/*.conf                                     &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/server_master/nginx.conf                            &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                       &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/includes/*.conf                                         &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/server_master/nginx.conf                                &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /data/disk/*/config/server_master/nginx/vhost.d/*                           &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/*.tpl.php              &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*.tpl.php       &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/Ssl/*.tpl.php   &> /dev/null
   sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf          &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/includes/*.conf                                       &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx.conf                              &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                      &> /dev/null
-  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx/vhost.d/*                         &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/includes/*.conf                                           &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx.conf                                  &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf                          &> /dev/null
+  sed -i "s/limreq 888;/limreq 8888;/g" /var/aegir/config/server_master/nginx/vhost.d/*                             &> /dev/null
 
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf &> /dev/null
   sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" /var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf   &> /dev/null
