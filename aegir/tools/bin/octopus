@@ -147,7 +147,11 @@ up_one ()
       sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
-      _IS_OLD=`find $User/.drush/sys/provision/ -maxdepth 1 -mindepth 1 -mtime +1 -type d | grep platform`
+      if [ -e "$User/.drush/sys/provision" ] ; then
+        _IS_OLD=`find $User/.drush/sys/provision/ -maxdepth 1 -mindepth 1 -mtime +1 -type d | grep platform`
+      elif [ -e "$User/.drush/provision" ] ; then
+        _IS_OLD=`find $User/.drush/provision/ -maxdepth 1 -mindepth 1 -mtime +1 -type d | grep platform`
+      fi
       if [ -z "$_IS_OLD" ] && [ -z "$mcmode" ] && [ -e "$User/.drush/sys/provision" ] ; then
         echo
         echo "This Aegir Instance is already up to date!"
