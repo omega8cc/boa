@@ -2234,7 +2234,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     if [ $_RECRUITER = "7.x-1.2" ] ; then
       cd $_SHRD_PRPATH/modules
-      rm -f -r {rules}
+      rm -f -r {i18n,rules}
+      get_dev_contrib "i18n-7.x-1.11.tar.gz"
       get_dev_contrib "rules-7.x-2.7.tar.gz"
       upgrade_contrib_less
     fi
