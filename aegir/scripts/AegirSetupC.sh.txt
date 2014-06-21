@@ -595,7 +595,7 @@ _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-a5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE1="Commerce 1.25 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE2="Commerce 2.15 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMONS2="Commons 2.17 $_SMALLCORE6 P.$_THIS_CORE"
+_F_COMMONS2="Commons 2.18 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COMMONS3="Commons 3.14 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
@@ -1043,12 +1043,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
     sed -i "s/'Commons'/'Commons 2'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-    if [ $_COMMONS2 = "6.x-2.13" ] ; then
+    if [ $_COMMONS2 = "6.x-2.18" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {context,flag,password_policy}
-      get_dev_contrib "context-6.x-3.3.tar.gz"
+      rm -f -r {flag}
       get_dev_contrib "flag-6.x-2.1.tar.gz"
-      get_dev_contrib "password_policy-6.x-1.7.tar.gz"
     fi
   else
     cd $_CORE
