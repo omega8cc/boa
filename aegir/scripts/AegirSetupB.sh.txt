@@ -436,6 +436,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   cd $_ROOT/.drush/usr
   get_dev_ext "clean_missing_modules.tar.gz"
 else
+  cd $_ROOT/.drush/sys
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
   if [ "$_STATUS" = "UPGRADE" ] ; then
     cd $_ROOT/.drush/sys
