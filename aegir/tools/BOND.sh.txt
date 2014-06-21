@@ -630,6 +630,21 @@ tune_php () {
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini  &> /dev/null
 }
 #
+update_innodb_log_file_size () {
+  msg "INFO: InnoDB log file will be set to $_INNODB_LOG_FILE_SIZE_MB, please wait..."
+  mrun "service mysql stop" &> /dev/null
+  mrun "sleep 5"
+  if [ ! -e "/var/run/mysqld/mysqld.sock" ] && [ ! -e "/var/run/mysqld/mysqld.pid" ] ; then
+    mkdir -p /var/backups/old-sql-ib-log-$_NOW
+    mrun "sleep 5"
+    mv -f /var/lib/mysql/ib_logfile0 /var/backups/old-sql-ib-log-$_NOW/ &> /dev/null
+    mv -f /var/lib/mysql/ib_logfile1 /var/backups/old-sql-ib-log-$_NOW/ &> /dev/null
+    sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = $_INNODB_LOG_FILE_SIZE_MB/g" /etc/mysql/my.cnf &> /dev/null
+    mrun "sleep 5"
+  fi
+  mrun "service mysql start" &> /dev/null
+}
+#
 restore_default_sql () {
   msg "INFO: Restoring default SQL configuration"
   sed -i "s/.*check_for_crashed_tables/#check_for_crashed_tables/g" /etc/mysql/debian-start &> /dev/null
@@ -639,6 +654,18 @@ restore_default_sql () {
     else
       cp -af /etc/mysql/my.cnf /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/my.cnf.txt /etc/mysql/my.cnf
+      _INNODB_LOG_FILE_SIZE=${_INNODB_LOG_FILE_SIZE//[^0-9]/}
+      if [ ! -z "$_INNODB_LOG_FILE_SIZE" ] ; then
+        if [ "$_INNODB_LOG_FILE_SIZE" -ge "10" ] && [ "$_INNODB_LOG_FILE_SIZE" -lt "501" ] ; then
+          _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+          _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /var/backups/dragon/t/my.cnf-pre-$_INSTALLER_VERSION-$_NOW)
+          if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "= $_INNODB_LOG_FILE_SIZE_MB" ]] ; then
+            _INNODB_LOG_FILE_SIZE_SAME=YES
+          else
+            _INNODB_LOG_FILE_SIZE_SAME=NO
+          fi
+        fi
+      fi
       sed -i "s/.*slow_query_log/#slow_query_log/g"           /etc/mysql/my.cnf &> /dev/null
       sed -i "s/.*long_query_time/#long_query_time/g"         /etc/mysql/my.cnf &> /dev/null
       sed -i "s/.*slow_query_log_file/#slow_query_log_file/g" /etc/mysql/my.cnf &> /dev/null
@@ -675,6 +702,21 @@ restore_default_sql () {
     fi
     if [ "$_DB_ENGINE" = "MyISAM" ] || [ "$_DB_ENGINE" = "InnoDB" ] ; then
       sed -i "s/^default_storage_engine.*/default_storage_engine  = $_DB_ENGINE/g" /etc/mysql/my.cnf &> /dev/null
+    fi
+    if [ ! -z "$_INNODB_LOG_FILE_SIZE" ] ; then
+      if [ "$_INNODB_LOG_FILE_SIZE" -ge "10" ] && [ "$_INNODB_LOG_FILE_SIZE" -lt "501" ] ; then
+        _INNODB_LOG_FILE_SIZE_MB="${_INNODB_LOG_FILE_SIZE}M"
+        _INNODB_LOG_FILE_SIZE_TEST=$(grep "^innodb_log_file_size" /etc/mysql/my.cnf)
+        if [[ "$_INNODB_LOG_FILE_SIZE_TEST" =~ "= $_INNODB_LOG_FILE_SIZE_MB" ]] ; then
+          _DO_NOTHING=YES
+        else
+          if [ "$_INNODB_LOG_FILE_SIZE_SAME" = "YES" ] ; then
+            sed -i "s/.*innodb_log_file_size.*/innodb_log_file_size    = $_INNODB_LOG_FILE_SIZE_MB/g" /etc/mysql/my.cnf &> /dev/null
+          else
+            update_innodb_log_file_size
+          fi
+        fi
+      fi
     fi
   fi
 }
@@ -771,10 +813,41 @@ tune_web_server_config () {
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php54/etc/pool.d/www54.conf &> /dev/null
     sed -i "s/passthru,/$_PHP_FPM_DENY,/g" /opt/php53/etc/pool.d/www53.conf &> /dev/null
   fi
+  sed -i "s/,getenv,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
+  sed -i "s/,getenv,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/,getenv,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/,create_function,/,/g" /opt/php*/etc/php*.ini             &> /dev/null
+  sed -i "s/,create_function,/,/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/,create_function,/,/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/assert,//g"            /opt/php*/etc/php*.ini             &> /dev/null
+  sed -i "s/,assert,/,/g"          /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/,assert,/,/g"          /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf        &> /dev/null
+  sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf &> /dev/null
+  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/sys/provision/platform/verify.provision.inc    &> /dev/null
+  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/sys/provision/platform/verify.provision.inc      &> /dev/null
+  _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
+  if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
+    _DO_NOTHING=YES
+  else
+    sed -i "s/opcache.fast_shutdown=1/opcache.fast_shutdown=1\nopcache.enable=1/g" /opt/php*/etc/php*.ini &> /dev/null
+  fi
+  # PHP-FPM INI
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 180/g" /opt/php*/etc/php*.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
+  # Redis config should sync with PHP-FPM
+  sed -i "s/^timeout .*/timeout 180/g" /etc/redis/redis.conf                                   &> /dev/null
+  # PHP-CLI INI
+  sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
+  sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
+  sed -i "s/^max_input_time =.*/max_input_time = 3600/g" /opt/php*/lib/php.ini                 &> /dev/null
   if [ ! -z "$_L_NGINX_WORKERS" ] ; then
     sed -i "s/worker_processes.*/worker_processes  $_L_NGINX_WORKERS;/g" /etc/nginx/nginx.conf &> /dev/null
   else
-    sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf &> /dev/null
+    sed -i "s/worker_processes.*/worker_processes  4;/g" /etc/nginx/nginx.conf                 &> /dev/null
   fi
 }
 #
