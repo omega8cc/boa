@@ -934,11 +934,18 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
-    if [ $_COMMERCE1 = "7.x-1.21" ] ; then
+    if [ $_COMMERCE1 = "7.x-1.25" ] ; then
       cd $_SHRD_PRPATH/modules
-      rm -f -r {rules}
-      get_dev_contrib "rules-7.x-2.7.tar.gz"
       upgrade_contrib_less
+      cd $_SHRD_PRPATH/modules
+      rm -f -r {rules,views}
+      get_dev_contrib "rules-7.x-2.7.tar.gz"
+      get_dev_contrib "views-7.x-3.8.tar.gz"
+      cd $_SHRD_PRPATH/modules/views
+      # https://drupal.org/node/1766338#comment-6445882
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
+      # https://drupal.org/node/2037469
+      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
     fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
