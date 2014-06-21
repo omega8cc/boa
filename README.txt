@@ -1,52 +1,69 @@
 
 ### README
 
-All-in-one bash scripts (see docs/INSTALL.txt for details)
-to install and/or upgrade high performance Aegir Hosting Systems
+BOA is an acronym of high performance Barracuda, Octopus and Aegir LEMP stack.
+
+Includes all-in-one bash scripts (see docs/INSTALL.txt for details)
+to install and upgrade high performance Aegir Hosting Systems
 for Drupal, with Nginx, PHP-FPM, Zend OPcache, MariaDB and Redis,
 now available with simple command line tools: http://bit.ly/JHpFSh
 
 
-###--------------------------------------------------------------###
+###-----------------------------------------------------------------------###
 ###
 ### For BOA installation instructions see docs/INSTALL.txt
 ### See also related information in docs/NOTES.txt
 ### For BOA upgrade instructions see docs/UPGRADE.txt
-### For how-to on using MultiCore Solr Jetty see docs/SOLR.txt
-### For custom Nginx rewrites how-to see docs/HINTS.txt
-### For SSL and extra IPs how-to see docs/SSL.txt
-### For sites migration between instances see docs/REMOTE.txt
+###
+### Barracuda configuration template ..: docs/cnf/barracuda.cnf
+### Octopus configuration template ....: docs/cnf/octopus.cnf
+### System control files index ........: docs/ctrl/system.ctrl
 ###
 ### Please read all comments for configuration options in both
 ### BARRACUDA.sh.txt and OCTOPUS.sh.txt, since there is information
 ### not included in the README or INSTALL and can be modified or
 ### updated with every new Edition.
 ###
-###--------------------------------------------------------------###
+### Platform and site level INI templates:
+###
+###   aegir/conf/default.boa_platform_control.ini
+###   aegir/conf/default.boa_site_control.ini
+###
+### Octopus platforms configuration symbols: docs/PLATFORMS.txt
+###
+### Modules - supported, enabled or disabled: docs/MODULES.txt
+###
+### For how-to on using MultiCore Solr Jetty see docs/SOLR.txt
+### For custom Nginx rewrites how-to see docs/HINTS.txt
+### For SSL and extra IPs how-to see docs/SSL.txt
+### For sites migration between instances see docs/REMOTE.txt
+### For advanced password encryption tips see: docs/BLOWFISH.txt
+### For security related settings see: docs/SECURITY.txt
+### For frequently asked questions and answers see docs/FAQ.txt
+###
+###-----------------------------------------------------------------------###
 
 
-You can install one Aegir Master Instance on your server using
-Barracuda and any number of Aegir Satellite Instances using
-Octopus installer.
+You can install one Aegir Master Instance and any number of Aegir Satellite
+Instances. The Master Instance holds the central Nginx configuration for all
+Satellite Instances and thus shouldn't be used to host your sites. Please
+always use one or more Satellite Instances to host your sites.
 
 Note: the 'Master' and 'Satellite' names in the Barracuda/Octopus
 context are not related to the multi-server Aegir features.
 It is related to the multi-Aegir-instances environment, with
-virtual chroot/jail for every Aegir instance.
+virtual chroot/jail for every Aegir Satellite instance.
 
 Barracuda is the main script for the Aegir Master Instance system
-install and upgrades, including OS env and main Aegir instance,
-but no platforms will be added there to keep it compatible
-with all existing and future installs, when you don't need
-any ready to use platforms and instead you are using the system
-for managing your own imported platforms/sites.
+install and upgrades, including OS environment and main Aegir instance,
+but no platforms (besides hostmaster) are installed there.
 
 Octopus is an Aegir + Platforms installer (you can interactively
 choose the platforms you wish to install on the instance)
 and updater only. It allows to install new versions of platforms
 with clean directory structure, with code shared between all created
 instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is over 1700 MB total, is shared.
+while most of the code, which is over 1 GB total, is shared.
 
 Sharing the code between instances is of critical importance,
 because it allows you to dramatically lower RAM and CPU usage,
@@ -158,7 +175,7 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 
 Octopus can install the platforms listed below:
 
-### Drupal 7.28.1
+ @ Drupal 7.28.1
 
  aGov 1.0-rc8 ----------------- https://drupal.org/project/agov
  Commerce 1.25 ---------------- https://drupal.org/project/commerce_kickstart
@@ -181,7 +198,7 @@ Octopus can install the platforms listed below:
  Totem 1.1.2 ------------------ https://drupal.org/project/totem
  Ubercart 3.6 ----------------- https://drupal.org/project/ubercart
 
-### Pressflow 6.31.2
+ @ Pressflow 6.31.2
 
  Commons 2.18 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
@@ -196,59 +213,81 @@ https://github.com/omega8cc/7x/tree/7.x-om8
 All D6 platforms have been enhanced using Pressflow 6.31.2 +Extra core:
 https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
+All D6 and D7 platforms include some useful and/all performance related
+contrib modules - see docs/MODULES.txt for details.
+
 
 ### BUG SUBMISSION
 
-* Please follow bug submission guidelines:
+Reporting bugs is a great way to contribute to BOA. Mis-reporting bugs or
+duplicating reports, however, can be a distraction to the development team
+and waste precious resources. So, help out by following these guidelines.
 
-  Before you submit a bug, make sure you have diagnosed your
-  configuration as documented in this guide:
-  http://groups.drupal.org/node/21890. It is Aegir specific,
-  but the good rules are the same: always search for similar
-  bug report before submitting your own, and include as much
-  information about your context as possible, especially
-  please include, using http://gist.github.com, the contents
-  (anonymized for security and privacy) of files:
+It is also a good idea to search first our deprecated issue queues for
+Barracuda and Octopus projects on drupal.org:
 
-    /root/.barracuda.cnf
-    /var/log/barracuda_log.txt
-    /root/.USER.octopus.cnf
-    /data/disk/USER/log/octopus_log.txt
+  Legacy issue queue: https://drupal.org/project/issues/barracuda
+  Legacy issue queue: https://drupal.org/project/issues/octopus
 
-* Issue queues:
-  https://github.com/omega8cc/boa/issues (active)
+Before reporting a bug always search for similar bug report before submitting
+your own, and include as much information about your context as possible,
+including your server/VPS parent system name (like Xen) and/or hosting provider
+name and URL. Especially please attach the contents (anonymized for security
+and privacy) of files:
 
-  Please don't post your server logs here. Instead use
-  http://gist.github.com and post the link in your submission.
+  /root/.barracuda.cnf
+  /var/log/barracuda_log.txt
+  /root/.USER.octopus.cnf
+  /data/disk/USER/log/octopus_log.txt
 
-* Patches:
-  https://github.com/omega8cc/boa/ (main repository)
+Please enable debugging with _DEBUG_MODE=YES in the /root/.barracuda.cnf file
+before running upgrade, so it will display more helpful details.
+
+Note that you can find also verbose logs in the /var/backups/ directory.
+
+IMPORTANT!
+  Please don't post your server or error logs in the issue directly. Instead
+  use services like http://gist.github.com and post the link in your submission.
+
+Active issue queue is available at:
+
+  https://github.com/omega8cc/boa/issues
+
+IMPORTANT!
+  Please note that any bug report failing to follow the guidelines
+  will be ignored and closed without any answer.
 
 
-### REPOSITORIES
+### HELP OPTIONS
 
-* https://github.com/omega8cc/boa/ (main)
-* https://code.aegir.cc/aegir (mirror)
+* Support questions: http://drupal.stackexchange.com/questions/tagged/aegir
+* Community on g.d.o: https://groups.drupal.org/boa
+* IRC channel: irc://irc.freenode.net/omega8cc
+* Documentation: http://boa.readthedocs.org (soon)
+* Documentation repository: https://github.com/omega8cc/boa-docs (soon)
 
 
 ### MAINTAINERS
 
-* https://omega8.cc
+BOA development is maintained and sponsored by Omega8.cc
 
-
-### HELP
-
-* Use our Github project for contributing code, or reporting bugs, or requesting features
-* Please ask support questions on http://drupal.stackexchange.com/questions/tagged/aegir
-* Documentation will be available at http://boa.readthedocs.org and https://github.com/omega8cc/boa-docs
-* There is also an IRC channel: irc://irc.freenode.net/omega8cc
+  https://omega8.cc/about
 
 
 ### CREDITS
 
 * Brian Mercer - https://drupal.org/user/103565
-  Initial work: https://drupal.org/node/244072#comment-1747170
+  Initial work: https://www.drupal.org/node/244072#comment-1747170
 
-* Nice people who are submitting bugs and problems in the
-  Barracuda/Octopus issue queues.
+* Nice people who are submitting bugs and problems in the issue queue.
+
+
+### DONATIONS
+
+If you wish to support BOA development or simply send a nice 'Thank you'
+to the Universe, please donate something to The Rights of the Child charity:
+
+  http://trotc.org/
+
+Thank you!
 
