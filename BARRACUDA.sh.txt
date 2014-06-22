@@ -6473,11 +6473,13 @@ else
   _APT_ITEM=$(dpkg --get-selections | grep openjdk-6-jdk | grep install)
   if [[ "$_APT_ITEM" =~ "install" ]] ; then
     mrun "apt-get remove openjdk-6-jdk -y --force-yes -qq" &> /dev/null
+    mrun "apt-get purge openjdk-6-jdk -y --force-yes -qq" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
   fi
   _APT_ITEM=$(dpkg --get-selections | grep openjdk-7-jdk | grep install)
   if [[ "$_APT_ITEM" =~ "install" ]] ; then
     mrun "apt-get remove openjdk-7-jdk -y --force-yes -qq" &> /dev/null
+    mrun "apt-get purge openjdk-7-jdk -y --force-yes -qq" &> /dev/null
     mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
   fi
   if [[ "$_XTRAS_LIST" =~ "SR" ]] ; then
