@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.6 Release - Full Edition
 ### Date: Sat Jun 21 06:14:18 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sat Jun 21 11:48:17 PDT 2014
+### Latest hotfix added on: Sun Jun 22 11:02:33 PDT 2014
 
 # Release Notes:
 
