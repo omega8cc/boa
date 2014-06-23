@@ -1377,10 +1377,10 @@ else
   if [ -z "$_MODULES_FIX" ] ; then
     _MODULES_FIX=YES
   fi
-  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.2.5.info" ] ; then
+  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.2.6.info" ] ; then
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
-    echo fixed > /data/all/permissions-fix-post-up-BOA-2.2.5.info
+    echo fixed > /data/all/permissions-fix-post-up-BOA-2.2.6.info
   fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
