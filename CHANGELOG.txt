@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.6 Release - Full Edition
 ### Date: Sat Jun 21 06:14:18 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sun Jun 22 11:02:33 PDT 2014
+### Latest hotfix added on: Mon Jun 23 05:39:36 PDT 2014
 
 # Release Notes:
 
@@ -194,6 +194,7 @@
   * Fix for _NGINX_DOS_LIMIT logical error in the scan_nginx template.
   * Fix for already installed Open Atrium 2.18 7.28.1
   * Fix for Postfix configuration.
+  * Fix incorrect version in the permissions fix.
   * Fix permissions after every upgrade.
   * Fix permissions and owner/group required for feeds (upload) support.
   * Force apticron re-install if apticron.conf is outdated.
