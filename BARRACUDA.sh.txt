@@ -3148,7 +3148,10 @@ barracuda_cnf () {
 
     if [ "$_PHP_LEGACY_FREE" = "YES" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
-        _DO_NOTHING=YES
+        _R_M=5.2
+        _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+        sed -i "s/.*_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
       else
         if [ -e "/etc/init.d/php-fpm" ] ; then
           mrun "service php-fpm stop" &> /dev/null
@@ -3172,6 +3175,8 @@ barracuda_cnf () {
     fi
     if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [ "$_PHP_MULTI_INSTALL" = "5.3" ] ; then
+        sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
         _PHP_MULTI_INSTALL=""
       fi
     fi
