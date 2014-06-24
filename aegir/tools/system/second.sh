@@ -107,7 +107,7 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
     fi
   fi
   rm -f /var/backups/.auth.IP.list
-  for _IP in `who --ips | sed 's/.*tty.*//g' | cut -d: -f2 | cut -d' ' -f2 | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
+  for _IP in `who --ips | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' | cut -d: -f2 | cut -d' ' -f2 | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list;done
   fi
@@ -128,7 +128,7 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
 
 manage_ip_auth_access()
 {
-  for _IP in `who --ips | sed 's/.*tty.*//g' | cut -d: -f2 | cut -d' ' -f2 | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
+  for _IP in `who --ips | sed 's/.*tty.*//g; s/.*root.*hvc.*//g' | cut -d: -f2 | cut -d' ' -f2 | sed 's/.*\/.*:S.*//g; s/:S.*//g; s/(//g' | tr -d "\s" | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
   if [ -e "/root/.ip.protected.vhost.whitelist.cnf" ] ; then
     for _IP in `cat /root/.ip.protected.vhost.whitelist.cnf | sort | uniq`;do _IP=${_IP//[^0-9.]/};echo "  allow                        $_IP;" >> /var/backups/.auth.IP.list.tmp;done
   fi
