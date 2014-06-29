@@ -3,10 +3,9 @@
 
 BOA is an acronym of high performance Barracuda, Octopus and Aegir LEMP stack.
 
-Includes all-in-one bash scripts (see docs/INSTALL.txt for details)
-to install and upgrade high performance Aegir Hosting Systems
-for Drupal, with Nginx, PHP-FPM, Zend OPcache, MariaDB and Redis,
-now available with simple command line tools: http://bit.ly/JHpFSh
+Includes all-in-one bash scripts (see docs/INSTALL.txt for details) to install
+and upgrade high performance Aegir Hosting Systems for Drupal, with Nginx,
+PHP-FPM, Zend OPcache, MariaDB and Redis.
 
 
 ###--------------------------------------------------------------------------###
