@@ -9,7 +9,7 @@ for Drupal, with Nginx, PHP-FPM, Zend OPcache, MariaDB and Redis,
 now available with simple command line tools: http://bit.ly/JHpFSh
 
 
-###-----------------------------------------------------------------------###
+###--------------------------------------------------------------------------###
 ###
 ### For BOA installation instructions see docs/INSTALL.txt
 ### See also related information in docs/NOTES.txt
@@ -41,7 +41,7 @@ now available with simple command line tools: http://bit.ly/JHpFSh
 ### For security related settings see: docs/SECURITY.txt
 ### For frequently asked questions and answers see docs/FAQ.txt
 ###
-###-----------------------------------------------------------------------###
+###--------------------------------------------------------------------------###
 
 
 You can install one Aegir Master Instance and any number of Aegir Satellite
@@ -49,35 +49,32 @@ Instances. The Master Instance holds the central Nginx configuration for all
 Satellite Instances and thus shouldn't be used to host your sites. Please
 always use one or more Satellite Instances to host your sites.
 
-Note: the 'Master' and 'Satellite' names in the Barracuda/Octopus
-context are not related to the multi-server Aegir features.
-It is related to the multi-Aegir-instances environment, with
-virtual chroot/jail for every Aegir Satellite instance.
+The 'Master' and 'Satellite' names in the Barracuda/Octopus context are not
+related to the multi-server Aegir features. It is related to the multi-instance
+environment, with virtual chroot/jail for every Aegir Satellite instance.
 
-Barracuda is the main script for the Aegir Master Instance system
-install and upgrades, including OS environment and main Aegir instance,
-but no platforms (besides hostmaster) are installed there.
+Barracuda is the main script for the Aegir Master Instance system install and
+upgrades, including OS environment and main Aegir instance, but no platforms
+(besides hostmaster) are installed there.
 
-Octopus is an Aegir + Platforms installer (you can interactively
-choose the platforms you wish to install on the instance)
-and updater only. It allows to install new versions of platforms
-with clean directory structure, with code shared between all created
-instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is over 1 GB total, is shared.
+Octopus is an Aegir + Platforms installer (you can interactively choose
+the platforms you wish to install on the instance) and updater only. It allows
+to install new versions of platforms with clean directory structure, with code
+shared between all created instances, so one vanilla Octopus instance is using
+only ~18 MB, while most of the code, which is over 1 GB total, is shared.
 
-Sharing the code between instances is of critical importance,
-because it allows you to dramatically lower RAM and CPU usage,
-because most of the actively used code is opcode cached.
+Sharing the code between instances is of critical importance, because it allows
+you to dramatically lower RAM and CPU usage, because most of the actively used
+code is opcode cached.
 
-With multi-install system you have to remember that all of them
-will use the same Nginx server, so you could break the system
-trying to install site with the same domain on two or more instances.
-The instances will not be aware of other running instances,
-so it is your responsibility to use such system wisely.
+With multi-install system you have to remember that all of them will use the
+same Nginx server, so you could break the system trying to install site with
+the same domain on two or more instances. The instances will not be aware of
+other running instances, so it is your responsibility to use such system wisely.
 
-There is also Tuner script available (see aegir/tools/BOND.sh.txt)
-for easy system tuning for development and switching it back easily
-to the standard production settings.
+There is also Tuner script available (see aegir/tools/BOND.sh.txt) for easy
+system tuning for development and switching it back easily to the standard
+production settings.
 
 
 ### SUPPORTED PARENT SYSTEMS
