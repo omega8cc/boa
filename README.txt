@@ -101,8 +101,8 @@ NOTE: BOA maintainers use only server (public) install mode and rarely test
 * Ubuntu Precise 12.04 (limited support)
 * Ubuntu Lucid 10.04 (limited support)
 
-NOTE: BOA maintainers currently use only Debian based systems/servers.
-      We don't use and rarely test Ubuntu, so for best results use Debian.
+NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
+      We don't use and rarely test Ubuntu, so for best results use Debian 64bit.
 
 
 ### OTHER REQUIREMENTS
