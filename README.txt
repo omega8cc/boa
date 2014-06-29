@@ -260,10 +260,14 @@ IMPORTANT!
 
 ### HELP OPTIONS
 
-* Support questions: http://drupal.stackexchange.com/questions/tagged/aegir
-* Community on g.d.o: https://groups.drupal.org/boa
+* Support questions:
+
+  http://drupal.stackexchange.com/questions/tagged/boa
+  http://drupal.stackexchange.com/questions/tagged/aegir
+
 * IRC channel: irc://irc.freenode.net/omega8cc
-* Documentation: http://boa.readthedocs.org (soon)
+
+* Documentation site: http://boa.readthedocs.org (soon)
 * Documentation repository: https://github.com/omega8cc/boa-docs (soon)
 
 
