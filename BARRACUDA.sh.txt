@@ -3037,19 +3037,6 @@ barracuda_cnf () {
     echo "### with Barracuda version $_INSTALLER_VERSION" >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
     _CHECK_HOST=`uname -n`
-    _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net)
-    if [[ "$_CHECK_OS" =~ "Ubuntu" ]] ; then
-      _CHECK_OS=ULTS
-    fi
-    if [ "$_CHECK_OS" = "ULTS" ] ; then
-      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
-        _DO_NOTHING=YES
-      else
-        _R_M=BND
-        _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
-        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
-      fi
-    fi
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
@@ -3506,19 +3493,6 @@ barracuda_cnf () {
     fi
     sleep 1
     _CHECK_HOST=`uname -n`
-    _CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net)
-    if [[ "$_CHECK_OS" =~ "Ubuntu" ]] ; then
-      _CHECK_OS=ULTS
-    fi
-    if [ "$_CHECK_OS" = "ULTS" ] ; then
-      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
-        _DO_NOTHING=YES
-      else
-        _R_M=BND
-        _XTRAS_LIST=${_XTRAS_LIST%%${_R_M}}
-        sed -i "s/^_XTRAS_LIST=.*/_XTRAS_LIST=\"$_XTRAS_LIST\"/g" /root/.barracuda.cnf &> /dev/null
-      fi
-    fi
     sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g" /root/.barracuda.cnf &> /dev/null
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
@@ -8406,7 +8380,13 @@ fi
 
 
 ###--------------------###
-if [[ "$_XTRAS_LIST" =~ "BND" ]] ; then
+_CHECK_OS=$(grep "Ubuntu.*LTS" /etc/issue.net)
+if [[ "$_CHECK_OS" =~ "Ubuntu" ]] ; then
+  _CHECK_OS=ULTS
+else
+  _CHECK_OS=OTHER
+fi
+if [[ "$_XTRAS_LIST" =~ "BND" ]] && [ "$_CHECK_OS" = "OTHER" ] ; then
   if [ ! -e "/usr/sbin/named" ] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Bind9 DNS Server?" ; then
