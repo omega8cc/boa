@@ -16,7 +16,7 @@
     ### Xtras which need to be listed explicitly:
     ###
     ### BDD --- SQL Buddy DB Manager
-    ### BND --- Bind9 DNS Server
+    ### BND --- Bind9 DNS Server (available on Debian only)
     ### BZR --- Bazaar
     ### FMG --- FFmpeg support
     ### GIT --- Latest Git from sources
