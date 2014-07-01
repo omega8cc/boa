@@ -130,18 +130,16 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
 }
 
 /**
- * Core detection and Caching auto-conf
+ * Core detection
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    $conf['cache'] = 0; // Disable standard page caching - Drupal 8
     $drupal_eight = TRUE;
     if ($is_dev && !$is_backend) {
       header('X-Backend: A');
     }
   }
   else {
-    $conf['cache'] = 0; // Disable standard page caching - Drupal 7
     $drupal_seven = TRUE;
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
@@ -150,7 +148,6 @@ if (file_exists('web.config')) {
   }
 }
 elseif (file_exists('modules/path_alias_cache')) {
-  $conf['cache'] = 0; // Disable standard page caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
@@ -158,23 +155,17 @@ elseif (file_exists('modules/path_alias_cache')) {
   }
 }
 elseif (file_exists('modules/watchdog')) {
-  $conf['cache'] = 0; // Disable standard page caching - Pressflow 5
   $drupal_five = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: D');
   }
 }
 else {
-  $conf['cache'] = 0; // Disable standard page caching
   $drupal_unknown = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: E');
   }
 }
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
-  $conf['cache'] = 0;
-}
-
 
 /**
  * Logic for the front-end only
@@ -247,6 +238,7 @@ $boa_ini = array(
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
+  'disable_drupal_page_cache' => FALSE,            // It is set to FALSE for backward compatibility and max performance
 );
 
 /**
@@ -313,6 +305,23 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
+  header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
+}
+
+/**
+ * Enable page caching if disable_drupal_page_cache is not set to TRUE
+ */
+if ($all_ini['disable_drupal_page_cache']) {
+  $conf['cache'] = 0;
+else {
+  $conf['cache'] = 1;
+}
+
+/**
+ * Disable page caching when Speed Booster is disabled on the fly
+ */
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
+  $conf['cache'] = 0;
 }
 
 /**

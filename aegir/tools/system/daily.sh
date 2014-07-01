@@ -647,6 +647,12 @@ fix_modules () {
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> $_PLR_CTRL_FILE
             fi
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";disable_drupal_page_cache = FALSE" >> $_PLR_CTRL_FILE
+            fi
             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
               _DO_NOTHING=YES
@@ -714,6 +720,12 @@ fix_modules () {
               _DO_NOTHING=YES
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";disable_drupal_page_cache = FALSE" >> $_DIR_CTRL_FILE
             fi
              _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
