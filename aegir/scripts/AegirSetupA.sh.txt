@@ -111,6 +111,7 @@ _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _PLATFORMS_ONLY=EDIT_PLATFORMS_ONLY
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
+_REDIS_M_VERSION=EDIT_REDIS_M_VERSION
 _REL_VERSION=`lsb_release -sc`
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
@@ -629,13 +630,14 @@ download_o_contrib_seven () {
     rm -f redis/redis.info
     echo update > redis/update-045.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
-    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-B.tar.gz"
+    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/update-045.info
+    echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
   find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -716,13 +718,14 @@ download_o_contrib_six () {
     rm -f redis/redis.info
     echo update > redis/update-045.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
-    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-B.tar.gz"
+    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
     echo update > redis_edge/update-045.info
+    echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
   find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
