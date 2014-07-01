@@ -313,6 +313,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
  */
 if ($all_ini['disable_drupal_page_cache']) {
   $conf['cache'] = 0;
+}
 else {
   $conf['cache'] = 1;
 }
