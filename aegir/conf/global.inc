@@ -171,6 +171,10 @@ else {
     header('X-Backend: E');
   }
 }
+if (isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
+  $conf['cache'] = 0;
+}
+
 
 /**
  * Logic for the front-end only
