@@ -9,7 +9,7 @@
     ### CGP --- Collectd Graph Panel
     ### CHV --- Chive DB Manager
     ### CSF --- Firewall
-    ### CSS --- Compass Tools
+    ### CSS --- Compass Tools (available on Squeeze, Wheezy, Precise and Trusty)
     ### FTP --- Pure-FTPd server with forced FTPS
     ### WMN --- Webmin Control Panel
     ###
