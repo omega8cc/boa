@@ -311,7 +311,7 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 /**
  * Enable page caching if disable_drupal_page_cache is not set to TRUE
  */
-if ($all_ini['disable_drupal_page_cache']) {
+if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
   $conf['cache'] = 0;
 }
 else {
@@ -321,7 +321,7 @@ else {
 /**
  * Disable page caching when Speed Booster is disabled on the fly
  */
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
+if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   $conf['cache'] = 0;
 }
 
@@ -396,7 +396,7 @@ if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
   $use_redis = FALSE;
 }
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
+if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
