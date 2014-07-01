@@ -134,14 +134,14 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 8
+    $conf['cache'] = 0; // Disable standard page caching - Drupal 8
     $drupal_eight = TRUE;
     if ($is_dev && !$is_backend) {
       header('X-Backend: A');
     }
   }
   else {
-    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 7
+    $conf['cache'] = 0; // Disable standard page caching - Drupal 7
     $drupal_seven = TRUE;
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
@@ -150,7 +150,7 @@ if (file_exists('web.config')) {
   }
 }
 elseif (file_exists('modules/path_alias_cache')) {
-  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 6
+  $conf['cache'] = 0; // Disable standard page caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
@@ -158,14 +158,14 @@ elseif (file_exists('modules/path_alias_cache')) {
   }
 }
 elseif (file_exists('modules/watchdog')) {
-  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 5
+  $conf['cache'] = 0; // Disable standard page caching - Pressflow 5
   $drupal_five = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: D');
   }
 }
 else {
-  $conf['cache'] = 1; // Enable hardcoded standard caching
+  $conf['cache'] = 0; // Disable standard page caching
   $drupal_unknown = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: E');
