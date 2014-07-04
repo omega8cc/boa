@@ -1438,8 +1438,12 @@ if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ;
   _VMFAMILY="AWS"
   _THIS_DB_HOST=localhost
   _LOC_DOM="$_DOMAIN"
-  find_correct_ip
-  _MY_OWNIP="$_LOC_IP"
+  if [ -z "$_MY_OWNIP" ] ; then
+    find_correct_ip
+    _MY_OWNIP="$_LOC_IP"
+  else
+    _LOC_IP="$_MY_OWNIP"
+  fi
 fi
 if [ -d "/data/all/000" ] ; then
   if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
