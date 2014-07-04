@@ -2172,8 +2172,12 @@ fix_on_upgrade () {
 validate_public_ip () {
   if [ "$_VMFAMILY" = "AWS" ] ; then
     _LOC_DOM="$_MY_HOSTN"
-    find_correct_ip
-    _MY_OWNIP="$_LOC_IP"
+    if [ -z "$_MY_OWNIP" ] ; then
+      find_correct_ip
+      _MY_OWNIP="$_LOC_IP"
+    else
+      _LOC_IP="$_MY_OWNIP"
+    fi
   fi
   if [ ! -z "$_LOCAL_NETWORK_IP" ] ; then
     if [ -z "$_LOCAL_NETWORK_HN" ] ; then
@@ -2219,8 +2223,12 @@ validate_public_ip () {
 validate_xtras_ip () {
   if [ "$_VMFAMILY" = "AWS" ] ; then
     _LOC_DOM="$_MY_HOSTN"
-    find_correct_ip
-    _MY_OWNIP="$_LOC_IP"
+    if [ -z "$_MY_OWNIP" ] ; then
+      find_correct_ip
+      _MY_OWNIP="$_LOC_IP"
+    else
+      _LOC_IP="$_MY_OWNIP"
+    fi
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     _XTRAS_THISHTIP="*"
@@ -5962,8 +5970,12 @@ fi
 if [ "$_STATUS" = "INIT" ] ; then
   if [ "$_VMFAMILY" = "AWS" ] ; then
     _LOC_DOM="$_MY_HOSTN"
-    find_correct_ip
-    _MY_OWNIP="$_LOC_IP"
+    if [ -z "$_MY_OWNIP" ] ; then
+      find_correct_ip
+      _MY_OWNIP="$_LOC_IP"
+    else
+      _LOC_IP="$_MY_OWNIP"
+    fi
   fi
   _ETH_TEST=`ifconfig 2>&1`
   if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
@@ -8166,7 +8178,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fx3vhost.log" ] ; then
+  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fx5xvhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
       true
@@ -8180,7 +8192,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
       sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fx3vhost.log
+      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fx5xvhost.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
@@ -8206,7 +8218,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fx3vhost.log" ] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fx5xvhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
@@ -8220,7 +8232,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
-      touch /var/xdrago/log/sqlbuddy.fx3vhost.log
+      touch /var/xdrago/log/sqlbuddy.fx5xvhost.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
     else
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
@@ -8247,7 +8259,7 @@ fi
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fx3vhost.log" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fx5xvhost.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -8268,7 +8280,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"  $_CGP_VHOST &> /dev/null
         sed -i "s/cgp_name/cgp.$_THIS_FRONT/g"           $_CGP_VHOST &> /dev/null
         st_runner "update-rc.d collectd defaults" &> /dev/null
-        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fx3vhost.log
+        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fx5xvhost.log
         msg "INFO: Collectd Graph Panel installation completed"
       else
         msg "INFO: Collectd Graph Panel installation skipped"
