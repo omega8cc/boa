@@ -468,7 +468,7 @@ for i in $REVISIONS; do
   else
     _FORCE_UP_SEVEN=NO
   fi
-  if [ "$_FORCE_UP_SEVEN" = "YES" ] || [ ! -e "/data/all/000/modules/redis_edge" ]; then
+  if [ "$_FORCE_UP_SEVEN" = "YES" ] || [ ! -e "/data/all/000/modules/redis_edge" ] || [ ! -e "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
@@ -519,6 +519,9 @@ for i in $REVISIONS; do
     fi
     if [ ! -d "/data/all/$i/o_contrib_seven/taxonomy_edge" ] ; then
       get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+      get_dev_contrib "views_accelerator-7.x-1.0-alpha2.tar.gz"
     fi
     if [ ! -d "/data/all/$i/o_contrib_seven/views_cache_bully" ] ; then
       get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
@@ -599,6 +602,7 @@ download_o_contrib_seven () {
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "vars-7.x-2.0-alpha10.tar.gz"
+  get_dev_contrib "views_accelerator-7.x-1.0-alpha2.tar.gz"
   get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.x-dev.tar.gz"
