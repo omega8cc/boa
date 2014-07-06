@@ -661,6 +661,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
+  rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
