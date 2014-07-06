@@ -356,6 +356,8 @@ RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_c
 for i in $REVISIONS; do
   if [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-$_INSTALLER_VERSION.info" ] ; then
     _FORCE_UP_SIX=YES
+  elif [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/000/modules/redis_edge" ] ; then
+    _FORCE_UP_SIX=YES
   elif [ -e "/data/all/$i/o_contrib" ] && [ ! -L "/data/all/$i/o_contrib/redis_edge" ] ; then
     _FORCE_UP_SIX=YES
   elif [ -e "/data/all/$i/o_contrib" ] && [ ! -L "/data/all/$i/o_contrib/redis" ] ; then
@@ -363,7 +365,7 @@ for i in $REVISIONS; do
   else
     _FORCE_UP_SIX=NO
   fi
-  if [ "$_FORCE_UP_SIX" = "YES" ] || [ ! -e "/data/all/000/modules/redis_edge" ]; then
+  if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "/data/all/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
@@ -461,6 +463,10 @@ RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 for i in $REVISIONS; do
   if [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info" ] ; then
     _FORCE_UP_SEVEN=YES
+  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+    _FORCE_UP_SEVEN=YES
+  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/000/modules/redis_edge" ] ; then
+    _FORCE_UP_SEVEN=YES
   elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis_edge" ] ; then
     _FORCE_UP_SEVEN=YES
   elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis" ] ; then
@@ -468,7 +474,7 @@ for i in $REVISIONS; do
   else
     _FORCE_UP_SEVEN=NO
   fi
-  if [ "$_FORCE_UP_SEVEN" = "YES" ] || [ ! -e "/data/all/000/modules/redis_edge" ] || [ ! -e "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+  if [ "$_FORCE_UP_SEVEN" = "YES" ] && [ -e "/data/all/$i/o_contrib_seven" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
