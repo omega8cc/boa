@@ -634,13 +634,12 @@ download_o_contrib_seven () {
     rm -f redis/redis.info
     echo update > redis/update-045.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
     get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/update-045.info
     echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
   find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
@@ -722,13 +721,12 @@ download_o_contrib_six () {
     rm -f redis/redis.info
     echo update > redis/update-045.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
     get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/update-045.info
     echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
   find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
@@ -772,7 +770,7 @@ fi
 if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
-if [ ! -e "/data/all/000/modules/redis/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] ; then
+if [ ! -e "/data/all/000/modules/redis/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
