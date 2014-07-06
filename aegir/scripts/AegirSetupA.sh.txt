@@ -267,24 +267,12 @@ create_shared_dirs () {
     mkdir -p $_CORE
     mkdir -p /data/src
   fi
-  chown $_USER:$_USRG /data/all &> /dev/null
-  chown $_USER:$_USRG $_CORE &> /dev/null
-  if [ ! -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG $_CORE/o_contrib &> /dev/null
-  fi
-  if [ ! -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG $_CORE/o_contrib_seven &> /dev/null
-  fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib &> /dev/null
-  fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib_seven &> /dev/null
-  fi
-  chown -R $_USER:$_USRG /data/src &> /dev/null
-  chown -R $_USER:$_USRG /opt/tmp &> /dev/null
   chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chown -R $_USER:$_USRG /data/all/000 &> /dev/null
+  chown -R $_USER:$_USRG /data/src  &> /dev/null
+  chown -R $_USER:$_USRG /opt/tmp   &> /dev/null
+  chown $_USER:$_USRG /data/all     &> /dev/null
+  chown $_USER:$_USRG /data/all/000 &> /dev/null
+  chown $_USER:$_USRG $_CORE        &> /dev/null
   chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
 }
 #
