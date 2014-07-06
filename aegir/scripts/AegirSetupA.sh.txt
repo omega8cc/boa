@@ -263,17 +263,16 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 create_shared_dirs () {
   msg "$_STATUS A: Creating shared directories..."
   mkdir -p /data/all/000/{core,modules}
+  rm -f -r /data/src
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
-    mkdir -p /data/src
   fi
   chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chown -R $_USER:$_USRG /data/src  &> /dev/null
   chown -R $_USER:$_USRG /opt/tmp   &> /dev/null
   chown $_USER:$_USRG /data/all     &> /dev/null
   chown $_USER:$_USRG /data/all/000 &> /dev/null
   chown $_USER:$_USRG $_CORE        &> /dev/null
-  chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
+  chmod 777 $_CORE /data/all /data /data/disk /data/conf &> /dev/null
 }
 #
 # Fix for FServer broken due to required now strongarm.
@@ -1934,7 +1933,6 @@ if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-fix-all.info" ] ; then
 fi
 chown root:root /data/all &> /dev/null
 chown root:root $_CORE &> /dev/null
-st_runner "chown -R root:root /data/src" &> /dev/null
 st_runner "chown -R root:root /data/conf" &> /dev/null
 st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
 st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
@@ -1944,7 +1942,7 @@ st_runner "chown -R root:root /data/all/000" &> /dev/null
 find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
 find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
 chown root:root /opt/tmp &> /dev/null
-chmod 0711 $_CORE /data/all/000 /data/src /data /data/disk /data/conf &> /dev/null
+chmod 0711 $_CORE /data/all/000 /data /data/disk /data/conf &> /dev/null
 chmod 0755 /data/all &> /dev/null
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
