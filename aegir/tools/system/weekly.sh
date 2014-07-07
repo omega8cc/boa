@@ -567,7 +567,7 @@ check_limits () {
     _DSK_MIN_LIMIT=51200
     _SQL_MAX_LIMIT=$(($_SQL_MIN_LIMIT + 256))
     _DSK_MAX_LIMIT=$(($_DSK_MIN_LIMIT + 2560))
-  elif [ "$_CLIENT_OPTION" = "SSD" ] ; then
+  elif [ "$_CLIENT_OPTION" = "SSD" ] || [ "$_CLIENT_OPTION" = "EDGE" ] ; then
     _CLIENT_OPTION=EDGE
     _SQL_MIN_LIMIT=512
     _DSK_MIN_LIMIT=15360
