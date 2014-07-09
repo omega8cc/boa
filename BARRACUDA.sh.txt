@@ -520,7 +520,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=ftp.debian.org
+_LOCAL_DEBIAN_MIRROR=http.debian.net
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
@@ -3055,7 +3055,7 @@ barracuda_cnf () {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"http.debian.net\"/g" /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
@@ -3506,7 +3506,7 @@ barracuda_cnf () {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"ftp.debian.org\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"http.debian.net\"/g" /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
@@ -4830,7 +4830,7 @@ update_sources_list () {
       else
         if [ "$_AUTOPILOT" = "YES" ] ; then
           if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-            _MIRROR=ftp.debian.org
+            _MIRROR=http.debian.net
           else
             _MIRROR=$_LOCAL_DEBIAN_MIRROR
           fi
@@ -4856,7 +4856,7 @@ update_sources_list () {
         fi
         if ! netcat -w 5 -z $_MIRROR 80 ; then
           msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
-          _MIRROR=ftp.debian.org
+          _MIRROR=http.debian.net
         fi
       fi
       msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
