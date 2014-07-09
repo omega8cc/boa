@@ -4754,6 +4754,12 @@ update_sources_list () {
       else
         _APT_SOURCES_REWRITE=YES
       fi
+      _PROPOSED_TEST=$(grep "DEBIAN STABLE PROPOSED UPDATES" /etc/apt/sources.list)
+      if [[ "$_PROPOSED_TEST" =~ "DEBIAN STABLE PROPOSED UPDATES" ]] ; then
+        _DO_NOTHING=YES
+      else
+        _APT_SOURCES_REWRITE=YES
+      fi
       _VOLATILE_TEST=$(grep "MAJOR BUG FIX UPDATES" /etc/apt/sources.list)
       if [[ "$_VOLATILE_TEST" =~ "MAJOR BUG FIX UPDATES" ]] ; then
         _DO_NOTHING=YES
@@ -4879,6 +4885,8 @@ update_sources_list () {
         echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
         echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
         echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+        echo "## DEBIAN STABLE PROPOSED UPDATES" >> /etc/apt/sources.list
+        echo "deb http://$_MIRROR/debian/ stable-proposed-updates main" >> /etc/apt/sources.list
         if [ "$_REL_VERSION" = "wheezy" ] ; then
           if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt" ] ; then
             cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/etc-apt-preferences-wheezy.txt /etc/apt/preferences
