@@ -179,6 +179,7 @@ _PHP_CLI_VERSION=5.3
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
+### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint (off)
@@ -697,6 +698,7 @@ _OPENBLOG=7.x-1.0-alpha2
 _OPENCHURCH=7.x-1.12
 _OPENDEALS=7.x-1.32
 _OPENOUTREACH=7.x-1.7
+_OPENPUBLIC=7.x-1.0-beta23
 _OPENPUBLISH=7.x-1.0-beta7
 _OPENSCHOLAR=7.x-3.12.1
 _PANOPOLY=7.x-1.6
@@ -1503,6 +1505,7 @@ do
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
   sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
+  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
   sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
