@@ -267,11 +267,12 @@ create_shared_dirs () {
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
   fi
-  chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chown -R $_USER:$_USRG /opt/tmp   &> /dev/null
-  chown $_USER:$_USRG /data/all     &> /dev/null
-  chown $_USER:$_USRG /data/all/000 &> /dev/null
-  chown $_USER:$_USRG $_CORE        &> /dev/null
+  chown -R $_USER:$_USRG /data/conf      &> /dev/null
+  chown -R $_USER:$_USRG /opt/tmp        &> /dev/null
+  chown $_USER:$_USRG /data/all          &> /dev/null
+  chown $_USER:$_USRG /data/all/000      &> /dev/null
+  chown $_USER:$_USRG /data/all/000/core &> /dev/null
+  chown $_USER:$_USRG $_CORE             &> /dev/null
   chmod 777 $_CORE /data/all /data /data/disk /data/conf &> /dev/null
 }
 #
