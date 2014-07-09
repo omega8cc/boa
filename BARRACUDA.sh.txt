@@ -4888,8 +4888,8 @@ update_sources_list () {
         fi
         if [ "$_REL_VERSION" = "squeeze" ] ; then
           echo "## DEBIAN LTS UPDATES" >> /etc/apt/sources.list
-          echo "deb http://http.debian.net/debian/ $_REL_VERSION-lts main contrib non-free" >> /etc/apt/sources.list
-          echo "deb-src http://http.debian.net/debian/ $_REL_VERSION-lts main contrib non-free" >> /etc/apt/sources.list
+          echo "deb http://$_MIRROR/debian/ $_REL_VERSION-lts main contrib non-free" >> /etc/apt/sources.list
+          echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-lts main contrib non-free" >> /etc/apt/sources.list
           if [ -e "/etc/apt/apt.conf" ] ; then
             sed -i "s/APT::Default-Release \"squeeze\";/APT::Default-Release \"squeeze-lts\";/g" /etc/apt/apt.conf &> /dev/null
           fi
