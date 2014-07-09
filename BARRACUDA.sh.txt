@@ -3050,35 +3050,35 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                  /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                 /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                   /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"http.debian.net\"/g" /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                       /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                      /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                      /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                       /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                      /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           if [ "$_VMFAMILY" = "VS" ] ; then
-            sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                        /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                          /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                    /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                         /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                           /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                     /root/.barracuda.cnf &> /dev/null
           fi
-          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                              /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                               /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"           /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                 /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                       /root/.barracuda.cnf &> /dev/null
           if [ -x "/opt/php55/bin/php" ] ; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                     /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                     /root/.barracuda.cnf &> /dev/null
           fi
-          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"        /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"                /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                     /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"         /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
@@ -3504,35 +3504,35 @@ barracuda_cnf () {
       if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                 /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                  /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_ENGINE=.*/_DB_ENGINE=InnoDB/g"                                  /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                                 /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                                   /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=\"http.debian.net\"/g" /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                     /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                      /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                     /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                     /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                       /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                      /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                      /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                       /root/.*.octopus.cnf &> /dev/null
+        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                      /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           if [ "$_VMFAMILY" = "VS" ] ; then
-            sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                        /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                          /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                    /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                         /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_CPU_MAX_RATIO=.*/_CPU_MAX_RATIO=2/g"                           /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_CPU_SPIDER_RATIO=.*/_CPU_SPIDER_RATIO=1/g"                     /root/.barracuda.cnf &> /dev/null
           fi
-          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                              /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"          /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                      /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                               /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g"           /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                                 /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"                       /root/.barracuda.cnf &> /dev/null
           if [ -x "/opt/php55/bin/php" ] ; then
-            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                    /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=5.5/g"                     /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=5.5/g"                     /root/.barracuda.cnf &> /dev/null
           fi
-          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"               /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                    /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"        /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"                /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                     /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"         /root/.barracuda.cnf &> /dev/null
         fi
       fi
     fi
