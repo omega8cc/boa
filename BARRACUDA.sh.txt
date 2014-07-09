@@ -8524,6 +8524,7 @@ else
           ### versions required explicitly by some popular themes
           mrun "rvm @global do gem install --conservative --version 0.0.2 compass-blend-modes" 2> /dev/null
           mrun "rvm @global do gem install --conservative --version 0.0.6 rb-fchange"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
           mrun "rvm @global do gem install --conservative --version 0.12.2 compass"            2> /dev/null
           mrun "rvm @global do gem install --conservative --version 0.12.4 compass"            2> /dev/null
           mrun "rvm @global do gem install --conservative --version 0.12.5 compass"            2> /dev/null
@@ -8545,18 +8546,19 @@ else
           mrun "rvm @global do gem install --conservative --version 1.3.0 chunky_png"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.0.1 compass_radix"       2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 3.1 bootstrap-sass"        2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.8.4 multi_json"          2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2.0.1 compass_radix"       2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.0.7 breakpoint"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.1.0 guard-livereload"    2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.2.5 guard"               2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.3.5 addressable"         2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.3.6 addressable"         2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.4.0 listen"              2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.0.3 compass_radix"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.1 bootstrap-sass"        2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.1.1.0 bootstrap-sass"    2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3.2.13 sass"               2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3.2.19 sass"               2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3.4.7 slop"                2> /dev/null
@@ -8576,10 +8578,13 @@ else
           ### cleanup & update gems
           mrun "rvm get stable"                                                                2> /dev/null
           mrun "rvm @global do gem update -q"                                                  2> /dev/null
+          ### add if missing for radix compatibility
+          mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.0.3 compass_radix"       2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3.1 bootstrap-sass"        2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.1.1.0 bootstrap-sass"    2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
