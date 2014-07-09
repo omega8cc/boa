@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.6 Release - Full Edition
 ### Date: Sat Jun 21 06:14:18 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri Jul  4 16:04:26 PDT 2014
+### Latest hotfix added on: Wed Jul  9 09:00:32 CDT 2014
 
 # Release Notes:
 
@@ -130,6 +130,8 @@
 # Changes in this release:
 
   * Add memcache, memcache_admin to the list of automatically disabled modules.
+  * Add support for Debian Squeeze LTS updates.
+  * Add support for Debian Squeeze Stable Proposed Updates.
   * Add varnish to the list of automatically disabled modules.
   * Add watchdog_live to the list of automatically disabled modules.
   * Disable and remove not used init scripts on known VM systems.
@@ -140,6 +142,7 @@
   * Nginx: Use only newer control file to force DoS monitor aggressive mode.
   * Sync permissions with new defaults in the hardened setup.
   * Update files ownership to match defaults in the hardened setup.
+  * Use dynamic mirror selection provided by Debian instead of forced static.
 
   * The BOA project has moved to Github!
 
