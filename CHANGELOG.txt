@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.6 Release - Full Edition
 ### Date: Sat Jun 21 06:14:18 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Wed Jul  9 13:28:48 CDT 2014
+### Latest hotfix added on: Wed Jul  9 16:06:40 CDT 2014
 
 # Release Notes:
 
@@ -200,6 +200,7 @@
   * Fix incorrect version in the permissions fix.
   * Fix permissions after every upgrade.
   * Fix permissions and owner/group required for feeds (upload) support.
+  * Fix regex in procs monitor.
   * Force apticron re-install if apticron.conf is outdated.
   * Generate /data/all/cpuinfo daily to be used in Provision.
   * GPL Ghostscript should be available for the web (PHP-FPM) access.
