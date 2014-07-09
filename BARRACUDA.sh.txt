@@ -4885,6 +4885,7 @@ update_sources_list () {
         echo "## DEBIAN SECURITY UPDATES" >> /etc/apt/sources.list
         echo "deb http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
         echo "deb-src http://security.debian.org/ $_REL_VERSION/updates main contrib non-free" >> /etc/apt/sources.list
+        echo "" >> /etc/apt/sources.list
         echo "## DEBIAN PROPOSED UPDATES" >> /etc/apt/sources.list
         echo "deb http://$_MIRROR/debian/ $_REL_VERSION-proposed-updates main" >> /etc/apt/sources.list
         if [ "$_REL_VERSION" = "wheezy" ] ; then
@@ -4895,6 +4896,7 @@ update_sources_list () {
           fi
         fi
         if [ "$_REL_VERSION" = "squeeze" ] ; then
+          echo "" >> /etc/apt/sources.list
           echo "## DEBIAN LTS UPDATES" >> /etc/apt/sources.list
           echo "deb http://$_MIRROR/debian/ $_REL_VERSION-lts main contrib non-free" >> /etc/apt/sources.list
           echo "deb-src http://$_MIRROR/debian/ $_REL_VERSION-lts main contrib non-free" >> /etc/apt/sources.list
