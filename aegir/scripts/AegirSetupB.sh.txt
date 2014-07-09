@@ -515,6 +515,12 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."
+  if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
+    rm -f -r $_HOSTMASTER_ROOT/modules/o_contrib &> /dev/null
+  fi
+  if [ -d "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
+    rm -f -r $_PREV_HOSTMASTER_ROOT/modules/o_contrib &> /dev/null
+  fi
   if [ ! -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _DEBUG_MODE=YES
     msg "$_STATUS B: Testing previous install... OPS, zombie found, moving it to backups..."
@@ -614,13 +620,6 @@ else
   get_dev_ext "hosting_remote_import.tar.gz"
   get_dev_ext "hosting_site_backup.tar.gz"
   get_dev_ext "hosting_tasks_extra.tar.gz"
-fi
-if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] || [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/cache_backport" ] ; then
-  if [ -e "/data/all/000/modules/redis_edge" ] && [ -e "/data/all/000/modules/cache_backport" ] ; then
-    mkdir -p $_HOSTMASTER_ROOT/modules/o_contrib
-    ln -sf /data/all/000/modules/redis_edge $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge &> /dev/null
-    ln -sf /data/all/000/modules/cache_backport $_HOSTMASTER_ROOT/modules/o_contrib/cache_backport &> /dev/null
-  fi
 fi
 cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
@@ -731,6 +730,16 @@ fi
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then
   ln -sf /data/conf/global.inc $_ROOT/config/includes/global.inc
+fi
+
+###---### Redis integration.
+#
+if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] || [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/cache_backport" ] ; then
+  if [ -e "/data/all/000/modules/redis_edge" ] && [ -e "/data/all/000/modules/cache_backport" ] ; then
+    mkdir -p $_HOSTMASTER_ROOT/modules/o_contrib
+    ln -sf /data/all/000/modules/redis_edge $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge &> /dev/null
+    ln -sf /data/all/000/modules/cache_backport $_HOSTMASTER_ROOT/modules/o_contrib/cache_backport &> /dev/null
+  fi
 fi
 
 touch /opt/tmp/status-AegirSetupB-OK
