@@ -615,9 +615,12 @@ else
   get_dev_ext "hosting_site_backup.tar.gz"
   get_dev_ext "hosting_tasks_extra.tar.gz"
 fi
-if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] && [ -e "/data/all/000/modules/redis_edge" ] ; then
-  mkdir -p $_HOSTMASTER_ROOT/modules/o_contrib
-  ln -sf /data/all/000/modules/redis_edge $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge &> /dev/null
+if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] || [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/cache_backport" ] ; then
+  if [ -e "/data/all/000/modules/redis_edge" ] && [ -e "/data/all/000/modules/cache_backport" ] ; then
+    mkdir -p $_HOSTMASTER_ROOT/modules/o_contrib
+    ln -sf /data/all/000/modules/redis_edge $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge &> /dev/null
+    ln -sf /data/all/000/modules/cache_backport $_HOSTMASTER_ROOT/modules/o_contrib/cache_backport &> /dev/null
+  fi
 fi
 cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
