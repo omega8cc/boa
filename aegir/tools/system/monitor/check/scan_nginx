@@ -44,6 +44,7 @@ sub makeactions
   local($sumar,$li_cnt{$VISITOR},$sumarpx,$px_cnt{$PROXY});
   local($im_sumar,$im_li_cnt{$VISITOR},$im_sumarpx,$im_px_cnt{$PROXY});
   foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     local($VISITOR, $PROXY, $XREAL, $YREAL, $ZREAL, $RESTX) = split(/\s+/,$line);
     $VISITOR =~ s/[^0-9\.]//g;
     if ($VISITOR =~ /^((192.168.)|(172.16.)|(unknown)|(10.)|(127.0.))/)

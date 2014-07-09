@@ -33,6 +33,7 @@ sub makeactions
 {
 local(@MYARR) = `grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
   foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(syntax|path|command)/i || ($line =~ /(shell escape)/i && $line !~ /exit/i)) {
       if ($line =~ /(var\/log\/lsh)/i) {
         ($log, $line) = split(/.log:/,$line);
@@ -49,7 +50,6 @@ local(@MYARR) = `grep -i forbidden /var/log/lsh/*.log | tail --lines=999 2>&1`;
         if ($now_is eq $log_is) {
           $status="ERROR";
           `echo "$line" >> $logfile`;
-          print "===[$now_is]\t[$log_is]\t[$line]===\n";
           `echo "[$now_is]:[$log_is]:[$line]" >> /var/xdrago/log/last-shell-escape-y-problem`;
         }
 #         else {

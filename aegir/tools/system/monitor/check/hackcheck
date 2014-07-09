@@ -27,6 +27,7 @@ sub makeactions
   local(@MYARR) = `tail --lines=999 /var/log/auth.log 2>&1`;
   local($sumar,$maxnumber);
   foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(Failed password for root)/i) {
       &verify_timestamp;
       if ($timestamp eq "NEW") {
