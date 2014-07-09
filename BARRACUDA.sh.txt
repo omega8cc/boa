@@ -8555,6 +8555,8 @@ else
           mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
           mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.0.1 compass_radix"       2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
             if [ "$_KEEP_BUNDLER" = "NO" ] ; then
               _DO_NOTHING=YES
@@ -8583,6 +8585,8 @@ else
           ### cleanup & update gems
           mrun "rvm get stable"                                                                2> /dev/null
           mrun "rvm @global do gem update -q"                                                  2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
