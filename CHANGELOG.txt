@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.6 Release - Full Edition
 ### Date: Sat Jun 21 06:14:18 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Wed Jul  9 09:00:32 CDT 2014
+### Latest hotfix added on: Wed Jul  9 09:48:37 CDT 2014
 
 # Release Notes:
 
@@ -218,6 +218,7 @@
   * Sync BOND with BARRACUDA.
   * Update for switch_to_bash procedure.
   * Use already downloaded patches.
+  * Use Debian release specific proposed-updates.
   * Use full path to sqlmagic in daily.sh to avoid 'command not found' error.
   * Fix for authorized IPs detection in the protected vhosts logic - it should
     ignore serial/remote console logins.
