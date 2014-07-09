@@ -8557,6 +8557,8 @@ else
           mrun "rvm @global do gem install --conservative --version 2.0.1 compass_radix"       2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.1 bootstrap-sass"        2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
           if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
             if [ "$_KEEP_BUNDLER" = "NO" ] ; then
               _DO_NOTHING=YES
@@ -8587,6 +8589,8 @@ else
           mrun "rvm @global do gem update -q"                                                  2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2 compass_radix"           2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 3.1 bootstrap-sass"        2> /dev/null
+          mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
