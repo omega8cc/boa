@@ -138,6 +138,7 @@ sub global_action
 {
   local(@MYARR) = `ps auxf 2>&1`;
   foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
     $li_cnt{$USER}++ if ($PID ne "PID");
     $li_cnt{$X}++ if ($PID ne "PID" && $COMMAND =~ /php-fpm/ && $X =~ /php/);
@@ -293,6 +294,7 @@ sub mysqld_action
   $MAXCPU = $MAXCPU - 2;
   local(@SQLARR) = `top -n 1 | grep mysqld 2>&1`;
   foreach $line (@SQLARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line !~ /mysqld_safe/)
     {
       local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);

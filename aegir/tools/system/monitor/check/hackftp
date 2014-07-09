@@ -27,6 +27,7 @@ sub makeactions
   local(@MYARR) = `tail --lines=999 /var/log/messages 2>&1`;
   local($sumar,$maxnumber);
   foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /(Authentication failed for user)/i || $line =~ /(Sorry, cleartext sessions are not accepted)/i) {
       &verify_timestamp;
       if ($timestamp eq "NEW") {

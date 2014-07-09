@@ -52,6 +52,7 @@ INTROX
   local($maxnumber,$critnumber,$alert);
   local($sumar,$li_cnt{$DOMAIN},$li_cndx{$DOMAIN});
   foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
     if ($line =~ /php\-.*: segfault/i) {
       local($MONTX, $DAYX, $TIMEX, $rest) = split(/\s+/,$line);
       chomp($TIMEX);
@@ -115,7 +116,9 @@ sub find_domain
   local($CRASHED) = @_;
   $lx = $d;
   $ngxl=`grep "$CRASHED.* 502 " /var/log/nginx/access.log`;
+  $ngxl =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\"]//g;
   $sysl=`grep "$CRASHED.*php\-.*: segfault" /var/log/syslog`;
+  $sysl =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,]//g;
   local($a, $b, $c, $x, $y) = split(/\"\s+/,"$ngxl");
   local($d, $e) = split(/\s+/,$b);
   $d =~ s/[^a-z0-9\.\-]//g;
