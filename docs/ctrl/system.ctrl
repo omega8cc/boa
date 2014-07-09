@@ -80,6 +80,13 @@ by the BOA install and upgrade tools exclusively.
  the daily Speed Booster cache forced cleanup, which happens at midnight.
  Furthermore, it prevents PHP-FPM restarts when the system detects segfault.
 
+   /root/.remove.bundler.cnf
+
+ This file, if exists, will force the system to not install and remove if
+ already installed the 'bundler' gem. Note that while it may fix some issues
+ for some themes and their related gems, it may break dependencies for
+ some other gems, so don't use it without extensive testing.
+
    /root/.home.no.wildcard.chmod.cnf
 
  This file, if exists, allows to avoid setting restrictive (but recommended)

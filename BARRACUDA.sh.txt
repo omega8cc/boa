@@ -8460,10 +8460,10 @@ if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
   if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [ -e "/root/.keep.bundler.cnf" ] ; then
-      _KEEP_BUNDLER=YES
-    else
+    if [ -e "/root/.remove.bundler.cnf" ] ; then
       _KEEP_BUNDLER=NO
+    else
+      _KEEP_BUNDLER=YES
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       _L_ST="install"
@@ -8483,7 +8483,7 @@ else
         if [ ! -x "/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem" ] ; then
           _RUBY_UPGRADE=YES
         fi
-        if [ ! -e "/var/xdrago/log/gem-conservative-002.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
+        if [ ! -e "/var/xdrago/log/gem-conservative-003.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
           mrun "apt-get update -y --force-yes"                                                 &> /dev/null
           mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes"   &> /dev/null
           mrun "apt-get autoremove -y --force-yes"                                             &> /dev/null
@@ -8495,15 +8495,6 @@ else
           mrun "rvm @global do gem install --conservative bootstrap-sass-extensions"           2> /dev/null
           mrun "rvm @global do gem install --conservative bootstrap-sass"                      2> /dev/null
           mrun "rvm @global do gem install --conservative breakpoint"                          2> /dev/null
-          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            if [ "$_KEEP_BUNDLER" = "NO" ] ; then
-              mrun "rvm @global do gem uninstall bundler -x -q -a"                             2> /dev/null
-            else
-              mrun "rvm @global do gem install --conservative bundler"                         2> /dev/null
-            fi
-          else
-            mrun "rvm @global do gem install --conservative bundler"                           2> /dev/null
-          fi
           mrun "rvm @global do gem install --conservative chunky_png"                          2> /dev/null
           mrun "rvm @global do gem install --conservative compass_radix"                       2> /dev/null
           mrun "rvm @global do gem install --conservative compass_twitter_bootstrap"           2> /dev/null
@@ -8559,15 +8550,6 @@ else
           mrun "rvm @global do gem install --conservative --version 3 compass_radix"           2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3.1 bootstrap-sass"        2> /dev/null
           mrun "rvm @global do gem install --conservative --version 0.12 compass"              2> /dev/null
-          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            if [ "$_KEEP_BUNDLER" = "NO" ] ; then
-              _DO_NOTHING=YES
-            else
-              mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"         2> /dev/null
-            fi
-          else
-            mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"           2> /dev/null
-          fi
           mrun "rvm @global do gem install --conservative --version 1.8.4 multi_json"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.0.7 breakpoint"          2> /dev/null
           mrun "rvm @global do gem install --conservative --version 2.1.0 guard-livereload"    2> /dev/null
@@ -8579,10 +8561,17 @@ else
           mrun "rvm @global do gem install --conservative --version 3.2.19 sass"               2> /dev/null
           mrun "rvm @global do gem install --conservative --version 3.4.7 slop"                2> /dev/null
           mrun "rvm @global do gem install --conservative --version 4.3.2 zurb-foundation"     2> /dev/null
+          ### custom logic for bundler debugging
+          if [ "$_KEEP_BUNDLER" = "NO" ] ; then
+            mrun "rvm @global do gem uninstall bundler -x -q -a"                               2> /dev/null
+          else
+            mrun "rvm @global do gem install --conservative bundler"                           2> /dev/null
+            mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"           2> /dev/null
+          fi
           ### cleanup & update gems
           mrun "rvm @global do gem uninstall sassy-math -x -q -a"                              2> /dev/null
           mrun "rvm @global do gem update -q"                                                  2> /dev/null
-          touch /var/xdrago/log/gem-conservative-002.log
+          touch /var/xdrago/log/gem-conservative-003.log
         else
           ### cleanup & update gems
           mrun "rvm get stable"                                                                2> /dev/null
