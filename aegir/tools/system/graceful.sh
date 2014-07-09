@@ -42,8 +42,7 @@ action()
   fi
   touch /var/run/fmp_wait.pid
   rm -f /var/log/php/*
-  echo rotate > /var/log/redis/redis-server.log
-  echo rotate > /var/log/mysql/sql-slow-query.log
+  rm -f /var/log/mysql/sql-slow-query.log
   if [ -e "/etc/init.d/php55-fpm" ] ; then
     /etc/init.d/php55-fpm reload
   fi
