@@ -116,7 +116,7 @@ rm -f /var/log/redis/redis-server.log
 rm -f /var/run/boa_wait.pid
 echo "Redis server restarted"
 
-service clean-boa-env start &> /dev/null
+rm -f /var/run/boa_run.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0
