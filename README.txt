@@ -242,15 +242,9 @@ Barracuda and Octopus projects on drupal.org:
 
 ### HELP OPTIONS
 
-* Drupal Answers -------------- http://drupal.stackexchange.com (see tags below)
-
-  http://drupal.stackexchange.com/questions/tagged/boa
-  http://drupal.stackexchange.com/questions/tagged/aegir
-
-* IRC channel ----------------- irc://irc.freenode.net/omega8cc
-
-* Documentation site ---------- http://boa.readthedocs.org (soon)
-* Documentation repository ---- https://github.com/omega8cc/boa-docs (soon)
+* Docs and How-to ------------- https://omega8.cc/library/development
+* Community IRC channel ------- irc://irc.freenode.net/omega8cc
+* Commercial support ---------- https://omega8.cc
 
 
 ### MAINTAINERS
