@@ -1466,7 +1466,7 @@ fi
 
 ###---### Remove not used dot files.
 #
-rm -f $_USER_HD/{.profile,.bash_logout,.bashrc}
+rm -f $_USER_HD/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
 
 
 ###---### Reading or creating pass.txt.
