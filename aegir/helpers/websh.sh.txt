@@ -245,10 +245,15 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
+    SHELL=/usr/local/bin/lshell
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-      export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+      if [ -x "/bin/dash" ] ; then
+        export SHELL;export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+      else
+        export SHELL;export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+      fi
     else
-      export DRUSH_PHP;export PHP_INI;exec $0 "$@"
+      export SHELL;export DRUSH_PHP;export PHP_INI;exec $0 "$@"
     fi
     exit 0
   else
@@ -276,7 +281,11 @@ else
     PHP_INI="$HOME/.drush/rphp.ini"
   fi
   if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-    export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+    if [ -x "/bin/dash" ] ; then
+      export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+    else
+      export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+    fi
   else
     export DRUSH_PHP;export PHP_INI;exec $0 "$@"
   fi
