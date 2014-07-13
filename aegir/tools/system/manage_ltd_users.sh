@@ -302,7 +302,7 @@ ok_create_user()
     echo "$_ESC_LUPASS" > /home/$_ADMIN/users/$_USER_LTD
   fi
   fix_dot_dirs
-  rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
+  rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bash_profile,.bashrc}
 }
 #
 # OK, update user.
@@ -318,7 +318,7 @@ ok_update_user()
     chmod 700 $_USER_LTD_ROOT
   fi
   fix_dot_dirs
-  rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bash_profile,.bashrc,.zlogin,.zshrc}
+  rm -f $_USER_LTD_ROOT/{.profile,.bash_logout,.bash_profile,.bashrc}
 }
 #
 # Add user if not exists.
