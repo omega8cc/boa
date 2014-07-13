@@ -1,5 +1,31 @@
 
 ###
+### Support for Compass Tools via RVM and Bundler with local user gems
+###
+### ~/static/control/compass.info
+###
+### This allows to easily install Ruby Version Manager (RVM) by the instance
+### owner w/o system admin (root) help. All you need to do is to create empty
+### ~/static/control/compass.info file.
+###
+### The system will check for this file existence every five minutes and will
+### Install latest RVM stable with Ruby, so you can easily add and manage
+### custom gems and bundles, with exact versions required by various themes
+### which depend on Compass Tools.
+###
+### You can then install and update gems using standard rvm commands. Examples:
+###
+### rvm all do gem install compass
+### rvm all do gem install --conservative toolkit
+### rvm all do gem install --conservative --version 3.0.3 compass_radix
+###
+### Note that this single control file will enable RVM also in all extra
+### SSH accounts on your instance, if used. If you will delete this file,
+### the system will remove RVM with all gems from all SSH accounts on your
+### Aegir Satellite Instance.
+###
+
+###
 ### Support for PHP FPM/CLI version safe switch per Octopus instance
 ###
 ### ~/static/control/fpm.info
