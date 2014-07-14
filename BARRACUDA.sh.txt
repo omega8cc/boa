@@ -5774,6 +5774,8 @@ echo " "
 
 
 ###--------------------###
+aptitude autoclean -y &> /dev/null
+apt-get clean -qq &> /dev/null
 update_sources_list
 apt-get update &> /dev/null
 
@@ -6457,6 +6459,8 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+  st_runner "aptitude autoclean -y" &> /dev/null
+  st_runner "apt-get clean -qq" &> /dev/null
 else
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
 fi
@@ -6482,7 +6486,12 @@ else
     rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fi
   if [ "$_REL_VERSION" = "squeeze" ] ; then
-    rm -f /etc/apt/sources.list.d/dotdeb.list
+    if [ -e "/etc/apt/sources.list.d/dotdeb.list" ] ; then
+      rm -f /etc/apt/sources.list.d/dotdeb.list
+      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get clean -qq"     &> /dev/null
+      st_runner "apt-get update -y"     &> /dev/null
+    fi
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
@@ -6829,7 +6838,9 @@ else
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get clean -qq"     &> /dev/null
+      st_runner "apt-get update -y"     &> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/percona.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -6838,7 +6849,9 @@ else
         _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
         sleep 2
       done
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get clean -qq"     &> /dev/null
+      st_runner "apt-get update -y"     &> /dev/null
     fi
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
