@@ -3620,6 +3620,16 @@ barracuda_cnf () {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade () {
   msg "INFO: Running aptitude full-upgrade, please wait..."
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
@@ -3638,6 +3648,16 @@ run_aptitude_full_upgrade () {
 # Running silent aptitude full-upgrade.
 run_silent_aptitude_full_upgrade () {
   msg "INFO: Running silent aptitude full-upgrade, please wait..."
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      mrun "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      mrun "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      mrun "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   mrun "dpkg --configure --force-all -a" 2> /dev/null
   mrun "aptitude update -y" &> /dev/null
   mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
@@ -4567,7 +4587,7 @@ update_newrelic () {
       msg "INFO: Installing latest version of New Relic Apps and Server Monitor..."
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
       NR_INSTALL_PHPLIST=/opt/php52/bin:/opt/php53/bin:/opt/php54/bin:/opt/php55/bin;export NR_INSTALL_PHPLIST;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
       _X86_64_TEST=`uname -m`
@@ -4637,7 +4657,7 @@ install_newrelic () {
       rm -f 548C16BF.gpg*
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ] ; then
         msg "INFO: Installing latest version of New Relic Apps and Server Monitor..."
@@ -6338,7 +6358,7 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   mrun "apt-get purge svscan -y" &> /dev/null
   mrun "apt-get purge pound -y" &> /dev/null
-  mrun "apt-get update -y" &> /dev/null
+  mrun "apt-get update -y --force-yes" &> /dev/null
   mrun "apt-get autoremove -y --force-yes" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
@@ -6400,7 +6420,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     mrun "apt-get remove udev -y --force-yes" &> /dev/null
   fi
   mrun "apt-get remove lsb-release -y --force-yes" &> /dev/null
-  mrun "apt-get update -y" &> /dev/null
+  mrun "apt-get update -y --force-yes" &> /dev/null
   mrun "apt-get autoremove -y --force-yes" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
@@ -6464,6 +6484,16 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
 else
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
 fi
+_BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  msg "WARN: Installed keyring is broken, forced reinstall required"
+  if [ "$_THIS_OS" = "Debian" ] ; then
+    st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+  else
+    st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+  fi
+fi
 st_runner "aptitude update -y" &> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
 if [ "$_STATUS" = "INIT" ] ; then
@@ -6489,8 +6519,8 @@ else
     if [ -e "/etc/apt/sources.list.d/dotdeb.list" ] ; then
       rm -f /etc/apt/sources.list.d/dotdeb.list
       st_runner "aptitude autoclean -y" &> /dev/null
-      st_runner "apt-get clean -qq"     &> /dev/null
-      st_runner "apt-get update -y"     &> /dev/null
+      st_runner "apt-get clean -qq" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
     fi
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
@@ -6557,13 +6587,23 @@ else
     _APT_XTRA=""
   fi
   _APT_ELSE="netcat"
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   st_runner "aptitude remove nginx-extras -y"   &> /dev/null
   st_runner "aptitude remove nginx -y"          &> /dev/null
   st_runner "aptitude remove nginx-common -y"   &> /dev/null
   st_runner "aptitude remove nginx-full -y"     &> /dev/null
   st_runner "aptitude remove redis-server -y"   &> /dev/null
   st_runner "apt-get autoremove -y --force-yes" &> /dev/null
-  st_runner "apt-get update -y"                 &> /dev/null
+  st_runner "apt-get update -y --force-yes"     &> /dev/null
 fi
 _EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
@@ -6642,11 +6682,21 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   st_runner "apt-get autoremove -y --force-yes" &> /dev/null
   st_runner "aptitude remove mysql-common -y"   &> /dev/null
   st_runner "apt-get purge mysql-common -y"     &> /dev/null
   st_runner "apt-get autoremove -y --force-yes" &> /dev/null
-  st_runner "apt-get update -y"                 &> /dev/null
+  st_runner "apt-get update -y --force-yes"     &> /dev/null
   SQLDEB="percona-server-server-5.5"
   if [ "$_REL_VERSION" = "squeeze" ] ; then
     SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit"
@@ -6695,6 +6745,16 @@ install_mariadb_sql () {
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   st_runner "aptitude remove mytop -y"                     &> /dev/null
   st_runner "apt-get purge mytop -y"                       &> /dev/null
   rm -f /usr/bin/mytop
@@ -6704,7 +6764,7 @@ install_mariadb_sql () {
   st_runner "aptitude remove percona-server-common-5.5 -y" &> /dev/null
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
   st_runner "apt-get autoremove -y --force-yes"            &> /dev/null
-  st_runner "apt-get update -y"                            &> /dev/null
+  st_runner "apt-get update -y --force-yes"                &> /dev/null
   SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
@@ -6741,6 +6801,16 @@ if [ "$_STATUS" = "INIT" ] ; then
 else
   _POSTFIX_TEST=`grep "fatal: open lock file" /var/log/mail.log 2>&1`
   if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]] ; then
+    _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+      msg "WARN: Installed keyring is broken, forced reinstall required"
+      if [ "$_THIS_OS" = "Debian" ] ; then
+        mrun "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+        mrun "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      else
+        mrun "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      fi
+    fi
     mrun "dpkg --configure -a"      &> /dev/null
     mrun "apt-get clean -qq"        &> /dev/null
     mrun "apt-get update -qq"       &> /dev/null
@@ -6839,8 +6909,8 @@ else
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
       st_runner "aptitude autoclean -y" &> /dev/null
-      st_runner "apt-get clean -qq"     &> /dev/null
-      st_runner "apt-get update -y"     &> /dev/null
+      st_runner "apt-get clean -qq" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/percona.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -6850,8 +6920,8 @@ else
         sleep 2
       done
       st_runner "aptitude autoclean -y" &> /dev/null
-      st_runner "apt-get clean -qq"     &> /dev/null
-      st_runner "apt-get update -y"     &> /dev/null
+      st_runner "apt-get clean -qq" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
     fi
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
@@ -9277,7 +9347,7 @@ install_pdnsd_cache () {
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get update -y --force-yes" &> /dev/null
   st_runner "aptitude purge pdnsd resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes" &> /dev/null
   rm -f /etc/resolv.conf
