@@ -255,15 +255,14 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
       unset RBXOPT
       export RUBY_VERSION="ruby-2.1.2"
     fi
-    SHELL=/usr/local/bin/lshell
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
       if [ -x "/bin/dash" ] ; then
-        export SHELL;export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+        export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
       else
-        export SHELL;export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+        export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
       fi
     else
-      export SHELL;export DRUSH_PHP;export PHP_INI;exec $0 "$@"
+      export DRUSH_PHP;export PHP_INI;exec $0 "$@"
     fi
     exit 0
   else
