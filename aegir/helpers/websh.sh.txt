@@ -1,7 +1,6 @@
 #!/bin/bash
 
 export PATH=$PATH:/opt/local/bin
-SHELL=/bin/bash
 _ALL="$@"
 _LTD_GID=$(id -nG $USER)
 _INTERNAL=NO
