@@ -9347,9 +9347,6 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
     switch_to_bash
   fi
   strict_bin_permissions
-  if [ -f "/var/xdrago/manage_ltd_users.sh" ] ; then
-    mrun "bash /var/xdrago/manage_ltd_users.sh" &> /dev/null
-  fi
 fi
 finale
 exit 0
