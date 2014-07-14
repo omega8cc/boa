@@ -53,8 +53,8 @@
 ###
 ### ~/static/control/platforms.info
 ###
-### This file, if exists and contains a single line with supported platforms
-### symbols, allows to control/override the value of _PLATFORMS_LIST variable
+### This file, if exists and contains a list of symbols used to define supported
+### platforms, allows to control/override the value of _PLATFORMS_LIST variable
 ### normally defined in the /root/.${_USER}.octopus.cnf file, which can't be
 ### modified by the Aegir instance owner with no system root access.
 ###
@@ -63,9 +63,8 @@
 ### Octopus instance upgrade, which means that you will miss all newly added
 ### distributions, if they will not be listed also in this control file.
 ###
-### Supported values which can be written in this file - remember: all in a
-### single line, space separated, so not one per line, as listed below
-### only for readability:
+### Supported values which can be written in this file, listed in a single line
+### or one per line:
 ###
 ### D7P D7S D7D --- Drupal 7 prod/stage/dev
 ### D6P D6S D6D --- Pressflow 6 p/s/d
@@ -94,8 +93,9 @@
 ### UC7 ----------- Ubercart D7
 ### UCT ----------- Ubercart D6
 ###
-### You can also use special keyword 'ALL' to have all available platforms
-### installed, including newly added in the future BOA system releases.
+### You can also use special keyword 'ALL' instead of any other symbols to have
+### all available platforms installed, including newly added in all future BOA
+### system releases.
 ###
 ### Examples:
 ###
