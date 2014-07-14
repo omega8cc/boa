@@ -2502,7 +2502,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "libraries-6.x-1.0.tar.gz"
     get_dev_contrib "lightbox2-6.x-1.x-dev.tar.gz"
     get_dev_contrib "rules-6.x-1.5.tar.gz"
-    get_dev_contrib "skinr-6.x-1.6.tar.gz"
+    get_dev_contrib "skinr-6.x-1.7.tar.gz"
     get_dev_contrib "token-6.x-1.19.tar.gz"
     get_dev_contrib "ubercart-6.x-2.13.tar.gz"
     get_dev_contrib "views-6.x-3.0.tar.gz"
