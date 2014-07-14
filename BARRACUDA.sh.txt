@@ -520,7 +520,7 @@ _SSH_PORT=22
 ### to use reliable mirrors you know,
 ### or leave default values.
 ###
-_LOCAL_DEBIAN_MIRROR=http.debian.net
+_LOCAL_DEBIAN_MIRROR=ftp.debian.org
 _LOCAL_UBUNTU_MIRROR=archive.ubuntu.com
 
 
@@ -3055,7 +3055,7 @@ barracuda_cnf () {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                               /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=http.debian.net/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                  /root/.barracuda.cnf &> /dev/null
@@ -3082,9 +3082,9 @@ barracuda_cnf () {
         fi
       fi
     fi
-    if [ "$_LOCAL_DEBIAN_MIRROR" = "ftp.debian.org" ] ; then
-      _LOCAL_DEBIAN_MIRROR="http.debian.net"
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=http.debian.net/g"   /root/.barracuda.cnf &> /dev/null
+    if [ "$_LOCAL_DEBIAN_MIRROR" = "http.debian.net" ] ; then
+      _LOCAL_DEBIAN_MIRROR="ftp.debian.org"
+      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    /root/.barracuda.cnf &> /dev/null
     fi
   else
     msg "INFO: Reading your /root/.barracuda.cnf config file"
@@ -3513,7 +3513,7 @@ barracuda_cnf () {
         sed -i "s/^_DB_SERVER=.*/_DB_SERVER=MariaDB/g"                             /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=YES/g"                               /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=http.debian.net/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"                 /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                  /root/.barracuda.cnf &> /dev/null
@@ -3549,9 +3549,9 @@ barracuda_cnf () {
     if [ -e "/root/.barracuda.cnf" ] ; then
       source /root/.barracuda.cnf
     fi
-    if [ "$_LOCAL_DEBIAN_MIRROR" = "ftp.debian.org" ] ; then
-      _LOCAL_DEBIAN_MIRROR=http.debian.net
-      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=http.debian.net/g"   /root/.barracuda.cnf &> /dev/null
+    if [ "$_LOCAL_DEBIAN_MIRROR" = "http.debian.net" ] ; then
+      _LOCAL_DEBIAN_MIRROR=ftp.debian.org
+      sed -i "s/^_LOCAL_DEBIAN_MIRROR=.*/_LOCAL_DEBIAN_MIRROR=ftp.debian.org/g"    /root/.barracuda.cnf &> /dev/null
     fi
     if [ "$_DB_SERIES" = "10.0" ] ; then
       _MARIADB_VERSION="$_MARIADB_10_VERSION"
@@ -4867,7 +4867,7 @@ update_sources_list () {
       else
         if [ "$_AUTOPILOT" = "YES" ] ; then
           if [ -z "$_LOCAL_DEBIAN_MIRROR" ] ; then
-            _MIRROR=http.debian.net
+            _MIRROR=ftp.debian.org
           else
             _MIRROR=$_LOCAL_DEBIAN_MIRROR
           fi
@@ -4893,7 +4893,7 @@ update_sources_list () {
         fi
         if ! netcat -w 5 -z $_MIRROR 80 ; then
           msg "INFO: The mirror $_MIRROR doesn't respond now, let's try default"
-          _MIRROR=http.debian.net
+          _MIRROR=ftp.debian.org
         fi
       fi
       msg "INFO: We will use $_THIS_OS mirror $_MIRROR"
