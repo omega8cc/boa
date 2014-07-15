@@ -594,7 +594,7 @@ _F_AGOV="aGov 1.0-rc8 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-a5 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE1="Commerce 1.25 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMERCE1="Commerce 1.26 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE2="Commerce 2.15 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS2="Commons 2.18 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COMMONS3="Commons 3.15 $_SMALLCORE7 P.$_THIS_CORE"
@@ -936,7 +936,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
-    if [ $_COMMERCE1 = "7.x-1.25" ] ; then
+    if [ $_COMMERCE1 = "7.x-1.26" ] ; then
       cd $_SHRD_PRPATH/modules
       upgrade_contrib_less
       cd $_SHRD_PRPATH/modules
