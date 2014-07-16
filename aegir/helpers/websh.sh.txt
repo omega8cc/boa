@@ -1,7 +1,6 @@
 #!/bin/bash
 
 export PATH=$PATH:/opt/local/bin
-SHELL=/bin/bash
 _ALL="$@"
 _LTD_GID=$(id -nG $USER)
 _INTERNAL=NO
@@ -17,8 +16,8 @@ else
   _ARGS="$1"
 fi
 
-# echo USER is $USER
-# echo HOME is $HOME
+# echo USER is ${USER}
+# echo HOME is ${HOME}
 # echo _Y_USR is $_Y_USR
 # echo _LTD_GID is $_LTD_GID
 # echo _ALL is $_ALL
@@ -245,8 +244,22 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
+    if [ -e "/home/${USER}/.rvm/gems/ruby-2.1.2/bin" ] ; then
+      export PATH="/home/${USER}/.rvm/gems/ruby-2.1.2/bin:/home/${USER}/.rvm/gems/ruby-2.1.2@global/bin:/home/${USER}/.rvm/rubies/ruby-2.1.2/bin:/home/${USER}/.rvm/bin:$PATH"
+      export GEM_HOME="/home/${USER}/.rvm/gems/ruby-2.1.2"
+      export GEM_PATH="/home/${USER}/.rvm/gems/ruby-2.1.2:/home/${USER}/.rvm/gems/ruby-2.1.2@global"
+      export MY_RUBY_HOME="/home/${USER}/.rvm/rubies/ruby-2.1.2"
+      export IRBRC="/home/${USER}/.rvm/rubies/ruby-2.1.2/.irbrc"
+      unset MAGLEV_HOME
+      unset RBXOPT
+      export RUBY_VERSION="ruby-2.1.2"
+    fi
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-      export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+      if [ -x "/bin/dash" ] ; then
+        export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+      else
+        export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+      fi
     else
       export DRUSH_PHP;export PHP_INI;exec $0 "$@"
     fi
@@ -276,7 +289,11 @@ else
     PHP_INI="$HOME/.drush/rphp.ini"
   fi
   if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
-    export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+    if [ -x "/bin/dash" ] ; then
+      export DRUSH_PHP;export PHP_INI;exec /bin/dash "$@"
+    else
+      export DRUSH_PHP;export PHP_INI;exec /bin/bash "$@"
+    fi
   else
     export DRUSH_PHP;export PHP_INI;exec $0 "$@"
   fi

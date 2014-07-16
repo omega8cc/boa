@@ -1088,7 +1088,7 @@ _USE_STOCK=NO
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.2.7-dev
+_INSTALLER_VERSION=BOA-2.3.0-dev
 
 ###
 ### Software versions
@@ -1098,7 +1098,7 @@ _CGP_VERSION=master-30-03-2014
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.37.0
 _DRUSH_VERSION=mini-4-14-03-2014
-_DRUSH6_VERSION=mini-6-21-06-2014
+_DRUSH6_VERSION=mini-6-16-07-2014
 _DRUSH7_VERSION=head-7-10-03-2014
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=1.9.1
@@ -1113,7 +1113,7 @@ _MARIADB_10_VERSION=10.0.12
 _MARIADB_5_VERSION=5.5.38
 _MONGO_VERSION=1.4.5
 _MSS_VERSION=1.33
-_NGINX_VERSION=1.7.2
+_NGINX_VERSION=1.7.3
 _OPENSSH_VERSION=6.6p1
 _OPENSSL_VERSION=1.0.1h
 _PERCONA_VERSION=5.5.36
@@ -1125,9 +1125,9 @@ _PHP54_API=20100525
 _PHP54_VERSION=5.4.30
 _PHP55_API=20121212
 _PHP55_VERSION=5.5.14
-_PHPREDIS_VERSION=master-22-03-2014
+_PHPREDIS_VERSION=master-06-07-2014
 _PURE_FTPD_VERSION=1.0.36
-_REDIS_VERSION=2.8.11
+_REDIS_VERSION=2.8.13
 _RUBY_VERSION=2.1.2
 _SOLR_1_VERSION=1.4.1
 _SOLR_3_VERSION=3.6.2
@@ -3147,7 +3147,10 @@ barracuda_cnf () {
 
     if [ "$_PHP_LEGACY_FREE" = "YES" ] ; then
       if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "5.2" ]] ; then
-        _DO_NOTHING=YES
+        _R_M=5.2
+        _PHP_MULTI_INSTALL=${_PHP_MULTI_INSTALL%%${_R_M}}
+        sed -i "s/.*_PHP_MULTI_INSTALL.*/_PHP_MULTI_INSTALL=\"$_PHP_MULTI_INSTALL\"/g" /root/.barracuda.cnf &> /dev/null
+        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
       else
         if [ -e "/etc/init.d/php-fpm" ] ; then
           mrun "service php-fpm stop" &> /dev/null
@@ -3170,9 +3173,9 @@ barracuda_cnf () {
       _L_VMFAMILY="VS"
     fi
     if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      if [ "$_PHP_MULTI_INSTALL" = "5.3" ] ; then
-        _PHP_MULTI_INSTALL=""
-      fi
+      sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+      _PHP_MULTI_INSTALL=""
     fi
 
     if [[ "$_PHP_MULTI_INSTALL_TEST" =~ "_PHP_MULTI_INSTALL" ]] && [ ! -z "$_PHP_MULTI_INSTALL" ] ; then
@@ -3617,12 +3620,22 @@ barracuda_cnf () {
 # Running aptitude full-upgrade.
 run_aptitude_full_upgrade () {
   msg "INFO: Running aptitude full-upgrade, please wait..."
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
   st_runner "aptitude update -y" &> /dev/null
   _THIS_DB_SERVER_TEST=`mysql -V 2>&1`
   if [[ "$_THIS_DB_SERVER_TEST" =~ "MariaDB" ]] && [ ! -e "/var/xdrago/log/fixed-mytop-mariadb.log" ] ; then
     st_runner "aptitude remove mytop -y" &> /dev/null
-    st_runner "apt-get purge mytop -y --force-yes" &> /dev/null
+    st_runner "apt-get purge mytop -y --force-yes -qq" &> /dev/null
     rm -f /usr/bin/mytop
     echo "fixed-mytop-mariadb" > /var/xdrago/log/fixed-mytop-mariadb.log
   fi
@@ -3635,6 +3648,16 @@ run_aptitude_full_upgrade () {
 # Running silent aptitude full-upgrade.
 run_silent_aptitude_full_upgrade () {
   msg "INFO: Running silent aptitude full-upgrade, please wait..."
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      mrun "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      mrun "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      mrun "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   mrun "dpkg --configure --force-all -a" 2> /dev/null
   mrun "aptitude update -y" &> /dev/null
   mrun "aptitude full-upgrade -f -y -q -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold --allow-unauthenticated" 2> /dev/null
@@ -4554,7 +4577,7 @@ update_newrelic () {
       cat 548C16BF.gpg | apt-key add - &> /dev/null
       rm -f 548C16BF.gpg*
       st_runner "aptitude remove newrelic-php5 newrelic-php5-common newrelic-daemon newrelic-sysmond -y" &> /dev/null
-      st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+      st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
       mkdir -p /var/backups/nr
       mv -f /etc/newrelic /var/backups/nr/etc-newrelic-pre-$_INSTALLER_VERSION-$_NOW &> /dev/null
       _PHP_EXT_DIR_55="/opt/php55/lib/php/extensions/no-debug-non-zts-$_PHP55_API"
@@ -4564,7 +4587,7 @@ update_newrelic () {
       msg "INFO: Installing latest version of New Relic Apps and Server Monitor..."
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
       NR_INSTALL_PHPLIST=/opt/php52/bin:/opt/php53/bin:/opt/php54/bin:/opt/php55/bin;export NR_INSTALL_PHPLIST;NR_INSTALL_SILENT='silent';export NR_INSTALL_SILENT;newrelic-install install &> /dev/null
       _X86_64_TEST=`uname -m`
@@ -4634,7 +4657,7 @@ install_newrelic () {
       rm -f 548C16BF.gpg*
       echo "## New Relic APT Repository" > /etc/apt/sources.list.d/newrelic.list
       echo "deb http://apt.newrelic.com/debian/ newrelic non-free" >> /etc/apt/sources.list.d/newrelic.list
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
       st_runner "apt-get install newrelic-php5 newrelic-sysmond -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
       if [ "$_MULTI_NR" = "YES" ] ; then
         msg "INFO: Installing latest version of New Relic Apps and Server Monitor..."
@@ -5201,11 +5224,43 @@ check_php_broken () {
   fi
 }
 #
+# Symlink to dash.
+symlink_to_dash () {
+  if [ -x "/bin/dash" ] ; then
+    rm -f /bin/sh
+    ln -s /bin/dash /bin/sh
+  fi
+}
+#
 # Symlink to bash.
 symlink_to_bash () {
   if [ -x "/bin/bash" ] ; then
     rm -f /bin/sh
     ln -s /bin/bash /bin/sh
+  fi
+}
+#
+# Switch to dash.
+switch_to_dash () {
+  if [ -x "/bin/dash" ] ; then
+    sed -i "s/:\/bin\/sh/:\/bin\/dash/g"  /etc/passwd &> /dev/null
+    sed -i "s/\/bin\/sh/\/bin\/dash/g" /etc/crontab &> /dev/null
+    _X_BIN_PATHS="/usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin /etc/alternatives /opt/php55/bin /opt/php54/bin /opt/php53/bin /opt/php52/bin /etc/init.d /usr/lib/postfix /etc/resolvconf /usr/lib/ConsoleKit/run-session.d /etc/network/if-up.d /etc/network/if-down.d /etc/webmin /usr/local/libexec/git-core /usr/lib/git-core /etc/cron.d /etc/cron.daily /etc/cron.monthly /etc/cron.weekly /usr/lib/sysstat"
+    for p in $_X_BIN_PATHS; do
+      if [ -e "$p" ] ; then
+        for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
+          if [[ "$f" =~ "drush"($) ]] || [[ "$f" =~ "clean-boa-env"($) ]] ; then
+            _SKIP_THIS=YES
+          else
+            _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
+            if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] ; then
+              sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
+              sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
+            fi
+          fi
+        done
+      fi
+    done
   fi
 }
 #
@@ -5497,6 +5552,18 @@ if [ `whoami` = "root" ] ; then
   if [[ "$_VM_TEST" =~ beng ]] ; then
     _VMFAMILY="VS"
     touch /var/run/cloud_vhost.pid
+    if [ -d "/etc/webmin" ] ; then
+      mrun "dpkg --configure -a" &> /dev/null
+      mrun "apt-get clean -qq"   &> /dev/null
+      mrun "apt-get update -qq"  &> /dev/null
+      mrun "apt-get remove webmin -y --force-yes -qq" &> /dev/null
+      mrun "apt-get purge webmin -y --force-yes -qq"  &> /dev/null
+      mrun "apt-get autoremove -y --force-yes -qq"    &> /dev/null
+      rm -f -r /usr/share/webmin
+    fi
+    rm -f /etc/apt/sources.list.d/ksplice.list
+    rm -f /etc/apt/sources.list.d/longview.list
+    rm -f /etc/apt/sources.list.d/webmin.list
   fi
   sleep 1
 else
@@ -5620,8 +5687,13 @@ mkdir -p $_SRCDIR
 chmod -R 777 /opt/tmp &> /dev/null
 rm -f /var/run/aegir_upgrade.pid
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
-  symlink_to_bash
-  switch_to_bash
+  if [ -x "/bin/dash" ] ; then
+    symlink_to_dash
+    switch_to_dash
+  else
+    symlink_to_bash
+    switch_to_bash
+  fi
 fi
 _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
 if [ -z "$_PHP_SV" ] ; then
@@ -5734,6 +5806,8 @@ echo " "
 
 
 ###--------------------###
+aptitude autoclean -y &> /dev/null
+apt-get clean -qq &> /dev/null
 update_sources_list
 apt-get update &> /dev/null
 
@@ -6285,10 +6359,10 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
     kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
-  mrun "apt-get remove collectd -y --force-yes" &> /dev/null
+  mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
   touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   mrun "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
-  mrun "apt-get autoremove -y --force-yes" &> /dev/null
+  mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
   mrun "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
   mrun "aptitude remove php5-cli php5-common -y" &> /dev/null
   mrun "aptitude remove php5-apc -y" &> /dev/null
@@ -6296,8 +6370,8 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
   rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   mrun "apt-get purge svscan -y" &> /dev/null
   mrun "apt-get purge pound -y" &> /dev/null
-  mrun "apt-get update -y" &> /dev/null
-  mrun "apt-get autoremove -y --force-yes" &> /dev/null
+  mrun "apt-get update -y --force-yes" &> /dev/null
+  mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   install_upgrade_nginx
@@ -6350,16 +6424,16 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     mv /etc/init.d/tomcat /etc/init.d/offtomcat
     kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   fi
-  mrun "apt-get remove collectd -y --force-yes" &> /dev/null
-  mrun "apt-get remove libc-client2007b-dev -y --force-yes" &> /dev/null
+  mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
+  mrun "apt-get remove libc-client2007b-dev -y --force-yes -qq" &> /dev/null
   mrun "apt-get purge svscan -y" &> /dev/null
   mrun "apt-get purge pound -y" &> /dev/null
   if [[ "$_L_VM_TEST" =~ beng ]] ; then
-    mrun "apt-get remove udev -y --force-yes" &> /dev/null
+    mrun "apt-get remove udev -y --force-yes -qq" &> /dev/null
   fi
-  mrun "apt-get remove lsb-release -y --force-yes" &> /dev/null
-  mrun "apt-get update -y" &> /dev/null
-  mrun "apt-get autoremove -y --force-yes" &> /dev/null
+  mrun "apt-get remove lsb-release -y --force-yes -qq" &> /dev/null
+  mrun "apt-get update -y --force-yes" &> /dev/null
+  mrun "apt-get autoremove -y --force-yes -qq" &> /dev/null
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get install libgeoip1 libgeoip-dev geoip-database -y --force-yes" 2> /dev/null
@@ -6417,8 +6491,20 @@ if [ "$_REL_VERSION" = "lenny" ] ; then
   sed -i "s/^deb.*security.debian.org.*/## security updates no longer available for lenny/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/ftp.*debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
   sed -i "s/volatile.debian.org/archive.debian.org/g" /etc/apt/sources.list &> /dev/null
+  st_runner "aptitude autoclean -y" &> /dev/null
+  st_runner "apt-get clean -qq" &> /dev/null
 else
   st_runner "dpkg --configure --force-all -a" 2> /dev/null
+fi
+_BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+  msg "WARN: Installed keyring is broken, forced reinstall required"
+  if [ "$_THIS_OS" = "Debian" ] ; then
+    st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+  else
+    st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+  fi
 fi
 st_runner "aptitude update -y" &> /dev/null
 _DB_SERVER_TEST=`mysql -V 2>&1`
@@ -6433,7 +6519,7 @@ else
     touch /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fi
   st_runner "aptitude remove php5 php5-cgi php5-curl php5-fpm php5-gd php5-geoip php5-gmp php5-imagick php5-imap php5-ldap php5-mcrypt php5-memcache php5-mysql php5-sqlite php5-xmlrpc php5-xsl -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   st_runner "aptitude remove phpunit php-pear php-benchmark -y" &> /dev/null
   st_runner "aptitude remove php5-cli php5-common -y" &> /dev/null
   st_runner "aptitude remove php5-apc -y" &> /dev/null
@@ -6442,7 +6528,12 @@ else
     rm -f /etc/php5/conf.d/{opcache.ini,apc.ini,imagick.ini,memcached.ini,redis.ini,suhosin.ini,newrelic.ini} &> /dev/null
   fi
   if [ "$_REL_VERSION" = "squeeze" ] ; then
-    rm -f /etc/apt/sources.list.d/dotdeb.list
+    if [ -e "/etc/apt/sources.list.d/dotdeb.list" ] ; then
+      rm -f /etc/apt/sources.list.d/dotdeb.list
+      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get clean -qq" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
+    fi
   fi
   rm -f /var/lib/mysql/debian-*.flag &> /dev/null
   _KEYS_SERVER_TEST=FALSE
@@ -6508,13 +6599,23 @@ else
     _APT_XTRA=""
   fi
   _APT_ELSE="netcat"
-  st_runner "aptitude remove nginx-extras -y"   &> /dev/null
-  st_runner "aptitude remove nginx -y"          &> /dev/null
-  st_runner "aptitude remove nginx-common -y"   &> /dev/null
-  st_runner "aptitude remove nginx-full -y"     &> /dev/null
-  st_runner "aptitude remove redis-server -y"   &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
-  st_runner "apt-get update -y"                 &> /dev/null
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
+  st_runner "aptitude remove nginx-extras -y"       &> /dev/null
+  st_runner "aptitude remove nginx -y"              &> /dev/null
+  st_runner "aptitude remove nginx-common -y"       &> /dev/null
+  st_runner "aptitude remove nginx-full -y"         &> /dev/null
+  st_runner "aptitude remove redis-server -y"       &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  st_runner "apt-get update -y --force-yes"         &> /dev/null
 fi
 _EXTRA_LIB_APT="libmcrypt-dev"
 if [ ! -z "$_EXTRA_PACKAGES" ] ; then
@@ -6593,11 +6694,21 @@ install_percona_sql () {
   echo "## Percona APT Repository" > /etc/apt/sources.list.d/percona.list
   echo "deb http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
   echo "deb-src http://repo.percona.com/apt $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/percona.list
-  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
-  st_runner "aptitude remove mysql-common -y"   &> /dev/null
-  st_runner "apt-get purge mysql-common -y"     &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
-  st_runner "apt-get update -y"                 &> /dev/null
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  st_runner "aptitude remove mysql-common -y"       &> /dev/null
+  st_runner "apt-get purge mysql-common -y"         &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes"     &> /dev/null
+  st_runner "apt-get update -y --force-yes"         &> /dev/null
   SQLDEB="percona-server-server-5.5"
   if [ "$_REL_VERSION" = "squeeze" ] ; then
     SQLADD="libmysqlclient-dev libdbd-mysql-perl python-mysqldb libdbi-perl percona-toolkit"
@@ -6646,16 +6757,26 @@ install_mariadb_sql () {
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
   echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      st_runner "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      st_runner "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    else
+      st_runner "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+    fi
+  fi
   st_runner "aptitude remove mytop -y"                     &> /dev/null
   st_runner "apt-get purge mytop -y"                       &> /dev/null
   rm -f /usr/bin/mytop
-  st_runner "apt-get autoremove -y --force-yes"            &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
   st_runner "aptitude remove mysql-common -y"              &> /dev/null
   st_runner "apt-get purge mysql-common -y"                &> /dev/null
   st_runner "aptitude remove percona-server-common-5.5 -y" &> /dev/null
   st_runner "apt-get purge percona-server-common-5.5 -y"   &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes"            &> /dev/null
-  st_runner "apt-get update -y"                            &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq"        &> /dev/null
+  st_runner "apt-get update -y --force-yes"                &> /dev/null
   SQLDEB="mariadb-server-$_DB_SERIES mariadb-client-$_DB_SERIES mariadb-common"
   SQLADD="libmariadbclient-dev libmariadbclient16 libmariadbd-dev libdbd-mysql-perl python-mysqldb libdbi-perl"
 }
@@ -6685,13 +6806,23 @@ install_with_aptitude_sql () {
 if [ "$_STATUS" = "INIT" ] ; then
   st_runner "aptitude remove exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
   st_runner "apt-get purge exim4 exim4-base exim4-config sendmail sendmail-base sendmail-cf sendmail-bin -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   rm -f /etc/aliases
   rm -f -r /etc/mail
   killall -9 sendmail &> /dev/null
 else
   _POSTFIX_TEST=`grep "fatal: open lock file" /var/log/mail.log 2>&1`
   if [[ "$_POSTFIX_TEST" =~ "fatal: open lock file" ]] ; then
+    _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+    if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+      msg "WARN: Installed keyring is broken, forced reinstall required"
+      if [ "$_THIS_OS" = "Debian" ] ; then
+        mrun "apt-get install debian-keyring -f -y --force-yes --reinstall" 2> /dev/null
+        mrun "apt-get install debian-archive-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      else
+        mrun "apt-get install ubuntu-keyring -f -y --force-yes --reinstall" 2> /dev/null
+      fi
+    fi
     mrun "dpkg --configure -a"      &> /dev/null
     mrun "apt-get clean -qq"        &> /dev/null
     mrun "apt-get update -qq"       &> /dev/null
@@ -6789,7 +6920,9 @@ else
     if [ "$_DB_SERVER" = "Percona" ] ; then
       rm -f /etc/apt/sources.list.d/mariadb.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get clean -qq" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
     elif [ "$_DB_SERVER" = "MariaDB" ] ; then
       rm -f /etc/apt/sources.list.d/percona.list
       rm -f /etc/apt/sources.list.d/ourdelta.list
@@ -6798,7 +6931,9 @@ else
         _KEYS_SERVER_TEST=`apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 1BB943DB 2>&1`
         sleep 2
       done
-      st_runner "apt-get update -y" &> /dev/null
+      st_runner "aptitude autoclean -y" &> /dev/null
+      st_runner "apt-get clean -qq" &> /dev/null
+      st_runner "apt-get update -y --force-yes" &> /dev/null
     fi
     cp -af /etc/mysql/debian-start /etc/mysql/debian-start-mariadb &> /dev/null
     sed -i "s/.*default-table-type/#default-table-type/g" /etc/mysql/my.cnf &> /dev/null
@@ -8362,8 +8497,8 @@ fix_collectd_nginx () {
 ###--------------------###
 if [ -d "/var/www/cgp" ] && [ "$_VMFAMILY" = "VS" ] && [ ! -e "/boot/grub/grub.cfg" ] && [ ! -e "/boot/grub/menu.lst" ] ; then
   rm -f /var/aegir/config/server_master/nginx/vhost.d/cgp*
-  mrun "apt-get remove collectd -y --force-yes" &> /dev/null
-  mrun "apt-get purge collectd -y --force-yes" &> /dev/null
+  mrun "apt-get remove collectd -y --force-yes -qq" &> /dev/null
+  mrun "apt-get purge collectd -y --force-yes -qq" &> /dev/null
   rm -f -r /var/www/cgp
 fi
 
@@ -8452,46 +8587,10 @@ if [[ "$_XTRAS_LIST" =~ "BND" ]] && [ "$_CHECK_OS" = "OTHER" ] ; then
 fi
 
 
-###--------------------###
-fix_compass_path () {
-  if [[ ! -e "/var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log" || ! -e "/usr/local/bin/coderay" || "$_RUBY_UPGRADE" = "YES" ]] && [[ -x "/usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass" ]] ; then
-    if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-      if [ "$_KEEP_BUNDLER" = "NO" ] ; then
-        rm -f /usr/local/bin/bundle
-        rm -f /usr/local/bin/bundler
-      else
-        ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
-        ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
-      fi
-    else
-      ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundle  /usr/local/bin/bundle  &> /dev/null
-      ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/bundler /usr/local/bin/bundler &> /dev/null
-    fi
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/coderay /usr/local/bin/coderay &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass /usr/local/bin/compass &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/guard   /usr/local/bin/guard   &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/listen  /usr/local/bin/listen  &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass    /usr/local/bin/sass    &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/scss    /usr/local/bin/scss    &> /dev/null
-    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem          /usr/local/bin/gem     &> /dev/null
-    ln -sf /usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby         /usr/local/bin/ruby    &> /dev/null
-    ln -sf /usr/local/rvm/bin/rvm                                     /usr/local/bin/rvm     &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/compass-validate      /usr/local/bin/compass-validate      &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/ruby_executable_hooks /usr/local/bin/ruby_executable_hooks &> /dev/null
-    ln -sf /usr/local/rvm/gems/ruby-$_RUBY_VERSION@global/bin/sass-convert          /usr/local/bin/sass-convert          &> /dev/null
-    touch /var/xdrago/log/fix-gem-symlinks-$_RUBY_VERSION-$_INSTALLER_VERSION.log
-  fi
-}
-
 if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
   _DO_NOTHING=YES
 else
   if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CSS" ]] || [[ "$_THISHOST" =~ ".host8." ]] || [ -e "/root/.host8.cnf" ] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [ -e "/root/.keep.bundler.cnf" ] ; then
-      _KEEP_BUNDLER=YES
-    else
-      _KEEP_BUNDLER=NO
-    fi
     if [ "$_STATUS" = "INIT" ] ; then
       _L_ST="install"
     else
@@ -8499,10 +8598,9 @@ else
     fi
     if [ ! -e "/var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log" ] ; then
       echo " "
-      if prompt_yes_no "Do you want to $_L_ST Compass Tools?" ; then
+      if prompt_yes_no "Do you want to $_L_ST Compass Tools for root?" ; then
         true
         msg "INFO: Running Compass Tools ${_L_ST}..."
-        msg "NOTE! This step may take a LONG time, please wait..."
         curl -sSL https://get.rvm.io | bash -s stable &> /dev/null
         if [ -e "/etc/profile.d/rvm.sh" ] ; then
           source /etc/profile.d/rvm.sh
@@ -8510,106 +8608,18 @@ else
         if [ ! -x "/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/gem" ] ; then
           _RUBY_UPGRADE=YES
         fi
-        if [ ! -e "/var/xdrago/log/gem-conservative-002.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
-          mrun "apt-get update -y --force-yes"                                                 &> /dev/null
-          mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes"   &> /dev/null
-          mrun "apt-get autoremove -y --force-yes"                                             &> /dev/null
-          mrun "rvm install $_RUBY_VERSION"                                                    &> /dev/null
-          mrun "rvm use $_RUBY_VERSION --default"                                              &> /dev/null
-          ### update rvm
-          mrun "rvm get stable"                                                                2> /dev/null
-          ### install new versions
-          mrun "rvm @global do gem install --conservative bootstrap-sass-extensions"           2> /dev/null
-          mrun "rvm @global do gem install --conservative bootstrap-sass"                      2> /dev/null
-          mrun "rvm @global do gem install --conservative breakpoint"                          2> /dev/null
-          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            if [ "$_KEEP_BUNDLER" = "NO" ] ; then
-              mrun "rvm @global do gem uninstall bundler -x -q -a"                             2> /dev/null
-            else
-              mrun "rvm @global do gem install --conservative bundler"                         2> /dev/null
-            fi
-          else
-            mrun "rvm @global do gem install --conservative bundler"                           2> /dev/null
-          fi
-          mrun "rvm @global do gem install --conservative chunky_png"                          2> /dev/null
-          mrun "rvm @global do gem install --conservative compass_radix"                       2> /dev/null
-          mrun "rvm @global do gem install --conservative compass_twitter_bootstrap"           2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-960-plugin"                  2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-h5bp"                        2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-normalize"                   2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-rgbapng"                     2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-susy-plugin"                 2> /dev/null
-          mrun "rvm @global do gem install --conservative compass-validator"                   2> /dev/null
-          mrun "rvm @global do gem install --conservative compass"                             2> /dev/null
-          mrun "rvm @global do gem install --conservative css_parser"                          2> /dev/null
-          mrun "rvm @global do gem install --conservative grunt"                               2> /dev/null
-          mrun "rvm @global do gem install --conservative guard-compass"                       2> /dev/null
-          mrun "rvm @global do gem install --conservative guard-livereload"                    2> /dev/null
-          mrun "rvm @global do gem install --conservative guard-shell"                         2> /dev/null
-          mrun "rvm @global do gem install --conservative guard"                               2> /dev/null
-          mrun "rvm @global do gem install --conservative oily_png"                            2> /dev/null
-          mrun "rvm @global do gem install --conservative rb-inotify"                          2> /dev/null
-          mrun "rvm @global do gem install --conservative sass-globbing"                       2> /dev/null
-          mrun "rvm @global do gem install --conservative sass"                                2> /dev/null
-          mrun "rvm @global do gem install --conservative singularitygs"                       2> /dev/null
-          mrun "rvm @global do gem install --conservative susy"                                2> /dev/null
-          mrun "rvm @global do gem install --conservative toolkit"                             2> /dev/null
-          mrun "rvm @global do gem install --conservative yajl-ruby"                           2> /dev/null
-          mrun "rvm @global do gem install --conservative zen-grids"                           2> /dev/null
-          mrun "rvm @global do gem install --conservative zurb-foundation"                     2> /dev/null
-          ### versions required explicitly by some popular themes
-          mrun "rvm @global do gem install --conservative --version 0.0.2 compass-blend-modes" 2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.0.6 rb-fchange"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.12.2 compass"            2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.12.4 compass"            2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.12.5 compass"            2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.15.0 celluloid-io"       2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.15.2 celluloid"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.18.1 thor"               2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.2.10 fssm"               2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.2.8 color-schemer"       2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.9.12.4 pry"              2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 0.9.12.6 pry"              2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.0.0 guard-compass"       2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.0.0 sassy-strings"       2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.0.4 lumberjack"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.0.9 susy"                2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.1.0 oily_png"            2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.1.0 timers"              2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.1.2 singularitygs"       2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.2.9 chunky_png"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.3.0 chunky_png"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.3.8 toolkit"             2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 1.4.3 compass-normalize"   2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.0.1 compass_radix"       2> /dev/null
-          if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-            if [ "$_KEEP_BUNDLER" = "NO" ] ; then
-              _DO_NOTHING=YES
-            else
-              mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"         2> /dev/null
-            fi
-          else
-            mrun "rvm @global do gem install --conservative --version 1.6.2 bundler"           2> /dev/null
-          fi
-          mrun "rvm @global do gem install --conservative --version 1.8.4 multi_json"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.0.7 breakpoint"          2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.1.0 guard-livereload"    2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.2.5 guard"               2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.3.5 addressable"         2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.3.6 addressable"         2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 2.4.0 listen"              2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 3.2.13 sass"               2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 3.2.19 sass"               2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 3.4.7 slop"                2> /dev/null
-          mrun "rvm @global do gem install --conservative --version 4.3.2 zurb-foundation"     2> /dev/null
-          ### cleanup & update gems
-          mrun "rvm @global do gem uninstall sassy-math -x -q -a"                              2> /dev/null
-          mrun "rvm @global do gem update -q"                                                  2> /dev/null
-          touch /var/xdrago/log/gem-conservative-002.log
+        if [ ! -e "/var/xdrago/log/gem-conservative-004.log" ] || [ "$_STATUS" = "INIT" ] || [ "$_RUBY_UPGRADE" = "YES" ] ; then
+          mrun "apt-get update -y --force-yes"                                                   &> /dev/null
+          mrun "apt-get remove rubygems ruby1.9.1-dev libruby1.9.1 ruby1.9.1 -y --force-yes -qq" &> /dev/null
+          mrun "apt-get autoremove -y --force-yes -qq"                                           &> /dev/null
+          mrun "rvm install $_RUBY_VERSION"                                                      &> /dev/null
+          mrun "rvm use $_RUBY_VERSION --default"                                                &> /dev/null
+          mrun "rvm get stable"                                                                  2> /dev/null
+          mrun "rvm @global do gem update -q"                                                    2> /dev/null
+          touch /var/xdrago/log/gem-conservative-004.log
         else
-          ### cleanup & update gems
-          mrun "rvm get stable"                                                                2> /dev/null
-          mrun "rvm @global do gem update -q"                                                  2> /dev/null
+          mrun "rvm get stable"                                                                  2> /dev/null
+          mrun "rvm @global do gem update -q"                                                    2> /dev/null
         fi
         _RBY_FILE="/usr/local/rvm/rubies/ruby-$_RUBY_VERSION/bin/ruby"
         _RBY_PATH=${_RBY_FILE//\//\\\/}
@@ -8625,12 +8635,11 @@ else
         if [ -e "$_GEM_FILE" ] ; then
           sed -i "s/^#\!\/.*/#\!$_RBY_PATH/g" $_GEM_FILE &> /dev/null
         fi
-        fix_compass_path
         PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin;export PATH
         echo "compass-$_INSTALLER_VERSION-$_NOW" > /var/xdrago/log/compass-$_INSTALLER_VERSION-$_NOW-ruby-$_RUBY_VERSION.log
-        msg "INFO: Compass Tools $_L_ST completed"
+        msg "INFO: Compass Tools $_L_ST for root completed"
       else
-        msg "INFO: Compass Tools $_L_ST skipped"
+        msg "INFO: Compass Tools $_L_ST for root skipped"
       fi
     fi
   fi
@@ -8965,9 +8974,9 @@ if [ -e "/usr/sbin/apticron" ] ; then
       sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"             /etc/apticron/apticron.conf &> /dev/null
       sed -i "s/root/$_MY_EMAIL/g"                          /etc/apticron/apticron.conf &> /dev/null
     else
-      mrun "apt-get remove apticron -y --force-yes" &> /dev/null
-      mrun "apt-get purge apticron -y"              &> /dev/null
-      mrun "apt-get install apticron -y"            &> /dev/null
+      mrun "apt-get remove apticron -y --force-yes -qq" &> /dev/null
+      mrun "apt-get purge apticron -y --force-yes -qq"  &> /dev/null
+      mrun "apt-get install apticron -y"                &> /dev/null
       sed -i "s/^# NOTIFY_HOLDS=\"0\"/NOTIFY_HOLDS=\"0\"/g" /etc/apticron/apticron.conf &> /dev/null
       sed -i "s/notify\@omega8.cc/$_MY_EMAIL/g"             /etc/apticron/apticron.conf &> /dev/null
       sed -i "s/root/$_MY_EMAIL/g"                          /etc/apticron/apticron.conf &> /dev/null
@@ -9350,9 +9359,9 @@ install_pdnsd_cache () {
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  st_runner "apt-get update -y" &> /dev/null
+  st_runner "apt-get update -y --force-yes" &> /dev/null
   st_runner "aptitude purge pdnsd resolvconf -y" &> /dev/null
-  st_runner "apt-get autoremove -y --force-yes" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
   rm -f /etc/resolv.conf
   echo "nameserver 8.8.8.8" > /etc/resolv.conf
   echo "nameserver 8.8.4.4" >> /etc/resolv.conf
@@ -9427,7 +9436,11 @@ fix_cnf_postfix
 if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   usermod -aG users aegir &> /dev/null
   usermod -aG users man &> /dev/null
-  switch_to_bash
+  if [ -x "/bin/dash" ] ; then
+    switch_to_dash
+  else
+    switch_to_bash
+  fi
   strict_bin_permissions
 fi
 finale

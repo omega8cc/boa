@@ -103,7 +103,7 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) && !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.2.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.3.1';
   }
 }
 
@@ -130,18 +130,16 @@ if (isset($_SERVER['HTTP_HOST']) && preg_match("/(?:^dev\.|\.dev\.|\.devel\.)/i"
 }
 
 /**
- * Core detection and Caching auto-conf
+ * Core detection
  */
 if (file_exists('web.config')) {
   if (file_exists('core')) {
-    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 8
     $drupal_eight = TRUE;
     if ($is_dev && !$is_backend) {
       header('X-Backend: A');
     }
   }
   else {
-    $conf['cache'] = 1; // Enable hardcoded standard caching - Drupal 7
     $drupal_seven = TRUE;
     $use_redis = TRUE;
     if ($is_dev && !$is_backend) {
@@ -150,7 +148,6 @@ if (file_exists('web.config')) {
   }
 }
 elseif (file_exists('modules/path_alias_cache')) {
-  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 6
   $drupal_six = TRUE;
   $use_redis = TRUE;
   if ($is_dev && !$is_backend) {
@@ -158,14 +155,12 @@ elseif (file_exists('modules/path_alias_cache')) {
   }
 }
 elseif (file_exists('modules/watchdog')) {
-  $conf['cache'] = 1; // Enable hardcoded standard caching - Pressflow 5
   $drupal_five = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: D');
   }
 }
 else {
-  $conf['cache'] = 1; // Enable hardcoded standard caching
   $drupal_unknown = TRUE;
   if ($is_dev && !$is_backend) {
     header('X-Backend: E');
@@ -243,6 +238,7 @@ $boa_ini = array(
   'auto_detect_domain_access_integration' => TRUE, // For backward compatibility until next release, then FALSE
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
+  'disable_drupal_page_cache' => FALSE,            // It is set to FALSE for backward compatibility and max performance
 );
 
 /**
@@ -309,6 +305,24 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Disable-User-Register-Protection: " . $all_ini['disable_user_register_protection']);
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
+  header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
+}
+
+/**
+ * Enable page caching if disable_drupal_page_cache is not set to TRUE
+ */
+if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
+  $conf['cache'] = 0;
+}
+else {
+  $conf['cache'] = 1;
+}
+
+/**
+ * Disable page caching when Speed Booster is disabled on the fly
+ */
+if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
+  $conf['cache'] = 0;
 }
 
 /**
@@ -382,7 +396,7 @@ if (isset($_SERVER['SERVER_NAME']) && $all_ini['redis_cache_disable']) {
   $use_redis = FALSE;
 }
 
-if (isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
+if (!$is_bot && isset($_SERVER['REQUEST_URI']) && preg_match("/noredis=1/", $_SERVER['REQUEST_URI'])) {
   $use_redis = FALSE;
 }
 
@@ -595,7 +609,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     header("X-Cookie-Domain: " . $cookie_domain);
   }
 
-  $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_';
+  $this_prefix = preg_replace('`^www.`', '', $_SERVER['SERVER_NAME']) . '_y_';
   if ($is_dev) {
     header("X-Redis-Prefix: " . $this_prefix);
   }

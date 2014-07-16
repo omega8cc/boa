@@ -65,6 +65,7 @@ _OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
+_OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PANOPOLY=EDIT_PANOPOLY
@@ -593,17 +594,17 @@ _F_AGOV="aGov 1.0-rc8 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-a5 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMERCE1="Commerce 1.25 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMERCE1="Commerce 1.26 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE2="Commerce 2.15 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMONS2="Commons 2.18 $_SMALLCORE6 P.$_THIS_CORE"
-_F_COMMONS3="Commons 3.14 $_SMALLCORE7 P.$_THIS_CORE"
+_F_COMMONS3="Commons 3.15 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
 _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL8="Drupal $_SMALLCORE8 P.$_THIS_CORE"
-_F_ERPAL="ERPAL 2.0-b2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_ERPAL="ERPAL 2.0-b4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 P.$_THIS_CORE"
-_F_GUARDR="Guardr 1.5 $_SMALLCORE7 P.$_THIS_CORE"
+_F_GUARDR="Guardr 1.8 $_SMALLCORE7 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0 $_SMALLCORE7 P.$_THIS_CORE"
@@ -613,6 +614,7 @@ _F_OPENBLOG="OpenBlog 1.0-a3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.12 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENOUTREACH="Open Outreach 1.7 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic 1.0-b23 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.6 $_SMALLCORE7 P.$_THIS_CORE"
@@ -737,7 +739,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ $_AGOV = "7.x-1.0-rc8" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {password_policy,views}
-      get_dev_contrib "password_policy-7.x-1.7.tar.gz"
+      get_dev_contrib "password_policy-7.x-1.8.tar.gz"
       get_dev_contrib "views-7.x-3.8.tar.gz"
       cd $_SHRD_PRPATH/modules/contrib/views
       # https://drupal.org/node/1766338#comment-6445882
@@ -934,7 +936,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/$_REAL_PRNAME.patch &> /dev/null
-    if [ $_COMMERCE1 = "7.x-1.25" ] ; then
+    if [ $_COMMERCE1 = "7.x-1.26" ] ; then
       cd $_SHRD_PRPATH/modules
       upgrade_contrib_less
       cd $_SHRD_PRPATH/modules
@@ -1988,6 +1990,48 @@ fi
 }
 
 
+openpublic_install () {
+###---### OpenPublic
+#
+_REAL_PRNAME="openpublic"
+_SHRD_PLNAME="$_REAL_PRNAME-$_OPENPUBLIC-$_SMALLCORE7"
+_SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
+_SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
+_OCTO_PLPATH="$_ROOT/distro/$_THIS_CORE/$_SHRD_PLNAME"
+if [ "$_ALLOW_ALL" = "YES" ] ; then
+if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ OPC ]] ; then
+if [ ! -d "$_OCTO_PLPATH" ] ; then
+echo " "
+if prompt_yes_no "$_F_OPENPUBLIC - http://openpublicapp.com" ; then
+true
+msg "DISTRO: $_F_OPENPUBLIC installation in progress..."
+if [ ! -d "$_SHRD_PLPATH" ] ; then
+  cd $_CORE
+  if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_T_BUILD" = "HEAD" ] ; then
+    if [ ! -e "$_D7_CORE_DIR" ] ; then
+      prepare_drupal7_core
+    fi
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_OPENPUBLIC-core.tar.gz" | tar -xzf -
+    if [ -d "$_CORE/$_REAL_PRNAME-$_OPENPUBLIC" ] ; then
+      mv $_REAL_PRNAME-$_OPENPUBLIC $_SHRD_PLNAME
+    fi
+    nocore_d7_dist_clean
+    remove_default_core_seven_profiles
+  else
+    get_distro_ext "$_SHRD_PLNAME.tar.gz"
+  fi
+fi
+init_this_distro_root
+msg "DISTRO: $_F_OPENPUBLIC installation completed"
+else
+  msg "DISTRO: $_F_OPENPUBLIC installation skipped"
+fi
+fi
+fi
+fi
+}
+
+
 openpublish_install () {
 ###---### OpenPublish
 #
@@ -2458,7 +2502,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     get_dev_contrib "libraries-6.x-1.0.tar.gz"
     get_dev_contrib "lightbox2-6.x-1.x-dev.tar.gz"
     get_dev_contrib "rules-6.x-1.5.tar.gz"
-    get_dev_contrib "skinr-6.x-1.6.tar.gz"
+    get_dev_contrib "skinr-6.x-1.7.tar.gz"
     get_dev_contrib "token-6.x-1.19.tar.gz"
     get_dev_contrib "ubercart-6.x-2.13.tar.gz"
     get_dev_contrib "views-6.x-3.0.tar.gz"
@@ -2522,7 +2566,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     mv -f colorbox-master colorbox
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
-    get_dev_contrib "colorbox-7.x-2.6.tar.gz"
+    get_dev_contrib "colorbox-7.x-2.7.tar.gz"
     get_dev_contrib "ctools-7.x-1.4.tar.gz"
     get_dev_contrib "entity-7.x-1.5.tar.gz"
     get_dev_contrib "google_analytics-7.x-1.4.tar.gz"
@@ -2587,7 +2631,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     mv -f colorbox-master colorbox
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
-    get_dev_contrib "colorbox-7.x-2.6.tar.gz"
+    get_dev_contrib "colorbox-7.x-2.7.tar.gz"
     get_dev_contrib "ctools-7.x-1.4.tar.gz"
     get_dev_contrib "entity-7.x-1.5.tar.gz"
     get_dev_contrib "google_analytics-7.x-1.4.tar.gz"
@@ -2635,6 +2679,7 @@ openblog_install
 openchurch_install
 opendeals_install
 openoutreach_install
+openpublic_install
 openscholar_install
 panopoly_install
 recruiter_install
@@ -2834,6 +2879,11 @@ fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/drushrc.php" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENOUTREACH" openoutreach $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
+  fi
+fi
+if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/drushrc.php" ] ; then
+    $_DRUSHCMD php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then

@@ -39,6 +39,7 @@
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
+### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint (off)

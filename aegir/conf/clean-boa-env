@@ -23,9 +23,16 @@ case "$1" in
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
-      if [ "$_WEB_SH" != "/bin/bash" ] ; then
-        rm -f /bin/sh
-        ln -s /bin/bash /bin/sh
+      if [ -x "/bin/dash" ] ; then
+        if [ "$_WEB_SH" != "/bin/dash" ] ; then
+          rm -f /bin/sh
+          ln -s /bin/dash /bin/sh
+        fi
+      else
+        if [ "$_WEB_SH" != "/bin/bash" ] ; then
+          rm -f /bin/sh
+          ln -s /bin/bash /bin/sh
+        fi
       fi
     fi
     touch $PIDFILE
@@ -47,9 +54,16 @@ case "$1" in
     if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
       _WEB_SH=`readlink -n /bin/sh`
       _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
-      if [ "$_WEB_SH" != "/bin/bash" ] ; then
-        rm -f /bin/sh
-        ln -s /bin/bash /bin/sh
+      if [ -x "/bin/dash" ] ; then
+        if [ "$_WEB_SH" != "/bin/dash" ] ; then
+          rm -f /bin/sh
+          ln -s /bin/dash /bin/sh
+        fi
+      else
+        if [ "$_WEB_SH" != "/bin/bash" ] ; then
+          rm -f /bin/sh
+          ln -s /bin/bash /bin/sh
+        fi
       fi
     fi
     if [ -e "/var/run/boa_wait.pid" ] ; then

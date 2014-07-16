@@ -2,25 +2,10 @@
 
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-drushextra_updates() {
-  if [ "$kind" = "updates" ] ; then
-    echo "STATUS: enabling update module..."
-    drush6 en update -y &> /dev/null
-    echo "STATUS: checking for available updates..."
-    drush6 upc --no-core --no-backup -n | grep available
-    echo "STATUS: disabling update module..."
-    drush6 dis update -y &> /dev/null
-    echo "STATUS: check complete"
-    exit 0
-  else
-    echo "Usage: drushextra check updates"
-    exit 1
-  fi
-}
-
 case "$1" in
-  check) kind="$2"
-       drushextra_updates
+  dummy) kind="$2"
+    echo " This command is not available directly!"
+    exit 1
   ;;
   *)  echo
       echo " This command is not available directly!"

@@ -647,6 +647,12 @@ fix_modules () {
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> $_PLR_CTRL_FILE
             fi
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_PLR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";disable_drupal_page_cache = FALSE" >> $_PLR_CTRL_FILE
+            fi
             _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
               _DO_NOTHING=YES
@@ -714,6 +720,12 @@ fix_modules () {
               _DO_NOTHING=YES
             else
               echo ";speed_booster_anon_cache_ttl = 10" >> $_DIR_CTRL_FILE
+            fi
+            _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" $_DIR_CTRL_FILE)
+            if [[ "$_VAR_IF_PRESENT" =~ "disable_drupal_page_cache" ]] ; then
+              _DO_NOTHING=YES
+            else
+              echo ";disable_drupal_page_cache = FALSE" >> $_DIR_CTRL_FILE
             fi
              _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "allow_private_file_downloads" ]] ; then
@@ -1311,7 +1323,7 @@ action () {
         symlinks -dr $User/clients &> /dev/null
         if [ -e "/home/${_THIS_HM_USER}.ftp" ] ; then
           symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
-          rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bashrc}
+          rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
         run_drush4_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
         run_drush4_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""

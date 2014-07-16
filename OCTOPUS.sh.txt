@@ -179,6 +179,7 @@ _PHP_CLI_VERSION=5.3
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
+### OPC ----------- OpenPublic
 ### OPH ----------- OpenPublish (off)
 ### OSR ----------- OpenScholar
 ### PPT ----------- ProsePoint (off)
@@ -652,6 +653,7 @@ _DRUSH_VERSION=mini-4-14-03-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
+_REDIS_M_VERSION=mod-10-07-2014
 _SMALLCORE6=6.31.2
 _SMALLCORE7=7.28.1
 _SMALLCORE8=8.0-alpha4
@@ -666,7 +668,7 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION=mini-6-21-06-2014
+  _DRUSH_VERSION=mini-6-16-07-2014
 fi
 
 ###
@@ -677,25 +679,26 @@ _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
 _CIVICRM_PN=boa-2.0.9-dev
 _COD=7.x-1.0-alpha5
-_COMMERCE1=7.x-1.25
+_COMMERCE1=7.x-1.26
 _COMMERCE2=7.x-2.15
 _COMMONS2=6.x-2.18
-_COMMONS3=7.x-3.14
+_COMMONS3=7.x-3.15
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
-_ERPAL=7.x-2.0-beta2
-_GUARDR=7.x-1.5
+_ERPAL=7.x-2.0-beta4
+_GUARDR=7.x-1.8
 _MANAGINGNEWS=1.2.4
 _NODESTREAM7=7.x-2.0-rc5
-_OPEN_DEALS=1.32
+_OPEN_DEALS=1.33
 _OPENACADEMY=7.x-1.0
 _OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.19
 _OPENBLOG=7.x-1.0-alpha2
 _OPENCHURCH=7.x-1.12
-_OPENDEALS=7.x-1.32
+_OPENDEALS=7.x-1.33
 _OPENOUTREACH=7.x-1.7
+_OPENPUBLIC=7.x-1.0-beta23
 _OPENPUBLISH=7.x-1.0-beta7
 _OPENSCHOLAR=7.x-3.12.1
 _PANOPOLY=7.x-1.6
@@ -1502,6 +1505,7 @@ do
   sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
   sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
+  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
   sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
   sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
   sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
@@ -1513,6 +1517,7 @@ do
   sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
   sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
   sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
+  sed -i "s/EDIT_REDIS_M_VERSION/$_REDIS_M_VERSION/g"     $Files &> /dev/null
   sed -i "s/EDIT_RESTAURANT/$_RESTAURANT/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
   sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
@@ -1587,7 +1592,7 @@ fi
 if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
   echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
 fi
-if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.rgw.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
+if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.cnv.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
   mkdir -p /data/disk/${_USER}/static/control
   chmod 755 /data/disk/${_USER}/static/control
   if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
@@ -1595,7 +1600,7 @@ if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.rgw.txt" ] || [ ! -e "/data/
     chmod 0644 /data/disk/${_USER}/static/control/README.txt
   fi
   chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
-  echo OK > /data/disk/${_USER}/static/control/.ctrl.rgw.txt
+  echo OK > /data/disk/${_USER}/static/control/.ctrl.cnv.txt
 fi
 if [ -d "/data/all/000" ] ; then
   if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then

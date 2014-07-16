@@ -66,6 +66,7 @@ _OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
+_OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PANOPOLY=EDIT_PANOPOLY
@@ -111,6 +112,7 @@ _PLATFORMS_LIST="EDIT_PLATFORMS_LIST"
 _PLATFORMS_ONLY=EDIT_PLATFORMS_ONLY
 _PURGE_FOR_SEVEN=EDIT_PURGE_FOR_SEVEN
 _PURGE_MODE=EDIT_PURGE_MODE
+_REDIS_M_VERSION=EDIT_REDIS_M_VERSION
 _REL_VERSION=`lsb_release -sc`
 _SPINNER=EDIT_SPINNER
 _STATUS=INIT
@@ -262,29 +264,17 @@ _LOG=/var/backups/octopus-$_USER-$_NOW.log
 create_shared_dirs () {
   msg "$_STATUS A: Creating shared directories..."
   mkdir -p /data/all/000/{core,modules}
+  rm -f -r /data/src
   if [ ! -d "$_CORE" ] ; then
     mkdir -p $_CORE
-    mkdir -p /data/src
   fi
-  chown $_USER:$_USRG /data/all &> /dev/null
-  chown $_USER:$_USRG $_CORE &> /dev/null
-  if [ ! -e "$_CORE/o_contrib/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG $_CORE/o_contrib &> /dev/null
-  fi
-  if [ ! -e "$_CORE/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG $_CORE/o_contrib_seven &> /dev/null
-  fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib &> /dev/null
-  fi
-  if [ ! -e "/data/all/$_LAST_ALL/o_contrib_seven/ctrl-$_INSTALLER_VERSION" ] || [ "$_O_CONTRIB_UP" = "YES" ] ; then
-    chown -R $_USER:$_USRG /data/all/$_LAST_ALL/o_contrib_seven &> /dev/null
-  fi
-  chown -R $_USER:$_USRG /data/src &> /dev/null
-  chown -R $_USER:$_USRG /opt/tmp &> /dev/null
-  chown -R $_USER:$_USRG /data/conf &> /dev/null
-  chown -R $_USER:$_USRG /data/all/000 &> /dev/null
-  chmod 777 $_CORE /data/all /data/src /data /data/disk /data/conf &> /dev/null
+  chown -R $_USER:$_USRG /data/conf      &> /dev/null
+  chown -R $_USER:$_USRG /opt/tmp        &> /dev/null
+  chown $_USER:$_USRG /data/all          &> /dev/null
+  chown $_USER:$_USRG /data/all/000      &> /dev/null
+  chown $_USER:$_USRG /data/all/000/core &> /dev/null
+  chown $_USER:$_USRG $_CORE             &> /dev/null
+  chmod 777 $_CORE /data/all /data /data/disk /data/conf &> /dev/null
 }
 #
 # Fix for FServer broken due to required now strongarm.
@@ -351,9 +341,11 @@ feature_server_fix_004 () {
 #
 o_contrib_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports purge expire imageinfo_cache httprl boost phpass advagg force_password_change fpa views_cache_bully views_content_cache panels_content_cache cdn js session_expire"
+RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 cookie_cache_bypass_adv module_supports imageinfo_cache"
 for i in $REVISIONS; do
-  if [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-045.info" ] ; then
+  if [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/$i/o_contrib/update-$_INSTALLER_VERSION.info" ] ; then
+    _FORCE_UP_SIX=YES
+  elif [ -e "/data/all/$i/o_contrib" ] && [ ! -e "/data/all/000/modules/redis_edge" ] ; then
     _FORCE_UP_SIX=YES
   elif [ -e "/data/all/$i/o_contrib" ] && [ ! -L "/data/all/$i/o_contrib/redis_edge" ] ; then
     _FORCE_UP_SIX=YES
@@ -362,32 +354,62 @@ for i in $REVISIONS; do
   else
     _FORCE_UP_SIX=NO
   fi
-  if [ "$_FORCE_UP_SIX" = "YES" ] || [ ! -e "/data/all/000/modules/redis_edge" ]; then
+  if [ "$_FORCE_UP_SIX" = "YES" ] && [ -e "/data/all/$i/o_contrib" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib/$m
-        msg "$_STATUS A: Replaced /data/all/$i/o_contrib/$m with latest release"
       fi
     done
     cd /data/all/$i/o_contrib
-    get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
-    get_dev_contrib "boost-6.x-1.x.tar.gz"
-    get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
-    get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
-    get_dev_contrib "fpa-6.x-2.5.tar.gz"
-    get_dev_contrib "httprl-6.x-1.14.tar.gz"
-    get_dev_contrib "js-6.x-1.3.tar.gz"
-    get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
-    get_dev_contrib "phpass-6.x-2.0.tar.gz"
-    get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
-    get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
-    get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
+    if [ ! -d "/data/all/$i/o_contrib/advagg" ] ; then
+      get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/boost" ] ; then
+      get_dev_contrib "boost-6.x-1.x.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/cdn" ] ; then
+      get_dev_contrib "cdn-6.x-2.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/force_password_change" ] ; then
+      get_dev_contrib "force_password_change-6.x-3.4.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/fpa" ] ; then
+      get_dev_contrib "fpa-6.x-2.5.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/httprl" ] ; then
+      get_dev_contrib "httprl-6.x-1.14.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/js" ] ; then
+      get_dev_contrib "js-6.x-1.3.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/panels_content_cache" ] ; then
+      get_dev_contrib "panels_content_cache-6.x-1.0.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/phpass" ] ; then
+      get_dev_contrib "phpass-6.x-2.0.tar.gz"
+    fi
     if [ ! -d "/data/all/$i/o_contrib/print" ] ; then
       get_dev_contrib "print-6.x-1.19.tar.gz"
     fi
+    if [ ! -d "/data/all/$i/o_contrib/session_expire" ] ; then
+      get_dev_contrib "session_expire-6.x-1.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/taxonomy_edge" ] ; then
+      get_dev_contrib "taxonomy_edge-6.x-1.7.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/views_cache_bully" ] ; then
+      get_dev_contrib "views_cache_bully-6.x-3.1.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib/views_content_cache" ] ; then
+      get_dev_contrib "views_content_cache-6.x-2.x-dev.tar.gz"
+    fi
     if [ "$_PURGE_MODE" = "ON" ] ; then
-      get_dev_contrib "purge-6.x-1.6.tar.gz"
-      get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
+      if [ ! -d "/data/all/$i/o_contrib/expire" ] ; then
+        get_dev_contrib "expire-6.x-1.x-dev.tar.gz"
+      fi
+      if [ ! -d "/data/all/$i/o_contrib/purge" ] ; then
+        get_dev_contrib "purge-6.x-1.6.tar.gz"
+      fi
     fi
     if [ -d "/data/all/$i/o_contrib/cache_backport" ] ; then
       rm -f -r /data/all/$i/o_contrib/cache_backport
@@ -407,7 +429,7 @@ for i in $REVISIONS; do
     if [ -e "/data/all/000/modules/redis_edge" ] && [ ! -L "/data/all/$i/o_contrib/redis_edge" ] ; then
       ln -sf /data/all/000/modules/redis_edge /data/all/$i/o_contrib/redis_edge
     fi
-    touch /data/all/$i/o_contrib/update-045.info
+    touch /data/all/$i/o_contrib/update-$_INSTALLER_VERSION.info
     find /data/all/$i/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/all/$i/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
   fi
@@ -426,9 +448,13 @@ cd
 #
 o_contrib_seven_update_global () {
 REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
-RMMODULES="session443 cookie_cache_bypass_adv purge expire agrcache httprl filefield_nginx_progress boost speedy entitycache taxonomy_edge advagg force_password_change fpa views_cache_bully views_content_cache panels_content_cache display_cache cdn js session_expire"
+RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy"
 for i in $REVISIONS; do
-  if [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-045.info" ] ; then
+  if [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info" ] ; then
+    _FORCE_UP_SEVEN=YES
+  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+    _FORCE_UP_SEVEN=YES
+  elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -e "/data/all/000/modules/redis_edge" ] ; then
     _FORCE_UP_SEVEN=YES
   elif [ -e "/data/all/$i/o_contrib_seven" ] && [ ! -L "/data/all/$i/o_contrib_seven/redis_edge" ] ; then
     _FORCE_UP_SEVEN=YES
@@ -437,37 +463,75 @@ for i in $REVISIONS; do
   else
     _FORCE_UP_SEVEN=NO
   fi
-  if [ "$_FORCE_UP_SEVEN" = "YES" ] || [ ! -e "/data/all/000/modules/redis_edge" ]; then
+  if [ "$_FORCE_UP_SEVEN" = "YES" ] && [ -e "/data/all/$i/o_contrib_seven" ] ; then
     for m in $RMMODULES; do
       if [ -d "/data/all/$i/o_contrib_seven/$m" ] ; then
         rm -f -r /data/all/$i/o_contrib_seven/$m
-        msg "$_STATUS A: Replaced /data/all/$i/o_contrib_seven/$m with latest release"
       fi
     done
-    if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
-      cd /data/all/$i/o_contrib_seven
-      get_dev_contrib "purge-7.x-1.6.tar.gz"
-      get_dev_contrib "expire-7.x-2.0-rc3.tar.gz"
-    fi
     cd /data/all/$i/o_contrib_seven
-    get_dev_contrib "advagg-7.x-2.7.tar.gz"
-    get_dev_contrib "boost-7.x-1.0.tar.gz"
-    get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
-    get_dev_contrib "display_cache-7.x-1.0.tar.gz"
-    get_dev_contrib "entitycache-7.x-1.2.tar.gz"
-    get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
-    get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
-    get_dev_contrib "fpa-7.x-2.5.tar.gz"
-    get_dev_contrib "httprl-7.x-1.14.tar.gz"
-    get_dev_contrib "js-7.x-1.x-dev.tar.gz"
-    get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
-    get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
-    get_dev_contrib "speedy-7.x-1.8.tar.gz"
-    get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
-    get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
-    get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
+    if [ ! -d "/data/all/$i/o_contrib_seven/advagg" ] ; then
+      get_dev_contrib "advagg-7.x-2.7.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/boost" ] ; then
+      get_dev_contrib "boost-7.x-1.0.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/cdn" ] ; then
+      get_dev_contrib "cdn-7.x-2.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/display_cache" ] ; then
+      get_dev_contrib "display_cache-7.x-1.0.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/entitycache" ] ; then
+      get_dev_contrib "entitycache-7.x-1.2.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/filefield_nginx_progress" ] ; then
+      get_dev_contrib "filefield_nginx_progress-7.x-2.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/force_password_change" ] ; then
+      get_dev_contrib "force_password_change-7.x-1.0-rc2.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/fpa" ] ; then
+      get_dev_contrib "fpa-7.x-2.5.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/httprl" ] ; then
+      get_dev_contrib "httprl-7.x-1.14.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/js" ] ; then
+      get_dev_contrib "js-7.x-1.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/panels_content_cache" ] ; then
+      get_dev_contrib "panels_content_cache-7.x-1.0.tar.gz"
+    fi
     if [ ! -d "/data/all/$i/o_contrib_seven/print" ] ; then
       get_dev_contrib "print-7.x-2.0.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/session_expire" ] ; then
+      get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/speedy" ] ; then
+      get_dev_contrib "speedy-7.x-1.9.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/taxonomy_edge" ] ; then
+      get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/views_accelerator" ] ; then
+      get_dev_contrib "views_accelerator-7.x-1.0-alpha2.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/views_cache_bully" ] ; then
+      get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
+    fi
+    if [ ! -d "/data/all/$i/o_contrib_seven/views_content_cache" ] ; then
+      get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
+    fi
+    if [ "$_PURGE_MODE" = "ON" ] && [ "$_PURGE_FOR_SEVEN" = "YES" ] ; then
+      cd /data/all/$i/o_contrib_seven
+      if [ ! -d "/data/all/$i/o_contrib_seven/expire" ] ; then
+        get_dev_contrib "expire-7.x-2.0-rc3.tar.gz"
+      fi
+      if [ ! -d "/data/all/$i/o_contrib_seven/purge" ] ; then
+        get_dev_contrib "purge-7.x-1.6.tar.gz"
+      fi
     fi
     if [ -d "/data/all/$i/o_contrib_seven/redis" ] ; then
       rm -f -r /data/all/$i/o_contrib_seven/redis
@@ -483,7 +547,7 @@ for i in $REVISIONS; do
     fi
     find /data/all/$i/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
     find /data/all/$i/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-    touch /data/all/$i/o_contrib_seven/update-045.info
+    touch /data/all/$i/o_contrib_seven/update-$_INSTALLER_VERSION.info
   fi
 done
 cd
@@ -500,7 +564,7 @@ download_textile () {
 #
 # Download o_contrib_seven.
 download_o_contrib_seven () {
-  touch update-045.info
+  touch update-$_INSTALLER_VERSION.info
   #msg "$_STATUS A: Downloading o_contrib_seven modules, please wait..."
   get_dev_contrib "admin-7.x-2.0-beta3.tar.gz"
   get_dev_contrib "advagg-7.x-2.7.tar.gz"
@@ -528,11 +592,12 @@ download_o_contrib_seven () {
   get_dev_contrib "securesite-7.x-2.x-dev.tar.gz"
   get_dev_contrib "session_expire-7.x-1.x-dev.tar.gz"
   get_dev_contrib "site_verify-7.x-1.1.tar.gz"
-  get_dev_contrib "speedy-7.x-1.8.tar.gz"
+  get_dev_contrib "speedy-7.x-1.9.tar.gz"
   get_dev_contrib "taxonomy_edge-7.x-1.x-dev.tar.gz"
   get_dev_contrib "textile-7.x-2.0-rc11.tar.gz"
   get_dev_contrib "variable_clean-7.x-1.x-dev.tar.gz"
   get_dev_contrib "vars-7.x-2.0-alpha10.tar.gz"
+  get_dev_contrib "views_accelerator-7.x-1.0-alpha2.tar.gz"
   get_dev_contrib "views_cache_bully-7.x-3.1.tar.gz"
   get_dev_contrib "views_content_cache-7.x-3.0-alpha3.tar.gz"
   get_dev_contrib "views404-7.x-1.x-dev.tar.gz"
@@ -556,21 +621,21 @@ download_o_contrib_seven () {
     ln -sf /data/all/000/modules/redis_edge redis_edge
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/redis/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-045.info
+    echo update > redis/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
-    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-B.tar.gz"
+    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/update-045.info
+    echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
   find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -578,7 +643,7 @@ download_o_contrib_seven () {
 #
 # Download o_contrib_six.
 download_o_contrib_six () {
-  touch update-045.info
+  touch update-$_INSTALLER_VERSION.info
   #msg "$_STATUS A: Downloading o_contrib modules, please wait..."
   get_dev_contrib "admin-6.x-2.0.tar.gz"
   get_dev_contrib "advagg-6.x-1.x-dev.tar.gz"
@@ -635,29 +700,29 @@ download_o_contrib_six () {
     ln -sf /data/all/000/modules/cache_backport cache_backport
   fi
   download_textile
-  if [ ! -e "/data/all/000/modules/cache_backport/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/cache_backport/update-$_INSTALLER_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/cache_backport
     get_dev_contrib "cache_backport-6.x-1.0-rc1.tar.gz"
     sed -i "s/Cache Backand/D7 Cache Backport for D6/g" cache_backport/cache_backport.info &> /dev/null
-    echo update > cache_backport/update-045.info
+    echo update > cache_backport/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis
     get_dev_contrib "redis-7.x-2.x-o8-revert-A.tar.gz"
     rm -f redis/redis.info
-    echo update > redis/update-045.info
+    echo update > redis/update-$_INSTALLER_VERSION.info
   fi
-  if [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] ; then
+  if [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
     mkdir -p /data/all/000/modules
     cd /data/all/000/modules
     rm -f -r /data/all/000/modules/redis_edge
-    get_dev_contrib "redis_edge-7.x-2.x-o8-2.6-B.tar.gz"
+    get_dev_contrib "redis_edge-$_REDIS_M_VERSION.tar.gz"
     rm -f redis_edge/redis.info
-    echo update > redis_edge/update-045.info
+    echo update > redis_edge/$_REDIS_M_VERSION.info
   fi
   find /data/all/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -700,7 +765,7 @@ fi
 if [ ! -e "$_THIS_CTRL" ] ; then
   _O_CONTRIB_UP=YES
 fi
-if [ ! -e "/data/all/000/modules/redis/update-045.info" ] || [ ! -e "/data/all/000/modules/redis_edge/update-045.info" ] ; then
+if [ ! -e "/data/all/000/modules/redis/update-$_INSTALLER_VERSION.info" ] || [ ! -e "/data/all/000/modules/redis_edge/$_REDIS_M_VERSION.info" ] ; then
   _O_CONTRIB_UP=YES
 fi
 if [ "$_PURGE_MODE" = "ON" ] ; then
@@ -1401,7 +1466,7 @@ fi
 
 ###---### Remove not used dot files.
 #
-rm -f $_USER_HD/{.profile,.bash_logout,.bashrc}
+rm -f $_USER_HD/{.profile,.bash_logout,.bash_profile,.bashrc}
 
 
 ###---### Reading or creating pass.txt.
@@ -1611,6 +1676,11 @@ msg "$_STATUS A: Creating ftp symlinks"
   if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites" ] ; then
     if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
       ln -sf $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7
+    fi
+  fi
+  if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites" ] ; then
+    if [ ! -L "/home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
+      ln -sf $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites /home/$_USERFTP/platforms/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7
     fi
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites" ] ; then
@@ -1870,7 +1940,6 @@ if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-fix-all.info" ] ; then
 fi
 chown root:root /data/all &> /dev/null
 chown root:root $_CORE &> /dev/null
-st_runner "chown -R root:root /data/src" &> /dev/null
 st_runner "chown -R root:root /data/conf" &> /dev/null
 st_runner "chown -R root:root $_CORE/o_contrib" &> /dev/null
 st_runner "chown -R root:root $_CORE/o_contrib_seven" &> /dev/null
@@ -1880,7 +1949,7 @@ st_runner "chown -R root:root /data/all/000" &> /dev/null
 find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
 find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
 chown root:root /opt/tmp &> /dev/null
-chmod 0711 $_CORE /data/all/000 /data/src /data /data/disk /data/conf &> /dev/null
+chmod 0711 $_CORE /data/all/000 /data /data/disk /data/conf &> /dev/null
 chmod 0755 /data/all &> /dev/null
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null

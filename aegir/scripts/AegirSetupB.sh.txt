@@ -63,6 +63,7 @@ _OPENBLOG=EDIT_OPENBLOG
 _OPENCHURCH=EDIT_OPENCHURCH
 _OPENDEALS=EDIT_OPENDEALS
 _OPENOUTREACH=EDIT_OPENOUTREACH
+_OPENPUBLIC=EDIT_OPENPUBLIC
 _OPENPUBLISH=EDIT_OPENPUBLISH
 _OPENSCHOLAR=EDIT_OPENSCHOLAR
 _PANOPOLY=EDIT_PANOPOLY
@@ -200,7 +201,7 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.rgw.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.cnv.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -231,7 +232,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.rgw.txt
+      echo > $_U_HD/.ctrl.cnv.txt
     fi
   fi
 }
@@ -514,6 +515,12 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."
+  if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
+    rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
+  fi
+  if [ -d "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_PREV_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
+    rm -f $_PREV_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
+  fi
   if [ ! -e "$_PREV_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _DEBUG_MODE=YES
     msg "$_STATUS B: Testing previous install... OPS, zombie found, moving it to backups..."
@@ -614,15 +621,13 @@ else
   get_dev_ext "hosting_site_backup.tar.gz"
   get_dev_ext "hosting_tasks_extra.tar.gz"
 fi
-if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
-  ln -sf /data/all/001/o_contrib $_HOSTMASTER_ROOT/modules/o_contrib &> /dev/null
-fi
 cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
 if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   mkdir -p $_ROOT/backups/system/off
   mv -f $_HOSTMASTER_ROOT/sites/$_DOMAIN/modules/* $_ROOT/backups/system/off/ &> /dev/null
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     cd $_HOSTMASTER_ROOT/profiles/hostmaster/modules/
+    get_dev_contrib "css_emimage-6.x-2.x-dev.tar.gz"
     get_dev_contrib "ctools-6.x-1.11.tar.gz"
     get_dev_contrib "features_extra-6.x-1.x-dev.tar.gz"
     get_dev_contrib "features-6.x-1.2.tar.gz"
@@ -663,6 +668,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
+  rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
@@ -724,6 +730,17 @@ fi
 cd $_ROOT
 if [ -e "/data/conf/global.inc" ] ; then
   ln -sf /data/conf/global.inc $_ROOT/config/includes/global.inc
+fi
+
+###---### Redis integration.
+#
+if [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/redis_edge" ] || [ ! -e "$_HOSTMASTER_ROOT/modules/o_contrib/cache_backport" ] ; then
+  if [ -e "/data/all/000/modules/redis_edge" ] && [ -e "/data/all/000/modules/cache_backport" ] ; then
+    mkdir -p $_HOSTMASTER_ROOT/modules/o_contrib
+    rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
+    ln -s /data/all/000/modules/redis_edge $_HOSTMASTER_ROOT/modules/o_contrib/redis_edge &> /dev/null
+    ln -s /data/all/000/modules/cache_backport $_HOSTMASTER_ROOT/modules/o_contrib/cache_backport &> /dev/null
+  fi
 fi
 
 touch /opt/tmp/status-AegirSetupB-OK

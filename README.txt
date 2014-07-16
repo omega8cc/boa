@@ -3,13 +3,12 @@
 
 BOA is an acronym of high performance Barracuda, Octopus and Aegir LEMP stack.
 
-Includes all-in-one bash scripts (see docs/INSTALL.txt for details)
-to install and upgrade high performance Aegir Hosting Systems
-for Drupal, with Nginx, PHP-FPM, Zend OPcache, MariaDB and Redis,
-now available with simple command line tools: http://bit.ly/JHpFSh
+Includes all-in-one bash scripts (see docs/INSTALL.txt for details) to install
+and upgrade high performance Aegir Hosting Systems for Drupal, with Nginx,
+PHP-FPM, Zend OPcache, MariaDB and Redis.
 
 
-###-----------------------------------------------------------------------###
+###--------------------------------------------------------------------------###
 ###
 ### For BOA installation instructions see docs/INSTALL.txt
 ### See also related information in docs/NOTES.txt
@@ -41,7 +40,7 @@ now available with simple command line tools: http://bit.ly/JHpFSh
 ### For security related settings see: docs/SECURITY.txt
 ### For frequently asked questions and answers see docs/FAQ.txt
 ###
-###-----------------------------------------------------------------------###
+###--------------------------------------------------------------------------###
 
 
 You can install one Aegir Master Instance and any number of Aegir Satellite
@@ -49,70 +48,57 @@ Instances. The Master Instance holds the central Nginx configuration for all
 Satellite Instances and thus shouldn't be used to host your sites. Please
 always use one or more Satellite Instances to host your sites.
 
-Note: the 'Master' and 'Satellite' names in the Barracuda/Octopus
-context are not related to the multi-server Aegir features.
-It is related to the multi-Aegir-instances environment, with
-virtual chroot/jail for every Aegir Satellite instance.
+The 'Master' and 'Satellite' names in the Barracuda/Octopus context are not
+related to the multi-server Aegir features. It is related to the multi-instance
+environment, with virtual chroot/jail for every Aegir Satellite instance.
 
-Barracuda is the main script for the Aegir Master Instance system
-install and upgrades, including OS environment and main Aegir instance,
-but no platforms (besides hostmaster) are installed there.
+Barracuda is the main script for the Aegir Master Instance system install and
+upgrades, including OS environment and main Aegir instance, but no platforms
+(besides hostmaster) are installed there.
 
-Octopus is an Aegir + Platforms installer (you can interactively
-choose the platforms you wish to install on the instance)
-and updater only. It allows to install new versions of platforms
-with clean directory structure, with code shared between all created
-instances, so one vanilla Octopus instance is using only ~18 MB,
-while most of the code, which is over 1 GB total, is shared.
+Octopus is an Aegir + Platforms installer (you can interactively choose
+the platforms you wish to install on the instance) and updater only. It allows
+to install new versions of platforms with clean directory structure, with code
+shared between all created instances, so one vanilla Octopus instance is using
+only ~18 MB, while most of the code, which is over 1 GB total, is shared.
 
-Sharing the code between instances is of critical importance,
-because it allows you to dramatically lower RAM and CPU usage,
-because most of the actively used code is opcode cached.
+Sharing the code between instances is of critical importance, because it allows
+you to dramatically lower RAM and CPU usage, because most of the actively used
+code is opcode cached.
 
-With multi-install system you have to remember that all of them
-will use the same Nginx server, so you could break the system
-trying to install site with the same domain on two or more instances.
-The instances will not be aware of other running instances,
-so it is your responsibility to use such system wisely.
+With multi-install system you have to remember that all of them will use the
+same Nginx server, so you could break the system trying to install site with
+the same domain on two or more instances. The instances will not be aware of
+other running instances, so it is your responsibility to use such system wisely.
 
-There is also Tuner script available (see aegir/tools/BOND.sh.txt)
-for easy system tuning for development and switching it back easily
-to the standard production settings.
+There is also Tuner script available (see aegir/tools/BOND.sh.txt) for easy
+system tuning for development and switching it back easily to the standard
+production settings.
 
 
 ### SUPPORTED PARENT SYSTEMS
 
 * Xen, VServer, Linux KVM or VMware based VPS or a dedicated box.
-* VirtualBox VM for localhost install - check the how-to for:
+
+* VirtualBox VM for localhost install - check the (old) how-to for:
   Ubuntu Precise desktop image install: http://bit.ly/boa-precise
   Debian Squeeze desktop image install: http://bit.ly/boa-squeeze
+
+NOTE: BOA maintainers use only server (public) install mode and rarely test
+      localhost (local) mode, which is considered highly experimental,
+      while server (public) mode is considered stable and fully supported.
 
 
 ### SUPPORTED LTS OS 32/64bit - Minimal on server or Desktop on localhost
 
 * Debian 7 Wheezy (recommended)
-* Debian 6 Squeeze (fully supported) (automatic upgrade to Wheezy supported)
-* Ubuntu Trusty 14.04 (very limited support)
-* Ubuntu Precise 12.04 (very limited support)
-* Ubuntu Lucid 10.04 (very limited support)
+* Debian 6 Squeeze (fully supported with automatic upgrade to Wheezy available)
+* Ubuntu Trusty 14.04 (limited support)
+* Ubuntu Precise 12.04 (limited support)
+* Ubuntu Lucid 10.04 (limited support)
 
-NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
-      we recommend Debian 7 Wheezy. We don't use and rarely test Ubuntu,
-      so if you have any good reason to use Ubuntu, don't blame us
-      if it will not survive next upgrade. We are trying to include it as
-      (barely) supported OS only for those who can't use Debian because of
-      company or organization policy etc. But we strongly suggest to avoid
-      Ubuntu and instead use Debian, wherever possible, for best results.
-
-
-### PREVIOUSLY SUPPORTED OS (deprecated)
-
-* Debian 5.0 Lenny (automatic upgrade to Squeeze supported)
-* Ubuntu Oneiric 11.10
-* Ubuntu Natty 11.04
-* Ubuntu Maverick 10.10
-* Ubuntu Karmic 9.10
-* Jolicloud Robby
+NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
+      We don't use and rarely test Ubuntu, so for best results use Debian 64bit.
 
 
 ### OTHER REQUIREMENTS
@@ -123,6 +109,7 @@ NOTE: BOA maintainers currently use Debian 6 Squeeze, but for new installs
 * Minimum 512 MB of RAM (1 GB for heavy distros, like Atrium 2, Commerce etc.)
 * Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 * Basic sysadmin skills and experience.
+* Willingness to accept BOA PI (paranoid idiosyncrasies).
 
 
 ### PROVIDES
@@ -178,18 +165,19 @@ Octopus can install the platforms listed below:
  @ Drupal 7.28.1
 
  aGov 1.0-rc8 ----------------- https://drupal.org/project/agov
- Commerce 1.25 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 1.26 ---------------- https://drupal.org/project/commerce_kickstart
  Commerce 2.15 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.14 ----------------- https://drupal.org/project/commons
+ Commons 3.15 ----------------- https://drupal.org/project/commons
  Drupal 7.28.1 ---------------- https://drupal.org/drupal-7.28
- ERPAL 2.0-b2 ----------------- https://drupal.org/project/erpal
- Guardr 1.5 ------------------- https://drupal.org/project/guardr
+ ERPAL 2.0-b4 ----------------- https://drupal.org/project/erpal
+ Guardr 1.8 ------------------- https://drupal.org/project/guardr
  Open Academy 1.0 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.19 ------------- https://drupal.org/project/openatrium
- Open Deals 1.32 -------------- https://drupal.org/project/opendeals
+ Open Deals 1.33 -------------- https://drupal.org/project/opendeals
  Open Outreach 1.7 ------------ https://drupal.org/project/openoutreach
  OpenBlog 1.0-a3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.12 -------------- https://drupal.org/project/openchurch
+ OpenPublic 1.0-b23 ----------- https://drupal.org/project/openpublic
  OpenScholar 3.12.1 ----------- http://theopenscholar.org
  Panopoly 1.6 ----------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
@@ -207,64 +195,56 @@ Octopus can install the platforms listed below:
  Pressflow 6.31.2 ------------- http://pressflow.org
  Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
 
-All D7 platforms have been enhanced using Drupal 7.28.1 +Extra core:
-https://github.com/omega8cc/7x/tree/7.x-om8
+* All D7 platforms have been enhanced using Drupal 7.28.1 +Extra core:
+  https://github.com/omega8cc/7x/tree/7.x-om8
 
-All D6 platforms have been enhanced using Pressflow 6.31.2 +Extra core:
-https://github.com/omega8cc/pressflow6/tree/pressflow-plus
+* All D6 platforms have been enhanced using Pressflow 6.31.2 +Extra core:
+  https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
-All D6 and D7 platforms include some useful and/all performance related
-contrib modules - see docs/MODULES.txt for details.
+* All D6 and D7 platforms include some useful and/all performance related
+  contrib modules - see docs/MODULES.txt for details.
 
 
 ### BUG SUBMISSION
+
+* Active issue queue ---------- https://github.com/omega8cc/boa/issues
 
 Reporting bugs is a great way to contribute to BOA. Mis-reporting bugs or
 duplicating reports, however, can be a distraction to the development team
 and waste precious resources. So, help out by following these guidelines.
 
-It is also a good idea to search first our deprecated issue queues for
-Barracuda and Octopus projects on drupal.org:
-
-  Legacy issue queue: https://drupal.org/project/issues/barracuda
-  Legacy issue queue: https://drupal.org/project/issues/octopus
+!!! Any bug report failing to follow the guidelines will be ignored and closed.
 
 Before reporting a bug always search for similar bug report before submitting
 your own, and include as much information about your context as possible,
 including your server/VPS parent system name (like Xen) and/or hosting provider
 name and URL. Especially please attach the contents (anonymized for security
-and privacy) of files:
+and privacy) of files listed below.
 
   /root/.barracuda.cnf
   /var/log/barracuda_log.txt
   /root/.USER.octopus.cnf
   /data/disk/USER/log/octopus_log.txt
 
-Please enable debugging with _DEBUG_MODE=YES in the /root/.barracuda.cnf file
-before running upgrade, so it will display more helpful details.
+!!! Don't post your server or error logs in the issue directly. Instead use
+!!! services like http://gist.github.com and post the link in your submission.
 
-Note that you can find also verbose logs in the /var/backups/ directory.
+HINT: Please enable debugging with _DEBUG_MODE=YES in the /root/.barracuda.cnf
+      file before running upgrade, so it will display more helpful details.
+      You can find more verbose logs in the /var/backups/ directory.
 
-IMPORTANT!
-  Please don't post your server or error logs in the issue directly. Instead
-  use services like http://gist.github.com and post the link in your submission.
+It is also a good idea to search first our deprecated issue queues for
+Barracuda and Octopus projects on drupal.org:
 
-Active issue queue is available at:
-
-  https://github.com/omega8cc/boa/issues
-
-IMPORTANT!
-  Please note that any bug report failing to follow the guidelines
-  will be ignored and closed without any answer.
+* Legacy issue queue ---------- https://drupal.org/project/issues/barracuda
+* Legacy issue queue ---------- https://drupal.org/project/issues/octopus
 
 
 ### HELP OPTIONS
 
-* Support questions: http://drupal.stackexchange.com/questions/tagged/aegir
-* Community on g.d.o: https://groups.drupal.org/boa
-* IRC channel: irc://irc.freenode.net/omega8cc
-* Documentation: http://boa.readthedocs.org (soon)
-* Documentation repository: https://github.com/omega8cc/boa-docs (soon)
+* Docs and How-to ------------- https://omega8.cc/library/development
+* Community IRC channel ------- irc://irc.freenode.net/omega8cc
+* Commercial support ---------- https://omega8.cc
 
 
 ### MAINTAINERS
@@ -276,8 +256,8 @@ BOA development is maintained and sponsored by Omega8.cc
 
 ### CREDITS
 
-* Brian Mercer - https://drupal.org/user/103565
-  Initial work: https://www.drupal.org/node/244072#comment-1747170
+* Brian Mercer ---------------- https://drupal.org/user/103565
+  Initial work ---------------- https://drupal.org/node/244072#comment-1747170
 
 * Nice people who are submitting bugs and problems in the issue queue.
 

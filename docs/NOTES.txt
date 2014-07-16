@@ -9,14 +9,14 @@
     ### CGP --- Collectd Graph Panel
     ### CHV --- Chive DB Manager
     ### CSF --- Firewall
-    ### CSS --- Compass Tools
+    ### CSS --- Compass Tools (available on Squeeze, Wheezy, Precise and Trusty)
     ### FTP --- Pure-FTPd server with forced FTPS
     ### WMN --- Webmin Control Panel
     ###
     ### Xtras which need to be listed explicitly:
     ###
     ### BDD --- SQL Buddy DB Manager
-    ### BND --- Bind9 DNS Server
+    ### BND --- Bind9 DNS Server (available on Debian only)
     ### BZR --- Bazaar
     ### FMG --- FFmpeg support
     ### GIT --- Latest Git from sources

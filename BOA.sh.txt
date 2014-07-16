@@ -97,7 +97,6 @@ setup ()
   rm -f /opt/local/bin/{barracuda*,boa*,drushextra*,octopus*,randpass*,sqlmagic*,syncpass*,thinkdifferent*}
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/barracuda"      -o /opt/local/bin/barracuda
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/boa"            -o /opt/local/bin/boa
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/drushextra"     -o /opt/local/bin/drushextra
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/octopus"        -o /opt/local/bin/octopus
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/randpass"       -o /opt/local/bin/randpass
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/master/aegir/tools/bin/sqlmagic"       -o /opt/local/bin/sqlmagic
@@ -107,7 +106,7 @@ setup ()
   echo "### $_TODAY ###" >> /opt/local/bin/barracuda
   echo "### $_TODAY ###" >> /opt/local/bin/octopus
   chmod 700 /opt/local/bin/{boa,barracuda,octopus,syncpass}
-  chmod 755 /opt/local/bin/{randpass,sqlmagic,drushextra,thinkdifferent}
+  chmod 755 /opt/local/bin/{randpass,sqlmagic,thinkdifferent}
   echo
   echo "BOA Meta Installer setup completed"
   echo "Please check INSTALL.txt and UPGRADE.txt at http://bit.ly/boa-docs for how-to"

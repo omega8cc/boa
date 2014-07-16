@@ -31,6 +31,8 @@ server {
   listen                       YO.UR.EXTRA.IP2:80;
   listen                       YO.UR.EXTRA.IP3:80;
   server_name                  _;
+  access_log                   off;
+  log_not_found                off;
   ###
   ### Optional permanent redirect to HTTPS per domain/regex
   ###
@@ -55,8 +57,6 @@ server {
     proxy_connect_timeout      180;
     proxy_send_timeout         180;
     proxy_read_timeout         180;
-    access_log                 off;
-    log_not_found              off;
   }
 }
 ###
@@ -87,6 +87,8 @@ server {
   ssl_ciphers                  RC4:HIGH:!aNULL:!MD5;
   ssl_prefer_server_ciphers    on;
   keepalive_timeout            70;
+  access_log                   off;
+  log_not_found                off;
   ###
   ### Deny known crawlers.
   ###
@@ -112,8 +114,6 @@ server {
     proxy_connect_timeout      180;
     proxy_send_timeout         180;
     proxy_read_timeout         180;
-    access_log                 off;
-    log_not_found              off;
   }
 }
 ###
@@ -130,6 +130,8 @@ server {
   ssl_ciphers                  RC4:HIGH:!aNULL:!MD5;
   ssl_prefer_server_ciphers    on;
   keepalive_timeout            70;
+  access_log                   off;
+  log_not_found                off;
   ###
   ### Deny known crawlers.
   ###
@@ -155,8 +157,6 @@ server {
     proxy_connect_timeout      180;
     proxy_send_timeout         180;
     proxy_read_timeout         180;
-    access_log                 off;
-    log_not_found              off;
   }
 }
 ###
