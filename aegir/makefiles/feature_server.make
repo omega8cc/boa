@@ -32,9 +32,9 @@ projects[features][download][type] = "get"
 projects[features][download][url] = "http://files.aegir.cc/dev/contrib/features-6.x-1.2.tar.gz"
 
 projects[filefield][type] = "module"
-;projects[filefield][version] = "3.12"
+;projects[filefield][version] = "3.13"
 projects[filefield][download][type] = "get"
-projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.12.tar.gz"
+projects[filefield][download][url] = "http://files.aegir.cc/dev/contrib/filefield-6.x-3.13.tar.gz"
 
 projects[install_profile_api][type] = "module"
 ;projects[install_profile_api][version] = "2.2"
