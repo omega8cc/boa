@@ -95,7 +95,7 @@
   * Fix regex in procs monitor.
   * Fix the check for legacy systems on upgrade.
   * Force keyring reinstall if reported as broken.
-  * Issue #316 - Ooctopus upgrade fails because of missing cd $_ROOT/.drush/sys
+  * Issue #316 - Octopus upgrade fails because of missing cd $_ROOT/.drush/sys
   * Issue #319 - XTRAS_LIST settings are being overwritten (Ubuntu).
   * Issue #320 - Compass Tools available on Squeeze, Wheezy, Precise and Trusty.
   * Issue #324 - HTTPS results in redirect loop on AWS due to ignored _MY_OWNIP.
