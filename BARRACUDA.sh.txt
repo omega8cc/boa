@@ -5073,8 +5073,18 @@ install_ssl_src () {
   _SSL_INSTALL_REQUIRED=NO
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
-    _DO_NOTHING=YES
-    _SSH_FORCE_REINSTALL=NO
+    if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_FORCE_REINSTALL" = "YES" ] ; then
+      _SSL_INSTALL_REQUIRED=YES
+      _SSH_FORCE_REINSTALL=YES
+      _NGX_FORCE_REINSTALL=YES
+      _PHP_FORCE_REINSTALL=YES
+      rm -f /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
+      rm -f /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
+      msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, forced upgrade"
+    else
+      _DO_NOTHING=YES
+      _SSH_FORCE_REINSTALL=NO
+    fi
   else
     _SSL_INSTALL_REQUIRED=YES
     _SSH_FORCE_REINSTALL=YES
