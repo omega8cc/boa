@@ -372,9 +372,15 @@ _AEGIR_UPGRADE_ONLY=NO
 ### reinstall, even if there are no updates
 ### available, when set to YES.
 ###
+### Note that _SSL_FORCE_REINSTALL when set
+### to YES, will automatically force also
+### _NGX_FORCE_REINSTALL and
+### _PHP_FORCE_REINSTALL
+###
 _NGX_FORCE_REINSTALL=NO
 _PHP_FORCE_REINSTALL=NO
 _SQL_FORCE_REINSTALL=NO
+_SSL_FORCE_REINSTALL=NO
 
 ###
 ### Use YES to force installing everything
@@ -3587,6 +3593,16 @@ barracuda_cnf () {
     _SQL_FORCE_REINSTALL_TEST=$(grep _SQL_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_SQL_FORCE_REINSTALL_TEST" =~ "_SQL_FORCE_REINSTALL" ]] ; then
       sed -i "s/.*_SQL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _SSL_FORCE_REINSTALL_TEST=$(grep _SSL_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_SSL_FORCE_REINSTALL_TEST" =~ "_SSL_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_SSL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+    _SSH_FORCE_REINSTALL_TEST=$(grep _SSH_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_SSH_FORCE_REINSTALL_TEST" =~ "_SSH_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_SSH_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
     _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL /root/.barracuda.cnf)
