@@ -5100,7 +5100,7 @@ install_ssl_src () {
       _PHP_FORCE_REINSTALL=YES
       rm -f /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
       rm -f /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
-      msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, forced upgrade"
+      msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, rebuild forced"
     else
       _DO_NOTHING=YES
       _SSH_FORCE_REINSTALL=NO
