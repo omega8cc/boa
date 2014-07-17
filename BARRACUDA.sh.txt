@@ -5089,6 +5089,10 @@ install_ssl_src () {
   _SSL_INSTALL_REQUIRED=NO
   _SSL_INSTALLED=`openssl version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
   if [ "$_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
+    _SPDY_COMPATIBILITY_TEST=$(service nginx configtest 2>&1)
+    if [[ "$_SPDY_COMPATIBILITY_TEST" =~ "without OpenSSL ALPN or NPN" ]] ; then
+      _SSL_FORCE_REINSTALL=YES
+    fi
     if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_SSL_FORCE_REINSTALL" = "YES" ] ; then
       _SSL_INSTALL_REQUIRED=YES
       _SSH_FORCE_REINSTALL=YES
