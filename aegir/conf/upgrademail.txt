@@ -20,8 +20,9 @@ receive Drupal core upgrades, even if there will be security core releases.
 It is time to upgrade away from Drupal 5 and away from PHP 5.2, if still used.
 
 There are many new features, changes, improvements and fixes in all
-seven (7) recent BOA-2.2.x Editions, released since March 31:
+eight (8) recent BOA-2.2.x Editions, released since March 31:
 
+  https://omega8.cc/boa-227-full-edition-324  ------- released on July 17
   https://omega8.cc/boa-226-full-edition-319  ------- released on June 21
   https://omega8.cc/boa-225-full-edition-314  ------- released on May 08
   https://omega8.cc/boa-224-full-edition-313  ------- released on April 30
