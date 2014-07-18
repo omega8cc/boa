@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.7 Release - Full Edition
 ### Date: Thu Jul 17 03:11:47 CEST 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Thu Jul 17 18:03:38 CDT 2014
+### Latest hotfix added on: Thu Jul 17 20:33:28 CDT 2014
 
 # Release Notes:
 
@@ -74,6 +74,7 @@
 
 # System upgrades in this release:
 
+  * cURL 7.37.1 (if installed from sources)
   * Nginx 1.7.3
   * PHP 5.4.30
   * PHP 5.5.14
