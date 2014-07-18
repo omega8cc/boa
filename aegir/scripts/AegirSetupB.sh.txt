@@ -515,6 +515,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."
+  $_DRUSHCMD @hostmaster dis css_emimage -y &> /dev/null
   if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
     rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
   fi
@@ -666,13 +667,14 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
   fi
+  $_DRUSHCMD @hostmaster dis css_emimage -y &> /dev/null
   $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
   rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
   if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
     $_DRUSHCMD cache-clear drush &> /dev/null
   fi
-  $_DRUSHCMD @hostmaster en hosting_client css_emimage protect_critical_users userprotect -y &> /dev/null
+  $_DRUSHCMD @hostmaster en hosting_client protect_critical_users userprotect -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_advanced_cron revision_deletion hosting_task_gc hosting_tasks_extra -y &> /dev/null
   $_DRUSHCMD @hostmaster en hosting_site_backup_manager -y &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_client_register_user 1 &> /dev/null
