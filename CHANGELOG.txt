@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.7 Release - Full Edition
 ### Date: Thu Jul 17 03:11:47 CEST 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Thu Jul 17 20:33:28 CDT 2014
+### Latest hotfix added on: Fri Jul 18 15:50:35 CDT 2014
 
 # Release Notes:
 
@@ -36,7 +36,7 @@
 
 # Updated Octopus platforms:
 
-  Commerce 1.26 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 1.27 ---------------- https://drupal.org/project/commerce_kickstart
   Commons 3.15 ----------------- https://drupal.org/project/commons
   ERPAL 2.0-b4 ----------------- https://drupal.org/project/erpal
   Guardr 1.9 ------------------- https://drupal.org/project/guardr
