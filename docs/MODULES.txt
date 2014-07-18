@@ -161,7 +161,7 @@ Provision [E]xtensions [M]aster [S]atellite:
 Hostmaster [E]xtensions [S]atellite:
 
  aegir_custom_settings ------ [D6] ------ [S] [B] [FE] [ES]
- css_emimage ---------------- [D6] ------ [S] [B] [FE] [ES]
+ css_emimage ---------------- [D6] ------ [S] [B]      [ES]
  ctools --------------------- [D6] ------ [S] [B] [FE] [ES]
  features ------------------- [D6] ------ [S] [B] [FE] [ES]
  features_extra ------------- [D6] ------ [S] [B] [FE] [ES]
