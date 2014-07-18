@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.7 Release - Full Edition
 ### Date: Thu Jul 17 03:11:47 CEST 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri Jul 18 15:50:35 CDT 2014
+### Latest hotfix added on: Fri Jul 18 18:21:40 CDT 2014
 
 # Release Notes:
 
@@ -90,6 +90,7 @@
   * Contrib update: filefield-6.x-3.13
   * Disable redis integration during hostmaster upgrade.
   * Do not allow known bots to activate nocache and noredis URLs behaviour.
+  * Do not use css_emimage in hostmaster to avoid broken upgrades.
   * Fix for o_contrib update logic.
   * Fix for possible permissions problem with redis log file.
   * Fix incorrect version in the permissions fix.
