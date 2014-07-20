@@ -1173,7 +1173,11 @@ check_old_empty_platforms () {
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ ".o8.io" ]] ; then
       _DO_NOTHING=YES
     else
-      _DEL_OLD_EMPTY_PLATFORMS="60"
+      if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] && [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
+        _DO_NOTHING=YES
+      else
+        _DEL_OLD_EMPTY_PLATFORMS="30"
+      fi
     fi
   fi
   if [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
