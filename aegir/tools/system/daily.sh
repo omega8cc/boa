@@ -1173,7 +1173,11 @@ check_old_empty_platforms () {
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ ".o8.io" ]] ; then
       _DO_NOTHING=YES
     else
-      _DEL_OLD_EMPTY_PLATFORMS="60"
+      if [ "$_DEL_OLD_EMPTY_PLATFORMS" -gt "0" ] && [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
+        _DO_NOTHING=YES
+      else
+        _DEL_OLD_EMPTY_PLATFORMS="30"
+      fi
     fi
   fi
   if [ ! -z "$_DEL_OLD_EMPTY_PLATFORMS" ] ; then
@@ -1203,13 +1207,13 @@ purge_cruft_machine () {
   if [ ! -z "$_DEL_OLD_BACKUPS" ] && [ "$_DEL_OLD_BACKUPS" -gt "0" ] ; then
     _PURGE_BACKUPS="$_DEL_OLD_BACKUPS"
   else
-    _PURGE_BACKUPS=365
+    _PURGE_BACKUPS=30
   fi
 
   if [ ! -z "$_DEL_OLD_TMP" ] && [ "$_DEL_OLD_TMP" -gt "0" ] ; then
     _PURGE_TMP="$_DEL_OLD_TMP"
   else
-    _PURGE_TMP=7
+    _PURGE_TMP=1
   fi
 
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1217,37 +1221,37 @@ purge_cruft_machine () {
     _PURGE_TMP=1
   fi
 
-  find $User/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
+  find $User/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
-  find $User/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
+  find $User/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
-  find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
 
-  find /home/${_THIS_HM_USER}.ftp/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find /home/${_THIS_HM_USER}.ftp/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
 
   mkdir -p $User/static/trash
   chown ${_THIS_HM_USER}.ftp:users $User/static/trash
-  find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \;
+  find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 }
 
 count_cpu()
@@ -1283,6 +1287,25 @@ load_control()
   _O_LOAD=`awk '{print $1*100}' /proc/loadavg`
   let "_O_LOAD = (($_O_LOAD / $_CPU_NR))"
   let "_O_LOAD_MAX = ((100 * $_CPU_MAX_RATIO))"
+}
+
+shared_codebases_cleanup () {
+  REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  for i in $REVISIONS; do
+    if [ -d "/data/all/$i/o_contrib" ] ; then
+      for Codebase in `find /data/all/$i/* -maxdepth 1 -mindepth 1 -type d | grep "/profiles$" 2>&1`; do
+        CodebaseDir=$(echo $Codebase | sed 's/\/profiles//g'| awk '{print $1}' 2> /dev/null)
+        CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 -type l -lname $Codebase | sort 2>&1)
+        CodebaseSize=$(du -s -h $Codebase 2>&1)
+        if [[ "$CodebaseTest" =~ "No such file or directory" ]] || [ -z "$CodebaseTest" ] ; then
+          mkdir -p /var/backups/codebases-cleanup/$i
+          echo Moving no longer used $CodebaseDir $CodebaseSize to /var/backups/codebases-cleanup/$i/
+          mv -f $CodebaseDir /var/backups/codebases-cleanup/$i/
+          sleep 1
+        fi
+      done
+    fi
+  done
 }
 
 action () {
@@ -1339,6 +1362,7 @@ action () {
       echo
     fi
   done
+  shared_codebases_cleanup
 }
 
 ###--------------------###
@@ -1446,7 +1470,7 @@ if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
  Please review the changelog and upgrade as soon as possible
  to receive all security updates and new features.
 
- Changelog: http://bit.ly/newboa
+ Changelog: http://bit.ly/boa-changes
 
  --
  This e-mail has been sent by your Barracuda server upgrade monitor.
