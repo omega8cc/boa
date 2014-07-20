@@ -1221,37 +1221,37 @@ purge_cruft_machine () {
     _PURGE_TMP=1
   fi
 
-  find $User/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
+  find $User/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
-  find $User/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
-  find $User/static/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \;
+  find $User/distro/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/distro/*/*/sites/*/private/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/files/backup_migrate/*/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
 
-  find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/static/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find $User/distro/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/distro/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/files/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/static/*/sites/*/private/temp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
 
-  find /home/${_THIS_HM_USER}.ftp/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
-  find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \;
+  find /home/${_THIS_HM_USER}.ftp/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find /home/${_THIS_HM_USER}.ftp/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/.tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
+  find $User/tmp/* -mtime +${_PURGE_TMP} -type f -exec rm -rf {} \; &> /dev/null
 
   mkdir -p $User/static/trash
   chown ${_THIS_HM_USER}.ftp:users $User/static/trash
-  find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \;
+  find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 }
 
 count_cpu()
