@@ -1203,13 +1203,13 @@ purge_cruft_machine () {
   if [ ! -z "$_DEL_OLD_BACKUPS" ] && [ "$_DEL_OLD_BACKUPS" -gt "0" ] ; then
     _PURGE_BACKUPS="$_DEL_OLD_BACKUPS"
   else
-    _PURGE_BACKUPS=365
+    _PURGE_BACKUPS=30
   fi
 
   if [ ! -z "$_DEL_OLD_TMP" ] && [ "$_DEL_OLD_TMP" -gt "0" ] ; then
     _PURGE_TMP="$_DEL_OLD_TMP"
   else
-    _PURGE_TMP=7
+    _PURGE_TMP=1
   fi
 
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
