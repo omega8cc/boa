@@ -1446,7 +1446,7 @@ if [ -e "/opt/tmp/barracuda-version.txt" ] ; then
  Please review the changelog and upgrade as soon as possible
  to receive all security updates and new features.
 
- Changelog: http://bit.ly/newboa
+ Changelog: http://bit.ly/boa-changes
 
  --
  This e-mail has been sent by your Barracuda server upgrade monitor.
