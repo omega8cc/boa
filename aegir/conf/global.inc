@@ -309,13 +309,16 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
 }
 
 /**
- * Enable page caching if disable_drupal_page_cache is not set to TRUE
+ * Enable page caching if disable_drupal_page_cache is not set to TRUE,
+ * but only on non-dev URLs and only for the front-end.
  */
-if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
-  $conf['cache'] = 0;
-}
-else {
-  $conf['cache'] = 1;
+if (!$is_backend && !$is_dev) {
+  if (!$is_bot && $all_ini['disable_drupal_page_cache']) {
+    $conf['cache'] = 0;
+  }
+  else {
+    $conf['cache'] = 1;
+  }
 }
 
 /**
