@@ -658,6 +658,15 @@ switch_php()
 #
 # Manage mirroring of drush aliases.
 manage_site_drush_alias_mirror () {
+
+  for Alias in `find /home/${_OWN}.ftp/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
+  do
+    AliasFile=`echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}'`
+    if [ ! -e "$User/.drush/${AliasFile}" ] ; then
+      rm -f /home/${_OWN}.ftp/.drush/${AliasFile}
+    fi
+  done
+
   for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
   do
     AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
