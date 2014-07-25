@@ -186,19 +186,19 @@ Octopus can install the platforms listed below:
  Totem 1.1.2 ------------------ https://drupal.org/project/totem
  Ubercart 3.6 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.32.1
+ @ Pressflow 6.32.2
 
  Commons 2.18 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.4 ---------- https://drupal.org/project/managingnews
  Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
- Pressflow 6.32.1 ------------- http://pressflow.org
+ Pressflow 6.32.2 ------------- http://pressflow.org
  Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
 
 * All D7 platforms have been enhanced using Drupal 7.30.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.32.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.32.2 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related
