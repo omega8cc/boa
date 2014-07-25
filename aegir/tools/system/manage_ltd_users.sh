@@ -711,6 +711,7 @@ do
     _OWN=""
     _OWN=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
     echo "_OWN is == $_OWN == at manage_own"
+    rm -f /data/disk/${_OWN}/*.php* &> /dev/null
     chmod 0440 /data/disk/${_OWN}/.drush/*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
