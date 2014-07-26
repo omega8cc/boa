@@ -134,6 +134,9 @@ enable_chattr () {
       if [ -d "/home/${UQ}/.rvm/src" ] ; then
         rm -f -r /home/${UQ}/.rvm/src/*
       fi
+      if [ -d "/home/${UQ}/.rvm/archives" ] ; then
+        rm -f -r /home/${UQ}/.rvm/archives/*
+      fi
       if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
         touch /var/run/manage_rvm_users.pid
         su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
@@ -163,6 +166,9 @@ enable_chattr () {
       fi
       if [ -d "/home/${UQ}/.rvm/src" ] ; then
         rm -f -r /home/${UQ}/.rvm/src/*
+      fi
+      if [ -d "/home/${UQ}/.rvm/archives" ] ; then
+        rm -f -r /home/${UQ}/.rvm/archives/*
       fi
     else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ] ; then
