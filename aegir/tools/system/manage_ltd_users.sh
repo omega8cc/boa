@@ -7,7 +7,12 @@ _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
 _USRG=users
 _WEBG=www-data
-_RUBY_VERSION=2.1.2
+_THIS_RV=`lsb_release -sc`
+if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
+  _RUBY_VERSION=2.1.2
+else
+  _RUBY_VERSION=2.0.0
+fi
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
 else
@@ -125,13 +130,41 @@ enable_chattr () {
     fi
 
     UQ="$1"
-    if [ ! -d "/home/${UQ}/.rvm/bin" ] && [ -f "/data/disk/${_OWN}/static/control/compass.info" ] ; then
-      su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
-      su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"               &> /dev/null
-      su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}"                 &> /dev/null
-      su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default"           &> /dev/null
-    fi
-    if [ ! -f "/data/disk/${_OWN}/static/control/compass.info" ] ; then
+    if [ -f "/data/disk/${_OWN}/static/control/compass.info" ] ; then
+      if [ -d "/home/${UQ}/.rvm/src" ] ; then
+        rm -f -r /home/${UQ}/.rvm/src/*
+      fi
+      if [ ! -x "/home/${UQ}/.rvm/bin/rvm" ] ; then
+        touch /var/run/manage_rvm_users.pid
+        su -s /bin/bash ${UQ} -c "\curl -sSL https://get.rvm.io | bash -s stable" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm get stable --auto-dotfiles"               &> /dev/null
+        rm -f /var/run/manage_rvm_users.pid
+      fi
+      if [ ! -e "/home/${UQ}/.rvm/rubies/default" ] ; then
+        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+          _WEB_SH=`readlink -n /bin/sh`
+          _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
+          if [ -x "/bin/dash" ] ; then
+            if [ "$_WEB_SH" != "/bin/dash" ] ; then
+              rm -f /bin/sh
+              ln -s /bin/dash /bin/sh
+            fi
+          else
+            if [ "$_WEB_SH" != "/bin/bash" ] ; then
+              rm -f /bin/sh
+              ln -s /bin/bash /bin/sh
+            fi
+          fi
+        fi
+        touch /var/run/manage_rvm_users.pid
+        su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}"       &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
+        rm -f /var/run/manage_rvm_users.pid
+      fi
+      if [ -d "/home/${UQ}/.rvm/src" ] ; then
+        rm -f -r /home/${UQ}/.rvm/src/*
+      fi
+    else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ] ; then
         rm -f -r /home/${UQ}/.rvm    &> /dev/null
         rm -f -r /home/${UQ}/.gem    &> /dev/null
@@ -795,7 +828,7 @@ _NOW=`date +%y%m%d-%H%M`
 mkdir -p /var/backups/ltd/{conf,log,old}
 mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.$_NOW"
-if [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
+if [ -e "/var/run/manage_rvm_users.pid" ] || [ -e "/var/run/manage_ltd_users.pid" ] || [ -e "/var/run/boa_run.pid" ] || [ -e "/var/run/boa_wait.pid" ] ; then
   touch /var/xdrago/log/wait-manage-ltd-users
   echo Another BOA task is running, we have to wait
   exit 0
@@ -803,14 +836,7 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ] ; then
   echo Missing /var/xdrago/conf/lshell.conf template
   exit 0
 else
-  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
-    _WEB_SH=`readlink -n /bin/sh`
-    _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
-    if [ "$_WEB_SH" != "/bin/websh" ] ; then
-      rm -f /bin/sh
-      ln -s /bin/websh /bin/sh
-    fi
-  fi
+  touch /var/run/manage_ltd_users.pid
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -rf {} \; &> /dev/null
   cat /var/xdrago/conf/lshell.conf > $_THIS_LTD_CONF
   _THISHTNM=`hostname --fqdn`
@@ -832,6 +858,14 @@ else
       rm -f $_THIS_LTD_CONF
     fi
   fi
+  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+    _WEB_SH=`readlink -n /bin/sh`
+    _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
+    if [ "$_WEB_SH" != "/bin/websh" ] ; then
+      rm -f /bin/sh
+      ln -s /bin/websh /bin/sh
+    fi
+  fi
   rm -f $_TMP/*.txt
   if [ ! -e "/root/.home.no.wildcard.chmod.cnf" ] ; then
     chmod 700 /home/* &> /dev/null
@@ -844,6 +878,7 @@ else
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  rm -f /var/run/manage_ltd_users.pid
   exit 0
 fi
 ###EOF2014###
