@@ -1128,9 +1128,9 @@ _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
 _PHP53_VERSION=5.3.28
 _PHP54_API=20100525
-_PHP54_VERSION=5.4.30
+_PHP54_VERSION=5.4.31
 _PHP55_API=20121212
-_PHP55_VERSION=5.5.14
+_PHP55_VERSION=5.5.15
 _PHPREDIS_VERSION=master-06-07-2014
 _PURE_FTPD_VERSION=1.0.36
 _REDIS_VERSION=2.8.13
@@ -5499,6 +5499,8 @@ finale () {
   rm -f /tmp/pm-updatecode*
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
+  rm -f /var/run/manage_ltd_users.pid
+  rm -f /var/run/manage_rvm_users.pid
   rm -f /var/aegir/.drush/.alias.drushrc.php
   rm -f /data/disk/*/.drush/.alias.drushrc.php
   rm -f /var/xdrago/log/protected-vhosts-clean.log

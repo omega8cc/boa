@@ -117,6 +117,8 @@ rm -f /var/run/boa_wait.pid
 echo "Redis server restarted"
 
 rm -f /var/run/boa_run.pid
+rm -f /var/run/manage_ltd_users.pid
+rm -f /var/run/manage_rvm_users.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0

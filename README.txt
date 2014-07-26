@@ -162,43 +162,43 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 
 Octopus can install the platforms listed below:
 
- @ Drupal 7.29.1
+ @ Drupal 7.30.1
 
  aGov 1.0-rc8 ----------------- https://drupal.org/project/agov
- Commerce 1.27 ---------------- https://drupal.org/project/commerce_kickstart
- Commerce 2.15 ---------------- https://drupal.org/project/commerce_kickstart
- Commons 3.15 ----------------- https://drupal.org/project/commons
- Drupal 7.29.1 ---------------- https://drupal.org/drupal-7.29
+ Commerce 1.28 ---------------- https://drupal.org/project/commerce_kickstart
+ Commerce 2.16 ---------------- https://drupal.org/project/commerce_kickstart
+ Commons 3.16 ----------------- https://drupal.org/project/commons
+ Drupal 7.30.1 ---------------- https://drupal.org/drupal-7.30
  ERPAL 2.0-b4 ----------------- https://drupal.org/project/erpal
  Guardr 1.9 ------------------- https://drupal.org/project/guardr
  Open Academy 1.0 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.19 ------------- https://drupal.org/project/openatrium
  Open Deals 1.33 -------------- https://drupal.org/project/opendeals
- Open Outreach 1.7 ------------ https://drupal.org/project/openoutreach
- OpenBlog 1.0-a3 -------------- https://drupal.org/project/openblog
+ Open Outreach 1.8 ------------ https://drupal.org/project/openoutreach
+ OpenBlog 1.0-v3 -------------- https://drupal.org/project/openblog
  OpenChurch 1.12 -------------- https://drupal.org/project/openchurch
  OpenPublic 1.0-b23 ----------- https://drupal.org/project/openpublic
  OpenScholar 3.12.1 ----------- http://theopenscholar.org
- Panopoly 1.6 ----------------- https://drupal.org/project/panopoly
+ Panopoly 1.8 ----------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
- Restaurant 1.0-a5 ------------ https://drupal.org/project/restaurant
+ Restaurant 1.0-v5 ------------ https://drupal.org/project/restaurant
  Spark 1.0-b1 ----------------- https://drupal.org/project/spark
  Totem 1.1.2 ------------------ https://drupal.org/project/totem
  Ubercart 3.6 ----------------- https://drupal.org/project/ubercart
 
- @ Pressflow 6.32.1
+ @ Pressflow 6.32.2
 
  Commons 2.18 ----------------- https://drupal.org/project/commons
  Feature Server 1.2 ----------- http://bit.ly/fserver
  Managing News 1.2.4 ---------- https://drupal.org/project/managingnews
  Open Atrium 1.7.2 ------------ https://drupal.org/project/openatrium
- Pressflow 6.32.1 ------------- http://pressflow.org
+ Pressflow 6.32.2 ------------- http://pressflow.org
  Ubercart 2.13 ---------------- https://drupal.org/project/ubercart
 
-* All D7 platforms have been enhanced using Drupal 7.29.1 +Extra core:
+* All D7 platforms have been enhanced using Drupal 7.30.1 +Extra core:
   https://github.com/omega8cc/7x/tree/7.x-om8
 
-* All D6 platforms have been enhanced using Pressflow 6.32.1 +Extra core:
+* All D6 platforms have been enhanced using Pressflow 6.32.2 +Extra core:
   https://github.com/omega8cc/pressflow6/tree/pressflow-plus
 
 * All D6 and D7 platforms include some useful and/all performance related

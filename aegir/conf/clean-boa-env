@@ -48,6 +48,12 @@ case "$1" in
     else
       echo "$NAME 2 nothing to do."
     fi
+    if [ -e "/var/run/manage_ltd_users.pid" ] ; then
+      rm -f /var/run/manage_ltd_users.pid
+      echo "$NAME 3 done."
+    else
+      echo "$NAME 3 nothing to do."
+    fi
   ;;
   stop)
     echo -n "Stopping $DESC: "
@@ -77,6 +83,12 @@ case "$1" in
       echo "$NAME 2 done."
     else
       echo "$NAME 2 nothing to do."
+    fi
+    if [ -e "/var/run/manage_ltd_users.pid" ] ; then
+      rm -f /var/run/manage_ltd_users.pid
+      echo "$NAME 3 done."
+    else
+      echo "$NAME 3 nothing to do."
     fi
     rm -f $PIDFILE
   ;;

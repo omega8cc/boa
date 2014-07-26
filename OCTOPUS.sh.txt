@@ -654,8 +654,8 @@ _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
 _REDIS_M_VERSION=mod-21-07-2014
-_SMALLCORE6=6.32.1
-_SMALLCORE7=7.29.1
+_SMALLCORE6=6.32.2
+_SMALLCORE7=7.30.1
 _SMALLCORE8=8.0-alpha4
 _SPINNER=YES
 _T_BUILD=HEAD
@@ -677,12 +677,12 @@ fi
 _AGOV=7.x-1.0-rc8
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.0.9-dev
+_CIVICRM_PN=boa-2.2.8-dev
 _COD=7.x-1.0-alpha5
-_COMMERCE1=7.x-1.27
-_COMMERCE2=7.x-2.15
+_COMMERCE1=7.x-1.28
+_COMMERCE2=7.x-2.16
 _COMMONS2=6.x-2.18
-_COMMONS3=7.x-3.15
+_COMMONS3=7.x-3.16
 _DRUPAL_EDGE_8="8.0-dev-$_TODAY-edge"
 _DRUPAL7="drupal-$_SMALLCORE7"
 _DRUPAL8="8.0-dev-120915"
@@ -694,14 +694,14 @@ _OPEN_DEALS=1.33
 _OPENACADEMY=7.x-1.0
 _OPENATRIUM6=6.x-1.7
 _OPENATRIUM7=7.x-2.19
-_OPENBLOG=7.x-1.0-alpha2
+_OPENBLOG=7.x-1.0-alpha3
 _OPENCHURCH=7.x-1.12
 _OPENDEALS=7.x-1.33
-_OPENOUTREACH=7.x-1.7
+_OPENOUTREACH=7.x-1.8
 _OPENPUBLIC=7.x-1.0-beta23
 _OPENPUBLISH=7.x-1.0-beta7
 _OPENSCHOLAR=7.x-3.12.1
-_PANOPOLY=7.x-1.6
+_PANOPOLY=7.x-1.8
 _PROSEPOINT=0.46
 _RECRUITER=7.x-1.2
 _RESTAURANT=7.x-1.0-alpha5
@@ -2156,6 +2156,8 @@ rm -f -r /tmp/drush_make_tmp*
 rm -f -r /tmp/make_tmp*
 rm -f /tmp/pm-updatecode*
 rm -f /var/run/boa_run.pid
+rm -f /var/run/manage_ltd_users.pid
+rm -f /var/run/manage_rvm_users.pid
 exit 0
 
 

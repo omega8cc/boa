@@ -84,6 +84,7 @@
 ### OCH ----------- OpenChurch
 ### ODS ----------- Open Deals
 ### OOH ----------- Open Outreach
+### OPC ----------- OpenPublic
 ### OSR ----------- OpenScholar
 ### PPY ----------- Panopoly
 ### RER ----------- Recruiter

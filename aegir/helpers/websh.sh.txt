@@ -167,6 +167,8 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
         _IN_PATH=YES
       elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/convert" ]] ; then
         _IN_PATH=YES
+      elif [[ "$_RAW_IN_PATH" =~ "/usr/bin/gs" ]] ; then
+        _IN_PATH=YES
       elif [[ "$2" =~ (^)"/home/" ]] || [[ "$2" =~ (^)"/data/" ]] || [[ "$2" =~ (^)"/tmp/" ]]; then
         if [ -e "$2" ] ; then
           _IN_PATH=NO
@@ -244,15 +246,21 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
-    if [ -e "/home/${USER}/.rvm/gems/ruby-2.1.2/bin" ] ; then
-      export PATH="/home/${USER}/.rvm/gems/ruby-2.1.2/bin:/home/${USER}/.rvm/gems/ruby-2.1.2@global/bin:/home/${USER}/.rvm/rubies/ruby-2.1.2/bin:/home/${USER}/.rvm/bin:$PATH"
-      export GEM_HOME="/home/${USER}/.rvm/gems/ruby-2.1.2"
-      export GEM_PATH="/home/${USER}/.rvm/gems/ruby-2.1.2:/home/${USER}/.rvm/gems/ruby-2.1.2@global"
-      export MY_RUBY_HOME="/home/${USER}/.rvm/rubies/ruby-2.1.2"
-      export IRBRC="/home/${USER}/.rvm/rubies/ruby-2.1.2/.irbrc"
+    if [[ "$_ALL" =~ "-c set -m; " ]] && [ -x "/home/${USER}/.rvm/bin/rvm" ] ; then
+      _THIS_RV=`lsb_release -sc`
+      if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
+        _RUBY_VP=2.1.2
+      else
+        _RUBY_VP=2.0.0-p481
+      fi
+      export PATH="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}/bin:/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global/bin:/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/bin:/home/${USER}/.rvm/bin:$PATH"
+      export GEM_HOME="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}"
+      export GEM_PATH="/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}:/home/${USER}/.rvm/gems/ruby-${_RUBY_VP}@global"
+      export MY_RUBY_HOME="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}"
+      export IRBRC="/home/${USER}/.rvm/rubies/ruby-${_RUBY_VP}/.irbrc"
       unset MAGLEV_HOME
       unset RBXOPT
-      export RUBY_VERSION="ruby-2.1.2"
+      export RUBY_VERSION="ruby-${_RUBY_VP}"
     fi
     if [ "$0" = "/bin/sh" ] || [ "$0" = "/bin/websh" ] ; then
       if [ -x "/bin/dash" ] ; then
