@@ -120,6 +120,7 @@ _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
 _THIS_OS=`lsb_release -si`
 _THISHTIP=EDIT_THISHTIP
+_TODAY=`date +%y%m%d`
 _USE_CURRENT=EDIT_USE_CURRENT
 _USE_STOCK=EDIT_USE_STOCK
 _USRG=EDIT_USRG
@@ -1929,14 +1930,14 @@ msg "$_STATUS A: Final cleaning, please wait a moment..."
 cd /
 chmod 711 bin boot data dev emul etc home lib media mnt opt sbin selinux srv sys usr var &> /dev/null
 chmod 700 root &> /dev/null
-if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-fix-all.info" ] ; then
+if [ ! -f "/data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info" ] ; then
   find /data/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
   st_runner "chmod 755 /data/all/*/*/profiles" &> /dev/null
   st_runner "chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes}" &> /dev/null
   st_runner "chown -R root:root /data/all" &> /dev/null
   st_runner "chown -R root:users /data/all/*/*/sites" &> /dev/null
-  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fix-all.info
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-$_TODAY.info
 fi
 chown root:root /data/all &> /dev/null
 chown root:root $_CORE &> /dev/null
@@ -1949,8 +1950,8 @@ st_runner "chown -R root:root /data/all/000" &> /dev/null
 find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
 find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
 chown root:root /opt/tmp &> /dev/null
-chmod 0711 $_CORE /data/all/000 /data /data/disk /data/conf &> /dev/null
-chmod 0755 /data/all &> /dev/null
+chmod 0711 /data /data/all/* /data/disk /data/conf &> /dev/null
+chmod 0755 /data/all /data/all/000 &> /dev/null
 chmod 0700 /data/u &> /dev/null
 chown root:root /data/u &> /dev/null
 rm -f /data/u/*host8* &> /dev/null
