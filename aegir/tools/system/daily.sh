@@ -1207,18 +1207,18 @@ purge_cruft_machine () {
   if [ ! -z "$_DEL_OLD_BACKUPS" ] && [ "$_DEL_OLD_BACKUPS" -gt "0" ] ; then
     _PURGE_BACKUPS="$_DEL_OLD_BACKUPS"
   else
-    _PURGE_BACKUPS=30
+    _PURGE_BACKUPS="30"
   fi
 
   if [ ! -z "$_DEL_OLD_TMP" ] && [ "$_DEL_OLD_TMP" -gt "0" ] ; then
     _PURGE_TMP="$_DEL_OLD_TMP"
   else
-    _PURGE_TMP=1
+    _PURGE_TMP="0"
   fi
 
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    _PURGE_BACKUPS=8
-    _PURGE_TMP=1
+    _PURGE_BACKUPS="8"
+    _PURGE_TMP="0"
   fi
 
   find $User/backups/* -mtime +${_PURGE_BACKUPS} -type f -exec rm -rf {} \; &> /dev/null
@@ -1421,10 +1421,10 @@ else
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
     echo "INFO: Removing old permissions-fix-* files"
-    find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
-    find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
-    find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
-    find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/distro/*/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/static/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/static/*/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
+    find /data/disk/*/static/*/*/*/sites/all/permissions-fix-* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
   fi
   if [ "$_NGINX_FORWARD_SECRECY" = "YES" ] ; then
     for File in `find /etc/ssl/private/*.key -type f` ; do
@@ -1505,8 +1505,9 @@ fi
 if [ ! -e "/root/.upstart.cnf" ] ; then
   service cron reload &> /dev/null
 fi
-find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
-find /var/backups/jetty* -mtime +1 -exec rm -rf {} \;
+find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \;
+find /var/backups/jetty* -mtime +7 -exec rm -rf {} \;
+find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \;
 rm -f /tmp/.cron.*.pid
 rm -f /tmp/.busy.*.pid
 echo "INFO: Daily maintenance complete"
