@@ -167,6 +167,28 @@ enable_chattr () {
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
         rm -f /var/run/manage_rvm_users.pid
       fi
+      if [ ! -f "/data/disk/${_OWN}/log/eventmachine_${UQ}.txt" ] ; then
+        if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+          _WEB_SH=`readlink -n /bin/sh`
+          _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
+          if [ -x "/bin/dash" ] ; then
+            if [ "$_WEB_SH" != "/bin/dash" ] ; then
+              rm -f /bin/sh
+              ln -s /bin/dash /bin/sh
+            fi
+          else
+            if [ "$_WEB_SH" != "/bin/bash" ] ; then
+              rm -f /bin/sh
+              ln -s /bin/bash /bin/sh
+            fi
+          fi
+        fi
+        touch /var/run/manage_rvm_users.pid
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"    &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine" &> /dev/null
+        touch /data/disk/${_OWN}/log/eventmachine_${UQ}.txt
+        rm -f /var/run/manage_rvm_users.pid
+      fi
       if [ -d "/home/${UQ}/.rvm/src" ] ; then
         rm -f -r /home/${UQ}/.rvm/src/*
       fi
