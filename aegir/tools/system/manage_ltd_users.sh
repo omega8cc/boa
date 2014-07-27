@@ -205,6 +205,7 @@ enable_chattr () {
       fi
     else
       if [ -d "/home/${UQ}/.rvm" ] || [ -d "/home/${UQ}/.gem" ] ; then
+        rm -f /data/disk/${_OWN}/log/.gems.build*
         rm -f -r /home/${UQ}/.rvm    &> /dev/null
         rm -f -r /home/${UQ}/.gem    &> /dev/null
       fi
