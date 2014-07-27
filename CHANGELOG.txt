@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sat Jul 26 20:41:18 PDT 2014
+### Latest hotfix added on: Sun Jul 27 07:41:26 PDT 2014
 
 # Release Notes:
 
@@ -64,8 +64,11 @@
 
   * Add auto-cleanup for civimail ghost leftovers.
   * Add cleanup for RVM archives and logs.
+  * Add cleanup for various /var/backups/* leftovers.
+  * Fix -mtime expected values.
   * Fix for dev regression - it shouldn't set $conf['cache'] on valid dev URLs.
   * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
+  * Improve RVM cleanup.
   * Issue #333 - Update BOA changelog URL shortcut.
   * Nginx: Automate SPDY test to determine if OpenSSL re-install is required.
   * Nginx: Silence access log for already protected /civicrm admin requests.
