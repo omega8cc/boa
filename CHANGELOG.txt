@@ -2,6 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
+### Latest hotfix added on: Sat Jul 26 20:41:18 PDT 2014
 
 # Release Notes:
 
@@ -43,6 +44,8 @@
   * Allow to force OpenSSL etc. re-install with _SSL_FORCE_REINSTALL=YES
   * Auto-Move no longer used shared codebases to /var/backups/codebases-cleanup
   * Clean up drush aliases in the main SSH account properly.
+  * RVM: Add exceptions for gems which can't be installed in Limited Shell.
+  * Shell: Improve config to better support advanced Drush commands over SSH.
 
 # Changes in this release:
 
