@@ -167,7 +167,8 @@ enable_chattr () {
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
         rm -f /var/run/manage_rvm_users.pid
       fi
-      if [ ! -f "/data/disk/${_OWN}/log/eventmachine_${UQ}.txt" ] ; then
+      if [ ! -f "/data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt" ] ; then
+        rm -f /data/disk/${_OWN}/log/eventmachine*
         if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
           _WEB_SH=`readlink -n /bin/sh`
           _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
@@ -184,9 +185,13 @@ enable_chattr () {
           fi
         fi
         touch /var/run/manage_rvm_users.pid
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"    &> /dev/null
-        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine" &> /dev/null
-        touch /data/disk/${_OWN}/log/eventmachine_${UQ}.txt
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative bluecloth"      &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative eventmachine"   &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative http_parser.rb" &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative ffi"            &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative oily_png"       &> /dev/null
+        su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
+        touch /data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt
         rm -f /var/run/manage_rvm_users.pid
       fi
       if [ -d "/home/${UQ}/.rvm/src" ] ; then
