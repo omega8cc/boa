@@ -3,7 +3,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-find /var/xdrago/log/*.pid -mtime +1 -type f -exec rm -rf {} \; &> /dev/null
+find /var/xdrago/log/*.pid -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
 if [ -e "/etc/cron.daily/logrotate" ] ; then
   _SYSLOG_SIZE_TEST=$(du -s -h /var/log/syslog)
   if [[ "$_SYSLOG_SIZE_TEST" =~ "G" ]] ; then
