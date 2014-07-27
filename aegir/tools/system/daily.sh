@@ -1506,6 +1506,7 @@ if [ ! -e "/root/.upstart.cnf" ] ; then
   service cron reload &> /dev/null
 fi
 find /var/backups/ltd/*/* -mtime +1 -type f -exec rm -rf {} \;
+find /var/backups/jetty* -mtime +1 -exec rm -rf {} \;
 rm -f /tmp/.cron.*.pid
 rm -f /tmp/.busy.*.pid
 echo "INFO: Daily maintenance complete"
