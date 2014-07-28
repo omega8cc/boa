@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Mon Jul 28 04:12:34 PDT 2014
+### Latest hotfix added on: Mon Jul 28 07:22:05 PDT 2014
 
 # Release Notes:
 
@@ -78,9 +78,12 @@
   * Nginx: Silence access log for already protected /civicrm admin requests.
   * Remove debugging mode in old codebases cleanup.
   * Remove special one-time variables if set, once used.
+  * Restore default websh wrapper symlink as fast as possible.
+  * Run manage_ltd_users every 3 minutes instead of every minute.
   * RVM: Install OS compatible Ruby version + various related adjustments.
   * Silence useless noise in the log.
   * Sync firewall limits.
+  * Update regex for exceptions in Nginx monitoring.
 
 
 ### Stable BOA-2.2.7 Release - Full Edition
