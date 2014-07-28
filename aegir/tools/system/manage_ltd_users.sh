@@ -166,6 +166,8 @@ enable_chattr () {
         su -s /bin/bash - ${UQ} -c "rvm install ${_RUBY_VERSION}"       &> /dev/null
         su -s /bin/bash - ${UQ} -c "rvm use ${_RUBY_VERSION} --default" &> /dev/null
         rm -f /var/run/manage_rvm_users.pid
+        rm -f /bin/sh
+        ln -s /bin/websh /bin/sh
       fi
       if [ ! -f "/data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt" ] ; then
         rm -f /data/disk/${_OWN}/log/eventmachine*
@@ -193,6 +195,8 @@ enable_chattr () {
         su -s /bin/bash - ${UQ} -c "rvm all do gem install --conservative yajl-ruby"      &> /dev/null
         touch /data/disk/${_OWN}/log/.gems.build.c.${UQ}.txt
         rm -f /var/run/manage_rvm_users.pid
+        rm -f /bin/sh
+        ln -s /bin/websh /bin/sh
       fi
       if [ -d "/home/${UQ}/.rvm/src" ] ; then
         rm -f -r /home/${UQ}/.rvm/src/*
