@@ -5279,11 +5279,11 @@ switch_to_dash () {
     for p in $_X_BIN_PATHS; do
       if [ -e "$p" ] ; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
-          if [[ "$f" =~ "drush"($) ]] || [[ "$f" =~ "clean-boa-env"($) ]] ; then
+          if [[ "$f" =~ "drush"($) ]] || [[ "$f" =~ "clean-boa-env"($) ]] || [[ "$f" =~ "websh"($) ]] ; then
             _SKIP_THIS=YES
           else
             _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
-            if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] ; then
+            if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] && [ "$f" != "/bin/websh" ] ; then
               sed -i "s/^#\! \/.*/#\!\/bin\/dash/g" $f &> /dev/null
               sed -i "s/\/bin\/sh/\/bin\/dash/g" $f &> /dev/null
             fi
@@ -5303,11 +5303,11 @@ switch_to_bash () {
     for p in $_X_BIN_PATHS; do
       if [ -e "$p" ] ; then
         for f in `find $p ! -perm -4000 ! -perm -2000 -type f` ; do
-          if [[ "$f" =~ "drush"($) ]] || [[ "$f" =~ "clean-boa-env"($) ]] ; then
+          if [[ "$f" =~ "drush"($) ]] || [[ "$f" =~ "clean-boa-env"($) ]] || [[ "$f" =~ "websh"($) ]] ; then
             _SKIP_THIS=YES
           else
             _SHELL_TEST=$(grep -I -o "/bin/sh" $f)
-            if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] ; then
+            if [ ! -z "$_SHELL_TEST" ] && [ "$f" != "/etc/init.d/clean-boa-env" ] && [ "$f" != "/bin/websh" ] ; then
               sed -i "s/^#\! \/.*/#\!\/bin\/bash/g" $f &> /dev/null
               sed -i "s/\/bin\/sh/\/bin\/bash/g" $f &> /dev/null
             fi
