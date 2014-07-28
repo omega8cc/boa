@@ -345,7 +345,7 @@ ok_create_user()
     adduser $_USER_LTD $_WEBG
     _ESC_LUPASS=""
     _LEN_LUPASS=0
-    if [ "$_STRONG_PASSWORDS" = "YES" ] ; then
+    if [ "$_STRONG_PASSWORDS" = "YES" ] || [ "$_STRONG_PASSWORDS" = "EDIT_STRONG_PASSWORDS" ] ; then
       _ESC_LUPASS=$(randpass 32 alnum)
       _ESC_LUPASS=`echo -n $_ESC_LUPASS | tr -d "\n"`
       _LEN_LUPASS=$(echo ${#_ESC_LUPASS})
