@@ -1301,10 +1301,9 @@ shared_codebases_cleanup () {
       for Codebase in `find /data/all/$i/* -maxdepth 1 -mindepth 1 -type d | grep "/profiles$" 2>&1`; do
         CodebaseDir=$(echo $Codebase | sed 's/\/profiles//g'| awk '{print $1}' 2> /dev/null)
         CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 -type l -lname $Codebase | sort 2>&1)
-        CodebaseSize=$(du -s -h $Codebase 2>&1)
         if [[ "$CodebaseTest" =~ "No such file or directory" ]] || [ -z "$CodebaseTest" ] ; then
           mkdir -p ${_CLD}/$i
-          echo Moving no longer used $CodebaseDir $CodebaseSize to ${_CLD}/$i/
+          echo Moving no longer used $CodebaseDir to ${_CLD}/$i/
           mv -f $CodebaseDir ${_CLD}/$i/
           sleep 1
         fi
