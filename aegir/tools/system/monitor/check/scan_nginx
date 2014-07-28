@@ -71,7 +71,7 @@ sub makeactions
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
         local($skip_post) = 0;
-        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress)/) {
+        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress)/) {
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
@@ -113,7 +113,7 @@ sub makeactions
       chomp($line);
       if ($line =~ /(GET|HEAD|POST)/) {
         local($skip_post) = 0;
-        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress)/) {
+        if ($line =~ /(GET|POST) \/([a-z]{2}\/)?(civicrm|batch|advagg|views-bulk-operations|node\/[0-9]{1,}\/edit|media\/browser)|POST \/js\/|(GET|POST) \/([a-z]{2}\/)?(hosting|system|admin|app|ckeditor)\/|\/(ajax|autocomplete|shs)\/|files\/progress|plupload|json|api\/rest|GET \/(filefield_nginx_progress|filefield\/progress)/) {
           ### print "Not Counted Dynamic Request URI: $line\n";
           $skip_post = 1;
         }
