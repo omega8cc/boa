@@ -1290,6 +1290,11 @@ load_control()
 }
 
 shared_codebases_cleanup () {
+  if [ -L "/data/all" ] ; then
+    _CLD="/data/disk/codebases-cleanup"
+  else
+    _CLD="/var/backups/codebases-cleanup"
+  fi
   REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
   for i in $REVISIONS; do
     if [ -d "/data/all/$i/o_contrib" ] ; then
@@ -1298,9 +1303,9 @@ shared_codebases_cleanup () {
         CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 -type l -lname $Codebase | sort 2>&1)
         CodebaseSize=$(du -s -h $Codebase 2>&1)
         if [[ "$CodebaseTest" =~ "No such file or directory" ]] || [ -z "$CodebaseTest" ] ; then
-          mkdir -p /var/backups/codebases-cleanup/$i
-          echo Moving no longer used $CodebaseDir $CodebaseSize to /var/backups/codebases-cleanup/$i/
-          mv -f $CodebaseDir /var/backups/codebases-cleanup/$i/
+          mkdir -p ${_CLD}/$i
+          echo Moving no longer used $CodebaseDir $CodebaseSize to ${_CLD}/$i/
+          mv -f $CodebaseDir ${_CLD}/$i/
           sleep 1
         fi
       done
