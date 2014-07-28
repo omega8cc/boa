@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sun Jul 27 20:31:22 PDT 2014
+### Latest hotfix added on: Mon Jul 28 04:12:34 PDT 2014
 
 # Release Notes:
 
@@ -72,6 +72,7 @@
   * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
   * Improve RVM cleanup.
   * Issue #333 - Update BOA changelog URL shortcut.
+  * Never touch websh wrapper to avoid high load because of redirect loop.
   * Nginx: Automate SPDY test to determine if OpenSSL re-install is required.
   * Nginx: Fix limreq also for some really old vhosts.
   * Nginx: Silence access log for already protected /civicrm admin requests.
