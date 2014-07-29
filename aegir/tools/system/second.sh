@@ -89,7 +89,11 @@ update_ip_auth_access()
     fi
     sleep 1
     sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
-d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+d;};' /var/aegir/config/server_master/nginx/vhost.d/chive.* &> /dev/null
+    sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
+d;};' /var/aegir/config/server_master/nginx/vhost.d/cgp.* &> /dev/null
+    sed -i '/  ### access .*/ {r /var/backups/.auth.IP.list.tmp
+d;};' /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
     mv -f /var/aegir/config/server_master/nginx/vhost.d/sed* /var/backups/
     check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/chive."
     check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/cgp."
@@ -99,7 +103,9 @@ d;};' /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
       service nginx reload &> /dev/null
     else
       service nginx reload &> /var/backups/.auth.IP.list.ops
-      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/* &> /dev/null
+      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/chive.*    &> /dev/null
+      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/cgp.*      &> /dev/null
+      sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.* &> /dev/null
       check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/chive."
       check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/cgp."
       check_vhost_health "/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy."
