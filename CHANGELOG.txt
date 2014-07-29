@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Tue Jul 29 04:35:38 PDT 2014
+### Latest hotfix added on: Tue Jul 29 15:02:07 PDT 2014
 
 # Release Notes:
 
@@ -49,6 +49,7 @@
 
 # Changes in this release:
 
+  * Drush: Upgrade command line version 6 to mini-6-29-07-2014
   * Issue #334 - Update provision_civicrm version - code by ixiam - thanks!
   * Redis Integration Module: Update to version mod-21-07-2014
   * Uninstall css_emimage in hostmaster to avoid broken upgrades.
@@ -76,6 +77,7 @@
   * Never touch websh wrapper to avoid high load because of redirect loop.
   * Nginx: Automate SPDY test to determine if OpenSSL re-install is required.
   * Nginx: Fix limreq also for some really old vhosts.
+  * Nginx: Modify only vhosts known as included in the protected mode.
   * Nginx: Silence access log for already protected /civicrm admin requests.
   * Remove debugging mode in old codebases cleanup.
   * Remove special one-time variables if set, once used.
