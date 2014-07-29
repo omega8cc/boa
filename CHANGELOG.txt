@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Mon Jul 28 07:22:05 PDT 2014
+### Latest hotfix added on: Tue Jul 29 04:35:38 PDT 2014
 
 # Release Notes:
 
@@ -69,6 +69,7 @@
   * Fix -mtime expected values.
   * Fix for default value on hot fix update.
   * Fix for dev regression - it shouldn't set $conf['cache'] on valid dev URLs.
+  * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
   * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
   * Improve RVM cleanup.
   * Issue #333 - Update BOA changelog URL shortcut.
