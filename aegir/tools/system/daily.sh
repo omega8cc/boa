@@ -1331,6 +1331,7 @@ action () {
           _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
         fi
         disable_chattr ${_THIS_HM_USER}.ftp
+        rm -f -r /home/${_THIS_HM_USER}.ftp/drush-backups
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
