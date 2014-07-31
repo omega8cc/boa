@@ -66,6 +66,13 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   guest_guard
   sleep 15
   guest_guard
+  if [ -e "/root/.local.IP.list" ] ; then
+    for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`
+    do
+      csf -dr $_IP &> /dev/null
+      csf -tr $_IP &> /dev/null
+    done
+  fi
 fi
 exit 0
 ###EOF2014###
