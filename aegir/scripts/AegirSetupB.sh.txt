@@ -652,7 +652,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _VMFAMILY="XEN"
   fi
   if [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
+    if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
       $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
