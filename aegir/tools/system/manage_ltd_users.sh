@@ -412,6 +412,7 @@ add_user_if_not_exists () {
   elif [[ "$_ID_EXISTS" =~ "$_USER_LTD" ]] && [[ "$_ID_SHELLS" =~ "ltd-shell" ]] ; then
     echo "We will update user == $_USER_LTD =="
     disable_chattr $_USER_LTD
+    rm -f -r /home/${_USER_LTD}/drush-backups
     ok_update_user
     enable_chattr $_USER_LTD
   fi
