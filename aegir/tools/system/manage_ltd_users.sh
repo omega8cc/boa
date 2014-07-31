@@ -413,6 +413,7 @@ add_user_if_not_exists () {
     echo "We will update user == $_USER_LTD =="
     disable_chattr $_USER_LTD
     rm -f -r /home/${_USER_LTD}/drush-backups
+    find /home/${_USER_LTD}/.tmp/* -mtime +0 -type f -exec rm -rf {} \; &> /dev/null
     ok_update_user
     enable_chattr $_USER_LTD
   fi
