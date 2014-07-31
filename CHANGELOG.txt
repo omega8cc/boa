@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Tue Jul 29 15:02:07 PDT 2014
+### Latest hotfix added on: Thu Jul 31 08:37:18 PDT 2014
 
 # Release Notes:
 
@@ -46,6 +46,7 @@
   * Clean up drush aliases in the main SSH account properly.
   * RVM: Add exceptions for gems which can't be installed in Limited Shell.
   * Shell: Improve config to better support advanced Drush commands over SSH.
+  * Shell: Improve Drush over SSH experience
 
 # Changes in this release:
 
@@ -74,6 +75,7 @@
   * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
   * Improve RVM cleanup.
   * Issue #333 - Update BOA changelog URL shortcut.
+  * Make sure that local IPs are never blocked by mistake.
   * Never touch websh wrapper to avoid high load because of redirect loop.
   * Nginx: Automate SPDY test to determine if OpenSSL re-install is required.
   * Nginx: Fix limreq also for some really old vhosts.
