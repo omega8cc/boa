@@ -37,7 +37,7 @@ octopus_install ()
       sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-      if [[ "$_CHECK_HOST" =~ ".o8.io" ]] ; then
+      if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null

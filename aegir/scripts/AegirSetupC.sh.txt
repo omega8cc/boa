@@ -656,7 +656,7 @@ else
   _VMFAMILY="XEN"
 fi
 if [[ "$_DOMAIN" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-  if [[ "$_DOMAIN" =~ ".o8.io" ]] ; then
+  if [[ "$_DOMAIN" =~ ".ux.o8.io" ]] ; then
     _D_8_ALLOW=YES
   else
     _D_8_ALLOW=NO
