@@ -218,8 +218,8 @@ sub makeactions
       local($isloggedin) = 0;
       &check_who($VISITOR);
       $critnumber = $critnumber - 50 if ($critnumber > 250);
-      $critnumber = 999 if ($isloggedin); ### don't block logged in users
-      $critnumber = 999 if ($VISITOR eq $myip); ### don't block own IP
+      $critnumber = 9999 if ($isloggedin); ### don't block logged in users
+      $critnumber = 9999 if ($VISITOR eq $myip); ### don't block own IP
       print "===[$isloggedin] VISITOR im_li_cnt $VISITOR is logged in===\n" if ($isloggedin);
       print "===[$critnumber] VISITOR im_li_cnt critnumber for $VISITOR===\n" if ($VISITOR);
       local($blocked) = 0;
