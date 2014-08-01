@@ -2183,7 +2183,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
         mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
       else
         cd $_SHRD_PRPATH/modules/panopoly
-        get_dev_contrib "panopoly_demo-7.x-1.8.tar.gz"
+        get_dev_contrib "panopoly_demo-7.x-1.9.tar.gz"
       fi
     fi
   else
