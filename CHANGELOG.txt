@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Thu Jul 31 08:37:18 PDT 2014
+### Latest hotfix added on: Fri Aug  1 06:20:34 PDT 2014
 
 # Release Notes:
 
@@ -65,9 +65,11 @@
 # Fixes in this release:
 
   * Add auto-cleanup for civimail ghost leftovers.
+  * Add cleanup for drush-backups leftovers.
   * Add cleanup for RVM archives and logs.
   * Add cleanup for various /var/backups/* leftovers.
   * Add exception for symlinked /data/all
+  * Add missing cleanup for .tmp in sub-accounts.
   * Fix -mtime expected values.
   * Fix for default value on hot fix update.
   * Fix for dev regression - it shouldn't set $conf['cache'] on valid dev URLs.
