@@ -1169,7 +1169,7 @@ delete_this_platform () {
 }
 
 check_old_empty_platforms () {
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_HOST_TEST" =~ "v189q.nyc." ]] || [[ "$_HOST_TEST" =~ ".ux.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
@@ -1216,7 +1216,7 @@ purge_cruft_machine () {
     _PURGE_TMP="0"
   fi
 
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     _PURGE_BACKUPS="8"
     _PURGE_TMP="0"
   fi
