@@ -1150,6 +1150,12 @@ cleanup_ghost_vhosts () {
   for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
+    if [[ "$Dom" =~ ".restore"($) ]] ; then
+      mkdir -p $User/undo
+      mv -f $User/.drush/${Dom}.alias.drushrc.php $User/undo/ &> /dev/null
+      mv -f $User/config/server_master/nginx/vhost.d/${Dom} $User/undo/ &> /dev/null
+      echo GHOST vhost for $Dom detected and moved to $User/undo/
+    fi
     Plx=`cat $User/config/server_master/nginx/vhost.d/$Dom | grep "root " | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g"`
     if [[ "$Plx" =~ "aegir/distro" ]] ; then
       _SKIP_HM=YES
