@@ -893,25 +893,37 @@ fix_modules () {
   fi
 }
 
-fix_static_permissions () {
-  if [ ! -f "$Plr/profiles/permissions-fix.info" ] ; then
-    chown -R ${_THIS_HM_USER}.ftp:users $Plr/profiles &> /dev/null
-    find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
-    find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
-    echo fixed > $Plr/profiles/permissions-fix.info
-    chown $_THIS_HM_USER:users $Plr/profiles/permissions-fix.info
-    chmod 0664 $Plr/profiles/permissions-fix.info
+cleanup_ghost_platforms () {
+  if [ -e "$Plr" ] ; then
+    if [ ! -e "$Plr/index.php" ] || [ ! -e "$Plr/profiles" ] ; then
+      mkdir -p $User/undo
+      mv -f $Plr $User/undo/ &> /dev/null
+    fi
   fi
-  if [ ! -f "$Plr/profiles/core-permissions-fix.info" ] ; then
-    chmod 775 $Plr/modules &> /dev/null
-    echo fixed > $Plr/profiles/core-permissions-fix.info
-    chown $_THIS_HM_USER:users $Plr/profiles/core-permissions-fix.info
-    chmod 0664 $Plr/profiles/core-permissions-fix.info
+}
+
+fix_static_permissions () {
+  cleanup_ghost_platforms
+  if [ -e "$Plr/profiles" ] ; then
+    if [ ! -f "$Plr/profiles/permissions-fix.info" ] ; then
+      chown -R ${_THIS_HM_USER}.ftp:users $Plr/profiles &> /dev/null
+      find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
+      find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
+      echo fixed > $Plr/profiles/permissions-fix.info
+      chown $_THIS_HM_USER:users $Plr/profiles/permissions-fix.info
+      chmod 0664 $Plr/profiles/permissions-fix.info
+    fi
+    if [ ! -f "$Plr/profiles/core-permissions-fix.info" ] ; then
+      chmod 775 $Plr/modules &> /dev/null
+      echo fixed > $Plr/profiles/core-permissions-fix.info
+      chown $_THIS_HM_USER:users $Plr/profiles/core-permissions-fix.info
+      chmod 0664 $Plr/profiles/core-permissions-fix.info
+    fi
   fi
 }
 
 fix_expected_symlinks () {
-  if [ ! -e "$Plr/js.php" ] ; then
+  if [ ! -e "$Plr/js.php" ] && [ -e "$Plr" ] ; then
     if [ -e "$Plr/modules/o_contrib_seven" ] && [ -e "$_O_CONTRIB_SEVEN/js/js.php" ] ; then
       ln -s $_O_CONTRIB_SEVEN/js/js.php $Plr/js.php &> /dev/null
     elif [ -e "$Plr/modules/o_contrib" ] && [ -e "$_O_CONTRIB/js/js.php" ] ; then
@@ -929,7 +941,7 @@ fix_permissions () {
   ;;
   esac
   ### modules,themes,libraries - platform level
-  if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] ; then
+  if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] && [ -e "$Plr" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries,drush}
     find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
@@ -948,34 +960,36 @@ fix_permissions () {
     chown $_THIS_HM_USER:users $Plr/sites/all/permissions-fix-$_NOW.info
     chmod 0664 $Plr/sites/all/permissions-fix-$_NOW.info
   fi
-  ### directory and settings files - site level
-  chown $_THIS_HM_USER:users $Dir &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php} &> /dev/null
-  find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
-  chmod 0640 $Dir/civicrm.settings.php &> /dev/null
-  ### modules,themes,libraries - site level
-  find $Dir/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
-  rm -f $Dir/modules/local-allow.info
-  chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
-  chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
-  find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
-  find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
-  ### files - site level
-  chown -L -R ${_THIS_HM_USER}.ftp:www-data $Dir/files &> /dev/null
-  find $Dir/files/* -type d -exec chmod 02775 {} \; &> /dev/null
-  find $Dir/files/* -type f -exec chmod 0664 {} \; &> /dev/null
-  chmod 02775 $Dir/files &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/files &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/files/{tmp,images,pictures,css,js,advagg_css,advagg_js,ctools,ctools/css,imagecache,locations,xmlsitemap,deployment,styles,private} &> /dev/null
-  ### private - site level
-  chown -L -R ${_THIS_HM_USER}.ftp:www-data $Dir/private &> /dev/null
-  find $Dir/private -type d -exec chmod 02775 {} \; &> /dev/null
-  find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/private &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/private/{files,temp} &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate &> /dev/null
-  chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate/{manual,scheduled} &> /dev/null
-  chown -L -R $_THIS_HM_USER:www-data $Dir/private/config &> /dev/null
+  if [ -e "$Dir" ] ; then
+    ### directory and settings files - site level
+    chown $_THIS_HM_USER:users $Dir &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/{local.settings.php,settings.php,civicrm.settings.php} &> /dev/null
+    find $Dir/*.php -type f -exec chmod 0440 {} \; &> /dev/null
+    chmod 0640 $Dir/civicrm.settings.php &> /dev/null
+    ### modules,themes,libraries - site level
+    find $Dir/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
+    rm -f $Dir/modules/local-allow.info
+    chown -R ${_THIS_HM_USER}.ftp:users $Dir/{modules,themes,libraries}/* &> /dev/null
+    chown $_THIS_HM_USER:users $Dir/drushrc.php $Dir/{modules,themes,libraries} &> /dev/null
+    find $Dir/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
+    find $Dir/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
+    ### files - site level
+    chown -L -R ${_THIS_HM_USER}.ftp:www-data $Dir/files &> /dev/null
+    find $Dir/files/* -type d -exec chmod 02775 {} \; &> /dev/null
+    find $Dir/files/* -type f -exec chmod 0664 {} \; &> /dev/null
+    chmod 02775 $Dir/files &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/files &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/files/{tmp,images,pictures,css,js,advagg_css,advagg_js,ctools,ctools/css,imagecache,locations,xmlsitemap,deployment,styles,private} &> /dev/null
+    ### private - site level
+    chown -L -R ${_THIS_HM_USER}.ftp:www-data $Dir/private &> /dev/null
+    find $Dir/private -type d -exec chmod 02775 {} \; &> /dev/null
+    find $Dir/private -type f -exec chmod 0664 {} \; &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/private &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/private/{files,temp} &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate &> /dev/null
+    chown $_THIS_HM_USER:www-data $Dir/private/files/backup_migrate/{manual,scheduled} &> /dev/null
+    chown -L -R $_THIS_HM_USER:www-data $Dir/private/config &> /dev/null
+  fi
 }
 
 convert_controls_orig () {
@@ -1132,7 +1146,53 @@ fix_site_control_files () {
   fi
 }
 
+cleanup_ghost_vhosts () {
+  for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
+  do
+    Dom=`echo $Site | cut -d'/' -f9 | awk '{ print $1}'`
+    Plx=`cat $User/config/server_master/nginx/vhost.d/$Dom | grep "root " | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g"`
+    if [[ "$Plx" =~ "aegir/distro" ]] ; then
+      _SKIP_HM=YES
+    else
+      if [ ! -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+        mkdir -p $User/undo
+        mv -f $User/config/server_master/nginx/vhost.d/$Site $User/undo/ &> /dev/null
+        echo GHOST vhost for $Dom with no drushrc detected and moved to $User/undo/
+      fi
+    fi
+  done
+}
+
+cleanup_ghost_drushrc () {
+  for Alias in `find $User/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
+  do
+    AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
+    AliasName=`echo "$AliasName" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
+    if [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
+      _IS_SITE=NO
+    else
+      _THIS_SITE_NAME="$AliasName"
+      if [[ "$_THIS_SITE_NAME" =~ ".restore"($) ]] ; then
+        _IS_SITE=NO
+        rm -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+      else
+        _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+        if [ -d "$_THIS_SITE_FDIR" ] ; then
+          _IS_SITE=YES
+        else
+          mkdir -p $User/undo
+          mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
+          mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ &> /dev/null
+          echo GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
+        fi
+      fi
+    fi
+  done
+}
+
 process () {
+  cleanup_ghost_vhosts
+  cleanup_ghost_drushrc
   for Site in `find $User/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     #echo Counting Site $Site
@@ -1141,23 +1201,29 @@ process () {
       echo Dom is $Dom
       Dir=`cat $User/.drush/$Dom.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       Plr=`cat $User/.drush/$Dom.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      fix_site_control_files
-      fix_platform_control_files
-      fix_o_contrib_symlink
-      searchStringD="dev."
-      searchStringF="devel."
-      case $Dom in
-      *"$searchStringD"*) ;;
-      *"$searchStringF"*) ;;
-      *)
-      fix_modules
-      fix_robots_txt
-      ;;
-      esac
-      fix_boost_cache
-      fix_clear_cache
-      if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
-        fix_permissions
+      if [ -e "$Plr" ] ; then
+        if [ -e "$Dir" ] ; then
+          fix_site_control_files
+        fi
+        fix_platform_control_files
+        fix_o_contrib_symlink
+        if [ -e "$Dir" ] ; then
+          searchStringD="dev."
+          searchStringF="devel."
+          case $Dom in
+          *"$searchStringD"*) ;;
+          *"$searchStringF"*) ;;
+          *)
+          fix_modules
+          fix_robots_txt
+          ;;
+          esac
+          fix_boost_cache
+          fix_clear_cache
+        fi
+        if [ "$_DONT_TOUCH_PERMISSIONS" = "NO" ] && [ "$_PERMISSIONS_FIX" = "YES" ] ; then
+          fix_permissions
+        fi
       fi
     fi
   done
@@ -1317,7 +1383,7 @@ action () {
   do
     count_cpu
     load_control
-    if [ -e "$User/config/server_master/nginx/vhost.d" ] ; then
+    if [ -e "$User/config/server_master/nginx/vhost.d" ] && [ ! -e "$User/log/CANCELLED" ] ; then
       if [ $_O_LOAD -lt $_O_LOAD_MAX ] ; then
         _THIS_HM_USER=`echo $User | cut -d'/' -f4 | awk '{ print $1}'`
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
@@ -1399,9 +1465,13 @@ fi
 #
 mkdir -p /var/xdrago/log/daily
 if [ -e "/var/run/boa_wait.pid" ] ; then
-  touch /var/xdrago/log/wait-counter
+  touch /var/xdrago/log/wait-for-boa
+  exit 1
+elif [ -e "/var/run/daily-fix.pid" ] ; then
+  touch /var/xdrago/log/wait-for-daily
   exit 1
 else
+  touch /var/run/daily-fix.pid
   if [ -e "/root/.barracuda.cnf" ] ; then
     source /root/.barracuda.cnf
   fi
@@ -1522,6 +1592,7 @@ if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
 fi
 rm -f /tmp/.cron.*.pid
 rm -f /tmp/.busy.*.pid
+rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
 ###EOF2014###
