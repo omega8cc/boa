@@ -1174,7 +1174,9 @@ cleanup_ghost_drushrc () {
       _THIS_SITE_NAME="$AliasName"
       if [[ "$_THIS_SITE_NAME" =~ ".restore"($) ]] ; then
         _IS_SITE=NO
-        rm -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+        mkdir -p $User/undo
+        mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
+        mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ &> /dev/null
       else
         _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         if [ -d "$_THIS_SITE_FDIR" ] ; then
