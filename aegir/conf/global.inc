@@ -103,7 +103,7 @@ if (function_exists('drush_get_command')) {
  */
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) && !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.3.1';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.7.4.1';
   }
 }
 
