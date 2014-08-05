@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri Aug  1 06:20:34 PDT 2014
+### Latest hotfix added on: Tue Aug  5 14:47:17 PDT 2014
 
 # Release Notes:
 
@@ -43,7 +43,6 @@
 
   * Allow to force OpenSSL etc. re-install with _SSL_FORCE_REINSTALL=YES
   * Auto-Move no longer used shared codebases to /var/backups/codebases-cleanup
-  * Clean up drush aliases in the main SSH account properly.
   * RVM: Add exceptions for gems which can't be installed in Limited Shell.
   * Shell: Improve config to better support advanced Drush commands over SSH.
   * Shell: Improve Drush over SSH experience
@@ -59,21 +58,27 @@
 
 # System upgrades in this release:
 
+  * MariaDB 5.5.39
+  * Nginx 1.7.4
   * PHP 5.4.31
   * PHP 5.5.15
 
 # Fixes in this release:
 
   * Add auto-cleanup for civimail ghost leftovers.
+  * Add cleanup drush aliases in the main SSH account properly.
+  * Add cleanup for .tmp in sub-accounts.
   * Add cleanup for drush-backups leftovers.
   * Add cleanup for RVM archives and logs.
   * Add cleanup for various /var/backups/* leftovers.
+  * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
   * Add exception for symlinked /data/all
-  * Add missing cleanup for .tmp in sub-accounts.
   * Fix -mtime expected values.
+  * Fix cleanup for .restore vhost leftovers.
   * Fix for default value on hot fix update.
   * Fix for dev regression - it shouldn't set $conf['cache'] on valid dev URLs.
   * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
+  * Fix permissions on sites/all/{modules,libraries,themes} globally.
   * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
   * Improve RVM cleanup.
   * Issue #333 - Update BOA changelog URL shortcut.
