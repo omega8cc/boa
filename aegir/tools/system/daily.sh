@@ -51,19 +51,20 @@ disable_chattr () {
 #
 
 run_drush4_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush4 $1 &> /dev/null"
+  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1" &> /dev/null
 }
 
-run_drush4_dash_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush4 $1 &> /dev/null"
+run_drush4_hmr_cmd () {
+  su -s /bin/bash - $_THIS_HM_USER -c "drush4 $1" &> /dev/null
 }
 
 run_drush4_nosilent_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush4 $1"
+  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1"
 }
 
 run_drush6_nosilent_cmd () {
-  su -s /bin/bash $_THIS_HM_USER -c "drush6 $1"
+  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush6 cc drush" &> /dev/null
+  su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush6 @${Dom} $1"
 }
 
 check_if_required () {
@@ -263,7 +264,7 @@ fix_robots_txt () {
 
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
-    run_drush4_dash_cmd "@hostmaster cc all"
+    run_drush4_hmr_cmd "@hostmaster cc all"
   fi
 }
 
@@ -769,7 +770,7 @@ fix_modules () {
           fi
 
           if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
-            run_drush4_cmd "@hostmaster dis cache syslog dblog -y"
+            run_drush4_hmr_cmd "@hostmaster dis cache syslog dblog -y"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
             chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
           elif [ -e "$Plr/modules/o_contrib" ] ; then
@@ -898,6 +899,7 @@ cleanup_ghost_platforms () {
     if [ ! -e "$Plr/index.php" ] || [ ! -e "$Plr/profiles" ] ; then
       mkdir -p $User/undo
       mv -f $Plr $User/undo/ &> /dev/null
+      echo GHOST platform $Plr detected and moved to $User/undo/
     fi
   fi
 }
@@ -1156,14 +1158,16 @@ cleanup_ghost_vhosts () {
       mv -f $User/config/server_master/nginx/vhost.d/${Dom} $User/undo/ &> /dev/null
       echo GHOST vhost for $Dom detected and moved to $User/undo/
     fi
-    Plx=`cat $User/config/server_master/nginx/vhost.d/$Dom | grep "root " | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g"`
-    if [[ "$Plx" =~ "aegir/distro" ]] ; then
-      _SKIP_HM=YES
-    else
-      if [ ! -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
-        mkdir -p $User/undo
-        mv -f $User/config/server_master/nginx/vhost.d/$Site $User/undo/ &> /dev/null
-        echo GHOST vhost for $Dom with no drushrc detected and moved to $User/undo/
+    if [ -e "$User/config/server_master/nginx/vhost.d/$Dom" ] ; then
+      Plx=`cat $User/config/server_master/nginx/vhost.d/$Dom | grep "root " | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g"`
+      if [[ "$Plx" =~ "aegir/distro" ]] ; then
+        _SKIP_HM=YES
+      else
+        if [ ! -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
+          mkdir -p $User/undo
+          mv -f $User/config/server_master/nginx/vhost.d/$Site $User/undo/ &> /dev/null
+          echo GHOST vhost for $Dom with no drushrc detected and moved to $User/undo/
+        fi
       fi
     fi
   done
@@ -1174,8 +1178,23 @@ cleanup_ghost_drushrc () {
   do
     AliasName=`echo "$Alias" | cut -d'/' -f6 | awk '{ print $1}'`
     AliasName=`echo "$AliasName" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
-    if [[ "$AliasName" =~ (^)"platform_" ]] || [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
+    if [[ "$AliasName" =~ (^)"server_" ]] || [[ "$AliasName" =~ (^)"hostmaster" ]] ; then
       _IS_SITE=NO
+    elif [[ "$AliasName" =~ (^)"platform_" ]] ; then
+      Plm=`cat $Alias | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      if [ -d "$Plm" ] ; then
+        if [ ! -e "$Plm/index.php" ] || [ ! -e "$Plm/profiles" ] ; then
+          mkdir -p $User/undo
+          mv -f $Plm $User/undo/ &> /dev/null
+          echo GHOST broken platform dir $Plm detected and moved to $User/undo/
+          mv -f $Alias $User/undo/ &> /dev/null
+          echo GHOST broken platform alias $Alias detected and moved to $User/undo/
+        fi
+      else
+        mkdir -p $User/undo
+        mv -f $Alias $User/undo/ &> /dev/null
+        echo GHOST nodir platform alias $Alias detected and moved to $User/undo/
+      fi
     else
       _THIS_SITE_NAME="$AliasName"
       if [[ "$_THIS_SITE_NAME" =~ ".restore"($) ]] ; then
@@ -1183,6 +1202,7 @@ cleanup_ghost_drushrc () {
         mkdir -p $User/undo
         mv -f $User/.drush/${_THIS_SITE_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
         mv -f $User/config/server_master/nginx/vhost.d/${_THIS_SITE_NAME} $User/undo/ &> /dev/null
+        echo GHOST drushrc and vhost for ${_THIS_SITE_NAME} detected and moved to $User/undo/
       else
         _THIS_SITE_FDIR=`cat $Alias | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         if [ -d "$_THIS_SITE_FDIR" ] ; then
@@ -1238,7 +1258,7 @@ process () {
 }
 
 delete_this_platform () {
-  run_drush4_dash_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
+  run_drush4_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
   echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
 }
 
@@ -1262,9 +1282,10 @@ check_old_empty_platforms () {
         _THIS_PLATFORM_NAME=`echo "$Platform" | sed "s/.*platform_//g; s/.alias.drushrc.php//g" | awk '{ print $1}'`
         _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         _THIS_PLATFORM_SITE=`grep "${_THIS_PLATFORM_ROOT}/sites/" $User/.drush/* | grep site_path`
-        if [ ! -e "${_THIS_PLATFORM_ROOT}/sites/all" ] ; then
-          echo "WARNING: ghost platform found: $_THIS_PLATFORM_ROOT"
-          rm -f $User/.drush/platform_${_THIS_PLATFORM_NAME}.alias.drushrc.php
+        if [ ! -e "${_THIS_PLATFORM_ROOT}/sites/all" ] || [ ! -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
+          mkdir -p $User/undo
+          mv -f $User/.drush/platform_${_THIS_PLATFORM_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
+          echo GHOST platform $_THIS_PLATFORM_ROOT detected and moved to $User/undo/
         fi
         if [[ "$_THIS_PLATFORM_SITE" =~ ".restore" ]] ; then
           echo "WARNING: ghost site leftover found: $_THIS_PLATFORM_SITE"
@@ -1397,7 +1418,7 @@ action () {
         _THIS_HM_SITE=`cat $User/.drush/hostmaster.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
         echo load is $_O_LOAD while maxload is $_O_LOAD_MAX
         echo User $User
-        su -s /bin/bash $_THIS_HM_USER -c "drush6 cache-clear drush &> /dev/null"
+        su -s /bin/bash $_THIS_HM_USER -c "drush6 cc drush &> /dev/null"
         _SQL_CONVERT=NO
         _DEL_OLD_EMPTY_PLATFORMS="0"
         if [ -e "/root/.${_THIS_HM_USER}.octopus.cnf" ] ; then
@@ -1409,12 +1430,12 @@ action () {
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
-          run_drush4_dash_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
+          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
+          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
+          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
+          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
+          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
+          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
         fi
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           rm -f -r $User/clients/admin &> /dev/null
@@ -1427,8 +1448,8 @@ action () {
           symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
           rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
-        run_drush4_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-        run_drush4_dash_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
         echo Done for $User
