@@ -1585,7 +1585,7 @@ EOF
   fi
 fi
 #
-if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION-fixed-B.info" ] ; then
+if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/opt/tmp/barracuda-version.txt" ] && [ ! -e "/data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info" ] ; then
   echo "INFO: Fixing permissions in the /data/all tree..."
   find /data/all -type d -exec chmod 0755 {} \; &> /dev/null
   find /data/all -type f -exec chmod 0644 {} \; &> /dev/null
@@ -1594,10 +1594,11 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:root /data/conf
   chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
+  chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes} &> /dev/null
   chown -R root:root /data/all
   chown -R root:users /data/all/*/*/sites
   chown -R root:users /data/all/000/core/*/sites
-  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-B.info
+  echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info
 fi
 if [ ! -e "/var/backups/fix-sites-all-permsissions-2.2.8.txt" ] ; then
   chmod 0751  /data/disk/*/distro/*/*/sites
