@@ -4,41 +4,46 @@ Your Aegir Hosting System has been upgraded to version BOA-2.3.0-dev
 
   https://aegir.dragon.ny.host8.biz
 
-IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
-of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
-which will allow us to provide newer Aegir version with built-in Drush 6
-support, sites in subdirectories, and many Aegir User Interface improvements.
+IMPORTANT! This is the last Edition in the 2.2.x series, which marks
+the end of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will
+open 2.3.x series, which will allow us to provide newer Aegir version
+with built-in Drush 6 support, sites in subdirectories, and many
+Aegir User Interface improvements.
 
-If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
-you will not be able to upgrade to the next 2.3.x Edition and you will have to
-stay on the 'legacy' BOA 2.2.x version, which will receive only system security
-upgrades, but no further feature nor bugfix releases.
+If you still host any Drupal 5 sites or you are using PHP 5.2 for
+D6 sites, you will not be able to upgrade to the next 2.3.x Edition
+and you will have to stay on the 'legacy' BOA 2.2.x version, which
+will receive only system security upgrades, but no further feature
+nor bugfix releases.
 
-This also means that from now on the 'legacy' 2.2.x version will no longer
-receive Drupal core upgrades, even if there will be security core releases.
+This also means that from now on the 'legacy' 2.2.x version will
+no longer receive Drupal core upgrades, even if there will be
+security core releases.
 
-It is time to upgrade away from Drupal 5 and away from PHP 5.2, if still used.
+It is time to upgrade away from Drupal 5 and away from PHP 5.2
 
-NOTE: Since the first Edition in the BOA-2.3.x series is not ready for release
-yet, and new Drupal core has been released to fix security issues, followed by
-yet another release to fix serious regressions, we have decided to make it
+NOTE: Since the first Edition in the BOA-2.3.x series is not ready
+for release yet, and new Drupal core has been released to fix security
+issues, followed by yet another release to fix serious regressions,
+followed by yet another security release, we have decided to make it
 available to everyone and release yet another stable BOA-2.2.x Edition.
 
-There are many, many new features, changes, improvements and fixes in all
-nine (9) recent BOA-2.2.x Editions, released since March 31:
+There are many, many new features, changes, improvements and fixes
+in all ten (10) recent BOA-2.2.x Editions, released since March 31:
 
-  https://omega8.cc/boa-228-full-edition-326  ------- released on July 26
-  https://omega8.cc/boa-227-full-edition-324  ------- released on July 17
-  https://omega8.cc/boa-226-full-edition-319  ------- released on June 21
-  https://omega8.cc/boa-225-full-edition-314  ------- released on May 08
-  https://omega8.cc/boa-224-full-edition-313  ------- released on April 30
-  https://omega8.cc/boa-223-full-edition-310  ------- released on April 18
-  https://omega8.cc/boa-222-barracuda-edition-306 --- released on April 08
-  https://omega8.cc/boa-221-full-edition-305  ------- released on April 01
-  https://omega8.cc/boa-220-full-edition-304  ------- released on March 31
+  https://omega8.cc/boa-229-full-edition-327  ------- August 06
+  https://omega8.cc/boa-228-full-edition-326  ------- July   26
+  https://omega8.cc/boa-227-full-edition-324  ------- July   17
+  https://omega8.cc/boa-226-full-edition-319  ------- June   21
+  https://omega8.cc/boa-225-full-edition-314  ------- May    08
+  https://omega8.cc/boa-224-full-edition-313  ------- April  30
+  https://omega8.cc/boa-223-full-edition-310  ------- April  18
+  https://omega8.cc/boa-222-barracuda-edition-306 --- April  08
+  https://omega8.cc/boa-221-full-edition-305  ------- April  01
+  https://omega8.cc/boa-220-full-edition-304  ------- March  31
 
 It is always very important that you read extensive release notes
-and changelog posted on our website for all previous BOA Editions at:
+and changelog posted on our website for all previous BOA Editions:
 
   https://omega8.cc/updates
 
@@ -46,28 +51,31 @@ and changelog posted on our website for all previous BOA Editions at:
 #1 RESOURCES UPGRADE
 ----------------------------------------
 
-Did you know that even single Aegir hosted Engine has built-in CPU power
-scalability which would cost you $640/month on Linode or DigitalOcean?
+Did you know that even single Aegir hosted Engine has built-in CPU
+power scalability which would cost you $640/month on Linode or
+DigitalOcean?
 
-Popular Edge Engines now have 50% more disk space for files in all hosted
-Aegir instances with active subscriptions. Older Classic/Mini and Power
-Engines are not eligible for this particular upgrade.
+Popular Edge Engines now have 50% more disk space for files in all
+hosted Aegir instances with active subscriptions. Older Classic/Mini
+and Power Engines are not eligible for this particular upgrade.
 
   https://omega8.cc/edge
 
-Plus, now all hosted Aegir Edge and Power instances can auto-scale on demand,
-up to 48 PHP-FPM workers per Aegir Octopus Satellite Instance, free of charge.
+Plus, now all hosted Aegir Edge and Power instances can auto-scale
+on demand, up to 48 PHP-FPM workers per Aegir Octopus Satellite
+Instance, free of charge.
 
-Did you know that even single Aegir hosted Engine has built-in RAM scalability
-which would cost you $320/month on Linode or DigitalOcean?
+Did you know that even single Aegir hosted Engine has built-in
+RAM scalability which would cost you $320/month on Linode or
+DigitalOcean?
 
 ----------------------------------------
 #2 BACKUPS ROTATION
 ----------------------------------------
 
 We encourage you to review our backups rotation policy. It is the same
-for years but in case you are not aware it even exists, it is a good idea
-to learn how the available disk space for files should be used properly:
+for years but in case you are not aware it even exists, it is a good
+idea to learn how the available disk space for files should be used:
 
   https://omega8.cc/backups#policy
 
@@ -75,27 +83,30 @@ to learn how the available disk space for files should be used properly:
 #3 NEW DATACENTERS
 ----------------------------------------
 
-In June 2014 we have added Chicago, Illinois, to our ever growing list
-of available 7 datacenters locations, with Tokyo, Japan and Ashburn, Virginia,
-following later this summer. There will be also next generation, newer
-locations added in San Jose, California and Amsterdam, The Netherlands.
+In June 2014 we have added Chicago (Illinois), to our ever growing
+list of available 7 datacenters locations, with Tokyo (Japan) and
+Ashburn (Virginia) following later this summer. There will be also
+next generation locations added in San Jose (California) and
+Amsterdam (The Netherlands).
 
 ----------------------------------------
 #4 AEGIR EXPEDITION
 ----------------------------------------
 
-New Aegir Expedition option will be introduced once the first new locations
-are available. It will allow you to request per-site migrations between
-all our new locations, so you will be able to easily and gracefully relocate
-some or all of sites hosted to provide even better experience and faster
-access to your sites target audience, with per-site precision, and without
-the need to multiply your subscriptions. This should open entirely new
-world of unique opportunities, cost-savings and efficiency, and any existing
-option will be able to receive upgrade to Aegir Expedition, very easily.
+New Aegir Expedition option will be introduced once the first new
+locations are available. It will allow you to request per-site
+migrations between all our new locations, so you will be able to
+easily and gracefully relocate some or all of sites hosted to provide
+even better experience and faster access to your sites target audience,
+with per-site precision, and without the need to multiply your
+subscriptions. This should open entirely new world of unique
+opportunities, cost-savings and efficiency, and any existing instance
+will be able to receive upgrade to Aegir Expedition, very easily.
 
-BTW: Did you know that even single Aegir Expedition Engine will have built-in
-RAM scalability 2x bigger than even the biggest options available at Linode
-and DigitalOcean, where it would cost you astonishing $1280/month or more?
+BTW: Did you know that even single Aegir Expedition Engine will have
+built-in RAM scalability 2x bigger than even the biggest options
+available at Linode and DigitalOcean, where it would cost you
+astonishing $1280/month or more?
 
 We are very excited to be able to introduce new options and services,
 thanks to innovations possible in all five new datacenters worldwide.
