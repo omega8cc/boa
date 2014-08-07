@@ -40,14 +40,18 @@
 
 # New features and enhancements in this release:
 
+  * Eldir: Add subtle 3D and round some edges.
+  * Eldir: Improve spacing and hide useless headers.
+  * Fix permissions on sites/all/{modules,libraries,themes} on Platform Verify.
   * RVM: Add exceptions for gems which can't be installed in Limited Shell.
   * Shell: Compass Tools: Allow to access guard.
   * Shell: Improve config to better support advanced Drush commands over SSH.
-  * Shell: Improve Drush over SSH experience
+  * Shell: Improve Drush over SSH experience.
 
 # Changes in this release:
 
   * Drush: Upgrade command line version 6 to mini-6-06-08-2014
+  * Nginx: Add DBot to is_crawler list.
 
 # System upgrades in this release:
 
@@ -68,8 +72,12 @@
   * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
   * Fix permissions on sites/all/{modules,libraries,themes} globally.
   * Improve RVM cleanup.
+  * Issue #334 - Backported provision_civicrm #1485920
+  * Issue #334 - Delete the civicrm_class_loader variable after deploying.
+  * Issue #334 - Install civicrm in any location (sites/ profiles + contrib).
   * Make sure that local IPs are never blocked by mistake.
   * Never touch websh wrapper to avoid high load because of redirect loop.
+  * Nginx: Detected $device is not used in Boost config, only in Speed Booster.
   * Nginx: Fix limreq also for some really old vhosts.
   * Nginx: Modify only vhosts known as included in the protected mode.
   * Remove debugging mode in old codebases cleanup.
