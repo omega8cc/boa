@@ -1089,7 +1089,7 @@ add_note_platform_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.2.8"         >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.2.9"         >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_FILE
@@ -1106,7 +1106,7 @@ add_note_site_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.2.8"         >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.2.9"         >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_FILE
@@ -1517,10 +1517,10 @@ else
   if [ -z "$_MODULES_FIX" ] ; then
     _MODULES_FIX=YES
   fi
-  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.2.8.info" ] ; then
+  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.2.9.info" ] ; then
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
-    echo fixed > /data/all/permissions-fix-post-up-BOA-2.2.8.info
+    echo fixed > /data/all/permissions-fix-post-up-BOA-2.2.9.info
   fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
@@ -1600,11 +1600,11 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:users /data/all/000/core/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info
 fi
-if [ ! -e "/var/backups/fix-sites-all-permsissions-2.2.8.txt" ] ; then
+if [ ! -e "/var/backups/fix-sites-all-permsissions-2.2.9.txt" ] ; then
   chmod 0751  /data/disk/*/distro/*/*/sites
   chmod 0751  /data/disk/*/distro/*/*/sites/all
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}
-  echo FIXED > /var/backups/fix-sites-all-permsissions-2.2.8.txt
+  echo FIXED > /var/backups/fix-sites-all-permsissions-2.2.9.txt
   echo "Permissions in sites/all tree just fixed"
 fi
 if [ ! -e "/root/.upstart.cnf" ] ; then

@@ -78,7 +78,7 @@ _CLIENT_CORES=8
 ### _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.3
 ### _DEBUG_MODE=NO
-### _AEGIR_VERSION=BOA-2.2.8
+### _AEGIR_VERSION=BOA-2.2.9
 ### _DNS_SETUP_TEST=NO
 ### _THIS_DB_HOST=localhost
 ### _LOCAL_NETWORK_IP="127.0.1.1"
@@ -294,9 +294,9 @@ _MY_OWNIP=""
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.8
+### _AEGIR_VERSION=BOA-2.2.9
 ###
-_AEGIR_VERSION=BOA-2.2.8
+_AEGIR_VERSION=BOA-2.2.9
 
 
 ###----------------------------------------###
@@ -644,7 +644,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.2.8
+_INSTALLER_VERSION=BOA-2.2.9
 
 ###
 ### Variables
@@ -677,7 +677,7 @@ fi
 _AGOV=7.x-1.2
 _CIVICRM_M6=4.1.6
 _CIVICRM_M7=4.3.7
-_CIVICRM_PN=boa-2.2.8-dev
+_CIVICRM_PN=boa-2.2.9-dev
 _COD=7.x-1.0-alpha5
 _COMMERCE1=7.x-1.28
 _COMMERCE2=7.x-2.16
@@ -1760,7 +1760,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=BOA-2.2.8
+  _AEGIR_VERSION=BOA-2.2.9
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost
