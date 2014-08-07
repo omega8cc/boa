@@ -590,7 +590,7 @@ _D8_CORE_DIR="/data/all/000/core/drupal-$_SMALLCORE8"
 ###---### Distributions full names.
 #
 _F_ACQUIA="Acquia $_SMALLCORE6 P.$_THIS_CORE"
-_F_AGOV="aGov 1.0-rc8 $_SMALLCORE7 P.$_THIS_CORE"
+_F_AGOV="aGov 1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_CIVICRM_M6="CiviCRM $_CIVICRM_M6 $_SMALLCORE6 P.$_THIS_CORE"
 _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-v5 $_SMALLCORE7 P.$_THIS_CORE"
@@ -604,7 +604,7 @@ _F_DRUPAL7="Drupal $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL8="Drupal $_SMALLCORE8 P.$_THIS_CORE"
 _F_ERPAL="ERPAL 2.0-b4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_FSERVER="Feature Server 1.2 $_SMALLCORE6 P.$_THIS_CORE"
-_F_GUARDR="Guardr 1.9 $_SMALLCORE7 P.$_THIS_CORE"
+_F_GUARDR="Guardr 1.10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_NODESTREAM7="NodeStream 2.0-rc5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0 $_SMALLCORE7 P.$_THIS_CORE"
@@ -613,11 +613,11 @@ _F_OPENATRIUM7="Open Atrium 2.19 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENBLOG="OpenBlog 1.0-v3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.12 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENOUTREACH="Open Outreach 1.8 $_SMALLCORE7 P.$_THIS_CORE"
-_F_OPENPUBLIC="OpenPublic 1.0-b23 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENOUTREACH="Open Outreach 1.9 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENPUBLIC="OpenPublic 1.0-rc4 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENPUBLISH="OpenPublish 3.0-b7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
-_F_PANOPOLY="Panopoly 1.8 $_SMALLCORE7 P.$_THIS_CORE"
+_F_PANOPOLY="Panopoly 1.10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_RESTAURANT="Restaurant 1.0-v5 $_SMALLCORE7 P.$_THIS_CORE"
@@ -1218,7 +1218,7 @@ drupal7_install () {
 if [ "$_PLATFORMS_LIST" = "ALL" ] || [[ $_PLATFORMS_LIST =~ D7D ]] || [[ $_PLATFORMS_LIST =~ D7S ]] || [[ $_PLATFORMS_LIST =~ D7P ]] ; then
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
 echo " "
-if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.30" ; then
+if prompt_yes_no "$_F_DRUPAL7 - https://drupal.org/drupal-7.31" ; then
 true
 
 ###---### Drupal 7 Development
@@ -1419,7 +1419,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     echo "core = 6.x" >> fserver.make
     echo "projects[pressflow][type] = \"core\"" >> fserver.make
     echo "projects[pressflow][download][type] = \"get\"" >> fserver.make
-    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/core/pressflow-6.32.2.tar.gz\"" >> fserver.make
+    echo "projects[pressflow][download][url] = \"http://files.aegir.cc/core/pressflow-6.33.1.tar.gz\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][type] = \"profile\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][download][type] = \"git\"" >> fserver.make
     echo "projects[$_REAL_PRNAME][download][url] = \"git://github.com/omega8cc/$_REAL_PRNAME.git\"" >> fserver.make
@@ -2183,7 +2183,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
         mv -f $_SHRD_PLPATH/sites/all/modules/panopoly_demo $_SHRD_PRPATH/modules/panopoly/ &> /dev/null
       else
         cd $_SHRD_PRPATH/modules/panopoly
-        get_dev_contrib "panopoly_demo-7.x-1.8.tar.gz"
+        get_dev_contrib "panopoly_demo-7.x-1.10.tar.gz"
       fi
     fi
   else

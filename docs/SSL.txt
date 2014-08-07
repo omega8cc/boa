@@ -163,3 +163,20 @@ server {
 ### Secure HTTPS proxy to add more IPs for HTTPS connections (END)
 ###
 
+
+###
+### Side note: If you can't force HTTPS-only mode on the Nginx level because
+### the site doesn't have separate IP, then add in its local.settings.php file
+### this PHP code - but don't use it when the site has dedicated IP address,
+### because it could cause redirect loops.
+###
+
+$request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') ? 'SSL' : 'NONSSL';
+if ($request_type != "SSL" && isset($_SERVER['HTTP_USER_AGENT'])) {
+  header('X-Accel-Expires: 1');
+  header("HTTP/1.1 301 Moved Permanently");
+  header("Location: https://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']);
+  header("Connection: close");
+  exit;
+}
+$base_url = 'https://' . $_SERVER['HTTP_HOST'];

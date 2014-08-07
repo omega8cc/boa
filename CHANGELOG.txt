@@ -1,4 +1,83 @@
 
+### Stable BOA-2.2.9 Release - Full Edition
+### Date: Wed Aug  6 17:08:10 PDT 2014
+### Includes Aegir 2.x-boa-custom version.
+
+# Release Notes:
+
+  This release includes updated versions of all supported Drupal platforms to
+  provide latest Drupal 7 and Pressflow 6 core, plus some changes, improvements,
+  bug fixes, and five (5) updated Octopus platforms.
+
+  NOTE: Since the first Edition in the BOA-2.3.x series is not ready for release
+  yet, and new Drupal core has been released to fix security issues, followed
+  by yet another release to fix serious regressions, followed by yet another
+  security release, we have decided to make it available to everyone and release
+  yet another stable BOA-2.2.x Edition.
+
+  IMPORTANT! This is the last Edition in the 2.2.x series, which marks the end
+  of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will open 2.3.x series,
+  which will allow us to provide newer Aegir version with built-in Drush 6
+  support, sites in subdirectories, and many Aegir User Interface improvements.
+
+  If you still host any Drupal 5 sites or you are using PHP 5.2 for D6 sites,
+  you will not be able to upgrade to the next 2.3.x Edition and you will have to
+  stay on the 'legacy' BOA 2.2.x version, which will receive only system
+  security upgrades, but no further feature nor bugfix releases.
+
+  This also means that from now on the 'legacy' 2.2.x version will no longer
+  receive Drupal core upgrades, even if there will be security core releases.
+
+  It is time to upgrade away from Drupal 5 and away from PHP 5.2, if still used.
+
+# Updated Octopus platforms:
+
+  aGov 1.2 --------------------- https://drupal.org/project/agov
+  Guardr 1.10 ------------------ https://drupal.org/project/guardr
+  Open Outreach 1.9 ------------ https://drupal.org/project/openoutreach
+  OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
+  Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
+
+# New features and enhancements in this release:
+
+  * RVM: Add exceptions for gems which can't be installed in Limited Shell.
+  * Shell: Compass Tools: Allow to access guard.
+  * Shell: Improve config to better support advanced Drush commands over SSH.
+  * Shell: Improve Drush over SSH experience
+
+# Changes in this release:
+
+  * Drush: Upgrade command line version 6 to mini-6-29-07-2014
+
+# System upgrades in this release:
+
+  * MariaDB 5.5.39
+  * Nginx 1.7.4
+  * OpenSSL 1.0.1i (if installed from sources)
+
+# Fixes in this release:
+
+  * Add cleanup for .tmp in sub-accounts.
+  * Add cleanup for drush-backups leftovers.
+  * Add cleanup for various /var/backups/* leftovers.
+  * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
+  * Add exception for symlinked /data/all
+  * Add hint for HTTPS-only mode forced in local.settings.php
+  * Fix -mtime expected values.
+  * Fix cleanup for .restore vhost leftovers.
+  * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
+  * Fix permissions on sites/all/{modules,libraries,themes} globally.
+  * Improve RVM cleanup.
+  * Make sure that local IPs are never blocked by mistake.
+  * Never touch websh wrapper to avoid high load because of redirect loop.
+  * Nginx: Fix limreq also for some really old vhosts.
+  * Nginx: Modify only vhosts known as included in the protected mode.
+  * Remove debugging mode in old codebases cleanup.
+  * Restore default websh wrapper symlink as fast as possible.
+  * Run manage_ltd_users every 3 minutes instead of every minute.
+  * Update regex for exceptions in Nginx monitoring.
+
+
 ### Stable BOA-2.2.8 Release - Full Edition
 ### Date: Sat Jul 26 15:31:29 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
@@ -43,9 +122,6 @@
 
   * Allow to force OpenSSL etc. re-install with _SSL_FORCE_REINSTALL=YES
   * Auto-Move no longer used shared codebases to /var/backups/codebases-cleanup
-  * RVM: Add exceptions for gems which can't be installed in Limited Shell.
-  * Shell: Improve config to better support advanced Drush commands over SSH.
-  * Shell: Improve Drush over SSH experience
 
 # Changes in this release:
 
@@ -58,8 +134,6 @@
 
 # System upgrades in this release:
 
-  * MariaDB 5.5.39
-  * Nginx 1.7.4
   * PHP 5.4.31
   * PHP 5.5.15
 
@@ -67,35 +141,17 @@
 
   * Add auto-cleanup for civimail ghost leftovers.
   * Add cleanup drush aliases in the main SSH account properly.
-  * Add cleanup for .tmp in sub-accounts.
-  * Add cleanup for drush-backups leftovers.
   * Add cleanup for RVM archives and logs.
-  * Add cleanup for various /var/backups/* leftovers.
-  * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
-  * Add exception for symlinked /data/all
-  * Fix -mtime expected values.
-  * Fix cleanup for .restore vhost leftovers.
   * Fix for default value on hot fix update.
   * Fix for dev regression - it shouldn't set $conf['cache'] on valid dev URLs.
-  * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
-  * Fix permissions on sites/all/{modules,libraries,themes} globally.
   * Fix the logic for custom _DEL_OLD_EMPTY_PLATFORMS defaults.
-  * Improve RVM cleanup.
   * Issue #333 - Update BOA changelog URL shortcut.
-  * Make sure that local IPs are never blocked by mistake.
-  * Never touch websh wrapper to avoid high load because of redirect loop.
   * Nginx: Automate SPDY test to determine if OpenSSL re-install is required.
-  * Nginx: Fix limreq also for some really old vhosts.
-  * Nginx: Modify only vhosts known as included in the protected mode.
   * Nginx: Silence access log for already protected /civicrm admin requests.
-  * Remove debugging mode in old codebases cleanup.
   * Remove special one-time variables if set, once used.
-  * Restore default websh wrapper symlink as fast as possible.
-  * Run manage_ltd_users every 3 minutes instead of every minute.
   * RVM: Install OS compatible Ruby version + various related adjustments.
   * Silence useless noise in the log.
   * Sync firewall limits.
-  * Update regex for exceptions in Nginx monitoring.
 
 
 ### Stable BOA-2.2.7 Release - Full Edition
