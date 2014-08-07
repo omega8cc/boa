@@ -47,7 +47,7 @@
 
 # Changes in this release:
 
-  * Drush: Upgrade command line version 6 to mini-6-29-07-2014
+  * Drush: Upgrade command line version 6 to mini-6-06-08-2014
 
 # System upgrades in this release:
 
