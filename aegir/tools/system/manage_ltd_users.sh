@@ -306,9 +306,10 @@ manage_sec_user_drush_aliases()
   mkdir -p $_USER_LTD_ROOT/.drush
   for Alias in `find $_USER_LTD_ROOT/.drush/*.alias.drushrc.php -maxdepth 1 -type f | sort`
   do
-    _THIS_SITE_NAME=`echo "$Alias" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
-    if [ ! -z "$_THIS_SITE_NAME" ] && [ ! -e "$_USER_LTD_ROOT/sites/${_THIS_SITE_NAME}" ] ; then
-      rm -f $_USER_LTD_ROOT/.drush/${_THIS_SITE_NAME}.alias.drushrc.php
+    AliasName=`echo "$Alias" | cut -d'/' -f5 | awk '{ print $1}'`
+    AliasName=`echo "$AliasName" | sed "s/.alias.drushrc.php//g" | awk '{ print $1}'`
+    if [ ! -z "$AliasName" ] && [ ! -e "$_USER_LTD_ROOT/sites/${AliasName}" ] ; then
+      rm -f $_USER_LTD_ROOT/.drush/${AliasName}.alias.drushrc.php
     fi
   done
   for Symlink in `find $_USER_LTD_ROOT/sites/ -maxdepth 1 -mindepth 1 | sort`
