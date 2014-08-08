@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri Aug  8 13:13:44 PDT 2014
+### Latest hotfix added on: Fri Aug  8 16:39:42 PDT 2014
 
 # Release Notes:
 
@@ -67,6 +67,8 @@
 # Fixes in this release:
 
   * Add cleanup for .tmp in sub-accounts.
+  * Fix cleanup for drush aliases in sub-accounts.
+  * Improve cleanup for empty platforms directories.
   * Add cleanup for drush-backups leftovers.
   * Add cleanup for various /var/backups/* leftovers.
   * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
