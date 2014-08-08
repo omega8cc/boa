@@ -1347,6 +1347,23 @@ purge_cruft_machine () {
   mkdir -p $User/static/trash
   chown ${_THIS_HM_USER}.ftp:users $User/static/trash
   find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+
+  REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+  for i in $REVISIONS; do
+    if [ -e "/home/${_THIS_HM_USER}.ftp/platforms/$i/keys" ] ; then
+      RevisionTest=$(ls /home/${_THIS_HM_USER}.ftp/platforms/$i | wc -l | tr -d "\n" 2>&1)
+      if [ "$RevisionTest" = "1" ] && [ ! -z "$RevisionTest" ] ; then
+        rm -f -r /home/${_THIS_HM_USER}.ftp/platforms/$i
+      fi
+    fi
+    if [ -d "$User/distro/$i/keys" ] ; then
+      RevisionTest=$(ls $User/distro/$i | wc -l | tr -d "\n" 2>&1)
+      if [ "$RevisionTest" = "1" ] && [ ! -z "$RevisionTest" ] ; then
+        mkdir -p $User/undo
+        mv -f $User/distro/$i $User/undo/ &> /dev/null
+      fi
+    fi
+  done
 }
 
 count_cpu()
@@ -1437,6 +1454,10 @@ action () {
           run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
           run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
         fi
+        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        check_old_empty_platforms
+        purge_cruft_machine
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           rm -f -r $User/clients/admin &> /dev/null
           rm -f -r $User/clients/omega8ccgmailcom &> /dev/null
@@ -1448,10 +1469,6 @@ action () {
           symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
           rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
         fi
-        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
-        check_old_empty_platforms
-        purge_cruft_machine
         echo Done for $User
         enable_chattr ${_THIS_HM_USER}.ftp
       else
