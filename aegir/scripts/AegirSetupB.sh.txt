@@ -54,7 +54,6 @@ _DRUPAL8=EDIT_DRUPAL8
 _ERPAL=EDIT_ERPAL
 _GUARDR=EDIT_GUARDR
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
-_NODESTREAM7=EDIT_NODESTREAM7
 _OPEN_DEALS=EDIT_OPEN_DEALS
 _OPENACADEMY=EDIT_OPENACADEMY
 _OPENATRIUM6=EDIT_OPENATRIUM6
@@ -705,7 +704,6 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster vset --always-set hosting_site_backup_manager_base_path "/data/disk/$_USER" &> /dev/null
   $_DRUSHCMD @hostmaster en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
-  $_DRUSHCMD @hostmaster vset --always-set site_footer "" &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
     $_DRUSHCMD @hostmaster vset --always-set site_name "Aegir Hosting System by Octopus" &> /dev/null
     $_DRUSHCMD @hostmaster vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null

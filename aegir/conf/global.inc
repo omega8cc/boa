@@ -574,7 +574,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
       }
     }
     else {
-      if ($site_subdir && raw_host) {
+      if ($site_subdir && $raw_host) {
         $base_url = 'http://' . $raw_host . '/' . $site_subdir;
       }
       else {
@@ -583,7 +583,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) && isset($_SERVER['SERVER_NAME'
     }
   }
   else {
-    if ($site_subdir && raw_host) {
+    if ($site_subdir && $raw_host) {
       $base_url = 'http://' . $raw_host . '/' . $site_subdir;
     }
     else {

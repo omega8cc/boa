@@ -2,12 +2,13 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
+### Latest hotfix added on: Fri Aug  8 13:13:44 PDT 2014
 
 # Release Notes:
 
   This release includes updated versions of all supported Drupal platforms to
   provide latest Drupal 7 and Pressflow 6 core, plus some changes, improvements,
-  bug fixes, and five (5) updated Octopus platforms.
+  bug fixes, and many updated Octopus platforms.
 
   NOTE: Since the first Edition in the BOA-2.3.x series is not ready for release
   yet, and new Drupal core has been released to fix security issues, followed
@@ -33,7 +34,10 @@
 # Updated Octopus platforms:
 
   aGov 1.2 --------------------- https://drupal.org/project/agov
-  Guardr 1.10 ------------------ https://drupal.org/project/guardr
+  Commerce 1.29 ---------------- https://drupal.org/project/commerce_kickstart
+  Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 3.17 ----------------- https://drupal.org/project/commons
+  Guardr 1.11 ------------------ https://drupal.org/project/guardr
   Open Outreach 1.9 ------------ https://drupal.org/project/openoutreach
   OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
   Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
@@ -52,6 +56,7 @@
 
   * Drush: Upgrade command line version 6 to mini-6-06-08-2014
   * Nginx: Add DBot to is_crawler list.
+  * Remove no longer supported NodeStream distro.
 
 # System upgrades in this release:
 
@@ -67,11 +72,14 @@
   * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
   * Add exception for symlinked /data/all
   * Add hint for HTTPS-only mode forced in local.settings.php
+  * Do not modify site_footer on hostmaster upgrade.
   * Fix -mtime expected values.
   * Fix cleanup for .restore vhost leftovers.
   * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
   * Fix permissions on sites/all/{modules,libraries,themes} globally.
+  * Fix weird typo in global.inc
   * Improve RVM cleanup.
+  * Issue #2278847 - Derivatives (Drupal Commons) can't be created on install.
   * Issue #334 - Backported provision_civicrm #1485920
   * Issue #334 - Delete the civicrm_class_loader variable after deploying.
   * Issue #334 - Install civicrm in any location (sites/ profiles + contrib).
@@ -81,6 +89,7 @@
   * Nginx: Fix limreq also for some really old vhosts.
   * Nginx: Modify only vhosts known as included in the protected mode.
   * Remove debugging mode in old codebases cleanup.
+  * Remove no longer needed/used contrib updates.
   * Restore default websh wrapper symlink as fast as possible.
   * Run manage_ltd_users every 3 minutes instead of every minute.
   * Update regex for exceptions in Nginx monitoring.

@@ -1,0 +1,13 @@
+diff -urp a/commons.install b/commons.install
+--- a/commons.install	2014-08-08 15:45:53.000000000 -0400
++++ b/commons.install	2014-08-08 15:38:43.000000000 -0400
+@@ -474,7 +474,8 @@ function commons_add_user_avatar($accoun
+   if ($account->uid) {
+     $picture_directory =  file_default_scheme() . '://' . variable_get('user_picture_path', 'pictures');
+     if(file_prepare_directory($picture_directory, FILE_CREATE_DIRECTORY)){
+-      $picture_result = drupal_http_request($base_url . '/profiles/commons/images/avatars/avatar-' . commons_normalize_name($account->name) . '.png');
++      $tmp_url = 'http://127.0.0.1:8888';
++      $picture_result = drupal_http_request($tmp_url . '/profiles/commons/images/avatars/avatar-' . commons_normalize_name($account->name) . '.png');
+       $picture_path = file_stream_wrapper_uri_normalize($picture_directory . '/picture-' . $account->uid . '-' . REQUEST_TIME . '.jpg');
+       $picture_file = file_save_data($picture_result->data, $picture_path, FILE_EXISTS_REPLACE);
+

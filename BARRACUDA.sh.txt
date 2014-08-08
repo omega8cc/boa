@@ -7502,6 +7502,18 @@ fi
 
 
 ###--------------------###
+if [ ! -e "/var/www/nginx-default/profiles/commons/images/avatars/user-avatar.png" ] ; then
+  if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/var/commons/images" ] ; then
+    mkdir -p /var/www/nginx-default/profiles/commons
+    cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/var/commons/images /var/www/nginx-default/profiles/commons/
+    chown -R www-data:www-data /var/www/nginx-default/profiles &> /dev/null
+    find /var/www/nginx-default/profiles -type d -exec chmod 0755 {} \; &> /dev/null
+    find /var/www/nginx-default/profiles -type f -exec chmod 0644 {} \; &> /dev/null
+  fi
+fi
+
+
+###--------------------###
 if [ ! -e "/var/xdrago/log/umask_fixed_shell_sftp.log" ] ; then
   if [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] ; then
     _DO_NOTHING=YES
