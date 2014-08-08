@@ -7,7 +7,7 @@
 
   This release includes updated versions of all supported Drupal platforms to
   provide latest Drupal 7 and Pressflow 6 core, plus some changes, improvements,
-  bug fixes, and seven (7) updated Octopus platforms.
+  bug fixes, and many updated Octopus platforms.
 
   NOTE: Since the first Edition in the BOA-2.3.x series is not ready for release
   yet, and new Drupal core has been released to fix security issues, followed
@@ -35,6 +35,7 @@
   aGov 1.2 --------------------- https://drupal.org/project/agov
   Commerce 1.29 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 3.17 ----------------- https://drupal.org/project/commons
   Guardr 1.11 ------------------ https://drupal.org/project/guardr
   Open Outreach 1.9 ------------ https://drupal.org/project/openoutreach
   OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
