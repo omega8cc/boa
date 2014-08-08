@@ -171,7 +171,6 @@ _PHP_CLI_VERSION=5.3
 ### FSR ----------- Feature Server
 ### GDR ----------- Guardr
 ### MNS ----------- Managing News
-### NS7 ----------- NodeStream D7 (off)
 ### OA7 ----------- Open Atrium D7
 ### OAM ----------- Open Atrium D6
 ### OAY ----------- Open Academy
@@ -194,7 +193,7 @@ _PHP_CLI_VERSION=5.3
 ### Examples:
 ###
 ### _PLATFORMS_LIST=ALL
-### _PLATFORMS_LIST="D7P D6P OAM MNS NS7 OOH"
+### _PLATFORMS_LIST="D7P D6P PPY RST OOH"
 ###
 _PLATFORMS_LIST="D7P D7S D7D D6P D6S D6D"
 
@@ -689,7 +688,6 @@ _DRUPAL8="8.0-dev-120915"
 _ERPAL=7.x-2.0-beta4
 _GUARDR=7.x-1.11
 _MANAGINGNEWS=1.2.4
-_NODESTREAM7=7.x-2.0-rc5
 _OPEN_DEALS=1.33
 _OPENACADEMY=7.x-1.0
 _OPENATRIUM6=6.x-1.7
@@ -1494,7 +1492,6 @@ do
   sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
   sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
   sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_NODESTREAM7/$_NODESTREAM7/g"             $Files &> /dev/null
   sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
   sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
   sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
