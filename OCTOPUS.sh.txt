@@ -667,7 +667,7 @@ if [ -n "${STY+x}" ]; then
   _SPINNER=NO
 fi
 if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION=mini-6-06-08-2014
+  _DRUSH_VERSION=mini-6-08-08-2014
 fi
 
 ###

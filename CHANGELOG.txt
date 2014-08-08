@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri Aug  8 16:39:42 PDT 2014
+### Latest hotfix added on: Fri Aug  8 16:52:40 PDT 2014
 
 # Release Notes:
 
@@ -54,7 +54,7 @@
 
 # Changes in this release:
 
-  * Drush: Upgrade command line version 6 to mini-6-06-08-2014
+  * Drush: Upgrade command line version 6 to mini-6-08-08-2014
   * Nginx: Add DBot to is_crawler list.
   * Remove no longer supported NodeStream distro.
 
