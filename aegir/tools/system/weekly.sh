@@ -680,7 +680,7 @@ action () {
         if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           check_limits
           if [ -e "$_THIS_HM_SITE" ] ; then
-            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> Aegir $_CLIENT_OPTION $_ENGINE_NR' &> /dev/null"
+            su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster vset --always-set site_footer 'Weekly Usage Monitor | $_DATE | Disk <strong>$HomSizH</strong> MB | Databases <strong>$SumDatH</strong> MB | <strong>$_CLIENT_CORES</strong> Aegir $_CLIENT_OPTION $_ENGINE_NR' &> /dev/null"
             su -s /bin/bash - $_THIS_HM_USER -c "drush @hostmaster cc all &> /dev/null"
           fi
         else
