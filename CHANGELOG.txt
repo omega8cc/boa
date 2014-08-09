@@ -68,8 +68,6 @@
 # Fixes in this release:
 
   * Add cleanup for .tmp in sub-accounts.
-  * Fix cleanup for drush aliases in sub-accounts.
-  * Improve cleanup for empty platforms directories.
   * Add cleanup for drush-backups leftovers.
   * Add cleanup for various /var/backups/* leftovers.
   * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
@@ -78,9 +76,11 @@
   * Do not modify site_footer on hostmaster upgrade.
   * Fix -mtime expected values.
   * Fix cleanup for .restore vhost leftovers.
+  * Fix cleanup for drush aliases in sub-accounts.
   * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
   * Fix permissions on sites/all/{modules,libraries,themes} globally.
   * Fix weird typo in global.inc
+  * Improve cleanup for empty platforms directories.
   * Improve RVM cleanup.
   * Issue #2278847 - Derivatives (Drupal Commons) can't be created on install.
   * Issue #334 - Backported provision_civicrm #1485920
