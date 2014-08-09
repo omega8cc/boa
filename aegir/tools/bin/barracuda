@@ -129,7 +129,7 @@ up_action ()
           n=8
         else
           if [ "$_L_VMFAMILY" = "VS" ] ; then
-            if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
+            if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
               n=8
             else
               n=$((RANDOM%800+80))
