@@ -514,12 +514,13 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."
-  msg "$_STATUS B: Uninstalling css_emimage module..."
   if [ "$_DEBUG_MODE" = "YES" ] ; then
+    msg "$_STATUS B: Uninstalling css_emimage module in debug mode b/u"
     $_DRUSHCMD @hostmaster dis css_emimage -y
     $_DRUSHCMD @hostmaster clean-modules -y
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
   else
+    msg "$_STATUS B: Uninstalling css_emimage module before upgrade..."
     $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
     $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
@@ -676,10 +677,12 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
   fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
+    msg "$_STATUS B: Uninstalling css_emimage module in debug mode a/u"
     $_DRUSHCMD @hostmaster dis css_emimage -y
     $_DRUSHCMD @hostmaster clean-modules -y
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
   else
+    msg "$_STATUS B: Uninstalling css_emimage module after upgrade..."
     $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
     $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
