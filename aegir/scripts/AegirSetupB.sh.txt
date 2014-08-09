@@ -515,9 +515,15 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
 else
   msg "$_STATUS B: Testing previous install..."
   msg "$_STATUS B: Uninstalling css_emimage module..."
-  $_DRUSHCMD @hostmaster dis css_emimage -y
-  $_DRUSHCMD @hostmaster clean-modules -y
-  $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    $_DRUSHCMD @hostmaster dis css_emimage -y
+    $_DRUSHCMD @hostmaster clean-modules -y
+    $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
+  else
+    $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
+    $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
+    $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
+  fi
   if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
     rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
   fi
@@ -669,9 +675,15 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
   fi
-  $_DRUSHCMD @hostmaster dis css_emimage -y
-  $_DRUSHCMD @hostmaster clean-modules -y
-  $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    $_DRUSHCMD @hostmaster dis css_emimage -y
+    $_DRUSHCMD @hostmaster clean-modules -y
+    $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
+  else
+    $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
+    $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
+    $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
+  fi
   $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc
   rm -f -r $_HOSTMASTER_ROOT/modules/cookie_cache_bypass
