@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sat Aug  9 04:15:04 PDT 2014
+### Latest hotfix added on: Sat Aug  9 08:10:30 PDT 2014
 
 # Release Notes:
 
@@ -63,6 +63,7 @@
   * Nginx 1.7.4
   * OpenSSL 1.0.1i (if installed from sources)
   * PHP: ionCube loader 4.6.1
+  * PHP: Zend OPcache master-30-07-2014
 
 # Fixes in this release:
 
