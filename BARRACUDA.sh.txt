@@ -5193,13 +5193,13 @@ check_php_rebuild () {
   if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_PHP_FORCE_REINSTALL" = "YES" ] ; then
     _PHP_INSTALLED=5.x
     if [ "$1" = "55" ] ; then
-      rm -f /var/xdrago/log/*5.5*
+      rm -f /var/xdrago/log/installed-5.5*
     elif [ "$1" = "54" ] ; then
-      rm -f /var/xdrago/log/*5.4*
+      rm -f /var/xdrago/log/installed-5.4*
     elif [ "$1" = "53" ] ; then
-      rm -f /var/xdrago/log/*5.3*
+      rm -f /var/xdrago/log/installed-5.3*
     elif [ "$1" = "52" ] ; then
-      rm -f /var/xdrago/log/*5.2*
+      rm -f /var/xdrago/log/installed-5.2*
     fi
     msg "INFO: PHP to $_PHP_VERSION rebuild forced"
   else
