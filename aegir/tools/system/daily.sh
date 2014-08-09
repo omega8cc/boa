@@ -1353,6 +1353,8 @@ purge_cruft_machine () {
     if [ -e "/home/${_THIS_HM_USER}.ftp/platforms/$i" ] ; then
       RevisionTest=$(ls /home/${_THIS_HM_USER}.ftp/platforms/$i | wc -l | tr -d "\n" 2>&1)
       if [ "$RevisionTest" -lt "2" ] && [ ! -z "$RevisionTest" ] ; then
+        chattr -i /home/${_THIS_HM_USER}.ftp/platforms   &> /dev/null
+        chattr -i /home/${_THIS_HM_USER}.ftp/platforms/* &> /dev/null
         rm -f -r /home/${_THIS_HM_USER}.ftp/platforms/$i
       fi
     fi
