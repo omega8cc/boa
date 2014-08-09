@@ -50,7 +50,6 @@
   * RVM: Add exceptions for gems which can't be installed in Limited Shell.
   * Shell: Compass Tools: Allow to access guard.
   * Shell: Improve config to better support advanced Drush commands over SSH.
-  * Shell: Improve Drush over SSH experience.
 
 # Changes in this release:
 
