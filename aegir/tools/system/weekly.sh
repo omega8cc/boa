@@ -703,7 +703,7 @@ action () {
 ###--------------------###
 echo "INFO: Weekly maintenance start"
 _NOW=`date +%y%m%d-%H%M`
-_DATE=`date +%y:%m:%d`
+_DATE=`date`
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
 if [[ "$_VM_TEST" =~ beng ]] ; then
