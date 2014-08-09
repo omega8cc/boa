@@ -1165,7 +1165,7 @@ cleanup_ghost_vhosts () {
       else
         if [ ! -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
           mkdir -p $User/undo
-          mv -f $User/config/server_master/nginx/vhost.d/$Site $User/undo/ &> /dev/null
+          mv -f $Site $User/undo/ &> /dev/null
           echo GHOST vhost for $Dom with no drushrc detected and moved to $User/undo/
         fi
       fi
