@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Fri Aug  8 18:47:28 PDT 2014
+### Latest hotfix added on: Sat Aug  9 04:15:04 PDT 2014
 
 # Release Notes:
 
@@ -38,7 +38,7 @@
   Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
   Commons 3.17 ----------------- https://drupal.org/project/commons
   Guardr 1.11 ------------------ https://drupal.org/project/guardr
-  Open Outreach 1.9 ------------ https://drupal.org/project/openoutreach
+  Open Outreach 1.10 ----------- https://drupal.org/project/openoutreach
   OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
   Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
 
