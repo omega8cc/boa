@@ -1359,10 +1359,14 @@ purge_cruft_machine () {
       fi
     fi
     if [ -d "$User/distro/$i" ] ; then
+      if [ ! -d "$User/distro/$i/keys" ] ; then
+        mkdir -p $User/distro/$i/keys
+      fi
       RevisionTest=$(ls $User/distro/$i | wc -l | tr -d "\n" 2>&1)
       if [ "$RevisionTest" -lt "2" ] && [ ! -z "$RevisionTest" ] ; then
         mkdir -p $User/undo
         mv -f $User/distro/$i $User/undo/ &> /dev/null
+        echo GHOST revision $User/distro/$i detected and moved to $User/undo/
       fi
     fi
   done

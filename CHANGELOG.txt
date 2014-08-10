@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sat Aug  9 08:10:30 PDT 2014
+### Latest hotfix added on: Sun Aug 10 06:35:42 PDT 2014
 
 # Release Notes:
 
@@ -86,6 +86,7 @@
   * Issue #334 - Backported provision_civicrm #1485920
   * Issue #334 - Delete the civicrm_class_loader variable after deploying.
   * Issue #334 - Install civicrm in any location (sites/ profiles + contrib).
+  * Make sure that /keys subdirectory exists to avoid active platforms cleanup.
   * Make sure that local IPs are never blocked by mistake.
   * Never touch websh wrapper to avoid high load because of redirect loop.
   * Nginx: Detected $device is not used in Boost config, only in Speed Booster.
