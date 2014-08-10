@@ -114,6 +114,7 @@ rm -f /var/lib/redis/*
 rm -f /var/log/redis/redis-server.log
 /etc/init.d/redis-server start
 rm -f /var/run/boa_wait.pid
+rm -f /var/run/daily-fix.pid
 echo "Redis server restarted"
 
 rm -f /var/run/boa_run.pid
