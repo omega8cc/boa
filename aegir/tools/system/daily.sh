@@ -3,27 +3,8 @@
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 
-###----------------------------------------###
-### AUTOMATED MAINTENANCE CONFIGURATION    ###
-###----------------------------------------###
-
-_DOW=`date +%w`
-if [ "$_DOW" = "6" ] ; then
-  _MODULES_ON_SEVEN="robotstxt"
-  _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update memcache memcache_admin performance search_krumo security_review site_audit stage_file_proxy syslog ultimate_cron update varnish watchdog_live xhprof"
-  _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel hacked javascript_aggregator l10n_update memcache memcache_admin performance poormanscron search_krumo security_review stage_file_proxy supercron syslog ultimate_cron update varnish watchdog_live xhprof"
-else
-  _MODULES_ON_SEVEN="robotstxt"
-  _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_SEVEN="dblog syslog update"
-  _MODULES_OFF_SIX="dblog syslog update"
-fi
-
 ###-------------SYSTEM-----------------###
 
-#
-# Enable chattr.
 enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
@@ -39,8 +20,7 @@ enable_chattr () {
     chattr +i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
-#
-# Disable chattr.
+
 disable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     if [ "$1" != "${_THIS_HM_USER}.ftp" ] ; then
@@ -56,7 +36,6 @@ disable_chattr () {
     chattr -i /home/$1/.drush/*.ini  &> /dev/null
   fi
 }
-#
 
 run_drush4_cmd () {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1" &> /dev/null
@@ -155,17 +134,38 @@ check_if_skip () {
   done
 }
 
+check_if_force () {
+  for s in $_MODULES_FORCE; do
+    if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
+      _FORCE=YES
+      echo $1 is blacklisted and will be forcefully disabled in $Dom
+    fi
+  done
+}
+
 disable_modules () {
   for m in $1; do
     _SKIP=NO
+    _FORCE=NO
     if [ ! -z "$_MODULES_SKIP" ] ; then
       check_if_skip "$m"
+    fi
+    if [ ! -z "$_MODULES_FORCE" ] ; then
+      check_if_force "$m"
     fi
     if [ "$_SKIP" = "NO" ] ; then
       _MODULE_TEST=$(run_drush4_nosilent_cmd "pml --status=enabled --type=module | grep \($m\)")
       if [[ "$_MODULE_TEST" =~ "($m)" ]] ; then
-        check_if_required "$m"
-        if [ "$_REQ" = "NO" ] ; then
+        if [ "$_FORCE" = "NO" ] ; then
+          check_if_required "$m"
+        else
+          echo $m dependencies not checked in $Dom
+          _REQ=FCE
+        fi
+        if [ "$_REQ" = "FCE" ] ; then
+          run_drush4_cmd "dis $m -y"
+          echo $m FCE disabled in $Dom
+        elif [ "$_REQ" = "NO" ] ; then
           run_drush4_cmd "dis $m -y"
           echo $m disabled in $Dom
         elif [ "$_REQ" = "NULL" ] ; then
@@ -1498,14 +1498,31 @@ action () {
 
 ###--------------------###
 echo "INFO: Daily maintenance start"
+#
 _NOW=`date +%y%m%d-%H%M`
+_DOW=`date +%w`
 _HOST_TEST=`uname -n 2>&1`
 _VM_TEST=`uname -a 2>&1`
+#
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
+  _MODULES_FORCE="background_process cookie_cache_bypass css_gzip hacked javascript_aggregator memcache memcache_admin poormanscron search_krumo security_review site_audit stage_file_proxy syslog supercron ultimate_cron varnish watchdog_live xhprof"
 else
   _VMFAMILY="XEN"
 fi
+#
+if [ "$_DOW" = "6" ] ; then
+  _MODULES_ON_SEVEN="robotstxt"
+  _MODULES_ON_SIX="path_alias_cache robotstxt"
+  _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update memcache memcache_admin performance search_krumo security_review site_audit stage_file_proxy syslog ultimate_cron update varnish watchdog_live xhprof"
+  _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel hacked javascript_aggregator l10n_update memcache memcache_admin performance poormanscron search_krumo security_review stage_file_proxy supercron syslog ultimate_cron update varnish watchdog_live xhprof"
+else
+  _MODULES_ON_SEVEN="robotstxt"
+  _MODULES_ON_SIX="path_alias_cache robotstxt"
+  _MODULES_OFF_SEVEN="background_process dblog syslog update"
+  _MODULES_OFF_SIX="background_process dblog syslog update"
+fi
+#
 _CTRL_TPL_FORCE_UPDATE=YES
 sed -i "s/58 15/58 2/g" /var/spool/cron/crontabs/root &> /dev/null
 chown root:crontab /var/spool/cron/crontabs/root
