@@ -129,7 +129,7 @@ check_if_skip () {
   for s in $_MODULES_SKIP; do
     if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
       _SKIP=YES
-      echo $1 is whitelisted and will not be disabled in $Dom
+      #echo $1 is whitelisted and will not be disabled in $Dom
     fi
   done
 }
@@ -138,7 +138,7 @@ check_if_force () {
   for s in $_MODULES_FORCE; do
     if [ ! -z "$1" ] && [ "$s" = "$1" ] ; then
       _FORCE=YES
-      echo $1 is blacklisted and will be forcefully disabled in $Dom
+      #echo $1 is blacklisted and will be forcefully disabled in $Dom
     fi
   done
 }
