@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Sun Aug 10 06:35:42 PDT 2014
+### Latest hotfix added on: Mon Aug 11 16:12:44 PDT 2014
 
 # Release Notes:
 
@@ -37,13 +37,16 @@
   Commerce 1.29 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
   Commons 3.17 ----------------- https://drupal.org/project/commons
+  ERPAL 2.0-b5 ----------------- https://drupal.org/project/erpal
   Guardr 1.11 ------------------ https://drupal.org/project/guardr
   Open Outreach 1.10 ----------- https://drupal.org/project/openoutreach
   OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
   Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
+  Restaurant 1.0-b1 ------------ https://drupal.org/project/restaurant
 
 # New features and enhancements in this release:
 
+  * Allow to define always disabled modules via _MODULES_FORCE variable.
   * Eldir: Add subtle 3D and round some edges.
   * Eldir: Improve spacing and hide useless headers.
   * Fix permissions on sites/all/{modules,libraries,themes} on Platform Verify.
@@ -56,9 +59,11 @@
   * Drush: Upgrade command line version 6 to mini-6-08-08-2014
   * Nginx: Add DBot to is_crawler list.
   * Remove no longer supported NodeStream distro.
+  * Run complete modules-dis-list weekly (Saturday) and basic list daily.
 
 # System upgrades in this release:
 
+  * MariaDB 10.0.13
   * MariaDB 5.5.39
   * Nginx 1.7.4
   * OpenSSL 1.0.1i (if installed from sources)
@@ -77,6 +82,7 @@
   * Fix -mtime expected values.
   * Fix cleanup for .restore vhost leftovers.
   * Fix cleanup for drush aliases in sub-accounts.
+  * Fix for unreliable _IS_OLD check on Octopus instances upgrade.
   * Fix Nginx monitor to respect all whitelisted POST requests in both modes.
   * Fix permissions on sites/all/{modules,libraries,themes} globally.
   * Fix weird typo in global.inc
@@ -92,6 +98,7 @@
   * Nginx: Detected $device is not used in Boost config, only in Speed Booster.
   * Nginx: Fix limreq also for some really old vhosts.
   * Nginx: Modify only vhosts known as included in the protected mode.
+  * Remove /var/run/daily-fix.pid if exists when it shouldn't.
   * Remove debugging mode in old codebases cleanup.
   * Remove no longer needed/used contrib updates.
   * Restore default websh wrapper symlink as fast as possible.
