@@ -618,7 +618,7 @@ _F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.10 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.2 $_SMALLCORE7 P.$_THIS_CORE"
-_F_RESTAURANT="Restaurant 1.0-v5 $_SMALLCORE7 P.$_THIS_CORE"
+_F_RESTAURANT="Restaurant 1.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_SPARK="Spark 1.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBER_CART_TESTING="Ubercart $_UBERCART7 [ud2] $_SMALLCORE7 P.$_THIS_CORE"
@@ -2179,16 +2179,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_RESTAURANT = "7.x-1.0-alpha5" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      rm -f -r {views}
-      get_dev_contrib "views-7.x-3.8.tar.gz"
-      cd $_SHRD_PRPATH/modules/contrib/views
-      # https://drupal.org/node/1766338#comment-6445882
-      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-revert-broken-filter-or-groups-1766338-7.patch &> /dev/null
-      # https://drupal.org/node/2037469
-      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/views-exposed-sorts-2037469-1.patch &> /dev/null
-    fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
