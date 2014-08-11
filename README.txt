@@ -169,7 +169,7 @@ Octopus can install the platforms listed below:
  Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
  Commons 3.17 ----------------- https://drupal.org/project/commons
  Drupal 7.31.1 ---------------- https://drupal.org/drupal-7.31
- ERPAL 2.0-b4 ----------------- https://drupal.org/project/erpal
+ ERPAL 2.0-b5 ----------------- https://drupal.org/project/erpal
  Guardr 1.11 ------------------ https://drupal.org/project/guardr
  Open Academy 1.0 ------------- https://drupal.org/project/openacademy
  Open Atrium 2.19 ------------- https://drupal.org/project/openatrium
@@ -181,7 +181,7 @@ Octopus can install the platforms listed below:
  OpenScholar 3.12.1 ----------- http://theopenscholar.org
  Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
- Restaurant 1.0-v5 ------------ https://drupal.org/project/restaurant
+ Restaurant 1.0-b1 ------------ https://drupal.org/project/restaurant
  Spark 1.0-b1 ----------------- https://drupal.org/project/spark
  Totem 1.1.2 ------------------ https://drupal.org/project/totem
  Ubercart 3.6 ----------------- https://drupal.org/project/ubercart
