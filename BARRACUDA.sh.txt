@@ -431,7 +431,7 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.6
+### _AEGIR_VERSION=BOA-2.2.9
 ###
 _AEGIR_VERSION=HEAD
 
