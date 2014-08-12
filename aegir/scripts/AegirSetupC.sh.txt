@@ -1013,7 +1013,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
-    sed -i "s/'Commons'/'Commons 2'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
     if [ $_COMMONS2 = "6.x-2.20" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {flag}
