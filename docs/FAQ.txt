@@ -13,7 +13,7 @@ A: Yes, but it is an unsupported feature, so you need to figure out how to
    do it properly and you should be prepared that things may explode without
    any warning after next BOA upgrade. The best place to ask for assistance is,
    as always, BOA group at: https://groups.drupal.org/boa
-   Check also: https://drupal.org/node/1416798
+   Check also: https://drupal.org/node/1416798 and https://github.com/omega8cc/boa/issues/359
 
 
 Q: Can I install services and apps not included in BOA?
