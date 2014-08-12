@@ -50,7 +50,6 @@ Contrib [S]upported:
  ckeditor ------------------- [D6,D7] --- [S]
  fbconnect ------------------ [D6,D7] --- [S]
  fckeditor ------------------ [D6] ------ [S]
- imageapi_optimize ---------- [D6,D7] --- [S] when IMG XTRAS is installed
  imagecache ----------------- [D6,D7] --- [S]
  imagecache_external -------- [D6,D7] --- [S]
  responsive_images ---------- [D7] ------ [S]
