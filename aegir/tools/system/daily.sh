@@ -1506,7 +1506,7 @@ _VM_TEST=`uname -a 2>&1`
 #
 if [[ "$_VM_TEST" =~ beng ]] ; then
   _VMFAMILY="VS"
-  _MODULES_FORCE="background_process cookie_cache_bypass css_gzip hacked javascript_aggregator memcache memcache_admin poormanscron search_krumo security_review site_audit stage_file_proxy syslog supercron ultimate_cron varnish watchdog_live xhprof"
+  _MODULES_FORCE="background_process coder cookie_cache_bypass css_gzip hacked javascript_aggregator memcache memcache_admin poormanscron search_krumo security_review site_audit stage_file_proxy syslog supercron ultimate_cron varnish watchdog_live xhprof"
 else
   _VMFAMILY="XEN"
 fi
