@@ -1067,7 +1067,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     remove_default_core_seven_profiles
     cd $_SHRD_PRPATH
     patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/commons_chicken_egg.patch &> /dev/null
-    sed -i "s/name = Commons/name = Commons 3/g" $_SHRD_PRPATH/$_REAL_PRNAME.info &> /dev/null
     rm -f -r $_SHRD_PRPATH/modules/contrib/entitycache
     rm -f -r $_SHRD_PRPATH/modules/contrib/registry_rebuild
   else
