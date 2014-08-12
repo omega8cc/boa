@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Tue Aug 12 11:38:02 PDT 2014
+### Latest hotfix added on: Tue Aug 12 14:05:57 PDT 2014
 
 # Release Notes:
 
@@ -36,6 +36,7 @@
   aGov 1.2 --------------------- https://drupal.org/project/agov
   Commerce 1.29 ---------------- https://drupal.org/project/commerce_kickstart
   Commerce 2.17 ---------------- https://drupal.org/project/commerce_kickstart
+  Commons 2.20 ----------------- https://drupal.org/project/commons
   Commons 3.17 ----------------- https://drupal.org/project/commons
   ERPAL 2.0-b5 ----------------- https://drupal.org/project/erpal
   Guardr 1.11 ------------------ https://drupal.org/project/guardr
@@ -79,7 +80,10 @@
   * Add daily auto-cleanup for ghost vhosts, platforms and drush aliases.
   * Add exception for symlinked /data/all
   * Add hint for HTTPS-only mode forced in local.settings.php
+  * Avoid "Is a directory" noise in the log.
+  * Commons 2.20 has changed its profile name from drupal_commons to commons.
   * Do not modify site_footer on hostmaster upgrade.
+  * Do not rename the legacy Commons profile name.
   * Fix -mtime expected values.
   * Fix cleanup for .restore vhost leftovers.
   * Fix cleanup for drush aliases in sub-accounts.
@@ -105,6 +109,7 @@
   * Remove no longer needed/used contrib updates.
   * Restore default websh wrapper symlink as fast as possible.
   * Run manage_ltd_users every 3 minutes instead of every minute.
+  * Update and improve docs/FAQ.txt
   * Update regex for exceptions in Nginx monitoring.
 
 
