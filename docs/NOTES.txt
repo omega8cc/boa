@@ -19,6 +19,7 @@
     ### BND --- Bind9 DNS Server (available on Debian only)
     ### BZR --- Bazaar
     ### FMG --- FFmpeg support
+    ### IMG --- Image Optimize binaries
     ### GIT --- Latest Git from sources
     ### SR1 --- Apache Solr 1 with Jetty 7
     ### SR3 --- Apache Solr 3 with Jetty 8
