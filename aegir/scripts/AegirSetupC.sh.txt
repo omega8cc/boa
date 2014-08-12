@@ -607,7 +607,7 @@ _F_GUARDR="Guardr 1.11 $_SMALLCORE7 P.$_THIS_CORE"
 _F_MANAGINGNEWS="MNews $_MANAGINGNEWS $_SMALLCORE6 P.$_THIS_CORE"
 _F_OPENACADEMY="Open Academy 1.0 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENATRIUM6="Open Atrium 1.7.2 $_SMALLCORE6 P.$_THIS_CORE"
-_F_OPENATRIUM7="Open Atrium 2.19 $_SMALLCORE7 P.$_THIS_CORE"
+_F_OPENATRIUM7="Open Atrium 2.21 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENBLOG="OpenBlog 1.0-v3 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENCHURCH="OpenChurch 1.12 $_SMALLCORE7 P.$_THIS_CORE"
 _F_OPENDEALS="Open Deals $_OPEN_DEALS $_SMALLCORE7 P.$_THIS_CORE"
@@ -1656,10 +1656,6 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
-    if [ $_OPENATRIUM7 = "7.x-2.19" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib
-      upgrade_contrib_less
-    fi
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
