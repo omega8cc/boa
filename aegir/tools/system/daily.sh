@@ -1168,8 +1168,8 @@ cleanup_ghost_vhosts () {
     fi
     if [ -e "$User/config/server_master/nginx/vhost.d/$Dom" ] ; then
       Plx=`cat $User/config/server_master/nginx/vhost.d/$Dom | grep "root " | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g"`
-      if [[ "$Plx" =~ "aegir/distro" ]] ; then
-        _SKIP_HM=YES
+      if [[ "$Plx" =~ "aegir/distro" ]] || [[ "$Dom" =~ "--CDN"($) ]] ; then
+        _SKIP_VHOST=YES
       else
         if [ ! -e "$User/.drush/$Dom.alias.drushrc.php" ] ; then
           mkdir -p $User/undo
