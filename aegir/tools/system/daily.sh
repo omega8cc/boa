@@ -1289,7 +1289,7 @@ check_old_empty_platforms () {
       do
         _THIS_PLATFORM_NAME=`echo "$Platform" | sed "s/.*platform_//g; s/.alias.drushrc.php//g" | awk '{ print $1}'`
         _THIS_PLATFORM_ROOT=`cat $Platform | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-        _THIS_PLATFORM_SITE=`grep "${_THIS_PLATFORM_ROOT}/sites/" $User/.drush/* | grep site_path`
+        _THIS_PLATFORM_SITE=`grep "${_THIS_PLATFORM_ROOT}/sites/" $User/.drush/*.drushrc.php | grep site_path`
         if [ ! -e "${_THIS_PLATFORM_ROOT}/sites/all" ] || [ ! -e "${_THIS_PLATFORM_ROOT}/index.php" ] ; then
           mkdir -p $User/undo
           mv -f $User/.drush/platform_${_THIS_PLATFORM_NAME}.alias.drushrc.php $User/undo/ &> /dev/null
@@ -1659,7 +1659,7 @@ if [ ! -e "/root/.upstart.cnf" ] ; then
   service cron reload &> /dev/null
 fi
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \;
-find /var/backups/jetty* -mtime +1 -exec rm -rf {} \;
+find /var/backups/jetty* -mtime +0 -exec rm -rf {} \;
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \;
 if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
   if [ -d "/var/backups/codebases-cleanup" ] ; then
