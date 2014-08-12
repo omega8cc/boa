@@ -986,7 +986,7 @@ fi
 commons_6_install () {
 ###---### Commons 6.x
 #
-_REAL_PRNAME="drupal_commons"
+_REAL_PRNAME="commons"
 _SHRD_PLNAME="commons-$_COMMONS2-$_SMALLCORE6"
 _SHRD_PLPATH="$_CORE/$_SHRD_PLNAME"
 _SHRD_PRPATH="$_SHRD_PLPATH/profiles/$_REAL_PRNAME"
@@ -1004,9 +1004,12 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal6_core
     fi
     cd $_CORE
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/commons-$_COMMONS2-core.tar.gz" | tar -xzf -
-    if [ -d "$_CORE/commons-$_COMMONS2" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/$_REAL_PRNAME-$_COMMONS2-core.tar.gz" | tar -xzf -
+    if [ -d "$_CORE/$_REAL_PRNAME-$_COMMONS2" ] ; then
       mv $_CORE/commons-$_COMMONS2 $_SHRD_PLPATH
+    fi
+    if [ -e "$_SHRD_PRPATH/drupal_commons.profile" ] && [ ! -e "$_SHRD_PRPATH/$_REAL_PRNAME.profile" ] ; then
+      mv -f $_SHRD_PRPATH/drupal_commons.profile $_SHRD_PRPATH/$_REAL_PRNAME.profile
     fi
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
@@ -2633,7 +2636,7 @@ if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
   if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/drushrc.php" ] ; then
-    $_DRUSHCMD php-script make_platform "$_F_COMMONS2" drupal_commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6 &> /dev/null
+    $_DRUSHCMD php-script make_platform "$_F_COMMONS2" commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
