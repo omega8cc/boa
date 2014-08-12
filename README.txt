@@ -151,6 +151,7 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 * MongoDB driver for PHP 5.3
 * GEOS extension for PHP 5.3 (experimental).
 * FFmpeg support.
+* ImageAPI Optimize advdef, advpng, jpegoptim, jpegtran, pngcrush, & pngquant binaries.
 * Bind9 DNS server.
 * Webmin Control Panel.
 * SQL Buddy database manager.
