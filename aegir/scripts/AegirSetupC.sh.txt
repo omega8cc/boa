@@ -1011,6 +1011,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     if [ -e "$_SHRD_PRPATH/drupal_commons.profile" ] && [ ! -e "$_SHRD_PRPATH/$_REAL_PRNAME.profile" ] ; then
       mv -f $_SHRD_PRPATH/drupal_commons.profile $_SHRD_PRPATH/$_REAL_PRNAME.profile
     fi
+    find $_SHRD_PRPATH -type f -exec sed -i "s/drupal_commons/commons/g" {} \; &> /dev/null
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
     if [ $_COMMONS2 = "6.x-2.20" ] ; then
