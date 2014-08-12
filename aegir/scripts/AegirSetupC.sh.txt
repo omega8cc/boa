@@ -595,7 +595,7 @@ _F_CIVICRM_M7="CiviCRM $_CIVICRM_M7 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COD="Conference 1.0-v5 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE1="Commerce 1.29 $_SMALLCORE7 P.$_THIS_CORE"
 _F_COMMERCE2="Commerce 2.17 $_SMALLCORE7 P.$_THIS_CORE"
-_F_COMMONS2="Commons 2.18 $_SMALLCORE6 P.$_THIS_CORE"
+_F_COMMONS2="Commons 2.20 $_SMALLCORE6 P.$_THIS_CORE"
 _F_COMMONS3="Commons 3.17 $_SMALLCORE7 P.$_THIS_CORE"
 _F_DRUPAL_EDGE_8="Drupal $_DRUPAL_EDGE_8"
 _F_DRUPAL6="Drupal $_SMALLCORE6 P.$_THIS_CORE"
@@ -1004,22 +1004,14 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
       prepare_drupal6_core
     fi
     cd $_CORE
-    get_distro_ext "commons-$_COMMONS2.tar.gz"
-    if [ -d "$_CORE/acquia_commons" ] ; then
-      mv $_CORE/acquia_commons $_SHRD_PLPATH
-    elif [ -d "$_CORE/commons-$_COMMONS2" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://ftp.drupal.org/files/projects/commons-$_COMMONS2-core.tar.gz" | tar -xzf -
+    if [ -d "$_CORE/commons-$_COMMONS2" ] ; then
       mv $_CORE/commons-$_COMMONS2 $_SHRD_PLPATH
-    else
-      mv $_CORE/commons $_SHRD_PLPATH
-    fi
-    if [ $_COMMONS2 = "6.x-2.13" ] ; then
-      cd $_SHRD_PRPATH/modules/contrib/og
-      patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/og_update_6205_commons_fix.patch &> /dev/null
     fi
     rm -f -r $_SHRD_PLPATH/profiles/default
     nocore_d6_dist_clean
     sed -i "s/'Commons'/'Commons 2'/g" $_SHRD_PRPATH/$_REAL_PRNAME.profile &> /dev/null
-    if [ $_COMMONS2 = "6.x-2.18" ] ; then
+    if [ $_COMMONS2 = "6.x-2.20" ] ; then
       cd $_SHRD_PRPATH/modules/contrib
       rm -f -r {flag}
       get_dev_contrib "flag-6.x-2.1.tar.gz"
