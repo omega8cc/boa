@@ -1,14 +1,8 @@
 #!/bin/bash
-###
-### /var/xdrago/guest-water.sh
-### sed -i "s/.*water.*//g" /etc/crontab
-### echo "01 *    * * *   root    bash /var/xdrago/guest-water.sh >/dev/null 2>&1" >> /etc/crontab
-### sed -i "/^$/d" /etc/crontab
-###
+
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
-#
-#
+
 local_ip_rg()
 {
   if [ -e "/root/.local.IP.list" ] ; then
@@ -45,8 +39,7 @@ local_ip_rg()
   sed -i "/^$/d" /etc/csf/csf.ignore &> /dev/null
   sed -i "/^$/d" /etc/csf/csf.allow &> /dev/null
 }
-#
-#
+
 guard_stats()
 {
   if [ -e "$_HA" ] ; then
@@ -75,7 +68,6 @@ guard_stats()
             csf -d $_IP Brute force SSH Server $_NR_TEST attacks
           fi
         fi
-        sleep 1
       fi
     done
   fi
@@ -105,7 +97,6 @@ guard_stats()
             csf -d $_IP Brute force Web Server $_NR_TEST attacks
           fi
         fi
-        sleep 1
       fi
     done
   fi
@@ -135,12 +126,15 @@ guard_stats()
             csf -d $_IP Brute force FTP Server $_NR_TEST attacks
           fi
         fi
-        sleep 1
       fi
     done
   fi
 }
+
 if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
+  n=$((RANDOM%800+80))
+  echo Waiting $n seconds...
+  sleep $n
   local_ip_rg
   _HA=/var/xdrago/monitor/hackcheck.archive.log
   _WA=/var/xdrago/monitor/scan_nginx.archive.log

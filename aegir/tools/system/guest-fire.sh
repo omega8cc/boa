@@ -1,14 +1,12 @@
 #!/bin/bash
-###
-### /var/xdrago/guest-fire.sh
-### sed -i "s/.*fire.*//g" /etc/crontab
-### echo "*  *    * * *   root    bash /var/xdrago/guest-fire.sh >/dev/null 2>&1" >> /etc/crontab
-### sed -i "/^$/d" /etc/crontab
-###
+
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
+
 guest_guard()
 {
+if [ ! -e "/var/run/fire.pid" ] ; then
+  touch /var/run/fire.pid
   if [ -e "/var/xdrago/monitor/ssh.log" ] ; then
     for _IP in `cat /var/xdrago/monitor/ssh.log | cut -d '#' -f1 | sort`
     do
@@ -22,10 +20,8 @@ guest_guard()
         csf -td $_IP 3600 -p 443
         csf -td $_IP 3600 -p 80
       fi
-      sleep 1
     done
   fi
-  sleep 1
   if [ -e "/var/xdrago/monitor/web.log" ] ; then
     for _IP in `cat /var/xdrago/monitor/web.log | cut -d '#' -f1 | sort`
     do
@@ -39,10 +35,8 @@ guest_guard()
         csf -td $_IP 3600 -p 443
         csf -td $_IP 3600 -p 80
       fi
-      sleep 1
     done
   fi
-  sleep 1
   if [ -e "/var/xdrago/monitor/ftp.log" ] ; then
     for _IP in `cat /var/xdrago/monitor/ftp.log | cut -d '#' -f1 | sort`
     do
@@ -56,15 +50,33 @@ guest_guard()
         csf -td $_IP 3600 -p 443
         csf -td $_IP 3600 -p 80
       fi
-      sleep 1
     done
   fi
+  rm -f /var/run/fire.pid
+fi
 }
+
 if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
   guest_guard
-  sleep 15
+  sleep 5
   guest_guard
-  sleep 15
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
+  guest_guard
+  sleep 5
   guest_guard
   if [ -e "/root/.local.IP.list" ] ; then
     for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`
@@ -73,6 +85,7 @@ if [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
       csf -tr $_IP &> /dev/null
     done
   fi
+  rm -f /var/run/fire.pid
 fi
 exit 0
 ###EOF2014###
