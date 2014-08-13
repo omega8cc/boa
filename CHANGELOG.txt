@@ -2,7 +2,7 @@
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
-### Latest hotfix added on: Tue Aug 12 14:05:57 PDT 2014
+### Latest hotfix added on: Wed Aug 13 05:55:25 PDT 2014
 
 # Release Notes:
 
@@ -44,7 +44,7 @@
   Open Outreach 1.10 ----------- https://drupal.org/project/openoutreach
   OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
   Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
-  Restaurant 1.0-b1 ------------ https://drupal.org/project/restaurant
+  Restaurant 1.0-b2 ------------ https://drupal.org/project/restaurant
 
 # New features and enhancements in this release:
 
