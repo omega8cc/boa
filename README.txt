@@ -141,22 +141,22 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
+* Compass Tools.
+* SPDY Nginx support.
+* PFS (Perfect Forward Secrecy) support in Nginx.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.
 * New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
-* LDAP Nginx support via third-party module.
-* SPDY Nginx support.
-* PFS (Perfect Forward Secrecy) support in Nginx.
-* MongoDB driver for PHP 5.3
-* GEOS extension for PHP 5.3 (experimental).
+* Image Optimize toolkit binaries.
 * FFmpeg support.
-* ImageAPI Optimize advdef, advpng, jpegoptim, jpegtran, pngcrush, & pngquant binaries.
 * Bind9 DNS server.
 * Webmin Control Panel.
 * SQL Buddy database manager.
 * Collectd server monitor.
-* Compass Tools.
+* LDAP Nginx support via third-party module (experimental).
+* MongoDB driver for PHP 5.3 (experimental).
+* GEOS extension for PHP 5.3 (experimental).
 
 
 ### OCTOPUS PLATFORMS
