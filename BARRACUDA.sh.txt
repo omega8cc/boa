@@ -278,6 +278,7 @@ _PHP_CLI_VERSION=5.3
 ### BZR --- Bazaar
 ### FMG --- FFmpeg support
 ### GIT --- Latest Git from sources
+### IMG --- Image Optimize binaries
 ### SR1 --- Apache Solr 1 with Jetty 7
 ### SR3 --- Apache Solr 3 with Jetty 8
 ### SR4 --- Apache Solr 4 with Jetty 8 or 9
@@ -5380,7 +5381,7 @@ strict_bin_permissions () {
     done
   done
 
-  _BACKEND_ITEMS="wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id which env nrsysmond newrelic-daemon avconv gs git"
+  _BACKEND_ITEMS="advdef advpng jpegoptim jpegtran pngcrush pngquant wkhtmltopdf wkhtmltoimage convert compass curl sass sass-convert scss wget redis-server logger sendmail java java7 java6 rrdtool bash dash ffmpeg flvtool2 id which env nrsysmond newrelic-daemon avconv gs git"
   if [ ! -z "$_BACKEND_ITEMS_LIST" ] ; then
     _BACKEND_ITEMS="$_BACKEND_ITEMS $_BACKEND_ITEMS_LIST"
   fi
@@ -6691,6 +6692,10 @@ if [ "$_REL_VERSION" = "trusty" ] ; then
   _EXTRA_PACKAGES="libgd2-noxpm-dev libgd2-xpm-dev libgd2-dev libgd3 libxpm-dev $_EXTRA_PACKAGES"
 else
   _EXTRA_PACKAGES="libgd2-xpm $_EXTRA_PACKAGES"
+fi
+
+if [[ "_XTRAS_LIST" =~ "IMG" ]] ; then
+  _EXTRA_PACKAGES="advancecomp jpegoptim libjpeg-progs optipng pngcrush pngquant $_EXTRA_PACKAGES"
 fi
 
 if [ "$_REL_VERSION" = "wheezy" ] || [ "$_REL_VERSION" = "squeeze" ] || [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_REL_VERSION" = "maverick" ] || [ "$_REL_VERSION" = "natty" ] ; then
