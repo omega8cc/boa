@@ -94,8 +94,8 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
             PHP_INI="$HOME/.drush/rphp.ini"
           fi
         fi
-        if [[ "$_ALL" =~ "drush make" ]] || [[ "$_ALL" =~ "drush6 make" ]] || [[ "$_ALL" =~ "drush7 make" ]] ; then
-          if [[ "$_PWD" =~ "/static" ]] ; then
+        if [[ "$_ALL" =~ "drush make" ]] || [[ "$_ALL" =~ "drush6 make" ]] || [[ "$_ALL" =~ "drush7 make" ]] || [[ "$_ALL" =~ "drush6 cc drush" ]] ; then
+          if [[ "$_PWD" =~ "/static" ]] || [[ "$_ALL" =~ "drush6 cc drush" ]] ; then
             _CORRECT=YES
           else
             if [[ "$_ALL" =~ "make-generate" ]] && [ -f "$_PWD/settings.php" ] ; then

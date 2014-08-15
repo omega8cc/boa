@@ -676,16 +676,18 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
     $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
   fi
-  if [ "$_DEBUG_MODE" = "YES" ] ; then
-    msg "$_STATUS B: Uninstalling css_emimage module in debug mode a/u"
-    $_DRUSHCMD @hostmaster dis css_emimage -y
-    $_DRUSHCMD @hostmaster clean-modules -y
-    $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
-  else
-    msg "$_STATUS B: Uninstalling css_emimage module after upgrade..."
-    $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
-    $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
-    $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
+  if [ "$_STATUS" = "UPGRADE" ] ; then
+    if [ "$_DEBUG_MODE" = "YES" ] ; then
+      msg "$_STATUS B: Uninstalling css_emimage module in debug mode a/u"
+      $_DRUSHCMD @hostmaster dis css_emimage -y
+      $_DRUSHCMD @hostmaster clean-modules -y
+      $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
+    else
+      msg "$_STATUS B: Uninstalling css_emimage module after upgrade..."
+      $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
+      $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
+      $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
+    fi
   fi
   $_DRUSHCMD @hostmaster dis hosting_backup_gc path_alias_cache syslog dblog -y &> /dev/null
   rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_gc

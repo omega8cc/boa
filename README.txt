@@ -141,21 +141,22 @@ NOTE: BOA maintainers currently use only Debian based 64bit systems/servers.
 
 === Optional add-ons - see docs/NOTES.txt for details
 
+* Compass Tools.
+* SPDY Nginx support.
+* PFS (Perfect Forward Secrecy) support in Nginx.
 * MultiCore Apache Solr 1.4.1 with Jetty 7 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 3.6.2 with Jetty 8 - see docs/SOLR.txt for details.
 * MultiCore Apache Solr 4.2.0 with Jetty 8 or Jetty 9 on Precise and Wheezy.
 * New Relic Server and Apps Monitor with per Site/Instance/Server reporting.
-* LDAP Nginx support via third-party module.
-* SPDY Nginx support.
-* PFS (Perfect Forward Secrecy) support in Nginx.
-* MongoDB driver for PHP 5.3
-* GEOS extension for PHP 5.3 (experimental).
+* Image Optimize toolkit binaries.
 * FFmpeg support.
 * Bind9 DNS server.
 * Webmin Control Panel.
 * SQL Buddy database manager.
 * Collectd server monitor.
-* Compass Tools.
+* LDAP Nginx support via third-party module (experimental).
+* MongoDB driver for PHP 5.3 (experimental).
+* GEOS extension for PHP 5.3 (experimental).
 
 
 ### OCTOPUS PLATFORMS
@@ -179,7 +180,7 @@ Octopus can install the platforms listed below:
  OpenChurch 1.12 -------------- https://drupal.org/project/openchurch
  OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
  OpenScholar 3.12.1 ----------- http://theopenscholar.org
- Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.11 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b2 ------------ https://drupal.org/project/restaurant
  Spark 1.0-b1 ----------------- https://drupal.org/project/spark
