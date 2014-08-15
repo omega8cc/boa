@@ -2317,7 +2317,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_CORE
     mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
     cd $_SHRD_PRPATH/libraries
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://www.drupal.org/files/colorbox.zip" -o colorbox-master.zip
     unzip -qq colorbox-master.zip &> /dev/null
     rm -f colorbox-master.zip
     mv -f colorbox-master colorbox
