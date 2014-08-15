@@ -180,7 +180,7 @@ Octopus can install the platforms listed below:
  OpenChurch 1.12 -------------- https://drupal.org/project/openchurch
  OpenPublic 1.0-rc4 ----------- https://drupal.org/project/openpublic
  OpenScholar 3.12.1 ----------- http://theopenscholar.org
- Panopoly 1.10 ---------------- https://drupal.org/project/panopoly
+ Panopoly 1.11 ---------------- https://drupal.org/project/panopoly
  Recruiter 1.2 ---------------- https://drupal.org/project/recruiter
  Restaurant 1.0-b2 ------------ https://drupal.org/project/restaurant
  Spark 1.0-b1 ----------------- https://drupal.org/project/spark
