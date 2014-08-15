@@ -2390,10 +2390,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/minimal/minimal.info &> /dev/null
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
-    unzip -qq colorbox-master.zip &> /dev/null
-    rm -f colorbox-master.zip
-    mv -f colorbox-master colorbox
+    get_dev_contrib "colorbox-1.5.13.zip"
+    if [ -d "colorbox-master" ] ; then
+      mv -f colorbox-master colorbox
+    fi
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
     get_dev_contrib "colorbox-7.x-2.7.tar.gz"
@@ -2455,10 +2455,10 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     sed -i "s/version = VERSION/version = \"$_SMALLCORE7\"/g" $_SHRD_PLPATH/profiles/testing/testing.info &> /dev/null
     mkdir -p $_SHRD_PRPATH/libraries
     cd $_SHRD_PRPATH/libraries
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://codeload.github.com/jackmoore/colorbox/zip/master" -o colorbox-master.zip
-    unzip -qq colorbox-master.zip &> /dev/null
-    rm -f colorbox-master.zip
-    mv -f colorbox-master colorbox
+    get_dev_contrib "colorbox-1.5.13.zip"
+    if [ -d "colorbox-master" ] ; then
+      mv -f colorbox-master colorbox
+    fi
     mkdir -p $_SHRD_PRPATH/modules
     cd $_SHRD_PRPATH/modules
     get_dev_contrib "colorbox-7.x-2.7.tar.gz"
