@@ -2317,10 +2317,7 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     cd $_CORE
     mkdir -p $_SHRD_PRPATH/{modules,themes,libraries}
     cd $_SHRD_PRPATH/libraries
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "https://www.drupal.org/files/colorbox.zip" -o colorbox-master.zip
-    unzip -qq colorbox-master.zip &> /dev/null
-    rm -f colorbox-master.zip
-    mv -f colorbox-master colorbox
+    get_dev_contrib "colorbox-1.3.18.zip"
     cd $_SHRD_PRPATH/modules
     get_dev_contrib "admin_menu-6.x-3.x-dev.tar.gz"
     get_dev_contrib "cck-6.x-2.9.tar.gz"
