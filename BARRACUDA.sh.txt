@@ -3610,6 +3610,11 @@ barracuda_cnf () {
       sed -i "s/.*_SSH_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
+    _GIT_FORCE_REINSTALL_TEST=$(grep _GIT_FORCE_REINSTALL /root/.barracuda.cnf)
+    if [[ "$_GIT_FORCE_REINSTALL_TEST" =~ "_GIT_FORCE_REINSTALL" ]] ; then
+      sed -i "s/.*_GIT_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
     _FULL_FORCE_REINSTALL_TEST=$(grep _FULL_FORCE_REINSTALL /root/.barracuda.cnf)
     if [[ "$_FULL_FORCE_REINSTALL_TEST" =~ "_FULL_FORCE_REINSTALL" ]] ; then
       sed -i "s/.*_FULL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
