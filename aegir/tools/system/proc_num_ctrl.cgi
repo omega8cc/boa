@@ -19,6 +19,10 @@ if (!-d "/var/run/mysqld") {
 system("service redis-server restart") if (!-e "/var/run/redis/redis.sock" && $redissocket);
 sleep(2);
 system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
+&convert_action;
+if (!-e "/root/.no.fpm.cpu.limit.cnf") {
+  &fpm_action;
+}
 &mysqld_action;
 &global_action;
 foreach $USER (sort keys %li_cnt) {
@@ -281,6 +285,41 @@ sub global_action
     }
   }
 }
+
+#############################################################################
+sub convert_action
+{
+  local(@CRTARR) = `top -n 1 | grep convert 2>&1`;
+  foreach $line (@CRTARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
+    local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
+    if ($COMMAND =~ /convert/ && $CPU > 90 && $S =~ /R/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $USER $CPU" >> /var/xdrago/log/convert.kill.log`;
+    }
+  }
+}
+
+#############################################################################
+sub fpm_action
+{
+  local(@FPMARR) = `top -n 1 | grep php-fpm 2>&1`;
+  foreach $line (@FPMARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
+    local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
+    if ($COMMAND =~ /php-fpm/ && $CPU > 90 && $S =~ /R/ && $USER !~ /root/)
+    {
+      `kill -9 $PID`;
+       $timedate=`date +%y%m%d-%H%M`;
+       chomp($timedate);
+      `echo "$timedate $USER $CPU" >> /var/xdrago/log/php-fpm.kill.log`;
+    }
+  }
+}
+
 #############################################################################
 sub mysqld_action
 {
@@ -307,10 +346,6 @@ sub mysqld_action
             $timedate=`date +%y%m%d-%H%M`;
             chomp($timedate);
             `echo "$timedate $CPU $MAXCPU" >> /var/xdrago/log/mysql.forced.restart.log`;
-            print "B LINE is $line";
-          }
-          else {
-            print "C LINE is $line";
           }
         }
       }

@@ -47,6 +47,11 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+   /root/.no.fpm.cpu.limit.cnf
+
+ This file, if exists, allows to disable aggressive php-fpm processes
+ monitoring and killing if any is using more than 90% of CPU.
+
    /root/.no.swap.clear.cnf
 
  This file, if exists, allows to skip the otherwise default procedure
