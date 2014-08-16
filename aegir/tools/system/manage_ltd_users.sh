@@ -905,12 +905,26 @@ else
       rm -f $_THIS_LTD_CONF
     fi
   fi
-  if [ -x "/bin/websh" ] && [ -L "/bin/sh" ] ; then
+  if [ -L "/bin/sh" ] ; then
     _WEB_SH=`readlink -n /bin/sh`
     _WEB_SH=`echo -n $_WEB_SH | tr -d "\n"`
-    if [ "$_WEB_SH" != "/bin/websh" ] ; then
-      rm -f /bin/sh
-      ln -s /bin/websh /bin/sh
+    if [ -x "/bin/websh" ] ; then
+      if [ "$_WEB_SH" != "/bin/websh" ] ; then
+        rm -f /bin/sh
+        ln -s /bin/websh /bin/sh
+      fi
+    else
+      if [ -x "/bin/dash" ] ; then
+        if [ "$_WEB_SH" != "/bin/dash" ] ; then
+          rm -f /bin/sh
+          ln -s /bin/dash /bin/sh
+        fi
+      else
+        if [ "$_WEB_SH" != "/bin/bash" ] ; then
+          rm -f /bin/sh
+          ln -s /bin/bash /bin/sh
+        fi
+      fi
     fi
   fi
   rm -f $_TMP/*.txt
