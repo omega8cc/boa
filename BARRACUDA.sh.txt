@@ -4084,24 +4084,36 @@ update_php_multi () {
 }
 #
 # Install latest Git.
-install_latest_git () {
-  if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] || [ "$_SSB_SRC" = "YES" ] ; then
+do_install_latest_git () {
+  if [ ! -e "/var/xdrago/log/git-$_GIT_VERSION-$_INSTALLER_VERSION-$_NOW.log" ] ; then
+    msg "INFO: Installing Git $_GIT_VERSION from sources, please wait..."
+    cd /var/opt
+    rm -f -r git*
+    get_dev_src "git-$_GIT_VERSION.tar.gz"
+    cd /var/opt/git-$_GIT_VERSION
+    st_runner "make configure" 2> /dev/null
+    st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
+    st_runner "make --quiet" 2> /dev/null
+    st_runner "make --quiet install" 2> /dev/null
+    mv -f /usr/bin/git /usr/bin/git-old
+    ln -sf /usr/local/bin/git /usr/bin/git
+    cd /var/opt
+    touch /var/xdrago/log/git-$_GIT_VERSION-$_INSTALLER_VERSION-$_NOW.log
+  else
+    msg "INFO: Git $_GIT_VERSION already installed from sources, OK"
+  fi
+}
+#
+# Check if latest Git should be installed.
+check_install_latest_git () {
+  if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_SSB_SRC" = "YES" ] || [ "$_GIT_FORCE_REINSTALL" = "YES" ] ; then
     _GIT_TEST=$(git --version)
-    if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] || [ "$_FULL_FORCE_REINSTALL" = "YES" ] ; then
-      _DO_NOTHING=YES
+    if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] ; then
+      if [ "$_FULL_FORCE_REINSTALL" = "YES" ] || [ "$_GIT_FORCE_REINSTALL" = "YES" ] ; then
+        do_install_latest_git
+      fi
     else
-      msg "INFO: Installing latest Git from sources, please wait..."
-      cd /var/opt
-      rm -f -r git*
-      get_dev_src "git-$_GIT_VERSION.tar.gz"
-      cd /var/opt/git-$_GIT_VERSION
-      st_runner "make configure" 2> /dev/null
-      st_runner "sh ./configure --without-tcltk --quiet" 2> /dev/null
-      st_runner "make --quiet" 2> /dev/null
-      st_runner "make --quiet install" 2> /dev/null
-      mv -f /usr/bin/git /usr/bin/git-old
-      ln -sf /usr/local/bin/git /usr/bin/git
-      cd /var/opt
+      do_install_latest_git
     fi
   fi
 }
@@ -5103,6 +5115,7 @@ install_ssl_src () {
       _SSH_FORCE_REINSTALL=YES
       _NGX_FORCE_REINSTALL=YES
       _PHP_FORCE_REINSTALL=YES
+      _GIT_FORCE_REINSTALL=YES
       rm -f /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
       rm -f /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
       msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, rebuild forced"
@@ -5115,6 +5128,7 @@ install_ssl_src () {
     _SSH_FORCE_REINSTALL=YES
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
+    _GIT_FORCE_REINSTALL=YES
     rm -f /var/xdrago/log/pure-ftpd-build-$_PURE_FTPD_VERSION-$_INSTALLER_VERSION.log
     rm -f /var/xdrago/log/mss-build-$_MSS_VERSION-$_INSTALLER_VERSION.log
     msg "INFO: Installed OpenSSL version $_SSL_INSTALLED, upgrade required"
@@ -6474,7 +6488,7 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
   mrun "apt-get install apt dpkg aptitude -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get dist-upgrade -f -y --force-yes -q --config-file /opt/tmp/apt.conf.noninteractive" 2> /dev/null
   mrun "apt-get install libgeoip1 libgeoip-dev geoip-database -y --force-yes" 2> /dev/null
-  install_latest_git
+  check_install_latest_git
   install_upgrade_nginx
   if [ -e "/etc/init.d/bind9" ] && [ ! -e "/etc/init.d/bind" ] ; then
     ln -sf /etc/init.d/bind9 /etc/init.d/bind
@@ -6893,7 +6907,7 @@ if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
   install_ssh_src
 fi
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
-  install_latest_git
+  check_install_latest_git
   install_upgrade_nginx
 fi
 
@@ -7010,7 +7024,7 @@ run_aptitude_full_upgrade
 install_with_aptitude_deps
 mrun "service php5-fpm stop" &> /dev/null
 st_runner "update-rc.d -f php5-fpm remove" &> /dev/null
-install_latest_git
+check_install_latest_git
 install_upgrade_nginx
 kill_nash
 fix_sftp_ftps_modern
