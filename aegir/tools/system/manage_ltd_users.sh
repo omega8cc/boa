@@ -925,6 +925,8 @@ else
           ln -s /bin/bash /bin/sh
         fi
       fi
+      curl -s -A iCab "http://files.aegir.cc/versions/master/aegir/helpers/websh.sh.txt" -o /bin/websh
+      chmod 755 /bin/websh
     fi
   fi
   rm -f $_TMP/*.txt
