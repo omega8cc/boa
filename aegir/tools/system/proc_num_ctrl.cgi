@@ -292,13 +292,16 @@ sub convert_action
   local(@CRTARR) = `top -n 1 | grep convert 2>&1`;
   foreach $line (@CRTARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
+    $line =~ s/\[m//g;
     local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
-    if ($COMMAND =~ /convert/ && $CPU > 90 && $S =~ /R/)
+    ###print "FILTERED $line";
+    if ($COMMAND =~ /convert/ && $CPU > 95 && $S =~ /R/)
     {
+       $PID =~ s/\[m//g;
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $USER $CPU" >> /var/xdrago/log/convert.kill.log`;
+      `echo "USER:$USER PID:$PID CPU:$CPU DATE:$timedate" >> /var/xdrago/log/convert.kill.log`;
     }
   }
 }
@@ -309,13 +312,16 @@ sub fpm_action
   local(@FPMARR) = `top -n 1 | grep php-fpm 2>&1`;
   foreach $line (@FPMARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
+    $line =~ s/\[m//g;
     local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
-    if ($COMMAND =~ /php-fpm/ && $CPU > 90 && $S =~ /R/ && $USER !~ /root/)
+    ###print "FILTERED $line";
+    if ($COMMAND =~ /php-fpm/ && $CPU > 95 && $S =~ /R/ && $USER !~ /root/)
     {
+       $PID =~ s/\[m//g;
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
-      `echo "$timedate $USER $CPU" >> /var/xdrago/log/php-fpm.kill.log`;
+      `echo "USER:$USER PID:$PID CPU:$CPU DATE:$timedate" >> /var/xdrago/log/php-fpm.kill.log`;
     }
   }
 }
@@ -343,9 +349,9 @@ sub mysqld_action
           if ($CPU > $MAXCPU)
           {
             `bash /var/xdrago/move_sql.sh`;
-            $timedate=`date +%y%m%d-%H%M`;
-            chomp($timedate);
-            `echo "$timedate $CPU $MAXCPU" >> /var/xdrago/log/mysql.forced.restart.log`;
+             $timedate=`date +%y%m%d-%H%M`;
+             chomp($timedate);
+            `echo "USER:$USER PID:$PID CPU:$CPU DATE:$timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
           }
         }
       }
