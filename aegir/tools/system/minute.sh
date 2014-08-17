@@ -9,7 +9,7 @@ else
   perl /var/xdrago/monitor/check/segfault_alert
 fi
 
-killit()
+mysql_proc_kill()
 {
   if [ "$xtime" != "Time" ] && [ "$xuser" != "root" ] && [ "$xtime" != "|" ] && [[ "$xtime" -gt "$limit" ]] ; then
     xkill=`mysqladmin kill $each`
@@ -19,7 +19,7 @@ killit()
   fi
 }
 
-action()
+mysql_proc_control()
 {
 limit=3600
 xkill=null
@@ -33,37 +33,36 @@ do
   if [ "$xtime" != "Time" ] ; then
     if [ "$xuser" = "xabuse" ] ; then
       limit=60
-      killit
+      mysql_proc_kill
     else
       limit=3600
-      killit
+      mysql_proc_kill
     fi
   fi;
 done
 }
 
-action
-echo watcher 1
-sleep 10
-
-action
-echo watcher 2
-sleep 10
-
-action
-echo watcher 3
-sleep 10
-
-action
-echo watcher 4
-sleep 10
-
-action
-echo watcher 5
-sleep 10
-
-action
-echo watcher 6
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
+sleep 5
+mysql_proc_control
 sleep 5
 perl /var/xdrago/monitor/check/escapecheck
 perl /var/xdrago/monitor/check/hackcheck
