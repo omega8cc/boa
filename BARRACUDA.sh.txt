@@ -1387,10 +1387,10 @@ check_git_repos_status () {
     sleep 1
     _GITHUB_WORKS=YES
     _GITORIOUS_WORKS=YES
-    if ! netcat -w 8 -z github.com 9418 ; then
+    if ! netcat -w 14 -z github.com 9418 ; then
       _GITHUB_WORKS=NO
       msg "WARN: The GitHub master repository server doesn't respond..."
-    elif ! netcat -w 8 -z code.aegir.cc 9418 ; then
+    elif ! netcat -w 14 -z code.aegir.cc 9418 ; then
       _GITORIOUS_WORKS=NO
       msg "WARN: The Gitorious mirror repository server doesn't respond..."
     fi
@@ -5899,13 +5899,13 @@ wait_for_connection ()
 }
 check_connection ()
 {
-  if ! netcat -w 8 -z github.com 9418 ; then
+  if ! netcat -w 14 -z github.com 9418 ; then
     wait_for_connection "2/4"
-    if ! netcat -w 8 -z github.com 9418 ; then
+    if ! netcat -w 14 -z github.com 9418 ; then
       wait_for_connection "3/4"
-      if ! netcat -w 8 -z github.com 9418 ; then
+      if ! netcat -w 14 -z github.com 9418 ; then
         wait_for_connection "4/4"
-        if ! netcat -w 8 -z github.com 9418 ; then
+        if ! netcat -w 14 -z github.com 9418 ; then
           echo " "
           msg "Sorry, I gave up."
           msg "EXIT on error due to GitHub git server at 9418 downtime"
@@ -5920,7 +5920,7 @@ check_connection ()
   fi
 }
 
-if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
   rm -f -r /opt/tmp/test-*
   check_connection
   _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/test-provision 2>&1`
@@ -5980,7 +5980,7 @@ else
     _DB_SERVER_SRC=mirror.1000mbps.com
   fi
 fi
-if ! netcat -w 8 -z $_DB_SERVER_SRC 80 ; then
+if ! netcat -w 14 -z $_DB_SERVER_SRC 80 ; then
   echo " "
   msg "EXIT on error due to $_DB_SERVER_SRC downtime"
   msg "Please try to run this script again in a few minutes"
@@ -7130,7 +7130,7 @@ fi
 ###--------------------###
 if [ -z "$_SMTP_RELAY_HOST" ] && [ "$_SMTP_RELAY_TEST" = "YES" ] ; then
 msg "INFO: Checking SMTP connections..."
-if ! netcat -w 8 -z smtp.gmail.com 25 ; then
+if ! netcat -w 14 -z smtp.gmail.com 25 ; then
   WE_NEED_RELAY="YES"
   cat <<EOF
 
@@ -9341,7 +9341,7 @@ csf_install () {
   fi
   cd /var/opt
   rm -f /var/xdrago/log/lastFire
-  if ! netcat -w 8 -z www.configserver.com 80 ; then
+  if ! netcat -w 14 -z www.configserver.com 80 ; then
     get_dev_arch "csf.tgz"
   else
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://www.configserver.com/free/csf.tgz"
