@@ -364,6 +364,13 @@ check_dns_curl ()
       echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     fi
   fi
+  if [ -d "/var/cache/pdnsd" ] ; then
+    service pdnsd stop &> /dev/null
+    sleep 1
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    sleep 1
+    service pdnsd start &> /dev/null
+  fi
   _CURL_TEST=$(curl -L --max-redirs 10 -k -s -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     _DO_NOTHING=YES
