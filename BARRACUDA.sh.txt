@@ -5968,7 +5968,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_DB_SERVER" = "Percona" ] ; then
       _DB_SERVER_SRC=repo.percona.com
     else
-      _DB_SERVER_SRC=ftp.osuosl.org
+      _DB_SERVER_SRC=mirror.1000mbps.com
     fi
   else
     _DB_SERVER_SRC=repo.percona.com
@@ -5977,7 +5977,7 @@ else
   if [ "$_DB_SERVER" = "Percona" ] ; then
     _DB_SERVER_SRC=repo.percona.com
   else
-    _DB_SERVER_SRC=ftp.osuosl.org
+    _DB_SERVER_SRC=mirror.1000mbps.com
   fi
 fi
 if ! netcat -w 8 -z $_DB_SERVER_SRC 80 ; then
@@ -6815,8 +6815,8 @@ install_mariadb_sql () {
   fi
   _THIS_REL_VERSION="$_REL_VERSION"
   echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
-  echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
-  echo "deb-src http://ftp.osuosl.org/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+  echo "deb-src http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
   _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
   if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
     msg "WARN: Installed keyring is broken, forced reinstall required"
@@ -6968,6 +6968,16 @@ else
   fi
   if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     _SQL_UPGRADE=NO
+  fi
+  _SQL_DEB_SRC_TEST=$(grep $_DB_SERVER_SRC /etc/apt/sources.list.d/mariadb.list)
+  if [[ "$_SQL_DEB_SRC_TEST" =~ "$_DB_SERVER_SRC" ]] ; then
+    _SQL_DEB_SRC_UPDATE=NO
+  else
+    _THIS_REL_VERSION="$_REL_VERSION"
+    echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
+    echo "deb http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+    echo "deb-src http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
+    st_runner "aptitude update -y" &> /dev/null
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     service cron stop &> /dev/null
