@@ -19,11 +19,7 @@ if (!-d "/var/run/mysqld") {
 system("service redis-server restart") if (!-e "/var/run/redis/redis.sock" && $redissocket);
 sleep(2);
 system("service redis-server restart") if (!-f "/var/run/redis/redis.pid");
-&convert_action;
-if (!-e "/root/.no.fpm.cpu.limit.cnf") {
-  &fpm_action;
-}
-&mysqld_action;
+&cpu_count_load;
 &global_action;
 foreach $USER (sort keys %li_cnt) {
   print " $li_cnt{$USER}\t$USER\n";
@@ -144,142 +140,106 @@ sub global_action
   foreach $line (@MYARR) {
     $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
     local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
-    $li_cnt{$USER}++ if ($PID ne "PID");
-    $li_cnt{$X}++ if ($PID ne "PID" && $COMMAND =~ /php-fpm/ && $X =~ /php/);
+    $PID =~ s/[^0-9]//g;
+    $li_cnt{$USER}++ if ($PID);
+    $li_cnt{$X}++ if ($PID && $COMMAND =~ /php-fpm/ && $X =~ /php/);
 
-    if (!-f "/var/run/fmp_wait.pid") {
-      if ($PID ne "PID" && $USER =~ /www-data/ && $COMMAND =~ /php-fpm/ && $B =~ /pool/ && $K =~ /www/)
+    if ($PID)
+    {
+      local($HOUR, $MIN) = split(/:/,$TIME);
+
+      if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $CPU > $MAXCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER =~ /mysql/)
       {
-        `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-         $timedate=`date +%y%m%d-%H%M`;
-         chomp($timedate);
-        `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
-      }
-      if ($PID ne "PID" && $USER =~ /root/ && $COMMAND =~ /php-fpm/ && $B =~ /fpm-config/ && $K =~ /php53-fpm/)
-      {
-        `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-         $timedate=`date +%y%m%d-%H%M`;
-         chomp($timedate);
-        `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
-      }
-      if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $STAT =~ /Zs/ && $B =~ /php-fpm/ && $K =~ /defunct/)
-      {
-        `killall -9 php-fpm; /etc/init.d/php53-fpm start`;
-         $timedate=`date +%y%m%d-%H%M`;
-         chomp($timedate);
-        `echo $timedate >> /var/xdrago/log/php-fpm.kill.log`;
-      }
-    }
-
-    if ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[3-9]:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/ && $Y !~ /(provision|hosting|process|batch|registry)/ && $Z !~ /(provision|hosting|process|batch|registry)/ && $T !~ /(provision|hosting|process|batch|registry)/)
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "A $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $TIME =~ /[3-9]:/ && $K =~ /php/ && $X =~ /drush/ && $Z =~ /cron/ && $Y !~ /(provision|hosting|process|batch|registry)/ && $Z !~ /(provision|hosting|process|batch|registry)/ && $T !~ /(provision|hosting|process|batch|registry)/)
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "B $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\|)/ && $B =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $K =~ /php/ && ($X =~ /(drush|-d)/ || $Z =~ /magic/) && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "C $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-    }
-
-    if ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /2:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/)
-    {
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "$timedate $K $TIME $STAT $START $X $Y" >> /var/xdrago/log/php-cli.watch.log`;
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $TIME =~ /[3-9]:/ && $B =~ /php/ && $K =~ /drush/ && $Y =~ /cron/ && $Y !~ /(provision|hosting|process|batch|registry)/ && $Z !~ /(provision|hosting|process|batch|registry)/ && $T !~ /(provision|hosting|process|batch|registry)/)
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "D $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[0-9]{2,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /(drush|-d)/ || $X =~ /magic/) && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "E $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $CPU =~ /[0-9]{2,}./ && $TIME =~ /[2-9]{1,}:/ && $STAT =~ /R/ && $B =~ /php/ && ($K =~ /drush/ || $X =~ /^(dis|en)/) && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "F $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/ && $X !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Y !~ /(provision|hosting|process|batch|registry|pm-update)/ && $Z !~ /(provision|hosting|process|batch|registry|pm-update)/ && $T !~ /(provision|hosting|process|batch|registry|pm-update)/)
-    {
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-       $hourminute=`date +%H%M`;
-       chomp($hourminute);
-       if ($hourminute !~ /^000/)
-       {
-         `kill -9 $PID`;
-         `echo "G $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
-       }
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/)
-    {
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-       $hourminute=`date +%H%M`;
-       chomp($hourminute);
-       if ($hourminute !~ /^000/)
-       {
-         `kill -9 $PID`;
-         `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
-       }
-    }
-    elsif ($PID ne "PID" && $COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/)
-    {
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-       $hourminute=`date +%H%M`;
-       chomp($hourminute);
-       if ($hourminute !~ /^000/)
-       {
-         `kill -9 $PID`;
-         `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
-       }
-    }
-
-    if ($PID ne "PID" && $USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-5]{1}:/))
-    {
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "$timedate $TIME $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
-    }
-
-    if ($PID ne "PID" && $COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
-    {
-      if ($COMMAND =~ /nginx/) {
-        if ($USER =~ /root/) {
-          $li_cnt{$COMMAND}++;
+        if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
+         `bash /var/xdrago/move_sql.sh`;
+          $timedate=`date +%y%m%d-%H%M%S`;
+          chomp($timedate);
+         `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
         }
       }
-      elsif ($COMMAND =~ /sendmail/) {
-        if ($USER =~ /root/) {
-          `kill $PID`;
+
+#     if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $USER =~ /mysql/)
+#     {
+#       $timedate=`date +%y%m%d-%H%M%S`;
+#       chomp($timedate);
+#      `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
+#     }
+
+      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 90 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
+      {
+         if (!-e "/root/.no.fpm.cpu.limit.cnf") {
+           $timedate=`date +%y%m%d-%H%M%S`;
+           chomp($timedate);
+          `kill -9 $PID`;
+          `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
         }
       }
-      else {
-        if ($PID ne "PID" && $COMMAND !~ /java/) {
-          $li_cnt{$COMMAND}++;
+
+      if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 90 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
+      {
+        $timedate=`date +%y%m%d-%H%M%S`;
+        chomp($timedate);
+       `kill -9 $PID`;
+       `echo "$USER $CPU $STAT $START $TIME $timedate" >> /var/xdrago/log/convert.kill.log`;
+        $kill_convert = "YES";
+      }
+
+      if ($kill_convert && $COMMAND =~ /^(\|)/ && $K =~ /bin/ && $Y =~ /convert/)
+      {
+       `kill -9 $PID`;
+       `echo "$USER $CPU $STAT $START $TIME $timedate" >> /var/xdrago/log/convert.kill.log`;
+      }
+
+      if ($COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/)
+      {
+         $timedate=`date +%y%m%d-%H%M%S`;
+         chomp($timedate);
+         $hourminute=`date +%H%M%S`;
+         chomp($hourminute);
+         if ($hourminute !~ /^000/)
+         {
+           `kill -9 $PID`;
+           `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
+         }
+      }
+
+      if ($COMMAND =~ /^(\\)/ && $B =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $K =~ /(-c|git|clone)/)
+      {
+         $timedate=`date +%y%m%d-%H%M%S`;
+         chomp($timedate);
+         $hourminute=`date +%H%M%S`;
+         chomp($hourminute);
+         if ($hourminute !~ /^000/)
+         {
+           `kill -9 $PID`;
+           `echo "$timedate $TIME $STAT $START $B" >> /var/xdrago/log/git.kill.log`;
+         }
+      }
+
+      if ($USER =~ /(tomcat|jetty)/ && $COMMAND =~ /java/ && ($STAT =~ /R/ || $TIME !~ /^[0-5]{1}:/))
+      {
+        `kill -9 $PID`;
+         $timedate=`date +%y%m%d-%H%M%S`;
+         chomp($timedate);
+        `echo "$timedate $TIME $CPU $MEM $STAT $START $USER" >> /var/xdrago/log/tomcat-jetty-java.kill.log`;
+      }
+
+      if ($COMMAND !~ /^(\\)/ && $COMMAND !~ /^(\|)/)
+      {
+        if ($COMMAND =~ /nginx/) {
+          if ($USER =~ /root/) {
+            $li_cnt{$COMMAND}++;
+          }
+        }
+        elsif ($COMMAND =~ /sendmail/) {
+          if ($USER =~ /root/) {
+            `kill $PID`;
+          }
+        }
+        else {
+          if ($COMMAND !~ /java/) {
+            $li_cnt{$COMMAND}++;
+          }
         }
       }
     }
@@ -287,47 +247,7 @@ sub global_action
 }
 
 #############################################################################
-sub convert_action
-{
-  local(@CRTARR) = `top -n 1 | grep convert 2>&1`;
-  foreach $line (@CRTARR) {
-    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
-    $line =~ s/\[m//g;
-    local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
-    ###print "FILTERED $line";
-    if ($COMMAND =~ /convert/ && $CPU > 95 && $S =~ /R/)
-    {
-       $PID =~ s/[^0-9]//g;
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "USER:$USER PID:$PID CPU:$CPU DATE:$timedate" >> /var/xdrago/log/convert.kill.log`;
-    }
-  }
-}
-
-#############################################################################
-sub fpm_action
-{
-  local(@FPMARR) = `top -n 1 | grep php-fpm 2>&1`;
-  foreach $line (@FPMARR) {
-    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
-    $line =~ s/\[m//g;
-    local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
-    ###print "FILTERED $line";
-    if ($COMMAND =~ /php-fpm/ && $CPU > 95 && $S =~ /R/ && $USER !~ /root/)
-    {
-       $PID =~ s/[^0-9]//g;
-      `kill -9 $PID`;
-       $timedate=`date +%y%m%d-%H%M`;
-       chomp($timedate);
-      `echo "USER:$USER PID:$PID CPU:$CPU DATE:$timedate" >> /var/xdrago/log/php-fpm.kill.log`;
-    }
-  }
-}
-
-#############################################################################
-sub mysqld_action
+sub cpu_count_load
 {
   local($PROCS) = `grep -c processor /proc/cpuinfo`;
   chomp($PROCS);
@@ -337,25 +257,5 @@ sub mysqld_action
     $MAXCPU = 200;
   }
   $MAXCPU = $MAXCPU - 2;
-  local(@SQLARR) = `top -n 1 | grep mysqld 2>&1`;
-  foreach $line (@SQLARR) {
-    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
-    if ($line !~ /mysqld_safe/)
-    {
-      local($PID, $USER, $PR, $NI, $VIRT, $RES, $SHR, $S, $CPU, $MEM, $TIME, $COMMAND) = split(/\s+/,$line);
-      if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
-        if ($USER =~ /mysql/ && $COMMAND =~ /mysqld/)
-        {
-          if ($CPU > $MAXCPU)
-          {
-            `bash /var/xdrago/move_sql.sh`;
-             $timedate=`date +%y%m%d-%H%M`;
-             chomp($timedate);
-            `echo "USER:$USER PID:$PID CPU:$CPU DATE:$timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
-          }
-        }
-      }
-    }
-  }
 }
 ###EOF2014###
