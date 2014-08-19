@@ -297,7 +297,7 @@ sub convert_action
     ###print "FILTERED $line";
     if ($COMMAND =~ /convert/ && $CPU > 95 && $S =~ /R/)
     {
-       $PID =~ s/\[m//g;
+       $PID =~ s/[^0-9]//g;
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
@@ -317,7 +317,7 @@ sub fpm_action
     ###print "FILTERED $line";
     if ($COMMAND =~ /php-fpm/ && $CPU > 95 && $S =~ /R/ && $USER !~ /root/)
     {
-       $PID =~ s/\[m//g;
+       $PID =~ s/[^0-9]//g;
       `kill -9 $PID`;
        $timedate=`date +%y%m%d-%H%M`;
        chomp($timedate);
