@@ -153,31 +153,31 @@ sub global_action
       {
         $timedate=`date +%y%m%d-%H%M%S`;
         chomp($timedate);
-        if ($CPU > $MAXCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
+        if ($CPU > $MAXSQLCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
         {
           if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
            `bash /var/xdrago/move_sql.sh`;
             $timedate=`date +%y%m%d-%H%M%S`;
             chomp($timedate);
-           `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
+           `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
           }
         }
         if ($CPU > 50 && !-f "/var/run/boa_sql_backup.pid") {
-         `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
+         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
         }
       }
 
-      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 80 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
+      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 90 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
       {
-        if ($HOUR > "0" || $MIN > 2)
+        if ($HOUR > "0" || $MIN > 1)
         {
           $timedate=`date +%y%m%d-%H%M%S`;
           chomp($timedate);
-          if ($CPU > 99)
+          if ($CPU > $MAXFPMCPU)
           {
             if (!-e "/root/.no.fpm.cpu.limit.cnf") {
              `kill -9 $PID`;
-             `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
+             `echo "$X CPU:$CPU MAXFPMCPU:$MAXFPMCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
               $fpm_result = "KILLED";
             }
           }
@@ -261,11 +261,13 @@ sub cpu_count_load
 {
   local($PROCS) = `grep -c processor /proc/cpuinfo`;
   chomp($PROCS);
-  $MAXCPU = $PROCS."00";
+  $MAXSQLCPU = $PROCS."00";
   if ($PROCS > 2)
   {
-    $MAXCPU = 200;
+    $MAXSQLCPU = 200;
+    $MAXFPMCPU = 150;
   }
-  $MAXCPU = $MAXCPU - 2;
+  $MAXSQLCPU = $MAXSQLCPU - 5;
+  $MAXFPMCPU = $MAXFPMCPU - 5;
 }
 ###EOF2014###
