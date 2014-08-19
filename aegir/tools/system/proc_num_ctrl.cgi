@@ -143,36 +143,43 @@ sub global_action
     $PID =~ s/[^0-9]//g;
     $li_cnt{$USER}++ if ($PID);
     $li_cnt{$X}++ if ($PID && $COMMAND =~ /php-fpm/ && $X =~ /php/);
+    local($fpm_result) = "CTRL";
 
     if ($PID)
     {
       local($HOUR, $MIN) = split(/:/,$TIME);
 
-      if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $CPU > $MAXCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER =~ /mysql/)
+      if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $CPU > 10 && $USER =~ /mysql/)
       {
-        if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
-         `bash /var/xdrago/move_sql.sh`;
-          $timedate=`date +%y%m%d-%H%M%S`;
-          chomp($timedate);
-         `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
+        $timedate=`date +%y%m%d-%H%M%S`;
+        chomp($timedate);
+        if ($CPU > $MAXCPU && $HOUR > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
+        {
+          if (!-f "/var/xdrago/log/mysql_restart_running.pid" && !-f "/var/run/boa_wait.pid") {
+           `bash /var/xdrago/move_sql.sh`;
+            $timedate=`date +%y%m%d-%H%M%S`;
+            chomp($timedate);
+           `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
+          }
         }
+       `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
       }
 
-#     if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $USER =~ /mysql/)
-#     {
-#       $timedate=`date +%y%m%d-%H%M%S`;
-#       chomp($timedate);
-#      `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
-#     }
-
-      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 95 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
+      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 25 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
       {
-         if (!-e "/root/.no.fpm.cpu.limit.cnf") {
-           $timedate=`date +%y%m%d-%H%M%S`;
-           chomp($timedate);
-          `kill -9 $PID`;
-          `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
+        $timedate=`date +%y%m%d-%H%M%S`;
+        chomp($timedate);
+        if ($CPU > 95)
+        {
+          if (!-e "/root/.no.fpm.cpu.limit.cnf") {
+            $timedate=`date +%y%m%d-%H%M%S`;
+            chomp($timedate);
+           `kill -9 $PID`;
+           `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/php-fpm.kill.log`;
+            $fpm_result = "KILLED";
+          }
         }
+       `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate $fpm_result" >> /var/xdrago/log/php-fpm.test.log`;
       }
 
       if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 90 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
