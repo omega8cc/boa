@@ -5968,7 +5968,7 @@ if [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_DB_SERVER" = "Percona" ] ; then
       _DB_SERVER_SRC=repo.percona.com
     else
-      _DB_SERVER_SRC=mirror.1000mbps.com
+      _DB_SERVER_SRC=ftp.osuosl.org
     fi
   else
     _DB_SERVER_SRC=repo.percona.com
@@ -5977,7 +5977,7 @@ else
   if [ "$_DB_SERVER" = "Percona" ] ; then
     _DB_SERVER_SRC=repo.percona.com
   else
-    _DB_SERVER_SRC=mirror.1000mbps.com
+    _DB_SERVER_SRC=ftp.osuosl.org
   fi
 fi
 if ! netcat -w 14 -z $_DB_SERVER_SRC 80 ; then
