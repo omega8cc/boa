@@ -169,11 +169,11 @@ sub global_action
 
       if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 80 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
       {
-        if ($HOUR > "0" || $MIN > 1)
+        if ($HOUR > "0" || $MIN > 2)
         {
           $timedate=`date +%y%m%d-%H%M%S`;
           chomp($timedate);
-          if ($CPU > $MAXCPU)
+          if ($CPU > 99)
           {
             if (!-e "/root/.no.fpm.cpu.limit.cnf") {
              `kill -9 $PID`;
