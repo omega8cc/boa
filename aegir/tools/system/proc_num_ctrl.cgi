@@ -162,7 +162,9 @@ sub global_action
            `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.forced.restart.log`;
           }
         }
-       `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
+        if ($CPU > 50 && !-f "/var/run/boa_sql_backup.pid") {
+         `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
+        }
       }
 
       if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 80 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)

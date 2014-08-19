@@ -17,6 +17,7 @@ if [[ "$_VM_TEST" =~ beng ]] ; then
 else
   _VMFAMILY="XEN"
 fi
+touch /var/run/boa_sql_backup.pid
 
 truncate_cache_tables () {
   TABLES=`mysql $DB -e "show tables" -s | grep ^cache | uniq | sort`
@@ -120,6 +121,7 @@ echo "Redis server restarted"
 rm -f /var/run/boa_run.pid
 rm -f /var/run/manage_ltd_users.pid
 rm -f /var/run/manage_rvm_users.pid
+rm -f /var/run/boa_sql_backup.pid
 touch /var/xdrago/log/last-run-backup
 echo "COMPLETED ALL"
 exit 0
