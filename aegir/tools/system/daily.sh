@@ -915,19 +915,22 @@ cleanup_ghost_platforms () {
 fix_static_permissions () {
   cleanup_ghost_platforms
   if [ -e "$Plr/profiles" ] ; then
-    if [ ! -f "$Plr/profiles/permissions-fix.info" ] ; then
+    rm -f $Plr/profiles/permissions-fix.info
+    rm -f $Plr/profiles/core-permissions-fix.info
+    if [ ! -f "$Plr/profiles/permissions-update-fix.info" ] ; then
+      find $Plr/profiles -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
       chown -R ${_THIS_HM_USER}.ftp:users $Plr/profiles &> /dev/null
       find $Plr/profiles -type d -exec chmod 02775 {} \; &> /dev/null
       find $Plr/profiles -type f -exec chmod 0664 {} \; &> /dev/null
-      echo fixed > $Plr/profiles/permissions-fix.info
-      chown $_THIS_HM_USER:users $Plr/profiles/permissions-fix.info
-      chmod 0664 $Plr/profiles/permissions-fix.info
+      echo fixed > $Plr/profiles/permissions-update-fix.info
+      chown $_THIS_HM_USER:users $Plr/profiles/permissions-update-fix.info
+      chmod 0664 $Plr/profiles/permissions-update-fix.info
     fi
-    if [ ! -f "$Plr/profiles/core-permissions-fix.info" ] ; then
+    if [ ! -f "$Plr/profiles/core-permissions-update-fix.info" ] ; then
       chmod 775 $Plr/modules &> /dev/null
-      echo fixed > $Plr/profiles/core-permissions-fix.info
-      chown $_THIS_HM_USER:users $Plr/profiles/core-permissions-fix.info
-      chmod 0664 $Plr/profiles/core-permissions-fix.info
+      echo fixed > $Plr/profiles/core-permissions-update-fix.info
+      chown $_THIS_HM_USER:users $Plr/profiles/core-permissions-update-fix.info
+      chmod 0664 $Plr/profiles/core-permissions-update-fix.info
     fi
   fi
 }
@@ -953,6 +956,7 @@ fix_permissions () {
   ### modules,themes,libraries - platform level
   if [ ! -f "$Plr/sites/all/permissions-fix-$_NOW.info" ] && [ -e "$Plr" ] ; then
     mkdir -p $Plr/sites/all/{modules,themes,libraries,drush}
+    find $Plr/sites/all/modules -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
     chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
@@ -1565,6 +1569,7 @@ else
   if [ -z "$_MODULES_FIX" ] ; then
     _MODULES_FIX=YES
   fi
+  find /data/all/ -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
   if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.2.9.info" ] ; then
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
