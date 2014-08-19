@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 ###
-### System Services Monitor running every 10 seconds
+### System Services Monitor running every 5 seconds
 ###
 local(@RSARR) = system("grep -e redis_client_socket /data/conf/global.inc");
 foreach $line (@RSARR) {
