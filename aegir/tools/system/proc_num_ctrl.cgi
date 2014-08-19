@@ -165,13 +165,13 @@ sub global_action
        `echo "$USER CPU:$CPU MAXCPU:$MAXCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
       }
 
-      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 25 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
+      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 50 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
       {
-        if ($HOUR > "0" || $MIN > 5)
+        if ($HOUR > "0" || $MIN > 8)
         {
           $timedate=`date +%y%m%d-%H%M%S`;
           chomp($timedate);
-          if ($CPU > 95)
+          if ($CPU > 98)
           {
             if (!-e "/root/.no.fpm.cpu.limit.cnf") {
              `kill -9 $PID`;
