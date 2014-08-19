@@ -3181,7 +3181,7 @@ barracuda_cnf () {
     if [[ "$_L_VM_TEST" =~ beng ]] ; then
       _L_VMFAMILY="VS"
     fi
-    if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
+    if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
       sed -i "s/.*_PHP_MULTI_INSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
       _PHP_MULTI_INSTALL=""
