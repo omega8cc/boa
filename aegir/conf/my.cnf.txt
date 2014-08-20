@@ -46,6 +46,7 @@ tmp_table_size          = 64M
 max_heap_table_size     = 128M
 low_priority_updates    = 1
 concurrent_insert       = 2
+userstat                = 1
 max_tmp_tables          = 16384
 server-id               = 8
 myisam-recover          = BACKUP
