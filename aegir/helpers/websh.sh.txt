@@ -246,6 +246,11 @@ if [[ "$HOME" =~ (^)"/var/aegir" ]] || [[ "$HOME" =~ (^)"/data/disk/" ]] || [[ "
     fi
   fi
   if [ "$_IN_PATH" = "YES" ] ; then
+    if [ -d "/home/${USER}/.tmp" ] ; then
+      export TMP="/home/${USER}/.tmp"
+      export TMPDIR="/home/${USER}/.tmp"
+      export TEMP="/home/${USER}/.tmp"
+    fi
     if [[ "$_ALL" =~ "-c set -m; " ]] && [ -x "/home/${USER}/.rvm/bin/rvm" ] ; then
       _THIS_RV=`lsb_release -sc`
       if [ "$_THIS_RV" = "wheezy" ] || [ "$_THIS_RV" = "trusty" ] || [ "$_THIS_RV" = "precise" ] ; then
