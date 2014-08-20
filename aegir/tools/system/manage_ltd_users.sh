@@ -617,6 +617,7 @@ switch_php()
     echo "Custom FPM or CLI settings for $_OWN exist, running switch_php checks"
     if [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
       _LOC_PHP_CLI_VERSION=`cat /data/disk/${_OWN}/static/control/cli.info`
+      _LOC_PHP_CLI_VERSION=${_LOC_PHP_CLI_VERSION//[^0-9.]/}
       _LOC_PHP_CLI_VERSION=`echo -n $_LOC_PHP_CLI_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_CLI_VERSION" = "5.5" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.4" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.3" ] || [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
         if [ "$_LOC_PHP_CLI_VERSION" = "5.2" ]; then
@@ -635,6 +636,7 @@ switch_php()
     if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
       _THIS_NGX_PATH=/data/disk/${_OWN}/config/includes
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
+      _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
       if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.4" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.3" ] || [ "$_LOC_PHP_FPM_VERSION" = "5.2" ]; then
         if [ "$_LOC_PHP_FPM_VERSION" = "5.5" ] && [ ! -x "/opt/php55/bin/php" ] ; then
