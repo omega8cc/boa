@@ -15,7 +15,7 @@ local($myip, $rest) = split(/\s+/,$llip);
 print "myip is $myip";
 chomp($myip);
 if (-e "/root/.hr.monitor.cnf") {
-  $default_critnumber = 100;
+  $default_critnumber = 150;
   $default_lines = 500;
   $default_mode = 1;
 }
