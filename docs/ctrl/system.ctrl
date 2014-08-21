@@ -47,10 +47,16 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+   /root/.hr.monitor.cnf
+
+ This file, if exists, enables more aggressive Nginx abuse guard mode and
+ is recommended on systems often attacked by spambots and/or aggressive
+ crawlers with false UA identity.
+
    /root/.no.fpm.cpu.limit.cnf
 
  This file, if exists, allows to disable aggressive php-fpm processes
- monitoring and killing if any is using more than 90% of CPU.
+ monitoring and killing if any is using really too much CPU power.
 
    /root/.no.swap.clear.cnf
 

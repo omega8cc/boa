@@ -7239,13 +7239,11 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
-        _NGINX_DOS_LIMIT=188
+        _NGINX_DOS_LIMIT=149
       fi
     fi
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
-  sed -i "s/= 222/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
-  sed -i "s/= 188/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 150/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
     _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
@@ -7301,13 +7299,11 @@ if [ "$_STATUS" = "INIT" ] ; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
-        _NGINX_DOS_LIMIT=188
+        _NGINX_DOS_LIMIT=149
       fi
     fi
   fi
-  sed -i "s/88.88.88.88/$_THISHTIP/g"    /var/xdrago/monitor/check/scan_nginx &> /dev/null
-  sed -i "s/= 222/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
-  sed -i "s/= 188/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 150/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
     _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
