@@ -6970,14 +6970,20 @@ else
     _SQL_UPGRADE=NO
   fi
   _SQL_DEB_SRC_TEST=$(grep $_DB_SERVER_SRC /etc/apt/sources.list.d/mariadb.list)
-  if [[ "$_SQL_DEB_SRC_TEST" =~ "$_DB_SERVER_SRC" ]] ; then
+  if [[ "$_SQL_DEB_SRC_TEST" =~ "$_DB_SERVER_SRC" ]] && [ -e "/var/xdrago/log/mariadb-apt-fixed-$_INSTALLER_VERSION.log" ] ; then
     _SQL_DEB_SRC_UPDATE=NO
   else
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      _THIS_OS_NAME=debian
+    elif [ "$_THIS_OS" = "Ubuntu" ] ; then
+      _THIS_OS_NAME=ubuntu
+    fi
     _THIS_REL_VERSION="$_REL_VERSION"
     echo "## MariaDB APT Repository" > /etc/apt/sources.list.d/mariadb.list
     echo "deb http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
     echo "deb-src http://$_DB_SERVER_SRC/pub/mariadb/repo/$_DB_SERIES/$_THIS_OS_NAME $_THIS_REL_VERSION main" >> /etc/apt/sources.list.d/mariadb.list
     st_runner "aptitude update -y" &> /dev/null
+    touch /var/xdrago/log/mariadb-apt-fixed-$_INSTALLER_VERSION.log
   fi
   if [ "$_SQL_UPGRADE" = "YES" ] ; then
     service cron stop &> /dev/null
