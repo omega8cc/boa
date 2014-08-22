@@ -98,7 +98,7 @@ sub makeactions
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /foobar/);
           }
           else {
-            $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/ && $skip_post < 1);
+            $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/ && $skip_post < 1 && $line !~ /cart\/checkout/);
           }
         }
       }
@@ -144,7 +144,7 @@ sub makeactions
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5 if ($line =~ /foobar/);
           }
           else {
-            $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/);
+            $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/ && $skip_post < 1 && $line !~ /cart\/checkout/);
           }
         }
       }
