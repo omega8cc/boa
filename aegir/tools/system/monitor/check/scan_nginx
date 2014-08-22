@@ -88,6 +88,10 @@ sub makeactions
           ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
+        elsif ($line =~ /POST \/.*/ && $line =~ /\/cart\/checkout/) {
+          ### print "Not Counted Static Request URI: $line\n";
+          $skip_post = 1;
+        }
         else {
           $li_cnt{$VISITOR}++;
         }
@@ -98,7 +102,7 @@ sub makeactions
             $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 5 if ($line =~ /foobar/);
           }
           else {
-            $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/ && $skip_post < 1 && $line !~ /cart\/checkout/);
+            $li_cnt{$VISITOR} = $li_cnt{$VISITOR} + 1  if ($line =~ /POST/);
           }
         }
       }
@@ -134,6 +138,10 @@ sub makeactions
           ### print "Not Counted Static Request URI: $line\n";
           $skip_post = 1;
         }
+        elsif ($line =~ /POST \/.*/ && $line =~ /\/cart\/checkout/) {
+          ### print "Not Counted Static Request URI: $line\n";
+          $skip_post = 1;
+        }
         else {
           $px_cnt{$PROXY}++;
         }
@@ -144,7 +152,7 @@ sub makeactions
             $px_cnt{$PROXY} = $px_cnt{$PROXY} + 5 if ($line =~ /foobar/);
           }
           else {
-            $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/ && $skip_post < 1 && $line !~ /cart\/checkout/);
+            $px_cnt{$PROXY} = $px_cnt{$PROXY} + 1  if ($line =~ /POST/);
           }
         }
       }
