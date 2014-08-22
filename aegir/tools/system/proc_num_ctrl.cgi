@@ -149,6 +149,19 @@ sub global_action
     {
       local($HOUR, $MIN) = split(/:/,$TIME);
 
+      if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
+      {
+        $timedate=`date +%y%m%d-%H%M`;
+        chomp($timedate);
+        $hourminute=`date +%H%M`;
+        chomp($hourminute);
+        if ($hourminute !~ /^000/)
+        {
+         `kill -9 $PID`;
+         `echo "G $timedate $TIME $STAT $START $COMMAND, $B, $K, $X, $Y, $Z, $T" >> /var/xdrago/log/php-cli.kill.log`;
+        }
+      }
+
       if ($COMMAND =~ /^(\\)/ && $B =~ /mysqld/ && $CPU > 10 && $USER =~ /mysql/)
       {
         $timedate=`date +%y%m%d-%H%M%S`;
