@@ -1129,7 +1129,7 @@ _PHP52_VERSION=5.2.17
 _PHP53_API=20090626
 _PHP53_VERSION=5.3.29
 _PHP54_API=20100525
-_PHP54_VERSION=5.4.31
+_PHP54_VERSION=5.4.32
 _PHP55_API=20121212
 _PHP55_VERSION=5.5.15
 _PHPREDIS_VERSION=master-06-07-2014
@@ -4038,7 +4038,7 @@ install_php_multi () {
     msg "NOTE! This step may take longer than 8 minutes, please wait..."
     cd /var/opt
     rm -f -r php*
-    get_dev_src "php-$_PHP_VERSION.tar.gz"
+    get_dev_src "php-$_PHP_VERSION.tar.bz2"
     msg "INFO: Installing PHP-FPM $_PHP_VERSION part 1/3"
     cd /var/opt/php-$_PHP_VERSION
     st_runner "sh ./buildconf --force" 2> /dev/null
