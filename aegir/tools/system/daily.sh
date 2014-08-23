@@ -1518,7 +1518,7 @@ fi
 if [ "$_DOW" = "6" ] ; then
   _MODULES_ON_SEVEN="robotstxt"
   _MODULES_ON_SIX="path_alias_cache robotstxt"
-  _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update memcache memcache_admin oa_update openacademy_core_update restaurant_update performance search_krumo security_review site_audit stage_file_proxy syslog ultimate_cron update varnish watchdog_live xhprof"
+  _MODULES_OFF_SEVEN="background_process coder dblog devel hacked l10n_update memcache memcache_admin performance search_krumo security_review site_audit stage_file_proxy syslog ultimate_cron update varnish watchdog_live xhprof"
   _MODULES_OFF_SIX="background_process coder cookie_cache_bypass css_gzip dblog devel hacked javascript_aggregator l10n_update memcache memcache_admin performance poormanscron search_krumo security_review stage_file_proxy supercron syslog ultimate_cron update varnish watchdog_live xhprof"
 else
   _MODULES_ON_SEVEN="robotstxt"
