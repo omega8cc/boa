@@ -156,6 +156,7 @@ up_action ()
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
         if [ "$silent" = "system" ] ; then
+          touch /var/run/boa_system_wait.pid
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
@@ -229,6 +230,7 @@ up_finish ()
 {
   rm -f /var/run/boa_run.pid
   rm -f /var/run/boa_wait.pid
+  rm -f /var/run/boa_system_wait.pid
   rm -f /var/run/manage_ltd_users.pid
   rm -f /var/run/manage_rvm_users.pid
   rm -f /var/backups/BARRACUDA.sh*

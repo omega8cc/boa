@@ -1545,7 +1545,7 @@ else
 fi
 #
 mkdir -p /var/xdrago/log/daily
-if [ -e "/var/run/boa_wait.pid" ] ; then
+if [ -e "/var/run/boa_wait.pid" ] && [ ! -e "/var/run/boa_system_wait.pid" ] ; then
   touch /var/xdrago/log/wait-for-boa
   exit 1
 elif [ -e "/var/run/daily-fix.pid" ] ; then
