@@ -1,0 +1,10 @@
+diff -urp a/texts.csv b/texts.csv
+--- a/texts.csv	2014-08-25 11:19:44.000000000 +0000
++++ b/texts.csv	2014-08-25 12:22:37.000000000 +0000
+@@ -1,3 +1,3 @@
+ "Title","Text","Overrides"
+-"About Restaurant","<p>The Restaurant distribution is powered by Drupal and Panopoly.</p><p><a href='http://drupal.org/project/restaurant' class='btn btn-lg btn-success'>Download Restaurant</a></p><p><a href='http://drupal.org/project/restaurant'>Learn more</a> · <a href='https://dashboard.getpantheon.com/products/restaurant/spinup'>Try on Pantheon</a></p>","site_template_panel_context__new-7"
+-"How to book a table","<h4>Step 1</h4><p>Fill in the reservation form with your contact information, the date of your reservation and the number of persons.</p><h4>Step 2</h4><p>Wait for our email that confirms that your reservation has been received.</p><h4>Step 3</h4><p>We will email you or call you back when your reservation has been confirmed.</p>","reservation__page_reservation_panel_context_2__new-2"
+\ No newline at end of file
++"About Restaurant","<p>The Restaurant distribution is powered by Drupal and Panopoly.</p><p><a href='http://drupal.org/project/restaurant' class='btn btn-lg btn-success'>Download Restaurant</a></p><p><a href='http://drupal.org/project/restaurant'>Learn more</a> · <a href='https://omega8.cc/demo'>Try on Aegir</a></p>","site_template_panel_context__new-7"
++"How to book a table","<h4>Step 1</h4><p>Fill in the reservation form with your contact information, the date of your reservation and the number of persons.</p><h4>Step 2</h4><p>Wait for our email that confirms that your reservation has been received.</p><h4>Step 3</h4><p>We will email you or call you back when your reservation has been confirmed.</p>","reservation__page_reservation_panel_context_2__new-2"

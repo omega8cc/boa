@@ -618,7 +618,7 @@ _F_OPENSCHOLAR="OpenScholar 3.12.1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PANOPOLY="Panopoly 1.11 $_SMALLCORE7 P.$_THIS_CORE"
 _F_PROSEPOINT="Prosepoint $_PROSEPOINT $_SMALLCORE6 P.$_THIS_CORE"
 _F_RECRUITER="Recruiter 1.2 $_SMALLCORE7 P.$_THIS_CORE"
-_F_RESTAURANT="Restaurant 1.0-b2 $_SMALLCORE7 P.$_THIS_CORE"
+_F_RESTAURANT="Restaurant 1.0-b9 $_SMALLCORE7 P.$_THIS_CORE"
 _F_SPARK="Spark 1.0-b1 $_SMALLCORE7 P.$_THIS_CORE"
 _F_TOTEM="Totem 1.1.2 $_SMALLCORE7 P.$_THIS_CORE"
 _F_UBER_CART_TESTING="Ubercart $_UBERCART7 [ud2] $_SMALLCORE7 P.$_THIS_CORE"
@@ -2169,6 +2169,8 @@ if [ ! -d "$_SHRD_PLPATH" ] ; then
     fi
     nocore_d7_dist_clean
     remove_default_core_seven_profiles
+    cd $_SHRD_PRPATH/modules/restaurant/restaurant_demo/import
+    patch -p1 < /opt/tmp/$_BOA_REPO_NAME/aegir/patches/restaurant_demo.patch &> /dev/null
   else
     get_distro_ext "$_SHRD_PLNAME.tar.gz"
   fi
