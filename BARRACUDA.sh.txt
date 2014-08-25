@@ -7264,13 +7264,13 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
-      if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
-        sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
+      if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] && [ ! -e "/root/.tg.cnf" ] ; then
+        sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
         sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/9 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
-      elif [ -e "/root/.big_db.cnf" ] ; then
-        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+      elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ] ; then
+        _DO_NOTHING=YES
       else
-        sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
+        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
       fi
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
@@ -7319,13 +7319,13 @@ if [ "$_STATUS" = "INIT" ] ; then
     if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
-      if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] ; then
-        sed -i "s/3600/60/g" /var/xdrago/minute.sh &> /dev/null
+      if [ -e "/root/.high_load.cnf" ] && [ ! -e "/root/.big_db.cnf" ] && [ ! -e "/root/.tg.cnf" ] ; then
+        sed -i "s/3600/180/g" /var/xdrago/minute.sh &> /dev/null
         sed -i "s/\* \* \* \* \* bash \/var\/xdrago\/runner.sh/*\/9 * * * * bash \/var\/xdrago\/runner.sh/g" /var/spool/cron/crontabs/root &> /dev/null
-      elif [ -e "/root/.big_db.cnf" ] ; then
-        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
+      elif [ -e "/root/.big_db.cnf" ] || [ -e "/root/.tg.cnf" ] ; then
+        _DO_NOTHING=YES
       else
-        sed -i "s/3600/900/g" /var/xdrago/minute.sh &> /dev/null
+        sed -i "s/3600/1800/g" /var/xdrago/minute.sh &> /dev/null
       fi
       sed -i "s/rotate 52/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
       sed -i "s/rotate 1/rotate 7/g" /etc/logrotate.d/nginx &> /dev/null
