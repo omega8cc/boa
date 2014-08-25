@@ -622,12 +622,12 @@ tune_php () {
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = $_TUNE_PHP_FPM_TIMEOUT/g" /opt/php*/etc/php*.ini &> /dev/null
   sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_FPM_TIMEOUT/g" /opt/php*/etc/php*.ini         &> /dev/null
   sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_FPM_TIMEOUT/g" /opt/php*/etc/php*.ini                 &> /dev/null
-  # Redis config should sync with PHP-FPM
-  sed -i "s/^timeout .*/timeout $_TUNE_PHP_FPM_TIMEOUT/g" /etc/redis/redis.conf                                   &> /dev/null
   # PHP-CLI INI
   sed -i "s/^max_execution_time =.*/max_execution_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini          &> /dev/null
   sed -i "s/^max_input_time =.*/max_input_time = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini                  &> /dev/null
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = $_TUNE_PHP_CLI_TIMEOUT/g" /opt/php*/lib/php.ini  &> /dev/null
+  # Redis config should sync with PHP-CLI
+  sed -i "s/^timeout .*/timeout $_TUNE_PHP_CLI_TIMEOUT/g" /etc/redis/redis.conf                                   &> /dev/null
 }
 #
 update_innodb_log_file_size () {
@@ -839,7 +839,7 @@ tune_web_server_config () {
   sed -i "s/^max_execution_time =.*/max_execution_time = 180/g" /opt/php*/etc/php*.ini         &> /dev/null
   sed -i "s/^max_input_time =.*/max_input_time = 180/g" /opt/php*/etc/php*.ini                 &> /dev/null
   # Redis config should sync with PHP-FPM
-  sed -i "s/^timeout .*/timeout 180/g" /etc/redis/redis.conf                                   &> /dev/null
+  sed -i "s/^timeout .*/timeout 900/g" /etc/redis/redis.conf                                   &> /dev/null
   # PHP-CLI INI
   sed -i "s/^default_socket_timeout =.*/default_socket_timeout = 3600/g" /opt/php*/lib/php.ini &> /dev/null
   sed -i "s/^max_execution_time =.*/max_execution_time = 3600/g" /opt/php*/lib/php.ini         &> /dev/null
