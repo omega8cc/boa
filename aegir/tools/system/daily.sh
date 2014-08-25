@@ -1666,11 +1666,11 @@ fi
 find /var/backups/ltd/*/* -mtime +0 -type f -exec rm -rf {} \;
 find /var/backups/jetty* -mtime +0 -exec rm -rf {} \;
 find /var/backups/dragon/* -mtime +7 -exec rm -rf {} \;
-if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
   if [ -d "/var/backups/codebases-cleanup" ] ; then
-    find /var/backups/codebases-cleanup/* -mtime +1 -exec rm -rf {} \;
+    find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \;
   elif [ -d "/data/disk/codebases-cleanup" ] ; then
-    find /data/disk/codebases-cleanup/* -mtime +1 -exec rm -rf {} \;
+    find /data/disk/codebases-cleanup/* -mtime +7 -exec rm -rf {} \;
   fi
 fi
 rm -f /tmp/.cron.*.pid
