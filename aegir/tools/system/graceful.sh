@@ -23,7 +23,7 @@ action()
   if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
     rm -f /tmp/*
   fi
-  rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root,tmp*}
+  rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root,tmp*,.sass-cache,pear}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   rm -f /opt/tomcat6/logs/*

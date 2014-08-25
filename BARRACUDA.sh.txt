@@ -7235,7 +7235,7 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v55.lon." ]]; then
+    if [[ "$_THISHOST" =~ "v251a.ams." ]]; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
@@ -7244,6 +7244,7 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     fi
   fi
   sed -i "s/= 150/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 200/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
     _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
@@ -7295,7 +7296,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     _THISHTIP="$_LOC_IP"
   fi
   if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
-    if [[ "$_THISHOST" =~ "v55.lon." ]]; then
+    if [[ "$_THISHOST" =~ "v251a.ams." ]]; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
@@ -7304,6 +7305,7 @@ if [ "$_STATUS" = "INIT" ] ; then
     fi
   fi
   sed -i "s/= 150/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
+  sed -i "s/= 200/= $_NGINX_DOS_LIMIT/g" /var/xdrago/monitor/check/scan_nginx &> /dev/null
   if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
     _NGINX_DOS_KEYWORDS=${_NGINX_DOS_KEYWORDS//[^a-zA-Z0-9|]/}
     if [ ! -z "$_NGINX_DOS_KEYWORDS" ] ; then
