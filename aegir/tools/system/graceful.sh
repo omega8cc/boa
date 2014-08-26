@@ -20,10 +20,11 @@ action()
   mkdir -p /opt/tmp
   chmod 777 /opt/tmp
   rm -f /opt/tmp/sess*
-  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     rm -f /tmp/*
   fi
-  rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata_tomcat,hsperfdata_root,tmp*,.sass-cache,pear}
+  find /tmp/{.ICE-unix,.X11-unix,.webmin} -mtime +0 -type f -exec rm -rf {} \;
+  rm -f -r /tmp/{google*,Google*,drush*,mapshape*,mc-*,hsperfdata*,tmp*,.sass-cache,pear,jetty*}
   kill -9 $(ps aux | grep '[j]etty' | awk '{print $2}') &> /dev/null
   kill -9 $(ps aux | grep '[t]omcat' | awk '{print $2}') &> /dev/null
   rm -f /opt/tomcat6/logs/*
