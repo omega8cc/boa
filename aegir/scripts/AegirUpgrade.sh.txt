@@ -210,7 +210,7 @@ hostmaster_dr_up () {
   find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 $_ROOT/drush/drush
   chmod 755 $_ROOT/drush/drush.php
-  if [ "$_DRUSH_VERSION" = "mini-4-14-03-2014" ] ; then
+  if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
     _DRUSH_CC_REQ=NO
   else
     _DRUSH_CC_REQ=YES

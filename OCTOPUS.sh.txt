@@ -648,7 +648,7 @@ _INSTALLER_VERSION=BOA-2.3.0-dev
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-4-14-03-2014
+_DRUSH_VERSION=mini-4-26-08-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
@@ -1259,7 +1259,7 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ "$_DRUSH_VERSION" = "mini-4-14-03-2014" ] ; then
+    if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
       _DRUSH_CC_REQ=NO
     else
       _DRUSH_CC_REQ=YES
