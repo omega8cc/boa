@@ -54,6 +54,9 @@ foreach $X (sort keys %li_cnt) {
   if ($X =~ /php53/) {$php53lives = "YES";}
   if ($X =~ /php52/) {$php52lives = "YES";}
 }
+foreach $K (sort keys %li_cnt) {
+  if ($K =~ /convert/) {$convertlives = "YES"; $convertsumar = $li_cnt{$K};}
+}
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
@@ -79,6 +82,7 @@ print "\n $jetty9sumar Jetty9 procs\t\tGLOBAL" if ($jetty9lives);
 print "\n $tomcatsumar Tomcat procs\t\tGLOBAL" if ($tomcatlives);
 print "\n $rsyslogdsumar Syslog procs\t\tGLOBAL" if ($rsyslogdlives);
 print "\n $sysklogdsumar Syslog procs\t\tGLOBAL" if ($sysklogdlives);
+print "\n $convertsumar Convert procs\t\tGLOBAL" if ($convertlives);
 `/etc/init.d/bind9 restart` if (!$namedsumar && -f "/etc/init.d/bind9");
 if (-e "/usr/sbin/pdnsd" && !$pdnsdsumar && !-f "/var/run/boa_run.pid") {
   system("/etc/init.d/pdnsd stop");
@@ -143,6 +147,7 @@ sub global_action
     $PID =~ s/[^0-9]//g;
     $li_cnt{$USER}++ if ($PID);
     $li_cnt{$X}++ if ($PID && $COMMAND =~ /php-fpm/ && $X =~ /php/);
+    $li_cnt{$K}++ if ($PID && $COMMAND =~ /^(\|)/ && $K =~ /convert/);
     local($fpm_result) = "CTRL";
 
     if ($PID)
@@ -198,12 +203,12 @@ sub global_action
         }
       }
 
-      if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 90 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
+      if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 50 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $convertsumar > 10)
       {
         $timedate=`date +%y%m%d-%H%M%S`;
         chomp($timedate);
        `kill -9 $PID`;
-       `echo "$USER $CPU $STAT $START $TIME $timedate" >> /var/xdrago/log/convert.kill.log`;
+       `echo "$USER $CPU $STAT $START $TIME $timedate x $convertsumar" >> /var/xdrago/log/convert.kill.log`;
         $kill_convert = "YES";
       }
 
