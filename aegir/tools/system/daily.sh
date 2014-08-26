@@ -2,6 +2,7 @@
 
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+_WEBG=www-data
 
 ###-------------SYSTEM-----------------###
 
@@ -1361,6 +1362,7 @@ purge_cruft_machine () {
   find $User/static/trash/* -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
   REVISIONS="001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024 025 026 027 028 029 030 031 032 033 034 035 036 037 038 039 040 041 042 043 044 045 046 047 048 049 050"
+
   for i in $REVISIONS; do
     if [ -e "/home/${_THIS_HM_USER}.ftp/platforms/$i" ] ; then
       RevisionTest=$(ls /home/${_THIS_HM_USER}.ftp/platforms/$i | wc -l | tr -d "\n" 2>&1)
@@ -1380,6 +1382,23 @@ purge_cruft_machine () {
         mv -f $User/distro/$i $User/undo/ &> /dev/null
         echo GHOST revision $User/distro/$i detected and moved to $User/undo/
       fi
+    fi
+  done
+
+  for i in $REVISIONS; do
+    if [ -e "/data/disk/${_THIS_HM_USER}/distro/$i" ] && [ ! -e "/home/${_THIS_HM_USER}.ftp/platforms/$i" ] ; then
+      chattr -i /home/${_THIS_HM_USER}.ftp/platforms   &> /dev/null
+      chattr -i /home/${_THIS_HM_USER}.ftp/platforms/* &> /dev/null
+      mkdir -p /home/${_THIS_HM_USER}.ftp/platforms/$i
+      mkdir -p /data/disk/${_THIS_HM_USER}/distro/$i/keys
+      chown ${_THIS_HM_USER}.ftp:$_WEBG /data/disk/${_THIS_HM_USER}/distro/$i/keys
+      chmod 02775 /data/disk/${_THIS_HM_USER}/distro/$i/keys
+      ln -sf /data/disk/${_THIS_HM_USER}/distro/$i/keys /home/${_THIS_HM_USER}.ftp/platforms/$i/keys
+      for Codebase in `find /data/disk/${_THIS_HM_USER}/distro/$i/* -maxdepth 1 -mindepth 1 -type d | grep "/sites$" 2>&1`; do
+        CodebaseName=$(echo $Codebase | cut -d'/' -f7 | awk '{ print $1}' 2> /dev/null)
+        ln -sf ${Codebase} /home/${_THIS_HM_USER}.ftp/platforms/$i/${CodebaseName}
+        echo Fixed symlink to ${Codebase} for ${_THIS_HM_USER}.ftp
+      done
     fi
   done
 }

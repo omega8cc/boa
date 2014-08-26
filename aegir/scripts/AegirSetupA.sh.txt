@@ -1798,7 +1798,7 @@ if [ "$_HM_ONLY" = "YES" ] ; then
 else
   if [ ! -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
     mkdir -p $_ROOT/distro/$_THIS_CORE/keys
-    chown $_WEBG:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
+    chown $_USERFTP:$_WEBG $_ROOT/distro/$_THIS_CORE/keys &> /dev/null
     chmod 02775 $_ROOT/distro/$_THIS_CORE/keys
   fi
   if [ -d "$_ROOT/distro/$_THIS_CORE/keys" ] ; then
