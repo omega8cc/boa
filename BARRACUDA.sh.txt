@@ -7237,12 +7237,16 @@ if [ -d "/var/xdrago/conf" ] && [ -e "/var/aegir/.drush/hostmaster.alias.drushrc
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_THISHOST" =~ "v251a.ams." ]]; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
-        _NGINX_DOS_LIMIT=149
+        if [ "$_VMFAMILY" = "VS" ] ; then
+          _NGINX_DOS_LIMIT=149
+        else
+          _NGINX_DOS_LIMIT=188
+        fi
       fi
     fi
   fi
@@ -7298,12 +7302,16 @@ if [ "$_STATUS" = "INIT" ] ; then
     find_correct_ip
     _THISHTIP="$_LOC_IP"
   fi
-  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
+  if [[ "$_THISHOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.host8.cnf" ] ; then
     if [[ "$_THISHOST" =~ "v251a.ams." ]]; then
       _NGINX_DOS_LIMIT=888
     else
       if [ -z "$_NGINX_DOS_LIMIT" ] || [ "$_NGINX_DOS_LIMIT" = "300" ] ; then
-        _NGINX_DOS_LIMIT=149
+        if [ "$_VMFAMILY" = "VS" ] ; then
+          _NGINX_DOS_LIMIT=149
+        else
+          _NGINX_DOS_LIMIT=188
+        fi
       fi
     fi
   fi
