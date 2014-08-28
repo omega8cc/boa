@@ -57,6 +57,10 @@ foreach $X (sort keys %li_cnt) {
 foreach $K (sort keys %li_cnt) {
   if ($K =~ /convert/) {$convertlives = "YES"; $convertsumar = $li_cnt{$K};}
 }
+if ($convertlives)
+{
+  &convert_action;
+}
 print "\n $sumar ALL procs\t\tGLOBAL";
 print "\n $namedsumar Bind procs\t\tGLOBAL" if ($namedlives);
 print "\n $buagentsumar Backup procs\t\tGLOBAL" if ($buagentlives);
@@ -181,7 +185,7 @@ sub global_action
           }
         }
         if ($CPU > 50 && !-f "/var/run/boa_sql_backup.pid") {
-         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.test.log`;
+         `echo "$USER CPU:$CPU MAXSQLCPU:$MAXSQLCPU $STAT START:$START TIME:$TIME $timedate" >> /var/xdrago/log/mysql.watch.log`;
         }
       }
 
@@ -199,23 +203,8 @@ sub global_action
               $fpm_result = "KILLED";
             }
           }
-         `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate $fpm_result" >> /var/xdrago/log/php-fpm.test.log`;
+         `echo "$X CPU:$CPU $STAT START:$START TIME:$TIME $timedate $fpm_result" >> /var/xdrago/log/php-fpm.watch.log`;
         }
-      }
-
-      if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 50 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/) && $convertsumar > 10)
-      {
-        $timedate=`date +%y%m%d-%H%M%S`;
-        chomp($timedate);
-       `kill -9 $PID`;
-       `echo "$USER $CPU $STAT $START $TIME $timedate x $convertsumar" >> /var/xdrago/log/convert.kill.log`;
-        $kill_convert = "YES";
-      }
-
-      if ($kill_convert && $COMMAND =~ /^(\|)/ && $K =~ /bin/ && $Y =~ /convert/)
-      {
-       `kill -9 $PID`;
-       `echo "$USER $CPU $STAT $START $TIME $timedate" >> /var/xdrago/log/convert.kill.log`;
       }
 
       if ($COMMAND =~ /^(sh|git)/ && $START =~ /[A-Z]/ && $B =~ /(-c|git|clone)/)
@@ -269,6 +258,40 @@ sub global_action
             $li_cnt{$COMMAND}++;
           }
         }
+      }
+    }
+  }
+}
+
+#############################################################################
+sub convert_action
+{
+  local(@MYARR) = `ps auxf 2>&1`;
+  foreach $line (@MYARR) {
+    $line =~ s/[^a-zA-Z0-9\:\s\t\/\-\@\_\(\)\*\[\]\.\,\?\=\|\\\+]//g;
+    local($USER, $PID, $CPU, $MEM, $VSZ, $RSS, $TTY, $STAT, $START, $TIME, $COMMAND, $B, $K, $X, $Y, $Z, $T) = split(/\s+/,$line);
+    $PID =~ s/[^0-9]//g;
+    if ($PID)
+    {
+      local($HOUR, $MIN) = split(/:/,$TIME);
+      if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 10 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
+      {
+        $timedate=`date +%y%m%d-%H%M%S`;
+        chomp($timedate);
+        if ($convertsumar > 1 || $CPU > 20) {
+         `kill -9 $PID`;
+         `echo "$USER $CPU $STAT $START $TIME $timedate KILL Q $convertsumar" >> /var/xdrago/log/convert.kill.log`;
+          $kill_convert = "YES";
+        }
+        else {
+         `echo "$USER $CPU $STAT $START $TIME $timedate WATCH $convertsumar" >> /var/xdrago/log/convert.watch.log`;
+        }
+      }
+
+      if ($kill_convert && $COMMAND =~ /^(\|)/ && $K =~ /bin/ && $Y =~ /convert/)
+      {
+       `kill -9 $PID`;
+       `echo "$USER $CPU $STAT $START $TIME $timedate KILL Z $convertsumar" >> /var/xdrago/log/convert.kill.log`;
       }
     }
   }

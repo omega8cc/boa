@@ -297,27 +297,43 @@ fi
 
 count_cpu
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
 load_control
-sleep 5
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
+load_control
+sleep 3
 load_control
 echo Done !
 exit 0
