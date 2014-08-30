@@ -200,8 +200,13 @@ count () {
         Dat=`cat $Dir/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
         #echo Dat is $Dat
         if [ -e "$Dir" ] ; then
-          DirSize=`du -s $Dir`
-          DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+          if [ -L "$Dir/files" ] ; then
+            DirSize=`du -L -s $Dir`
+            DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+          else
+            DirSize=`du -s $Dir`
+            DirSize=`echo "$DirSize" | cut -d'/' -f1 | awk '{ print $1}' | sed "s/[\/\s+]//g"`
+          fi
           if [ "$_DEV_URL" = "YES" ] ; then
             echo "$_THIS_HM_USER,$Dom,DirSize:$DirSize,skip"
           else
