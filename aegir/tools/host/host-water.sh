@@ -137,6 +137,13 @@ done
 }
 
 if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; then
+  if [ -e "/root/.local.IP.list" ] ; then
+    for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`
+    do
+      csf -dr $_IP &> /dev/null
+      csf -tr $_IP &> /dev/null
+    done
+  fi
   n=$((RANDOM%800+80))
   echo Waiting $n seconds...
   sleep $n

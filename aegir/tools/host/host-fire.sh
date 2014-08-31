@@ -81,13 +81,6 @@ if [ -e "/vservers" ] && [ -e "/etc/csf/csf.deny" ] && [ -e "/usr/sbin/csf" ] ; 
   guest_guard
   sleep 5
   guest_guard
-  if [ -e "/root/.local.IP.list" ] ; then
-    for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`
-    do
-      csf -dr $_IP &> /dev/null
-      csf -tr $_IP &> /dev/null
-    done
-  fi
   rm -f /var/run/fire.pid
 fi
 exit 0
