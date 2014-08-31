@@ -17,34 +17,51 @@ octopus_install ()
     if [ -z "$user" ] ; then
       user="o1"
     fi
+    cp -af /var/backups/OCTOPUS.sh.txt /var/backups/OCTOPUS.sh.$user
     _CHECK_HOST=`uname -n`
-    sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/OCTOPUS.sh.txt &> /dev/null
-    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.txt &> /dev/null
-    sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /var/backups/OCTOPUS.sh.txt &> /dev/null
-    sed -i "s/^_USER=o1/_USER=$user/g"                       /var/backups/OCTOPUS.sh.txt &> /dev/null
-    if [ "$mode" = "mini" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
-    elif [ "$mode" = "max" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
-    elif [ "$mode" = "stock" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"             /var/backups/OCTOPUS.sh.txt &> /dev/null
+    if [ "$cmmand" = "in-octopus" ] ; then
+      if [ ! -z "$copt" ] ; then
+        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" /var/backups/OCTOPUS.sh.$user &> /dev/null
+      fi
+      if [ ! -z "$csub" ] ; then
+        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" /var/backups/OCTOPUS.sh.$user &> /dev/null
+      fi
+      if [ ! -z "$ccor" ] ; then
+        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   /var/backups/OCTOPUS.sh.$user &> /dev/null
+      fi
     else
-      sed -i "s/D7P D7S D7D D6P D6S D6D OAM/ALL/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.txt &> /dev/null
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        /var/backups/OCTOPUS.sh.$user &> /dev/null
+    fi
+    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.$user &> /dev/null
+    sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /var/backups/OCTOPUS.sh.$user &> /dev/null
+    sed -i "s/^_USER=.*/_USER=$user/g"                       /var/backups/OCTOPUS.sh.$user &> /dev/null
+    if [ "$mode" = "mini" ] ; then
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
+    elif [ "$mode" = "max" ] ; then
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
+    elif [ "$mode" = "stock" ] ; then
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
+    elif [ "$mode" = "none" ] ; then
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=/g"      /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
+    else
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.txt &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.txt &> /dev/null
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$user &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$user &> /dev/null
       fi
     fi
-    bash /var/backups/OCTOPUS.sh.txt
+    bash /var/backups/OCTOPUS.sh.$user
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     sed -i "/^$/d" /etc/hosts
   else
@@ -189,9 +206,16 @@ init_setup ()
     elif [ "$cmmand" = "in-legacy" ] ; then
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
       curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+    elif [ "$cmmand" = "in-octopus" ] ; then
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
     fi
   fi
-  barracuda_install
+  if [ "$cmmand" = "in-octopus" ] ; then
+    _OCTOPUS_ONLY=YES
+  else
+    barracuda_install
+  fi
   octopus_install
   init_finish
 }
@@ -335,8 +359,18 @@ case "$1" in
              check_wrapper
              init_setup
   ;;
+  in-octopus) cmmand="$1"
+             email="$2"
+             user="$3"
+             mode="$4"
+             copt="$5"
+             csub="$6"
+             ccor="$7"
+             check_wrapper
+             init_setup
+  ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy} {local|public} {fqdn} {email} {o1} {ask|mini|max|stock} {newrelickey}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy} {local|public} {fqdn} {email} {o1} {ask|mini|max|none|stock} {newrelickey}"
              echo
              exit 1
   ;;
