@@ -4111,6 +4111,10 @@ do_install_latest_git () {
 #
 # Check if latest Git should be installed.
 check_install_latest_git () {
+  _GIT_INSTALLED=$(git --version)
+  if [[ "$_GIT_INSTALLED" =~ "git version 1.9.1" ]] ; then
+    _GIT_FORCE_REINSTALL=YES
+  fi
   if [[ "$_XTRAS_LIST" =~ "GIT" ]] || [ "$_REL_VERSION" = "lenny" ] || [ "$_REL_VERSION" = "lucid" ] || [ "$_SSB_SRC" = "YES" ] || [ "$_GIT_FORCE_REINSTALL" = "YES" ] ; then
     _GIT_TEST=$(git --version)
     if [[ "$_GIT_TEST" =~ "git version $_GIT_VERSION" ]] ; then
