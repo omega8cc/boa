@@ -5057,8 +5057,14 @@ install_ssh_src () {
 install_curl_src () {
   _CURL_INSTALL_REQUIRED=NO
   _CURL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f2 | awk '{ print $1}'`
+  _CURL_SSL_INSTALLED=`curl --version 2>&1 | tr -d "\n" | cut -d" " -f5 | awk '{ print $1}' | cut -d"/" -f2 | awk '{ print $1}'`
   if [ "$_CURL_INSTALLED" = "$_CURL_VERSION" ] ; then
-    _CURL_INSTALL_REQUIRED=NO
+    if [ "$_CURL_SSL_INSTALLED" = "$_OPENSSL_VERSION" ] ; then
+      _CURL_INSTALL_REQUIRED=NO
+    else
+      _CURL_INSTALL_REQUIRED=YES
+      msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_OPENSSL_VERSION, rebuild forced"
+    fi
   else
     _CURL_INSTALL_REQUIRED=YES
     msg "INFO: Installed cURL version $_CURL_INSTALLED, upgrade required"
