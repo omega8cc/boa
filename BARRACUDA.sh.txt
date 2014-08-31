@@ -5063,7 +5063,7 @@ install_curl_src () {
       _CURL_INSTALL_REQUIRED=NO
     else
       _CURL_INSTALL_REQUIRED=YES
-      msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_OPENSSL_VERSION, rebuild forced"
+      msg "INFO: Installed cURL $_CURL_INSTALLED with OpenSSL $_CURL_SSL_INSTALLED, rebuild forced"
     fi
   else
     _CURL_INSTALL_REQUIRED=YES
