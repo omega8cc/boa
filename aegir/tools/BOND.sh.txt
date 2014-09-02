@@ -137,7 +137,7 @@ _TUNE_PHP_CLI_TIMEOUT=7200
 ###----------------------------------------###
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.9
+### _AEGIR_VERSION=BOA-2.3.1
 ###
 _AEGIR_VERSION=HEAD
 
@@ -146,7 +146,7 @@ _AEGIR_VERSION=HEAD
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.0-dev
+_INSTALLER_VERSION=BOA-2.3.x-dev
 _NOW=`date +%y%m%d-%H%M`
 _RAM=`free -mto | grep Mem: | awk '{ print $2 }'`
 _THISHOST=`uname -n`
@@ -1269,11 +1269,6 @@ cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
-  if [ "$_FORCE_GIT_MIRROR" = "test" ] ; then
-    cd /opt/tmp/$_BOA_REPO_NAME
-    git checkout 2.0.5-dev &> /dev/null
-    cd /opt/tmp
-  fi
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"

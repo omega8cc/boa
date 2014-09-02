@@ -169,10 +169,15 @@ up_one ()
         else
           echo "$User/.drush/sys/provision does not exist!"
           rm -f -r $User/.drush/{sys,xts,usr}
-          mkdir -p $User/.drush/sys
-          cd $User/.drush/sys
-          curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-HEAD.tar.gz" | tar -xzf -
-          get_dev_ext "drush_make.tar.gz"
+          rm -f -r $User/.drush/{provision,drush_make}
+          mkdir -p $User/.drush/{sys,xts,usr}
+          if [ "$cmmand" = "up-modern" ] ; then
+            git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
+          else
+            cd $User/.drush/sys
+            curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-HEAD.tar.gz" | tar -xzf -
+            get_dev_ext "drush_make.tar.gz"
+          fi
           chown -R $_THIS_HM_USER:users $User/.drush/sys
         fi
       fi
@@ -427,6 +432,18 @@ up_head ()
   up_finish
 }
 
+up_modern ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/modern/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
 up_legacy ()
 {
   up_start
@@ -546,6 +563,15 @@ case "$1" in
              check_dns_curl
              check_wrapper
              up_head
+  ;;
+  up-modern) cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             check_root
+             check_dns_curl
+             check_wrapper
+             up_modern
   ;;
   up-legacy) cmmand="$1"
              second="$2"

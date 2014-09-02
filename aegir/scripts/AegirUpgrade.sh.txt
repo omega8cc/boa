@@ -39,7 +39,6 @@ _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
 _DEBUG_MODE=EDIT_DEBUG_MODE
 _DOMAIN=EDIT_DOMAIN
-_DRUSH_CC_REQ=NO
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 _INSTALLER_VERSION=EDIT_INSTALLER_VERSION
@@ -48,7 +47,6 @@ _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _PURGE_MODE=EDIT_PURGE_MODE
 _REL_VERSION=`lsb_release -sc`
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_USE_STOCK=EDIT_USE_STOCK
 _ROOT="$HOME"
 #
 if [ "$_PHP_CLI_VERSION" = "5.5" ] && [ -x "/opt/php55/bin/php" ] ; then
@@ -178,7 +176,7 @@ hostmaster_mv_up () {
   mkdir -p $_ROOT/backups/system
   chmod 700 $_ROOT/backups/system
   mv -f $_ROOT/backups/drush-pre* $_ROOT/backups/system/ &> /dev/null
-  _D_EXT="provision drush_make clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
+  _D_EXT="provision clean_missing_modules drush_ecl provision_boost provision_cdn provision_civicrm provision_site_backup provision_tasks_extra registry_rebuild security_check security_review remote_import"
   for e in $_D_EXT; do
     if [ -e "$_ROOT/.drush/$e" ] ; then
       mv -f $_ROOT/.drush/$e $_ROOT/backups/system/$e-pre-$_DISTRO-$_NOW &> /dev/null
@@ -210,11 +208,6 @@ hostmaster_dr_up () {
   find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
   chmod 755 $_ROOT/drush/drush
   chmod 755 $_ROOT/drush/drush.php
-  if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
-    _DRUSH_CC_REQ=NO
-  else
-    _DRUSH_CC_REQ=YES
-  fi
   update_php_cli_drush
   update_php_cli_local_ini
   if $_DRUSHCMD help > /dev/null ; then
@@ -236,22 +229,8 @@ hostmaster_go_up () {
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       cd $_ROOT/.drush
-      if [ "$_USE_STOCK" = "YES" ] ; then
-        git clone --branch 6.x-2.x-stock-revert git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
-      else
-        if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
-          _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
-          git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/sys/provision &> /dev/null
-          _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-          sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
-          sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
-        else
-          git clone $_BOA_REPO_GIT_URL/provision.git $_ROOT/.drush/sys/provision &> /dev/null
-          _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-          sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
-        fi
-      fi
       msg "INFO: Downloading Drush and Provision extensions..."
+      git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision             &> /dev/null
       git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
       git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
       git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
@@ -276,8 +255,6 @@ hostmaster_go_up () {
     rm -f -r $_ROOT/.drush/*/*/.git
     cd $_ROOT/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
-    cd $_ROOT/.drush/sys
-    get_dev_ext "drush_make.tar.gz"
   fi
   if [ "$_HTTP_WILDCARD" = "YES" ] ; then
     sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
@@ -296,9 +273,7 @@ hostmaster_mi_up () {
   if [ -z "${TERM+x}" ]; then
     export TERM=vt100
   fi
-  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-    $_DRUSHCMD cache-clear drush &> /dev/null
-  fi
+  $_DRUSHCMD cache-clear drush &> /dev/null
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else

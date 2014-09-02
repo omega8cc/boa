@@ -124,19 +124,15 @@ up_action ()
       fi
     fi
     if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-      if [ "$silent" = "log" ] || [ "$silent" = "system" ] || [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
-        if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
-          n=8
-        else
-          if [ "$_L_VMFAMILY" = "VS" ] ; then
-            if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
-              n=8
-            else
-              n=$((RANDOM%800+80))
-            fi
-          else
+      if [ "$silent" = "log" ] || [ "$silent" = "system" ] ; then
+        if [ "$_L_VMFAMILY" = "VS" ] ; then
+          if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
             n=8
+          else
+            n=$((RANDOM%800+80))
           fi
+        else
+           dn=8
         fi
         echo
         echo "Preparing the upgrade in silent mode..."
@@ -160,26 +156,13 @@ up_action ()
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                      /root/.barracuda.cnf &> /dev/null
-        elif [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
-          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"                     /var/backups/BARRACUDA.sh.txt &> /dev/null
-          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"                     /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
-          if [ "$silent" = "aegir" ] ; then
-            sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-            sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
-          else
-            sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
-          fi
         elif [ "$silent" = "log" ] ; then
-          sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                      /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
           sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
         fi
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         check_report
       else
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                        /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"      /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                        /root/.barracuda.cnf &> /dev/null
@@ -260,11 +243,7 @@ up_finish ()
 up_stable ()
 {
   up_start
-  if [ "$silent" = "stock" ] || [ "$silent" = "aegir" ] ; then
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  else
-    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-  fi
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   up_action
   up_finish
 }
@@ -273,6 +252,14 @@ up_head ()
 {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+  up_action
+  up_finish
+}
+
+up_modern ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/modern/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   up_action
   up_finish
 }
@@ -427,6 +414,15 @@ case "$1" in
              set_pin_priority
              up_head
   ;;
+  up-modern) cmmand="$1"
+             silent="$2"
+             ifauto="$3"
+             check_root
+             check_dns_curl
+             check_wrapper
+             set_pin_priority
+             up_modern
+  ;;
   up-legacy) cmmand="$1"
              silent="$2"
              ifauto="$3"
@@ -437,12 +433,10 @@ case "$1" in
              up_legacy
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log|stock|aegir}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
-             echo "  Silent Mode Option: log    == OS and Aegir upgrade"
-             echo "  Silent Mode Option: stock  == OS and stock Aegir forced up-head upgrade"
-             echo "  Silent Mode Option: aegir  == Only stock Aegir forced up-head upgrade"
+             echo "  Silent Mode Option: log    == OS and Aegir Master Instance upgrade"
              echo
              exit 1
   ;;

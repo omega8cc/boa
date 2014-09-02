@@ -293,7 +293,7 @@ _MY_OWNIP=""
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.9
+### _AEGIR_VERSION=BOA-2.3.1
 ###
 _AEGIR_VERSION=HEAD
 
@@ -501,19 +501,6 @@ _LOCAL_NETWORK_IP=""
 
 
 ###----------------------------------------###
-### STOCK AEGIR TESTING                    ###
-###----------------------------------------###
-###
-### Change to YES to try Stock Aegir 2.x with
-### Drush 5.x - without any BOA specific
-### modifications or improvements. This option
-### is enabled on command line when you type
-### "stock" instead of "mini", "max" or "ask".
-###
-_USE_STOCK=NO
-
-
-###----------------------------------------###
 ### STRONG PASSWORDS                       ###
 ###----------------------------------------###
 ###
@@ -643,12 +630,12 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.0-dev
+_INSTALLER_VERSION=BOA-2.3.x-dev
 
 ###
 ### Variables
 ###
-_DRUSH_VERSION=mini-4-26-08-2014
+_DRUSH_VERSION=mini-6-27-08-2014
 _NOW=`date +%y%m%d-%H%M`
 _PLATFORMS_ONLY=NO
 _PURGE_FOR_SEVEN=YES
@@ -665,9 +652,6 @@ PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
 SHELL=/bin/bash
 if [ -n "${STY+x}" ]; then
   _SPINNER=NO
-fi
-if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION=mini-6-27-08-2014
 fi
 
 ###
@@ -1032,7 +1016,6 @@ octopus_cnf () {
     echo "_PHP_FPM_WORKERS=$_PHP_FPM_WORKERS" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_FPM_TIMEOUT=$_PHP_FPM_TIMEOUT" >> /root/.${_USER}.octopus.cnf
     echo "_PHP_FPM_DENY=\"$_PHP_FPM_DENY\"" >> /root/.${_USER}.octopus.cnf
-    echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
     echo "_STRONG_PASSWORDS=$_STRONG_PASSWORDS" >> /root/.${_USER}.octopus.cnf
     echo "_SQL_CONVERT=$_SQL_CONVERT" >> /root/.${_USER}.octopus.cnf
     echo "_RESERVED_RAM=$_RESERVED_RAM" >> /root/.${_USER}.octopus.cnf
@@ -1169,9 +1152,8 @@ octopus_cnf () {
     fi
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.${_USER}.octopus.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_USE_STOCK=$_USE_STOCK" >> /root/.${_USER}.octopus.cnf
+      sed -i "s/.*_USE_STOCK.*//g" /root/.${_USER}.octopus.cnf &> /dev/null
+      sed -i "/^$/d" /root/.${_USER}.octopus.cnf &> /dev/null
     fi
     _DEL_OLD_EMPTY_PLATFORMS_TEST=$(grep _DEL_OLD_EMPTY_PLATFORMS /root/.${_USER}.octopus.cnf)
     if [[ "$_DEL_OLD_EMPTY_PLATFORMS_TEST" =~ "_DEL_OLD_EMPTY_PLATFORMS" ]] ; then
@@ -1259,11 +1241,6 @@ octopus_cnf () {
         exit 1
       fi
     fi
-    if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
-      _DRUSH_CC_REQ=NO
-    else
-      _DRUSH_CC_REQ=YES
-    fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
         true
@@ -1311,13 +1288,11 @@ sub_force_advanced_nginx_config () {
       _PHP_SV=53
     fi
     _PHP_CN="www${_PHP_SV}"
-    if [ "$_USE_STOCK" = "NO" ] ; then
-      sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
-      sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
-    fi
     if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
-      if [ "$_USE_STOCK" = "NO" ] ; then
+      if [ -e "$_THIS_NGX_PATH/nginx_modern_include.conf" ] ; then
+        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
+        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
+        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
         sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
         sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
         if [ "$_PHP_CN" = "www53" ] ; then
@@ -1337,7 +1312,8 @@ sub_force_advanced_nginx_config () {
             sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
           fi
         fi
-      else
+      fi
+      if [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
         sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
         if [ "$_PHP_CN" = "www53" ] ; then
           sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
@@ -1346,10 +1322,11 @@ sub_force_advanced_nginx_config () {
         fi
       fi
     else
-      if [ "$_USE_STOCK" = "NO" ] ; then
+      if [ -e "$_THIS_NGX_PATH/nginx_octopus_include.conf" ] ; then
         sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
         sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      else
+      fi
+      if [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
         sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
         sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
       fi
@@ -1414,7 +1391,7 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config
-  if [ -e "/data/disk/$_USER/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
+  if [ -e "/data/disk/$_USER/config/includes" ] ; then
     if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
       ln -sf /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
     fi
@@ -1478,7 +1455,6 @@ do
   sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
   sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_DRUSH_CC_REQ/$_DRUSH_CC_REQ/g"           $Files &> /dev/null
   sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
   sed -i "s/EDIT_ERPAL/$_ERPAL/g"                         $Files &> /dev/null
   sed -i "s/EDIT_GUARDR/$_GUARDR/g"                       $Files &> /dev/null
@@ -1529,7 +1505,6 @@ do
   sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
   sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
   sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
-  sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 $Files &> /dev/null
   sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
   sed -i "s/EDIT_USRG/$_USRG/g"                           $Files &> /dev/null
   sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files &> /dev/null
@@ -1645,7 +1620,7 @@ check_connection ()
   fi
 }
 
-if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r /opt/tmp/test-*
   check_connection
   _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/test-provision 2>&1`
@@ -1670,7 +1645,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
   fi
   rm -f -r /opt/tmp/test-*
 fi
-if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
+if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
   rm -f -r /opt/tmp/test-*
   _GITHUB_TEST=`git clone git://github.com/omega8cc/boa.git /opt/tmp/test-boa 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
@@ -1804,7 +1779,7 @@ fi
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="git://github.com/omega8cc"
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
-if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   check_git_repos_status
 fi
 #
@@ -1827,12 +1802,14 @@ else
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
   _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3.1" ]] && [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] ; then
-    msg "ERROR: Your system has been already upgraded to BOA-2.3.x series"
-    msg "ERROR: You can not downgrade back to legacy BOA-2.2.x series"
-    msg "ERROR: Please use octopus up-stable to upgrade this instance"
-    msg "Bye"
-    exit 1
+  if [[ "$_LEGACY_TEST" =~ "BOA-2.3.1" ]] ; then
+    if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
+      msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
+      msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
+      msg "ERROR: Please use barracuda up-stable to upgrade this system"
+      msg "Bye"
+      exit 1
+    fi
   fi
 fi
 #
@@ -1846,11 +1823,6 @@ cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
-  if [ "$_FORCE_GIT_MIRROR" = "gitorious" ] ; then
-    cd /opt/tmp/$_BOA_REPO_NAME
-    git checkout 2.0.4-dev &> /dev/null
-    cd /opt/tmp
-  fi
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"

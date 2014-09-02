@@ -53,7 +53,6 @@ _DRUPAL7D="EDIT_DRUPAL7-dev"
 _DRUPAL7P="EDIT_DRUPAL7-prod"
 _DRUPAL7S="EDIT_DRUPAL7-stage"
 _DRUPAL8=EDIT_DRUPAL8
-_DRUSH_CC_REQ=EDIT_DRUSH_CC_REQ
 _ERPAL=EDIT_ERPAL
 _GUARDR=EDIT_GUARDR
 _MANAGINGNEWS=EDIT_MANAGINGNEWS
@@ -121,7 +120,6 @@ _THIS_OS=`lsb_release -si`
 _THISHTIP=EDIT_THISHTIP
 _TODAY=`date +%y%m%d`
 _USE_CURRENT=EDIT_USE_CURRENT
-_USE_STOCK=EDIT_USE_STOCK
 _USRG=EDIT_USRG
 _WEBG=EDIT_WEBG
 #
@@ -1009,9 +1007,7 @@ provision_backend_dbpass_sync () {
     sed -i "s/mysql:\/\/$_USER:.*/mysql:\/\/$_USER:$_ENC_PASS@localhost',/g" $_ROOT/.drush/server_*.alias.drushrc.php &> /dev/null
   fi
   mysqladmin flush-privileges &> /dev/null
-  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-    su -s /bin/bash $_USER -c "$_DRUSHCMD cache-clear drush &> /dev/null"
-  fi
+  su -s /bin/bash $_USER -c "$_DRUSHCMD cache-clear drush &> /dev/null"
   if [ -e "$_ROOT/.drush/server_localhost.alias.drushrc.php" ] ; then
     su -s /bin/bash $_USER -c "$_DRUSHCMD @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
   else
@@ -1081,12 +1077,9 @@ else
     else
       if [ ! -d "$_ROOT/.drush/sys/provision/http" ] ; then
         mkdir -p $_ROOT/.drush/{sys,xts,usr}
-        cd $_ROOT/.drush/sys
         rm -f -r $_ROOT/.drush/{provision,drush_make}
         rm -f -r $_ROOT/.drush/sys/{provision,drush_make}
-        curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
-        get_dev_ext "drush_make.tar.gz"
-        cp -af /var/aegir/drush/includes/table.inc /data/disk/o1/tools/drush/includes/table.inc
+        git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
       fi
       hostmaster_frontend_dbpass_sync
       msg "$_STATUS A: Switching user and running AegirSetupB..."
