@@ -605,6 +605,8 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
       _DO_NOTHING=YES
     else
+      $_DRUSHCMD @hostmaster dis hosting_cdn -y &> /dev/null
+      $_DRUSHCMD @hostmaster pm-uninstall hosting_cdn -y &> /dev/null
       $_DRUSHCMD @hostmaster dis hosting_backup_queue -y &> /dev/null
       $_DRUSHCMD @hostmaster pm-uninstall hosting_backup_queue -y &> /dev/null
       rm -f -r $_HOSTMASTER_ROOT/profiles/hostmaster/modules/hosting_backup_queue
