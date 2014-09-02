@@ -1083,6 +1083,7 @@ _SPEED_VALID_MAX=3600
 ###----------------------------------------###
 
 _INSTALLER_VERSION=BOA-2.3.x-dev
+_BOA_REPO_GIT_BRANCH=2.3.x-dev
 
 ###
 ### Software versions
@@ -5994,7 +5995,7 @@ sleep 1
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+  git clone --branch $_BOA_REPO_GIT_BRANCH $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
