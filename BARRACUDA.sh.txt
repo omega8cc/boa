@@ -6922,7 +6922,11 @@ if [ "$_NGINX_SPDY" = "YES" ] || [ "$_SSL_FROM_SOURCES" = "YES" ] || [ "$_NGINX_
   fi
 fi
 if [ "$_SSH_FROM_SOURCES" = "YES" ] ; then
-  install_ssh_src
+  if [ "$_REL_VERSION" = "trusty" ] ; then
+    _DO_NOTHING=YES
+  else
+    install_ssh_src
+  fi
 fi
 if [ "$_LENNY_TO_SQUEEZE" = "NO" ] ; then
   check_install_latest_git
