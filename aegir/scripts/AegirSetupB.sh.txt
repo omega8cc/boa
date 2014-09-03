@@ -391,7 +391,7 @@ fi
 msg "$_STATUS B: Installing provision backend in $_ROOT/.drush"
 mkdir -p $_ROOT/.drush/{sys,xts,usr}
 cd $_ROOT/.drush
-if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] || [ ! -d "$_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/Inc" ] ; then
   msg "$_STATUS B: Downloading Drush and Provision extensions..."
   git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision                &> /dev/null
   git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/xts/provision_civicrm      &> /dev/null
