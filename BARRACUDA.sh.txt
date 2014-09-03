@@ -1083,7 +1083,8 @@ _SPEED_VALID_MAX=3600
 ###----------------------------------------###
 
 _INSTALLER_VERSION=BOA-2.3.x-dev
-_BOA_REPO_GIT_BRANCH=2.3.x-dev
+_BRANCH_BOA=2.3.x-dev
+_BRANCH_PROVISION=2.3.x-dev
 
 ###
 ### Software versions
@@ -4237,7 +4238,7 @@ upgrade_aegir_master () {
       rm -f -r /var/aegir/.drush/{sys,xts,usr}
       rm -f -r /var/aegir/.drush/{provision,drush_make}
       mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
+      git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
@@ -4265,6 +4266,8 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -5995,7 +5998,7 @@ sleep 1
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone --branch $_BOA_REPO_GIT_BRANCH $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+  git clone --branch $_BRANCH_BOA $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
@@ -8200,10 +8203,12 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"              $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"  $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
-    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
   if [ "$_DEBUG_MODE" = "YES" ] ; then

@@ -85,6 +85,8 @@ _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _AUTOPILOT=EDIT_AUTOPILOT
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
+_BRANCH_BOA=EDIT_BRANCH_BOA
+_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
 _CLIENT_CORES=EDIT_CLIENT_CORES
 _CLIENT_EMAIL="EDIT_CLIENT_EMAIL"
 _CLIENT_OPTION=EDIT_CLIENT_OPTION
@@ -392,7 +394,7 @@ mkdir -p $_ROOT/.drush/{sys,xts,usr}
 cd $_ROOT/.drush
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   msg "$_STATUS B: Downloading Drush and Provision extensions..."
-  git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision                         &> /dev/null
+  git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision                &> /dev/null
   git clone --branch $_CIVICRM_PN git://github.com/omega8cc/provision_civicrm.git $_ROOT/.drush/xts/provision_civicrm      &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn                   &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/provision_platform_git.git $_ROOT/.drush/xts/provision_platform_git &> /dev/null

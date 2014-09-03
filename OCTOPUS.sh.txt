@@ -631,7 +631,8 @@ _RESERVED_RAM=0
 ###----------------------------------------###
 
 _INSTALLER_VERSION=BOA-2.3.x-dev
-_BOA_REPO_GIT_BRANCH=2.3.x-dev
+_BRANCH_BOA=2.3.x-dev
+_BRANCH_PROVISION=2.3.x-dev
 
 ###
 ### Variables
@@ -1440,6 +1441,8 @@ do
   sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
   sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
   sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
+  sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
+  sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
   sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
   sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
   sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files &> /dev/null
@@ -1824,7 +1827,7 @@ chmod -R 777 /opt/tmp &> /dev/null
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone --branch $_BOA_REPO_GIT_BRANCH $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
+  git clone --branch $_BRANCH_BOA $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"

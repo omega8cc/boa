@@ -37,6 +37,8 @@
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
+_BRANCH_BOA=EDIT_BRANCH_BOA
+_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
@@ -260,7 +262,7 @@ else
   if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd $_ROOT/.drush
     msg "INFO: Downloading Drush and Provision extensions..."
-    git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision             &> /dev/null
+    git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
     git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null

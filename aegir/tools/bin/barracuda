@@ -86,40 +86,47 @@ up_action ()
       mv -f /var/xdrago/monitor/*.log /var/backups/old-firewall-monitor/$_NOW/ &> /dev/null
       rm -f /var/xdrago/monitor/* &> /dev/null
     fi
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"             /var/backups/BARRACUDA.sh.txt &> /dev/null
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"   /var/backups/BARRACUDA.sh.txt &> /dev/null
-    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+    if [ "$cmmand" = "up-vanilla" ] ; then
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
+    elif [ "$cmmand" = "up-modern" ] ; then
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+    else
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=master/g"    /var/backups/BARRACUDA.sh.txt
+    fi
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"                       /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"             /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_SMTP_RELAY_TEST=YES/_SMTP_RELAY_TEST=NO/g"           /var/backups/BARRACUDA.sh.txt
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
         if [ -e "/root/.barracuda.cnf" ] ; then
-          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"                  /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                           /root/.barracuda.cnf
+          sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"                  /root/.barracuda.cnf
+          sed -i "s/^_SMTP_RELAY_TEST=.*/_SMTP_RELAY_TEST=NO/g"                /root/.barracuda.cnf
+          sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"             /root/.barracuda.cnf
           if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
-            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g" /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           /root/.barracuda.cnf &> /dev/null
-            sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"      /root/.barracuda.cnf &> /dev/null
+            sed -i "s/^_MODULES_FIX=.*/_MODULES_FIX=YES/g"                     /root/.barracuda.cnf
+            sed -i "s/^_NGINX_FORWARD_SECRECY=.*/_NGINX_FORWARD_SECRECY=YES/g" /root/.barracuda.cnf
+            sed -i "s/^_NGINX_SPDY=.*/_NGINX_SPDY=YES/g"                       /root/.barracuda.cnf
+            sed -i "s/^_PERMISSIONS_FIX=.*/_PERMISSIONS_FIX=YES/g"             /root/.barracuda.cnf
+            sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"           /root/.barracuda.cnf
+            sed -i "s/^_REDIS_LISTEN_MODE=.*/_REDIS_LISTEN_MODE=SOCKET/g"      /root/.barracuda.cnf
           fi
         fi
       fi
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g"               /root/.barracuda.cnf &> /dev/null
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"notify\@omega8.cc\"/g" /root/.barracuda.cnf
       _THIS_RV=`lsb_release -sc`
       if [ "$_THIS_RV" = "lenny" ] && [ -e "/root/.barracuda.cnf" ] ; then
-        sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-        sed -i "s/.*_LENNY_TO_SQUEEZE.*//g" /root/.barracuda.cnf &> /dev/null
-        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_LENNY_TO_SQUEEZE=.*/_LENNY_TO_SQUEEZE=YES/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/.*_LENNY_TO_SQUEEZE.*//g" /root/.barracuda.cnf
+        sed -i "/^$/d" /root/.barracuda.cnf
         echo "_LENNY_TO_SQUEEZE=YES" >> /root/.barracuda.cnf
       fi
       if [ -e "/etc/default/tomcat" ] && [ -e "/etc/init.d/tomcat" ] && [ -e "/root/.barracuda.cnf" ] ; then
-        sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-        sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf &> /dev/null
-        sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_TOMCAT_TO_JETTY=.*/_TOMCAT_TO_JETTY=YES/g" /var/backups/BARRACUDA.sh.txt
+        sed -i "s/.*_TOMCAT_TO_JETTY.*//g" /root/.barracuda.cnf
+        sed -i "/^$/d" /root/.barracuda.cnf
         echo "_TOMCAT_TO_JETTY=YES" >> /root/.barracuda.cnf
       fi
     fi
@@ -149,23 +156,23 @@ up_action ()
         sleep $n
         echo "Starting the upgrade in silent mode now..."
         echo
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" /root/.barracuda.cnf
+        sed -i "s/^_SPINNER=YES/_SPINNER=NO/g" /var/backups/BARRACUDA.sh.txt
         if [ "$silent" = "system" ] ; then
           touch /var/run/boa_system_wait.pid
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt &> /dev/null
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /var/backups/BARRACUDA.sh.txt
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=YES/g" /root/.barracuda.cnf
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf
         elif [ "$silent" = "log" ] ; then
-          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf &> /dev/null
-          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
+          sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"  /root/.barracuda.cnf
+          sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf
         fi
         bash /var/backups/BARRACUDA.sh.txt >$_UP_LOG 2>&1
         check_report
       else
-        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"      /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                        /root/.barracuda.cnf &> /dev/null
+        sed -i "s/^_SYSTEM_UPGRADE_ONLY=.*/_SYSTEM_UPGRADE_ONLY=NO/g"    /root/.barracuda.cnf
+        sed -i "s/^_AEGIR_UPGRADE_ONLY=.*/_AEGIR_UPGRADE_ONLY=NO/g"      /root/.barracuda.cnf
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                        /root/.barracuda.cnf
         bash /var/backups/BARRACUDA.sh.txt
       fi
     fi
@@ -259,7 +266,7 @@ up_head ()
 up_modern ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/modern/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   up_action
   up_finish
 }
@@ -268,6 +275,14 @@ up_legacy ()
 {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+  up_action
+  up_finish
+}
+
+up_vanilla ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
   up_action
   up_finish
 }
@@ -432,8 +447,17 @@ case "$1" in
              set_pin_priority
              up_legacy
   ;;
+  up-vanilla) cmmand="$1"
+             silent="$2"
+             ifauto="$3"
+             check_root
+             check_dns_curl
+             check_wrapper
+             set_pin_priority
+             up_vanilla
+  ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {system|log}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-modern|up-legacy|up-vanilla} {system|log}"
              echo
              echo "  Silent Mode Option: system == OS only upgrade"
              echo "  Silent Mode Option: log    == OS and Aegir Master Instance upgrade"

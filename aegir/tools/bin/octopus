@@ -100,18 +100,18 @@ check_report ()
 up_mode ()
 {
   if [ "$mcmode" = "aegir" ] ; then
-    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
+    sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "platforms" ] ; then
-    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
+    sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
   elif [ "$mcmode" = "both" ] ; then
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g" /root/.$_THIS_HM_USER.octopus.cnf
     bash /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     touch $User/log/up-$_TODAY
   else
@@ -124,27 +124,34 @@ up_one ()
 {
   if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
     cp -af /var/backups/OCTOPUS.sh.txt                   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
-    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
+    if [ "$cmmand" = "up-vanilla" ] ; then
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    elif [ "$cmmand" = "up-modern" ] ; then
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    else
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    fi
+    sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+    sed -i "s/^_USER=o1/_USER=$_THIS_HM_USER/g"          /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+        sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"     /root/.$_THIS_HM_USER.octopus.cnf
+        sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"               /root/.$_THIS_HM_USER.octopus.cnf
+        sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g"     /root/.$_THIS_HM_USER.octopus.cnf
+        sed -i "s/^_STRONG_PASSWORDS=NO/_STRONG_PASSWORDS=YES/g" /root/.$_THIS_HM_USER.octopus.cnf
       fi
     fi
     if [ ! -e "$_UP_CONTRIB_PID" ] ; then
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=NO/_O_CONTRIB_UP=YES/g" /root/.$_THIS_HM_USER.octopus.cnf
     else
-      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER &> /dev/null
-      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf &> /dev/null
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_O_CONTRIB_UP=YES/_O_CONTRIB_UP=NO/g" /root/.$_THIS_HM_USER.octopus.cnf
     fi
     if [ -e "/var/backups/OCTOPUS.sh.$_THIS_HM_USER" ] ; then
       if [ -e "$User/.drush/sys/provision" ] ; then
@@ -173,6 +180,8 @@ up_one ()
           mkdir -p $User/.drush/{sys,xts,usr}
           if [ "$cmmand" = "up-modern" ] ; then
             git clone --branch 2.3.x-dev git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
+          elif [ "$cmmand" = "up-vanilla" ] ; then
+            git clone --branch 6.x-2.x git://github.com/omega8cc/provision.git $User/.drush/sys/provision &> /dev/null
           else
             cd $User/.drush/sys
             curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-HEAD.tar.gz" | tar -xzf -
@@ -435,7 +444,7 @@ up_head ()
 up_modern ()
 {
   up_start
-  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/modern/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -448,6 +457,18 @@ up_legacy ()
 {
   up_start
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  if [ "$second" = "all" ] ; then
+    up_action_all
+  else
+    up_action_one
+  fi
+  up_finish
+}
+
+up_vanilla ()
+{
+  up_start
+  curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   if [ "$second" = "all" ] ; then
     up_action_all
   else
@@ -582,8 +603,17 @@ case "$1" in
              check_wrapper
              up_legacy
   ;;
+  up-vanilla) cmmand="$1"
+             second="$2"
+             cmmode="$3"
+             silent="$4"
+             check_root
+             check_dns_curl
+             check_wrapper
+             up_vanilla
+  ;;
   *)         echo
-             echo "Usage: $(basename "$0") {up-stable|up-head|up-legacy} {all|o1} {aegir|platforms|both}"
+             echo "Usage: $(basename "$0") {up-stable|up-head|up-modern|up-legacy|up-vanilla} {all|o1} {aegir|platforms|both}"
              echo
              exit 1
   ;;
