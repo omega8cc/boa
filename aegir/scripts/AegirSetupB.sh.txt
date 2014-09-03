@@ -464,15 +464,31 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   $_DRUSHCMD '@hostmaster' hosting-dispatch &> /dev/null
 else
   msg "$_STATUS B: Testing previous install..."
+  $_DRUSHCMD cache-clear drush &> /dev/null
+  if $_DRUSHCMD help clean-modules > /dev/null ; then
+    if [ "$_DEBUG_MODE" = "YES" ] ; then
+      msg "$_STATUS B: Drush clean-modules is available"
+    fi
+    _CLEAN_MODULES=YES
+  else
+    if [ "$_DEBUG_MODE" = "YES" ] ; then
+      msg "$_STATUS B: Drush clean-modules not available yet"
+    fi
+    _CLEAN_MODULES=NO
+  fi
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     msg "$_STATUS B: Uninstalling css_emimage module in debug mode b/u"
     $_DRUSHCMD @hostmaster dis css_emimage -y
-    $_DRUSHCMD @hostmaster clean-modules -y
+    if [ "$_CLEAN_MODULES" = "YES" ] ; then
+      $_DRUSHCMD @hostmaster clean-modules -y
+    fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
   else
     msg "$_STATUS B: Uninstalling css_emimage module before upgrade..."
     $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
-    $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
+    if [ "$_CLEAN_MODULES" = "YES" ] ; then
+      $_DRUSHCMD @hostmaster clean-modules -y          &> /dev/null
+    fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
   fi
   $_DRUSHCMD cache-clear drush &> /dev/null
