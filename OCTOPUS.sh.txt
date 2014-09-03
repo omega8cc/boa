@@ -1394,13 +1394,11 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config
-  if [ -e "/data/disk/$_USER/config/includes" ] ; then
-    if [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
-      ln -sf /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-    fi
-    if [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
-      ln -sf /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
-    fi
+  if [ -e "/data/disk/$_USER/config/includes/nginx_octopus_include.conf" ] && [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
+    ln -sf /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+  fi
+  if [ -e "/data/disk/$_USER/config/includes/nginx_legacy_include.conf" ] && [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
+    ln -sf /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
   fi
 }
 #
