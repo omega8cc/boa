@@ -96,7 +96,6 @@ _DOMAIN=EDIT_DOMAIN
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _HM_DISTRO=EDIT_HM_DISTRO
 _HM_ONLY=EDIT_HM_ONLY
-_HTTP_WILDCARD=EDIT_HTTP_WILDCARD
 _LAST_HMR=EDIT_LAST_HMR
 _LASTNUM=EDIT_LASTNUM
 _NOW=EDIT_NOW
@@ -427,13 +426,6 @@ else
   get_dev_ext "remote_import.tar.gz"
   cd $_ROOT/.drush
 fi
-if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-  sed -i "s/\!empty.*';/'*';/g" $_ROOT/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
-fi
-sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" $_ROOT/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
 
 ###---### Build Aegir base.
 #

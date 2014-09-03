@@ -286,7 +286,6 @@ else
     get_dev_ext "security_review.tar.gz"
   fi
 fi
-sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" $_ROOT/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
 
 msg "INFO: Installing the frontend"
 $_DRUSHCMD cache-clear drush >$_ROOT/install.log 2>&1

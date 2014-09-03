@@ -70,7 +70,6 @@ _MY_EMAIL="notify@omega8.cc"
 ### enabled, as listed below:
 ###
 ### _XTRAS_LIST="CSF CHV FTP"
-### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
@@ -126,7 +125,6 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### enabled, as listed below:
 ###
 ### _XTRAS_LIST="CHV"
-### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
@@ -315,30 +313,6 @@ _NEWRELIC_KEY=""
 ### it installed and enabled automatically.
 ###
 _SCOUT_KEY=""
-
-
-###----------------------------------------###
-### HTTP LISTENING MODE                    ###
-###----------------------------------------###
-###
-### With disabled wildcard mode Nginx would
-### listen only on defined or discovered IP
-### address, while with now default wildcard,
-### it will listen on all available IPs.
-### This may be useful in some environments
-### like localhost install or Amazon EC2
-### with dynamic local IP and separate public
-### IP not available on the local interface.
-###
-### Note: this option works only on initial
-### install. You can't change this on upgrade
-### because it could cause serious issues.
-###
-### To not use wildcard mode, change this to:
-###
-### _HTTP_WILDCARD=NO
-###
-_HTTP_WILDCARD=YES
 
 
 ###----------------------------------------###
@@ -717,13 +691,6 @@ _SMTP_RELAY_HOST=""
 ###
 ### It will also disable all DNS and SMTP
 ### relay tests automatically.
-###
-### Note that for non-local installs with
-### private and/or dynamic IPs on servers
-### behind some NAT, you should instead use
-### _HTTP_WILDCARD=YES above and leave
-### _LOCAL_NETWORK_IP and _LOCAL_NETWORK_HN
-### empty.
 ###
 _LOCAL_NETWORK_IP=""
 _LOCAL_NETWORK_HN=""
@@ -2224,53 +2191,7 @@ validate_xtras_ip () {
       _LOC_IP="$_MY_OWNIP"
     fi
   fi
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    _XTRAS_THISHTIP="*"
-  else
-    _ETH_TEST=`ifconfig 2>&1`
-    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ] ; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
-    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-      if [ -z "$_MY_OWNIP" ] ; then
-        _XTRAS_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        if [[ "$_XTRAS_THISHTIP" =~ "127.0.0." ]] ; then
-          _XTRAS_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        fi
-      else
-        _XTRAS_THISHTIP="$_MY_OWNIP"
-      fi
-    else
-      if [ -z "$_MY_OWNIP" ] ; then
-        if [ -e "/usr/bin/sipcalc" ] ; then
-          if [ -z "$_THISHTIP" ] ; then
-            _LOC_DOM="$_THISHOST"
-            find_correct_ip
-            _THISHTIP="$_LOC_IP"
-          fi
-          _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
-            _IP_TEST_RESULT=FAIL
-            _XTRAS_THISHTIP="*"
-          else
-            _IP_TEST_RESULT=OK
-            _XTRAS_THISHTIP="$_THISHTIP"
-          fi
-        else
-          _XTRAS_THISHTIP="$_THISHTIP"
-        fi
-      else
-        _XTRAS_THISHTIP="$_MY_OWNIP"
-      fi
-    fi
-    if [ -z "$_XTRAS_THISHTIP" ] ; then
-      _XTRAS_THISHTIP="*"
-    fi
-  fi
+  _XTRAS_THISHTIP="*"
 }
 #
 # Validate server IP for purge vhost.
@@ -2326,53 +2247,7 @@ validate_purge_ip () {
 #
 # Validate local server IP.
 validate_local_ip () {
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    _LOCAL_THISHTIP=all
-  else
-    _ETH_TEST=`ifconfig 2>&1`
-    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ] ; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
-    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-      if [ -z "$_MY_OWNIP" ] ; then
-        _LOCAL_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        if [[ "$_LOCAL_THISHTIP" =~ "127.0.0." ]] ; then
-          _LOCAL_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        fi
-      else
-        _LOCAL_THISHTIP="$_MY_OWNIP"
-      fi
-    else
-      if [ -z "$_MY_OWNIP" ] ; then
-        if [ -e "/usr/bin/sipcalc" ] ; then
-          if [ -z "$_THISHTIP" ] ; then
-            _LOC_DOM="$_THISHOST"
-            find_correct_ip
-            _THISHTIP="$_LOC_IP"
-          fi
-          _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
-            _IP_TEST_RESULT=FAIL
-            _LOCAL_THISHTIP=all
-          else
-            _IP_TEST_RESULT=OK
-            _LOCAL_THISHTIP="$_THISHTIP"
-          fi
-        else
-          _LOCAL_THISHTIP="$_THISHTIP"
-        fi
-      else
-        _LOCAL_THISHTIP="$_MY_OWNIP"
-      fi
-    fi
-    if [ -z "$_LOCAL_THISHTIP" ] ; then
-      _LOCAL_THISHTIP=all
-    fi
-  fi
+  _LOCAL_THISHTIP=all
 }
 #
 # Sub Force advanced Nginx configuration.
@@ -2517,8 +2392,6 @@ tune_web_server_config () {
   sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf         &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/sys/provision/platform/verify.provision.inc   &> /dev/null
   _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
   if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
     _DO_NOTHING=YES
@@ -2945,7 +2818,6 @@ barracuda_cnf () {
     echo "### on upgrade by the Barracuda script nor by this configuration file." >> /root/.barracuda.cnf
     echo "### They can be defined only on initial Barracuda install." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
-    echo "_HTTP_WILDCARD=$_HTTP_WILDCARD" >> /root/.barracuda.cnf
     echo "_LOCAL_NETWORK_HN=\"$_LOCAL_NETWORK_HN\"" >> /root/.barracuda.cnf
     echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
     echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
@@ -3351,11 +3223,19 @@ barracuda_cnf () {
     else
       echo "_SCOUT_KEY=$_SCOUT_KEY" >> /root/.barracuda.cnf
     fi
+
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.barracuda.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
       sed -i "s/.*_USE_STOCK.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
+
+    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD /root/.barracuda.cnf)
+    if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
+      sed -i "s/.*_HTTP_WILDCARD.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf)
     if [[ "$_EXTRA_PACKAGES_TEST" =~ "_EXTRA_PACKAGES" ]] ; then
       _DO_NOTHING=YES
@@ -4271,7 +4151,6 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
@@ -5584,7 +5463,6 @@ if [ `whoami` = "root" ] ; then
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   fi
   _VM_TEST=`uname -a 2>&1`
@@ -5641,11 +5519,6 @@ if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE"
   barracuda_cnf
-  if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
-    _HTTP_WILDCARD=YES
-  else
-    _HTTP_WILDCARD=NO
-  fi
   touch /var/run/boa_wait.pid
 else
   _STATUS=INIT
@@ -5679,7 +5552,6 @@ else
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     msg "INFO: Easy Localhost Setup Mode Active"
     _XTRAS_LIST="CHV"
-    _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
@@ -5693,7 +5565,6 @@ else
   elif [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "INFO: Easy Public Setup Mode Active"
     _XTRAS_LIST="CSF CHV FTP"
-    _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
     _AEGIR_VERSION=HEAD
@@ -5783,18 +5654,15 @@ _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   if [ "$_THIS_RV" = "trusty" ] ; then
     _REL_VERSION="trusty"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _MARIADB_VERSION="$_MARIADB_10_VERSION"
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   elif [ "$_THIS_RV" = "oneiric" ] ; then
     _REL_VERSION="oneiric"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   elif [ "$_THIS_RV" = "natty" ] ; then
     _REL_VERSION="natty"
@@ -8225,12 +8093,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   _U_HD="/var/aegir/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
-  fi
   su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   msg "INFO: Running hosting-dispatch (1/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
@@ -8240,9 +8102,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 5"
   msg "INFO: Running hosting-dispatch (3/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-  if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
-    echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
-  fi
   _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
   chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
@@ -8379,11 +8238,7 @@ EOF
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:4096 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     _WILD_SSL_VHOST="/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf"
     cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf $_WILD_SSL_VHOST
-    if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
-    else
-      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" $_WILD_SSL_VHOST &> /dev/null
-    fi
+    sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
     mkdir -p /data/conf
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
@@ -8987,7 +8842,7 @@ if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
   _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"
 fi
 _LOG_DB_V=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
-_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_MULTI_INSTALL / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
+_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_MULTI_INSTALL / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST"
 echo "$_BARRACUDA_VERSION_INFO" >> /var/log/barracuda_log.txt
 echo "$_BARRACUDA_VERSION_INFO" >> /var/backups/barracuda_log.txt
 msg "INFO: New entry added to /var/log/barracuda_log.txt"

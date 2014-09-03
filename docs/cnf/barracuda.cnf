@@ -9,7 +9,6 @@
 ### They can be defined only on initial Barracuda install.
 ###
 _EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_PUBLIC
-_HTTP_WILDCARD=YES #------------ Listen on single IP instead of all IPs when NO
 _LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
 _LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
 _MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
