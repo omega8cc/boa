@@ -42,8 +42,8 @@ run_drush4_cmd () {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1" &> /dev/null
 }
 
-run_drush4_hmr_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush4 $1" &> /dev/null
+run_drush6_hmr_cmd () {
+  su -s /bin/bash - $_THIS_HM_USER -c "drush6 $1" &> /dev/null
 }
 
 run_drush4_nosilent_cmd () {
@@ -273,7 +273,8 @@ fix_robots_txt () {
 
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
-    run_drush4_hmr_cmd "@hostmaster cc all"
+    run_drush6_hmr_cmd "@hostmaster cc all"
+    run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
   fi
 }
 
@@ -779,7 +780,7 @@ fix_modules () {
           fi
 
           if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
-            run_drush4_hmr_cmd "@hostmaster dis cache syslog dblog -y"
+            run_drush6_hmr_cmd "@hostmaster dis cache syslog dblog -y"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
             chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
           elif [ -e "$Plr/modules/o_contrib" ] ; then
@@ -1271,7 +1272,7 @@ process () {
 }
 
 delete_this_platform () {
-  run_drush4_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
+  run_drush6_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
   echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
 }
 
@@ -1484,15 +1485,15 @@ action () {
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
         fi
-        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
