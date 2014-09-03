@@ -475,6 +475,7 @@ else
     $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
   fi
+  $_DRUSHCMD cache-clear drush &> /dev/null
   if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
     rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
   fi
@@ -525,6 +526,7 @@ else
     export TERM=vt100
   fi
   cd $_PREV_HOSTMASTER_ROOT
+  $_DRUSHCMD cache-clear drush &> /dev/null
   if [ "$_DEBUG_MODE" = "YES" ] ; then
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y -d
   else
