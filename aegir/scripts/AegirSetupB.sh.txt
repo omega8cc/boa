@@ -687,6 +687,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   $_DRUSHCMD @hostmaster sqlq "REPLACE INTO userprotect VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
   $_DRUSHCMD @hostmaster cc all &> /dev/null
+  $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
 fi
 
 
