@@ -1079,10 +1079,12 @@ else
     else
       if [ ! -d "$_ROOT/.drush/sys/provision/http" ] ; then
         mkdir -p $_ROOT/.drush/{sys,xts,usr}
-        rm -f -r $_ROOT/.drush/{provision,drush_make}
-        rm -f -r $_ROOT/.drush/sys/{provision,drush_make}
+        rm -f -r $_ROOT/.drush/provision
+        rm -f -r $_ROOT/.drush/sys/provision
         git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
       fi
+      rm -f -r $_ROOT/.drush/drush_make
+      rm -f -r $_ROOT/.drush/sys/drush_make
       hostmaster_frontend_dbpass_sync
       msg "$_STATUS A: Switching user and running AegirSetupB..."
       rm -f /opt/tmp/testecho*
