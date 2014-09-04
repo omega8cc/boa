@@ -484,7 +484,6 @@ else
     fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
   else
-    msg "$_STATUS B: Uninstalling css_emimage module before upgrade..."
     $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
     if [ "$_CLEAN_MODULES" = "YES" ] ; then
       $_DRUSHCMD @hostmaster clean-modules -y          &> /dev/null
@@ -640,7 +639,6 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
       $_DRUSHCMD @hostmaster clean-modules -y
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y
     else
-      msg "$_STATUS B: Uninstalling css_emimage module after upgrade..."
       $_DRUSHCMD @hostmaster dis css_emimage -y          &> /dev/null
       $_DRUSHCMD @hostmaster clean-modules -y            &> /dev/null
       $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
