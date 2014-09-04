@@ -157,6 +157,7 @@ sub global_action
     if ($PID)
     {
       local($HOUR, $MIN) = split(/:/,$TIME);
+      $MIN =~ s/0//g;
 
       if ($COMMAND =~ /^(\\)/ && $START =~ /[A-Z]/ && $B =~ /php/)
       {
@@ -189,9 +190,9 @@ sub global_action
         }
       }
 
-      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 90 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
+      if ($COMMAND =~ /^(\\)/ && $B =~ /php-fpm/ && $K =~ /pool/ && $CPU > 80 && ($STAT =~ /R/ || $STAT =~ /Z/) && $USER !~ /root/)
       {
-        if ($HOUR > "0" || $MIN > 1)
+        if ($HOUR > "0" || $MIN > 2)
         {
           $timedate=`date +%y%m%d-%H%M%S`;
           chomp($timedate);
@@ -306,9 +307,9 @@ sub cpu_count_load
   if ($PROCS > 2)
   {
     $MAXSQLCPU = 200;
-    $MAXFPMCPU = 150;
+    $MAXFPMCPU = 110;
   }
-  $MAXSQLCPU = $MAXSQLCPU - 5;
-  $MAXFPMCPU = $MAXFPMCPU - 5;
+  $MAXSQLCPU = $MAXSQLCPU - 1;
+  $MAXFPMCPU = $MAXFPMCPU - 1;
 }
 ###EOF2014###
