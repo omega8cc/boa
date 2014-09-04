@@ -227,6 +227,8 @@ hostmaster_go_up () {
   else
     msg "INFO: Installing provision backend in $_ROOT/.drush"
     mkdir -p $_ROOT/.drush/{sys,xts,usr}
+    rm -f -r $_ROOT/.drush/drush_make
+    rm -f -r $_ROOT/.drush/sys/drush_make
     cd $_ROOT/.drush
     if [ "$_AEGIR_VERSION" = "HEAD" ] || [ ! -d "$_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/Inc" ] ; then
       cd $_ROOT/.drush
