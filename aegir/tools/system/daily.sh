@@ -273,8 +273,8 @@ fix_robots_txt () {
 
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
-    run_drush6_hmr_cmd "@hostmaster cc all"
     run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+    run_drush6_hmr_cmd "@hostmaster cc all"
   fi
 }
 

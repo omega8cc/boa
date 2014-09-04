@@ -490,6 +490,7 @@ else
     fi
     $_DRUSHCMD @hostmaster pm-uninstall css_emimage -y &> /dev/null
   fi
+  $_DRUSHCMD @hostmaster dis aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD cache-clear drush &> /dev/null
   if [ -d "$_HOSTMASTER_ROOT/modules/o_contrib" ] && [ ! -L "$_HOSTMASTER_ROOT/modules/o_contrib" ] ; then
     rm -f $_HOSTMASTER_ROOT/modules/o_contrib/{cache_backport,redis_edge,redis} &> /dev/null
@@ -696,8 +697,8 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     $_DRUSHCMD @hostmaster urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
   fi
   $_DRUSHCMD @hostmaster sqlq "REPLACE INTO userprotect VALUES (0,0,0,0,0,1,1,1,'user',1),(1,0,0,0,0,0,0,0,'admin',0),(1,1,1,1,1,1,1,1,'user',1),(3,0,0,0,0,1,1,0,'user',1)" &> /dev/null
-  $_DRUSHCMD @hostmaster cc all &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
+  $_DRUSHCMD @hostmaster cc all &> /dev/null
 fi
 
 
