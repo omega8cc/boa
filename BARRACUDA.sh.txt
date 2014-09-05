@@ -2252,51 +2252,11 @@ validate_local_ip () {
 #
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
-  if [ -d "$_THIS_NGX_PATH" ] ; then
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
-      if [ -e "$_THIS_NGX_PATH/nginx_modern_include.conf" ] ; then
-        sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-        sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
-        if [ "$_PHP_CN" = "www53" ] ; then
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        else
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf              &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf             &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        fi
-      fi
-      if [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        if [ "${_PHP_CN}" = "www53" ] ; then
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        else
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        fi
-      fi
-    else
-      if [ -e "$_THIS_NGX_PATH/nginx_octopus_include.conf" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf             &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
-      fi
-      if [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf                &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf    &> /dev/null
-      fi
-    fi
-    if [ -e "$_THIS_NGX_PATH/nginx_legacy_include.conf" ] ; then
-      if [ "$_PHP_LEGACY_FREE" = "YES" ] || [ "$_PHP_FPM_VERSION" != "5.2" ] ; then
-        if [ "$_PHP_CN" = "www53" ] ; then
-          sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf &> /dev/null
-        else
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf &> /dev/null
-        fi
-      fi
-    fi
+  if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] && [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_PATH/nginx_compact_include.conf
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_PATH/nginx_vhost_common.conf
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_PATH/nginx_vhost_common.conf
+    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf
   fi
 }
 #
@@ -2327,11 +2287,15 @@ force_advanced_nginx_config () {
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf       &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*          &> /dev/null
   fi
-  if [ -e "/var/aegir/config/includes/nginx_octopus_include.conf" ] && [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
-    ln -sf /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
-  fi
-  if [ -e "/var/aegir/config/includes/nginx_legacy_include.conf" ] && [ ! -L "/var/aegir/config/includes/nginx_simple_include.conf" ] ; then
-    ln -sf /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] ; then
+    rm -f /var/aegir/config/includes/nginx_advanced_include.conf
+    rm -f /var/aegir/config/includes/nginx_modern_include.conf
+    rm -f /var/aegir/config/includes/nginx_octopus_include.conf
+    rm -f /var/aegir/config/includes/nginx_simple_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_advanced_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_modern_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_octopus_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_simple_include.conf
   fi
   chown aegir:aegir /var/aegir/config/includes/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
@@ -5606,7 +5570,7 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   fi
 fi
 _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-if [ -z "$_PHP_SV" ] ; then
+if [ -z "$_PHP_SV" ] || [ "$_PHP_SV" = "52" ] ; then
   _PHP_SV=53
 fi
 _PHP_CN="www${_PHP_SV}"

@@ -1297,84 +1297,11 @@ sub_force_advanced_nginx_config () {
     if [ -z "$_PHP_SV" ] ; then
       _PHP_SV=53
     fi
-    _PHP_CN="www${_PHP_SV}"
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
-      if [ -e "$_THIS_NGX_PATH/nginx_modern_include.conf" ] ; then
-        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_modern_include.conf   &> /dev/null
-        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_legacy_include.conf   &> /dev/null
-        sed -i "s/EDIT_USER/$_USER/g"  $_THIS_NGX_PATH/nginx_vhost_common.conf     &> /dev/null
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-        if [ "$_PHP_CN" = "www53" ] ; then
-          if [ ! -z "$_PHP_FPM_DENY" ] ; then
-            sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-            sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-          else
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-          fi
-        else
-          if [ ! -z "$_PHP_FPM_DENY" ] && [ ! -z "$_PHP_CN" ] ; then
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-          else
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-          fi
-        fi
-      fi
-      if [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
-        if [ "$_PHP_CN" = "www53" ] ; then
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
-        else
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
-        fi
-      fi
-    else
-      if [ -e "$_THIS_NGX_PATH/nginx_octopus_include.conf" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-      fi
-      if [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf  &> /dev/null
-      fi
+    if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] && [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
+      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_PATH/nginx_vhost_common.conf
+      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_PATH/nginx_vhost_common.conf
+      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf
     fi
-
-    _PHP_CLI_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/$_USER/log/cli.txt 2>&1`
-    _PHP_CLI_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/$_USER/static/control/cli.info 2>&1`
-    _PHP_CLI_LEGACY_IF_USED_C=`grep "CLI.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
-    if [[ "$_PHP_CLI_LEGACY_IF_USED_A" =~ "5.2" ]] || [[ "$_PHP_CLI_LEGACY_IF_USED_B" =~ "5.2" ]] || [[ "$_PHP_CLI_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
-      _PHP_CLI_LEGACY_FREE=NO
-    else
-      _PHP_CLI_LEGACY_FREE=YES
-    fi
-
-    _PHP_FPM_LEGACY_IF_USED_A=`grep "5\.2" /data/disk/$_USER/log/fpm.txt 2>&1`
-    _PHP_FPM_LEGACY_IF_USED_B=`grep "5\.2" /data/disk/$_USER/static/control/fpm.info 2>&1`
-    _PHP_FPM_LEGACY_IF_USED_C=`grep "FPM.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
-    if [[ "$_PHP_FPM_LEGACY_IF_USED_A" =~ "5.2" ]] || [[ "$_PHP_FPM_LEGACY_IF_USED_B" =~ "5.2" ]] || [[ "$_PHP_FPM_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
-      _PHP_FPM_LEGACY_FREE=NO
-    else
-      _PHP_FPM_LEGACY_FREE=YES
-    fi
-
-    if [ "$_PHP_CLI_LEGACY_FREE" = "YES" ] && [ "$_PHP_FPM_LEGACY_FREE" = "YES" ] ; then
-      _PHP_LEGACY_FREE=YES
-    else
-      _PHP_LEGACY_FREE=NO
-    fi
-
-    if [ "$_PHP_LEGACY_FREE" = "YES" ] || [ "$_PHP_FPM_VERSION" != "5.2" ] ; then
-      if [ "$_PHP_CN" = "www53" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
-      else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/$_USER.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
-      fi
-    fi
-
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ] ; then
       rm -f /root/.tmp.IP.list*
@@ -1402,213 +1329,245 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   _THIS_NGX_PATH=/data/disk/$_USER/config/includes
   sub_force_advanced_nginx_config
-  if [ -e "/data/disk/$_USER/config/includes/nginx_octopus_include.conf" ] && [ ! -L "/data/disk/$_USER/config/includes/nginx_advanced_include.conf" ] ; then
-    ln -sf /data/disk/$_USER/config/includes/nginx_octopus_include.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
-  fi
-  if [ -e "/data/disk/$_USER/config/includes/nginx_legacy_include.conf" ] && [ ! -L "/data/disk/$_USER/config/includes/nginx_simple_include.conf" ] ; then
-    ln -sf /data/disk/$_USER/config/includes/nginx_legacy_include.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
+  if [ -e "/data/disk/$_USER/config/includes/nginx_vhost_common.conf" ] ; then
+    rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+    rm -f /data/disk/$_USER/config/includes/nginx_modern_include.conf
+    rm -f /data/disk/$_USER/config/includes/nginx_octopus_include.conf
+    rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_modern_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_octopus_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf
   fi
 }
 #
+# Check PHP compatibility.
+check_php_compatibility () {
+  _PHP_CLI_LEGACY_IF_USED_A=`grep "5\.2" $_ROOT/log/cli.txt 2>&1`
+  _PHP_CLI_LEGACY_IF_USED_B=`grep "5\.2" $_ROOT/static/control/cli.info 2>&1`
+  _PHP_CLI_LEGACY_IF_USED_C=`grep "CLI.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
+  if [[ "$_PHP_CLI_LEGACY_IF_USED_A" =~ "5.2" ]] || [[ "$_PHP_CLI_LEGACY_IF_USED_B" =~ "5.2" ]] || [[ "$_PHP_CLI_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
+    _PHP_CLI_LEGACY_FREE=NO
+  else
+    _PHP_CLI_LEGACY_FREE=YES
+  fi
+  _PHP_FPM_LEGACY_IF_USED_A=`grep "5\.2" $_ROOT/log/fpm.txt 2>&1`
+  _PHP_FPM_LEGACY_IF_USED_B=`grep "5\.2" $_ROOT/static/control/fpm.info 2>&1`
+  _PHP_FPM_LEGACY_IF_USED_C=`grep "FPM.*5\.2" /root/.$_USER.octopus.cnf 2>&1`
+  if [[ "$_PHP_FPM_LEGACY_IF_USED_A" =~ "5.2" ]] || [[ "$_PHP_FPM_LEGACY_IF_USED_B" =~ "5.2" ]] || [[ "$_PHP_FPM_LEGACY_IF_USED_C" =~ "5.2" ]] ; then
+    _PHP_FPM_LEGACY_FREE=NO
+  else
+    _PHP_FPM_LEGACY_FREE=YES
+  fi
+  if [ "$_PHP_CLI_LEGACY_FREE" = "YES" ] && [ "$_PHP_FPM_LEGACY_FREE" = "YES" ] ; then
+    _PHP_LEGACY_FREE=YES
+  else
+    _PHP_LEGACY_FREE=NO
+  fi
+  if [ "$_PHP_LEGACY_FREE" = "NO" ] || [ "$_PHP_FPM_VERSION" = "5.2" ] ; then
+    msg "ERROR: This instance still depends on the old PHP version 5.2"
+    msg "ERROR: It is not possible to upgrade it to modern BOA-2.3.x series"
+    msg "ERROR: Please switch both FPM and CLI on this instance to PHP 5.3 or newer"
+    msg "ERROR: Once the instance is switched away from 5.2 run the upgrade again"
+    msg "Bye"
+    exit 1
+  fi
+}
 #
-###---### action
-#
+# Action.
 action () {
-_REL_VERSION=`lsb_release -sc`
-_AWS_TEST_A=$(grep cloudimg /etc/fstab)
-_AWS_TEST_B=$(grep cloudconfig /etc/fstab)
-if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
-  _THIS_DB_HOST=localhost
-fi
-if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
-  _VMFAMILY="AWS"
-  _THIS_DB_HOST=localhost
-  _LOC_DOM="$_DOMAIN"
-  if [ -z "$_MY_OWNIP" ] ; then
-    find_correct_ip
-    _MY_OWNIP="$_LOC_IP"
+  _REL_VERSION=`lsb_release -sc`
+  _AWS_TEST_A=$(grep cloudimg /etc/fstab)
+  _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
+  if [ "$_REL_VERSION" = "trusty" ] || [ "$_REL_VERSION" = "precise" ] || [ "$_REL_VERSION" = "oneiric" ] ; then
+    _THIS_DB_HOST=localhost
+  fi
+  if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
+    _VMFAMILY="AWS"
+    _THIS_DB_HOST=localhost
+    _LOC_DOM="$_DOMAIN"
+    if [ -z "$_MY_OWNIP" ] ; then
+      find_correct_ip
+      _MY_OWNIP="$_LOC_IP"
+    else
+      _LOC_IP="$_MY_OWNIP"
+    fi
+  fi
+  if [ -d "/data/all/000" ] ; then
+    if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+      _USE_CURRENT=NO
+      _HOT_SAUCE=YES
+      _HM_ONLY=NO
+    fi
+  fi
+  for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
+  do
+    sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_AGOV/$_AGOV/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
+    sed -i "s/EDIT_ALLOW_UNSUPPORTED/$_ALLOW_UNSUPPORTED/g" $Files &> /dev/null
+    sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
+    sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
+    sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
+    sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
+    sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files &> /dev/null
+    sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
+    sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
+    sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_COD/$_COD/g"                             $Files &> /dev/null
+    sed -i "s/EDIT_COMMERCE1/$_COMMERCE1/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_COMMERCE2/$_COMMERCE2/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_COMMONS2/$_COMMONS2/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_COMMONS3/$_COMMONS3/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
+    sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
+    sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
+    sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files &> /dev/null
+    sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
+    sed -i "s/EDIT_ERPAL/$_ERPAL/g"                         $Files &> /dev/null
+    sed -i "s/EDIT_GUARDR/$_GUARDR/g"                       $Files &> /dev/null
+    sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files &> /dev/null
+    sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
+    sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
+    sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
+    sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
+    sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
+    sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
+    sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
+    sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
+    sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
+    sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files &> /dev/null
+    sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files &> /dev/null
+    sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files &> /dev/null
+    sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
+    sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
+    sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_REDIS_M_VERSION/$_REDIS_M_VERSION/g"     $Files &> /dev/null
+    sed -i "s/EDIT_RESTAURANT/$_RESTAURANT/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
+    sed -i "s/EDIT_SPARK/$_SPARK/g"                         $Files &> /dev/null
+    sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
+    sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
+    sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
+    sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
+    sed -i "s/EDIT_TOTEM/$_TOTEM/g"                         $Files &> /dev/null
+    sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
+    sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
+    sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_USRG/$_USRG/g"                           $Files &> /dev/null
+    sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files &> /dev/null
+  done
+  _THISHOST=`cat /etc/hostname`
+  _THISHOST=`echo -n $_THISHOST | tr -d "\n"`
+  if [ -e "/usr/bin/sipcalc" ] ; then
+    if [ -z "$_THISHTIP" ] ; then
+      _LOC_DOM="$_THISHOST"
+      find_correct_ip
+      _THISHTIP="$_LOC_IP"
+    fi
+    _IP_TEST=`sipcalc $_THISHTIP 2>&1`
+    if [[ "$_IP_TEST" =~ "ERR" ]] ; then
+      _IP_TEST_RESULT=FAIL
+      _LOCAL_THISHTIP=all
+    else
+      _IP_TEST_RESULT=OK
+      _LOCAL_THISHTIP="$_THISHTIP"
+    fi
   else
-    _LOC_IP="$_MY_OWNIP"
-  fi
-fi
-if [ -d "/data/all/000" ] ; then
-  if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
-    _USE_CURRENT=NO
-    _HOT_SAUCE=YES
-    _HM_ONLY=NO
-  fi
-fi
-for Files in `find /opt/tmp/$_BOA_REPO_NAME/aegir/scripts -type f`
-do
-  sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         $Files &> /dev/null
-  sed -i "s/EDIT_AGOV/$_AGOV/g"                           $Files &> /dev/null
-  sed -i "s/EDIT_ALL_DISTRO/$_ALL_DISTRO/g"               $Files &> /dev/null
-  sed -i "s/EDIT_ALLOW_UNSUPPORTED/$_ALLOW_UNSUPPORTED/g" $Files &> /dev/null
-  sed -i "s/EDIT_AUTOPILOT/$_AUTOPILOT/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  $Files &> /dev/null
-  sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         $Files &> /dev/null
-  sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               $Files &> /dev/null
-  sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   $Files &> /dev/null
-  sed -i "s/EDIT_CIVICRM_M6/$_CIVICRM_M6/g"               $Files &> /dev/null
-  sed -i "s/EDIT_CIVICRM_M7/$_CIVICRM_M7/g"               $Files &> /dev/null
-  sed -i "s/EDIT_CIVICRM_PN/$_CIVICRM_PN/g"               $Files &> /dev/null
-  sed -i "s/EDIT_CLIENT_CORES/$_CLIENT_CORES/g"           $Files &> /dev/null
-  sed -i "s/EDIT_CLIENT_EMAIL/$_CLIENT_EMAIL/g"           $Files &> /dev/null
-  sed -i "s/EDIT_CLIENT_OPTION/$_CLIENT_OPTION/g"         $Files &> /dev/null
-  sed -i "s/EDIT_COD/$_COD/g"                             $Files &> /dev/null
-  sed -i "s/EDIT_COMMERCE1/$_COMMERCE1/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_COMMERCE2/$_COMMERCE2/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_COMMONS2/$_COMMONS2/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_COMMONS3/$_COMMONS3/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               $Files &> /dev/null
-  sed -i "s/EDIT_DISTRO/$_DISTRO/g"                       $Files &> /dev/null
-  sed -i "s/EDIT_DOMAIN/$_DOMAIN/g"                       $Files &> /dev/null
-  sed -i "s/EDIT_DRUPAL_EDGE_8/$_DRUPAL_EDGE_8/g"         $Files &> /dev/null
-  sed -i "s/EDIT_DRUPAL7/$_DRUPAL7/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_DRUPAL8/$_DRUPAL8/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         $Files &> /dev/null
-  sed -i "s/EDIT_ERPAL/$_ERPAL/g"                         $Files &> /dev/null
-  sed -i "s/EDIT_GUARDR/$_GUARDR/g"                       $Files &> /dev/null
-  sed -i "s/EDIT_HM_DISTRO/$_HM_DISTRO/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_HM_ONLY/$_HM_ONLY/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_HOT_SAUCE/$_HOT_SAUCE/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" $Files &> /dev/null
-  sed -i "s/EDIT_LAST_ALL/$_LAST_ALL/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_LAST_HMR/$_LAST_HMR/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_LASTNUM/$_LASTNUM/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_MANAGINGNEWS/$_MANAGINGNEWS/g"           $Files &> /dev/null
-  sed -i "s/EDIT_MY_EMAIL/$_MY_EMAIL/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_NOW/$_NOW/g"                             $Files &> /dev/null
-  sed -i "s/EDIT_O_CONTRIB_UP/$_O_CONTRIB_UP/g"           $Files &> /dev/null
-  sed -i "s/EDIT_OPEN_DEALS/$_OPEN_DEALS/g"               $Files &> /dev/null
-  sed -i "s/EDIT_OPENACADEMY/$_OPENACADEMY/g"             $Files &> /dev/null
-  sed -i "s/EDIT_OPENATRIUM6/$_OPENATRIUM6/g"             $Files &> /dev/null
-  sed -i "s/EDIT_OPENATRIUM7/$_OPENATRIUM7/g"             $Files &> /dev/null
-  sed -i "s/EDIT_OPENBLOG/$_OPENBLOG/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_OPENCHURCH/$_OPENCHURCH/g"               $Files &> /dev/null
-  sed -i "s/EDIT_OPENDEALS/$_OPENDEALS/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_OPENOUTREACH/$_OPENOUTREACH/g"           $Files &> /dev/null
-  sed -i "s/EDIT_OPENPUBLIC/$_OPENPUBLIC/g"               $Files &> /dev/null
-  sed -i "s/EDIT_OPENPUBLISH/$_OPENPUBLISH/g"             $Files &> /dev/null
-  sed -i "s/EDIT_OPENSCHOLAR/$_OPENSCHOLAR/g"             $Files &> /dev/null
-  sed -i "s/EDIT_PANOPOLY/$_PANOPOLY/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     $Files &> /dev/null
-  sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     $Files &> /dev/null
-  sed -i "s/EDIT_PLATFORMS_LIST/$_PLATFORMS_LIST/g"       $Files &> /dev/null
-  sed -i "s/EDIT_PLATFORMS_ONLY/$_PLATFORMS_ONLY/g"       $Files &> /dev/null
-  sed -i "s/EDIT_PROSEPOINT/$_PROSEPOINT/g"               $Files &> /dev/null
-  sed -i "s/EDIT_PURGE_FOR_SEVEN/$_PURGE_FOR_SEVEN/g"     $Files &> /dev/null
-  sed -i "s/EDIT_PURGE_MODE/$_PURGE_MODE/g"               $Files &> /dev/null
-  sed -i "s/EDIT_RECRUITER/$_RECRUITER/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_REDIS_M_VERSION/$_REDIS_M_VERSION/g"     $Files &> /dev/null
-  sed -i "s/EDIT_RESTAURANT/$_RESTAURANT/g"               $Files &> /dev/null
-  sed -i "s/EDIT_SMALLCORE6/$_SMALLCORE6/g"               $Files &> /dev/null
-  sed -i "s/EDIT_SMALLCORE7/$_SMALLCORE7/g"               $Files &> /dev/null
-  sed -i "s/EDIT_SMALLCORE8/$_SMALLCORE8/g"               $Files &> /dev/null
-  sed -i "s/EDIT_SPARK/$_SPARK/g"                         $Files &> /dev/null
-  sed -i "s/EDIT_SPINNER/$_SPINNER/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   $Files &> /dev/null
-  sed -i "s/EDIT_T_BUILD/$_T_BUILD/g"                     $Files &> /dev/null
-  sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           $Files &> /dev/null
-  sed -i "s/EDIT_THISHTIP/$_THISHTIP/g"                   $Files &> /dev/null
-  sed -i "s/EDIT_TOTEM/$_TOTEM/g"                         $Files &> /dev/null
-  sed -i "s/EDIT_UBERCART6/$_UBERCART6/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_UBERCART7/$_UBERCART7/g"                 $Files &> /dev/null
-  sed -i "s/EDIT_USE_CURRENT/$_USE_CURRENT/g"             $Files &> /dev/null
-  sed -i "s/EDIT_USER/$_USER/g"                           $Files &> /dev/null
-  sed -i "s/EDIT_USRG/$_USRG/g"                           $Files &> /dev/null
-  sed -i "s/EDIT_WEBG/$_WEBG/g"                           $Files &> /dev/null
-done
-_THISHOST=`cat /etc/hostname`
-_THISHOST=`echo -n $_THISHOST | tr -d "\n"`
-if [ -e "/usr/bin/sipcalc" ] ; then
-  if [ -z "$_THISHTIP" ] ; then
-    _LOC_DOM="$_THISHOST"
-    find_correct_ip
-    _THISHTIP="$_LOC_IP"
-  fi
-  _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-  if [[ "$_IP_TEST" =~ "ERR" ]] ; then
-    _IP_TEST_RESULT=FAIL
-    _LOCAL_THISHTIP=all
-  else
-    _IP_TEST_RESULT=OK
     _LOCAL_THISHTIP="$_THISHTIP"
   fi
-else
-  _LOCAL_THISHTIP="$_THISHTIP"
-fi
-if [ -z "$_LOCAL_THISHTIP" ] ; then
-  _LOC_DOM="$_THISHOST"
-  find_correct_ip
-  _LOCAL_THISHTIP="$_LOC_IP"
-fi
-if [ -z "$_LOCAL_THISHTIP" ] ; then
-  _LOCAL_THISHTIP=all
-fi
-cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
-chmod 700 /var/xdrago/run-$_USER &> /dev/null
-chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
-bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
-if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
-  msg "FATAL ERROR: AegirSetupA installer failed"
-  msg "FATAL ERROR: Aborting Octopus installer NOW!"
-  touch /opt/tmp/status-Octopus-FAIL
-  exit 1
-fi
-if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
-  echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
-fi
-if [ ! -e "/data/disk/$_USER/log/option.txt" ] ; then
-  echo $_CLIENT_OPTION > /data/disk/$_USER/log/option.txt
-fi
-if [ ! -e "/data/disk/$_USER/log/cores.txt" ] ; then
-  echo $_CLIENT_CORES > /data/disk/$_USER/log/cores.txt
-fi
-if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
-  echo $_CLIENT_SUBSCR > /data/disk/$_USER/log/subscr.txt
-fi
-if [ ! -e "/data/disk/$_USER/log/fpm.txt" ] ; then
-  echo $_PHP_FPM_VERSION > /data/disk/$_USER/log/fpm.txt
-fi
-if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
-  echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
-fi
-if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.cnv.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
-  mkdir -p /data/disk/${_USER}/static/control
-  chmod 755 /data/disk/${_USER}/static/control
-  if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
-    cp -af /var/xdrago/conf/control-readme.txt /data/disk/${_USER}/static/control/README.txt &> /dev/null
-    chmod 0644 /data/disk/${_USER}/static/control/README.txt
+  if [ -z "$_LOCAL_THISHTIP" ] ; then
+    _LOC_DOM="$_THISHOST"
+    find_correct_ip
+    _LOCAL_THISHTIP="$_LOC_IP"
   fi
-  chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
-  echo OK > /data/disk/${_USER}/static/control/.ctrl.cnv.txt
-fi
-if [ -d "/data/all/000" ] ; then
-  if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
-    echo "$_SMALLCORE6" > /data/all/000/core-v-$_SMALLCORE6.txt
-    echo "$_SMALLCORE7" > /data/all/000/core-v-$_SMALLCORE7.txt
+  if [ -z "$_LOCAL_THISHTIP" ] ; then
+    _LOCAL_THISHTIP=all
   fi
-fi
-if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
-  tune_fpm_config
-  force_advanced_nginx_config
-  mrun "service nginx reload" &> /dev/null
-fi
+  cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/run-xdrago /var/xdrago/run-$_USER &> /dev/null
+  chmod 700 /var/xdrago/run-$_USER &> /dev/null
+  chmod 700 /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/* &> /dev/null
+  bash /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/AegirSetupA.sh.txt
+  if [ -e "/opt/tmp/status-AegirSetupA-FAIL" ] ; then
+    msg "FATAL ERROR: AegirSetupA installer failed"
+    msg "FATAL ERROR: Aborting Octopus installer NOW!"
+    touch /opt/tmp/status-Octopus-FAIL
+    exit 1
+  fi
+  if [ ! -e "/data/disk/$_USER/log/email.txt" ] ; then
+    echo $_CLIENT_EMAIL > /data/disk/$_USER/log/email.txt
+  fi
+  if [ ! -e "/data/disk/$_USER/log/option.txt" ] ; then
+    echo $_CLIENT_OPTION > /data/disk/$_USER/log/option.txt
+  fi
+  if [ ! -e "/data/disk/$_USER/log/cores.txt" ] ; then
+    echo $_CLIENT_CORES > /data/disk/$_USER/log/cores.txt
+  fi
+  if [ ! -e "/data/disk/$_USER/log/subscr.txt" ] ; then
+    echo $_CLIENT_SUBSCR > /data/disk/$_USER/log/subscr.txt
+  fi
+  if [ ! -e "/data/disk/$_USER/log/fpm.txt" ] ; then
+    echo $_PHP_FPM_VERSION > /data/disk/$_USER/log/fpm.txt
+  fi
+  if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
+    echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
+  fi
+  if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.cnv.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
+    mkdir -p /data/disk/${_USER}/static/control
+    chmod 755 /data/disk/${_USER}/static/control
+    if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
+      cp -af /var/xdrago/conf/control-readme.txt /data/disk/${_USER}/static/control/README.txt &> /dev/null
+      chmod 0644 /data/disk/${_USER}/static/control/README.txt
+    fi
+    chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
+    echo OK > /data/disk/${_USER}/static/control/.ctrl.cnv.txt
+  fi
+  if [ -d "/data/all/000" ] ; then
+    if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then
+      echo "$_SMALLCORE6" > /data/all/000/core-v-$_SMALLCORE6.txt
+      echo "$_SMALLCORE7" > /data/all/000/core-v-$_SMALLCORE7.txt
+    fi
+  fi
+  if [ -e "/data/disk/$_USER/log/email.txt" ] ; then
+    tune_fpm_config
+    force_advanced_nginx_config
+    mrun "service nginx reload" &> /dev/null
+  fi
 }
-
-
-###--------------------###
-wait_for_connection ()
-{
+#
+# Test connection.
+wait_for_connection () {
   echo " "
   msg "I can not connect to github.com on port 9418 at the moment"
   msg "I will try again in 60 seconds, please wait..."
   msg "Waiting for attempt $1..."
   sleep 60
 }
-check_connection ()
-{
+check_connection () {
   if ! netcat -w 14 -z github.com 9418 ; then
     wait_for_connection "2/4"
     if ! netcat -w 14 -z github.com 9418 ; then
@@ -1630,6 +1589,7 @@ check_connection ()
   fi
 }
 
+###--------------------###
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r /opt/tmp/test-*
   check_connection
@@ -1684,7 +1644,6 @@ if [ ! -e "/var/run/mysqld/mysqld.pid" ] || [ ! -e "/var/run/mysqld/mysqld.sock"
   msg "Bye"
   exit 1
 fi
-
 
 ###--------------------###
 _LASTNUM=001
@@ -1822,6 +1781,7 @@ if [ -e "/var/log/barracuda_log.txt" ] ; then
     fi
   fi
 fi
+check_php_compatibility
 #
 #
 rm -f /var/run/aegir_upgrade.pid
