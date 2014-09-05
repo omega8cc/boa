@@ -1694,6 +1694,8 @@ if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] || [ -e "/root/.h
 fi
 rm -f /tmp/.cron.*.pid
 rm -f /tmp/.busy.*.pid
+rm -f /data/disk/*/.tmp/.cron.*.pid
+rm -f /data/disk/*/.tmp/.busy.*.pid
 rm -f /var/run/daily-fix.pid
 echo "INFO: Daily maintenance complete"
 exit 0
