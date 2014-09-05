@@ -676,6 +676,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster vset --always-set hosting_platform_pathauto_base_path "/data/disk/$_USER/static/" &> /dev/null
   $_DRUSHCMD @hostmaster vset --always-set hosting_site_backup_manager_base_path "/data/disk/$_USER" &> /dev/null
   $_DRUSHCMD @hostmaster sqlq "DELETE FROM menu_links WHERE link_path='hosting/platforms'" &> /dev/null
+  $_DRUSHCMD @hostmaster sqlq "DELETE FROM menu_links WHERE link_path='hosting/sites'" &> /dev/null
   $_DRUSHCMD @hostmaster en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
