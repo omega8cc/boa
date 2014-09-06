@@ -1297,10 +1297,18 @@ sub_force_advanced_nginx_config () {
     if [ -z "$_PHP_SV" ] ; then
       _PHP_SV=53
     fi
-    if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] && [ -e "$_THIS_NGX_PATH/nginx_vhost_common.conf" ] ; then
-      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_PATH/nginx_vhost_common.conf
-      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_PATH/nginx_vhost_common.conf
-      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf
+    if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] && [ -e "$_THIS_NGX_INCL/nginx_vhost_common.conf" ] ; then
+      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_INCL/nginx_vhost_common.conf
+      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf
+      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf
+
+      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/subdir.tpl.php
+      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_TPLS/subdir.tpl.php
+      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php
+
+      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
+      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
+      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
     fi
     _CRON_IP=${_THISHTIP//[^0-9.]/}
     if [ ! -e "/root/.local.IP.list" ] ; then
@@ -1325,9 +1333,8 @@ sub_force_advanced_nginx_config () {
 #
 # Force advanced Nginx configuration.
 force_advanced_nginx_config () {
-  _THIS_NGX_PATH=/data/disk/$_USER/.drush/sys/provision/http/Provision/Service/http
-  sub_force_advanced_nginx_config
-  _THIS_NGX_PATH=/data/disk/$_USER/config/includes
+  _THIS_NGX_INCL=/data/disk/${_USER}/config/includes
+  _THIS_NGX_TPLS=/data/disk/${_USER}/.drush/sys/provision/http/Provision/Config/Nginx
   sub_force_advanced_nginx_config
   if [ -e "/data/disk/$_USER/config/includes/nginx_vhost_common.conf" ] ; then
     rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
