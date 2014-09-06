@@ -634,7 +634,8 @@ switch_php()
       fi
     fi
     if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
-      _THIS_NGX_INCL=/data/disk/${_OWN}/config/includes
+      _THIS_NGX_INCL="/data/disk/${_OWN}/config/includes"
+      _THIS_NGX_SUBD="/data/disk/${_OWN}/config/server_master/nginx/subdir.d/*/*.conf"
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
       _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
@@ -679,6 +680,10 @@ switch_php()
             sed -i "s/EDIT_OWN/${_OWN}/g"                                               $_THIS_NGX_INCL/nginx_vhost_common.conf
             sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf
             sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf
+
+            sed -i "s/EDIT_OWN/${_OWN}/g"                                               $_THIS_NGX_SUBD
+            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g"             $_THIS_NGX_SUBD
+            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_SUBD
           fi
           rm -f /opt/php*/etc/pool.d/${_OWN}.conf
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf

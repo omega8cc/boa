@@ -2263,6 +2263,10 @@ sub_force_advanced_nginx_config () {
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/subdir.tpl.php
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php
 
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_SUBD
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_SUBD
+    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_SUBD
+
     sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
     sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
     sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
@@ -2273,8 +2277,9 @@ sub_force_advanced_nginx_config () {
 force_advanced_nginx_config () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   validate_local_ip &> /dev/null
-  _THIS_NGX_INCL=/var/aegir/config/includes
-  _THIS_NGX_TPLS=/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx
+  _THIS_NGX_INCL="/var/aegir/config/includes"
+  _THIS_NGX_TPLS="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
+  _THIS_NGX_SUBD="/var/aegir/config/server_master/nginx/subdir.d/*/*.conf"
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
   if [ "$_NGINX_SPDY" = "YES" ] ; then
