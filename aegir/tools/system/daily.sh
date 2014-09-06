@@ -964,7 +964,7 @@ fix_permissions () {
     chown $_THIS_HM_USER:users $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 $Plr/sites &> /dev/null
     chmod 0751 $Plr/sites/all &> /dev/null
-    chmod 0751 $Plr/sites/all/drush &> /dev/null
+    chmod 0700 $Plr/sites/all/drush &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
     ### expected symlinks
