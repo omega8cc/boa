@@ -781,6 +781,7 @@ do
     chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/drushrc.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
@@ -923,6 +924,7 @@ else
   chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
