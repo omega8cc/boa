@@ -1306,9 +1306,9 @@ sub_force_advanced_nginx_config () {
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_TPLS/subdir.tpl.php
       sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php
 
-      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_SUBD
-      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_SUBD
-      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_SUBD
+      sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_SUBD &> /dev/null
+      sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_SUBD &> /dev/null
+      sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_USER}.fpm.socket;/g" $_THIS_NGX_SUBD &> /dev/null
 
       sed -i "s/EDIT_USER/${_USER}/g"                                              $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
       sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_USER}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php

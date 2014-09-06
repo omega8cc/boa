@@ -681,9 +681,9 @@ switch_php()
             sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf
             sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf
 
-            sed -i "s/EDIT_OWN/${_OWN}/g"                                               $_THIS_NGX_SUBD
-            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g"             $_THIS_NGX_SUBD
-            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_SUBD
+            sed -i "s/EDIT_OWN/${_OWN}/g"                                               $_THIS_NGX_SUBD &> /dev/null
+            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g"             $_THIS_NGX_SUBD &> /dev/null
+            sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_SUBD &> /dev/null
           fi
           rm -f /opt/php*/etc/pool.d/${_OWN}.conf
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
