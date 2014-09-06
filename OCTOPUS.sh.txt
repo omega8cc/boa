@@ -1331,10 +1331,12 @@ force_advanced_nginx_config () {
   sub_force_advanced_nginx_config
   if [ -e "/data/disk/$_USER/config/includes/nginx_vhost_common.conf" ] ; then
     rm -f /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+    rm -f /data/disk/$_USER/config/includes/nginx_legacy_include.conf
     rm -f /data/disk/$_USER/config/includes/nginx_modern_include.conf
     rm -f /data/disk/$_USER/config/includes/nginx_octopus_include.conf
     rm -f /data/disk/$_USER/config/includes/nginx_simple_include.conf
     ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_advanced_include.conf
+    ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_legacy_include.conf
     ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_modern_include.conf
     ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_octopus_include.conf
     ln -s /data/disk/$_USER/config/includes/nginx_vhost_common.conf /data/disk/$_USER/config/includes/nginx_simple_include.conf

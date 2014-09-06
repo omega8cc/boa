@@ -2289,10 +2289,12 @@ force_advanced_nginx_config () {
   fi
   if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] ; then
     rm -f /var/aegir/config/includes/nginx_advanced_include.conf
+    rm -f /var/aegir/config/includes/nginx_legacy_include.conf
     rm -f /var/aegir/config/includes/nginx_modern_include.conf
     rm -f /var/aegir/config/includes/nginx_octopus_include.conf
     rm -f /var/aegir/config/includes/nginx_simple_include.conf
     ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_advanced_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_legacy_include.conf
     ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_modern_include.conf
     ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_octopus_include.conf
     ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_simple_include.conf
