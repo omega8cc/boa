@@ -9303,7 +9303,7 @@ install_pdnsd_cache () {
 d;};' /etc/pdnsd.conf
     fi
   fi
-  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] || [ "$_USE_PROVIDER_DNS" = "YES" ] ; then
+  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     rm -f -r /run/resolvconf
     rm -f -r /etc/resolvconf/run
     ln -s /lib/init/rw/resolvconf /etc/resolvconf/run
@@ -9346,6 +9346,9 @@ d;};' /etc/pdnsd.conf
     fi
     rm -f /etc/resolvconf/run/interface/eth*
   fi
+  if [ "$_USE_PROVIDER_DNS" = "YES" ] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+    cat /var/backups/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
+  fi
   resolvconf -u &> /dev/null
   _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf)
   if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]] && [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
@@ -9375,6 +9378,7 @@ d;};' /etc/pdnsd.conf
   mrun "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
   mrun "service pdnsd start" &> /dev/null
+  resolvconf -u &> /dev/null
 }
 if [ -f "/etc/default/dhcpcd" ] ; then
   sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
