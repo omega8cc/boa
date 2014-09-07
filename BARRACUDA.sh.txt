@@ -9317,10 +9317,7 @@ d;};' /etc/pdnsd.conf
   fi
   if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] || [ "$_USE_PROVIDER_DNS" = "YES" ] ; then
     rm -f /etc/resolvconf/run/interface/*
-    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
-      cat /var/backups/resolv.conf.vanilla >/etc/resolvconf/run/interface/lo.pdnsd
-    fi
-    echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/interface/lo.pdnsd
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
     sed -i "s/^search.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
     sed -i "s/^domain.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
     sed -i "s/^nameserver.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
@@ -9356,10 +9353,7 @@ d;};' /etc/pdnsd.conf
   else
     rm -f /etc/resolv.conf
     ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
-    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
-      cat /var/backups/resolv.conf.vanilla >/etc/resolvconf/run/interface/lo.pdnsd
-    fi
-    echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/interface/lo.pdnsd
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
   fi
   resolvconf -u &> /dev/null
   if [ ! -e "/etc/resolv.conf" ] ; then
