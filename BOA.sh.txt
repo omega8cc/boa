@@ -110,7 +110,10 @@ check_dns_settings () {
 setup ()
 {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
+    fi
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
     echo "nameserver 8.8.4.4" >>/etc/resolv.conf
     check_dns_settings
   else
