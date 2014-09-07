@@ -9277,6 +9277,8 @@ install_pdnsd_cache () {
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  rm -f -r /lib/init/rw/resolvconf
+  rm -f -r /etc/resolvconf
   st_runner "aptitude purge pdnsd -y" &> /dev/null
   st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
@@ -9313,7 +9315,7 @@ d;};' /etc/pdnsd.conf
     rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
   fi
-  if [ -e "/etc/resolvconf/run" ] ; then
+  if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] ; then
     rm -f /etc/resolvconf/run/interface/*
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
     sed -i "s/^search.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
@@ -9329,16 +9331,29 @@ d;};' /etc/pdnsd.conf
         rm -f /etc/resolv.conf
         echo "nameserver 8.8.8.8" > /etc/resolv.conf
         echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      else
+        if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+          rm -f /etc/resolv.conf
+          cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+        fi
       fi
     fi
     rm -f /etc/resolvconf/run/interface/eth*
-    resolvconf -u &> /dev/null
   else
     if [ -e "/usr/sbin/pdnsd" ] ; then
       rm -f /etc/resolv.conf
       echo "nameserver 127.0.0.1" > /etc/resolv.conf
     fi
   fi
+  _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf)
+  if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]] ; then
+    _DO_NOTHING=YES
+  else
+    rm -f /etc/resolv.conf
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+    echo "nameserver 127.0.0.1" > /etc/resolv.conf
+  fi
+  resolvconf -u &> /dev/null
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ] ; then
     sed -i "s/^dns=.*/dns=pdnsd/g" /etc/NetworkManager/NetworkManager.conf &> /dev/null
     mrun "service network-manager restart" &> /dev/null
