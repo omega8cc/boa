@@ -683,7 +683,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   $_DRUSHCMD @hostmaster en aegir_custom_settings -y &> /dev/null
   $_DRUSHCMD @hostmaster fr aegir_custom_settings -y &> /dev/null
   if [ "$_LOCAL_STATUS" = "INIT" ] ; then
-    $_DRUSHCMD @hostmaster vset --always-set site_name "Aegir Octopus System powered by Barracuda" &> /dev/null
+    $_DRUSHCMD @hostmaster vset --always-set site_name "Octopus System powered by Barracuda" &> /dev/null
     $_DRUSHCMD @hostmaster vset --always-set site_mail "$_ADM_EMAIL" &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
     mv -f make_home.php.txt make_home.php &> /dev/null
@@ -702,7 +702,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     $_DRUSHCMD @hostmaster urol "aegir account manager" --mail=$_CLIENT_EMAIL &> /dev/null
   fi
   if [ "$_VMFAMILY" = "VS" ] ; then
-    $_DRUSHCMD @hostmaster vset --always-set site_name "Aegir Octopus System powered by Barracuda" &> /dev/null
+    $_DRUSHCMD @hostmaster vset --always-set site_name "Octopus System powered by Barracuda" &> /dev/null
     cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_home.php.txt ./
     mv -f make_home.php.txt make_home.php &> /dev/null
     $_DRUSHCMD php-script make_home &> /dev/null
