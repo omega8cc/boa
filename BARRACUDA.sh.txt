@@ -1319,6 +1319,70 @@ get_dev_src () {
   fi
 }
 #
+# Fix DNS settings.
+fix_dns_settings () {
+  mkdir -p /var/backups
+  rm -f /var/backups/resolv.conf.tmp
+  if [ -e "/etc/resolv.conf" ] ; then
+    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
+      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
+        cp -a $Pre /var/backups/resolv.conf.vanilla
+      fi
+    done
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+  fi
+  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  rm -f /etc/resolv.conf
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+    touch /root/.use.local.nameservers.cnf
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  else
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+  fi
+  if [ -e "/etc/pdnsd.conf" ] ; then
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] && [ -e "/root/.use.local.nameservers.cnf" ] ; then
+      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u                      &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+    fi
+  fi
+}
+#
+# Check DNS settings.
+check_dns_settings () {
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
+    _USE_PROVIDER_DNS=YES
+    fix_dns_settings
+  else
+    _USE_PROVIDER_DNS=NO
+  fi
+}
+#
 # Check repo status.
 check_git_repos_status () {
   _GITHUB_WORKS=NO
@@ -5613,20 +5677,6 @@ fi
 
 
 ###--------------------###
-if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: Installing some basic tools now, please wait..."
-  apt-get update &> /dev/null
-  $_INITINS locales &> /dev/null
-  fix_locales
-  $_INITINS lsb-release &> /dev/null
-  $_INITINS dnsutils &> /dev/null
-  $_INITINS netcat &> /dev/null
-  $_INITINS curl &> /dev/null
-  $_INITINS wget &> /dev/null
-fi
-
-
-###--------------------###
 msg "INFO: Checking your system version..."
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
@@ -5689,6 +5739,30 @@ fi
 echo " "
 msg "Aegir on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
 echo " "
+
+
+###--------------------###
+if [ "$_STATUS" = "INIT" ] ; then
+  msg "INFO: Installing some basic tools now, please wait..."
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      apt-get install debian-keyring -f -y --force-yes --reinstall &> /dev/null
+      apt-get install debian-archive-keyring -f -y --force-yes --reinstall &> /dev/null
+    else
+      apt-get install ubuntu-keyring -f -y --force-yes --reinstall &> /dev/null
+    fi
+  fi
+  apt-get update &> /dev/null
+  $_INITINS locales &> /dev/null
+  fix_locales
+  $_INITINS lsb-release &> /dev/null
+  $_INITINS dnsutils &> /dev/null
+  $_INITINS netcat &> /dev/null
+  $_INITINS curl &> /dev/null
+  $_INITINS wget &> /dev/null
+fi
 
 
 ###--------------------###
@@ -6220,10 +6294,13 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     service cron stop &> /dev/null
     mrun "sleep 60"
   fi
-  mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-  echo "nameserver 8.8.8.8" >/etc/resolv.conf
-  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  check_dns_settings
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  fi
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
@@ -6289,10 +6366,13 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     service cron stop &> /dev/null
     mrun "sleep 60"
   fi
-  mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-  echo "nameserver 8.8.8.8" >/etc/resolv.conf
-  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  check_dns_settings
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  fi
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
   msg "HINT: Run tail -f $_LOG"
@@ -9188,18 +9268,40 @@ fi
 install_pdnsd_cache () {
   msg "INFO: Installing DNS cache pdnsd server..."
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  check_dns_settings
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    rm -f /etc/resolv.conf
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  fi
   st_runner "apt-get update -y --force-yes" &> /dev/null
-  st_runner "aptitude purge pdnsd resolvconf -y" &> /dev/null
+  st_runner "aptitude purge pdnsd -y" &> /dev/null
+  st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
+  st_runner "aptitude purge pdnsd -y" &> /dev/null
+  st_runner "aptitude purge resolvconf -y" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    rm -f /etc/resolv.conf
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  fi
+  st_runner "$_INSTALL resolvconf" &> /dev/null
+  st_runner "$_INSTALL pdnsd" &> /dev/null
+  st_runner "$_INSTALL resolvconf" &> /dev/null
+  st_runner "$_INSTALL pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+  if [ "$_USE_PROVIDER_DNS" = "YES" ] ; then
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] && [ -e "/root/.use.local.nameservers.cnf" ] ; then
+      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+    fi
+  fi
   if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     rm -f -r /run/resolvconf
     rm -f -r /etc/resolvconf/run
@@ -9224,9 +9326,11 @@ install_pdnsd_cache () {
       rm -f /etc/resolv.conf
       ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
     else
-      rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" > /etc/resolv.conf
-      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+        rm -f /etc/resolv.conf
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      fi
     fi
     rm -f /etc/resolvconf/run/interface/eth*
     resolvconf -u &> /dev/null
