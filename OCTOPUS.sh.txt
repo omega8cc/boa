@@ -294,7 +294,7 @@ _MY_OWNIP=""
 ### _AEGIR_VERSION=HEAD
 ### _AEGIR_VERSION=BOA-2.3.0
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.3.0
 
 
 ###----------------------------------------###
@@ -629,7 +629,7 @@ _RESERVED_RAM=0
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.x-dev
+_INSTALLER_VERSION=BOA-2.3.0
 _BRANCH_BOA=2.3.x-dev
 _BRANCH_PROVISION=2.3.x-dev
 
@@ -1716,7 +1716,7 @@ _THIS_HOST=`uname -n`
 if [ $_THIS_HOST = "aegir.local" ] && [ ! -d "$_ROOT" ] ; then
   _PHP_FPM_VERSION=5.3
   _PHP_CLI_VERSION=5.3
-  _AEGIR_VERSION=HEAD
+  _AEGIR_VERSION=BOA-2.3.0
   _DEBUG_MODE=NO
   _DNS_SETUP_TEST=NO
   _THIS_DB_HOST=localhost

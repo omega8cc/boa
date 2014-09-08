@@ -64,9 +64,8 @@
    To install Legacy version instead of Stable, use the same commands, but
    replace "in-stable" with "in-legacy"
 
-   The Legacy version is currently the last Edition in the 2.1.x series, and
-   will move gradually to 2.2.x series when 2.3.x will be released. It still
-   supports Drupal 5 and uses Drush 4 along with older Aegir version.
+   The Legacy version is currently the last Edition in the 2.2.x series,
+   which is BOA-2.2.9
 
    Note that once you will install current Stable or HEAD, you can't
    downgrade back to Legacy version!
