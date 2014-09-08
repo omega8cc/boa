@@ -11,6 +11,68 @@ if [[ "$_L_VM_TEST" =~ beng ]] ; then
   _L_VMFAMILY="VS"
 fi
 
+fix_dns_settings () {
+  mkdir -p /var/backups
+  rm -f /var/backups/resolv.conf.tmp
+  if [ -e "/etc/resolv.conf" ] ; then
+    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
+      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
+        cp -a $Pre /var/backups/resolv.conf.vanilla
+      fi
+    done
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+  fi
+  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  rm -f /etc/resolv.conf
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+    touch /root/.use.local.nameservers.cnf
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  else
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+  fi
+  if [ -e "/etc/pdnsd.conf" ] ; then
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] && [ -e "/root/.use.local.nameservers.cnf" ] ; then
+      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u                      &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+    fi
+  fi
+}
+
+check_dns_settings () {
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
+    _USE_PROVIDER_DNS=YES
+    fix_dns_settings
+  else
+    _USE_PROVIDER_DNS=NO
+  fi
+}
+
 octopus_install ()
 {
   if [ -e "/var/backups/OCTOPUS.sh.txt" ] ; then
@@ -21,45 +83,45 @@ octopus_install ()
     _CHECK_HOST=`uname -n`
     if [ "$cmmand" = "in-octopus" ] ; then
       if [ ! -z "$copt" ] ; then
-        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" /var/backups/OCTOPUS.sh.$user &> /dev/null
+        sed -i "s/^_CLIENT_OPTION=.*/_CLIENT_OPTION=$copt/g" /var/backups/OCTOPUS.sh.$user
       fi
       if [ ! -z "$csub" ] ; then
-        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" /var/backups/OCTOPUS.sh.$user &> /dev/null
+        sed -i "s/^_CLIENT_SUBSCR=.*/_CLIENT_SUBSCR=$csub/g" /var/backups/OCTOPUS.sh.$user
       fi
       if [ ! -z "$ccor" ] ; then
-        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   /var/backups/OCTOPUS.sh.$user &> /dev/null
+        sed -i "s/^_CLIENT_CORES=.*/_CLIENT_CORES=$ccor/g"   /var/backups/OCTOPUS.sh.$user
       fi
     else
-      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"        /var/backups/OCTOPUS.sh.$user
     fi
-    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.$user &> /dev/null
-    sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /var/backups/OCTOPUS.sh.$user &> /dev/null
-    sed -i "s/^_USER=.*/_USER=$user/g"                       /var/backups/OCTOPUS.sh.$user &> /dev/null
+    sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"$email\"/g"  /var/backups/OCTOPUS.sh.$user
+    sed -i "s/^_DNS_SETUP_TEST=.*/_DNS_SETUP_TEST=NO/g"      /var/backups/OCTOPUS.sh.$user
+    sed -i "s/^_USER=.*/_USER=$user/g"                       /var/backups/OCTOPUS.sh.$user
     if [ "$mode" = "mini" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
     elif [ "$mode" = "max" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
-    elif [ "$mode" = "stock" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user
     elif [ "$mode" = "none" ] ; then
-      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=/g"      /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"             /var/backups/OCTOPUS.sh.$user
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=/g"      /var/backups/OCTOPUS.sh.$user
     else
-      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user &> /dev/null
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"              /var/backups/OCTOPUS.sh.$user &> /dev/null
+      sed -i "s/^_PLATFORMS_LIST=.*/_PLATFORMS_LIST=ALL/g"   /var/backups/OCTOPUS.sh.$user
     fi
     if [ -e "/root/.host8.cnf" ] || [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_L_VMFAMILY" = "VS" ] ; then
       if [[ "$_CHECK_HOST" =~ ".ux.o8.io" ]] ; then
         _DO_NOTHING=YES
       else
-        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$user &> /dev/null
-        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g" /var/backups/OCTOPUS.sh.$user &> /dev/null
+        sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   /var/backups/OCTOPUS.sh.$user
+        sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"     /var/backups/OCTOPUS.sh.$user
       fi
+    fi
+    if [ "$cmmand" = "in-vanilla" ] ; then
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/OCTOPUS.sh.$user
+    elif [ "$cmmand" = "in-modern" ] ; then
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$user
+    else
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=master/g"    /var/backups/OCTOPUS.sh.$user
     fi
     bash /var/backups/OCTOPUS.sh.$user
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
@@ -73,31 +135,27 @@ octopus_install ()
 barracuda_install ()
 {
 if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
-  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"           /var/backups/BARRACUDA.sh.txt &> /dev/null
-  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                /var/backups/BARRACUDA.sh.txt &> /dev/null
+  sed -i "s/^_MY_EMAIL=.*/_MY_EMAIL=\"$email\"/g"          /var/backups/BARRACUDA.sh.txt
+  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"               /var/backups/BARRACUDA.sh.txt
   if [ "$kind" = "local" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"    /var/backups/BARRACUDA.sh.txt &> /dev/null
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"           /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=YES/g"   /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=NO/g"          /var/backups/BARRACUDA.sh.txt
     sed -i "s/^127.0.1.1.*//g" /etc/hosts
     echo "127.0.1.1 aegir.local o1.sub.aegir.local o2.sub.aegir.local o3.sub.aegir.local" >> /etc/hosts
   elif [ "$kind" = "public" ] ; then
-    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"     /var/backups/BARRACUDA.sh.txt &> /dev/null
-    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"          /var/backups/BARRACUDA.sh.txt &> /dev/null
-    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"    /var/backups/BARRACUDA.sh.txt &> /dev/null
-  fi
-  if [ "$mode" = "stock" ] ; then
-    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"              /var/backups/BARRACUDA.sh.txt &> /dev/null
-    if [ -e "/root/.barracuda.cnf" ] ; then
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=YES/g"            /root/.barracuda.cnf &> /dev/null
-    fi
-  else
-    sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"               /var/backups/BARRACUDA.sh.txt &> /dev/null
-    if [ -e "/root/.barracuda.cnf" ] ; then
-      sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"             /root/.barracuda.cnf &> /dev/null
-    fi
+    sed -i "s/^_EASY_LOCALHOST=.*/_EASY_LOCALHOST=NO/g"    /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_PUBLIC=.*/_EASY_PUBLIC=YES/g"         /var/backups/BARRACUDA.sh.txt
+    sed -i "s/^_EASY_HOSTNAME=.*/_EASY_HOSTNAME=$fqdn/g"   /var/backups/BARRACUDA.sh.txt
   fi
   if [ ! -z "$rkey" ] ; then
-    sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g"  /var/backups/BARRACUDA.sh.txt &> /dev/null
+    sed -i "s/^_NEWRELIC_KEY=.*/_NEWRELIC_KEY=\"$rkey\"/g" /var/backups/BARRACUDA.sh.txt
+  fi
+  if [ "$cmmand" = "in-vanilla" ] ; then
+    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=6.x-2.x/g"   /var/backups/BARRACUDA.sh.txt
+  elif [ "$cmmand" = "in-modern" ] ; then
+    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/BARRACUDA.sh.txt
+  else
+    sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=master/g"    /var/backups/BARRACUDA.sh.txt
   fi
   if [ -e "/var/backups/BARRACUDA.sh.txt" ] ; then
     bash /var/backups/BARRACUDA.sh.txt
@@ -186,30 +244,27 @@ init_setup ()
     email="$fqdn"
   fi
   if [ "$kind" = "public" ] ; then
-    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] || [ "$user" = "stock" ] ; then
+    if [ "$user" = "ask" ] || [ "$user" = "mini" ] || [ "$user" = "max" ] ; then
       rkey="$mode"
       mode="$user"
       user="o1"
     fi
   fi
-  if [ "$mode" = "stock" ] ; then
-    cmmand=in-head
+  if [ "$cmmand" = "in-head" ] ; then
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-  else
-    if [ "$cmmand" = "in-head" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/master/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-    elif [ "$cmmand" = "in-stable" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-    elif [ "$cmmand" = "in-legacy" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-    elif [ "$cmmand" = "in-octopus" ] ; then
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
-    fi
+  elif [ "$cmmand" = "in-stable" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-modern" ] || [ "$cmmand" = "in-vanilla" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "https://raw.githubusercontent.com/omega8cc/boa/2.3.x-dev/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-legacy" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/legacy/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
+  elif [ "$cmmand" = "in-octopus" ] ; then
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/BARRACUDA.sh.txt" -o BARRACUDA.sh.txt
+    curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 5 -A iCab "http://files.aegir.cc/versions/stable/txt/OCTOPUS.sh.txt" -o OCTOPUS.sh.txt
   fi
   if [ "$cmmand" = "in-octopus" ] ; then
     _OCTOPUS_ONLY=YES
@@ -262,19 +317,23 @@ check_wrapper ()
 check_dns_curl ()
 {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  else
-    _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
-    if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-      _DO_NOTHING=YES
-    else
-      rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
     fi
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    check_dns_settings
+  else
+    check_dns_settings
   fi
-  _CURL_TEST=$(curl -L --max-redirs 10 -k -s -I "http://files.aegir.cc" 2> /dev/null)
+  if [ -d "/var/cache/pdnsd" ] ; then
+    service pdnsd stop &> /dev/null
+    sleep 1
+    rm -f /var/cache/pdnsd/pdnsd.cache
+    sleep 1
+    service pdnsd start &> /dev/null
+  fi
+  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     _DO_NOTHING=YES
   else
@@ -347,7 +406,31 @@ case "$1" in
              check_wrapper
              init_setup
   ;;
+  in-modern) cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_dns_curl
+             check_wrapper
+             init_setup
+  ;;
   in-legacy) cmmand="$1"
+             kind="$2"
+             fqdn="$3"
+             email="$4"
+             user="$5"
+             mode="$6"
+             rkey="$7"
+             check_root
+             check_dns_curl
+             check_wrapper
+             init_setup
+  ;;
+  in-vanilla) cmmand="$1"
              kind="$2"
              fqdn="$3"
              email="$4"
@@ -370,7 +453,7 @@ case "$1" in
              init_setup
   ;;
   *)         echo
-             echo "Usage: $(basename "$0") {in-stable|in-head|in-legacy} {local|public} {fqdn} {email} {o1} {ask|mini|max|none|stock} {newrelickey}"
+             echo "Usage: $(basename "$0") {in-stable|in-head|in-modern|in-legacy|in-vanilla|in-octopus} {local|public} {fqdn} {email} {o1} {ask|mini|max|none} {newrelickey}"
              echo
              exit 1
   ;;

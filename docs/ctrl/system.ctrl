@@ -47,6 +47,15 @@ by the BOA install and upgrade tools exclusively.
 
  ### All other (empty) .cnf control files
 
+   /root/.use.local.nameservers.cnf
+
+ This file, if exists, allows to use original nameservers provided on the
+ system install by your hosting provider. It will automatically configure
+ pdnsd cache server to use these IPs instead of public Google DNS servers.
+
+ This file will be created automatically if BOA will detect that default Google
+ DNS servers can't be used because of parent network forced DNS configuration.
+
    /root/.hr.monitor.cnf
 
  This file, if exists, enables more aggressive Nginx abuse guard mode and

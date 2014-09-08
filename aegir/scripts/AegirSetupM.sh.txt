@@ -37,14 +37,14 @@
 _AEGIR_VERSION=EDIT_AEGIR_VERSION
 _BOA_REPO_GIT_URL=EDIT_BOA_REPO_GIT_URL
 _BOA_REPO_NAME=EDIT_BOA_REPO_NAME
-_DRUSH_CC_REQ=NO
+_BRANCH_BOA=EDIT_BRANCH_BOA
+_BRANCH_PROVISION=EDIT_BRANCH_PROVISION
 _DRUSH_VERSION=EDIT_DRUSH_VERSION
 _PHP_CLI_VERSION=EDIT_PHP_CLI_VERSION
 _PHP_FPM_VERSION=EDIT_PHP_FPM_VERSION
 _REL_VERSION=`lsb_release -sc`
 _STRONG_PASSWORDS=EDIT_STRONG_PASSWORDS
 _THIS_DB_HOST=EDIT_THIS_DB_HOST
-_USE_STOCK=EDIT_USE_STOCK
 _LOCAL_NETWORK_IP=EDIT_LOCAL_NETWORK_IP
 _ROOT="$HOME"
 #
@@ -241,11 +241,6 @@ find $_ROOT/drush -type d -exec chmod 0755 {} \; &> /dev/null
 find $_ROOT/drush -type f -exec chmod 0644 {} \; &> /dev/null
 chmod 755 $_ROOT/drush/drush
 chmod 755 $_ROOT/drush/drush.php
-if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
-  _DRUSH_CC_REQ=NO
-else
-  _DRUSH_CC_REQ=YES
-fi
 
 update_php_cli_drush
 update_php_cli_local_ini
@@ -264,24 +259,10 @@ if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
 else
   msg "INFO: Installing provision backend in $_ROOT/.drush"
   mkdir -p $_ROOT/.drush/{sys,xts,usr}
-  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
+  if [ "$_AEGIR_VERSION" = "HEAD" ] || [ ! -d "$_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/Inc" ] ; then
     cd $_ROOT/.drush
-    if [ "$_USE_STOCK" = "YES" ] ; then
-      git clone --branch 6.x-2.x-stock-revert git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision &> /dev/null
-    else
-      if [ "$_BOA_REPO_NAME" = "barracuda" ] || [ "$_BOA_REPO_NAME" = "octopus" ] ; then
-        _BOA_REPO_GIT_URL_LOCAL="http://git.drupal.org/sandbox/omega8cc"
-        git clone $_BOA_REPO_GIT_URL_LOCAL/1074910.git $_ROOT/.drush/sys/provision &> /dev/null
-        _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL_LOCAL//\//\\\/}
-        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
-        sed -i "s/hostmaster.git/1074912.git/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
-      else
-        git clone $_BOA_REPO_GIT_URL/provision.git $_ROOT/.drush/sys/provision &> /dev/null
-        _BOA_REPO_GIT_URL_Q=${_BOA_REPO_GIT_URL//\//\\\/}
-        sed -i "s/MAKEFILE_REPO_GIT_URL/$_BOA_REPO_GIT_URL_Q/g" $_ROOT/.drush/sys/provision/aegir.make &> /dev/null
-      fi
-    fi
     msg "INFO: Downloading Drush and Provision extensions..."
+    git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null
     git clone --branch 7.x-2.x git://github.com/omega8cc/registry_rebuild.git $_ROOT/.drush/usr/registry_rebuild &> /dev/null
@@ -292,9 +273,9 @@ else
     cd $_ROOT/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
   else
+    msg "INFO: Downloading Drush and Provision extensions..."
     cd $_ROOT/.drush/sys
     curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
-    msg "INFO: Downloading Drush and Provision extensions..."
     cd $_ROOT/.drush/usr
     get_dev_ext "clean_missing_modules.tar.gz"
     get_dev_ext "drush_ecl.tar.gz"
@@ -305,12 +286,9 @@ else
     get_dev_ext "security_review.tar.gz"
   fi
 fi
-sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" $_ROOT/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
 
 msg "INFO: Installing the frontend"
-if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-  $_DRUSHCMD cache-clear drush >$_ROOT/install.log 2>&1
-fi
+$_DRUSHCMD cache-clear drush >$_ROOT/install.log 2>&1
 _HOSTMASTER_ROOT="$_ROOT/hostmaster-$_AEGIR_VERSION"
 $_DRUSHCMD hostmaster-install --aegir_host=$_AEGIR_HOST --aegir_db_user=$_AEGIR_DB_USER --aegir_db_pass=$_ESC_APASS --aegir_root=$_ROOT --root=$_HOSTMASTER_ROOT --version=$_AEGIR_VERSION $@
 

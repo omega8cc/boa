@@ -70,7 +70,6 @@ _MY_EMAIL="notify@omega8.cc"
 ### enabled, as listed below:
 ###
 ### _XTRAS_LIST="CSF CHV FTP"
-### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
@@ -126,7 +125,6 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### enabled, as listed below:
 ###
 ### _XTRAS_LIST="CHV"
-### _HTTP_WILDCARD=YES
 ### _AUTOPILOT=YES
 ### _DEBUG_MODE=NO
 ### _AEGIR_VERSION=HEAD
@@ -238,7 +236,6 @@ _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.5
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
-### _PHP_CLI_VERSION=5.2
 ###
 ### Note that 5.3 will be set automatically
 ### if you specify any other, not installed
@@ -315,30 +312,6 @@ _NEWRELIC_KEY=""
 ### it installed and enabled automatically.
 ###
 _SCOUT_KEY=""
-
-
-###----------------------------------------###
-### HTTP LISTENING MODE                    ###
-###----------------------------------------###
-###
-### With disabled wildcard mode Nginx would
-### listen only on defined or discovered IP
-### address, while with now default wildcard,
-### it will listen on all available IPs.
-### This may be useful in some environments
-### like localhost install or Amazon EC2
-### with dynamic local IP and separate public
-### IP not available on the local interface.
-###
-### Note: this option works only on initial
-### install. You can't change this on upgrade
-### because it could cause serious issues.
-###
-### To not use wildcard mode, change this to:
-###
-### _HTTP_WILDCARD=NO
-###
-_HTTP_WILDCARD=YES
 
 
 ###----------------------------------------###
@@ -432,9 +405,9 @@ _DEBUG_MODE=NO
 ### and should be used **only** for testing!
 ###
 ### _AEGIR_VERSION=HEAD
-### _AEGIR_VERSION=BOA-2.2.9
+### _AEGIR_VERSION=BOA-2.3.0
 ###
-_AEGIR_VERSION=HEAD
+_AEGIR_VERSION=BOA-2.3.0
 
 
 ###----------------------------------------###
@@ -717,13 +690,6 @@ _SMTP_RELAY_HOST=""
 ###
 ### It will also disable all DNS and SMTP
 ### relay tests automatically.
-###
-### Note that for non-local installs with
-### private and/or dynamic IPs on servers
-### behind some NAT, you should instead use
-### _HTTP_WILDCARD=YES above and leave
-### _LOCAL_NETWORK_IP and _LOCAL_NETWORK_HN
-### empty.
 ###
 _LOCAL_NETWORK_IP=""
 _LOCAL_NETWORK_HN=""
@@ -1079,23 +1045,12 @@ _SPEED_VALID_MAX=3600
 
 
 ###----------------------------------------###
-### STOCK AEGIR TESTING                    ###
-###----------------------------------------###
-###
-### Change to YES to try Stock Aegir 2.x with
-### Drush 5.x - without any BOA specific
-### modifications or improvements. This option
-### is enabled on command line when you type
-### "stock" instead of "mini", "max" or "ask".
-###
-_USE_STOCK=NO
-
-
-###----------------------------------------###
 ### DON'T EDIT ANYTHING BELOW THIS LINE    ###
 ###----------------------------------------###
 
-_INSTALLER_VERSION=BOA-2.3.0-dev
+_INSTALLER_VERSION=BOA-2.3.0
+_BRANCH_BOA=2.3.x-dev
+_BRANCH_PROVISION=2.3.x-dev
 
 ###
 ### Software versions
@@ -1104,8 +1059,8 @@ _BZR_VERSION=2.6.0
 _CGP_VERSION=master-30-03-2014
 _CHIVE_VERSION=1.3
 _CURL_VERSION=7.37.1
-_DRUSH_VERSION=mini-4-26-08-2014
-_DRUSH6_VERSION=mini-6-27-08-2014
+_DRUSH4_VERSION=mini-4-26-08-2014
+_DRUSH6_VERSION=mini-6-06-09-2014
 _DRUSH7_VERSION=head-7-10-03-2014
 _GEOS_VERSION=3.4.2
 _GIT_VERSION=2.1.0
@@ -1143,14 +1098,12 @@ _UPLOADPROGRESS_VERSION=1.0.3.1
 _VNSTAT_VERSION=1.11
 _ZEND_OPCACHE_VERSION=master-30-07-2014
 _ZLIB_VERSION=1.2.8
-if [ "$_USE_STOCK" = "YES" ] ; then
-  _DRUSH_VERSION="$_DRUSH6_VERSION"
-fi
 
 ###
 ### Variables
 ###
 _CUSTOM_NAME=nginx
+_DRUSH_VERSION="$_DRUSH6_VERSION"
 _FORCE_REDIS_RESTART=NO
 _LOC_REL_VERSION=""
 _NOW=`date +%y%m%d-%H%M`
@@ -1362,6 +1315,70 @@ get_dev_src () {
   if [ ! -z $1 ] ; then
     curl -L --max-redirs 10 -k -s -O --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/dev/src/$1"
     extract_archive "$1"
+  fi
+}
+#
+# Fix DNS settings.
+fix_dns_settings () {
+  mkdir -p /var/backups
+  rm -f /var/backups/resolv.conf.tmp
+  if [ -e "/etc/resolv.conf" ] ; then
+    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
+      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
+        cp -a $Pre /var/backups/resolv.conf.vanilla
+      fi
+    done
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+  fi
+  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  rm -f /etc/resolv.conf
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+    touch /root/.use.local.nameservers.cnf
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  else
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+  fi
+  if [ -e "/etc/pdnsd.conf" ] ; then
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] && [ -e "/root/.use.local.nameservers.cnf" ] ; then
+      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u                      &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+    fi
+  fi
+}
+#
+# Check DNS settings.
+check_dns_settings () {
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
+    _USE_PROVIDER_DNS=YES
+    fix_dns_settings
+  else
+    _USE_PROVIDER_DNS=NO
   fi
 }
 #
@@ -2237,53 +2254,7 @@ validate_xtras_ip () {
       _LOC_IP="$_MY_OWNIP"
     fi
   fi
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    _XTRAS_THISHTIP="*"
-  else
-    _ETH_TEST=`ifconfig 2>&1`
-    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ] ; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
-    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-      if [ -z "$_MY_OWNIP" ] ; then
-        _XTRAS_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        if [[ "$_XTRAS_THISHTIP" =~ "127.0.0." ]] ; then
-          _XTRAS_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        fi
-      else
-        _XTRAS_THISHTIP="$_MY_OWNIP"
-      fi
-    else
-      if [ -z "$_MY_OWNIP" ] ; then
-        if [ -e "/usr/bin/sipcalc" ] ; then
-          if [ -z "$_THISHTIP" ] ; then
-            _LOC_DOM="$_THISHOST"
-            find_correct_ip
-            _THISHTIP="$_LOC_IP"
-          fi
-          _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
-            _IP_TEST_RESULT=FAIL
-            _XTRAS_THISHTIP="*"
-          else
-            _IP_TEST_RESULT=OK
-            _XTRAS_THISHTIP="$_THISHTIP"
-          fi
-        else
-          _XTRAS_THISHTIP="$_THISHTIP"
-        fi
-      else
-        _XTRAS_THISHTIP="$_MY_OWNIP"
-      fi
-    fi
-    if [ -z "$_XTRAS_THISHTIP" ] ; then
-      _XTRAS_THISHTIP="*"
-    fi
-  fi
+  _XTRAS_THISHTIP="*"
 }
 #
 # Validate server IP for purge vhost.
@@ -2339,100 +2310,25 @@ validate_purge_ip () {
 #
 # Validate local server IP.
 validate_local_ip () {
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    _LOCAL_THISHTIP=all
-  else
-    _ETH_TEST=`ifconfig 2>&1`
-    if [[ "$_ETH_TEST" =~ "venet0" ]] ; then
-      _IFCONFIG="venet0"
-    elif [ -e "/proc/bean_counters" ] ; then
-      _IFCONFIG="venet0"
-    else
-      _IFCONFIG="eth0"
-    fi
-    if [ "$_DNS_SETUP_TEST" = "YES" ] ; then
-      if [ -z "$_MY_OWNIP" ] ; then
-        _LOCAL_THISHTIP=`ifconfig $_IFCONFIG | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        if [[ "$_LOCAL_THISHTIP" =~ "127.0.0." ]] ; then
-          _LOCAL_THISHTIP=`ifconfig ${_IFCONFIG}:0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
-        fi
-      else
-        _LOCAL_THISHTIP="$_MY_OWNIP"
-      fi
-    else
-      if [ -z "$_MY_OWNIP" ] ; then
-        if [ -e "/usr/bin/sipcalc" ] ; then
-          if [ -z "$_THISHTIP" ] ; then
-            _LOC_DOM="$_THISHOST"
-            find_correct_ip
-            _THISHTIP="$_LOC_IP"
-          fi
-          _IP_TEST=`sipcalc $_THISHTIP 2>&1`
-          if [[ "$_IP_TEST" =~ "ERR" ]] ; then
-            _IP_TEST_RESULT=FAIL
-            _LOCAL_THISHTIP=all
-          else
-            _IP_TEST_RESULT=OK
-            _LOCAL_THISHTIP="$_THISHTIP"
-          fi
-        else
-          _LOCAL_THISHTIP="$_THISHTIP"
-        fi
-      else
-        _LOCAL_THISHTIP="$_MY_OWNIP"
-      fi
-    fi
-    if [ -z "$_LOCAL_THISHTIP" ] ; then
-      _LOCAL_THISHTIP=all
-    fi
-  fi
+  _LOCAL_THISHTIP=all
 }
 #
 # Sub Force advanced Nginx configuration.
 sub_force_advanced_nginx_config () {
-  if [ -d "$_THIS_NGX_PATH" ] ; then
-    if [ "$_USE_STOCK" = "NO" ] ; then
-      sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-      sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-      sed -i "s/data.*post.d/var\/aegir\/config\/includes/g" $_THIS_NGX_PATH/nginx_legacy_include.conf  &> /dev/null
-    fi
-    if [ "$_PHP_FPM_VERSION" != "5.2" ] && [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
-      if [ "$_USE_STOCK" = "NO" ] ; then
-        if [ "$_PHP_CN" = "www53" ] ; then
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        else
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf              &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf             &> /dev/null
-          sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        fi
-      else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        if [ "${_PHP_CN}" = "www53" ] ; then
-          sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        else
-          sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf &> /dev/null
-        fi
-      fi
-    else
-      if [ "$_USE_STOCK" = "NO" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf             &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf &> /dev/null
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" /var/aegir/config/includes/nginx_compact_include.conf  &> /dev/null
-      else
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf                &> /dev/null
-        sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9000;/g" $_THIS_NGX_PATH/nginx_vhost_common.conf    &> /dev/null
-      fi
-    fi
-    if [ "$_PHP_LEGACY_FREE" = "YES" ] || [ "$_PHP_FPM_VERSION" != "5.2" ] ; then
-      if [ "$_PHP_CN" = "www53" ] ; then
-        sed -i "s/127.0.0.1:.*;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf &> /dev/null
-      else
-        sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_legacy_include.conf &> /dev/null
-      fi
-    fi
+  if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] && [ -e "$_THIS_NGX_INCL/nginx_vhost_common.conf" ] ; then
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_compact_include.conf
+
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_INCL/nginx_vhost_common.conf
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_INCL/nginx_vhost_common.conf
+    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_INCL/nginx_vhost_common.conf
+
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/subdir.tpl.php
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/subdir.tpl.php
+    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/subdir.tpl.php
+
+    sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g"             $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
+    sed -i "s/data.*post.d/var\/aegir\/config\/includes/g"                         $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
+    sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
   fi
 }
 #
@@ -2440,9 +2336,6 @@ sub_force_advanced_nginx_config () {
 force_advanced_nginx_config () {
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_compact_include.conf /var/aegir/config/includes/nginx_compact_include.conf
   validate_local_ip &> /dev/null
-  _THIS_NGX_PATH=/var/aegir/.drush/sys/provision/http/Provision/Service/http
-  sub_force_advanced_nginx_config
-  _THIS_NGX_PATH=/var/aegir/config/includes
   sub_force_advanced_nginx_config
   sed -i "s/ 90;/ 180;/g" /var/aegir/config/server_master/nginx/pre.d/*.conf &> /dev/null
   if [ "$_NGINX_SPDY" = "YES" ] ; then
@@ -2463,13 +2356,17 @@ force_advanced_nginx_config () {
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/pre.d/*.conf       &> /dev/null
     sed -i "s/ssl_ciphers .*/ssl_ciphers $_SSL_CIPHERS/g" /var/aegir/config/server_master/nginx/vhost.d/*          &> /dev/null
   fi
-  if [ -e "/var/aegir/config/includes" ] && [ "$_USE_STOCK" = "NO" ] ; then
-    if [ ! -L "/var/aegir/config/includes/nginx_advanced_include.conf" ] ; then
-      ln -sf /var/aegir/config/includes/nginx_octopus_include.conf /var/aegir/config/includes/nginx_advanced_include.conf
-    fi
-    if [ ! -L "/var/aegir/config/includes/nginx_simple_include.conf" ] ; then
-      ln -sf /var/aegir/config/includes/nginx_legacy_include.conf /var/aegir/config/includes/nginx_simple_include.conf
-    fi
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] ; then
+    rm -f /var/aegir/config/includes/nginx_advanced_include.conf
+    rm -f /var/aegir/config/includes/nginx_legacy_include.conf
+    rm -f /var/aegir/config/includes/nginx_modern_include.conf
+    rm -f /var/aegir/config/includes/nginx_octopus_include.conf
+    rm -f /var/aegir/config/includes/nginx_simple_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_advanced_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_legacy_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_modern_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_octopus_include.conf
+    ln -s /var/aegir/config/includes/nginx_vhost_common.conf /var/aegir/config/includes/nginx_simple_include.conf
   fi
   chown aegir:aegir /var/aegir/config/includes/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
@@ -2530,8 +2427,6 @@ tune_web_server_config () {
   sed -i "s/:\/srv:\/usr\/bin\"/:\/srv:\/usr\/bin:\/opt\/tika:\/opt\/tika7:\/opt\/tika8:\/opt\/tika9\"/g" /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /opt/php*/etc/pool.d/*.conf         &> /dev/null
   sed -i "s/:\/opt\/tika9\"/:\/opt\/tika9:\/opt\/php52:\/opt\/php53:\/opt\/php54:\/opt\/php55\"/g"        /var/xdrago/conf/fpm-pool-foo.conf  &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /data/disk/*/.drush/sys/provision/platform/verify.provision.inc &> /dev/null
-  sed -i "s/drush_log(t('Contrib latestDir/drush_log(dt('Contrib latestDir/g" /var/aegir/.drush/sys/provision/platform/verify.provision.inc   &> /dev/null
   _ZOP_INI_TEST=$(grep "^opcache.enable=1" /opt/php*/etc/php*.ini)
   if [[ "$_ZOP_INI_TEST" =~ "opcache.enable=1" ]] ; then
     _DO_NOTHING=YES
@@ -2958,7 +2853,6 @@ barracuda_cnf () {
     echo "### on upgrade by the Barracuda script nor by this configuration file." >> /root/.barracuda.cnf
     echo "### They can be defined only on initial Barracuda install." >> /root/.barracuda.cnf
     echo "###" >> /root/.barracuda.cnf
-    echo "_HTTP_WILDCARD=$_HTTP_WILDCARD" >> /root/.barracuda.cnf
     echo "_LOCAL_NETWORK_HN=\"$_LOCAL_NETWORK_HN\"" >> /root/.barracuda.cnf
     echo "_LOCAL_NETWORK_IP=\"$_LOCAL_NETWORK_IP\"" >> /root/.barracuda.cnf
     echo "_MY_FRONT=\"$_MY_FRONT\"" >> /root/.barracuda.cnf
@@ -3045,7 +2939,6 @@ barracuda_cnf () {
     echo "###" >> /root/.barracuda.cnf
     echo "_AEGIR_UPGRADE_ONLY=$_AEGIR_UPGRADE_ONLY" >> /root/.barracuda.cnf
     echo "_SYSTEM_UPGRADE_ONLY=$_SYSTEM_UPGRADE_ONLY" >> /root/.barracuda.cnf
-    echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
 
     echo "###" >> /root/.barracuda.cnf
     echo "### Configuration created on $_NOW" >> /root/.barracuda.cnf
@@ -3070,11 +2963,9 @@ barracuda_cnf () {
         sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                  /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           if [ "$_VMFAMILY" = "VS" ] ; then
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     /root/.barracuda.cnf &> /dev/null
@@ -3367,12 +3258,19 @@ barracuda_cnf () {
     else
       echo "_SCOUT_KEY=$_SCOUT_KEY" >> /root/.barracuda.cnf
     fi
+
     _USE_STOCK_TEST=$(grep _USE_STOCK /root/.barracuda.cnf)
     if [[ "$_USE_STOCK_TEST" =~ "_USE_STOCK" ]] ; then
-      _DO_NOTHING=YES
-    else
-      echo "_USE_STOCK=$_USE_STOCK" >> /root/.barracuda.cnf
+      sed -i "s/.*_USE_STOCK.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
     fi
+
+    _HTTP_WILDCARD_TEST=$(grep _HTTP_WILDCARD /root/.barracuda.cnf)
+    if [[ "$_HTTP_WILDCARD_TEST" =~ "_HTTP_WILDCARD" ]] ; then
+      sed -i "s/.*_HTTP_WILDCARD.*//g" /root/.barracuda.cnf &> /dev/null
+      sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
+    fi
+
     _EXTRA_PACKAGES_TEST=$(grep _EXTRA_PACKAGES /root/.barracuda.cnf)
     if [[ "$_EXTRA_PACKAGES_TEST" =~ "_EXTRA_PACKAGES" ]] ; then
       _DO_NOTHING=YES
@@ -3530,11 +3428,9 @@ barracuda_cnf () {
         sed -i "s/^_SSH_FROM_SOURCES=.*/_SSH_FROM_SOURCES=YES/g"                   /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRICT_BIN_PERMISSIONS=.*/_STRICT_BIN_PERMISSIONS=YES/g"       /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.barracuda.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                  /root/.barracuda.cnf &> /dev/null
         sed -i "s/^_DEBUG_MODE=.*/_DEBUG_MODE=NO/g"                                /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_FORCE_GIT_MIRROR=.*/_FORCE_GIT_MIRROR=\"\"/g"                  /root/.*.octopus.cnf &> /dev/null
         sed -i "s/^_STRONG_PASSWORDS=.*/_STRONG_PASSWORDS=YES/g"                   /root/.*.octopus.cnf &> /dev/null
-        sed -i "s/^_USE_STOCK=.*/_USE_STOCK=NO/g"                                  /root/.*.octopus.cnf &> /dev/null
         if [[ "$_CHECK_HOST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
           if [ "$_VMFAMILY" = "VS" ] ; then
             sed -i "s/^_CPU_CRIT_RATIO=.*/_CPU_CRIT_RATIO=3/g"                     /root/.barracuda.cnf &> /dev/null
@@ -3619,11 +3515,6 @@ barracuda_cnf () {
     if [[ "$_FULL_FORCE_REINSTALL_TEST" =~ "_FULL_FORCE_REINSTALL" ]] ; then
       sed -i "s/.*_FULL_FORCE_REINSTALL.*//g" /root/.barracuda.cnf &> /dev/null
       sed -i "/^$/d" /root/.barracuda.cnf &> /dev/null
-    fi
-    if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
-      _DRUSH_CC_REQ=NO
-    else
-      _DRUSH_CC_REQ=YES
     fi
     if [ "$_STATUS" = "INIT" ] ; then
       if prompt_yes_no "Do you want to proceed with the install?" ; then
@@ -4220,9 +4111,7 @@ provision_backend_dbpass_sync () {
     sed -i "s/mysql:\/\/$_ADBU:.*/mysql:\/\/$_ADBU:$_ENC_APASS@localhost',/g" /var/aegir/.drush/server_*.alias.drushrc.php &> /dev/null
   fi
   mysqladmin flush-privileges &> /dev/null
-  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
-  fi
+  su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   if [ -e "/var/aegir/.drush/server_localhost.alias.drushrc.php" ] ; then
     su -s /bin/bash aegir -c "drush @hostmaster hosting-task @server_localhost verify --force &> /dev/null"
   else
@@ -4261,12 +4150,10 @@ upgrade_aegir_master () {
     fi
     usermod -aG users aegir &> /dev/null
     if [ ! -d "/var/aegir/.drush/sys/provision/http" ] ; then
-      mkdir -p /var/aegir/.drush/{sys,xts,usr}
-      cd /var/aegir/.drush/sys
+      rm -f -r /var/aegir/.drush/{sys,xts,usr}
       rm -f -r /var/aegir/.drush/{provision,drush_make}
-      rm -f -r /var/aegir/.drush/sys/{provision,drush_make}
-      curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/provision-$_AEGIR_VERSION.tar.gz" | tar -xzf -
-      get_dev_ext "drush_make.tar.gz"
+      mkdir -p /var/aegir/.drush/{sys,xts,usr}
+      git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git /var/aegir/.drush/sys/provision &> /dev/null
       rm -f -r /var/aegir/drush
       cd /var/aegir
       get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
@@ -4294,16 +4181,16 @@ upgrade_aegir_master () {
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g"  /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
+    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DEBUG_MODE/$_DEBUG_MODE/g"               /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DOMAIN/$_THIS_FRONT/g"                   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_HTTP_WILDCARD/$_HTTP_WILDCARD/g"         /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_INSTALLER_VERSION/$_INSTALLER_VERSION/g" /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_PHP_FPM_VERSION/$_PHP_FPM_VERSION/g"     /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_STRONG_PASSWORDS/$_STRONG_PASSWORDS/g"   /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"           /var/aegir/AegirUpgrade.sh.txt &> /dev/null
-    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                 /var/aegir/AegirUpgrade.sh.txt &> /dev/null
     mysqladmin flush-hosts &> /dev/null
     provision_backend_dbpass_sync
     hostmaster_frontend_dbpass_sync
@@ -4329,9 +4216,6 @@ upgrade_aegir_master () {
     fi
     update_redis_password
     force_advanced_nginx_config
-    if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
-      sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
-    fi
     cd /var/aegir
     rm -f AegirUpgrade.sh.txt
     if [ -d "/var/aegir/config/server_master/nginx/conf.d" ] ; then
@@ -4745,8 +4629,8 @@ get_drush_versions () {
   chown -R root:root /opt/tools
   rm -f -r /opt/tools/drush/4/*
   cd /opt/tools/drush/4/
-  get_dev_ext "drush-$_DRUSH_VERSION.tar.gz"
-  msg "INFO: Drush $_DRUSH_VERSION installation complete"
+  get_dev_ext "drush-$_DRUSH4_VERSION.tar.gz"
+  msg "INFO: Drush $_DRUSH4_VERSION installation complete"
   rm -f -r /opt/tools/drush/6/*
   cd /opt/tools/drush/6/
   get_dev_ext "drush-$_DRUSH6_VERSION.tar.gz"
@@ -4765,13 +4649,13 @@ get_drush_versions () {
   chmod 755 /opt/tools/drush/*/drush/drush.php
   if [ -x "/opt/tools/drush/4/drush/drush" ] ; then
     rm -f /usr/bin/drush4
-    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush4
-    ln -s /opt/tools/drush/4/drush/drush /usr/bin/drush
   fi
   if [ -x "/opt/tools/drush/6/drush/drush" ] ; then
     rm -f /usr/bin/drush6
+    rm -f /usr/bin/drush
     ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush6
+    ln -s /opt/tools/drush/6/drush/drush /usr/bin/drush
   fi
   if [ -x "/opt/tools/drush/7/drush/drush" ] ; then
     rm -f /usr/bin/drush7
@@ -5207,15 +5091,22 @@ fix_multi_ip_cron_access () {
   for _IP in `cat /root/.local.IP.list | cut -d '#' -f1 | sort | uniq | tr -d "\s"`;do echo "  allow        $_IP;" >> /root/.local.IP.list.allow;done
   echo "  allow        127.0.0.1;" >> /root/.local.IP.list.allow
   echo "  deny         all;" >> /root/.local.IP.list.allow
-  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /data/disk/*/config/includes/*.conf &> /dev/null
-  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/includes/*.conf &> /dev/null
-  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
+
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
-d;};' /data/disk/*/config/includes/*.conf &> /dev/null
+d;};' $_THIS_NGX_TPLS/Inc/vhost_include.tpl.php
+
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" $_THIS_NGX_TPLS/subdir.tpl.php
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
-d;};' /var/aegir/config/includes/*.conf &> /dev/null
+d;};' $_THIS_NGX_TPLS/subdir.tpl.php
+
+  sed -i "s/allow        .*;//g; s/ *$//g; /^$/d" $_THIS_NGX_INCL/nginx_vhost_common.conf
   sed -i '/deny         all;/ {r /root/.local.IP.list.allow
-d;};' /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf &> /dev/null
+d;};' $_THIS_NGX_INCL/nginx_vhost_common.conf
+
+  sed -i "s/allow .*;//g; s/ *$//g; /^$/d" /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
+  sed -i '/deny         all;/ {r /root/.local.IP.list.allow
+d;};' /var/aegir/config/server_master/nginx/pre.d/nginx_speed_purge.conf
 }
 #
 # Check if the PHP rebuild is required.
@@ -5614,7 +5505,6 @@ if [ `whoami` = "root" ] ; then
   _AWS_TEST_B=$(grep cloudconfig /etc/fstab)
   if [[ "$_AWS_TEST_A" =~ "cloudimg" ]] || [[ "$_AWS_TEST_B" =~ "cloudconfig" ]] ; then
     _VMFAMILY="AWS"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   fi
   _VM_TEST=`uname -a 2>&1`
@@ -5671,11 +5561,6 @@ if [ -e "/var/aegir/.drush/hostmaster.alias.drushrc.php" ] ; then
   _STATUS=UPGRADE
   msg "INFO: UPGRADE"
   barracuda_cnf
-  if [ -f "/var/aegir/config/includes/wildcard_listen_http_enabled.txt" ] ; then
-    _HTTP_WILDCARD=YES
-  else
-    _HTTP_WILDCARD=NO
-  fi
   touch /var/run/boa_wait.pid
 else
   _STATUS=INIT
@@ -5709,10 +5594,9 @@ else
   if [ "$_EASY_LOCALHOST" = "YES" ] ; then
     msg "INFO: Easy Localhost Setup Mode Active"
     _XTRAS_LIST="CHV"
-    _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.0
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=NO
@@ -5723,10 +5607,9 @@ else
   elif [ "$_EASY_PUBLIC" = "YES" ] ; then
     msg "INFO: Easy Public Setup Mode Active"
     _XTRAS_LIST="CSF CHV FTP"
-    _HTTP_WILDCARD=YES
     _AUTOPILOT=YES
     _DEBUG_MODE=NO
-    _AEGIR_VERSION=HEAD
+    _AEGIR_VERSION=BOA-2.3.0
     _DB_SERVER=MariaDB
     _SSH_PORT=22
     _DNS_SETUP_TEST=YES
@@ -5765,7 +5648,7 @@ if [ "$_STRICT_BIN_PERMISSIONS" = "YES" ] ; then
   fi
 fi
 _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
-if [ -z "$_PHP_SV" ] ; then
+if [ -z "$_PHP_SV" ] || [ "$_PHP_SV" = "52" ] ; then
   _PHP_SV=53
 fi
 _PHP_CN="www${_PHP_SV}"
@@ -5793,38 +5676,21 @@ fi
 
 
 ###--------------------###
-if [ "$_STATUS" = "INIT" ] ; then
-  msg "INFO: Installing some basic tools now, please wait..."
-  apt-get update &> /dev/null
-  $_INITINS locales &> /dev/null
-  fix_locales
-  $_INITINS lsb-release &> /dev/null
-  $_INITINS dnsutils &> /dev/null
-  $_INITINS netcat &> /dev/null
-  $_INITINS curl &> /dev/null
-  $_INITINS wget &> /dev/null
-fi
-
-
-###--------------------###
 msg "INFO: Checking your system version..."
 _THIS_OS=`lsb_release -si`
 _THIS_RV=`lsb_release -sc`
 if [ "$_THIS_OS" = "Ubuntu" ] ; then
   if [ "$_THIS_RV" = "trusty" ] ; then
     _REL_VERSION="trusty"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
     _DB_SERVER=MariaDB
     _DB_SERIES=10.0
     _MARIADB_VERSION="$_MARIADB_10_VERSION"
   elif [ "$_THIS_RV" = "precise" ] ; then
     _REL_VERSION="precise"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   elif [ "$_THIS_RV" = "oneiric" ] ; then
     _REL_VERSION="oneiric"
-    _HTTP_WILDCARD=YES
     _THIS_DB_HOST=localhost
   elif [ "$_THIS_RV" = "natty" ] ; then
     _REL_VERSION="natty"
@@ -5872,6 +5738,30 @@ fi
 echo " "
 msg "Aegir on $_THIS_OS/$_REL_VERSION - Skynet Agent v.$_INSTALLER_VERSION"
 echo " "
+
+
+###--------------------###
+if [ "$_STATUS" = "INIT" ] ; then
+  msg "INFO: Installing some basic tools now, please wait..."
+  _BROKEN_KEYRING_TEST=$(apt-get update 2>&1)
+  if [[ "$_BROKEN_KEYRING_TEST" =~ "signatures were invalid" ]]; then
+    msg "WARN: Installed keyring is broken, forced reinstall required"
+    if [ "$_THIS_OS" = "Debian" ] ; then
+      apt-get install debian-keyring -f -y --force-yes --reinstall &> /dev/null
+      apt-get install debian-archive-keyring -f -y --force-yes --reinstall &> /dev/null
+    else
+      apt-get install ubuntu-keyring -f -y --force-yes --reinstall &> /dev/null
+    fi
+  fi
+  apt-get update &> /dev/null
+  $_INITINS locales &> /dev/null
+  fix_locales
+  $_INITINS lsb-release &> /dev/null
+  $_INITINS dnsutils &> /dev/null
+  $_INITINS netcat &> /dev/null
+  $_INITINS curl &> /dev/null
+  $_INITINS wget &> /dev/null
+fi
 
 
 ###--------------------###
@@ -5933,7 +5823,7 @@ check_connection ()
   fi
 }
 
-if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   rm -f -r /opt/tmp/test-*
   check_connection
   _GITHUB_TEST=`git clone git://github.com/omega8cc/provision.git /opt/tmp/test-provision 2>&1`
@@ -5958,7 +5848,7 @@ if [ "$_SYSTEM_UPGRADE_ONLY" = "NO" ] && [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_
   fi
   rm -f -r /opt/tmp/test-*
 fi
-if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] && [ "$_USE_STOCK" = "NO" ] ; then
+if [[ "$_INSTALLER_VERSION" =~ "-dev" ]] ; then
   rm -f -r /opt/tmp/test-*
   _GITHUB_TEST=`git clone git://github.com/omega8cc/boa.git /opt/tmp/test-boa 2>&1`
   if [[ "$_GITHUB_TEST" =~ "fatal" ]] ; then
@@ -6007,9 +5897,11 @@ fi
 _BOA_REPO_NAME="boa"
 _BOA_REPO_GIT_URL="git://github.com/omega8cc"
 _BOA_REPO_GIT_URLX=${_BOA_REPO_GIT_URL//\//\\\/}
-if [ "$_AEGIR_VERSION" = "HEAD" ] && [ "$_USE_STOCK" = "NO" ] ; then
+if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
   check_git_repos_status
 fi
+_THIS_NGX_INCL="/var/aegir/config/includes"
+_THIS_NGX_TPLS="/var/aegir/.drush/sys/provision/http/Provision/Config/Nginx"
 
 
 ###--------------------###
@@ -6028,16 +5920,7 @@ sleep 1
 cd /opt/tmp
 rm -f -r /opt/tmp/$_BOA_REPO_NAME
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
-  if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
-    if [ "$_FORCE_GIT_MIRROR" = "test" ] ; then
-      cd /opt/tmp/$_BOA_REPO_NAME
-      git checkout 2.0.5-dev &> /dev/null
-      cd /opt/tmp
-    else
-      _DO_NOTHING=YES
-    fi
-  fi
+  git clone --branch $_BRANCH_BOA $_BOA_REPO_GIT_URL/$_BOA_REPO_NAME.git &> /dev/null
 else
   curl -L --max-redirs 10 -k -s --retry 10 --retry-delay 15 -A iCab "http://files.aegir.cc/versions/stable/tar/boa-$_INSTALLER_VERSION.tar.gz" | tar -xzf -
   _BOA_REPO_NAME="boa"
@@ -6112,12 +5995,14 @@ if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/$_FILE_VERSION" ] ; then
 fi
 if [ -e "/var/log/barracuda_log.txt" ] ; then
   _LEGACY_TEST=`cat /var/log/barracuda_log.txt`
-  if [[ "$_LEGACY_TEST" =~ "BOA-2.3.1" ]] && [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] ; then
-    msg "ERROR: Your system has been already upgraded to BOA-2.3.x series"
-    msg "ERROR: You can not downgrade back to legacy BOA-2.2.x series"
-    msg "ERROR: Please use barracuda up-stable to upgrade this system"
-    msg "Bye"
-    exit 1
+  if [[ "$_LEGACY_TEST" =~ "BOA-2.3." ]] ; then
+    if [[ "$_INSTALLER_VERSION" =~ "BOA-2.2." ]] || [[ "$_INSTALLER_VERSION" =~ "BOA-2.1." ]] ; then
+      msg "ERROR: Your system has been already upgraded to modern BOA-2.3.x series"
+      msg "ERROR: You can not downgrade back to legacy or previous stable BOA version"
+      msg "ERROR: Please use barracuda up-stable to upgrade this system"
+      msg "Bye"
+      exit 1
+    fi
   fi
 fi
 
@@ -6408,10 +6293,13 @@ if [ "$_SQUEEZE_TO_WHEEZY" = "YES" ] && [ "$_LOC_REL_VERSION" = "squeeze" ] ; th
     service cron stop &> /dev/null
     mrun "sleep 60"
   fi
-  mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-  echo "nameserver 8.8.8.8" >/etc/resolv.conf
-  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  check_dns_settings
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  fi
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Squeeze to Wheezy upgrade in progress..."
@@ -6477,10 +6365,13 @@ if [ "$_LENNY_TO_SQUEEZE" = "YES" ] && [ "$_LOC_REL_VERSION" = "lenny" ] ; then
     service cron stop &> /dev/null
     mrun "sleep 60"
   fi
-  mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
-  echo "nameserver 8.8.8.8" >/etc/resolv.conf
-  echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  check_dns_settings
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    mv -f /etc/resolv.conf /etc/resolv.conf.pre-dist-upgrade
+    echo "nameserver 8.8.8.8" >/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    cat /etc/resolv.conf.pre-dist-upgrade >>/etc/resolv.conf
+  fi
   mv -f /var/xdrago /var/xdrago_wait &> /dev/null
   msg "WARN: Too late! Lenny to Squeeze upgrade in progress..."
   msg "HINT: Run tail -f $_LOG"
@@ -7817,15 +7708,15 @@ if [[ "$_XTRAS_LIST" =~ "SR4" ]] ; then
         cp -af /var/opt/solr-$_SOLR_4_VERSION/example/solr/collection1/conf/* $Dir/ &> /dev/null
       done
       adduser --system --group --home /opt/solr4 jetty9 &> /dev/null
-      if [ ! -e "/opt/solr4/search_api_solr-7.x-1.5.log" ] ; then
+      if [ ! -e "/opt/solr4/search_api_solr-7.x-1.6.log" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
-        get_dev_contrib "search_api_solr-7.x-1.5.tar.gz"
+        get_dev_contrib "search_api_solr-7.x-1.6.tar.gz"
         for Dir in `find /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
           cp -af /var/opt/search_api_solr/solr-conf/4.x/* $Dir/ &> /dev/null
         done
         sed -i "s/8983/8099/g" /opt/solr4/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-        touch /opt/solr4/search_api_solr-7.x-1.5.log
+        touch /opt/solr4/search_api_solr-7.x-1.6.log
       fi
       cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr4/README.txt &> /dev/null
       chown -R jetty9:jetty9 /opt/solr4
@@ -7962,15 +7853,15 @@ if [[ "$_XTRAS_LIST" =~ "SR3" ]] ; then
         cp -af /var/opt/apache-solr-$_SOLR_3_VERSION/example/solr/conf/* $Dir/ &> /dev/null
       done
       adduser --system --group --home /opt/solr3 jetty8 &> /dev/null
-      if [ ! -e "/opt/solr3/search_api_solr-7.x-1.5.log" ] ; then
+      if [ ! -e "/opt/solr3/search_api_solr-7.x-1.6.log" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
-        get_dev_contrib "search_api_solr-7.x-1.5.tar.gz"
+        get_dev_contrib "search_api_solr-7.x-1.6.tar.gz"
         for Dir in `find /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
           cp -af /var/opt/search_api_solr/solr-conf/3.x/* $Dir/ &> /dev/null
         done
         sed -i "s/8983/8088/g" /opt/solr3/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-        touch /opt/solr3/search_api_solr-7.x-1.5.log
+        touch /opt/solr3/search_api_solr-7.x-1.6.log
       fi
       cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr3/README.txt &> /dev/null
       chown -R jetty8:jetty8 /opt/solr3
@@ -8068,15 +7959,15 @@ if [[ "$_XTRAS_LIST" =~ "SR1" ]] || [ "$_TOMCAT_TO_JETTY" = "YES" ] ; then
         cp -af /var/opt/apache-solr-$_SOLR_1_VERSION/example/solr/conf/* $Dir/ &> /dev/null
       done
       adduser --system --group --home /opt/solr1 jetty7 &> /dev/null
-      if [ ! -e "/opt/solr1/search_api_solr-7.x-1.5.log" ] ; then
+      if [ ! -e "/opt/solr1/search_api_solr-7.x-1.6.log" ] ; then
         cd /var/opt
         rm -f -r search_api_solr*
-        get_dev_contrib "search_api_solr-7.x-1.5.tar.gz"
+        get_dev_contrib "search_api_solr-7.x-1.6.tar.gz"
         for Dir in `find /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/ -maxdepth 1 -mindepth 1 -type d | grep conf` ; do
           cp -af /var/opt/search_api_solr/solr-conf/1.4/* $Dir/ &> /dev/null
         done
         sed -i "s/8983/8077/g" /opt/solr1/core{0,1,2,3,4,5,6,7,8,9}/conf/solrcore.properties &> /dev/null
-        touch /opt/solr1/search_api_solr-7.x-1.5.log
+        touch /opt/solr1/search_api_solr-7.x-1.6.log
       fi
       cp -af /opt/tmp/$_BOA_REPO_NAME/docs/SOLR.txt /opt/solr1/README.txt &> /dev/null
       rm -f -r /opt/jetty7/solr
@@ -8240,25 +8131,18 @@ if [ "$_STATUS" = "INIT" ] ; then
     sed -i "s/EDIT_AEGIR_VERSION/$_AEGIR_VERSION/g"        $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_GIT_URL/$_BOA_REPO_GIT_URLX/g" $Files &> /dev/null
     sed -i "s/EDIT_BOA_REPO_NAME/$_BOA_REPO_NAME/g"        $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_BOA/$_BRANCH_BOA/g"              $Files &> /dev/null
+    sed -i "s/EDIT_BRANCH_PROVISION/$_BRANCH_PROVISION/g"  $Files &> /dev/null
     sed -i "s/EDIT_DRUSH_VERSION/$_DRUSH_VERSION/g"        $Files &> /dev/null
+    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
     sed -i "s/EDIT_PHP_CLI_VERSION/$_PHP_CLI_VERSION/g"    $Files &> /dev/null
     sed -i "s/EDIT_THIS_DB_HOST/$_THIS_DB_HOST/g"          $Files &> /dev/null
-    sed -i "s/EDIT_USE_STOCK/$_USE_STOCK/g"                $Files &> /dev/null
-    sed -i "s/EDIT_LOCAL_NETWORK_IP/$_LOCAL_NETWORK_IP/g"  $Files &> /dev/null
   done
   cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/scripts/$_AEGIR_SCRIPT ./
-  if [ "$_USE_STOCK" = "YES" ] ; then
-    if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
-    else
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
-    fi
+  if [ "$_DEBUG_MODE" = "YES" ] ; then
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
   else
-    if [ "$_DEBUG_MODE" = "YES" ] ; then
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y -d"
-    else
-      su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --db_service_type='mysql' --db_port='3306' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
-    fi
+    su -s /bin/bash - aegir -c "bash $_AEGIR_SCRIPT $_THIS_FRONT --http_service_type='nginx' --aegir_db_host='$_THIS_DB_HOST' --client_email='$_MY_EMAIL' -y >/var/aegir/install.log 2>&1"
   fi
   if [ -e "/opt/tmp/status-AegirSetupM-FAIL" ] ; then
     msg "FATAL ERROR: AegirSetupM installer failed"
@@ -8269,15 +8153,7 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   _U_HD="/var/aegir/.drush"
   chattr +i $_U_HD/php.ini &> /dev/null
-  if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php         &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost.tpl.php          &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/vhost_disabled.tpl.php &> /dev/null
-    sed -i "s/\!empty.*';/'*';/g" /var/aegir/.drush/xts/provision_cdn/Provision/Config/cdn.tpl.php                   &> /dev/null
-  fi
-  if [ "$_USE_STOCK" = "YES" ] || [ "$_DRUSH_CC_REQ" = "YES" ] ; then
-    su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
-  fi
+  su -s /bin/bash - aegir -c "drush cache-clear drush &> /dev/null"
   msg "INFO: Running hosting-dispatch (1/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
   mrun "sleep 5"
@@ -8286,9 +8162,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   mrun "sleep 5"
   msg "INFO: Running hosting-dispatch (3/3)..."
   su -s /bin/bash - aegir -c "drush @hostmaster hosting-dispatch &> /dev/null"
-  if [ "$_HTTP_WILDCARD" = "YES" ] && [ -d "/var/aegir/config/includes" ] ; then
-    echo "WILD" > /var/aegir/config/includes/wildcard_listen_http_enabled.txt
-  fi
   _THIS_HM_ROOT=`cat /var/aegir/.drush/hostmaster.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
   mkdir -p $_THIS_HM_ROOT/sites/all/{modules,themes,libraries} &> /dev/null
   chown -R aegir:aegir $_THIS_HM_ROOT/sites/all &> /dev/null
@@ -8296,9 +8169,7 @@ if [ "$_STATUS" = "INIT" ] ; then
 
 
 ###--------------------###
-  if [ -e "/var/aegir/config/includes/nginx_modern_include.conf" ] && [ "$_USE_STOCK" = "NO" ] ; then
-    _DO_NOTHING=YES
-  elif [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] && [ "$_USE_STOCK" = "YES" ] ; then
+  if [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] ; then
     _DO_NOTHING=YES
   else
     msg "FATAL ERROR: Something went wrong, Aegir Master Instance not installed - exit now"
@@ -8319,9 +8190,6 @@ if [ "$_STATUS" = "INIT" ] ; then
   fi
   update_redis_password
   force_advanced_nginx_config
-  if [ "$_DRUSH_VERSION" = "mini-4-26-08-2014" ] ; then
-    sed -i "s/which one she wants./which one she wants.\n  chdir(\$request['base_project_path'])\;/g" /var/aegir/drush/commands/pm/package_handler/wget.inc &> /dev/null
-  fi
   chmod 0711 /var/aegir/config/includes &> /dev/null
   chmod 0711 /var/aegir/config &> /dev/null
   find /var/aegir/host_master/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
@@ -8430,11 +8298,7 @@ EOF
     openssl req -x509 -nodes -days 7300 -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.$_THISHOST" -newkey rsa:4096 -keyout /etc/ssl/private/nginx-wild-ssl.key -out /etc/ssl/private/nginx-wild-ssl.crt -batch 2> /dev/null
     _WILD_SSL_VHOST="/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf"
     cp -a /opt/tmp/$_BOA_REPO_NAME/aegir/conf/nginx_wild_ssl.conf $_WILD_SSL_VHOST
-    if [ "$_HTTP_WILDCARD" = "YES" ] ; then
-      sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
-    else
-      sed -i "s/127.0.0.1:80/$_THISHTIP:80/g" $_WILD_SSL_VHOST &> /dev/null
-    fi
+    sed -i "s/127.0.0.1:80/localhost:80/g" $_WILD_SSL_VHOST &> /dev/null
     sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_WILD_SSL_VHOST &> /dev/null
     mkdir -p /data/conf
     if [ -e "/opt/tmp/$_BOA_REPO_NAME/aegir/conf/global.inc" ] ; then
@@ -8454,7 +8318,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
   _CHIVE_VHOST="/var/aegir/config/server_master/nginx/vhost.d/chive.$_THIS_FRONT"
-  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fx5xvhost.log" ] ; then
+  if [ ! -d "/var/www/chive" ] || [ ! -f "$_CHIVE_VHOST" ] || [ ! -f "/var/xdrago/log/chive-$_CHIVE_VERSION.fix-params-vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install Chive $_DB_SERVER Manager?" ; then
       true
@@ -8468,7 +8332,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CHV" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"         $_CHIVE_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"       $_CHIVE_VHOST &> /dev/null
       sed -i "s/chive_name/chive.$_THIS_FRONT $_THISHTIP/g" $_CHIVE_VHOST &> /dev/null
-      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fx5xvhost.log
+      touch /var/xdrago/log/chive-$_CHIVE_VERSION.fix-params-vhost.log
       msg "INFO: Chive $_DB_SERVER Manager installation completed"
     else
       msg "INFO: Chive $_DB_SERVER Manager installation skipped"
@@ -8494,7 +8358,7 @@ fi
 ###--------------------###
 if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
   _SQLBUDDY_VHOST="/var/aegir/config/server_master/nginx/vhost.d/sqlbuddy.$_THIS_FRONT"
-  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fx5xvhost.log" ] ; then
+  if [ ! -d "/var/www/sqlbuddy" ] || [ ! -f "$_SQLBUDDY_VHOST" ] || [ ! -f "/var/xdrago/log/sqlbuddy.fix-params-vhost.log" ] ; then
     echo " "
     if prompt_yes_no "Do you want to install SQL Buddy $_DB_SERVER Manager?" ; then
       true
@@ -8508,7 +8372,7 @@ if [[ "$_XTRAS_LIST" =~ "BDD" ]] ; then
       sed -i "s/127.0.0.1:80/$_XTRAS_THISHTIP:80/g"   $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g" $_SQLBUDDY_VHOST &> /dev/null
       sed -i "s/buddy_name/sqlbuddy.$_THIS_FRONT/g"   $_SQLBUDDY_VHOST &> /dev/null
-      touch /var/xdrago/log/sqlbuddy.fx5xvhost.log
+      touch /var/xdrago/log/sqlbuddy.fix-params-vhost.log
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation completed"
     else
       msg "INFO: SQL Buddy $_DB_SERVER Manager installation skipped"
@@ -8535,7 +8399,7 @@ fi
 if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
   _CGP_VHOST="/var/aegir/config/server_master/nginx/vhost.d/cgp.$_THIS_FRONT"
   if [ ! -e "/var/run/cloud_vhost.pid" ] ; then
-    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fx5xvhost.log" ] ; then
+    if [ ! -d "/var/www/cgp" ] || [ ! -f "$_CGP_VHOST" ] || [ ! -f "/var/xdrago/log/cgp-$_CGP_VERSION.fix-params-vhost.log" ] ; then
       echo " "
       if prompt_yes_no "Do you want to install Collectd Graph Panel?" ; then
         true
@@ -8556,7 +8420,7 @@ if [[ "$_XTRAS_LIST" =~ "ALL" ]] || [[ "$_XTRAS_LIST" =~ "CGP" ]] ; then
         sed -i "s/127.0.0.1:443/$_XTRAS_THISHTIP:443/g"  $_CGP_VHOST &> /dev/null
         sed -i "s/cgp_name/cgp.$_THIS_FRONT/g"           $_CGP_VHOST &> /dev/null
         st_runner "update-rc.d collectd defaults" &> /dev/null
-        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fx5xvhost.log
+        echo collectd5 > /var/xdrago/log/cgp-$_CGP_VERSION.fix-params-vhost.log
         msg "INFO: Collectd Graph Panel installation completed"
       else
         msg "INFO: Collectd Graph Panel installation skipped"
@@ -9038,7 +8902,7 @@ if [ ! -z "$_FORCE_GIT_MIRROR" ] ; then
   _LOG_GIT_MIRROR="-$_FORCE_GIT_MIRROR"
 fi
 _LOG_DB_V=`mysql -V 2>&1 | tr -d "\n" | cut -d" " -f6 | awk '{ print $1}' | cut -d"-" -f1 | awk '{ print $1}' | sed "s/[\,']//g"`
-_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_MULTI_INSTALL / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST / Wildcard $_HTTP_WILDCARD"
+_BARRACUDA_VERSION_INFO="`date` / `lsb_release -si`.`lsb_release -sc` `uname -m` $_VMFAMILY / Aegir $_AEGIR_VERSION / Barracuda $_INSTALLER_VERSION$_LOG_GIT_MIRROR / Nginx $_NGINX_VERSION / PHP $_PHP_MULTI_INSTALL / FPM $_PHP_FPM_VERSION / CLI $_PHP_CLI_VERSION / $_DB_SERVER-$_LOG_DB_V $_LOG_DB_HOST"
 echo "$_BARRACUDA_VERSION_INFO" >> /var/log/barracuda_log.txt
 echo "$_BARRACUDA_VERSION_INFO" >> /var/backups/barracuda_log.txt
 msg "INFO: New entry added to /var/log/barracuda_log.txt"
@@ -9403,18 +9267,41 @@ fi
 install_pdnsd_cache () {
   msg "INFO: Installing DNS cache pdnsd server..."
   cp -af /etc/resolv.conf /var/backups/resolv.conf.pre-$_INSTALLER_VERSION-$_NOW
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    rm -f /etc/resolv.conf
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  fi
   st_runner "apt-get update -y --force-yes" &> /dev/null
-  st_runner "aptitude purge pdnsd resolvconf -y" &> /dev/null
+  st_runner "aptitude purge pdnsd -y" &> /dev/null
+  st_runner "aptitude purge resolvconf -y" &> /dev/null
   st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
-  rm -f /etc/resolv.conf
-  echo "nameserver 8.8.8.8" > /etc/resolv.conf
-  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  st_runner "$_INSTALL pdnsd resolvconf" &> /dev/null
+  rm -f -r /lib/init/rw/resolvconf
+  rm -f -r /etc/resolvconf
+  st_runner "aptitude purge pdnsd -y" &> /dev/null
+  st_runner "aptitude purge resolvconf -y" &> /dev/null
+  st_runner "apt-get autoremove -y --force-yes -qq" &> /dev/null
+  if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    rm -f /etc/resolv.conf
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  fi
+  st_runner "$_INSTALL resolvconf" &> /dev/null
+  st_runner "$_INSTALL pdnsd" &> /dev/null
+  st_runner "$_INSTALL resolvconf" &> /dev/null
+  st_runner "$_INSTALL pdnsd" &> /dev/null
   sed -i "s/START_DAEMON=no/START_DAEMON=yes/g" /etc/default/pdnsd &> /dev/null
   cat /opt/tmp/$_BOA_REPO_NAME/aegir/conf/pdnsd.conf > /etc/pdnsd.conf
+  if [ "$_USE_PROVIDER_DNS" = "YES" ] ; then
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] && [ -e "/root/.use.local.nameservers.cnf" ] ; then
+      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+    fi
+  fi
   if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     rm -f -r /run/resolvconf
     rm -f -r /etc/resolvconf/run
@@ -9427,29 +9314,52 @@ install_pdnsd_cache () {
     rm -f /etc/resolvconf/resolv.conf.d/tail
     touch /etc/resolvconf/resolv.conf.d/tail
   fi
-  if [ -e "/etc/resolvconf/run" ] ; then
+  if [ ! -e "/etc/resolvconf/run/interface/lo.pdnsd" ] || [ "$_USE_PROVIDER_DNS" = "YES" ] ; then
     rm -f /etc/resolvconf/run/interface/*
     echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
     sed -i "s/^search.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
     sed -i "s/^domain.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
     sed -i "s/^nameserver.*//g" /etc/resolvconf/run/resolv.conf &> /dev/null
+    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+      cat /var/backups/resolv.conf.vanilla >> /etc/resolvconf/run/resolv.conf
+    fi
     echo "nameserver 127.0.0.1" >> /etc/resolvconf/run/resolv.conf
     sed -i "/^$/d" /etc/resolvconf/run/resolv.conf &> /dev/null
     if [ -e "/etc/resolvconf/run/resolv.conf" ] ; then
       rm -f /etc/resolv.conf
       ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
     else
-      rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" > /etc/resolv.conf
-      echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      if [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+        rm -f /etc/resolv.conf
+        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+        echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+      else
+        if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+          rm -f /etc/resolv.conf
+          cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+        fi
+      fi
     fi
     rm -f /etc/resolvconf/run/interface/eth*
-    resolvconf -u &> /dev/null
+  fi
+  if [ "$_USE_PROVIDER_DNS" = "YES" ] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+    cat /var/backups/resolv.conf.vanilla > /etc/resolvconf/resolv.conf.d/base
+  fi
+  resolvconf -u &> /dev/null
+  _RESOLV_TEST=$(grep "nameserver 127.0.0.1" /etc/resolv.conf)
+  if [[ "$_RESOLV_TEST" =~ "nameserver 127.0.0.1" ]] && [ "$_USE_PROVIDER_DNS" = "NO" ] ; then
+    _DO_NOTHING=YES
   else
-    if [ -e "/usr/sbin/pdnsd" ] ; then
-      rm -f /etc/resolv.conf
-      echo "nameserver 127.0.0.1" > /etc/resolv.conf
+    rm -f /etc/resolv.conf
+    ln -s /etc/resolvconf/run/resolv.conf /etc/resolv.conf
+    echo "nameserver 127.0.0.1" > /etc/resolvconf/run/interface/lo.pdnsd
+  fi
+  resolvconf -u &> /dev/null
+  if [ ! -e "/etc/resolv.conf" ] ; then
+    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
     fi
+    echo "nameserver 127.0.0.1" >> /etc/resolv.conf
   fi
   if [ -e "/etc/NetworkManager/NetworkManager.conf" ] ; then
     sed -i "s/^dns=.*/dns=pdnsd/g" /etc/NetworkManager/NetworkManager.conf &> /dev/null
@@ -9461,15 +9371,17 @@ install_pdnsd_cache () {
   mrun "service pdnsd stop" &> /dev/null
   rm -f /var/cache/pdnsd/pdnsd.cache
   mrun "service pdnsd start" &> /dev/null
+  resolvconf -u &> /dev/null
 }
 if [ -f "/etc/default/dhcpcd" ] ; then
   sed -i "s/.*SET_DNS/#SET_DNS/g" /etc/default/dhcpcd &> /dev/null
   sed -i "s/.*SET_HOSTNAME/#SET_HOSTNAME/g" /etc/default/dhcpcd &> /dev/null
 fi
+check_dns_settings
 if [ ! -e "/usr/sbin/pdnsd" ] ; then
   install_pdnsd_cache
 else
-  if [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
+  if [ "$_USE_PROVIDER_DNS" = "YES" ] || [ ! -L "/etc/resolvconf/run" ] || [ ! -e "/lib/init/rw/resolvconf/enable-updates" ] || [ ! -e "/lib/init/rw/resolvconf/interface/lo.pdnsd" ] ; then
     msg "INFO: DNS cache pdnsd server re-installation forced"
     install_pdnsd_cache
   fi

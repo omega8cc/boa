@@ -634,7 +634,6 @@ switch_php()
       fi
     fi
     if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] && [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ] ; then
-      _THIS_NGX_PATH=/data/disk/${_OWN}/config/includes
       _LOC_PHP_FPM_VERSION=`cat /data/disk/${_OWN}/static/control/fpm.info`
       _LOC_PHP_FPM_VERSION=${_LOC_PHP_FPM_VERSION//[^0-9.]/}
       _LOC_PHP_FPM_VERSION=`echo -n $_LOC_PHP_FPM_VERSION | tr -d "\n"`
@@ -674,28 +673,6 @@ switch_php()
           _PHP_SV=${_LOC_PHP_FPM_VERSION//[^0-9]/}
           if [ -z "$_PHP_SV" ] ; then
             _PHP_SV=53
-          fi
-          _PHP_CN="www${_PHP_SV}"
-          if [ -e "/opt/php${_PHP_SV}/etc/php${_PHP_SV}-fpm.conf" ] ; then
-            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-            sed -i "s/127.0.0.1:.*;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-            if [ "$_PHP_CN" = "www53" ] ; then
-              if [ ! -z "$_PHP_FPM_DENY" ] ; then
-                sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-                sed -i "s/unix:cron:fastcgi.socket;/127.0.0.1:9090;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-              else
-                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-              fi
-            else
-              if [ ! -z "$_PHP_FPM_DENY" ] && [ ! -z "$_PHP_CN" ] ; then
-                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_PHP_CN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-              else
-                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_modern_include.conf  &> /dev/null
-                sed -i "s/unix:cron:fastcgi.socket;/unix:\/var\/run\/${_OWN}.fpm.socket;/g" $_THIS_NGX_PATH/nginx_octopus_include.conf  &> /dev/null
-              fi
-            fi
           fi
           rm -f /opt/php*/etc/pool.d/${_OWN}.conf
           cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf
@@ -798,6 +775,7 @@ do
     chmod 0400 /data/disk/${_OWN}/.drush/hostmaster*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/platform_*.php &> /dev/null
     chmod 0400 /data/disk/${_OWN}/.drush/server_*.php &> /dev/null
+    chmod 0400 /data/disk/${_OWN}/.drush/drushrc.php &> /dev/null
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
@@ -940,6 +918,7 @@ else
   chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
   chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
+  chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
   chmod 0710 /var/aegir/.drush &> /dev/null
   find /var/aegir/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find /var/aegir/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null

@@ -1,5 +1,5 @@
 ###
-### Barracuda version BOA-2.3.0-dev
+### Barracuda version BOA-2.3.0
 ###
 ### Configuration stored in the /root/.barracuda.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -9,7 +9,6 @@
 ### They can be defined only on initial Barracuda install.
 ###
 _EASY_HOSTNAME="f-q-d-n" #------ Hostname auto-configured via _EASY_PUBLIC
-_HTTP_WILDCARD=YES #------------ Listen on single IP instead of all IPs when NO
 _LOCAL_NETWORK_HN="" #---------- Hostname if in localhost mode - auto-conf
 _LOCAL_NETWORK_IP="" #---------- Web server IP if in localhost mode - auto-conf
 _MY_FRONT="master.f-q-d-n" #---- URL of the Aegir Master Instance control panel
@@ -58,14 +57,14 @@ _NGINX_NAXSI=NO #--------------- Installs Nginx NAXSI WAF when YES
 _NGINX_SPDY=NO #---------------- Installs SPDY Nginx support when YES
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
-_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{2,3,4,5}
+_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Master Instance: 5.{3,4,5}
 _PHP_EXTRA_CONF="" #------------ Allows to add custom options to PHP build
 _PHP_FPM_DENY="" #-------------- Modify disable_functions -- see info below
 _PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Master Instance: 5.{2,3,4,5}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_GEOS=NO #------------------ Installs GEOS for PHP when YES - experimental
 _PHP_MONGODB=NO #--------------- Installs MONGODB for PHP when YES
-_PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3, 5.4, 5.5
+_PHP_MULTI_INSTALL="5.3" #------ Lists PHP versions to install: 5.3 5.4 5.5
 ###
 _REDIS_LISTEN_MODE=PORT #------- Redis listen mode: PORT or SOCKET (recommended)
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
@@ -87,9 +86,8 @@ _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 ###
 _AEGIR_UPGRADE_ONLY=NO #-------- Allows to skip system on Aegir upgrade when YES
 _SYSTEM_UPGRADE_ONLY=NO #------- Allows to skip Aegir on upgrade (deprecated)
-_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 ###
-### Barracuda version BOA-2.3.0-dev
+### Barracuda version BOA-2.3.0
 ###
 
 ###

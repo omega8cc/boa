@@ -1,5 +1,5 @@
 ###
-### Octopus version BOA-2.3.0-dev
+### Octopus version BOA-2.3.0
 ###
 ### Configuration stored in the /root/.${_USER}.octopus.cnf file.
 ### This example is for public install mode - see docs/INSTALL.txt
@@ -25,12 +25,11 @@ _DEL_OLD_EMPTY_PLATFORMS="0" #-- Delete empty platforms if verified > X-days-ago
 _DEL_OLD_BACKUPS=0 #------------ Delete Aegir/b-migrate backups if > X-days-ago
 _DEL_OLD_TMP=0 #---------------- Delete sites temp files if > X-days-ago
 _LOCAL_NETWORK_IP= #------------ Web server IP if in localhost mode - auto-conf
-_PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Satellite Instance: 5.{2,3,4,5}
-_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Satellite Instance: 5.{2,3,4,5}
+_PHP_FPM_VERSION=5.3 #---------- PHP-FPM used by Satellite Instance: 5.{3,4,5}
+_PHP_CLI_VERSION=5.3 #---------- PHP-CLI used by Satellite Instance: 5.{3,4,5}
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_FPM_TIMEOUT=AUTO #--------- Allows to override default 180 when 60-180
 _PHP_FPM_DENY="" #-------------- Modify the disable_functions list per instance
-_USE_STOCK=NO #----------------- Allows to install stock Aegir 2.x when YES
 _STRONG_PASSWORDS=NO #---------- Allows to generate secure passwords when YES
 _SQL_CONVERT=NO #--------------- DB conversion when innodb (or YES), or myisam
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
@@ -45,7 +44,7 @@ _CLIENT_OPTION="SSD" #---------- Currently not used
 _CLIENT_SUBSCR="Y" #------------ Currently not used
 _CLIENT_CORES="8" #------------- Currently not used
 ###
-### Octopus version BOA-2.3.0-dev
+### Octopus version BOA-2.3.0
 ###
 
 ###

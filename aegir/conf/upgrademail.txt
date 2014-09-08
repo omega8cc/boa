@@ -1,46 +1,21 @@
 Hello,
 
-Your Aegir Hosting System has been upgraded to version BOA-2.3.0-dev
+Your Aegir Hosting System has been upgraded to version BOA-2.3.0
 
   https://aegir.dragon.ny.host8.biz
 
-IMPORTANT! This is the last Edition in the 2.2.x series, which marks
-the end of Drupal 5, PHP 5.2 and Drush 4 support. Next Edition will
-open 2.3.x series, which will allow us to provide newer Aegir version
-with built-in Drush 6 support, sites in subdirectories, and many
-Aegir User Interface improvements.
+This new BOA Edition introduces latest Aegir 2.1 stable version with
+newest Drush 6 in the backend and with support for Drupal sites
+in subdirectories enabled by default, among many other improvements
+included in this version, like tasks list per site, ability to search
+in the sites list per domain name and/or profile, to schedule tasks
+in batches, to select any existing domain alias as a redirect target,
+but without the need to rename the site, etc.
 
-If you still host any Drupal 5 sites or you are using PHP 5.2 for
-D6 sites, you will not be able to upgrade to the next 2.3.x Edition
-and you will have to stay on the 'legacy' BOA 2.2.x version, which
-will receive only system security upgrades, but no further feature
-nor bugfix releases.
+There are new features, changes, improvements and fixes you should
+read about in the release notes and changelog available at:
 
-This also means that from now on the 'legacy' 2.2.x version will
-no longer receive Drupal core upgrades, even if there will be
-security core releases.
-
-It is time to upgrade away from Drupal 5 and away from PHP 5.2
-
-NOTE: Since the first Edition in the BOA-2.3.x series is not ready
-for release yet, and new Drupal core has been released to fix security
-issues, followed by yet another release to fix serious regressions,
-followed by yet another security release, we have decided to make it
-available to everyone and release yet another stable BOA-2.2.x Edition.
-
-There are many, many new features, changes, improvements and fixes
-in all ten (10) recent BOA-2.2.x Editions, released since March 31:
-
-  https://omega8.cc/boa-229-full-edition-327  ------- August 06
-  https://omega8.cc/boa-228-full-edition-326  ------- July   26
-  https://omega8.cc/boa-227-full-edition-324  ------- July   17
-  https://omega8.cc/boa-226-full-edition-319  ------- June   21
-  https://omega8.cc/boa-225-full-edition-314  ------- May    08
-  https://omega8.cc/boa-224-full-edition-313  ------- April  30
-  https://omega8.cc/boa-223-full-edition-310  ------- April  18
-  https://omega8.cc/boa-222-barracuda-edition-306 --- April  08
-  https://omega8.cc/boa-221-full-edition-305  ------- April  01
-  https://omega8.cc/boa-220-full-edition-304  ------- March  31
+  https://omega8.cc/boa-230-full-edition-332  ------- September 08
 
 It is always very important that you read extensive release notes
 and changelog posted on our website for all previous BOA Editions:
@@ -85,7 +60,7 @@ idea to learn how the available disk space for files should be used:
 
 In June 2014 we have added Chicago (Illinois), to our ever growing
 list of available 7 datacenters locations, with Tokyo (Japan) and
-Ashburn (Virginia) following later this summer. There will be also
+Ashburn (Virginia) following later this year. There will be also
 next generation locations added in San Jose (California) and
 Amsterdam (The Netherlands).
 

@@ -45,22 +45,81 @@ export PATH=$PATH:/opt/local/bin
 SHELL=/bin/bash
 _TODAY=`date +%y%m%d`
 
+fix_dns_settings () {
+  mkdir -p /var/backups
+  rm -f /var/backups/resolv.conf.tmp
+  if [ -e "/etc/resolv.conf" ] ; then
+    cp -a /etc/resolv.conf /var/backups/resolv.conf.tmp
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    for Pre in `ls -la /var/backups/resolv.conf.pre-*` ; do
+      if [ -e "$Pre" ] && [ -f "$Pre" ] && [ ! -L "$Pre" ] ; then
+        cp -a $Pre /var/backups/resolv.conf.vanilla
+      fi
+    done
+  fi
+  if [ ! -e "/var/backups/resolv.conf.vanilla" ] ; then
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /var/backups/resolv.conf.vanilla
+  fi
+  sed -i "/^$/d" /var/backups/resolv.conf.vanilla &> /dev/null
+  rm -f /etc/resolv.conf
+  echo "nameserver 8.8.8.8" > /etc/resolv.conf
+  echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] && [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+    touch /root/.use.local.nameservers.cnf
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.vanilla /etc/resolv.conf
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+  else
+    rm -f /etc/resolv.conf
+    cp -a /var/backups/resolv.conf.tmp /etc/resolv.conf
+  fi
+  if [ -e "/etc/pdnsd.conf" ] ; then
+    _CUSTOM_DNS_TEST=$(grep 8.8.8.8 /etc/pdnsd.conf 2>&1)
+    if [[ "$_CUSTOM_DNS_TEST" =~ "8.8.8.8" ]] && [ -e "/root/.use.local.nameservers.cnf" ] ; then
+      echo "        label = \"google-servers\";" > /root/.local.dns.IP.list
+      for _IP in `cat /etc/resolv.conf | cut -d ' ' -f2 | sort | uniq`;do echo "        ip=$_IP;" >> /root/.local.dns.IP.list;done
+      sed -i "s/ip=8.8.*//g; s/ *$//g; /^$/d" /etc/pdnsd.conf
+      sed -i '/        label = \"google-servers\";/ {r /root/.local.dns.IP.list
+d;};' /etc/pdnsd.conf
+      resolvconf -u                      &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+      service pdnsd stop                 &> /dev/null
+      rm -f /var/cache/pdnsd/pdnsd.cache &> /dev/null
+      service pdnsd start                &> /dev/null
+    fi
+  fi
+}
+
+check_dns_settings () {
+  _BROKEN_DNS_TEST=$(host -a omega8.cc 8.8.8.8 -w 5 2>&1)
+  if [[ "$_BROKEN_DNS_TEST" =~ "no servers could be reached" ]] || [ -e "/root/.use.local.nameservers.cnf" ] ; then
+    _USE_PROVIDER_DNS=YES
+    fix_dns_settings
+  else
+    _USE_PROVIDER_DNS=NO
+  fi
+}
+
 setup ()
 {
   if [ ! -e "/etc/resolv.conf" ] ; then
-    echo "nameserver 8.8.8.8" >/etc/resolv.conf
-    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
-  else
-    _RESOLV_TEST=$(grep "nameserver" /etc/resolv.conf)
-    if [[ "$_RESOLV_TEST" =~ "nameserver" ]] ; then
-      _DO_NOTHING=YES
-    else
-      rm -f /etc/resolv.conf
-      echo "nameserver 8.8.8.8" >/etc/resolv.conf
-      echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    if [ -e "/var/backups/resolv.conf.vanilla" ] ; then
+      cat /var/backups/resolv.conf.vanilla >/etc/resolv.conf
     fi
+    echo "nameserver 8.8.8.8" >>/etc/resolv.conf
+    echo "nameserver 8.8.4.4" >>/etc/resolv.conf
+    check_dns_settings
+  else
+    check_dns_settings
   fi
-  _CURL_TEST=$(curl -L --max-redirs 10 -k -s -I "http://files.aegir.cc" 2> /dev/null)
+  _CURL_TEST=$(curl -L --max-redirs 10 -k -s --retry 3 --retry-delay 10 -I "http://files.aegir.cc" 2> /dev/null)
   if [[ "$_CURL_TEST" =~ "200 OK" ]] ; then
     _DO_NOTHING=YES
   else

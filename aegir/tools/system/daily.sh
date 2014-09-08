@@ -42,8 +42,8 @@ run_drush4_cmd () {
   su -s /bin/bash - ${_THIS_HM_USER}.ftp -c "drush4 @${Dom} $1" &> /dev/null
 }
 
-run_drush4_hmr_cmd () {
-  su -s /bin/bash - $_THIS_HM_USER -c "drush4 $1" &> /dev/null
+run_drush6_hmr_cmd () {
+  su -s /bin/bash - $_THIS_HM_USER -c "drush6 $1" &> /dev/null
 }
 
 run_drush4_nosilent_cmd () {
@@ -273,7 +273,8 @@ fix_robots_txt () {
 
 fix_clear_cache () {
   if [ -e "$Plr/profiles/hostmaster" ] ; then
-    run_drush4_hmr_cmd "@hostmaster cc all"
+    run_drush6_hmr_cmd "@hostmaster fr aegir_custom_settings -y"
+    run_drush6_hmr_cmd "@hostmaster cc all"
   fi
 }
 
@@ -282,7 +283,7 @@ fix_boost_cache () {
     rm -f -r $Plr/cache/*
     rm -f $Plr/cache/{.boost,.htaccess}
   else
-    if [ -e "$Plr/drushrc.php" ] || [ -e "$Plr/sites/all/drush/drushrc.php" ] ; then
+    if [ -e "$Plr/sites/all/drush/drushrc.php" ] ; then
       mkdir -p $Plr/cache
     fi
   fi
@@ -779,7 +780,7 @@ fix_modules () {
           fi
 
           if [ -e "$Plr/profiles/hostmaster" ] && [ ! -f "$Plr/profiles/hostmaster/modules-fix.info" ] ; then
-            run_drush4_hmr_cmd "@hostmaster dis cache syslog dblog -y"
+            run_drush6_hmr_cmd "@hostmaster dis cache syslog dblog -y"
             echo "modules-fixed" > $Plr/profiles/hostmaster/modules-fix.info
             chown $_THIS_HM_USER:users $Plr/profiles/hostmaster/modules-fix.info
           elif [ -e "$Plr/modules/o_contrib" ] ; then
@@ -960,10 +961,10 @@ fix_permissions () {
     find $Plr/sites/all/modules -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} -type f -exec rm -f {} \; &> /dev/null
     chown -R ${_THIS_HM_USER}.ftp:users $Plr/sites/all/{modules,themes,libraries}/* &> /dev/null
-    chown $_THIS_HM_USER:users $Plr/drushrc.php $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
+    chown $_THIS_HM_USER:users $Plr/sites/all/drush/drushrc.php $Plr/sites $Plr/sites/sites.php $Plr/sites/all $Plr/sites/all/{modules,themes,libraries,drush} &> /dev/null
     chmod 0751 $Plr/sites &> /dev/null
     chmod 0751 $Plr/sites/all &> /dev/null
-    chmod 0751 $Plr/sites/all/drush &> /dev/null
+    chmod 0700 $Plr/sites/all/drush &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type d -exec chmod 02775 {} \; &> /dev/null
     find $Plr/sites/all/{modules,themes,libraries} -type f -exec chmod 0664 {} \; &> /dev/null
     ### expected symlinks
@@ -1102,7 +1103,7 @@ add_note_platform_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.2.9"         >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.3.0"         >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_FILE
@@ -1119,7 +1120,7 @@ add_note_site_ini () {
     echo ";;" >> $_CTRL_FILE
     echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> $_CTRL_FILE
     echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> $_CTRL_FILE
-    echo ";;  may not include all options available after upgrade to BOA-2.2.9"         >> $_CTRL_FILE
+    echo ";;  may not include all options available after upgrade to BOA-2.3.0"         >> $_CTRL_FILE
     echo ";;" >> $_CTRL_FILE
     echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> $_CTRL_FILE
     echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> $_CTRL_FILE
@@ -1271,7 +1272,7 @@ process () {
 }
 
 delete_this_platform () {
-  run_drush4_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
+  run_drush6_hmr_cmd "@hostmaster hosting-task @platform_${_THIS_PLATFORM_NAME} delete --force"
   echo "Old empty platform_${_THIS_PLATFORM_NAME} will be deleted"
 }
 
@@ -1484,15 +1485,15 @@ action () {
         process
         if [ -e "$_THIS_HM_SITE" ] ; then
           cd $_THIS_HM_SITE
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
-          run_drush4_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_advanced_cron_default_interval 10800"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_advanced_cron_frequency 1"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_cron_frequency 53222400"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_cron_use_backend 0"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_ignore_default_profiles 0"
+          run_drush6_hmr_cmd "@hostmaster vset --always-set hosting_queue_tasks_items 1"
         fi
-        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
-        run_drush4_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
+        run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
+        run_drush6_hmr_cmd "@hostmaster sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
         check_old_empty_platforms
         purge_cruft_machine
         if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
@@ -1589,10 +1590,10 @@ else
     _MODULES_FIX=YES
   fi
   find /data/all/ -type f -name "*.info" -print0 | xargs -0 sed -i 's/.*dependencies\[\] = update/;dependencies\[\] = update/g' &> /dev/null
-  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.2.9.info" ] ; then
+  if [ ! -e "/data/all/permissions-fix-post-up-BOA-2.3.0.info" ] ; then
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type d -exec chmod 02775 {} \; &> /dev/null
     find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} -type f -exec chmod 0664 {} \; &> /dev/null
-    echo fixed > /data/all/permissions-fix-post-up-BOA-2.2.9.info
+    echo fixed > /data/all/permissions-fix-post-up-BOA-2.3.0.info
   fi
   action >/var/xdrago/log/daily/daily-$_NOW.log 2>&1
   if [ "$_PERMISSIONS_FIX" = "YES" ] ; then
@@ -1672,11 +1673,11 @@ if [ "$_PERMISSIONS_FIX" = "YES" ] && [ ! -z "$_INSTALLER_VERSION" ] && [ -e "/o
   chown -R root:users /data/all/000/core/*/sites
   echo fixed > /data/all/permissions-fix-$_INSTALLER_VERSION-fixed-dz.info
 fi
-if [ ! -e "/var/backups/fix-sites-all-permsissions-2.2.9.txt" ] ; then
+if [ ! -e "/var/backups/fix-sites-all-permsissions-2.3.0.txt" ] ; then
   chmod 0751  /data/disk/*/distro/*/*/sites
   chmod 0751  /data/disk/*/distro/*/*/sites/all
   chmod 02775 /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}
-  echo FIXED > /var/backups/fix-sites-all-permsissions-2.2.9.txt
+  echo FIXED > /var/backups/fix-sites-all-permsissions-2.3.0.txt
   echo "Permissions in sites/all tree just fixed"
 fi
 if [ ! -e "/root/.upstart.cnf" ] ; then

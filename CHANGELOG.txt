@@ -1,4 +1,177 @@
 
+### Stable BOA-2.3.0 Release - Full Edition
+### Date: Mon Sep  8 08:42:01 PDT 2014
+### Includes Aegir 2.1 with improvements
+
+# Release Notes:
+
+  This new BOA Edition introduces latest Aegir 2.1 stable version with newest
+  Drush 6 in the backend and with support for Drupal sites in subdirectories
+  enabled by default, among many other improvements included in this version,
+  like tasks list per site, ability to search in the sites list per domain name
+  and/or profile, to schedule tasks in batches, to select any existing domain
+  alias as a redirect target, but without the need to rename the site, etc.
+
+  While Barracuda 2.3.0 can continue to run and even upgrade if needed also
+  the very old PHP 5.2 version, only Octopus instances running at least PHP 5.3
+  or newer in both FPM and CLI mode can be upgraded to Octopus 2.3.0 Edition.
+
+  If you are still using PHP 5.2 in your Octopus instance, you will not
+  receive Aegir nor Drupal Platforms upgrade, but the Barracuda part of your
+  system will receive upgrade to 2.3.0 anyway, so it will be ready to support
+  your outdated Octopus instance upgrade as soon as you will switch it to
+  modern and secure PHP version -- which is easy!
+
+  Let's quote the original how-to for reference:
+
+#-### Support for PHP FPM/CLI version safe switch per Octopus instance
+
+  This allows to easily switch PHP version by the instance owner w/o system
+  admin (root) help. All you need to do is to create ~/static/control/fpm.info
+  and ~/static/control/cli.info file with a single line telling the system
+  which available PHP version should be used (if installed): 5.5 or 5.4 or 5.3
+
+  Only one of them can be set, but you can use separate versions for web access
+  (fpm.info) and the Aegir backend (cli.info). The system will switch versions
+  defined via these control files in 5 minutes or less. We use external control
+  files and not any option in the Aegir interface to make sure you will never
+  lock yourself by switching to version which may cause unexpected problems.
+
+#-### Legacy mode moves to 2.2.x branch
+
+  From now on, the 'legacy' install and upgrade mode available in all meta-
+  installers will utilize branch 2.2.x instead of deprecated 2.1.x series.
+
+# Updated Octopus platforms:
+
+  aGov 1.4 --------------------- https://drupal.org/project/agov
+  Guardr 1.12 ------------------ https://drupal.org/project/guardr
+  Open Academy 1.1 ------------- https://drupal.org/project/openacademy
+  Restaurant 1.0-b9 ------------ https://drupal.org/project/restaurant
+
+# New features and enhancements in this release:
+
+  * It is now possible to add stable Octopus instances w/o forcing Barracuda
+    upgrade, plus optionally with no platforms added by default -- usage:
+    $ boa {in-octopus} {email} {o2} {mini|max|none}
+
+  * Add default aggressive php-fpm monitoring + /root/.no.fpm.cpu.limit.cnf
+  * Allow to define always disabled modules via _MODULES_FORCE variable.
+  * Better wait limits on connection testing for slow network / long distance.
+  * Issue #362 - Add imageapi_optimize binaries via IMG in _XTRAS_LIST
+  * Make firewall management faster with randomized schedule.
+  * Procs monitor runs every 3 seconds.
+  * Run mysql_proc_control every 5 seconds for better results.
+
+# Changes in this release:
+
+  * Delete default profiles in the hostmaster platform.
+  * Disable _DEBUG_MODE if not enabled on the fly.
+  * Drush: Upgrade command line version 6 to mini-6-06-09-2014
+  * Nginx: Remove deprecated code - _HTTP_WILDCARD is already used by default.
+  * Nginx: Use limit_conn protection only for known dynamic requests.
+  * Remove dependency on Update Manager globally.
+  * Set hosting_default_profile to 'minimal' to improve Ubercart 3 visibility.
+  * Use Provision CiviCRM boa-2.3.0-dev
+
+# System upgrades in this release:
+
+  * Git 2.1.0 (if installed from sources)
+  * PHP 5.3.29 EOL! Please read: http://php.net/archive/2014.php#id2014-08-14-1
+  * PHP 5.4.32
+  * PHP 5.5.16
+  * Redis 2.8.14
+
+# Fixes in this release:
+
+  * Add cleanup for _GIT_FORCE_REINSTALL if added in .barracuda.cnf
+  * Add missing drush cache-clear drush to improve upgrade path.
+  * Allow to clear drush cache without directory restrictions.
+  * Always set correct TMP path for supported users.
+  * Cleanup for cron pid files in user specific .tmp dirs.
+  * Count properly also symlinked files directories (improved).
+  * D6 colorbox module requires old 1.3.18 library.
+  * Delete drush_make leftovers.
+  * Delete duplicate menu items on upgrade.
+  * Do not allow to install SSH from sources on Trusty to avoid problems.
+  * Do not skip daily.sh during barracuda system only update.
+  * Eldir theme: Use max width for buttons, if possible.
+  * Fix cleanup for drush aliases in sub-accounts.
+  * Fix daily cleanup for user specific .tmp directories.
+  * Fix docs/HINTS.txt
+  * Fix for broken mariadb.list
+  * Fix for ghost dirs cleanup.
+  * Fix for ghost vhosts cleanup.
+  * Fix for missing symlinks to existing platforms.
+  * Fix for not working protection from blocking local IPs on multi-IP systems.
+  * Fix for subdirs_support universal check.
+  * Fix for unreliable _IS_OLD check on Octopus instances upgrade.
+  * Fix for warning "Could not create directory ." on Hostmaster site Verify.
+  * Fix the fields order in the site edit form.
+  * Fix the regex to not whitelist unexpected IP ranges inadvertently.
+  * Force cURL rebuild if installed with outdated OpenSSL version.
+  * Guard against destructive or insecure tasks run on the hostmaster site.
+  * Improve cleanup for empty platforms directories.
+  * Improve monitoring to protect against convert trying to overload the system.
+  * Issue #2330781 - Use Drush dt() wrapper instead of not always available t()
+  * Issue #357 - Fix the logic for Git (re)install from sources.
+  * Issue #360 - Exclude special --CDN vhosts from daily cleanup.
+  * Issue #361 - Update and improve docs/FAQ.txt
+  * Issue #369 - Automatically download and fix /bin/websh if missing.
+  * Issue #369 - Restore classic /bin/sh symlink automatically if needed.
+  * Issue #373 - Set correct TMP, TEMP, TMPDIR env variables in limited shell.
+  * Issue #373 - Too restrictive lshell forbidden list breaks drush sql-sync.
+  * Issue #380 - Nameserver / pdnsd problem -- Fixes also Issue #2007990.
+  * Issue #381 - Zend OPcache forced adds useless noise in the log.
+  * Make it clear that subdomain and subdirectory name must be identical.
+  * Make sure that keys subdirectory exists to avoid active platforms cleanup.
+  * Nginx: Add config symlinks only on legacy instances.
+  * Nginx: Add cron access support for subdir sites.
+  * Nginx: Disable monitoring for POST requests related to cart/checkout URI.
+  * Nginx: Remove deprecated code and config templates.
+  * Nginx: Sanitize aliases in vhost_disabled.tpl.php to avoid warnings.
+  * Nginx: Update config includes to match optional BOA features improvements.
+  * Nginx: Update unified configuration templates in Provision to unfork BOA.
+  * Nginx: Update vhosts templates to match BOA improvements.
+  * PHP: Avoid unintended duplicate rebuilds.
+  * Protect sites/all/drush
+  * Provision: Backport provision_hosting_feature_enabled()
+  * Provision: Remove legacy subdir code and update checks.
+  * Redis config should sync with PHP-CLI, not PHP-FPM.
+  * Remove legacy procs monitoring code.
+  * Remove no longer needed limreq global fixes.
+  * Remove no longer needed/used contrib updates.
+  * Remove redundant file_exists() if is_readable() is also used.
+  * Restart pdnsd before running barracuda upgrade.
+  * Restore BOA formatting for tasks log to improve readability.
+  * Restore BOA naming convention and docs in Hostmaster.
+  * Restore BOA naming convention for Installation profiles in Hostmaster.
+  * Restore BOA strict _hosting_valid_fqdn* testing procedures in Hostmaster.
+  * Restore BOA weight defaults in the form in Hostmaster.
+  * Restore punycode in Hostmaster.
+  * Restore tasks sort to always show tasks scheduled and running at the top.
+  * Sanitize cli.info and fpm.info
+  * Set _PLATFORMS_LIST properly.
+  * Simplify colorbox-1.3.18 download.
+  * Simplify colorbox-1.5.13 download.
+  * Switch branch on the fly and add support for Aegir vanilla mode.
+  * Sync /tmp access restrictions.
+  * Update for the Hostmaster welcome page.
+  * Update FPM monitoring settings.
+  * Use as short labels on the site node as possible.
+  * Use correct paths to platform level drushrc.php file.
+  * Use Drush6 with @hostmaster.
+  * Use is_dir() instead of file_exists() when checking directory existence.
+  * Use is_file() and is_link() instead of file_exists() before trying unlink()
+  * Use is_readable() and file_exists() instead of file_exists() for backup.
+  * Use is_readable() check instead of insufficient file_exists() for includes.
+  * Use is_readable() instead of file_exists() when checking alias existence.
+  * Install latest Git even if not specified via _XTRAS_LIST but previous
+    version built from sources is detected.
+  * Issue #2278847 - Derivatives can't be created on install with Drush and
+    Aegir or when no vhost is available yet (Drupal Commons)
+
+
 ### Stable BOA-2.2.9 Release - Full Edition
 ### Date: Wed Aug  6 17:08:10 PDT 2014
 ### Includes Aegir 2.x-boa-custom version.
