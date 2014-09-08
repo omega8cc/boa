@@ -129,7 +129,6 @@ _PHP_FPM_VERSION=5.3
 ### _PHP_CLI_VERSION=5.5
 ### _PHP_CLI_VERSION=5.4
 ### _PHP_CLI_VERSION=5.3
-### _PHP_CLI_VERSION=5.2
 ###
 ### Note that 5.3 will be set automatically
 ### if you specify any other, not installed
@@ -1239,7 +1238,7 @@ octopus_cnf () {
         _PHP_CLI_VERSION=5.3
       fi
     elif [ "$_PHP_FPM_VERSION" = "5.2" ] || [ "$_PHP_CLI_VERSION" = "5.2" ] ; then
-      if [ ! -x "/opt/php52/bin/php" ] && [ -x "/opt/php53/bin/php" ] ; then
+      if [ -x "/opt/php53/bin/php" ] ; then
         _PHP_FPM_VERSION=5.3
         _PHP_CLI_VERSION=5.3
       fi
