@@ -262,6 +262,9 @@ else
   if [ "$_AEGIR_VERSION" = "HEAD" ] || [ ! -d "$_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/Inc" ] ; then
     cd $_ROOT/.drush
     msg "INFO: Downloading Drush and Provision extensions..."
+    rm -f -r $_ROOT/.drush/{sys,xts,usr}
+    rm -f -r $_ROOT/.drush/{provision,drush_make}
+    mkdir -p $_ROOT/.drush/{sys,xts,usr}
     git clone --branch $_BRANCH_PROVISION git://github.com/omega8cc/provision.git $_ROOT/.drush/sys/provision    &> /dev/null
     git clone --branch 6.x-2.x git://github.com/omega8cc/provision_cdn.git $_ROOT/.drush/xts/provision_cdn       &> /dev/null
     git clone --branch 7.x-1.x git://github.com/omega8cc/drush_ecl.git $_ROOT/.drush/usr/drush_ecl               &> /dev/null

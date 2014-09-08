@@ -191,7 +191,7 @@ up_one ()
     elif [ "$cmmand" = "up-modern" ] ; then
       sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     else
-      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=master/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
+      sed -i "s/^_BRANCH_PROVISION=.*/_BRANCH_PROVISION=2.3.x-dev/g"    /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     fi
     sed -i "s/^_AUTOPILOT=NO/_AUTOPILOT=YES/g"           /var/backups/OCTOPUS.sh.$_THIS_HM_USER
     sed -i "s/^_DNS_SETUP_TEST=YES/_DNS_SETUP_TEST=NO/g" /var/backups/OCTOPUS.sh.$_THIS_HM_USER
