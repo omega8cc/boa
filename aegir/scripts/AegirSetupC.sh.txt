@@ -2575,218 +2575,225 @@ else
 fi
 cp -af /opt/tmp/$_BOA_REPO_NAME/aegir/helpers/make_platform.php.txt ./
 mv -f make_platform.php.txt make_platform.php &> /dev/null
+
+if [ ! -e "/var/xdrago/log/platforms-drushrc-fixed-001.log" ] ; then
+  _DRUSHRC_FILE="drushrc.php"
+else
+  _DRUSHRC_FILE="sites/all/drush/drushrc.php"
+fi
+
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7D/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_D" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7D &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7S/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_S" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7S &> /dev/null
   fi
 fi
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/sites/all/drush/drushrc.php" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P/$_DRUSHRC_FILE" ] ; then
       $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7P &> /dev/null
     fi
   fi
 elif [ ! -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7P" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/sites/all/drush/drushrc.php" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/$_DRUPAL7/$_DRUSHRC_FILE" ] ; then
       $_DRUSHCMD php-script make_platform "$_F_DRUPAL7_P" standard $_ROOT/distro/$_THIS_CORE/$_DRUPAL7 &> /dev/null
     fi
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_ACQUIA" acquia $_ROOT/distro/$_THIS_CORE/acquia-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_AGOV" agov $_ROOT/distro/$_THIS_CORE/agov-$_AGOV-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_CIVICRM_M6" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M6-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_CIVICRM_M7" default $_ROOT/distro/$_THIS_CORE/civicrm-$_CIVICRM_M7-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COD" cod $_ROOT/distro/$_THIS_CORE/cod-$_COD-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMERCE1" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE1-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMERCE2" commerce $_ROOT/distro/$_THIS_CORE/commerce-$_COMMERCE2-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMONS2" commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS2-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_COMMONS3" commons $_ROOT/distro/$_THIS_CORE/commons-$_COMMONS3-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL8 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL_EDGE_8" standard $_ROOT/distro/$_THIS_CORE/drupal-$_DRUPAL_EDGE_8 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_ERPAL" erpal $_ROOT/distro/$_THIS_CORE/erpal-$_ERPAL-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_FSERVER" feature_server $_ROOT/distro/$_THIS_CORE/fserver-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_GUARDR" guardr $_ROOT/distro/$_THIS_CORE/guardr-$_GUARDR-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_MANAGINGNEWS" managingnews $_ROOT/distro/$_THIS_CORE/managingnews-$_MANAGINGNEWS-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENACADEMY" openacademy $_ROOT/distro/$_THIS_CORE/openacademy-$_OPENACADEMY-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM6" openatrium $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM6-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENATRIUM7" openatrium $_ROOT/distro/$_THIS_CORE/openatrium-$_OPENATRIUM7-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENBLOG" openblog $_ROOT/distro/$_THIS_CORE/openblog-$_OPENBLOG-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENCHURCH" openchurch $_ROOT/distro/$_THIS_CORE/openchurch-$_OPENCHURCH-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENDEALS" opendeals $_ROOT/distro/$_THIS_CORE/opendeals-$_OPEN_DEALS-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENOUTREACH" openoutreach $_ROOT/distro/$_THIS_CORE/openoutreach-$_OPENOUTREACH-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENPUBLIC" openpublic $_ROOT/distro/$_THIS_CORE/openpublic-$_OPENPUBLIC-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENPUBLISH" openpublish $_ROOT/distro/$_THIS_CORE/openpublish-$_OPENPUBLISH-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_OPENSCHOLAR" openscholar $_ROOT/distro/$_THIS_CORE/openscholar-$_OPENSCHOLAR-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_PANOPOLY" panopoly $_ROOT/distro/$_THIS_CORE/panopoly-$_PANOPOLY-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_PROSEPOINT" prosepoint $_ROOT/distro/$_THIS_CORE/prosepoint-$_PROSEPOINT-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_RECRUITER" recruiter $_ROOT/distro/$_THIS_CORE/recruiter-$_RECRUITER-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_RESTAURANT" restaurant $_ROOT/distro/$_THIS_CORE/restaurant-$_RESTAURANT-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/spark-$_SPARK-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/spark-$_SPARK-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/spark-$_SPARK-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_SPARK" spark $_ROOT/distro/$_THIS_CORE/spark-$_SPARK-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/totem-$_TOTEM-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/totem-$_TOTEM-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/totem-$_TOTEM-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_TOTEM" totem $_ROOT/distro/$_THIS_CORE/totem-$_TOTEM-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_UBERCART6" uberdrupal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART6-$_SMALLCORE6 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_UBERCART7" minimal $_ROOT/distro/$_THIS_CORE/ubercart-$_UBERCART7-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_UBER_CART_TESTING" testing $_ROOT/distro/$_THIS_CORE/ubercart-testing-$_UBERCART7-$_SMALLCORE7 &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_D" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-dev &> /dev/null
   fi
 fi
 if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage" ] ; then
-  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/sites/all/drush/drushrc.php" ] ; then
+  if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage/$_DRUSHRC_FILE" ] ; then
     $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_S" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-stage &> /dev/null
   fi
 fi
 if [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/sites/all/drush/drushrc.php" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod/$_DRUSHRC_FILE" ] ; then
       $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod &> /dev/null
     fi
   fi
 elif [ ! -d "$_ROOT/distro/$_THIS_CORE/pressflow-$_SMALLCORE6-prod" ] ; then
   if [ -d "$_ROOT/distro/$_THIS_CORE/pressflow" ] ; then
-    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/sites/all/drush/drushrc.php" ] ; then
+    if [ ! -e "$_ROOT/distro/$_THIS_CORE/pressflow/$_DRUSHRC_FILE" ] ; then
       $_DRUSHCMD php-script make_platform "$_F_DRUPAL6_P" default $_ROOT/distro/$_THIS_CORE/pressflow &> /dev/null
     fi
   fi
@@ -2804,6 +2811,7 @@ if [ -e "/var/run/aegir_upgrade.pid" ] ; then
 fi
 rm -f make_platform.php
 
+touch /var/xdrago/log/platforms-drushrc-fixed-001.log
 touch /opt/tmp/status-AegirSetupC-OK
 
 ###----------------------------------------###
