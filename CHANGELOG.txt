@@ -50,7 +50,7 @@
 
     fastcgi_pass unix:/var/run/o1.fpm.socket;
 
-  where o1 is your corresponding Octopus system username.
+  where 'o1' is your corresponding Octopus system username.
 
   Note that if you have custom vhosts or includes in the Aegir Master Instance,
   you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
