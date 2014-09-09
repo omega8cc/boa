@@ -57,7 +57,7 @@ foreach $X (sort keys %li_cnt) {
 foreach $K (sort keys %li_cnt) {
   if ($K =~ /convert/) {$convertlives = "YES"; $convertsumar = $li_cnt{$K};}
 }
-if ($convertlives)
+if ($convertsumar > 1)
 {
   &convert_action;
 }
