@@ -275,11 +275,12 @@ sub convert_action
     if ($PID)
     {
       local($HOUR, $MIN) = split(/:/,$TIME);
+      $MIN =~ s/0//g;
       if ($COMMAND =~ /^(\|)/ && $K =~ /convert/ && $CPU > 10 && $MIN > 1 && ($STAT =~ /R/ || $STAT =~ /Z/))
       {
         $timedate=`date +%y%m%d-%H%M%S`;
         chomp($timedate);
-        if ($convertsumar > 1 || $CPU > 20) {
+        if ($convertsumar > 5 && $CPU > 50) {
          `kill -9 $PID`;
          `echo "$USER $CPU $STAT $START $TIME $timedate KILL Q $convertsumar" >> /var/xdrago/log/convert.kill.log`;
           $kill_convert = "YES";
