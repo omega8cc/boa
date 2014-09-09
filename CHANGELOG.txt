@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.0 Release - Full Edition
 ### Date: Mon Sep  8 08:42:01 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Tue Sep  9 04:11:53 PDT 2014
+### Latest hotfix added on: Tue Sep  9 15:53:16 PDT 2014
 
 # Release Notes:
 
@@ -79,6 +79,13 @@
     upgrade, plus optionally with no platforms added by default -- usage:
     $ boa {in-octopus} {email} {o2} {mini|max|none}
 
+  * Issue #376 - Add New Relic support with per site and/or per platform
+    license key via new INI variable: 'newrelic_license_key' -- Note that it
+    will auto-disable previous globally auto-activated license key, so to keep
+    tracking sites you will need to add the license key in the respective
+    active INI files. This change is required to make the new per site/platform
+    logic usable and reliable.
+
   * Add default aggressive php-fpm monitoring + /root/.no.fpm.cpu.limit.cnf
   * Allow to define always disabled modules via _MODULES_FORCE variable.
   * Better wait limits on connection testing for slow network / long distance.
@@ -150,6 +157,7 @@
   * Issue #373 - Too restrictive lshell forbidden list breaks drush sql-sync.
   * Issue #380 - Nameserver / pdnsd problem -- Fixes also Issue #2007990.
   * Issue #381 - Zend OPcache forced adds useless noise in the log.
+  * Issue #390 - Duplicate platforms nodes are created after upgrade to 2.3.0
   * Make it clear that subdomain and subdirectory name must be identical.
   * Make sure that keys subdirectory exists to avoid active platforms cleanup.
   * Nginx: Add config symlinks only on legacy instances.
@@ -184,6 +192,7 @@
   * Simplify colorbox-1.5.13 download.
   * Switch branch on the fly and add support for Aegir vanilla mode.
   * Sync /tmp access restrictions.
+  * The hosting_civicrm_cron is now a submodule and should be also auto-enabled.
   * There is no need to force backend clone from GitHub on initial upgrade.
   * Update for the Hostmaster welcome page.
   * Update FPM monitoring settings.
