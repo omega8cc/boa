@@ -587,7 +587,7 @@ mkdir -p $_HOSTMASTER_ROOT/sites/all/{modules,themes,libraries}
 cd $_HOSTMASTER_ROOT/profiles/hostmaster/modules
 get_dev_ext "aegir_custom_settings-6.x-3.7.tar.gz"
 if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
-  git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_civicrm_cron.git  &> /dev/null
+  git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_civicrm.git       &> /dev/null
   git clone --branch 6.x-1.x git://github.com/omega8cc/hosting_remote_import.git &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_cdn.git           &> /dev/null
   git clone --branch 6.x-2.x git://github.com/omega8cc/hosting_platform_git.git  &> /dev/null
@@ -598,7 +598,7 @@ if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
 else
   get_dev_ext "hosting_advanced_cron.tar.gz"
   get_dev_ext "hosting_cdn.tar.gz"
-  get_dev_ext "hosting_civicrm_cron.tar.gz"
+  get_dev_ext "hosting_civicrm.tar.gz"
   get_dev_ext "hosting_platform_git.tar.gz"
   get_dev_ext "hosting_remote_import.tar.gz"
   get_dev_ext "hosting_site_backup.tar.gz"
@@ -636,7 +636,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
     _ALLOW_CIVICRM=NO
   fi
   if [ "$_ALLOW_CIVICRM" = "YES" ] ; then
-    $_DRUSHCMD @hostmaster en hosting_civicrm_cron -y &> /dev/null
+    $_DRUSHCMD @hostmaster en hosting_civicrm -y &> /dev/null
   fi
   if [ "$_STATUS" = "UPGRADE" ] ; then
     if [ "$_DEBUG_MODE" = "YES" ] ; then
