@@ -38,6 +38,29 @@
   files and not any option in the Aegir interface to make sure you will never
   lock yourself by switching to version which may cause unexpected problems.
 
+#-### The www53 PHP-FPM pool has been switched from port to default socket mode.
+
+  Note that we are breaking backward compatibility here, so it will cause
+  downtime on upgrade from any too old BOA version, until you will upgrade also
+  Octopus instance(s) and update any other non-standard vhosts or includes
+  still using legacy port mode for 'fastcgi_pass' Nginx directive.
+
+  If you have 'fastcgi_pass 127.0.0.1:9090;' in any custom vhost or Nginx
+  include file on the Octopus instance, you should replace it with:
+
+    fastcgi_pass unix:/var/run/o1.fpm.socket;
+
+  where o1 is your corresponding Octopus system username.
+
+  Note that if you have custom vhosts or includes in the Aegir Master Instance,
+  you should instead replace 'fastcgi_pass 127.0.0.1:9090;' with:
+
+    fastcgi_pass unix:/var/run/www53.fpm.socket;
+
+  where '53' is related to PHP version defined via _PHP_FPM_VERSION in your
+  /root/.barracuda.cnf file. Note that while variable has a dot, the socket
+  name doesn't.
+
 #-### Legacy mode moves to 2.2.x branch
 
   From now on, the 'legacy' install and upgrade mode available in all meta-
@@ -73,13 +96,8 @@
   * Nginx: Use limit_conn protection only for known dynamic requests.
   * Remove dependency on Update Manager globally.
   * Set hosting_default_profile to 'minimal' to improve Ubercart 3 visibility.
+  * The www53 PHP-FPM pool has been switched from port to default socket mode.
   * Use Provision CiviCRM boa-2.3.0-dev
-  * PHP: The www53 FPM pool should use socket instead of port to fix possible
-    legacy issues. Note that we are breaking backward compatibility here,
-    so it will cause downtime on upgrade from any too old BOA version, until
-    you will upgrade also Octopus instance(s). But we need to move away from
-    using legacy configuration. Make sure you don't use TCP/port mode for
-    PHP-FPM in any custom, non-standard config include, or change it to socket.
 
 # System upgrades in this release:
 
