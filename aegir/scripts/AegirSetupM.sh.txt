@@ -259,7 +259,7 @@ if $_DRUSHCMD help | grep "^ provision-install" > /dev/null ; then
 else
   msg "INFO: Installing provision backend in $_ROOT/.drush"
   mkdir -p $_ROOT/.drush/{sys,xts,usr}
-  if [ "$_AEGIR_VERSION" = "HEAD" ] || [ ! -d "$_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/Inc" ] ; then
+  if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
     cd $_ROOT/.drush
     msg "INFO: Downloading Drush and Provision extensions..."
     rm -f -r $_ROOT/.drush/{sys,xts,usr}
