@@ -167,13 +167,14 @@ Provision [E]xtensions [M]aster [S]atellite:
 Hostmaster [E]xtensions [S]atellite:
 
  aegir_custom_settings ------ [D6] ------ [S] [B] [FE] [ES]
- css_emimage ---------------- [D6] ------ [S] [B]      [ES]
  ctools --------------------- [D6] ------ [S] [B] [FE] [ES]
  features ------------------- [D6] ------ [S] [B] [FE] [ES]
  features_extra ------------- [D6] ------ [S] [B] [FE] [ES]
  hosting_advanced_cron ------ [D6] ------ [S] [B] [FE] [ES]
  hosting_backup_queue ------- [D6] ------ [S] [B]      [ES]
  hosting_cdn ---------------- [D6] ------ [S] [B]      [ES]
+ hosting_civicrm ------------ [D6] ------ [S] [B] [FE] [ES]
+ hosting_civicrm_cron ------- [D6] ------ [S] [B] [FE] [ES]
  hosting_platform_git ------- [D6] ------ [S] [B]      [ES]
  hosting_platform_pathauto -- [D6] ------ [S] [B]      [ES]
  hosting_remote_import ------ [D6] ------ [S] [B]      [ES]
