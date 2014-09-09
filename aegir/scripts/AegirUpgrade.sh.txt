@@ -230,7 +230,7 @@ hostmaster_go_up () {
     rm -f -r $_ROOT/.drush/drush_make
     rm -f -r $_ROOT/.drush/sys/drush_make
     cd $_ROOT/.drush
-    if [ "$_AEGIR_VERSION" = "HEAD" ] || [ ! -d "$_ROOT/.drush/sys/provision/http/Provision/Config/Nginx/Inc" ] ; then
+    if [ "$_AEGIR_VERSION" = "HEAD" ] ; then
       cd $_ROOT/.drush
       msg "INFO: Downloading Drush and Provision extensions..."
       rm -f -r $_ROOT/.drush/{sys,xts,usr}
