@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.0 Release - Full Edition
 ### Date: Mon Sep  8 08:42:01 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Tue Sep  9 03:13:54 PDT 2014
+### Latest hotfix added on: Tue Sep  9 04:11:53 PDT 2014
 
 # Release Notes:
 
@@ -95,6 +95,7 @@
   * Nginx: Remove deprecated code - _HTTP_WILDCARD is already used by default.
   * Nginx: Use limit_conn protection only for known dynamic requests.
   * Remove dependency on Update Manager globally.
+  * Replace old hosting_civicrm_cron with newer hosting_civicrm module.
   * Set hosting_default_profile to 'minimal' to improve Ubercart 3 visibility.
   * The www53 PHP-FPM pool has been switched from port to default socket mode.
   * Use Provision CiviCRM boa-2.3.0-dev
