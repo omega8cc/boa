@@ -109,6 +109,7 @@
 
 # System upgrades in this release:
 
+  * cURL 7.38.0 (if installed from sources)
   * Git 2.1.0 (if installed from sources)
   * PHP 5.3.29 EOL! Please read: http://php.net/archive/2014.php#id2014-08-14-1
   * PHP 5.4.32
