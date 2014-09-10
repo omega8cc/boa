@@ -43,7 +43,7 @@ enable_chattr () {
   if [ ! -z "$1" ] && [ -d "/home/$1" ] ; then
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    if [ ! -e "$_U_HD/.ctrl.cnv.txt" ] ; then
+    if [ ! -e "$_U_HD/.ctrl.cqi.txt" ] ; then
       if [[ "$_HOST_TEST" =~ ".host8." ]] || [ "$_VMFAMILY" = "VS" ] ; then
         rm -f -r $_U_HD/*
         rm -f -r $_U_HD/.*
@@ -80,7 +80,7 @@ enable_chattr () {
     done
     echo _PHP_CLI_UPDATE is $_PHP_CLI_UPDATE for $1
 
-    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.cnv.txt" ] ; then
+    if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -e "$_U_HD/.ctrl.cqi.txt" ] ; then
       mkdir -p $_U_HD
       rm -f $_U_HD/.ctrl.php*
       rm -f $_U_HD/php.ini
@@ -125,7 +125,7 @@ enable_chattr () {
         sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
         sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
         echo > $_U_HD/.ctrl.php${_U_INI}.txt
-        echo > $_U_HD/.ctrl.cnv.txt
+        echo > $_U_HD/.ctrl.cqi.txt
       fi
     fi
 
@@ -476,7 +476,7 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.cnv.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.cqi.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -508,7 +508,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.cnv.txt
+      echo > $_U_HD/.ctrl.cqi.txt
     fi
     chattr +i $_U_HD/php.ini &> /dev/null
   fi
@@ -779,15 +779,15 @@ do
     chmod 0710 /data/disk/${_OWN}/.drush &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
     find /data/disk/${_OWN}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
-    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.cnv.txt" ] ; then
+    if [ ! -e "/data/disk/${_OWN}/.tmp/.ctrl.cqi.txt" ] ; then
       rm -f -r /data/disk/${_OWN}/.drush/cache
       rm -f -r /data/disk/${_OWN}/.tmp
       mkdir -p /data/disk/${_OWN}/.tmp
       chown ${_OWN}:www-data /data/disk/${_OWN}/.tmp &> /dev/null
       chmod 02775 /data/disk/${_OWN}/.tmp &> /dev/null
-      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.cnv.txt
+      echo OK > /data/disk/${_OWN}/.tmp/.ctrl.cqi.txt
     fi
-    if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.cnv.txt" ] ; then
+    if [ ! -e "/data/disk/${_OWN}/static/control/.ctrl.cqi.txt" ] ; then
       mkdir -p /data/disk/${_OWN}/static/control
       chmod 755 /data/disk/${_OWN}/static/control
       if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
@@ -795,7 +795,7 @@ do
         chmod 0644 /data/disk/${_OWN}/static/control/README.txt
       fi
       chown -R ${_OWN}.ftp:$_USRG /data/disk/${_OWN}/static/control &> /dev/null
-      echo OK > /data/disk/${_OWN}/static/control/.ctrl.cnv.txt
+      echo OK > /data/disk/${_OWN}/static/control/.ctrl.cqi.txt
     fi
     if [ -e "/root/.${_OWN}.octopus.cnf" ] ; then
       source /root/.${_OWN}.octopus.cnf
@@ -827,13 +827,13 @@ do
           ln -sf /data/disk/${_OWN}/clients /home/${_OWN}.ftp/clients
           ln -sf /data/disk/${_OWN}/static  /home/${_OWN}.ftp/static
         fi
-        if [ ! -e "/home/${_OWN}.ftp/.tmp/.ctrl.cnv.txt" ] ; then
+        if [ ! -e "/home/${_OWN}.ftp/.tmp/.ctrl.cqi.txt" ] ; then
           rm -f -r /home/${_OWN}.ftp/.drush/cache
           rm -f -r /home/${_OWN}.ftp/.tmp
           mkdir -p /home/${_OWN}.ftp/.tmp
           chown ${_OWN}.ftp:users /home/${_OWN}.ftp/.tmp &> /dev/null
           chmod 700 /home/${_OWN}.ftp/.tmp &> /dev/null
-          echo OK > /home/${_OWN}.ftp/.tmp/.ctrl.cnv.txt
+          echo OK > /home/${_OWN}.ftp/.tmp/.ctrl.cqi.txt
         fi
         enable_chattr ${_OWN}.ftp
         echo Done for $User
