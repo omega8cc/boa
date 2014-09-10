@@ -616,12 +616,6 @@ fix_modules () {
           ### Add new INI variables if missing
           ###
           if [ -e "$_PLR_CTRL_FILE" ] ; then
-            _VAR_IF_PRESENT=$(grep "newrelic_license_key" $_PLR_CTRL_FILE)
-            if [[ "$_VAR_IF_PRESENT" =~ "newrelic_license_key" ]] ; then
-              _DO_NOTHING=YES
-            else
-              echo ";newrelic_license_key = FALSE" >> $_PLR_CTRL_FILE
-            fi
             _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_PLR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]] ; then
               _DO_NOTHING=YES
@@ -696,12 +690,6 @@ fix_modules () {
             fi
           fi
           if [ -e "$_DIR_CTRL_FILE" ] ; then
-            _VAR_IF_PRESENT=$(grep "newrelic_license_key" $_DIR_CTRL_FILE)
-            if [[ "$_VAR_IF_PRESENT" =~ "newrelic_license_key" ]] ; then
-              _DO_NOTHING=YES
-            else
-              echo ";newrelic_license_key = FALSE" >> $_DIR_CTRL_FILE
-            fi
              _VAR_IF_PRESENT=$(grep "session_cookie_ttl" $_DIR_CTRL_FILE)
             if [[ "$_VAR_IF_PRESENT" =~ "session_cookie_ttl" ]] ; then
               _DO_NOTHING=YES

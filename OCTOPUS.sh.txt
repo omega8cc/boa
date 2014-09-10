@@ -691,7 +691,7 @@ _RESTAURANT=7.x-1.0-beta9
 _SPARK=7.x-1.0-beta1
 _TOTEM=7.x-1.1
 _UBERCART6=2.13
-_UBERCART7=3.6
+_UBERCART7=3.7
 
 
 ###---### Functions
@@ -1552,7 +1552,7 @@ action () {
   if [ ! -e "/data/disk/$_USER/log/cli.txt" ] ; then
     echo $_PHP_CLI_VERSION > /data/disk/$_USER/log/cli.txt
   fi
-  if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.cnv.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
+  if [ ! -e "/data/disk/${_USER}/static/control/.ctrl.cqi.txt" ] || [ ! -e "/data/disk/${_USER}/static/control/README.txt" ] ; then
     mkdir -p /data/disk/${_USER}/static/control
     chmod 755 /data/disk/${_USER}/static/control
     if [ -e "/var/xdrago/conf/control-readme.txt" ] ; then
@@ -1560,7 +1560,7 @@ action () {
       chmod 0644 /data/disk/${_USER}/static/control/README.txt
     fi
     chown -R ${_USER}.ftp:$_USRG /data/disk/${_USER}/static/control &> /dev/null
-    echo OK > /data/disk/${_USER}/static/control/.ctrl.cnv.txt
+    echo OK > /data/disk/${_USER}/static/control/.ctrl.cqi.txt
   fi
   if [ -d "/data/all/000" ] ; then
     if [ ! -e "/data/all/000/core-v-$_SMALLCORE6.txt" ] || [ ! -e "/data/all/000/core-v-$_SMALLCORE7.txt" ] ; then

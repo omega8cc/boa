@@ -6,12 +6,23 @@
 
 # Release Notes:
 
-  This new BOA Edition introduces latest Aegir 2.1 stable version with newest
-  Drush 6 in the backend and with support for Drupal sites in subdirectories
-  enabled by default, among many other improvements included in this version,
-  like tasks list per site, ability to search in the sites list per domain name
-  and/or profile, to schedule tasks in batches, to select any existing domain
-  alias as a redirect target, but without the need to rename the site, etc.
+  This new BOA Edition introduces many new features, changes and improvements:
+
+  * BOA-2.3.0 comes with shiny Aegir 2.1 stable version, finally!
+  * Super-easy to use New Relic support with per Octopus license key
+  * Support for Drupal sites in subdirectories is enabled by default
+  * Latest Drush 6 version is used also in the Aegir backend by default
+  * The list of sites is searchable by name or installation profile
+  * You can schedule tasks against filtered sites in batches
+  * Scheduling tasks in batches is available also on the platform view
+  * Scheduling tasks in batches is available also on the profile view
+  * Each site has its own history of tasks available from the site view tab
+  * You can schedule tasks also against platforms in batches
+  * It is now possible to choose any existing alias or the main site name
+    as a redirect target, but without the need to rename the site --
+    it will just re-verify the site and create new vhost automatically
+
+#-### Support for PHP 5.2 has been officially deprecated
 
   While Barracuda 2.3.0 can continue to run and even upgrade if needed also
   the very old PHP 5.2 version, only Octopus instances running at least PHP 5.3
@@ -37,6 +48,33 @@
   defined via these control files in 5 minutes or less. We use external control
   files and not any option in the Aegir interface to make sure you will never
   lock yourself by switching to version which may cause unexpected problems.
+
+#-### Support for New Relic monitoring with per Octopus instance license key
+
+  This new feature will disable global New Relic monitoring by deactivating
+  server-level license key, so it can safely auto-enable or auto-disable it
+  every 5 minutes, but per Octopus instance -- for all sites hosted on
+  the given instance -- when a valid license key is present in the special
+  new ~/static/control/newrelic.info control file.
+
+  Please note that valid license key is a 40-character hexadecimal string
+  that New Relic provides when you sign up for an account.
+
+  To disable New Relic monitoring for the Octopus instance, simply delete
+  its ~/static/control/newrelic.info control file and wait a few minutes.
+
+  Please note that on a self-hosted BOA you still need to add your valid
+  license key as _NEWRELIC_KEY in the /root/.barracuda.cnf file and run
+  system upgrade with at least 'barracuda up-stable' first. This step is
+  not required on Omega8.cc hosted service, where New Relic agent is already
+  pre-installed for you.
+
+#-### Ability to add new Octopus instances with new, simple command synatx
+
+  It is now possible to add stable Octopus instances w/o forcing Barracuda
+  upgrade, plus optionally with no platforms added by default -- usage:
+
+    $ boa {in-octopus} {email} {o2} {mini|max|none}
 
 #-### The www53 PHP-FPM pool has been switched from port to default socket mode.
 
@@ -75,21 +113,12 @@
 
 # New features and enhancements in this release:
 
-  * It is now possible to add stable Octopus instances w/o forcing Barracuda
-    upgrade, plus optionally with no platforms added by default -- usage:
-    $ boa {in-octopus} {email} {o2} {mini|max|none}
-
-  * Issue #376 - Add New Relic support with per site and/or per platform
-    license key via new INI variable: 'newrelic_license_key' -- Note that it
-    will auto-disable previous globally auto-activated license key, so to keep
-    tracking sites you will need to add the license key in the respective
-    active INI files. This change is required to make the new per site/platform
-    logic usable and reliable.
-
+  * Ability to add new Octopus instances with new, simple command synatx
   * Add default aggressive php-fpm monitoring + /root/.no.fpm.cpu.limit.cnf
   * Allow to define always disabled modules via _MODULES_FORCE variable.
   * Better wait limits on connection testing for slow network / long distance.
   * Issue #362 - Add imageapi_optimize binaries via IMG in _XTRAS_LIST
+  * Issue #376 - Add New Relic support with per Octopus instance license key.
   * Make firewall management faster with randomized schedule.
   * Procs monitor runs every 3 seconds.
   * Run mysql_proc_control every 5 seconds for better results.

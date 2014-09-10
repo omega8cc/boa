@@ -200,7 +200,7 @@ update_php_cli_local_ini () {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.cnv.txt" ] ; then
+  if [ "$_PHP_CLI_UPDATE" = "YES" ] || [ ! -e "$_U_HD/php.ini" ] || [ ! -d "$_U_TP" ] || [ ! -e "$_U_HD/.ctrl.cqi.txt" ] ; then
     rm -f -r $_U_TP
     mkdir -p $_U_TP
     chmod 700 $_U_TP
@@ -231,7 +231,7 @@ update_php_cli_local_ini () {
       sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = $_QTP/g"               $_U_HD/php.ini &> /dev/null
       sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = $_QTP/g"           $_U_HD/php.ini &> /dev/null
       echo > $_U_HD/.ctrl.php${_U_INI}.txt
-      echo > $_U_HD/.ctrl.cnv.txt
+      echo > $_U_HD/.ctrl.cqi.txt
     fi
   fi
 }
@@ -451,6 +451,7 @@ if [ "$_LOCAL_STATUS" = "INIT" ] ; then
   fi
   rm -rf $_HOSTMASTER_ROOT/profiles/{default,standard,minimal,testing}
   cd $_HOSTMASTER_ROOT
+  mkdir -p sites/all/{modules,themes,libraries}
   mkdir -p sites/$_DOMAIN/files/{tmp,js,css}
   chmod 02775 -R sites/$_DOMAIN/files &> /dev/null
   chgrp -R $_WEBG sites/$_DOMAIN/files &> /dev/null
@@ -553,6 +554,8 @@ else
   else
     $_DRUSHCMD hostmaster-migrate $_DOMAIN $_HOSTMASTER_ROOT -y &> /dev/null
   fi
+  cd $_HOSTMASTER_ROOT
+  mkdir -p sites/all/{modules,themes,libraries}
   export DEBIAN_FRONTEND=text
   mv -f $_ROOT/.drush/xts/security_review/foo.txt $_ROOT/.drush/xts/security_review/security_review.drush.inc  &> /dev/null
   rm -f $_ROOT/u/$_DOMAIN
