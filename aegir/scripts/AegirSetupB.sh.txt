@@ -632,7 +632,7 @@ if [ -e "$_HOSTMASTER_ROOT/sites/$_DOMAIN/settings.php" ] ; then
   fi
   cd $_HOSTMASTER_ROOT/sites/$_DOMAIN
   if [ "$_CLIENT_CORES" -ge "1" ] ; then
-    _ALLOW_CIVICRM=NO
+    _ALLOW_CIVICRM=YES
   else
     _ALLOW_CIVICRM=NO
   fi
