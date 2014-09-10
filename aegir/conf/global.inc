@@ -239,7 +239,6 @@ $boa_ini = array(
   'advagg_auto_configuration' => FALSE,            // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'purge_expire_auto_configuration' => FALSE,      // Will be set to TRUE in boa_site_control.ini if the module is enabled
   'disable_drupal_page_cache' => FALSE,            // It is set to FALSE for backward compatibility and max performance
-  'newrelic_license_key' => FALSE,                 // Can be set per site or per platform
 );
 
 /**
@@ -307,7 +306,6 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Session-Cookie-Ttl: " . $all_ini['session_cookie_ttl']);
   header("X-Ini-Session-Gc-Eol: " . $all_ini['session_gc_eol']);
   header("X-Ini-Disable-Drupal-Page-Cache: " . $all_ini['disable_drupal_page_cache']);
-  header("X-Ini-NewRelic-License-Key: " . $all_ini['newrelic_license_key']);
 }
 
 /**
@@ -863,12 +861,6 @@ if (!$custom_da) {
  */
 if (extension_loaded('newrelic')) {
   ini_set('newrelic.framework', 'drupal');
-  if ($all_ini['newrelic_license_key']) {
-    ini_set('newrelic.license', $all_ini['newrelic_license_key']);
-  }
-  else {
-    ini_set('newrelic.license', FALSE);
-  }
   $this_instance = FALSE;
   if ($is_backend) {
     $context = drush_get_context();

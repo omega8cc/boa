@@ -306,7 +306,7 @@ fix_php_ini_newrelic () {
     else
       echo "newrelic.framework.drupal.modules = 1" >> $_THIS_FILE
     fi
-    sed -i "s/REPLACE_WITH_REAL_KEY/$_NEWRELIC_KEY/g" $_THIS_FILE &> /dev/null
+    sed -i "s/REPLACE_WITH_REAL_KEY//g" $_THIS_FILE &> /dev/null
     sed -i "s/license_key=//g" $_THIS_FILE &> /dev/null
   fi
 }

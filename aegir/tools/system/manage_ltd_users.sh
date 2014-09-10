@@ -613,8 +613,8 @@ switch_php()
 {
   _PHP_CLI_UPDATE=NO
   _LOC_PHP_CLI_VERSION=""
-  if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
-    echo "Custom FPM or CLI settings for $_OWN exist, running switch_php checks"
+  if [ -e "/data/disk/${_OWN}/static/control/fpm.info" ] || [ -e "/data/disk/${_OWN}/static/control/cli.info" ] || [ -e "/data/disk/${_OWN}/static/control/newrelic.info" ] ; then
+    echo "Custom FPM or CLI or New Relic settings for $_OWN exist, running switch_php checks"
     if [ -e "/data/disk/${_OWN}/static/control/cli.info" ] ; then
       _LOC_PHP_CLI_VERSION=`cat /data/disk/${_OWN}/static/control/cli.info`
       _LOC_PHP_CLI_VERSION=${_LOC_PHP_CLI_VERSION//[^0-9.]/}
@@ -706,6 +706,46 @@ switch_php()
           if [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] ; then
             service php${_PHP_OLD_SV}-fpm reload &> /dev/null
           fi
+          if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+            service php${_PHP_SV}-fpm reload &> /dev/null
+          fi
+        fi
+      fi
+    fi
+    if [ -e "/data/disk/${_OWN}/static/control/newrelic.info" ] ; then
+      _LOC_NEW_RELIC_KEY=`cat /data/disk/${_OWN}/static/control/newrelic.info`
+      _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
+      _LOC_NEW_RELIC_KEY=`echo -n $_LOC_NEW_RELIC_KEY | tr -d "\n"`
+      _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+      if [ -z "$_PHP_SV" ] ; then
+        _PHP_SV=53
+      fi
+      _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
+      if [ ! -z "$_LOC_NEW_RELIC_KEY" ] && [ -e "$_THIS_POOL_TPL" ] ; then
+        _CHECK_NEW_RELIC_KEY=`grep "$_LOC_NEW_RELIC_KEY" $_THIS_POOL_TPL`
+        if [[ "$_CHECK_NEW_RELIC_KEY" =~ "$_LOC_NEW_RELIC_KEY" ]] ; then
+          _NEW_RELIC_KEY_UPDATE=NO
+        else
+          echo New Relic for ${_OWN} update with key $_LOC_NEW_RELIC_KEY
+          sed -i "s/^php_admin_value[newrelic.license].*/php_admin_value[newrelic.license] = \"$_LOC_NEW_RELIC_KEY\"/g" $_THIS_POOL_TPL &> /dev/null
+          sed -i "s/^php_admin_value[newrelic.enabled].*/php_admin_value[newrelic.enabled] = \"true\"/g" $_THIS_POOL_TPL &> /dev/null
+          if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
+            service php${_PHP_SV}-fpm reload &> /dev/null
+          fi
+        fi
+      fi
+    else
+      _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
+      if [ -z "$_PHP_SV" ] ; then
+        _PHP_SV=53
+      fi
+      _THIS_POOL_TPL="/opt/php${_PHP_SV}/etc/pool.d/${_OWN}.conf"
+      if [ -e "$_THIS_POOL_TPL" ] ; then
+        _CHECK_NEW_RELIC_KEY=`grep "newrelic.enabled.*true" $_THIS_POOL_TPL`
+        if [[ "$_CHECK_NEW_RELIC_KEY" =~ "newrelic.enabled" ]] ; then
+          echo New Relic for ${_OWN} will be disabled because newrelic.info does not exist
+          sed -i "s/^php_admin_value[newrelic.license].*/php_admin_value[newrelic.license] = \"\"/g" $_THIS_POOL_TPL &> /dev/null
+          sed -i "s/^php_admin_value[newrelic.enabled].*/php_admin_value[newrelic.enabled] = \"false\"/g" $_THIS_POOL_TPL &> /dev/null
           if [ -e "/etc/init.d/php${_PHP_SV}-fpm" ] ; then
             service php${_PHP_SV}-fpm reload &> /dev/null
           fi
