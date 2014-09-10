@@ -2,7 +2,7 @@
 ### Stable BOA-2.3.0 Release - Full Edition
 ### Date: Mon Sep  8 08:42:01 PDT 2014
 ### Includes Aegir 2.1 with improvements
-### Latest hotfix added on: Tue Sep  9 15:53:16 PDT 2014
+### Latest hotfix added on: Tue Sep  9 20:20:16 PDT 2014
 
 # Release Notes:
 
@@ -157,6 +157,7 @@
   * Issue #373 - Too restrictive lshell forbidden list breaks drush sql-sync.
   * Issue #380 - Nameserver / pdnsd problem -- Fixes also Issue #2007990.
   * Issue #381 - Zend OPcache forced adds useless noise in the log.
+  * Issue #389 - hosting_civicrm breaks site install form with confusing error.
   * Issue #390 - Duplicate platforms nodes are created after upgrade to 2.3.0
   * Make it clear that subdomain and subdirectory name must be identical.
   * Make sure that keys subdirectory exists to avoid active platforms cleanup.
